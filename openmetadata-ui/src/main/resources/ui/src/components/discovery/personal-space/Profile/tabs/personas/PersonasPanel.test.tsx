@@ -25,6 +25,7 @@ import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { PersonaDetailTab, PersonaView } from './Personas.types';
 import PersonasPanel from './PersonasPanel';
+import { guardBreadcrumbAction } from '../../../../../../hooks/useUnsavedExitGuard';
 
 jest.mock('./PersonasLanding', () => ({
   __esModule: true,
@@ -157,7 +158,10 @@ const Host = () => {
         <button
           data-testid={`crumb-${crumb.id}`}
           key={crumb.id}
-          onClick={() => header.onBreadcrumbAction?.(crumb.id)}>
+          onClick={() =>
+            // ProfilePage guards every panel's crumbs the same way.
+            guardBreadcrumbAction(header.onBreadcrumbAction)?.(crumb.id)
+          }>
           {crumb.label}
         </button>
       ))}

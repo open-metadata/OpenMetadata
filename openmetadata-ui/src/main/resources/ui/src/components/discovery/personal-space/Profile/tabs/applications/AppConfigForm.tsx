@@ -29,7 +29,7 @@ import {
   RJSFSchema,
   UiSchema,
 } from '@rjsf/utils';
-import { FC, useMemo } from 'react';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
@@ -41,6 +41,10 @@ import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBui
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import { AppFooter } from './AppFooter';
+import { getDefaultFormState } from '@rjsf/utils';
+import validator from '@rjsf/validator-ajv8';
+import { isEqual } from 'lodash';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 export interface AppConfigFormProps {
   appData: App | AppMarketPlaceDefinition;
@@ -179,6 +183,17 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
     [appData.appConfiguration]
   );
 
+  // The form fills schema defaults in, so compare edits against the data with
+  // those defaults applied, or an untouched form would read as changed.
+  const savedFormData = useMemo(
+    () => getDefaultFormState(validator, jsonSchema, formData),
+    [jsonSchema, formData]
+  );
+  const [isDirty, setIsDirty] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    !isReadOnly && isDirty && !isSaving
+  );
+
   const handleSubmit = (event: IChangeEvent) =>
     onSave({ formData: formatFormDataForSubmit(event.formData) });
 
@@ -194,6 +209,9 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         schema={jsonSchema}
         templates={APP_FORM_TEMPLATES}
         uiSchema={uiSchema}
+        onChange={(event) =>
+          setIsDirty(!isEqual(event.formData, savedFormData))
+        }
         onSubmit={handleSubmit}
       />
       {!isReadOnly && (
@@ -203,10 +221,11 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
               color="tertiary"
               data-testid="cancel-button"
               isDisabled={isSaving}
-              onPress={onCancel}>
+              onPress={() => runGuarded(onCancel)}>
               {cancelLabel ?? t('label.cancel')}
             </Button>
           )}
+          {prompt}
           <Button
             color="primary"
             data-testid="save-button"

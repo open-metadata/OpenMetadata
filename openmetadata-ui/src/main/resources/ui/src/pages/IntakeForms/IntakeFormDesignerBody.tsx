@@ -49,6 +49,7 @@ import {
 } from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
+import { isEmpty } from 'lodash';
 
 export interface IntakeFormDesignerBodyHandle {
   submit: () => Promise<void>;
@@ -59,12 +60,14 @@ interface IntakeFormDesignerBodyProps {
   initialValue: (Omit<IntakeForm, 'id'> & { id?: string }) | null;
   open: boolean;
   onSubmit: (payload: CreateIntakeForm) => Promise<void> | void;
+  /** Reports whether the admin changed anything, so a host can guard leaving. */
+  onDirtyChange?: (isDirty: boolean) => void;
 }
 
 const IntakeFormDesignerBody = forwardRef<
   IntakeFormDesignerBodyHandle,
   IntakeFormDesignerBodyProps
->(({ entityType, initialValue, open, onSubmit }, ref) => {
+>(({ entityType, initialValue, open, onSubmit, onDirtyChange }, ref) => {
   const { t } = useTranslation();
   const [customProperties, setCustomProperties] = useState<CustomProperty[]>(
     []
@@ -77,6 +80,20 @@ const IntakeFormDesignerBody = forwardRef<
   const [description, setDescription] = useState<string>('');
   const [enabled, setEnabled] = useState<boolean>(true);
   const [loadingProps, setLoadingProps] = useState(true);
+
+  const isDirty = useMemo(() => {
+    const initialDescription = initialValue?.description ?? '';
+    const initialEnabled = initialValue?.enabled ?? true;
+
+    return (
+      !isEmpty(edits) ||
+      description !== initialDescription ||
+      enabled !== initialEnabled
+    );
+  }, [edits, description, enabled, initialValue]);
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   useEffect(() => {
     if (!open) {

@@ -39,6 +39,7 @@ import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor'
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { BotsView } from './BotsPanel.types';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface BotAddFormProps {
   onNavigate: (view: BotsView) => void;
@@ -65,6 +66,9 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       allowImpersonation: false,
     },
   });
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty && !isSubmitting
+  );
 
   const tokenExpiryOptions = useMemo(
     () =>
@@ -237,9 +241,10 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'list' })}>
+          onPress={() => runGuarded(() => onNavigate({ type: 'list' }))}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="submit-btn"

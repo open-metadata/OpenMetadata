@@ -107,6 +107,15 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import AccessControlAddPolicyForm from './AccessControlAddPolicyForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
+jest.mock('../../components/useUnsavedChangesPrompt', () => ({
+  useUnsavedChangesPrompt: () => ({
+    runGuarded: (exit: () => void) => exit(),
+    prompt: null,
+  }),
+}));
+
 const mockOnNavigate = jest.fn();
 
 const renderComponent = () =>

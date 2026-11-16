@@ -13,7 +13,7 @@
 
 import { Box, Button, PasswordInput } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { omit } from 'lodash';
+import { omit, isEqual } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RequestType } from '../../../../../generated/auth/changePasswordRequest';
@@ -27,6 +27,7 @@ import { isPasswordValid } from './PasswordStrength.utils';
 import PasswordStrengthMeter, {
   PASSWORD_FIELD_WIDTH_CLASS,
 } from './PasswordStrengthMeter';
+import { useUnsavedChangesPrompt } from './useUnsavedChangesPrompt';
 
 interface ChangePasswordRowProps {
   /** `User.name` of the user whose password is being changed. */
@@ -60,6 +61,11 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
+  const isDirty = useMemo(
+    () => isEditing && !isSaving && !isEqual(form, EMPTY_FORM),
+    [isEditing, isSaving, form]
+  );
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty);
 
   const isMismatch = useMemo(
     () =>
@@ -193,9 +199,10 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
                 data-testid="cancel-change-password-button"
                 size="sm"
                 type="button"
-                onClick={closeForm}>
+                onClick={() => runGuarded(closeForm)}>
                 {t('label.cancel')}
               </Button>
+              {prompt}
             </Box>
           </Box>
         </form>

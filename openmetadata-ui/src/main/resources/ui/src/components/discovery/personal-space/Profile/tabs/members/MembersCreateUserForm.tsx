@@ -80,6 +80,7 @@ import {
   mergeRoleItems,
   withoutId,
 } from './Members.utils';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface FormValues {
   email: string;
@@ -126,6 +127,9 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   const [isAdminUser, setIsAdminUser] = useState(Boolean(isAdmin));
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty && !isSaveLoading
+  );
 
   const [generatedPassword, setGeneratedPassword] = useState('');
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
@@ -591,9 +595,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-user"
-          onPress={() => onNavigate({ type: isAdmin ? 'admins' : 'users' })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: isAdmin ? 'admins' : 'users' }))
+          }>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="save-user"

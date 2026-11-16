@@ -53,6 +53,7 @@ import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { MembersAddTeamFormProps } from './Members.types';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 // The teamType SELECT stores the whole option object as its RHF value, so the
 // form type overrides teamType with FormSelectItem and onSubmit unwraps the id.
@@ -110,6 +111,9 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
       isJoinable: true,
     },
   });
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty && !isSaving
+  );
   const { handleSubmit } = form;
 
   const teamTypeOptions = useMemo(
@@ -330,9 +334,13 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         direction="row"
         gap={3}
         justify="end">
-        <Button color="tertiary" data-testid="cancel-btn" onPress={onCancel}>
+        <Button
+          color="tertiary"
+          data-testid="cancel-btn"
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="submit-btn"

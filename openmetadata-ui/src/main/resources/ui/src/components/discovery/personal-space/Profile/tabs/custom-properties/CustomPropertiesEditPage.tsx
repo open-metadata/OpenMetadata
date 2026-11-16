@@ -15,6 +15,7 @@ import { Box, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import {
   CustomPropertyChanges,
   updateCustomPropertyByName,
@@ -35,6 +36,8 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty && !isSaving);
 
   const handleSubmit = useCallback(
     async (changes: CustomPropertyChanges) => {
@@ -87,6 +90,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
             formId="edit-custom-property-form"
             property={property}
             showHint={showHint}
+            onDirtyChange={setIsDirty}
             onSubmit={handleSubmit}
           />
         </Box>
@@ -102,9 +106,10 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
           data-testid="edit-custom-property-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="edit-custom-property-save"

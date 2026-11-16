@@ -54,7 +54,8 @@ again, so Back is trapped.
 ## Amendment (v3, 2026-11-16)
 Platform Settings is the second panel to push. Opening a card, a breadcrumb or Edit pushes; leaving
 an editor for its own page view (Save, Cancel) replaces (`isLeavingEditor` in
-`PlatformSettings.utils.ts`). Its forms share the unsaved-changes guard
-(`useUnsavedExitGuard`), so breadcrumbs, Cancel, the sidebar, Esc and Close ask first; Back still
-does not. Guard: `PlatformSettingsPanel.test.tsx`, `ProfilePlatformSettings.spec.ts` ("browser
+`PlatformSettings.utils.ts`). Every settings form now shares the unsaved-changes guard
+(`useUnsavedExitGuard` / `useUnsavedChangesPrompt`): `ProfilePage` guards every panel's
+breadcrumbs once, and each form routes its Cancel through the guard, so breadcrumbs, Cancel, the
+sidebar, Esc and Close ask first; Back still does not. Guard: `PlatformSettingsPanel.test.tsx`, `ProfilePlatformSettings.spec.ts` ("browser
 Back walks the opened views and never reopens a saved form").

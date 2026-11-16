@@ -35,6 +35,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
 import { GovernanceView } from './Governance.types';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 const INTAKE_FORM_ENTITY = 'label.intake-form';
 const VIEW_INTAKE_LIST = 'intake-list' as const;
@@ -55,6 +56,8 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
   const { t } = useTranslation();
   const bodyRef = useRef<IntakeFormDesignerBodyHandle>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty && !isSaving);
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const [existing, setExisting] = useState<IntakeForm | null>(null);
   const [resolvedEntityType, setResolvedEntityType] = useState<
@@ -130,6 +133,7 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
             entityType={resolvedEntityType}
             initialValue={existing}
             ref={bodyRef}
+            onDirtyChange={setIsDirty}
             onSubmit={handleSubmit}
           />
         </div>
@@ -145,9 +149,12 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
           data-testid="intake-form-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={() => onNavigate({ type: VIEW_INTAKE_LIST })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: VIEW_INTAKE_LIST }))
+          }>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="intake-form-submit"

@@ -86,3 +86,16 @@ export const useUnsavedExitGuard = (isDirty: boolean) => {
     cancelExit,
   };
 };
+
+/**
+ * A breadcrumb action that asks first when an editor has unsaved changes, as
+ * the sidebar does. Undefined when the panel has no breadcrumb action.
+ */
+export const guardBreadcrumbAction = <K>(action?: (id: K) => void) =>
+  action &&
+  ((id: K) => {
+    const go = () => action(id);
+    if (!usePersonalSpaceStore.getState().exitGuard?.(go)) {
+      go();
+    }
+  });

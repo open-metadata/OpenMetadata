@@ -27,6 +27,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
+import { guardBreadcrumbAction } from '../../../../hooks/useUnsavedExitGuard';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import {
   EXTENSION_POINTS,
@@ -240,7 +241,10 @@ const ProfilePage: React.FC = () => {
       { id: 'current', label: t(activeItem.label) },
     ]),
   ];
-  const headerBreadcrumbAction = headerOverride?.onBreadcrumbAction;
+  // Panels hand plain navigation here; the guard is applied once, for all.
+  const headerBreadcrumbAction = guardBreadcrumbAction(
+    headerOverride?.onBreadcrumbAction
+  );
 
   // Extracted so the nested loading/not-found branching lives in its own function
   // (keeps the component's cyclomatic complexity down and avoids a nested ternary).

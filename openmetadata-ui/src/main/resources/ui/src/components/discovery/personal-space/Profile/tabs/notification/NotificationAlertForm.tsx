@@ -12,7 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import { isUndefined } from 'lodash';
+import { isUndefined, isEqual } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_READ_TIMEOUT } from '../../../../../../constants/Alerts.constants';
@@ -61,6 +61,7 @@ import type {
   ModifiedEventSubscription,
 } from './Notification.types';
 import { NotificationView } from './Notification.types';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface NotificationAlertFormProps {
   fqn?: string;
@@ -115,6 +116,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   const [initialData, setInitialData] = useState<EventSubscription>();
   const [formData, setFormData] =
     useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
+  // What the form opened with, so leaving after an edit can ask first.
+  const [loadedFormData, setLoadedFormData] =
+    useState<ModifiedCreateEventSubscription>(getEmptyFormValues);
 
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [templateResourcePermission, setTemplateResourcePermission] =
@@ -126,6 +130,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   );
 
   const isEditMode = Boolean(fqn);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    !saving && !isEqual(formData, loadedFormData)
+  );
 
   const sources = formData.resources ?? NO_SOURCES;
   const capabilitiesInput = useMemo(
@@ -159,7 +166,9 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
 
         setInitialData(rawAlert);
         setAlert(modifiedAlert);
-        setFormData(alertToFormValues(modifiedAlert));
+        const loaded = alertToFormValues(modifiedAlert);
+        setFormData(loaded);
+        setLoadedFormData(loaded);
       } else if (fqn && alertResponse.status === 'rejected') {
         showErrorToast(
           t('server.entity-fetch-error', { entity: t('label.alert') })
@@ -289,14 +298,17 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           color="tertiary"
           data-testid="cancel-btn"
           onPress={() =>
-            onNavigate(
-              fqn
-                ? { type: 'detail', fqn, name: getEntityName(alert) }
-                : { type: 'list' }
+            runGuarded(() =>
+              onNavigate(
+                fqn
+                  ? { type: 'detail', fqn, name: getEntityName(alert) }
+                  : { type: 'list' }
+              )
             )
           }>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="save-btn"

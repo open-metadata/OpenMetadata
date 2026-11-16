@@ -38,6 +38,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface FormValues {
   name: string;
@@ -58,6 +59,9 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
   const form = useForm<FormValues>({
     defaultValues: { name: '', displayName: '', users: [] },
   });
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty && !isSaving
+  );
   const { handleSubmit } = form;
 
   const usersField = usePersonaUsersField('persona-users-select');
@@ -153,9 +157,10 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
           color="tertiary"
           data-testid="cancel-btn"
           isDisabled={isSaving}
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="submit-btn"

@@ -128,6 +128,31 @@ test.describe('AI Profile Members - navigation & basics', () => {
     await expect(page.getByTestId('team-detail')).toBeVisible();
   });
 
+  test('Should ask before a breadcrumb or Cancel drops a typed team', async ({
+    page,
+  }) => {
+    await navigateToMembersPanel(page);
+    await openOrganizationTeams(page);
+    await page.getByTestId('add-team').click();
+    const nameInput = page.getByTestId('name').locator('input');
+    await nameInput.fill(`pw-unsaved-team-${uuid()}`);
+
+    const prompt = page.getByTestId('unsaved-changes-popover');
+    await page
+      .getByTestId('profile-content-header')
+      .getByRole('link', { name: 'Members' })
+      .click();
+    await expect(prompt).toBeVisible();
+    await prompt.getByTestId('unsaved-changes-popover-cancel').click();
+    await expect(prompt).toBeHidden();
+    await expect(nameInput).not.toHaveValue('');
+
+    await page.getByTestId('cancel-btn').click();
+    await expect(prompt).toBeVisible();
+    await prompt.getByTestId('unsaved-changes-popover-confirm').click();
+    await expect(page.getByTestId('team-detail')).toBeVisible();
+  });
+
   test('Should refetch online users when the time window changes', async ({
     page,
   }) => {

@@ -42,6 +42,7 @@ import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextE
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface FormValues {
   name: string;
@@ -78,6 +79,9 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
   ];
 
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    (form.formState.isDirty || ruleForm.formState.isDirty) && !isSaveLoading
+  );
 
   const handleCreate = async () => {
     let ruleData: Rule | undefined;
@@ -185,9 +189,10 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'policies' })}>
+          onPress={() => runGuarded(() => onNavigate({ type: 'policies' }))}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="submit-btn"

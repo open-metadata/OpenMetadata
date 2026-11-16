@@ -19,6 +19,15 @@ import { createUserWithPut } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import BotAddForm from './BotAddForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
+jest.mock('../../components/useUnsavedChangesPrompt', () => ({
+  useUnsavedChangesPrompt: () => ({
+    runGuarded: (exit: () => void) => exit(),
+    prompt: null,
+  }),
+}));
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,

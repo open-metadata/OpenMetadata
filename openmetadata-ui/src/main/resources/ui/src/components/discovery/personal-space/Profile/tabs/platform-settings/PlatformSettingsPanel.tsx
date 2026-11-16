@@ -17,7 +17,6 @@ import type { Key, ReactNode } from 'react';
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
-import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import GlossarySettings from '../../../../../governance/glossary/GlossarySettings';
@@ -237,17 +236,10 @@ const PlatformSettingsPanel = ({
       ),
       icon: activePage?.icon ?? Sliders02,
       onBreadcrumbAction: (id: Key) => {
-        // A crumb leaves a dirty form like the sidebar does, so it asks first.
-        const go = (next: PlatformSettingsView) => {
-          const exit = () => onNavigate(next);
-          if (!usePersonalSpaceStore.getState().exitGuard?.(exit)) {
-            exit();
-          }
-        };
         if (id === PLATFORM_SETTINGS_HASH_TAB) {
-          go({ type: 'landing' });
+          onNavigate({ type: 'landing' });
         } else if (id === activePage?.id) {
-          go({ type: 'page', page: activePage.id, isEditing: false });
+          onNavigate({ type: 'page', page: activePage.id, isEditing: false });
         }
       },
       actions:

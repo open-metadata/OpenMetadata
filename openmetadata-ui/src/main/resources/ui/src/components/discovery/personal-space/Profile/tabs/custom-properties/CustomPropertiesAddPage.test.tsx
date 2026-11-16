@@ -17,6 +17,15 @@ import type { Type } from '../../../../../../generated/entity/type';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
+jest.mock('../../components/useUnsavedChangesPrompt', () => ({
+  useUnsavedChangesPrompt: () => ({
+    runGuarded: (exit: () => void) => exit(),
+    prompt: null,
+  }),
+}));
+
 const mockEntityType = {
   id: 'type-table',
   name: 'table',

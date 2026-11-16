@@ -36,6 +36,7 @@ import {
 } from './CustomPropertiesPanel.types';
 import { toCustomPropertyPayload } from './CustomPropertiesPanel.utils';
 import CustomPropertyFormFields from './CustomPropertyFormFields';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
   entityType,
@@ -63,6 +64,9 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
       multiSelect: false,
     },
   });
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty && !isSaving
+  );
 
   const fetchPropertyTypes = useCallback(async () => {
     try {
@@ -147,9 +151,10 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
           data-testid="custom-property-cancel"
           isDisabled={isSaving}
           type="button"
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="custom-property-save"

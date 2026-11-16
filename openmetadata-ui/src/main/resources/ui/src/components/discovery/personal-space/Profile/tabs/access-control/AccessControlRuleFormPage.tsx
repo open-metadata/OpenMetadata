@@ -34,6 +34,7 @@ import Loader from '../../../../../common/Loader/Loader';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface AccessControlRuleFormPageProps {
   fqn: string;
@@ -55,6 +56,9 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    ruleForm.formState.isDirty && !isSaving
+  );
   // A rule link can be opened directly, past the detail page's edit gate.
   const { canEditAll, isLoading: isPermissionLoading } = useEntityPermissions(
     ResourceEntity.POLICY,
@@ -179,9 +183,13 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
         direction="row"
         gap={3}
         justify="end">
-        <Button color="tertiary" data-testid="cancel-btn" onPress={goBack}>
+        <Button
+          color="tertiary"
+          data-testid="cancel-btn"
+          onPress={() => runGuarded(goBack)}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="submit-btn"

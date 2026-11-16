@@ -214,9 +214,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
 
     const onBreadcrumbAction = (id: Key) => {
       if (id === HASH_TAB) {
-        navigateGuarded({ type: 'landing' });
+        onNavigate({ type: 'landing' });
       } else if (id === 'detail' && viewFqn) {
-        navigateGuarded({ type: 'detail', fqn: viewFqn, name: resolvedName });
+        onNavigate({ type: 'detail', fqn: viewFqn, name: resolvedName });
       }
     };
 
@@ -324,7 +324,6 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     parentCategoryMeta,
     customizeIcon,
     onNavigate,
-    navigateGuarded,
     subCategory,
     isDetailLike,
   ]);

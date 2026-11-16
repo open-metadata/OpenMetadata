@@ -44,6 +44,7 @@ import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import type { AccessControlView } from './AccessControl.types';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 
 interface FormValues {
   name: string;
@@ -82,6 +83,9 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
 
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    form.formState.isDirty && !isSaveLoading
+  );
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
 
   const fetchPolicies = async () => {
@@ -251,9 +255,10 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'roles' })}>
+          onPress={() => runGuarded(() => onNavigate({ type: 'roles' }))}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="submit-btn"
