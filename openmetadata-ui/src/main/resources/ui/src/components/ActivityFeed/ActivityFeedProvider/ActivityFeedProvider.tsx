@@ -168,7 +168,7 @@ const otherUserTaskParams = ({
  */
 const fetchTaskList = (
   scope: TaskListScope,
-  page: { after?: string; limit?: number; domain?: string }
+  page: { after?: string; limit?: number }
 ): Promise<PagingResponse<Task[]>> => {
   const common = { ...page, fields: TASK_LIST_FIELDS };
   const { feedFilterType, entityType, fqn, taskStatusGroup } = scope;
@@ -393,8 +393,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
           setTasks([]);
           setEntityPaging({} as Paging);
         }
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+        // No hand-rolled domain: the withDomainFilter interceptor scopes task lists to the
+        // pick, except a list about one asset (e.g. its Tasks tab), which shows all its tasks.
         const taskResponse = await fetchTaskList(
           {
             feedFilterType: filterType ?? FeedFilter.ALL,
@@ -403,7 +403,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
             currentUser,
             taskStatusGroup,
           },
-          { after, limit, domain }
+          { after, limit }
         );
 
         if (listRequestSeq.current !== requestId) {
@@ -940,12 +940,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     ) => {
       setIsActivityLoading(true);
       try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getEntityActivityByFqn(entityType, fqn, {
-          ...params,
-          domain,
-        });
+        // An asset's own activity is not narrowed by the pick, like its tasks.
+        const { data } = await getEntityActivityByFqn(entityType, fqn, params);
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -953,7 +949,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setIsActivityLoading(false);
       }
     },
-    [activeDomain]
+    []
   );
 
   const fetchUserActivityHandler = useCallback(

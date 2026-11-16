@@ -107,7 +107,9 @@ import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
 import {
   anchorViewportToTopLeft,
   containerViewportSize,
+  graphFitsViewport,
   revealHiddenNode,
+  settleAfterCanvasResize,
   settleStudioViewport,
 } from '../utils/studioViewport';
 import { measureTextWidth } from '../utils/textMeasure';
@@ -703,6 +705,7 @@ function buildBaseEdgeStyle(d: GraphEdgeMeta, isDataMode: boolean) {
     stroke: edgeColor,
     lineWidth: edgeLineWidth,
     lineAppendWidth: EDGE_LINE_APPEND_WIDTH,
+    cursor: 'pointer',
     opacity: isEdgeDimmed ? DIMMED_EDGE_OPACITY : 1,
     endArrow: !isDataMode,
     // Reset label opacity on non-dimmed edges: G6 merges style updates,
@@ -2279,6 +2282,7 @@ export function useOntologyGraph({
           return;
         }
         const sizeBefore = previousSize;
+        const wasWhole = studioMode && graphFitsViewport(graph, sizeBefore);
         graphRef.current.resize(
           containerRef.current.offsetWidth,
           containerRef.current.offsetHeight
@@ -2294,9 +2298,12 @@ export function useOntologyGraph({
         writeGraphSnapshot();
         scheduleTransformWork();
         if (studioMode && !renderCancelled) {
-          // Opening a panel narrows the canvas from the right. The view stays
-          // anchored, so only a selection the panel now hides is brought back.
-          revealHiddenNode(graph, container, focusNodeIdRef.current)
+          settleAfterCanvasResize(
+            graph,
+            container,
+            wasWhole,
+            focusNodeIdRef.current
+          )
             .then(writeGraphSnapshot)
             .catch(() => {
               // the graph may be destroyed while the panel animates

@@ -58,6 +58,7 @@ import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMig
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
+import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
@@ -215,6 +216,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DataProductDomainContainmentRepair.STEP_NAME,
         () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+    // Renames MicroStrategy charts by dossier. It reads charts through the repository, so it runs
+    // after the conversation and custom property migrations above.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MicroStrategyChartRename.STEP_NAME,
+        () -> MicroStrategyChartRename.renameAll(handle, collectionDAO));
     // Same for the 2.0.8 entity_extension collation alignment. It only acts when the column
     // differs from its table, so running it after 2.0.8 already did changes nothing.
     runOnce(

@@ -15,6 +15,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -25,6 +26,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.glassfish.jersey.message.internal.OutboundJaxrsResponse;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.dataInsight.custom.DataAssetType;
@@ -91,11 +93,26 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String DI_SEARCH_INDEX = "di-data-assets-*";
 
   /**
-   * Entity types written to the Data Insights indices that are governance artifacts rather than data
-   * assets, and so are left out of every "data assets" total.
+   * Entity types reachable under the Data Insights indices that are not data assets, and so are left
+   * out of every "data assets" total: governance artifacts, and the test case definitions supplied by
+   * a live index so that coverage questions can be charted against tables.
+   *
+   * <p>{@code entityType.keyword} is lowercase-normalized in some mappings (the test case one). A
+   * {@code term} query normalizes its input, but a terms aggregation {@code exclude} list matches
+   * the stored bucket key, so {@link #NON_DATA_ASSET_BUCKET_KEYS} lists the lowercase form too.
    */
   public static final List<String> NON_DATA_ASSET_ENTITY_TYPES =
-      List.of("tag", "glossaryTerm", "dataProduct");
+      List.of("tag", "glossaryTerm", "dataProduct", "testCase");
+
+  /**
+   * {@link #NON_DATA_ASSET_ENTITY_TYPES} plus their lowercase bucket keys, for a breakdown grouped
+   * on {@code entityType.keyword}.
+   */
+  public static final List<String> NON_DATA_ASSET_BUCKET_KEYS =
+      NON_DATA_ASSET_ENTITY_TYPES.stream()
+          .flatMap(entityType -> Stream.of(entityType, entityType.toLowerCase(Locale.ROOT)))
+          .distinct()
+          .toList();
 
   /**
    * Restricts a Data Insights chart to data-asset documents.

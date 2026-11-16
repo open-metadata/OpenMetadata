@@ -1,6 +1,6 @@
 # Python classification models use explicit profiles and isolated caches
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-11-python-ci-selects-workloads-by-event
 - **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action); v3 2026-11-10 (independent test setup and native cache adapter); v4 2026-11-10 (standard cache actions and main-only warming); v5 2026-11-10 (disable general uv cache persistence)
 - **Deciders:** Pablo Takara
 - **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests; reviewer for workflow ordering and cache ownership
