@@ -1753,8 +1753,9 @@ describe('TaskDetailPanel', () => {
       expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
     });
 
-    it('shows why the task failed to load in place of the body', async () => {
-      mockGetTaskById.mockRejectedValue({ response: { status: 500 } });
+    // The placeholder already explains a failed first load; a toast would say it twice.
+    it('shows why the task failed to load in place of the body, once, with a retry', async () => {
+      mockGetTaskById.mockRejectedValueOnce({ response: { status: 500 } });
 
       await act(async () =>
         render(
@@ -1766,10 +1767,22 @@ describe('TaskDetailPanel', () => {
       );
 
       expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
       expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
       expect(
         screen.queryByTestId('task-activity-timeline')
       ).not.toBeInTheDocument();
+
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+      });
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
     });
 
     // Only the first load gates the actions; a reload after a comment must not

@@ -377,10 +377,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<AxiosError>();
-  // A failed first load renders its own placeholder; only a failed reload of a
-  // task already on screen needs the toast.
-  const hasTaskRef = useRef(Boolean(fallbackTask));
-  hasTaskRef.current = Boolean(task);
   const [readyReviewTask, setReadyReviewTask] = useState<string>();
   const handleReviewReady = useCallback(
     (ready: boolean) => {
@@ -392,6 +388,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
   const [loadedTaskId, setLoadedTaskId] = useState<string>();
+  // A failed first load renders its own placeholder, even over the list row;
+  // only a failed reload of a fully loaded task needs the toast.
+  const hasTaskRef = useRef(false);
+  hasTaskRef.current = loadedTaskId === taskId;
   // Gates approve/reject/resolve on the server's ResolveTask verdict (assignee,
   // reviewer, owner; self-approval denied). Fail closed: undefined until the
   // permission resolves so the buttons never flash for a user who can't act.
