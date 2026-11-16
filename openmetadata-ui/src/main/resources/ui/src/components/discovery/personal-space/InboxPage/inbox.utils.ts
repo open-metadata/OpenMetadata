@@ -42,11 +42,8 @@ import {
 import {
   formatDateTimeLong,
   getCurrentMillis,
-  getEndOfDayInMillis,
-  getEpochMillisForPastDays,
   getRelativeCalendar,
   getRelativeTime,
-  getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 
@@ -402,12 +399,17 @@ export const isSameLocalDay = (first?: number, second?: number): boolean =>
 export type { InboxDateRange } from '../../../../interface/inbox.interface';
 
 // The window a date preset covers: from the start of its first day to the end
-// of today. getDefaultInboxDateRange (last 30 days) seeds the page and the
-// sidebar inbox-icon count.
-export const getInboxDateRange = (days: number): InboxDateRange => ({
-  startTs: getStartOfDayInMillis(getEpochMillisForPastDays(days)),
-  endTs: getEndOfDayInMillis(getCurrentMillis()),
-});
+// of today, in the viewer's own days, which the feed's day headers use too.
+// getDefaultInboxDateRange (last 30 days) seeds the page and the sidebar
+// inbox-icon count.
+export const getInboxDateRange = (days: number): InboxDateRange => {
+  const now = DateTime.now();
+
+  return {
+    startTs: now.minus({ days }).startOf('day').toMillis(),
+    endTs: now.endOf('day').toMillis(),
+  };
+};
 
 export const DEFAULT_INBOX_DATE_PRESET = 'last30days';
 

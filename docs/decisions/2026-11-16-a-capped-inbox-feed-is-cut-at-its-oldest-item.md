@@ -6,7 +6,8 @@
 - **Guard:** `useInboxActivity.test.tsx` ("cuts the conversations at the oldest event of a capped
   activity list", "cuts the events at the oldest conversation of a capped conversation list"),
   `ActivityTab.test.tsx` ("marks the cut day as a floor and says the feed is capped"),
-  `inbox.utils.test.ts` ("offers Today in place of Yesterday, up to 30 days")
+  `inbox.utils.test.ts` ("offers Today in place of Yesterday, up to 30 days", "bounds a window by
+  the viewer's own days, not UTC's")
 - **Related:** #37885, #37886, ADR:2026-10-28-inbox-activity-opens-on-the-filter-a-link-names
 
 ## Context
@@ -23,7 +24,8 @@ them, so a busy today would leave "Yesterday" empty.
 When either list comes back a full page, the merged feed is cut at that list's oldest item, so both
 kinds cover the same span. The cut day's count, taken from the whole feed before any type filter,
 reads "N+", and the end of the feed says only the newest updates in the range are shown. Every date
-preset runs to now. The one-day preset is "Today" (start of today to now), not "Yesterday".
+preset runs to now and starts at the beginning of a day in the viewer's own time zone, the days the
+feed's headers name. The one-day preset is "Today" (start of today to now), not "Yesterday".
 
 ## Consequences
 The feed never shows a stretch of one kind standing in for both. Older updates in the range can't be
