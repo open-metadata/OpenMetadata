@@ -53,6 +53,8 @@ export interface UseInboxInfiniteList<T> {
   setTotal: (update: SetStateAction<number>) => void;
   // Fetches the next page now, as crossing the sentinel would.
   loadMore: () => void;
+  // The last next-page fetch failed; cleared by the next one that succeeds.
+  isLoadMoreError: boolean;
 }
 
 type ListData<T> = InfiniteData<InboxListPage<T>, string | undefined>;
@@ -205,5 +207,6 @@ export function useInboxInfiniteList<T>(
     setItems,
     setTotal,
     loadMore,
+    isLoadMoreError: query.isFetchNextPageError,
   };
 }

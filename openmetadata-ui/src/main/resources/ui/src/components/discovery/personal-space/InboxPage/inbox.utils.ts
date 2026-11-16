@@ -431,6 +431,7 @@ export const CONVERSATION_LIMIT = 100;
 // translated by the picker's consumer. Every window runs to the end of today,
 // as the activity API takes no end time, so the profiler's "Yesterday" (which
 // would read as yesterday alone) is offered as "Today".
+// ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
 export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = {
   today: { days: 0, title: 'label.today' },
   ...Object.fromEntries(

@@ -91,6 +91,14 @@ const TASK_LIMIT = 25;
 // list scans at most this many tasks; a server-side type/status filter lifts it.
 const MAX_NARROWED_SCAN = 200;
 const SEARCH_DEBOUNCE_MS = 300;
+
+// Reading ahead stops at the server's last page, at the scan cap, or once a
+// page fails.
+const isReadAheadDone = (
+  hasMore: boolean,
+  loadedCount: number,
+  isLoadMoreError: boolean
+) => !hasMore || loadedCount >= MAX_NARROWED_SCAN || isLoadMoreError;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
@@ -606,6 +614,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
     linkedTaskId
   );
+  // A new link followed while the tab stays mounted opens its task too.
+  useEffect(() => {
+    if (linkedTaskId) {
+      setSelectedTaskId(linkedTaskId);
+    }
+  }, [linkedTaskId]);
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -630,14 +644,15 @@ const TasksTab: React.FC<TasksTabProps> = ({
   }, []);
 
   // A link to a closed task lands on the Closed tab, where its row is listed.
-  // Only its first load decides: the viewer may then move to any tab.
-  const isLinkedTabSettledRef = useRef(false);
+  // Only each link's first load decides: the viewer may then move to any tab.
+  const settledLinkedTaskIdRef = useRef<string>();
   const handleTaskLoaded = useCallback(
     (loaded: Task) => {
       const isFirstLinkedLoad =
-        loaded.id === linkedTaskId && !isLinkedTabSettledRef.current;
+        loaded.id === linkedTaskId &&
+        settledLinkedTaskIdRef.current !== linkedTaskId;
       if (isFirstLinkedLoad) {
-        isLinkedTabSettledRef.current = true;
+        settledLinkedTaskIdRef.current = linkedTaskId;
         if (status === 'open' && !isTaskOpen(loaded)) {
           handleStatusChange('closed');
         }
@@ -762,6 +777,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setItems,
     setTotal,
     loadMore,
+    isLoadMoreError,
   } = useInboxInfiniteList<Task>(
     [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text, sortOrder],
     fetchPage,
@@ -775,8 +791,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // Type groups sort by urgency, so one built from the newest page alone hides
   // an older incident until the list is scrolled to its end. A grouped list
-  // reads on by itself, as far as a narrowed scan would.
-  const isGroupScanDone = !hasMore || tasks.length >= MAX_NARROWED_SCAN;
+  // reads on by itself, as far as a narrowed scan would
+  // (ADR:2026-11-16-a-grouped-inbox-task-list-reads-ahead-to-the-scan-cap). A
+  // failed page stops it; scrolling to the end retries.
+  const isGroupScanDone = isReadAheadDone(
+    hasMore,
+    tasks.length,
+    isLoadMoreError
+  );
   useEffect(() => {
     if (grouping === 'type' && !isGroupScanDone) {
       loadMore();

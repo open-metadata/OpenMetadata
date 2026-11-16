@@ -199,6 +199,7 @@ describe('useInboxInfiniteList', () => {
 
     expect(api.items).toHaveLength(1);
     expect(api.error).toBeNull();
+    expect(api.isLoadMoreError).toBe(true);
   });
 
   // A filter switch must not blank the list: the old rows stay until the new

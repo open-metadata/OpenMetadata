@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
 import type { User } from '../../../../../generated/entity/teams/user';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
@@ -33,6 +33,7 @@ let hookState: {
   isLoading: boolean;
   total: number;
   hasMore?: boolean;
+  isLoadMoreError?: boolean;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -83,6 +84,7 @@ jest.mock('../useInboxInfiniteList', () => ({
       setItems: mockSetItems,
       setTotal: mockSetTotal,
       loadMore: mockLoadMore,
+      isLoadMoreError: Boolean(hookState.isLoadMoreError),
     };
   },
 }));
@@ -720,6 +722,38 @@ describe('TasksTab', () => {
     expect(capturedQueryKey[2]).toBe('open');
   });
 
+  // The notification bell can link to another task while the tab stays open.
+  it('opens a second linked closed task on the Closed tab while mounted', () => {
+    const FollowLink = () => {
+      const navigate = useNavigate();
+
+      return (
+        <button
+          data-testid="follow-link"
+          onClick={() => navigate('/inbox/tasks?taskId=t8')}>
+          follow
+        </button>
+      );
+    };
+    resolvedPayload = { status: 'Cancelled' };
+    render(
+      <MemoryRouter initialEntries={['/inbox/tasks?taskId=t9']}>
+        <TasksTab />
+        <FollowLink />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('loaded'));
+    fireEvent.click(screen.getByTestId('task-status-open'));
+    fireEvent.click(screen.getByTestId('follow-link'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t8');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(capturedQueryKey[2]).toBe('closed');
+  });
+
   it('keeps the Open tab for a linked open task', () => {
     resolvedPayload = { status: 'Open' };
     renderTab({}, '/inbox/tasks?taskId=t9');
@@ -943,6 +977,14 @@ describe('TasksTab', () => {
 
       mockLoadMore.mockClear();
       fireEvent.click(screen.getByTestId('toolbar-group-none'));
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    // A failed page would otherwise be requested again on every settle.
+    it('stops reading on after a page fails', () => {
+      hookState = { ...hookState, hasMore: true, isLoadMoreError: true };
+      renderTab();
 
       expect(mockLoadMore).not.toHaveBeenCalled();
     });

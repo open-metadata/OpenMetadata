@@ -151,6 +151,7 @@ const getEventTimestamp = ({ timestamp }: ActivityEvent) => timestamp ?? 0;
 /**
  * A capped list stops at its oldest item, so the other list is cut there too:
  * past it the feed would show one kind alone, as if the other had none.
+ * ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
  */
 const cutToCompleteSpan = (
   activities: ActivityEvent[],
