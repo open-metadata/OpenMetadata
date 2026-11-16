@@ -97,6 +97,7 @@ class TestData360PipelineSourceCreate:
                         "type": "Data360Pipeline",
                         "consumerKey": "consumer_key",
                         "consumerSecret": "consumer_secret",
+                        "salesforceDomain": "mycompany.my",
                     }
                 },
             },
@@ -122,6 +123,7 @@ class TestData360PipelineSourceCreate:
                         "type": "Data360Pipeline",
                         "consumerKey": "consumer_key",
                         "consumerSecret": "consumer_secret",
+                        "salesforceDomain": "mycompany.my",
                     }
                 },
             },
