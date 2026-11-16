@@ -1,10 +1,11 @@
 # A capped Inbox feed is cut at its oldest item, and its shortest window is Today
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial)
+- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (the Mentions feed is not cut)
 - **Deciders:** Harsh Vador
 - **Guard:** `useInboxActivity.test.tsx` ("cuts the conversations at the oldest event of a capped
-  activity list", "cuts the events at the oldest conversation of a capped conversation list"),
+  activity list", "cuts the events at the oldest conversation of a capped conversation list",
+  "leaves Mentions whole when its conversations are capped"),
   `ActivityTab.test.tsx` ("marks the cut day as a floor and says the feed is capped"),
   `inbox.utils.test.ts` ("offers Today in place of Yesterday, up to 30 days", "bounds a window by
   the viewer's own days, not UTC's")
@@ -31,3 +32,11 @@ feed's headers name. The one-day preset is "Today" (start of today to now), not 
 The feed never shows a stretch of one kind standing in for both. Older updates in the range can't be
 reached from the Inbox until `/v1/activity` and `/v1/conversations` page by cursor or take an end
 time; then the cut can give way to paging, and a "Yesterday" preset can return.
+
+## Amendment
+
+v2 2026-11-16: the Mentions feed is left whole. A mention event carries the event's own time, not
+the mention's, so an old event mentioned today would fall before any cut taken from the
+conversations. When the Mentions conversations come back a full page, the feed can show mention
+events older than its oldest conversation; it is still marked capped, so the cut day's count reads
+"N+" and the end-of-feed note shows. Every other feed is cut as above.
