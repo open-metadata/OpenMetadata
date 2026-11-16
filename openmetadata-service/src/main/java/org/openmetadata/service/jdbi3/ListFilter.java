@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
+import org.openmetadata.schema.entity.automations.WorkflowType;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.AnnouncementStatus;
 import org.openmetadata.schema.type.Column;
@@ -39,6 +40,7 @@ public class ListFilter extends Filter<ListFilter> {
   private static final Pattern ENTITY_TYPE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9]*");
 
   public static final String NULL_PARAM = "null";
+  public static final String QUERY_RUNNER_REQUESTER_ID = "queryRunnerRequesterId";
 
   // Sort metadata is kept off the queryParams map on purpose: ListCountCache hashes queryParams, so
   // holding these as fields keeps the sorted and unsorted listings on a single count-cache entry.
@@ -152,6 +154,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
+    conditions.add(getQueryRunnerRequesterCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
@@ -601,6 +604,25 @@ public class ListFilter extends Filter<ListFilter> {
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
     return workflowDefinitionId == null ? "" : "workflowDefinitionId = :workflowDefinitionId";
+  }
+
+  /**
+   * Keeps only the query runner workflows the given user ran. A query runner workflow carries its
+   * requester's SQL, so it is read by that requester alone; a run without a recorded requester is
+   * left out. Workflows of other types are untouched.
+   */
+  private String getQueryRunnerRequesterCondition() {
+    final String requesterId = queryParams.get(QUERY_RUNNER_REQUESTER_ID);
+    if (requesterId == null) {
+      return "";
+    }
+    final String storedRequester =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.request.userId'))"
+            : "json->'request'->>'userId'";
+    return String.format(
+        "(workflowType <> '%s' OR %s = :%s)",
+        WorkflowType.QUERY_RUNNER.value(), storedRequester, QUERY_RUNNER_REQUESTER_ID);
   }
 
   private String getEntityLinkCondition() {

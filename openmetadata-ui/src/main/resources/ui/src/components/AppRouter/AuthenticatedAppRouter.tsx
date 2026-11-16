@@ -203,15 +203,18 @@ const ExplorePageV1 = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
 );
 
-const OntologyExplorerPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
-  )
-);
-
 const SparqlPlaygroundPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
+  )
+);
+
+const OntologyExplorerPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/governance/ontology/OntologyExplorerPage/OntologyExplorerPage'
+      )
   )
 );
 

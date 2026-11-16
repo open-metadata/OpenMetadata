@@ -481,24 +481,16 @@ describe('native OntologyTreeView', () => {
     expect(
       screen.queryByTestId('ontology-tree-term-0')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('ontology-tree-next')).toHaveFocus();
-    expect(screen.getByTestId('ontology-tree-next')).toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-
-    fireEvent.click(screen.getByTestId('ontology-tree-next'));
-
-    expect(screen.getByTestId('ontology-tree-term-2049')).toBeVisible();
-
-    fireEvent.click(screen.getByTestId('ontology-tree-previous'));
-
-    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+    // The exhausted button is disabled, so it looks it, and focus moves to the one that can page.
+    expect(screen.getByTestId('ontology-tree-next')).toBeDisabled();
+    expect(screen.getByTestId('ontology-tree-previous')).toBeEnabled();
     expect(screen.getByTestId('ontology-tree-previous')).toHaveFocus();
 
     fireEvent.click(screen.getByTestId('ontology-tree-previous'));
 
     expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+    expect(screen.getByTestId('ontology-tree-previous')).toBeDisabled();
+    expect(screen.getByTestId('ontology-tree-next')).toHaveFocus();
   });
 
   it('keeps the rows above in view when a row is expanded after paging back', () => {
