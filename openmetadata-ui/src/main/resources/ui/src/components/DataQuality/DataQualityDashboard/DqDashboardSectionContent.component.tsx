@@ -15,6 +15,10 @@ import QueryString from 'qs';
 import { useTranslation } from 'react-i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.constants';
+import {
+  OPEN_INCIDENT_STATUS_TYPES,
+  RESOLVED_INCIDENT_STATUS_TYPES,
+} from '../../../constants/TestSuite.constant';
 import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
@@ -166,13 +170,14 @@ export const DqDashboardSectionContent = ({
         <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-2 tw:xl:grid-cols-4">
           <IncidentTypeAreaChartWidget
             chartFilter={defaultFilters}
+            description={t('message.open-incident-card-description')}
             height={60}
-            incidentStatusType={TestCaseResolutionStatusTypes.New}
+            incidentStatusTypes={OPEN_INCIDENT_STATUS_TYPES}
             name="open-incident"
             redirectPath={{
               pathname: incidentPath,
+              // No status filter: the list filters one status, the card counts three.
               search: QueryString.stringify({
-                testCaseResolutionStatusType: TestCaseResolutionStatusTypes.New,
                 startTs: defaultFilters.startTs,
                 endTs: defaultFilters.endTs,
               }),
@@ -181,8 +186,9 @@ export const DqDashboardSectionContent = ({
           />
           <IncidentTypeAreaChartWidget
             chartFilter={defaultFilters}
+            description={t('message.resolved-incident-card-description')}
             height={60}
-            incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
+            incidentStatusTypes={RESOLVED_INCIDENT_STATUS_TYPES}
             name="resolved-incident"
             redirectPath={{
               pathname: incidentPath,
@@ -197,6 +203,7 @@ export const DqDashboardSectionContent = ({
           />
           <IncidentTimeChartWidget
             chartFilter={defaultFilters}
+            description={t('message.response-time-card-description')}
             height={60}
             incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
             name="response-time"
@@ -204,6 +211,7 @@ export const DqDashboardSectionContent = ({
           />
           <IncidentTimeChartWidget
             chartFilter={defaultFilters}
+            description={t('message.resolution-time-card-description')}
             height={60}
             incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESOLUTION}
             name="resolution-time"
