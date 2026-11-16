@@ -57,6 +57,20 @@ describe('StorylaneTour', () => {
     expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 
+  it('should keep the 16:9 player box unless asked to fill', () => {
+    const { container, rerender } = render(
+      <StorylaneTour title={TITLE} url={DEMO_URL} />
+    );
+
+    expect(container.firstChild).not.toHaveClass(
+      'storylane-tour-wrapper--fill'
+    );
+
+    rerender(<StorylaneTour fill title={TITLE} url={DEMO_URL} />);
+
+    expect(container.firstChild).toHaveClass('storylane-tour-wrapper--fill');
+  });
+
   it('should add the caller class to the wrapper', () => {
     const { container } = render(
       <StorylaneTour className="custom-class" title={TITLE} url={DEMO_URL} />

@@ -16,12 +16,6 @@ import { useProductTourStore } from '../../hooks/useProductTourStore';
 import productTourClassBase from '../../utils/ProductTourClassBase';
 import { StorylaneTour } from '../Learning/ResourcePlayer/StorylaneTour.component';
 
-// The frame fills the screen instead of the Learning Center player's 16:9 box.
-const FILL_CLASS = [
-  'tw:min-h-0 tw:flex-1 tw:p-0!',
-  'tw:[&>*]:size-full! tw:[&>*]:max-h-none! tw:[&>*]:max-w-none! tw:[&>*]:aspect-auto! tw:[&>*]:rounded-none!',
-].join(' ');
-
 /**
  * The product tour: the distribution's Storylane demo in a full-screen modal
  * over the page the user is on. Escape or the close button ends it.
@@ -47,10 +41,12 @@ const ProductTourModal = () => {
           showCloseButton
           aria-label={title}
           data-testid="product-tour-dialog"
+          dividers="scroll"
           title={title}
           onClose={close}>
           <StorylaneTour
-            className={FILL_CLASS}
+            fill
+            className="tw:min-h-0 tw:flex-1"
             title={title}
             url={productTourClassBase.getTourUrl()}
           />

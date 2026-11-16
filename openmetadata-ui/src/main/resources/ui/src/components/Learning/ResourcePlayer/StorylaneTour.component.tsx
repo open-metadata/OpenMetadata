@@ -22,12 +22,16 @@ import './storylane-tour.less';
 interface StorylaneTourProps {
   url: string;
   title: string;
+  /** Fill the caller's space instead of the player's 16:9 box. */
+  fill?: boolean;
+  /** Layout only: placement and size in the caller. */
   className?: string;
 }
 
 export const StorylaneTour: React.FC<StorylaneTourProps> = ({
   url,
   title,
+  fill = false,
   className,
 }) => {
   const { t } = useTranslation();
@@ -51,7 +55,12 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({
   }
 
   return (
-    <div className={classNames('storylane-tour-wrapper', className)}>
+    <div
+      className={classNames(
+        'storylane-tour-wrapper',
+        { 'storylane-tour-wrapper--fill': fill },
+        className
+      )}>
       <div className="storylane-tour-container">
         {isLoading && (
           <div className="storylane-tour-loading">
