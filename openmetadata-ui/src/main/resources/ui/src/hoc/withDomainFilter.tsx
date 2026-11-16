@@ -39,8 +39,19 @@ const isTaskListAboutAssets = (config: InternalAxiosRequestConfig) =>
 const ASSET_ACTIVITY_PATH = '/activity/entity/';
 
 const isAboutOneAsset = (config: InternalAxiosRequestConfig) =>
-  isTaskListAboutAssets(config) ||
-  Boolean(config.url?.startsWith(ASSET_ACTIVITY_PATH));
+  config.method === 'get' &&
+  (isTaskListAboutAssets(config) ||
+    Boolean(config.url?.startsWith(ASSET_ACTIVITY_PATH)));
+
+// A request about one asset never carries the pick, even when its caller passed one.
+const withoutDomain = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const { domain: _domain, ...params } = config.params ?? {};
+  config.params = params;
+
+  return config;
+};
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
@@ -218,7 +229,11 @@ export const withDomainFilter = (
     return withDomainOnReportBatch(config, activeDomain);
   }
 
-  if (!activeDomain || config.method !== 'get' || isAboutOneAsset(config)) {
+  if (isAboutOneAsset(config)) {
+    return withoutDomain(config);
+  }
+
+  if (!activeDomain || config.method !== 'get') {
     return config;
   }
 

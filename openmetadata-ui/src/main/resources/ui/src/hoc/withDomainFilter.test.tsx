@@ -241,6 +241,29 @@ describe('withDomainFilter', () => {
       expect(result.params).toEqual(params);
     });
 
+    it.each([
+      [
+        '/activity/entity/table/name/svc.db.sch.orders',
+        { days: 30, limit: 50 },
+      ],
+      ['/tasks', { aboutEntity: 'svc.db.sch.orders', statusGroup: 'open' }],
+      ['/tasks/count', { aboutEntity: 'svc.db.sch.orders' }],
+    ])(
+      'should drop a domain the caller passed on a request about one asset (%s)',
+      (url, params) => {
+        (getPathNameFromWindowLocation as jest.Mock).mockReturnValue(
+          '/table/svc.db.sch.orders'
+        );
+        mockGetState.mockReturnValue({ activeDomain: 'engineering' });
+
+        const result = withDomainFilter(
+          createMockConfig('get', url, { ...params, domain: 'engineering' })
+        );
+
+        expect(result.params).toEqual(params);
+      }
+    );
+
     it('should scope the activity feed, which is a list across assets', () => {
       (getPathNameFromWindowLocation as jest.Mock).mockReturnValue('/');
       mockGetState.mockReturnValue({ activeDomain: 'engineering' });

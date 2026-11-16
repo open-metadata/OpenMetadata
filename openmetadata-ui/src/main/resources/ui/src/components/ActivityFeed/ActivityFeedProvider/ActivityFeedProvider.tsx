@@ -940,12 +940,8 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
     ) => {
       setIsActivityLoading(true);
       try {
-        const domain =
-          activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-        const { data } = await getEntityActivityByFqn(entityType, fqn, {
-          ...params,
-          domain,
-        });
+        // An asset's own activity is not narrowed by the pick, like its tasks.
+        const { data } = await getEntityActivityByFqn(entityType, fqn, params);
         setActivityEvents(data);
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -953,7 +949,7 @@ const ActivityFeedProvider = ({ children, user }: Props) => {
         setIsActivityLoading(false);
       }
     },
-    [activeDomain]
+    []
   );
 
   const fetchUserActivityHandler = useCallback(

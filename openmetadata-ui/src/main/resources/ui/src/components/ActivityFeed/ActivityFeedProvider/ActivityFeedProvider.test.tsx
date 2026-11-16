@@ -357,7 +357,7 @@ describe('ActivityFeedProvider', () => {
     expect(listConversations).not.toHaveBeenCalled();
   });
 
-  it('passes the active domain only to the activity endpoint', async () => {
+  it("does not narrow an asset's own activity by the active domain", async () => {
     mockUseDomainStore.mockImplementation((selector) =>
       selector({ activeDomain: 'Engineering' })
     );
@@ -372,7 +372,7 @@ describe('ActivityFeedProvider', () => {
       expect(getEntityActivityByFqn).toHaveBeenCalledWith(
         'table',
         'service.db.schema.table',
-        expect.objectContaining({ domain: 'Engineering' })
+        expect.not.objectContaining({ domain: expect.anything() })
       )
     );
 
