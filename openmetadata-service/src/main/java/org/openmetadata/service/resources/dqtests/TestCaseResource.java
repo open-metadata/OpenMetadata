@@ -523,7 +523,13 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "data product filter to use in list",
               schema = @Schema(type = "string"))
           @QueryParam("dataProductFqn")
-          String dataProductFqn)
+          String dataProductFqn,
+      @Parameter(
+              description =
+                  "Filter test cases by the fully qualified name of their test definition",
+              schema = @Schema(type = "string"))
+          @QueryParam("testDefinition")
+          String testDefinition)
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
@@ -552,6 +558,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             endTimestamp,
             columnName,
             dataProductFqn);
+    searchListFilter.addQueryParam("testDefinition", testDefinition);
 
     // Execute search
     return executeTestCaseSearch(
