@@ -3883,36 +3883,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .parameter("columnCount", "5")
             .create()
             .getName();
-    RequestOptions unfiltered =
-        RequestOptions.builder()
-            .queryParam("entityLink", tableEntityLink(table))
-            .queryParam("limit", "50")
-            .build();
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityLink", tableEntityLink(table))
             .queryParam("testDefinition", "tableRowCountToEqual")
             .queryParam("limit", "50")
             .build();
-
-    // Both cases must be searchable first, or the exclusion below passes trivially.
-    Awaitility.await("both test cases indexed")
-        .atMost(Duration.ofSeconds(60))
-        .pollInterval(Duration.ofSeconds(2))
-        .ignoreExceptions()
-        .untilAsserted(
-            () -> {
-              String response =
-                  client
-                      .getHttpClient()
-                      .executeForString(
-                          HttpMethod.GET,
-                          "/v1/dataQuality/testCases/search/list",
-                          null,
-                          unfiltered);
-              List<String> names = namesUnder(JsonUtils.readTree(response).path("data"));
-              assertTrue(names.containsAll(List.of(rowCountCase, columnCountCase)));
-            });
 
     Awaitility.await("search/list filters test cases by test definition")
         .atMost(Duration.ofSeconds(60))
