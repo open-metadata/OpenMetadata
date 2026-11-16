@@ -286,7 +286,7 @@ const SystemAnnouncementsTable = ({
         return announcement.createdBy ? (
           <UserPopOverCard
             showUserName
-            className="tw:min-w-0 tw:text-sm tw:text-secondary"
+            className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:text-secondary"
             userName={announcement.createdBy}
           />
         ) : null;

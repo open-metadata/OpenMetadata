@@ -735,7 +735,7 @@ const FileRow: FC<FileRowProps> = ({
                 onKeyDown={(e) => e.stopPropagation()}>
                 <UserPopOverCard
                   showUserName
-                  className="tw:text-xs tw:text-quaternary"
+                  className="tw:min-w-0 tw:overflow-hidden tw:text-xs tw:text-quaternary"
                   profileWidth={16}
                   userName={file.updatedBy}
                 />
