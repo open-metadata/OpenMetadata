@@ -28,7 +28,7 @@ import {
   getChangedEntityOldValue,
   getDiffByFieldName,
   isEndsWithField,
-  isNamedEntityWithTagsDiff,
+  isNestedNamedEntityWithTagsDiff,
   isTagLabelDiff,
   parseVersionDiffArray,
 } from './EntityDiffPureUtils';
@@ -112,7 +112,7 @@ const handleFieldDiffAdded = (
 ) => {
   const newField = parseVersionDiffArray<
     NonNullable<SearchIndex['fields']>[number]
-  >(fieldsDiff.added?.newValue, isNamedEntityWithTagsDiff);
+  >(fieldsDiff.added?.newValue, isNestedNamedEntityWithTagsDiff);
   newField?.forEach((field) => {
     formatAddedFieldData(fieldList, field);
   });
@@ -123,7 +123,7 @@ const handleFieldDiffAdded = (
 const getDeletedFields = (fieldsDiff: EntityDiffProps) => {
   const newField = parseVersionDiffArray<
     NonNullable<SearchIndex['fields']>[number]
-  >(fieldsDiff.deleted?.oldValue, isNamedEntityWithTagsDiff);
+  >(fieldsDiff.deleted?.oldValue, isNestedNamedEntityWithTagsDiff);
 
   return newField?.map((field) => ({
     ...field,

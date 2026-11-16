@@ -59,6 +59,17 @@ export const isNamedEntityWithTagsDiff = (value: unknown) =>
   hasVersionDiffStringProperty(value, 'name') &&
   hasVersionDiffArrayProperty(value, 'tags', isTagLabelDiff);
 
+// Nested field diffs (schema fields, search-index fields) carry a recursive
+// `children` array; validate it recursively so a malformed child cannot reach
+// the version table, where recursive rendering would crash the page.
+export const isNestedNamedEntityWithTagsDiff = (value: unknown): boolean =>
+  isNamedEntityWithTagsDiff(value) &&
+  hasVersionDiffArrayProperty(
+    value,
+    'children',
+    isNestedNamedEntityWithTagsDiff
+  );
+
 export const parseVersionDiffArray = <T>(
   value?: string,
   isValid: (item: unknown) => boolean = isRecord

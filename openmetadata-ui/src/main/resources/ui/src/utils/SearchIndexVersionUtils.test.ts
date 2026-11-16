@@ -67,4 +67,26 @@ describe('getUpdatedSearchIndexFields', () => {
     expect(result).toHaveLength(1);
     expect(result[0].name).toContain('diff-added');
   });
+
+  it('drops deleted fields whose nested children are malformed', () => {
+    const currentVersionData = {
+      fields: [{ name: 'field', tags: [] }],
+    } as unknown as SearchIndex;
+    const changeDescription: ChangeDescription = {
+      fieldsDeleted: [
+        {
+          name: EntityField.FIELDS,
+          oldValue: '[{"name":"deleted","children":{}}]',
+          newValue: '',
+        },
+      ],
+    };
+
+    const result = getUpdatedSearchIndexFields(
+      currentVersionData,
+      changeDescription
+    );
+
+    expect(result).toEqual(currentVersionData.fields);
+  });
 });

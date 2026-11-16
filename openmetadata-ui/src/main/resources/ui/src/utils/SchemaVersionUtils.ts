@@ -29,7 +29,7 @@ import {
   getChangedEntityName,
   getDiffByFieldName,
   isEndsWithField,
-  isNamedEntityWithTagsDiff,
+  isNestedNamedEntityWithTagsDiff,
   parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
@@ -38,19 +38,6 @@ import {
   getEntityTagDiff,
   getStringEntityDiff,
 } from './EntityVersionUtilsPure';
-
-const isSchemaFieldDiff = (value: unknown): boolean => {
-  if (!isNamedEntityWithTagsDiff(value)) {
-    return false;
-  }
-
-  const { children } = value as { children?: unknown };
-
-  return (
-    children === undefined ||
-    (Array.isArray(children) && children.every(isSchemaFieldDiff))
-  );
-};
 
 export function getNewFieldFromSchemaFieldDiff(
   newCol: Array<Field>
@@ -121,7 +108,7 @@ export function createAddedSchemasDiff(
 ) {
   const newField = parseVersionDiffArray<Field>(
     schemaFieldsDiff.added?.newValue,
-    isSchemaFieldDiff
+    isNestedNamedEntityWithTagsDiff
   );
 
   newField.forEach((field) => {
@@ -136,7 +123,7 @@ export function addDeletedSchemasDiff(
 ) {
   const newCol = parseVersionDiffArray<Field>(
     columnsDiff.deleted?.oldValue,
-    isSchemaFieldDiff
+    isNestedNamedEntityWithTagsDiff
   );
   const newColumns = getNewFieldFromSchemaFieldDiff(newCol);
 
@@ -172,7 +159,7 @@ export function getSchemasDiff(
   if (schemaFieldsDiff.deleted) {
     const newField = parseVersionDiffArray<Field>(
       schemaFieldsDiff.deleted?.oldValue,
-      isSchemaFieldDiff
+      isNestedNamedEntityWithTagsDiff
     );
     const newFields = getNewSchemaFromSchemaDiff(newField);
     const insertNewField = (

@@ -13,6 +13,7 @@
 
 import {
   isNamedEntityWithTagsDiff,
+  isNestedNamedEntityWithTagsDiff,
   parseVersionDiffArray,
   parseVersionDiffObject,
 } from './EntityDiffPureUtils';
@@ -34,6 +35,21 @@ describe('parseVersionDiffArray', () => {
         isNamedEntityWithTagsDiff
       )
     ).toEqual([{ name: 'a' }]);
+  });
+});
+
+describe('isNestedNamedEntityWithTagsDiff', () => {
+  it('validates children recursively and rejects malformed nesting', () => {
+    expect(isNestedNamedEntityWithTagsDiff({ name: 'a' })).toBe(true);
+    expect(
+      isNestedNamedEntityWithTagsDiff({ name: 'a', children: [{ name: 'b' }] })
+    ).toBe(true);
+    expect(isNestedNamedEntityWithTagsDiff({ name: 'a', children: {} })).toBe(
+      false
+    );
+    expect(
+      isNestedNamedEntityWithTagsDiff({ name: 'a', children: [{ tags: [] }] })
+    ).toBe(false);
   });
 });
 
