@@ -99,6 +99,13 @@ public final class SecurityUtil {
         && catalogSecurityContext.impersonatedUser() != null;
   }
 
+  /** The bot a request acts through for its user, or null for a request the user makes itself. */
+  public static String getImpersonatingBot(SecurityContext securityContext) {
+    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        ? catalogSecurityContext.impersonatedUser()
+        : null;
+  }
+
   public static String getImpersonatedByUser(SecurityContext securityContext) {
     if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
       return catalogSecurityContext.impersonatedUser() != null

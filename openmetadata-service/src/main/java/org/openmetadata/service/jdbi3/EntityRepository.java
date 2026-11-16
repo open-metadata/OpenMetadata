@@ -5206,7 +5206,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       JsonPatch patch,
       ChangeSource changeSource,
       String ifMatchHeader) {
-    return patch(uriInfo, fqn, user, patch, changeSource, ifMatchHeader, null);
+    return patch(
+        uriInfo,
+        fqn,
+        user,
+        patch,
+        changeSource,
+        ifMatchHeader,
+        ImpersonationContext.getImpersonatedBy());
   }
 
   public final PatchResponse<T> patch(
@@ -5936,8 +5943,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
         EventType changeType;
         T updated = loadForDelete(original.getId());
+        // A hard delete stores nothing, but its response and async change event carry the entity.
+        EntityUtil.recordWriter(updated, deletedBy);
         if (supportsSoftDelete && !hardDelete) {
-          EntityUtil.recordWriter(updated, deletedBy);
           updated.setUpdatedAt(System.currentTimeMillis());
           updated.setDeleted(true);
           EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);

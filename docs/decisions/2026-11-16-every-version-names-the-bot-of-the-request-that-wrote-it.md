@@ -4,7 +4,9 @@
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*` and `test_editUndoneInItsSession*` cases, which read the versions and, for writes that insert their own change event, that event), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`
-- **Related:** #37869, #37892, #37893, open-metadata/ai-platform#2213
+- **Related:** #37869, #37892, #37893, open-metadata/ai-platform#2213,
+  ADR:2026-11-13-the-status-badge-says-who-set-the-status-from-version-history (amended for the
+  folding rule)
 
 ## Context
 
@@ -40,9 +42,12 @@ For every entity type whose schema declares `impersonatedBy`:
   current.
 - In-session consolidation folds only edits with the same `updatedBy` and the same
   `impersonatedBy`.
-- A change event a repository inserts itself names the writer pair of the version it records:
-  `getChangeEvent` without a user and `createAndInsertChangeEvent` take both from the entity. An
-  event named for the request's user (asset changes) carries the request's bot.
+- The change event of a write names the request that made it. The response filter takes the user
+  and the bot from the request's security context, and an event a repository names for the
+  request's user (asset changes) carries the request's bot. An event a repository records for a
+  version it stores itself, or for another request's change, names that version's writer pair:
+  `getChangeEvent` without a user and `createAndInsertChangeEvent` take both from the entity, and
+  a hard delete stamps its deleter on the entity its response and async event carry.
 
 ## Consequences
 
@@ -50,11 +55,13 @@ For those types, the version panel names the bot behind every version a bot wrot
 those; the change event and audit row of each write a bot made name it too. Pipeline status, usage
 and ontology workflow events, which record no write of the entity, are outside the rule. A new write
 path either goes through an overload without a bot or through `EntityUtil.recordWriter`; setting
-`updatedBy` alone on a stored copy is a bug, and so is an event built with a user and no bot. A user
-who alternates their own edits and edits through a bot within the session window gets one version
-per switch instead of one merged version. The rule relies on `ImpersonationContext` being cleared
-at every request start and after every propagated task; a thread that leaked a bot would attribute
-writes to it.
+`updatedBy` alone on a stored copy is a bug, and so is an event built with a user and no bot. A
+version and its event differ in one case: an edit undone within its session returns the entity to
+the version before it, which keeps that version's writers, while the event names the request that
+undid it. A user who alternates their own edits and edits through a bot within the session window
+gets one version per switch instead of one merged version. The rule relies on
+`ImpersonationContext` being cleared at every request start and after every propagated task; a
+thread that leaked a bot would attribute writes to it.
 
 Known gaps: twenty-seven versioned types (test suites and cases, tasks, intake forms, context files
 and others) have no `impersonatedBy` field and record no bot; their writers already go through

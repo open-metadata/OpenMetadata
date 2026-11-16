@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -22,10 +24,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.ChangeEventLog;
 import org.openmetadata.it.util.ChangeEventLog.EventAuthor;
+import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -52,6 +56,7 @@ import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Role;
@@ -1112,6 +1117,7 @@ public class BotImpersonationIT {
     Impersonation impersonation = impersonating(ns, "undo", target);
     OpenMetadataClient direct = directClient(target);
     Glossary glossary = createGlossary(ns, "impundo");
+    long since = System.currentTimeMillis();
 
     patchDescription(impersonation.viaBot(), glossary, "Written by the bot for the user");
     patchDescription(direct, glossary, "Rewritten by the user");
@@ -1123,6 +1129,37 @@ public class BotImpersonationIT {
             new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
         glossaryVersionAuthors(glossary.getId()),
         "Undoing an edit in its session returns to the version before it, the bot included");
+    assertEquals(
+        Map.of(
+            new EventAuthor(target.getName(), impersonation.bot()), 1L,
+            new EventAuthor(target.getName(), null), 2L),
+        descriptionEventAuthors(glossary, since, 3),
+        "The user's own undo must be recorded as theirs, not as the bot's");
+  }
+
+  @Test
+  void test_botUndoingItsEditInItsSession_isRecordedAsTheBots(TestNamespace ns) {
+    User target = createRegularUser(ns, "botundo");
+    Impersonation impersonation = impersonating(ns, "botundo", target);
+    Glossary glossary = createGlossary(ns, "impbotundo");
+    long since = System.currentTimeMillis();
+
+    patchDescription(directClient(target), glossary, "Written by the user");
+    patchDescription(impersonation.viaBot(), glossary, "Rewritten by the bot for the user");
+    patchDescription(impersonation.viaBot(), glossary, "Written by the user");
+
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, target.getName(), null),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        glossaryVersionAuthors(glossary.getId()),
+        "The bot undoing its edit in its session returns to the user's own version");
+    assertEquals(
+        Map.of(
+            new EventAuthor(target.getName(), null), 1L,
+            new EventAuthor(target.getName(), impersonation.bot()), 2L),
+        descriptionEventAuthors(glossary, since, 3),
+        "The bot's undo must be recorded as the bot's, not as the user's own");
   }
 
   @Test
@@ -1519,6 +1556,129 @@ public class BotImpersonationIT {
         "The change event of the input port the bot added must name the bot");
   }
 
+  @Test
+  void test_impersonatedFollow_namesTheBotOnTheEvent(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "follow", admin);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "follow"));
+    long since = System.currentTimeMillis();
+
+    impersonation
+        .viaBot()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT, "/v1/tables/%s/followers".formatted(table.getId()), admin.getId());
+
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(
+            Entity.TABLE, table.getId(), Entity.FIELD_FOLLOWERS, since),
+        "A follow the bot makes for its user must be recorded with the bot");
+  }
+
+  @Test
+  void test_impersonatedHardDelete_namesTheBotOnTheEvent(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "harddel", admin);
+    Glossary glossary = createGlossary(ns, "impharddel");
+    // A hard delete's event is stamped with the entity's last update, which is this edit.
+    long since = System.currentTimeMillis();
+    patchDescription(SdkClients.adminClient(), glossary, "Written by admin directly");
+
+    impersonation
+        .viaBot()
+        .glossaries()
+        .delete(glossary.getId().toString(), Map.of("hardDelete", "true"));
+
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitHardDeleteAuthor(Entity.GLOSSARY, glossary.getId(), since),
+        "A hard delete the bot makes must be recorded with the bot");
+  }
+
+  @Test
+  void test_adminAsyncHardDelete_afterAnImpersonatedEdit_namesNoBot(TestNamespace ns) {
+    User target = createRegularUser(ns, "asyncharddel");
+    Impersonation impersonation = impersonating(ns, "asyncharddel", target);
+    Glossary glossary = createGlossary(ns, "impasyncharddel");
+    // A hard delete's event is stamped with the entity's last update, which is this edit.
+    long since = System.currentTimeMillis();
+    patchDescription(impersonation.viaBot(), glossary, "Written by the bot for the user");
+
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.DELETE,
+            "/v1/glossaries/async/%s?hardDelete=true".formatted(glossary.getId()),
+            null);
+
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, null),
+        ChangeEventLog.awaitHardDeleteAuthor(Entity.GLOSSARY, glossary.getId(), since),
+        "An admin's async hard delete must not be recorded with the bot of the edit before it");
+  }
+
+  @Test
+  void test_impersonatedColumnCsvImportAsync_namesTheBot(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "colcsv", admin);
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "colcsv"));
+
+    impersonation
+        .viaBot()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/columns/import-async",
+            "column,displayName,description,tags,glossaryTerms\nid,,Written by the bot,,\n",
+            RequestOptions.builder()
+                .header("Content-Type", "text/plain; charset=UTF-8")
+                .queryParam("serviceName", service.getName())
+                .build());
+
+    awaitVersions(SdkClients.adminClient().tables(), table.getId(), 2);
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, ADMIN_USER_NAME, impersonation.bot()),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        versionAuthors(SdkClients.adminClient().tables().getVersionList(table.getId())),
+        "The async column CSV import runs off the request thread and must still name the bot");
+  }
+
+  @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
+  void test_impersonatedDomainHardDelete_namesTheBotOnTheDetachedDataProduct(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "detach", admin);
+    Domain deleted = createDomain(ns, "impdetachgone");
+    Domain kept = createDomain(ns, "impdetachkept");
+    DataProduct dataProduct = dataProductInDomains(ns, "impdetachdp", deleted, kept);
+    long since = System.currentTimeMillis();
+
+    impersonation
+        .viaBot()
+        .domains()
+        .delete(deleted.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    VersionAuthor detach =
+        versionAuthors(SdkClients.adminClient().dataProducts().getVersionList(dataProduct.getId()))
+            .getFirst();
+    assertEquals(ADMIN_USER_NAME, detach.updatedBy());
+    assertEquals(
+        impersonation.bot(),
+        detach.impersonatedBy(),
+        "Detaching a data product from the domain the bot deleted must name the bot");
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitUpdateAuthor(
+            Entity.DATA_PRODUCT, dataProduct.getId(), Entity.FIELD_DOMAINS, since),
+        "The change event of the detach must name the bot");
+  }
+
   private record IdentityCall(HttpMethod method, String path, Object body) {}
 
   private record VersionAuthor(double version, String updatedBy, String impersonatedBy) {}
@@ -1566,6 +1726,38 @@ public class BotImpersonationIT {
                     .withName(ns.prefix(name))
                     .withDomainType(CreateDomain.DomainType.AGGREGATE)
                     .withDescription("Written by admin")));
+  }
+
+  /** A data product in every one of {@code domains}, which the multi-domain rule otherwise forbids. */
+  private static DataProduct dataProductInDomains(
+      TestNamespace ns, String name, Domain... domains) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct created =
+        admin
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(ns.prefix(name))
+                    .withDescription("Written by admin")
+                    .withDomains(List.of(domains[0].getFullyQualifiedName())));
+    boolean ruleWasEnabled = EntityRulesUtil.isMultiDomainRuleEnabled(admin);
+    EntityRulesUtil.toggleMultiDomainRule(admin, false);
+    try {
+      DataProduct update = admin.dataProducts().get(created.getId().toString(), "domains");
+      update.setDomains(Stream.of(domains).map(Domain::getEntityReference).toList());
+      return admin.dataProducts().update(created.getId().toString(), update);
+    } finally {
+      EntityRulesUtil.toggleMultiDomainRule(admin, ruleWasEnabled);
+    }
+  }
+
+  /** How many of the glossary's description change events since {@code since} name each author. */
+  private static Map<EventAuthor, Long> descriptionEventAuthors(
+      Glossary glossary, long since, int count) {
+    return ChangeEventLog.awaitUpdateAuthors(
+            Entity.GLOSSARY, glossary.getId(), "description", since, count)
+        .stream()
+        .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
   }
 
   private static CreateTable tableRequest(TestNamespace ns, DatabaseSchema schema, String name) {

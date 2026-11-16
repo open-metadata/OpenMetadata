@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 @Slf4j
@@ -50,6 +51,7 @@ public class ChangeEventHandler implements EventHandler {
 
     // Send to Change Event Table
     String loggedInUserName = requestContext.getSecurityContext().getUserPrincipal().getName();
+    String impersonatingBot = SecurityUtil.getImpersonatingBot(requestContext.getSecurityContext());
     try {
       Optional<ChangeEvent> optionalChangeEvent =
           getChangeEventFromResponseContext(responseContext, loggedInUserName);
@@ -60,8 +62,10 @@ public class ChangeEventHandler implements EventHandler {
             || changeEvent.getEntityType().equals(Entity.WORKFLOW)) {
           return null;
         }
-        // Always set the Change Event Username as context Principal, the one creating the CE
+        // The event names the request that made the change. The entity can name an earlier
+        // writer: an edit undone in its session keeps the version it returns to.
         changeEvent.setUserName(loggedInUserName);
+        changeEvent.setImpersonatedBy(impersonatingBot);
         LOG.debug(
             "Recording change event {}:{}:{}:{}",
             changeEvent.getTimestamp(),

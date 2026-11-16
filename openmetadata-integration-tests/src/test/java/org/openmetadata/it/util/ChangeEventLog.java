@@ -8,8 +8,8 @@ import java.net.URLEncoder;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -18,8 +18,10 @@ import org.openmetadata.sdk.network.HttpMethod;
 
 /** The change events the server recorded, read as an admin: only admins and bots may list them. */
 public final class ChangeEventLog {
-  private static final String UPDATES_WINDOW =
-      "/v1/events?entityUpdated=%s&limit=1000&timestamp=%d&endTs=%d";
+  private static final String EVENTS_WINDOW = "/v1/events?%s=%s&limit=1000&timestamp=%d&endTs=%d";
+  private static final String UPDATED = "entityUpdated";
+  private static final String DELETED = "entityDeleted";
+  private static final String HARD_DELETED_EVENT = "entityDeleted";
 
   private ChangeEventLog() {}
 
@@ -32,27 +34,56 @@ public final class ChangeEventLog {
    */
   public static EventAuthor awaitUpdateAuthor(
       String entityType, UUID entityId, String field, long since) {
-    JsonNode event =
-        Awaitility.await("an update event of " + entityId + " changing " + field)
-            .atMost(Duration.ofSeconds(60))
-            .pollInterval(Duration.ofMillis(500))
-            .until(() -> newestUpdate(entityType, entityId, field, since), Optional::isPresent)
-            .get();
-    return new EventAuthor(textOrNull(event, "userName"), textOrNull(event, "impersonatedBy"));
+    return awaitUpdateAuthors(entityType, entityId, field, since, 1).getLast();
   }
 
-  private static Optional<JsonNode> newestUpdate(
-      String entityType, UUID entityId, String field, long since) {
-    return updates(entityType, since).stream()
+  /**
+   * The authors of the {@code entityUpdated} events recorded for {@code entityId} since {@code
+   * since} that changed {@code field}, in the order they were recorded, waiting until there are
+   * {@code count}. Events are recorded off the request thread, so two requests made one after the
+   * other can be recorded in either order.
+   */
+  public static List<EventAuthor> awaitUpdateAuthors(
+      String entityType, UUID entityId, String field, long since, int count) {
+    return Awaitility.await(count + " update events of " + entityId + " changing " + field)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .until(
+            () -> authors(events(UPDATED, entityType, since), entityId, e -> changes(e, field)),
+            authors -> authors.size() >= count);
+  }
+
+  /** The author of the hard delete of {@code entityId} since {@code since}, once it is recorded. */
+  public static EventAuthor awaitHardDeleteAuthor(String entityType, UUID entityId, long since) {
+    return Awaitility.await("the hard delete event of " + entityId)
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .until(
+            () -> authors(events(DELETED, entityType, since), entityId, ChangeEventLog::isHard),
+            authors -> !authors.isEmpty())
+        .getLast();
+  }
+
+  private static List<EventAuthor> authors(
+      List<JsonNode> events, UUID entityId, Predicate<JsonNode> matches) {
+    return events.stream()
         .filter(event -> entityId.toString().equals(event.path("entityId").asText()))
-        .filter(event -> changes(event, field))
-        .reduce((first, last) -> last);
+        .filter(matches)
+        .map(
+            event ->
+                new EventAuthor(textOrNull(event, "userName"), textOrNull(event, "impersonatedBy")))
+        .toList();
+  }
+
+  // The entityDeleted filter returns soft deletes too.
+  private static boolean isHard(JsonNode event) {
+    return HARD_DELETED_EVENT.equals(event.path("eventType").asText());
   }
 
   // Every event of the window, following the cursor: other tests record events of the same type,
   // so the one a test looks for can be on any page.
-  private static List<JsonNode> updates(String entityType, long since) {
-    String window = UPDATES_WINDOW.formatted(entityType, since, System.currentTimeMillis());
+  private static List<JsonNode> events(String kind, String entityType, long since) {
+    String window = EVENTS_WINDOW.formatted(kind, entityType, since, System.currentTimeMillis());
     List<JsonNode> events = new ArrayList<>();
     String after = null;
     do {
