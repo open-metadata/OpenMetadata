@@ -166,13 +166,7 @@ def _get_view_definitions_individually(self, connection: Connection, owner: str)
     normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
     prefix = _get_table_prefix(self)
     linked_views = _reads_linked_views(self)
-    maintained_owner = (
-        linked_views
-        and _read_scalar(
-            connection.execute(text(ORACLE_GET_OWNER_ORACLE_MAINTAINED.format(prefix=prefix)), {"owner": owner})
-        )
-        == "Y"
-    )
+    maintained_owner = linked_views and _is_oracle_maintained_owner(connection, prefix, owner)
     view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix)), {"owner": owner})
     try:
         for view_owner, name, object_type in view_names:
@@ -205,6 +199,23 @@ def _read_scalar(result):
         result.close()
 
 
+def _is_oracle_maintained_owner(connection: Connection, prefix: str, owner: str) -> bool:
+    """Whether GET_DDL would refuse the owner's objects.
+
+    An account can be granted the views catalog without the users catalog, which also fails
+    the bulk query, so a denied read keeps GET_DDL as the last resort instead of losing the
+    readable definitions of the whole schema.
+    """
+    try:
+        flag = _read_scalar(
+            connection.execute(text(ORACLE_GET_OWNER_ORACLE_MAINTAINED.format(prefix=prefix)), {"owner": owner})
+        )
+    except DatabaseError:
+        logger.debug("Could not read whether Oracle maintains %s, keeping GET_DDL as the last resort", owner)
+        return False
+    return flag == "Y"
+
+
 def _fetch_view_definition_by_name(
     connection: Connection,
     prefix: str,
@@ -222,7 +233,7 @@ def _fetch_view_definition_by_name(
     beyond the bulk read (this is the same column SQLAlchemy's Oracle dialect
     reads). It then mirrors the bulk query: on 12.1+ a view whose text is NULL is
     read from a complete TEXT_VC, and DBMS_METADATA.GET_DDL is the last resort,
-    never called for an Oracle-maintained owner since it refuses those objects.
+    never called for an owner known to be Oracle-maintained since it refuses those objects.
     """
     is_mview = object_type == "MATERIALIZED_VIEW"
     text_query = ORACLE_GET_MVIEW_QUERY_BY_NAME if is_mview else ORACLE_GET_VIEW_TEXT_BY_NAME

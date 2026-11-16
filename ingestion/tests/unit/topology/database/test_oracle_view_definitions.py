@@ -671,3 +671,40 @@ def test_pre_12c_fallback_keeps_get_ddl_for_views_without_text(catalog, prefix):
         assert not any("text_vc" in sql or "oracle_maintained" in sql for sql, _ in executions)
     finally:
         cache.clear()
+
+
+@pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+def test_fallback_recovers_definitions_when_the_users_catalog_is_denied(catalog, prefix):
+    """Issue #37851: an account granted the views catalog but not the users catalog fails the
+    bulk query on its owner check, as releases before #35980 did, and the per-view fallback must
+    still recover every readable definition instead of failing on the same denied read."""
+    engine, _ = catalog
+    TestOracleMaintainedLinkedViews._add_views(
+        engine,
+        [
+            ("MY_OTHER_SCHEMA", "LINKED_VIEW", None, "SELECT 42", 9),
+            ("MY_OTHER_SCHEMA", "LONG_LINKED_VIEW", None, "SELECT 4", 5000),
+        ],
+    )
+    with engine.begin() as connection:
+        for catalog_prefix in ("ALL", "DBA"):
+            connection.exec_driver_sql(f"DROP TABLE {catalog_prefix}_USERS")
+    refused = TestOracleMaintainedLinkedViews._refuse_ddl_for_maintained_owner(engine)
+    cache = {}
+    try:
+        with engine.connect() as connection:
+            oracle = dialect(prefix)
+            assert (
+                get_view_definition(oracle, connection, "linked_view", "my_other_schema", info_cache=cache)
+                == "CREATE OR REPLACE VIEW LINKED_VIEW AS SELECT 42"
+            )
+            assert get_view_definition(oracle, connection, "my_view", "my_other_schema", info_cache=cache).endswith(
+                "AS SELECT 2"
+            )
+            assert get_view_definition(oracle, connection, "my_mview", "my_other_schema", info_cache=cache).endswith(
+                "AS SELECT 12"
+            )
+            assert not get_view_definition(oracle, connection, "long_linked_view", "my_other_schema", info_cache=cache)
+        assert refused == ["LONG_LINKED_VIEW"]
+    finally:
+        cache.clear()
