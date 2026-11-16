@@ -151,18 +151,27 @@ const getEventTimestamp = ({ timestamp }: ActivityEvent) => timestamp ?? 0;
 /**
  * A capped list stops at its oldest item, so the other list is cut there too:
  * past it the feed would show one kind alone, as if the other had none.
+ * Mentions is left whole: its events carry their own time, not the mention's,
+ * so an old event mentioned today would fall before the cut.
  * ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
  */
 const cutToCompleteSpan = (
+  filter: ActivityFilter,
   activities: ActivityEvent[],
   threads: Conversation[],
   isActivityCapped: boolean
 ): InboxActivityResult => {
   const isThreadCapped = threads.length >= CONVERSATION_LIMIT;
-  const completeFrom = Math.max(
-    isActivityCapped ? Math.min(...activities.map(getEventTimestamp)) : 0,
-    isThreadCapped ? Math.min(...threads.map(getFeedSortTimestamp)) : 0
-  );
+  const activityFloor = isActivityCapped
+    ? Math.min(...activities.map(getEventTimestamp))
+    : 0;
+  const threadFloor = isThreadCapped
+    ? Math.min(...threads.map(getFeedSortTimestamp))
+    : 0;
+  const completeFrom =
+    filter === ActivityFilter.Mentions
+      ? 0
+      : Math.max(activityFloor, threadFloor);
 
   return {
     activities: activities.filter(
@@ -232,6 +241,7 @@ export const fetchInboxActivity = async (
   // dropped some: then the page already reached past the window's start, so
   // the window is complete.
   return cutToCompleteSpan(
+    filter,
     clipped,
     threads,
     activities.length >= ACTIVITY_LIMIT && clipped.length === activities.length

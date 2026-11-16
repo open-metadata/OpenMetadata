@@ -220,16 +220,20 @@ jest.mock('components/common/Loader/Loader', () => ({
 }));
 
 let tabsOnChange: ((key: string) => void) | undefined;
+let tabsSelectedKey: string | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const TabsRoot = ({
     onSelectionChange,
+    selectedKey,
     children,
   }: {
     onSelectionChange?: (...args: unknown[]) => void;
+    selectedKey?: string;
     children?: ReactNode;
   }) => {
     tabsOnChange = onSelectionChange;
+    tabsSelectedKey = selectedKey;
 
     return <div>{children}</div>;
   };
@@ -249,6 +253,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => (
     <button
       data-badge={badge}
+      data-selected={id === tabsSelectedKey}
       data-testid={`task-status-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
@@ -714,12 +719,21 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('loaded'));
 
+    expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
     expect(capturedQueryKey[2]).toBe('closed');
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
 
     fireEvent.click(screen.getByTestId('task-status-open'));
     fireEvent.click(screen.getByTestId('loaded'));
 
-    expect(capturedQueryKey[2]).toBe('open');
+    expect(screen.getByTestId('task-status-open')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
   });
 
   // The notification bell can link to another task while the tab stays open.
@@ -751,7 +765,11 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('loaded'));
 
-    expect(capturedQueryKey[2]).toBe('closed');
+    expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t8');
   });
 
   it('keeps the Open tab for a linked open task', () => {
@@ -760,7 +778,11 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('loaded'));
 
-    expect(capturedQueryKey[2]).toBe('open');
+    expect(screen.getByTestId('task-status-open')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
   });
 
   // A capped scan is the only way to reach matches on later pages, so its
