@@ -5,7 +5,6 @@
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
-    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
     "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
@@ -671,7 +670,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/context/OntologyDraft/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/governance/ontology/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
@@ -1452,7 +1451,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Services.tsx",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/GlossaryLeftPanel/GlossaryLeftPanel.component.tsx",
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.component.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component.tsx",
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterDashboardPage/ContextCenterDashboardPage.tsx",

@@ -91,7 +91,6 @@ import type { OntologyConcept } from '../generated/entity/data/ontologyConcept';
 import type { OntologyProperty } from '../generated/entity/data/ontologyProperty';
 import type { OntologyRelease } from '../generated/entity/data/ontologyRelease';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
-import { OntologyAssetConceptLinks } from '../generated/type/ontologyAssetConceptLinks';
 import { OntologyConceptBindingsResponse } from '../generated/type/ontologyConceptBindingsResponse';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import { OntologyReleaseEvent } from '../generated/type/ontologyReleaseEvent';
@@ -160,21 +159,6 @@ export const getOntologyConceptBindings = async (
   );
 
   return collectOntologyConceptBindings(id, response.data, signal);
-};
-
-export const getOntologyConceptsBoundToAsset = async (
-  assetType: string,
-  assetId: string,
-  signal?: AbortSignal
-) => {
-  const { data } = await APIClient.get<OntologyAssetConceptLinks>(
-    `${ONTOLOGY_CONCEPTS_PATH}/boundTo/${encodeURIComponent(
-      assetType
-    )}/${encodeURIComponent(assetId)}`,
-    { signal }
-  );
-
-  return data;
 };
 
 export const generateOntologyConceptQuery = async (
