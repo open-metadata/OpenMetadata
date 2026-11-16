@@ -80,5 +80,10 @@ v5 2026-11-16:
   about an asset). Those keep the role's full scope, so an asset in another of the user's domains
   shows its tasks and its count matches its list. Guard:
   `EntityUtilTest.addDomainQueryParam_restrictedUserKeepsTheFullScopeForTypesThePickNeverNarrows`.
+- An asset page whose data request returns 403 (e.g. a domain-only user opening another domain's
+  asset) shows the permission message in place on the table, service and data product pages,
+  naming the requested asset. The other asset pages still redirect to `/403` and are to move to
+  the in-place message. Guard: `TableDetailsPageV1.test.tsx`, `ServiceDetailsPage.test.tsx`,
+  `DataProductsPage.component.test.tsx`.
 - A classification's tag count follows the pick like its tag list, on both the single and the batch
   path. Guard: `UserResourceIT.test_pickNarrowsClassificationTagsAndTheirCount`.
