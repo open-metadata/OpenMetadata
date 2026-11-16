@@ -12,7 +12,6 @@
  */
 
 import { Glossary } from '../../generated/entity/data/glossary';
-import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { EntityReference } from '../../generated/entity/type';
 import { EntityStatus, Provenance } from '../../generated/type/termRelation';
@@ -23,7 +22,6 @@ import {
 import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
-export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
 
 export interface OntologyExplorerProps {
   scope: OntologyScope;
@@ -31,30 +29,8 @@ export interface OntologyExplorerProps {
   glossaryId?: string;
   className?: string;
   height?: string | number;
-  isAuthoringMode?: boolean;
-  isEditMode?: boolean;
-  surface?: OntologyStudioSurface;
-  showHealth?: boolean;
-  /** Sub-bar element the concept search renders into; it floats on the canvas without one. */
-  searchSlot?: HTMLElement | null;
-  globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
-  onGlossariesChange?: (glossaries: Glossary[]) => void;
-  onGraphDataChange?: (graphData: OntologyGraphData) => void;
-  onRelationTypesChange?: (relationTypes: RelationshipType[]) => void;
-  onSelectedNodeChange?: (node: OntologyNode | null) => void;
-  conceptDraftId?: string;
-  defaultConceptGlossaryId?: string;
-  onConceptCreated?: (concept: GlossaryTerm) => void;
-  onConceptDraftClose?: () => void;
-  onRequestEdit?: () => void;
-  proposalPermissions?: OntologyProposalPermissions;
-}
-
-export interface OntologyProposalPermissions {
-  canApprove: boolean;
-  canReject: boolean;
 }
 
 /** Points a canvas node or edge at the AI draft operation that proposes it. */
@@ -230,22 +206,6 @@ export interface OntologyGraphProps {
   /** Canvas-space point of a double-click on empty canvas while the studio is being edited. */
   onCanvasDoubleClick?: (point: { x: number; y: number }) => void;
   onScrollNearEdge?: () => void;
-}
-
-export interface FilterToolbarProps {
-  filters: GraphFilters;
-  glossaries: Glossary[];
-  relationTypes: RelationshipType[];
-  onFiltersChange: (filters: GraphFilters) => void;
-  onViewModeChange?: (viewMode: GraphViewMode) => void;
-  onClearAll?: () => void;
-  onLoadMore?: () => void;
-  viewModeDisabled?: boolean;
-  isLoading?: boolean;
-  isLoadingMore?: boolean;
-  hasMoreTerms?: boolean;
-  loadedTermCount?: number;
-  totalTermCount?: number;
 }
 
 export interface GraphSettingsPanelProps {

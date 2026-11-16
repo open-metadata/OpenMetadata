@@ -2,25 +2,20 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
-import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -44,7 +39,6 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
-import org.openmetadata.service.secrets.BoundCiphertext;
 
 /**
  * The 2.1.0 migration brings stored webhook configurations to the form new writes store, and a
@@ -97,9 +91,14 @@ class WebhookSecretsMigrationIT {
                     .withChangeDescription(profileChange(legacy))
                     .withEntity(JsonUtils.pojoToJson(stored))));
 
-    runProfileStep();
-    String rowAfterOneRun = dao.findById(dao.getTableName(), team.getId(), "");
-    runProfileStep();
+    String rowAfterOneRun;
+    try {
+      runProfileStep(stepVersion(ns));
+      rowAfterOneRun = dao.findById(dao.getTableName(), team.getId(), "");
+      runProfileStep(stepVersion(ns));
+    } finally {
+      deleteMarkersOf(stepVersion(ns));
+    }
 
     assertEquals(rowAfterOneRun, dao.findById(dao.getTableName(), team.getId(), ""));
     JsonNode row = JsonUtils.readTree(rowAfterOneRun);
@@ -140,9 +139,11 @@ class WebhookSecretsMigrationIT {
                 Map.of("type", "bearer", "secretKey", secret)));
     AlertFixtures.writeBehindTheServer(alert);
 
-    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
-    jdbi.useHandle(
-        handle -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+    try {
+      runAlertStep(stepVersion(ns));
+    } finally {
+      deleteMarkersOf(stepVersion(ns));
+    }
 
     SubscriptionDestination stored =
         AlertFixtures.stored(alert.getId()).getDestinations().getFirst();
@@ -151,20 +152,18 @@ class WebhookSecretsMigrationIT {
   }
 
   /**
-   * Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and OAuth2
-   * credentials, unless it is stored somewhere else too, such as another entity's version; the
-   * alert's own change events do not count. Anywhere else it stays as stored, is refused when the
-   * destination sends, and the destination stays enabled.
+   * The bearer and OAuth2 credentials releases before 2.1 encrypted stay as stored and still
+   * decrypt, wherever else the same value is stored. Every other value, which those releases sent as
+   * stored, is encrypted as it is and sent as it was. The step runs once: a second run for the same
+   * version changes nothing. The destinations stay enabled.
    */
   @Test
-  void earlierCredentialsAreCarriedOverAndAnyOtherCiphertextIsEnteredAgain(TestNamespace ns) {
-    String signingKey = ns.prefix("signing-key");
-    String clientSecret = ns.prefix("client-secret");
+  void credentialsStayAsStoredAndEveryOtherValueIsEncryptedAsItIs(TestNamespace ns) {
+    String signingKey = Fernet.getInstance().encrypt(ns.prefix("signing-key"));
+    String clientSecret = Fernet.getInstance().encrypt(ns.prefix("client-secret"));
     String storedTwice = Fernet.getInstance().encrypt(ns.prefix("a value stored twice"));
-    String header = Fernet.getInstance().encrypt(ns.prefix("a header value"));
-    String inAnotherVersion = Fernet.getInstance().encrypt(ns.prefix("a value in another version"));
-    String inAnUnnamedStore =
-        Fernet.getInstance().encrypt(ns.prefix("a value in an unnamed store"));
+    String header = ns.prefix("a header value");
+    String headerReadingAsCiphertext = Fernet.getInstance().encrypt(ns.prefix("a header"));
     EventSubscription alert =
         AlertFixtures.tableAlert(
             ns,
@@ -175,18 +174,12 @@ class WebhookSecretsMigrationIT {
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/oauth"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/twice"),
                 AlertFixtures.external(WEBHOOK, "https://hooks.example.com/header"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/event"),
-                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/unnamed")));
+                AlertFixtures.external(WEBHOOK, "https://hooks.example.com/as-stored")));
     List<SubscriptionDestination> destinations = alert.getDestinations();
     destinations
         .get(0)
-        .withConfig(
-            legacyConfig(
-                "signed",
-                Map.of("type", "bearer", "secretKey", Fernet.getInstance().encrypt(signingKey))));
-    destinations
-        .get(1)
-        .withConfig(legacyConfig("oauth", oauth2(Fernet.getInstance().encrypt(clientSecret))));
+        .withConfig(legacyConfig("signed", Map.of("type", "bearer", "secretKey", signingKey)));
+    destinations.get(1).withConfig(legacyConfig("oauth", oauth2(clientSecret)));
     destinations.get(2).withConfig(legacyConfig("twice", oauth2(storedTwice)));
     destinations
         .get(3)
@@ -196,17 +189,15 @@ class WebhookSecretsMigrationIT {
                 "https://hooks.example.com/header",
                 "headers",
                 Map.of("Authorization", header)));
-    destinations.get(4).withConfig(legacyConfig("event", oauth2(inAnotherVersion)));
-    destinations.get(5).withConfig(legacyConfig("unnamed", oauth2(inAnUnnamedStore)));
+    destinations
+        .get(4)
+        .withConfig(
+            Map.of(
+                "endpoint",
+                "https://hooks.example.com/as-stored",
+                "headers",
+                Map.of("Authorization", headerReadingAsCiphertext)));
     AlertFixtures.writeBehindTheServer(alert);
-    insertChangeEvent(Entity.EVENT_SUBSCRIPTION, alert.getId(), JsonUtils.pojoToJson(alert));
-    Entity.getCollectionDAO()
-        .entityExtensionDAO()
-        .insert(
-            DatabaseServiceTestFactory.createPostgres(ns).getId(),
-            "databaseService.version.0.1",
-            Entity.DATABASE_SERVICE,
-            JsonUtils.pojoToJson(Map.of("password", inAnotherVersion)));
     EventSubscription another =
         AlertFixtures.tableAlert(
             ns,
@@ -215,36 +206,80 @@ class WebhookSecretsMigrationIT {
             List.of(AlertFixtures.external(WEBHOOK, "https://hooks.example.com/another")));
     another.getDestinations().getFirst().withConfig(legacyConfig("another", oauth2(storedTwice)));
     AlertFixtures.writeBehindTheServer(another);
-    storeInATableTheStepDoesNotName(Map.of("apiKey", inAnUnnamedStore));
 
     String rowAfterOneRun;
     try {
-      runAlertStep();
+      runAlertStep(stepVersion(ns));
       rowAfterOneRun = JsonUtils.pojoToJson(AlertFixtures.stored(alert.getId()));
-      runAlertStep();
+      runAlertStep(stepVersion(ns));
     } finally {
-      dropTheTableTheStepDoesNotName();
+      deleteMarkersOf(stepVersion(ns));
     }
 
     EventSubscription stored = AlertFixtures.stored(alert.getId());
     assertEquals(rowAfterOneRun, JsonUtils.pojoToJson(stored));
-    List<SubscriptionDestination> bound = stored.getDestinations();
-    assertEquals(signingKey, openedDestinationValue(bound.get(0), "/authType/secretKey"));
-    assertEquals(clientSecret, openedDestinationValue(bound.get(1), "/authType/clientSecret"));
-    assertEquals(storedTwice, storedValue(bound.get(2), "/authType/clientSecret"));
-    assertEquals(header, storedValue(bound.get(3), "/headers/Authorization"));
-    assertEquals(inAnotherVersion, storedValue(bound.get(4), "/authType/clientSecret"));
-    assertEquals(inAnUnnamedStore, storedValue(bound.get(5), "/authType/clientSecret"));
-    for (SubscriptionDestination toEnterAgain : bound.subList(2, 6)) {
-      BadRequestException refused =
-          assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(toEnterAgain));
-      assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
-    }
-    assertTrue(bound.stream().allMatch(SubscriptionDestination::getEnabled));
+    List<SubscriptionDestination> upgraded = stored.getDestinations();
+    assertEquals(signingKey, storedValue(upgraded.get(0), "/authType/secretKey"));
+    assertEquals(clientSecret, storedValue(upgraded.get(1), "/authType/clientSecret"));
+    assertEquals(storedTwice, storedValue(upgraded.get(2), "/authType/clientSecret"));
+    assertEquals(
+        ns.prefix("signing-key"), openedDestinationValue(upgraded.get(0), "/authType/secretKey"));
+    assertEquals(
+        ns.prefix("client-secret"),
+        openedDestinationValue(upgraded.get(1), "/authType/clientSecret"));
+    SubscriptionDestination anotherCopy =
+        AlertFixtures.stored(another.getId()).getDestinations().getFirst();
+    assertEquals(
+        ns.prefix("a value stored twice"),
+        openedDestinationValue(anotherCopy, "/authType/clientSecret"));
+    assertEquals(header, openedDestinationValue(upgraded.get(3), "/headers/Authorization"));
+    assertEquals(
+        headerReadingAsCiphertext,
+        openedDestinationValue(upgraded.get(4), "/headers/Authorization"));
+    assertTrue(upgraded.stream().allMatch(SubscriptionDestination::getEnabled));
   }
 
+  /**
+   * A step that stops part way leaves every row as it was and records nothing, so the next run
+   * starts from what releases before 2.1 stored. Here it stops on a stored change event it cannot
+   * read, after it has rewritten the team rows.
+   */
   @Test
-  void aProfileWebhookHoldingCiphertextIsLeftOutUntilEnteredAgain(TestNamespace ns) {
+  void aStepThatStopsPartWayLeavesNothingBehind(TestNamespace ns) {
+    String endpoint = "https://hooks.example.com/" + ns.shortPrefix();
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("stopped_team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    TeamDAO dao = Entity.getCollectionDAO().teamDAO();
+    Team stored =
+        JsonUtils.readValue(dao.findById(dao.getTableName(), team.getId(), ""), Team.class);
+    dao.update(stored.withProfile(legacyProfile(endpoint, ns.prefix("secret"))));
+    EntityRepository.invalidateCacheForEntity(
+        Entity.TEAM, team.getId(), team.getFullyQualifiedName());
+    String rowBefore = dao.findById(dao.getTableName(), team.getId(), "");
+    UUID unreadable = insertChangeEvent(Entity.TEAM, "{\"endpoint\": \"" + endpoint);
+
+    try {
+      assertThrows(RuntimeException.class, () -> runProfileStep(stepVersion(ns)));
+      assertEquals(rowBefore, dao.findById(dao.getTableName(), team.getId(), ""));
+      deleteChangeEvent(unreadable);
+      runProfileStep(stepVersion(ns));
+    } finally {
+      deleteChangeEvent(unreadable);
+      deleteMarkersOf(stepVersion(ns));
+    }
+
+    JsonNode row = JsonUtils.readTree(dao.findById(dao.getTableName(), team.getId(), ""));
+    assertEquals(endpoint, openedProfileValue(row, "/endpoint"));
+  }
+
+  // A profile webhook value releases before 2.1 sent as stored is still sent as it was.
+  @Test
+  void aProfileWebhookValueIsEncryptedAsItIsStored(TestNamespace ns) {
     Team team =
         SdkClients.adminClient()
             .teams()
@@ -268,64 +303,18 @@ class WebhookSecretsMigrationIT {
     EntityRepository.invalidateCacheForEntity(
         Entity.TEAM, team.getId(), team.getFullyQualifiedName());
 
-    runProfileStep();
+    try {
+      runProfileStep(stepVersion(ns));
+    } finally {
+      deleteMarkersOf(stepVersion(ns));
+    }
 
     JsonNode row = JsonUtils.readTree(dao.findById(dao.getTableName(), team.getId(), ""));
-    assertEquals(header, row.at("/profile/subscription/slack/headers/Authorization").asText());
     assertEquals(secret, openedProfileValue(row, "/authType/clientSecret"));
-    ProfileWebhookSecrets.Holder holder =
-        new ProfileWebhookSecrets.Holder(Entity.TEAM, team.getId());
     Profile sendable =
         ProfileWebhookSecrets.decrypted(
-            holder, JsonUtils.treeToValue(row.path("profile"), Profile.class));
-    assertNull(sendable.getSubscription().getSlack(), "left out until it is entered again");
-    assertNotNull(sendable.getSubscription().getGeneric());
-  }
-
-  // A store of secrets the step does not name, such as one a distribution adds.
-  private static void storeInATableTheStepDoesNotName(Map<String, Object> config) {
-    String jsonType = dialect() == ConnectionType.MYSQL ? "JSON" : "JSONB";
-    String json = dialect() == ConnectionType.MYSQL ? ":json" : ":json::jsonb";
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              handle.execute(
-                  "CREATE TABLE distribution_store_entity (id VARCHAR(36) PRIMARY KEY, json "
-                      + jsonType
-                      + " NOT NULL)");
-              handle
-                  .createUpdate(
-                      "INSERT INTO distribution_store_entity (id, json) VALUES (:id, " + json + ")")
-                  .bind("id", UUID.randomUUID().toString())
-                  .bind("json", JsonUtils.pojoToJson(Map.of("config", config)))
-                  .execute();
-            });
-  }
-
-  private static void dropTheTableTheStepDoesNotName() {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(handle -> handle.execute("DROP TABLE IF EXISTS distribution_store_entity"));
-  }
-
-  // A change event as releases before 2.1 stored it: written directly, since the event DAO of 2.1
-  // masks every event it stores.
-  private static void insertChangeEvent(String entityType, UUID entityId, String entity) {
-    String json =
-        JsonUtils.pojoToJson(
-            new ChangeEvent()
-                .withId(UUID.randomUUID())
-                .withEventType(EventType.ENTITY_UPDATED)
-                .withEntityType(entityType)
-                .withEntityId(entityId)
-                .withUserName("admin")
-                .withTimestamp(System.currentTimeMillis())
-                .withEntity(entity));
-    String sql =
-        dialect() == ConnectionType.MYSQL
-            ? "INSERT INTO change_event (json) VALUES (:json)"
-            : "INSERT INTO change_event (json) VALUES (:json::jsonb)";
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(handle -> handle.createUpdate(sql).bind("json", json).execute());
+            "a team", JsonUtils.treeToValue(row.path("profile"), Profile.class));
+    assertEquals(header, sendable.getSubscription().getSlack().getHeaders().get("Authorization"));
   }
 
   private static Map<String, Object> oauth2(String clientSecret) {
@@ -348,15 +337,65 @@ class WebhookSecretsMigrationIT {
     return Map.of("endpoint", "https://hooks.example.com/" + path, "authType", authType);
   }
 
-  private static void runAlertStep() {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+  // Each test runs the steps under a version of its own, so its markers are its own.
+  private static String stepVersion(TestNamespace ns) {
+    return "2.1.0-webhookit" + ns.shortPrefix();
   }
 
-  private static void runProfileStep() {
+  private static void runAlertStep(String version) {
     TestSuiteBootstrap.getJdbi()
-        .useHandle(handle -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, dialect()));
+        .useHandle(
+            handle ->
+                WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, version, dialect()));
+  }
+
+  private static void runProfileStep(String version) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, version, dialect()));
+  }
+
+  // A change event as releases before 2.1 stored it, carrying {@code entity} as written: inserted
+  // directly, since the event DAO of 2.1 masks every event it stores.
+  private static UUID insertChangeEvent(String entityType, String entity) {
+    UUID id = UUID.randomUUID();
+    String json =
+        JsonUtils.pojoToJson(
+            new ChangeEvent()
+                .withId(id)
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withEntityType(entityType)
+                .withEntityId(UUID.randomUUID())
+                .withUserName("admin")
+                .withTimestamp(System.currentTimeMillis())
+                .withEntity(entity));
+    String sql =
+        dialect() == ConnectionType.MYSQL
+            ? "INSERT INTO change_event (json) VALUES (:json)"
+            : "INSERT INTO change_event (json) VALUES (:json::jsonb)";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(handle -> handle.createUpdate(sql).bind("json", json).execute());
+    return id;
+  }
+
+  private static void deleteChangeEvent(UUID eventId) {
+    String sql =
+        dialect() == ConnectionType.MYSQL
+            ? "DELETE FROM change_event WHERE json ->> '$.id' = :id"
+            : "DELETE FROM change_event WHERE json ->> 'id' = :id";
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(handle -> handle.createUpdate(sql).bind("id", eventId.toString()).execute());
+  }
+
+  private static void deleteMarkersOf(String version) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate("DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                    .bind("version", version)
+                    .execute());
   }
 
   private static String changeEventJson(UUID eventId) {
@@ -402,7 +441,7 @@ class WebhookSecretsMigrationIT {
 
   private static String openedDestinationValue(SubscriptionDestination stored, String field) {
     String value = JsonUtils.valueToTree(stored.getConfig()).at(field).asText();
-    assertTrue(BoundCiphertext.isBound(value), "not bound to its destination: " + value);
+    assertTrue(Fernet.isTokenized(value), "not encrypted: " + value);
     return JsonUtils.valueToTree(DestinationSecrets.decrypted(stored).getConfig())
         .at(field)
         .asText();
@@ -410,11 +449,9 @@ class WebhookSecretsMigrationIT {
 
   private static String openedProfileValue(JsonNode teamRow, String field) {
     String value = teamRow.at("/profile/subscription/generic" + field).asText();
-    assertTrue(BoundCiphertext.isBound(value), "not bound to its webhook: " + value);
-    ProfileWebhookSecrets.Holder holder =
-        new ProfileWebhookSecrets.Holder(Entity.TEAM, UUID.fromString(teamRow.path("id").asText()));
+    assertTrue(Fernet.isTokenized(value), "not encrypted: " + value);
     Profile profile = JsonUtils.treeToValue(teamRow.path("profile"), Profile.class);
-    return JsonUtils.valueToTree(ProfileWebhookSecrets.decrypted(holder, profile))
+    return JsonUtils.valueToTree(ProfileWebhookSecrets.decrypted("a team", profile))
         .at("/subscription/generic" + field)
         .asText();
   }

@@ -1,9 +1,9 @@
 # Ontologies created in the Studio take `<baseUri>/onto/<prefix>` IRIs
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-03 (the prefix keeps digits and is numbered when taken, the ID comes from the display name, Advanced replaces the IRI and namespace, installs and imports take the same IRIs)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-03 (the prefix keeps digits and is numbered when taken, the ID comes from the display name, Advanced replaces the IRI and namespace, installs and imports take the same IRIs) · v3 2026-11-14 (accented letters fold to their base letter instead of being dropped) · v4 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyCreateDialog.test.tsx`, `OntologyCreateForm.utils.test.ts`, `useOntologyIdentitySource.test.tsx`, `OntologyNativeStudio.spec.ts` ("keeps Create enabled for names that differ only in digits"), `OntologyStudioFlows.spec.ts` (flow 2), reviewer
+- **Guard:** `OntologyCreateDialog.test.tsx` *(openmetadata-collate)*, `OntologyCreateForm.utils.test.ts` *(openmetadata-collate)*, `useOntologyIdentitySource.test.tsx` *(openmetadata-collate)*, `OntologyNativeStudio.spec.ts` *(openmetadata-collate)* ("keeps Create enabled for names that differ only in digits"), `OntologyStudioFlows.spec.ts` *(openmetadata-collate)* (flow 2), reviewer
 - **Related:** open-metadata/OpenMetadata#36713, ADR:2026-10-19-native-ontology-imports-use-working-drafts, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-19-ontology-studio-opens-native-models-by-default
 
 ## Context
@@ -23,8 +23,9 @@ The create dialog in `OntologyCreateDialog.tsx` builds the values with `ontology
 - `baseUri` is the `baseUri` field of `GET /api/v1/rdf/status`. The server fills it from the
   `rdf.baseUri` setting (`RDF_BASE_URI`), which defaults to `https://open-metadata.org/`. Create
   stays disabled until the status call returns a base URI.
-- The default prefix is the name in lower case with every character outside `a`–`z` removed,
-  cut to its first 8 characters. Digits, spaces, punctuation and accented letters are dropped.
+- The default prefix is the name with accents folded to their base letter (`Ü` reads `U`), in lower
+  case with every character outside `a`–`z` removed, cut to its first 8 characters. Digits, spaces,
+  punctuation and letters with no base Latin letter are dropped.
   When nothing is left, the prefix is `onto`.
 - The user can replace the prefix. The dialog trims it and accepts it only when it matches
   `^[A-Za-z0-9_][A-Za-z0-9._-]*$`. It also refuses a namespace that an ontology in its loaded list
@@ -77,8 +78,10 @@ works as follows.
   `VF Guard 37973` gives `vfguard3`, and `VF Guard 38000` then gives `vfguard32`. `Finance Core`
   still gives `financec`.
 - The ontology `name`, its immutable ID, defaults to `deriveOntologyId(displayName)`. That is the
-  display name in lower case, with each run of characters outside `a`–`z` and `0`–`9` replaced by
-  `-` and leading and trailing `-` removed. `Finance Core` gives `finance-core`.
+  display name with accents folded, in lower case, with each run of characters outside `a`–`z` and
+  `0`–`9` replaced by `-` and leading and trailing `-` removed. `Finance Core` gives
+  `finance-core` and `Café & Bar` gives `cafe-bar`; dropping the accented letter outright gave
+  `caf-bar` and turned `Ümlauts` into `mlauts`. An existing ontology keeps its ID.
 - The dialog refuses a display name or ID that contains `::`, `"`, `>` or a control character, that
   is longer than 256 characters, or that equals the name or display name of a loaded ontology,
   ignoring case.
@@ -102,3 +105,5 @@ In `OntologyNativeStudio.spec.ts`, "keeps Create enabled for names that differ o
 creates `Qzx Guard 37973 <suffix>` and `Qzx Guard 38000 <suffix>` through the dialog, and checks
 that their IRIs and namespaces differ. `OntologyStudioFlows.spec.ts` flow 2 creates a name that
 differs from a taken one only in digits.
+
+v4 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

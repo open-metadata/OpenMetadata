@@ -39,6 +39,7 @@ final class OntologyCaptureFixture {
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
           try {
             new SystemRepository();
+            new TaskRepository();
             assertion.accept(new Fixture(handle));
           } finally {
             Entity.setCollectionDAO(previous);

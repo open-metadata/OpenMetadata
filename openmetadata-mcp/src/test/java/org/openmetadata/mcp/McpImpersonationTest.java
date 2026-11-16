@@ -1,6 +1,7 @@
 package org.openmetadata.mcp;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -11,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
+import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.security.Principal;
 import java.util.List;
@@ -18,10 +20,12 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.ImpersonationDeniedException;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
@@ -84,6 +88,84 @@ public class McpImpersonationTest {
     assertThat(capturedImpersonation.get())
         .as("ImpersonationContext must be set to MCP bot name on the tool execution thread")
         .isEqualTo("McpApplicationBot");
+  }
+
+  /**
+   * An X-Impersonate-User call runs as the target and is attributed to the bot that asked, as on
+   * REST, so the authorizer re-checks that bot's grant rather than the MCP bot's.
+   */
+  @Test
+  void impersonatedToolCallIsAttributedToTheBotThatAsked() {
+    AtomicReference<String> capturedImpersonation = new AtomicReference<>();
+    JwtFilter jwtFilter = mock(JwtFilter.class);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("viewer");
+    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    when(securityContext.impersonatedUser()).thenReturn("ingestion-bot");
+    when(jwtFilter.getCatalogSecurityContext("test-token", null, "viewer"))
+        .thenReturn(securityContext);
+    DefaultToolContext toolContext = mock(DefaultToolContext.class);
+    doAnswer(
+            invocation -> {
+              capturedImpersonation.set(ImpersonationContext.getImpersonatedBy());
+              return new DefaultToolContext.CallToolOutcome(
+                  McpSchema.CallToolResult.builder()
+                      .content(List.of(McpSchema.TextContent.builder("{}").build()))
+                      .isError(false)
+                      .build(),
+                  0L,
+                  null);
+            })
+        .when(toolContext)
+        .callToolWithMetadata(any(), any(), anyString(), eq(securityContext), any());
+    TestMcpServer server =
+        new TestMcpServer(toolContext, jwtFilter, mock(Authorizer.class), mock(Limits.class));
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("test_tool", Map.of("type", "object")).description("desc").build();
+
+    McpTransportContext context =
+        McpTransportContext.create(
+            Map.of(
+                "Authorization",
+                "test-token",
+                AuthEnrichedMcpContextExtractor.IMPERSONATE_USER_HEADER,
+                "viewer"));
+    server.buildToolSpec(tool).callHandler().apply(context, mock(McpSchema.CallToolRequest.class));
+
+    assertThat(capturedImpersonation.get()).isEqualTo("ingestion-bot");
+  }
+
+  /** A refused X-Impersonate-User is the caller's error, not -32603 "internal error". */
+  @Test
+  void refusedImpersonationAnswersUnauthorized() {
+    JwtFilter jwtFilter = mock(JwtFilter.class);
+    when(jwtFilter.getCatalogSecurityContext("test-token", null, "viewer"))
+        .thenThrow(new ImpersonationDeniedException("Only bot users can impersonate other users"));
+    TestMcpServer server =
+        new TestMcpServer(
+            mock(DefaultToolContext.class), jwtFilter, mock(Authorizer.class), mock(Limits.class));
+    McpSchema.Tool tool =
+        McpSchema.Tool.builder("test_tool", Map.of("type", "object")).description("desc").build();
+    McpTransportContext context =
+        McpTransportContext.create(
+            Map.of(
+                "Authorization",
+                "test-token",
+                AuthEnrichedMcpContextExtractor.IMPERSONATE_USER_HEADER,
+                "viewer"));
+
+    assertThatThrownBy(
+            () ->
+                server
+                    .buildToolSpec(tool)
+                    .callHandler()
+                    .apply(context, mock(McpSchema.CallToolRequest.class)))
+        .isInstanceOfSatisfying(
+            McpError.class,
+            error ->
+                assertThat(error.getJsonRpcError().code())
+                    .isEqualTo(JsonRpcErrorBody.UNAUTHORIZED));
   }
 
   @Test
