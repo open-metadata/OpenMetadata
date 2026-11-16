@@ -64,7 +64,7 @@ const ThemeSettings = (props: PlatformSettingsPageProps) => {
         color="secondary"
         data-testid="reset-button"
         isLoading={isResetting}
-        size="sm"
+        size="xs"
         onPress={handleReset}>
         {t('label.reset')}
       </Button>
