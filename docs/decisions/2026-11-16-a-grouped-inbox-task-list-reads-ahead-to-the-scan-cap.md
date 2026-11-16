@@ -22,11 +22,11 @@ lists, so the counts can't come from the server.
 ## Decision
 While the list is grouped by type, it fetches its next page by itself, without scrolling, until the
 server has no more pages or it holds `MAX_NARROWED_SCAN` (200) tasks, the same cap a type, status or
-title filter already scans to. A page that fails stops the read-ahead, and the list shows a Retry below its rows; scrolling the
-end back into view retries too. The Retry matters when a filter hides every loaded row, since an
-empty list can't scroll.
-While pages remain, each group's count reads "N+" and the Type menu hides its counts. With grouping
-off, the list loads a page at a time on scroll, as before.
+title filter already scans to. A page that fails stops the read-ahead, and the list shows a Retry
+below its rows; scrolling the end back into view retries too. The Retry matters when a filter hides
+every loaded row, since an empty list can't scroll. While pages remain, each group's count reads
+"N+" and the Type menu hides its counts. With grouping off, the list loads a page at a time on
+scroll, as before.
 
 ## Consequences
 Opening the Triage tab, or changing its status, search or sort, can cost up to eight requests
