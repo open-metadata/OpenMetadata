@@ -45,6 +45,7 @@ from pydantic import BaseModel, Field
 from metadata.utils.singleton import Singleton
 
 # How long a summary read waits for the worker to record what it already took off the queue
+# (ADR:2026-11-16-metrics-summary-reads-wait-at-most-one-second-for-the-worker)
 FLUSH_TIMEOUT_SECONDS = 1.0
 
 
@@ -168,8 +169,10 @@ class OperationMetricsState(metaclass=Singleton):
     """
     Thread-safe singleton for collecting operation metrics asynchronously.
 
-    Uses per-thread storage to avoid lock contention during high-throughput
-    multithreaded processing. Metrics are merged when threads complete.
+    Records into per-thread storage, merged into global state when threads
+    complete or a summary is read. Recording and merging hold the same lock,
+    so a merge never takes a thread's metrics while they are being written
+    (ADR:2026-11-16-operation-metrics-record-and-merge-under-one-lock).
 
     Memory-bounded: Uses RunningStatistics (Welford's algorithm) instead
     of storing all timing values. O(1) space per operation type.
@@ -187,7 +190,7 @@ class OperationMetricsState(metaclass=Singleton):
     def __init__(self):
         # Global metrics: category -> operation -> entity_type -> RunningStatistics
         self._global_metrics: dict[str, dict[str, dict[str, RunningStatistics]]] = _create_category_dict()
-        # Per-thread metrics for lock-free recording
+        # Per-thread metrics; written and popped only under `_lock`
         self._thread_metrics: dict[int, dict[str, dict[str, dict[str, RunningStatistics]]]] = defaultdict(
             _create_category_dict
         )
@@ -353,7 +356,8 @@ class OperationMetricsState(metaclass=Singleton):
 
     def merge_all_threads(self) -> None:
         """Merge metrics from all threads into global state"""
-        thread_ids = list(self._thread_metrics.keys())
+        with self._lock:
+            thread_ids = list(self._thread_metrics.keys())
         for tid in thread_ids:
             self.merge_thread_metrics(tid)
 

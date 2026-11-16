@@ -471,11 +471,18 @@ class TestMultiThreadedOperations:
             release.wait(timeout=5)
             record(*args)
 
+        class ReleaseOnWait(threading.Condition):
+            # The worker is let go only once the summary is waiting for it
+            def wait(self, timeout=None):
+                release.set()
+                return super().wait(timeout)
+
+        queue = metrics._async_queue
+        queue.all_tasks_done = ReleaseOnWait(queue.mutex)
         metrics._record_sync = slow_record
         metrics.record_operation("db_queries", "SELECT", 1.0)
-        assert taken.wait(timeout=5)
         # The queue is now empty while the worker still holds the item
-        threading.Timer(0.05, release.set).start()
+        assert taken.wait(timeout=5)
 
         summary = metrics.get_summary()
 
