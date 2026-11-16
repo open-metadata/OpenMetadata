@@ -101,14 +101,17 @@ public final class EntityStatusWorkflows implements StageOwnership {
   }
 
   /**
-   * Whether the active workflow of this name is a lifecycle playbook with an on-request exit, the
-   * only kind of workflow a lifecycle request is addressed to.
+   * Whether the active workflow of this name owns the entity's stage and is a lifecycle playbook
+   * with an on-request exit: the one lifecycle a request on that entity is addressed to.
    */
-  public static boolean takesLifecycleRequests(String workflowName) {
-    return ACTIVE_STAGE_WORKFLOWS.get().stream()
-        .anyMatch(
-            workflow ->
-                workflow.getName().equals(workflowName) && !onRequestStages(workflow).isEmpty());
+  public static boolean takesLifecycleRequests(
+      String workflowName, String entityType, EntityInterface<?> entity) {
+    return ACTIVE.owningStageOf(entityType, entity).filter(workflowName::equals).isPresent()
+        && ACTIVE_STAGE_WORKFLOWS.get().stream()
+            .anyMatch(
+                workflow ->
+                    workflow.getName().equals(workflowName)
+                        && !onRequestStages(workflow).isEmpty());
   }
 
   /** The stages a lifecycle playbook moves an asset to when a user requests it. */

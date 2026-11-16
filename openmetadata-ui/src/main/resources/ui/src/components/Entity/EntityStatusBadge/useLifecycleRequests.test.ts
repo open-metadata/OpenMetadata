@@ -111,13 +111,21 @@ describe('useLifecycleRequests', () => {
     expect(result.current.stages).toEqual([]);
   });
 
-  it('offers nothing when the offer cannot be read', async () => {
+  it('drops an earlier offer when the next read fails', async () => {
+    const { result, rerender, onRequest } = renderRequests();
+
+    await waitFor(() => expect(result.current.stages).toHaveLength(2));
+
     (getRequestableStages as jest.Mock).mockRejectedValue(new Error('down'));
-    const { result } = renderRequests();
+    rerender({
+      entityType: 'domain',
+      entityId: 'domain-id',
+      entityStatus: EntityStatus.InReview,
+      canRequest: true,
+      onRequest,
+    });
 
-    await act(async () => Promise.resolve());
-
-    expect(result.current.stages).toEqual([]);
+    await waitFor(() => expect(result.current.stages).toEqual([]));
   });
 
   it('shows the error when the server refuses the request', async () => {

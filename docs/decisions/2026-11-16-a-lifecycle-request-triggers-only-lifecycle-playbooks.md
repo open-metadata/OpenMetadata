@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `WorkflowTriggerFiltersTest` (lifecycle request cases),
+- **Guard:** `FilterEntityImplTest#eventPath_lifecycleRequestOnly_*`,
   `WorkflowDefinitionResourceIT#test_lifecycleRequestLeavesTheSeededReviewOfAGlossaryTermAlone`
 - **Related:** ADR:2026-11-16-requestable-stages-are-read-per-entity
 
@@ -17,10 +17,11 @@ each seeded workflow would need a data migration and would still miss the workfl
 
 ## Decision
 `workflowTriggerFields.json` lists `lifecycleRequest` under `lifecycle`, not `common`. A change to a
-`lifecycle` field triggers a workflow only when that workflow is an active lifecycle playbook with an
-on-request exit (`EntityStatusWorkflows.takesLifecycleRequests`), whatever its trigger
-`include`/`exclude`; it triggers no other workflow. The approval gate never holds the field, so the
-gate and the trigger agree that no other workflow reacts to it.
+`lifecycle` field triggers a workflow only when that workflow is the active lifecycle playbook that
+owns the entity's stage and has an on-request exit (`EntityStatusWorkflows.takesLifecycleRequests`),
+whatever its trigger `include`/`exclude`; it triggers no other workflow, and `WorkflowEventConsumer`
+passes such a change on so the trigger can decide. The approval gate never holds the field, since it
+is no trigger field, so the gate and the trigger agree that no other workflow reacts to it.
 
 ## Consequences
 A request reaches the one lifecycle it is addressed to, and other workflows on the type see no

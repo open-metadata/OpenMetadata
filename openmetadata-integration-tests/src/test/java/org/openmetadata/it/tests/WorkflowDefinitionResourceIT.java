@@ -17606,7 +17606,11 @@ public class WorkflowDefinitionResourceIT {
     Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("archiveUnoffered"));
     deployDeprecateOnRequestPlaybook(admin, ns, domain);
 
-    assertThrows(Exception.class, () -> requestLifecycleStage(admin, domain, "Archived"));
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class, () -> requestLifecycleStage(admin, domain, "Archived"));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("does not move it to Archived on request"));
     assertNull(admin.domains().get(domain.getId().toString()).getLifecycleRequest());
   }
 
@@ -17649,6 +17653,37 @@ public class WorkflowDefinitionResourceIT {
 
     assertEquals(List.of("Deprecated"), requestableStages(admin, Entity.DOMAIN, offered.getId()));
     assertEquals(List.of(), requestableStages(admin, Entity.DOMAIN, notOffered.getId()));
+    OpenMetadataException missing =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> requestableStages(admin, Entity.DOMAIN, UUID.randomUUID()));
+    assertEquals(404, missing.getStatusCode());
+  }
+
+  @Test
+  @Order(229)
+  void test_putFromACreateRequestKeepsAPendingLifecycleRequest(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("requestKeptOnPut"));
+    deployDeprecateOnRequestPlaybook(admin, ns, domain);
+    requestLifecycleStage(admin, domain, "Deprecated");
+
+    // A create request carries no lifecycle request, so a PUT built from one keeps the stored one.
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/domains",
+            new CreateDomain()
+                .withName(domain.getName())
+                .withDescription("Domain a user asked to deprecate, described again")
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withOwners(domain.getOwners()),
+            RequestOptions.builder().build());
+
+    Domain current = admin.domains().get(domain.getId().toString());
+    assertEquals("Domain a user asked to deprecate, described again", current.getDescription());
+    assertEquals(EntityStatus.DEPRECATED, current.getLifecycleRequest());
   }
 
   private Domain domainOwnedByUser1(OpenMetadataClient admin, String name) {

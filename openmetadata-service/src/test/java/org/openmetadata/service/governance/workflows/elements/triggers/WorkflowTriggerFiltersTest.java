@@ -208,29 +208,6 @@ class WorkflowTriggerFiltersTest {
     assertFalse(WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "lifecycleRequest", null, null));
     assertFalse(
         WorkflowTriggerFilters.fieldTriggers(
-            GLOSSARY, "lifecycleRequest", List.of(), List.of("entityStatus"), false));
-  }
-
-  @Test
-  void lifecycleRequestTriggersAPlaybookThatTakesRequestsWhateverItsIncludeAndExclude() {
-    assertTrue(
-        WorkflowTriggerFilters.fieldTriggers(
-            GLOSSARY, "lifecycleRequest", List.of(), List.of("entityStatus"), true));
-    assertTrue(
-        WorkflowTriggerFilters.fieldTriggers(
-            GLOSSARY, "lifecycleRequest", List.of("description"), null, true));
-    assertTrue(
-        WorkflowTriggerFilters.fieldTriggers(
-            GLOSSARY, "lifecycleRequest", null, List.of("lifecycleRequest"), true));
-  }
-
-  @Test
-  void aPlaybookThatTakesRequestsKeepsItsIncludeAndExcludeForOtherFields() {
-    assertFalse(
-        WorkflowTriggerFilters.fieldTriggers(
-            GLOSSARY, "entityStatus", List.of(), List.of("entityStatus"), true));
-    assertFalse(
-        WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "tags", List.of("description"), null, true));
-    assertTrue(WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "description", null, null, true));
+            GLOSSARY, "lifecycleRequest", List.of(), List.of("entityStatus")));
   }
 }

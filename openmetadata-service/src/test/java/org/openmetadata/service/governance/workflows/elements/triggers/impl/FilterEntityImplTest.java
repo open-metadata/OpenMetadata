@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -125,18 +126,23 @@ class FilterEntityImplTest {
   }
 
   @Test
-  void eventPath_lifecycleRequestOnly_doesNotFireAWorkflowThatTakesNoRequests() {
+  void
+      eventPath_lifecycleRequestOnly_doesNotFireAWorkflowThatDoesNotOwnTheStageOrTakesNoRequests() {
     givenEntity(glossary().withChangeDescription(changeOf("lifecycleRequest")));
     exclude("entityStatus");
 
     try (MockedStatic<EntityStatusWorkflows> workflows = mockStatic(EntityStatusWorkflows.class)) {
       workflows
-          .when(() -> EntityStatusWorkflows.takesLifecycleRequests("PendingChangeApprovalWorkflow"))
+          .when(
+              () ->
+                  EntityStatusWorkflows.takesLifecycleRequests(
+                      eq("PendingChangeApprovalWorkflow"), anyString(), any()))
           .thenReturn(false);
       delegate.execute(execution);
     }
 
-    assertFalse(passesFilter(), "A lifecycle request must reach only the lifecycle it asks");
+    assertFalse(
+        passesFilter(), "A lifecycle request must reach only the lifecycle that owns the stage");
   }
 
   @Test
@@ -146,7 +152,10 @@ class FilterEntityImplTest {
 
     try (MockedStatic<EntityStatusWorkflows> workflows = mockStatic(EntityStatusWorkflows.class)) {
       workflows
-          .when(() -> EntityStatusWorkflows.takesLifecycleRequests("PendingChangeApprovalWorkflow"))
+          .when(
+              () ->
+                  EntityStatusWorkflows.takesLifecycleRequests(
+                      eq("PendingChangeApprovalWorkflow"), anyString(), any()))
           .thenReturn(true);
       delegate.execute(execution);
     }

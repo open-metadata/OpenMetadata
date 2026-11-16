@@ -12,7 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BooleanSupplier;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -100,7 +99,7 @@ public class FilterEntityImpl implements JavaDelegate {
               excludedFilter,
               includeFields,
               filterLogic,
-              () -> EntityStatusWorkflows.takesLifecycleRequests(mainWorkflowName(execution)));
+              mainWorkflowName(execution));
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -163,7 +162,7 @@ public class FilterEntityImpl implements JavaDelegate {
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic,
-      BooleanSupplier takesLifecycleRequests) {
+      String workflowName) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
     EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
@@ -177,7 +176,9 @@ public class FilterEntityImpl implements JavaDelegate {
       fieldBasedFilter =
           changedFields.isEmpty()
               || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter)
-              || (carriesLifecycleRequest(changedFields) && takesLifecycleRequests.getAsBoolean());
+              || (carriesLifecycleRequest(changedFields)
+                  && EntityStatusWorkflows.takesLifecycleRequests(
+                      workflowName, entityType, entity));
     }
 
     return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
@@ -222,8 +223,8 @@ public class FilterEntityImpl implements JavaDelegate {
                     entityType, field.getName(), includeFields, excludedFilter));
   }
 
-  // A lifecycle request fires only the lifecycle playbooks that take requests, whatever their
-  // include/exclude; the playbook lookup runs only when a request is part of the change.
+  // A lifecycle request fires only the lifecycle that owns the entity's stage and takes requests,
+  // whatever its include/exclude; that lookup runs only when a request is part of the change.
   private boolean carriesLifecycleRequest(List<FieldChange> changedFields) {
     return changedFields.stream()
         .anyMatch(field -> WorkflowTriggerFilters.isLifecycleField(field.getName()));

@@ -337,8 +337,17 @@ test.describe('Lifecycle request', () => {
   test('a domain its lifecycle does not offer Deprecate to shows no request entry', async ({
     page,
   }) => {
+    // The offer is read after the page renders; wait for it before checking the chip is absent.
+    const offer = page.waitForResponse((response) =>
+      response
+        .url()
+        .includes(
+          `/api/v1/metadata/types/lifecycleStages/domain/${notOffered.id}/requestableStages`
+        )
+    );
     await openDomain(page, notOffered);
 
+    expect(await (await offer).json()).toEqual([]);
     await expect(
       page.getByTestId('entity-status-request-trigger')
     ).toHaveCount(0);

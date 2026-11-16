@@ -381,8 +381,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   /** Stored versions of a task carry its payload, so they get the same change-request redaction. */
   @Override
   protected Optional<UnaryOperator<Task>> snapshotRedaction(SecurityContext securityContext) {
-    return Optional.of(
-        task -> ChangeRequestVisibility.redactTask(authorizer, securityContext, task));
+    return Optional.of(redactionFor(securityContext));
+  }
+
+  // Every response that returns a task shows its change-request fields only to whoever may view
+  // the request.
+  private UnaryOperator<Task> redactionFor(SecurityContext securityContext) {
+    return task -> ChangeRequestVisibility.redactTask(authorizer, securityContext, task);
   }
 
   private void applyTaskSearch(ListFilter filter, String q) {
@@ -1135,7 +1140,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = getTask(create, securityContext.getUserPrincipal().getName());
     enforceDomainOnlyPolicyForTask(securityContext, task);
     authorizeCreateTaskOnAboutEntity(securityContext, task);
-    return createOrUpdate(uriInfo, securityContext, task);
+    return withRedactedEntity(
+        createOrUpdate(uriInfo, securityContext, task), redactionFor(securityContext));
   }
 
   /**
@@ -1354,13 +1360,15 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             new AuthRequest(
                 new OperationContext(Entity.TASK, effectivePatch),
                 new TaskResourceContext(original)));
-    return patchInternal(
-        uriInfo,
-        securityContext,
-        effectiveAuthRequests,
-        AuthorizationLogic.ALL,
-        id,
-        effectivePatch);
+    return withRedactedEntity(
+        patchInternal(
+            uriInfo,
+            securityContext,
+            effectiveAuthRequests,
+            AuthorizationLogic.ALL,
+            id,
+            effectivePatch),
+        redactionFor(securityContext));
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
@@ -1634,7 +1642,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             comment,
             userName,
             ChangeRequestReview.of(resolveTask));
-    return Response.ok(resolvedTask).build();
+    return Response.ok(
+            ChangeRequestVisibility.redactTask(authorizer, securityContext, resolvedTask))
+        .build();
   }
 
   /**
@@ -1859,7 +1869,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     requireClosable(task);
 
     Task closedTask = repository.closeTask(task, userName, comment);
-    return Response.ok(closedTask).build();
+    return Response.ok(ChangeRequestVisibility.redactTask(authorizer, securityContext, closedTask))
+        .build();
   }
 
   @DELETE
@@ -1962,7 +1973,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             null,
             comment,
             userName);
-    return Response.ok(resolvedTask).build();
+    return Response.ok(
+            ChangeRequestVisibility.redactTask(authorizer, securityContext, resolvedTask))
+        .build();
   }
 
   // ========================= Bulk Operations Endpoint =========================
@@ -2314,7 +2327,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withCreatedAt(System.currentTimeMillis());
 
     Task updatedTask = repository.addComment(task, comment);
-    return Response.ok(updatedTask)
+    return Response.ok(ChangeRequestVisibility.redactTask(authorizer, securityContext, updatedTask))
         .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
         .build();
   }
@@ -2350,7 +2363,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     Task updatedTask =
         repository.editComment(task, commentId, updateComment.getMessage(), userName);
-    return Response.ok(updatedTask).build();
+    return Response.ok(ChangeRequestVisibility.redactTask(authorizer, securityContext, updatedTask))
+        .build();
   }
 
   @DELETE
@@ -2388,7 +2402,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     Task task = repository.get(uriInfo, id, fields);
 
     Task updatedTask = repository.deleteComment(task, commentId, userName, isAdmin);
-    return Response.ok(updatedTask).build();
+    return Response.ok(ChangeRequestVisibility.redactTask(authorizer, securityContext, updatedTask))
+        .build();
   }
 
   private Task getTask(CreateTask create, String user) {

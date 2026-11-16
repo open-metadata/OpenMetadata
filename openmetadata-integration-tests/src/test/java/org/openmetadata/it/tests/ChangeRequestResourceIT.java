@@ -255,8 +255,13 @@ class ChangeRequestResourceIT {
     }
     String single = taskJsonAs(SdkClients.user3Client(), task.getId());
     String listed = openEntityTasksJsonAs(SdkClients.user3Client(), fqn);
+    String commented =
+        JsonUtils.pojoToJson(
+            SdkClients.user3Client()
+                .tasks()
+                .addComment(task.getId().toString(), "Looks fine to me"));
     assertTrue(listed.contains(task.getId().toString()));
-    for (String body : List.of(single, listed)) {
+    for (String body : List.of(single, listed, commented)) {
       assertFalse(body.contains(staged));
       assertFalse(body.contains(requestId.toString()));
     }

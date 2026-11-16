@@ -3232,6 +3232,10 @@ om:lifecycleCreated a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "lifecycleCreated" .
 
+om:lifecycleRequest a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "lifecycleRequest" .
+
 om:lifecycleUpdated a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "lifecycleUpdated" .

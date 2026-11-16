@@ -62,13 +62,8 @@ import org.openmetadata.service.util.RestUtil;
 public final class ApprovalGate {
   // Identity fields are carried with a held request but never gate one. A stage change gates like
   // any other field, so moving a held asset to another stage waits for approval.
-  // Identity fields, and the lifecycle request a user sends to the lifecycle itself.
   private static final Set<String> STRUCTURAL_FIELDS =
-      Set.of(
-          Entity.FIELD_NAME,
-          Entity.FIELD_FULLY_QUALIFIED_NAME,
-          Entity.FIELD_DELETED,
-          Entity.FIELD_LIFECYCLE_REQUEST);
+      Set.of(Entity.FIELD_NAME, Entity.FIELD_FULLY_QUALIFIED_NAME, Entity.FIELD_DELETED);
   private static final Set<String> BOOKKEEPING_FIELDS =
       Set.of(
           "version",
