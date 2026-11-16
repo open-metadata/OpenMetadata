@@ -130,6 +130,42 @@ describe('OMSelectWidget', () => {
     expect(screen.getByTestId('options').children).toHaveLength(2);
   });
 
+  it('restores static options when reopened with the toggle', () => {
+    render(<OMSelectWidget {...baseProps} showSearch />);
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Option 2' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+  });
+
+  it('uses updated static labels when the selection is echoed into the input', () => {
+    const { rerender } = render(
+      <OMSelectWidget {...baseProps} showSearch value="opt1" />
+    );
+    rerender(
+      <OMSelectWidget
+        {...baseProps}
+        showSearch
+        listValues={[
+          { value: 'opt1', title: 'Renamed option' },
+          { value: 'opt2', title: 'Option 2' },
+        ]}
+        value="opt1"
+      />
+    );
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Renamed option' },
+    });
+
+    expect(screen.getByTestId('options')).toHaveTextContent('Renamed option');
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+  });
+
   it('restores the full option list from cache when the dropdown is reopened', async () => {
     const allOptions = [
       { value: 'opt1', title: 'Option 1' },

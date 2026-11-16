@@ -124,3 +124,62 @@ test('static entity options can be searched and selected inside the filter dialo
     page.getByRole('option', { name: 'Table', exact: true })
   ).toBeVisible();
 });
+
+for (const closeAction of ['selection', 'Escape'] as const) {
+  test(`static options filter on the first character after ${closeAction}`, async ({
+    page,
+  }) => {
+    await page.setContent('<div id="root"></div>');
+    await page.addStyleTag({
+      path: 'node_modules/@openmetadata/ui-core-components/dist/ui-core-components.css',
+    });
+    await page.addScriptTag({ content: bundle });
+    const input = page.getByTestId('entity-widget').getByRole('combobox');
+    await input.fill('test');
+    await expect(
+      page.getByRole('option', { name: 'Test Case', exact: true })
+    ).toBeVisible();
+    if (closeAction === 'selection') {
+      await page
+        .getByRole('option', { name: 'Test Case', exact: true })
+        .click();
+      await expect(page.getByTestId('selected-entity')).toHaveText('testCase');
+    } else {
+      await input.press('Escape');
+    }
+    await expect(input).toHaveAttribute('aria-expanded', 'false');
+    await input.press('ControlOrMeta+a');
+    await input.press('b');
+    await expect(input).toHaveValue('b');
+    await expect(
+      page.getByRole('option', { name: 'Table', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('option', { name: 'Test Case', exact: true })
+    ).toHaveCount(0);
+    await page.getByRole('option', { name: 'Table', exact: true }).click();
+    await expect(page.getByTestId('selected-entity')).toHaveText('table');
+  });
+}
+
+test('clicking the input after a filtered selection restores all static options', async ({
+  page,
+}) => {
+  await page.setContent('<div id="root"></div>');
+  await page.addStyleTag({
+    path: 'node_modules/@openmetadata/ui-core-components/dist/ui-core-components.css',
+  });
+  await page.addScriptTag({ content: bundle });
+  const input = page.getByTestId('entity-widget').getByRole('combobox');
+  await input.fill('case');
+  await page.getByRole('option', { name: 'Test Case', exact: true }).click();
+  await expect(page.getByTestId('selected-entity')).toHaveText('testCase');
+  await expect(input).toHaveAttribute('aria-expanded', 'false');
+  await input.click();
+  await expect(
+    page.getByRole('option', { name: 'Table', exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('option', { name: 'Test Case', exact: true })
+  ).toBeVisible();
+});

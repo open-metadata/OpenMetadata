@@ -54,9 +54,9 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
 }) => {
   const staticItems = toSelectItems(listValues);
   const isAsync = Boolean(useAsyncSearch && asyncFetch);
-  const [search, setSearch] = useState('');
+  const [searchText, setSearchText] = useState('');
   const filteredItems = staticItems.filter((item) =>
-    item.label.toLocaleLowerCase().includes(search.toLocaleLowerCase())
+    item.label.toLocaleLowerCase().includes(searchText.toLocaleLowerCase())
   );
   // Seed with the current value as a placeholder so the widget shows something while the async fetch is in-flight.
   const [items, setItems] = useState<SelectItemType[]>(() => {
@@ -97,18 +97,19 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   );
 
   useEffect(() => {
-    if (useAsyncSearch && asyncFetch) {
+    if (isAsync) {
       loadAsync('');
     }
-  }, [fieldKey, useAsyncSearch]);
+  }, [fieldKey, isAsync]);
 
   // The label React Aria puts in the input while a value is selected.
   const selectedKey =
     value === null || value === undefined ? null : String(value);
+  const labelItems = isAsync ? items : staticItems;
   const selectedLabel =
     selectedKey === null
       ? undefined
-      : items.find((item) => item.id === selectedKey)?.label;
+      : labelItems.find((item) => item.id === selectedKey)?.label;
 
   if (isAsync || showSearch) {
     return (
@@ -138,20 +139,27 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
             if (isAsync) {
               loadAsync(v);
             } else {
-              setSearch(v);
+              setSearchText(v);
             }
           }}
-          onOpenChange={(isOpen) => {
-            if (isOpen && !isAsync) {
-              setSearch('');
-            } else if (isOpen && defaultOptionsRef.current.length > 0) {
+          onOpenChange={(isOpen, trigger) => {
+            if (isOpen && !isAsync && trigger !== 'input') {
+              setSearchText('');
+            } else if (
+              isOpen &&
+              isAsync &&
+              defaultOptionsRef.current.length > 0
+            ) {
               // Restore cached defaults immediately so the popup is not empty while the user types.
               setItems(defaultOptionsRef.current);
             }
           }}
-          onSelectionChange={(key) =>
-            setValue(key !== null ? String(key) : null)
-          }>
+          onSelectionChange={(key) => {
+            if (!isAsync && key !== null) {
+              setSearchText('');
+            }
+            setValue(key !== null ? String(key) : null);
+          }}>
           {(item) => (
             <Select.Item id={item.id} key={item.id}>
               {item.label}
