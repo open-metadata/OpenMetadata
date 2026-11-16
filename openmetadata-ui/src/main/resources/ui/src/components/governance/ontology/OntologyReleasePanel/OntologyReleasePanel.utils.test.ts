@@ -21,6 +21,8 @@ import {
   getPublicationActions,
   isSameWorkingState,
   nextSemanticVersion,
+  releaseBump,
+  releaseDisplayStatus,
   visibleHistoryReleases,
 } from './OntologyReleasePanel.utils';
 
@@ -231,5 +233,65 @@ describe('getPublicationActions', () => {
   it('a write that is not ready disables the enabled actions', () => {
     expect(row({ isReady: false }).primary?.isDisabled).toBe(true);
     expect(row({ isReady: false }).secondary?.isDisabled).toBe(true);
+  });
+});
+
+describe('release display status', () => {
+  const at = (
+    id: string,
+    revision: number,
+    entityStatus: EntityStatus,
+    extra: Partial<OntologyRelease> = {}
+  ) =>
+    ({
+      id,
+      releaseRevision: revision,
+      entityStatus,
+      ...extra,
+    } as OntologyRelease);
+  const active = at('active', 5, EntityStatus.Approved);
+
+  it.each([
+    ['the active release', active, 'active'],
+    [
+      'an older approved release',
+      at('old', 3, EntityStatus.Approved),
+      'superseded',
+    ],
+    [
+      'a newer approved release',
+      at('new', 6, EntityStatus.Approved),
+      'approved',
+    ],
+    ['a release in review', at('rev', 7, EntityStatus.InReview), 'inReview'],
+    ['a rejected release', at('rej', 7, EntityStatus.Rejected), 'rejected'],
+    ['a draft never sent for review', at('d', 7, EntityStatus.Draft), 'draft'],
+  ])('reads %s as %s', (_, release, expected) => {
+    expect(releaseDisplayStatus(release, active)).toBe(expected);
+  });
+
+  it('reads a draft whose review was withdrawn as withdrawn', () => {
+    expect(
+      releaseDisplayStatus(at('wd', 7, EntityStatus.Draft), active, true)
+    ).toBe('withdrawn');
+  });
+
+  it('keeps an approved release approved when nothing is active', () => {
+    expect(releaseDisplayStatus(at('a', 1, EntityStatus.Approved))).toBe(
+      'approved'
+    );
+  });
+});
+
+describe('release bump', () => {
+  it.each([
+    ['1.1.0', '1.0.0', VersionBump.Minor],
+    ['1.0.1', '1.0.0', VersionBump.Patch],
+    ['2.0.0', '1.4.2', VersionBump.Major],
+    ['1.0.0', undefined, undefined],
+    [undefined, '1.0.0', undefined],
+    ['1.0', '1.0.0', undefined],
+  ])('reads %s from %s as %s', (version, base, expected) => {
+    expect(releaseBump(version, base)).toBe(expected);
   });
 });

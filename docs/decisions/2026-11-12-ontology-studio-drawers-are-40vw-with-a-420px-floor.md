@@ -1,7 +1,7 @@
 # Ontology Studio side drawers are 40% of the screen wide, never narrower than 420px
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (drawers overlay the canvas edge to edge; no canvas gap)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (drawers overlay the canvas edge to edge; no canvas gap); v3 2026-11-15 (moved to Collate with the Studio UI)
 - **Deciders:** UI team
 - **Guard:** reviewer
 - **Related:** open-metadata/OpenMetadata#37577, open-metadata/OpenMetadata#37607
@@ -34,3 +34,7 @@ and the drawer was inset from the screen edges unlike every other drawer in the 
 - The width lives in one constant; change it there, never at a call site.
 - A node or empty state under the drawer can be covered; the person pans or closes the drawer.
 - On viewports where 40vw is under 420px the floor wins and the drawer covers more of the canvas.
+
+## Amendment
+
+v3 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate); this rule now governs Collate's copy of that code.
