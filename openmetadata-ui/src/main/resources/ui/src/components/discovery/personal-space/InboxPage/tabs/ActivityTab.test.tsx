@@ -519,6 +519,40 @@ describe('ActivityTab', () => {
     ).toBeInTheDocument();
   });
 
+  // The cut is the whole feed's: a type filter that empties the cut day must
+  // not move the floor onto a complete one.
+  it('keeps the floor on the cut day when a type filter empties it', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        {
+          activity: {
+            id: 'tags',
+            eventType: 'TagsUpdated',
+            timestamp: 3 * DAY,
+          },
+        },
+        {
+          activity: {
+            id: 'created',
+            eventType: 'EntityCreated',
+            timestamp: DAY,
+          },
+        },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.one-update'
+    );
+  });
+
   it('says nothing about a cap when the feed is complete', () => {
     activityState = {
       items: [{ activity: { id: 'a1', timestamp: 1 } }],

@@ -414,11 +414,13 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   // Groups keep the feed's newest-first order, as does each group's cards. Only
   // the revealed batch renders, but a header counts its whole group.
   // A capped feed is cut inside its oldest day, so only that day's count can
-  // fall short.
+  // fall short. The cut is the whole feed's, before any type filter, so a
+  // filter that empties that day marks no other
+  // (ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item).
   const groups = useMemo(() => {
     const { key, title } = GROUPING[grouping];
     const totals = countBy(filteredItems, key);
-    const oldest = last(filteredItems);
+    const oldest = last(items);
     const cutKey =
       isCapped && oldest && grouping === ActivityGrouping.Day
         ? key(oldest)
@@ -432,7 +434,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       total: totals[key(groupItems[0])],
       isFloor: key(groupItems[0]) === cutKey,
     }));
-  }, [filteredItems, visibleItems, grouping, isCapped, t]);
+  }, [items, filteredItems, visibleItems, grouping, isCapped, t]);
   const GroupIcon = GROUPING[grouping].Icon;
   const timeFormat =
     grouping === ActivityGrouping.Day
