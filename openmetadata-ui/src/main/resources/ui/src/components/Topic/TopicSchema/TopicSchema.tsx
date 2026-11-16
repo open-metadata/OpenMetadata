@@ -246,8 +246,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     ]
   );
 
-  // topicDetails.version is a dependency so a field saved from the column detail
-  // panel (which PATCHes the topic) reloads the page the user is on.
+  // Every saved topic update (inline or from the column detail panel) replaces
+  // messageSchema, so its identity triggers a reload of the page the user is on.
+  // topicDetails.version is not enough: quick edits by the same user can share one version.
   useEffect(() => {
     if (!isVersionView) {
       fetchSchemaFields(currentPage, searchText || undefined);
@@ -257,7 +258,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     currentPage,
     searchText,
     fetchSchemaFields,
-    topicDetails.version,
+    topicDetails.messageSchema,
   ]);
 
   const handleFieldsPageChange = useCallback(

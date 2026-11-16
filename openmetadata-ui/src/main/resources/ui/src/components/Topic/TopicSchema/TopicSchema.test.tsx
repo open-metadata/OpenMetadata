@@ -275,6 +275,38 @@ describe('Topic Schema', () => {
     expect(screen.queryByTestId('editor-modal')).toBeNull();
   });
 
+  it('reloads the page after a saved update that keeps the same version', async () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await screen.findByText('first_name');
+    mockGetTopicSchemaFields.mockClear();
+
+    // A consolidated edit returns the same version but a new messageSchema.
+    mockUseGenericContext.mockReturnValue({
+      ...defaultGenericContext(),
+      data: {
+        ...mockTopicDetails,
+        messageSchema: { ...mockTopicDetails.messageSchema },
+      },
+    });
+    rerender(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(mockGetTopicSchemaFields).toHaveBeenCalledWith(
+        'sample_kafka.customer_events',
+        expect.objectContaining({ offset: 0 })
+      )
+    );
+  });
+
   it('sorts by name on the server before paging', async () => {
     render(
       <MemoryRouter>
