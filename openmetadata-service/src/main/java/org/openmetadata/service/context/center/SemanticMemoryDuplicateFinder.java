@@ -16,6 +16,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -64,9 +65,6 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
 
   /** A memory a person decided: a retired stage, or a correction in any stage. */
   private static final List<Map<String, Object>> DECIDED = List.of(decidedClause());
-
-  /** A memory still giving its question a value: Approved, awaiting review, or stored stageless. */
-  private static final List<Map<String, Object>> STATING = List.of(statingClause());
 
   private static final String SOURCE_TYPE = "sourceType";
 
@@ -139,10 +137,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         repository, vectorServiceSupplier, searchRepositorySupplier, EquivalenceJudge.EXACT_ONLY);
   }
 
-  /**
-   * A lookup that only answers {@link #isHeldAcrossDocuments} and {@link #anotherValues}: it never
-   * judges equivalence.
-   */
+  /** A lookup that only answers {@link #isHeldAcrossDocuments}: it never judges equivalence. */
   public static SemanticMemoryDuplicateFinder forDecisionChecks(
       ContextMemoryRepository repository) {
     return exactOnly(repository, () -> null);
@@ -168,15 +163,10 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
    */
   private static Optional<DuplicateMatch> anotherValue(
       ContextMemory derived, List<ContextMemory> candidates) {
-    List<ContextMemory> values =
-        candidates.stream()
-            .filter(candidate -> MemoryReviewHolds.givesAnotherValue(candidate, derived))
-            .toList();
-    return values.isEmpty()
-        ? Optional.empty()
-        : Optional.of(
-            new DuplicateMatch.AnotherValue(
-                values.stream().filter(MemoryReviewHolds::isApproved).toList()));
+    return candidates.stream()
+        .filter(candidate -> MemoryReviewHolds.givesAnotherValue(candidate, derived))
+        .findFirst()
+        .map(another -> new DuplicateMatch.AnotherValue());
   }
 
   /**
@@ -201,26 +191,26 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
    */
   public boolean isHeldByADecision(ContextMemory pending) {
     return MemoryReviewHolds.statesANumber(pending)
-        && keywordCandidates(persisted(pending), DECIDED).stream()
-            .anyMatch(decided -> MemoryReviewHolds.holdsAcrossDocuments(decided, pending));
+        && !keywordCandidates(
+                persisted(pending),
+                DECIDED,
+                decided -> MemoryReviewHolds.holdsAcrossDocuments(decided, pending))
+            .isEmpty();
   }
 
   /**
    * Whether, read now, another document holds {@code pending} for a person: a decision there, or
-   * another value it gives for the same question. Approving its document leaves it to an admin.
+   * another value it gives for the same question. Approving its document leaves it to an admin,
+   * and Collate's reconciliation holds it. One lookup: nothing it finds is ever named.
    */
   public boolean isHeldAcrossDocuments(ContextMemory pending) {
-    return isHeldByADecision(pending) || !anotherValues(pending).isEmpty();
+    return !keywordCandidates(persisted(pending), ANY_STAGE, other -> holds(other, pending))
+        .isEmpty();
   }
 
-  /**
-   * The memories of other documents, Approved or awaiting review, that answer {@code memory}'s
-   * question with another value, read now from the memory index.
-   */
-  public List<ContextMemory> anotherValues(ContextMemory memory) {
-    return keywordCandidates(persisted(memory), STATING).stream()
-        .filter(stating -> MemoryReviewHolds.givesAnotherValue(stating, memory))
-        .toList();
+  private static boolean holds(ContextMemory other, ContextMemory pending) {
+    return MemoryReviewHolds.givesAnotherValue(other, pending)
+        || MemoryReviewHolds.holdsAcrossDocuments(other, pending);
   }
 
   /** A stored memory is stated by every document linked to it. */
@@ -310,12 +300,21 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             0,
             null,
             SEARCH_SUBJECT);
-    return loadCandidates(response == null ? null : response.getHits(), value);
+    return loadCandidates(response == null ? null : response.getHits(), value, candidate -> true);
   }
 
-  /** A ranked lookup: a rewording shares most of a fact's words, never all of them in one field. */
   private List<ContextMemory> keywordCandidates(
       StatedValue value, List<Map<String, Object>> stages) {
+    return keywordCandidates(value, stages, candidate -> true);
+  }
+
+  /**
+   * A ranked lookup: a rewording shares most of a fact's words, never all of them in one field.
+   * {@code relevant} is applied before the candidate limit, so a holding memory ranked below
+   * unrelated ones is still found.
+   */
+  private List<ContextMemory> keywordCandidates(
+      StatedValue value, List<Map<String, Object>> stages, Predicate<ContextMemory> relevant) {
     try {
       SearchResultListMapper result =
           searchClient()
@@ -323,7 +322,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
                   keywordQuery(value.memory()),
                   keywordFilter(value.memory(), stages),
                   KEYWORD_FETCH_LIMIT);
-      return loadCandidates(result.getResults(), value);
+      return loadCandidates(result.getResults(), value, relevant);
     } catch (IOException e) {
       throw indexUnavailable(e);
     }
@@ -398,21 +397,6 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             sourceTypeIs(ContextMemorySourceType.MANUAL)));
   }
 
-  /** A stating stage, or none: a memory saved before stages existed still states its value. */
-  private static Map<String, Object> statingClause() {
-    List<String> statingStages =
-        MemoryReviewHolds.STATING_STAGES.stream().map(ContextMemoryStatus::value).toList();
-    Map<String, Object> stageless =
-        Map.of(
-            "bool",
-            Map.of(
-                "must_not",
-                List.of(Map.of("exists", Map.of("field", ContextMemoryIndex.FIELD_STATUS)))));
-    return anyOf(
-        List.of(
-            Map.of("terms", Map.of(ContextMemoryIndex.FIELD_STATUS, statingStages)), stageless));
-  }
-
   private static Map<String, Object> anyOf(List<Map<String, Object>> clauses) {
     return Map.of("bool", Map.of("should", clauses, "minimum_should_match", 1));
   }
@@ -421,11 +405,13 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return Map.of("term", Map.of(SOURCE_TYPE, sourceType.value()));
   }
 
-  /** Hits stay in rank order; only the first few that may be reused are compared. */
-  private List<ContextMemory> loadCandidates(List<Map<String, Object>> hits, StatedValue value) {
+  /** Hits stay in rank order; only the first few that may be reused, and are relevant, count. */
+  private List<ContextMemory> loadCandidates(
+      List<Map<String, Object>> hits, StatedValue value, Predicate<ContextMemory> relevant) {
     return listOrEmpty(hits).stream()
         .map(hit -> loadCandidate(hit, value))
         .filter(Objects::nonNull)
+        .filter(relevant)
         .limit(CANDIDATE_LIMIT)
         .toList();
   }

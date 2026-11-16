@@ -470,9 +470,9 @@ class ContextMemoryExtractionIT {
   }
 
   /**
-   * OSS: a person's Approved correction disputes the figure it replaced when another file states
-   * that figure, so the figure waits in a conflict review. The memory index finds a correction by
-   * the file it names, which a later write of the correction, here linking a copy, still indexes.
+   * OSS: a person's correction holds the figure it replaced when another file states that figure.
+   * The memory index finds a correction by the file it names, which a later write of the
+   * correction, here linking a copy, still indexes.
    */
   @Test
   void oss_theFigureAPersonCorrectedWaitsForReviewWhenAnotherFileStatesIt(TestNamespace ns)
@@ -500,13 +500,13 @@ class ContextMemoryExtractionIT {
     ContextMemory held = extracted(second.getEntityReference()).getFirst();
     assertNotEquals(corrected.getId(), held.getId());
     assertEquals(BILLING_DAY.answer(), held.getAnswer());
-    assertHeldInReviewAgainst(held, corrected);
+    assertHeldNamingNothing(held);
   }
 
   /**
-   * OSS: a note a person wrote citing a file states its fact, so another file's other figure for
-   * it waits in a conflict review against the note. The memory index names the note's file from
-   * the source the note was created with.
+   * OSS: a note a person wrote citing a file is a decision on its fact, so another file's other
+   * figure for it waits for review. The memory index names the note's file from the source the
+   * note was created with.
    */
   @Test
   void oss_aPersonsNoteCitingAFileHoldsAnotherFilesFigure(TestNamespace ns) throws Exception {
@@ -537,17 +537,16 @@ class ContextMemoryExtractionIT {
 
     ContextMemory held = extracted(second.getEntityReference()).getFirst();
     assertEquals(BILLING_DAY.answer(), held.getAnswer());
-    assertHeldInReviewAgainst(held, note);
+    assertHeldNamingNothing(held);
   }
 
   /**
    * The Heronfield report: an Approved figure in one file, then another file's figure for the same
-   * question. The second never comes out Approved beside the first: it waits in Draft disputing the
-   * first, so a conflict review opens for the owners of both files.
+   * question. The second never comes out Approved beside the first: it waits for a person, naming
+   * nothing of the first file, and no review task opens.
    */
   @Test
-  void oss_anotherFilesFigureBesideAnApprovedOneOpensAConflictReview(TestNamespace ns)
-      throws Exception {
+  void oss_anotherFilesFigureBesideAnApprovedOneWaitsForReview(TestNamespace ns) throws Exception {
     assumeTrue(
         Entity.getSearchRepository().getVectorIndexService() == null,
         "covers the memory index lookup that runs without vector search");
@@ -566,20 +565,17 @@ class ContextMemoryExtractionIT {
 
     ContextMemory held = extracted(second.getEntityReference()).getFirst();
     assertEquals(BILLING_DAY_MOVED.answer(), held.getAnswer());
-    assertHeldInReviewAgainst(held, approved);
+    assertHeldNamingNothing(held);
     assertEquals(Set.of(ContextMemoryStatus.APPROVED), statuses(List.of(approved)));
   }
 
-  /** Draft, disputing only {@code stated} for the fixed reason that names no memory. */
-  private static void assertHeldInReviewAgainst(ContextMemory held, ContextMemory stated)
-      throws Exception {
+  /** Unprocessed, with no dispute or reason that could name another file's memory. */
+  private static void assertHeldNamingNothing(ContextMemory held) throws Exception {
     ContextMemory stored =
         RestClient.admin().getById(MEMORIES, held.getId(), "", ContextMemory.class);
-    assertEquals(ContextMemoryStatus.DRAFT, stored.getEntityStatus());
-    assertEquals(ContextMemoryReconciler.ANOTHER_DOCUMENTS_VALUE, stored.getStatusReason());
-    assertEquals(
-        List.of(stated.getId()),
-        stored.getDisputes().stream().map(dispute -> dispute.getMemory().getId()).toList());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, stored.getEntityStatus());
+    assertTrue(stored.getDisputes() == null || stored.getDisputes().isEmpty());
+    assertNull(stored.getStatusReason());
   }
 
   /**

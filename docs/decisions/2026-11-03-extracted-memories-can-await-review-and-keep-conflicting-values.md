@@ -6,7 +6,8 @@
   v4 2026-11-16 (another document's answer to the question is a conflict)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryExtractorTest`, `ContextMemoryReconcilerTest`, `MemoryConflictReviewTasksTest`,
-  `MemoryReviewHoldsTest`, `SemanticMemoryDuplicateFinderTest`, `ContextMemoryExtractionIT`
+  `MemoryReviewHoldsTest`, `SemanticMemoryDuplicateFinderTest`, `ContextMemoryExtractionIT`,
+  `ContextMemoryExtractedApprovalIT`
 - **Related:** ADR:2026-09-29-context-file-memory-reuse, ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
 
 ## Context
@@ -125,22 +126,25 @@ Release testing approved one file's support desk hours, then uploaded two files 
 neither was held, and Collate's reconciliation approved both. An Approved memory was no decision
 (v3), and separate documents are never one reconciliation group.
 
-A derived value is now also held by another document's memory that answers its question otherwise
-(`MemoryReviewHolds.givesAnotherValue`): one in a stage that still states a value (Approved,
-Unprocessed, Draft, or none), asking the same question as `sameQuestion` reads it, with another
-answer, case, spacing and parenthesized citations aside. Only the duplicate check's candidates count:
-document facts of the value's scope, anchored where everyone may read them. An equivalent fact still
-links first.
+- A derived value is now also held by another document's memory that answers its question
+  otherwise (`MemoryReviewHolds.givesAnotherValue`): one in a stage that still states a value
+  (Approved, Unprocessed, Draft, or none), asking the same question as `sameQuestion` reads it,
+  with another answer, case, spacing and parenthesized citations aside. Only the duplicate check's
+  candidates count: file facts of the value's scope, anchored where everyone may read them. An
+  equivalent fact still links first.
+- Such a value starts `Unprocessed` under every provider, like one beside a decision, and names
+  nothing: no dispute, no reason, no review task. Sharing settings cannot prove that every reader
+  of the new memory may read the other document, since a policy can still deny it, and a review
+  would show the other memory's title and its document's name. Collate's reconciliation holds it
+  in Draft (ADR:openmetadata-collate/2026-11-03-reconciliation-judges-a-memory-against-the-most-similar-knowledge,
+  v8); approval from a document leaves it for an admin
+  (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document, v3).
+- Re-extraction counts a shared pill it releases from the revised document as another document's
+  value, since the documents still linked to it state it: the revised value waits beside it.
+- Two answers to one question that differ without numbers are a conflict across documents, not a
+  rewording; within one document extraction still keeps the first, and the same rule decides
+  approval's within-document holds.
 
-- Beside an Approved value the derived one is created in `Draft`, disputing each Approved value for
-  a fixed reason that names no memory (`ContextMemoryReconciler.ANOTHER_DOCUMENTS_VALUE`), so a
-  conflict review opens for the owners of both sides, under every provider
-  (ADR:2026-10-13-a-memory-conflict-opens-a-review-task-and-approving-it-supersedes-the-disputed-memory).
-- Beside values only awaiting review it starts `Unprocessed`, disputing none.
-- A person's correction or note that is Approved and asks the same question is such a value too, so
-  it disputes the other figure instead of only holding it; a retired value still holds as a decision.
-- Approving a document's memories leaves for an admin a pending value another document answers
-  otherwise (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document, v3).
-
-Two answers to one question that differ without numbers are now a conflict across documents, not a
-rewording; within one document extraction still keeps the first.
+The check is best effort, as reuse is: two documents extracted at once each plan before the other
+writes, and a value ranked outside the twenty keyword hits is missed. Memories approved side by side
+before this change are not revisited.

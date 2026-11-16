@@ -77,6 +77,8 @@ public class ContextMemoryExtractedApprovalIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String MEMORIES = "v1/contextCenter/memories";
 
+  private static final ContextMemoryStatus APPROVED = ContextMemoryStatus.APPROVED;
+
   /** Asked by no other test, so a decision on it holds nothing a concurrent test approves. */
   private static final String RETAINER_DAY = "On which day is the Zephyrine retainer invoiced?";
 
@@ -196,6 +198,29 @@ public class ContextMemoryExtractedApprovalIT {
     assertEquals(1, result.getApproved());
     assertEquals(ContextMemoryStatus.APPROVED, status(tenth));
     assertEquals(ContextMemoryStatus.REJECTED, status(fifth));
+  }
+
+  /**
+   * Another document's answer to the question, here without any number, leaves the pending value
+   * for a decision: the owner approving one document never grounds a second answer beside it.
+   */
+  @Test
+  void aValueAnotherDocumentAnswersOtherwiseNeedsADecision(TestNamespace ns) {
+    String question = "Who signs the " + ns.shortPrefix("zephyrine") + " lease?";
+    EntityReference approvedFile = file(ns, "lease-legal", null);
+    ContextMemory legal = stored(ns, approvedFile, question, "Legal signs it.", APPROVED);
+    awaitIndexedIn(approvedFile, legal, APPROVED);
+    EntityReference file = file(ns, "lease-finance", shared().USER1_REF);
+    ContextMemory finance = stored(ns, file, question, "Finance signs it.", pending());
+
+    ExtractedMemoryApproval preview = preview(SdkClients.user1Client(), file);
+    ExtractedMemoryApproval result =
+        approve(SdkClients.user1Client(), file, preview.getApprovable());
+
+    assertEquals(List.of(), preview.getApprovable());
+    assertEquals(Set.of(finance.getId()), ids(preview.getNeedsDecision()));
+    assertEquals(0, result.getApproved());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, status(finance));
   }
 
   @Test

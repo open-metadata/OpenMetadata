@@ -109,11 +109,12 @@ read, so it is never named on the memory, its source included.
 
 ## Amendment — 2026-11-16: another document's answer needs a decision
 
-Preview and approval also leave pending, as needing a decision, a pending value that another
-document's memory answers otherwise, in any stage that still states a value
-(`SemanticMemoryDuplicateFinder.isHeldAcrossDocuments`, by
-ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v4). The owner
-approving one document never approves a second value beside another document's: an admin decides it,
-or reconciliation holds it in a conflict review once the other value is Approved. Every pending pill
-is looked up now, with or without a number, so preview and approval still answer 503 without the
-memory index.
+Preview and approval also leave pending, as needing a decision, a pending value another document
+holds for a person (`SemanticMemoryDuplicateFinder.isHeldAcrossDocuments`): a decision there, as
+v2 says, or another answer to its question in any stage that still states a value, by
+ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values (v4). The owner
+approving one document never grounds a second answer beside another document's; an admin decides.
+One keyword lookup per pending pill not already contested in its document answers both, applying
+the hold before the five-candidate limit, so preview and approval still answer 503 without the
+memory index. The within-document rule now compares answers as the cross-document one does, a
+parenthesized citation aside.

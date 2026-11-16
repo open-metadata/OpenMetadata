@@ -25,7 +25,6 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -55,11 +54,6 @@ import org.openmetadata.service.security.AuthorizationException;
 public final class ExtractedMemoryApprover {
   static final String CHANGED_WHILE_APPROVING =
       "The memory changed while its document's memories were being approved";
-
-  /** Stages in which a pill still gives its question a value. */
-  private static final Set<ContextMemoryStatus> STATING =
-      Set.of(
-          ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT, ContextMemoryStatus.APPROVED);
 
   private final ContextMemoryRepository repository;
   private final Predicate<ContextMemory> heldAcrossDocuments;
@@ -177,14 +171,9 @@ public final class ExtractedMemoryApprover {
     return memories.stream()
         .filter(other -> !other.getId().equals(memory.getId()))
         .anyMatch(
-            other -> isAnotherValueOf(other, memory) || MemoryReviewHolds.holds(other, memory));
-  }
-
-  private static boolean isAnotherValueOf(ContextMemory other, ContextMemory memory) {
-    return STATING.contains(other.getEntityStatus())
-        && MemoryReviewHolds.sameQuestion(other, memory)
-        && !StringUtils.stripToEmpty(other.getAnswer())
-            .equalsIgnoreCase(StringUtils.stripToEmpty(memory.getAnswer()));
+            other ->
+                MemoryReviewHolds.givesAnotherValue(other, memory)
+                    || MemoryReviewHolds.holds(other, memory));
   }
 
   /** Only an Unprocessed pill extraction made: a Draft awaits its conflict review. */

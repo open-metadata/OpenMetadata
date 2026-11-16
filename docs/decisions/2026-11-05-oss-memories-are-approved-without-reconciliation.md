@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-06 (a document's owner approves its extracted memories) ·
-  v3 2026-11-09 (another document's decision holds a conflicting value)
+  v3 2026-11-09 (another document's decision holds a conflicting value) ·
+  v4 2026-11-16 (another document's answer holds a value too)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryRepositoryTest`, `ContextMemoryCreateGrantIT`,
   `ContextMemoryLifecycleIT`; Collate's `ContextMemoryRepositoryExtTest`,
@@ -57,3 +58,9 @@ fact another file already states links to that memory in its stage, so a fact a 
 isn't brought back Approved through another document when the duplicate check finds it, which is
 best effort, and its other value waits for an admin
 (ADR:2026-09-29-context-file-memory-reuse, v3).
+
+v4 (2026-11-16): OSS also starts a memory `Unprocessed` when another document's memory, Approved or
+awaiting review, answers its question otherwise, without numbers too, and when re-extraction
+releases a pill the revised document shared with others that states another value. It names
+nothing of the other document, and an admin decides
+(ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v4).

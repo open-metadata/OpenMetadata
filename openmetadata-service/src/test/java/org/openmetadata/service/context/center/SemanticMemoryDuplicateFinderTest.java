@@ -292,8 +292,7 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is +15%.");
 
     assertEquals(
-        new DuplicateMatch.AnotherValue(List.of(candidate)),
-        finderWithCandidate(candidate).findMatch(derived));
+        new DuplicateMatch.AnotherValue(), finderWithCandidate(candidate).findMatch(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
@@ -345,8 +344,7 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 30 days.");
 
     assertEquals(
-        new DuplicateMatch.AnotherValue(List.of(candidate)),
-        finderWithCandidate(candidate).findMatch(derived));
+        new DuplicateMatch.AnotherValue(), finderWithCandidate(candidate).findMatch(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
@@ -365,8 +363,7 @@ class SemanticMemoryDuplicateFinderTest {
         .thenReturn(List.of());
 
     assertEquals(
-        new DuplicateMatch.AnotherValue(List.of(candidate)),
-        finderWithCandidate(candidate).findMatch(derived));
+        new DuplicateMatch.AnotherValue(), finderWithCandidate(candidate).findMatch(derived));
   }
 
   /** The Heronfield report: approved desk hours, then another document's hours, wait for review. */
@@ -384,8 +381,7 @@ class SemanticMemoryDuplicateFinderTest {
             "The Heronfield support desk operates from 8:00 to 20:00 CET.");
 
     assertEquals(
-        new DuplicateMatch.AnotherValue(List.of(approved)),
-        finderWithCandidate(approved).findMatch(derived));
+        new DuplicateMatch.AnotherValue(), finderWithCandidate(approved).findMatch(derived));
   }
 
   @Test
@@ -624,20 +620,32 @@ class SemanticMemoryDuplicateFinderTest {
     ContextMemory pending = pendingValue(approved.getQuestion(), "The revenue team owns billing.");
 
     assertTrue(keywordFinder().isHeldAcrossDocuments(pending));
-    assertEquals(List.of(approved), keywordFinder().anotherValues(pending));
     verify(vectorService, never())
         .search(anyString(), any(), anyInt(), anyInt(), anyInt(), anyDouble(), any(), any());
     ArgumentCaptor<String> filter = ArgumentCaptor.forClass(String.class);
-    verify(searchClient, times(2))
-        .searchSimilarContextMemories(anyString(), filter.capture(), eq(20));
-    String stating = filter.getValue();
-    for (String stage : List.of("\"Approved\"", "\"Unprocessed\"", "\"Draft\"")) {
-      assertTrue(stating.contains(stage), stating);
+    verify(searchClient).searchSimilarContextMemories(anyString(), filter.capture(), eq(20));
+    assertFalse(
+        filter.getValue().contains("entityStatus"),
+        "one lookup reads every stage, decided and stating: " + filter.getValue());
+  }
+
+  /** The holding memory counts wherever it ranks among the twenty: unrelated hits take no place. */
+  @Test
+  void aValueRankedBelowFiveUnrelatedFactsStillHolds() throws Exception {
+    List<ContextMemory> ranked = new ArrayList<>();
+    for (String topic : List.of("alpha", "beta", "gamma", "delta", "epsilon")) {
+      ranked.add(memory(UUID.randomUUID(), "Who owns " + topic + "?", "Team " + topic + "."));
     }
-    assertFalse(stating.contains("\"Rejected\""), stating);
+    ContextMemory approved =
+        memory(UUID.randomUUID(), "Who owns billing?", "The finance team owns billing.");
+    ranked.add(approved);
+    ranked.forEach(this::eligible);
+    rankedHits(ranked);
+
     assertTrue(
-        stating.contains("{\"must_not\":[{\"exists\":{\"field\":\"entityStatus\"}}]}"),
-        "a memory stored before stages existed still states its value: " + stating);
+        keywordFinder()
+            .isHeldAcrossDocuments(
+                pendingValue(approved.getQuestion(), "The revenue team owns billing.")));
   }
 
   /** Case, spacing and a citation aside, the same answer is the same value: nothing to choose. */
@@ -667,10 +675,10 @@ class SemanticMemoryDuplicateFinderTest {
     rankedHits(List.of(existing));
     eligible(existing);
 
-    assertEquals(
-        List.of(),
+    assertFalse(
         keywordFinder()
-            .anotherValues(pendingValue(existing.getQuestion(), "The revenue team owns billing.")));
+            .isHeldAcrossDocuments(
+                pendingValue(existing.getQuestion(), "The revenue team owns billing.")));
   }
 
   /** A document's own values are its own rule: another answer it gives is no other document's. */
@@ -739,19 +747,16 @@ class SemanticMemoryDuplicateFinderTest {
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
-  /**
-   * Beside a value still stating the fact, another figure is another value: it disputes an
-   * Approved one, and beside one still awaiting review it waits too, disputing nothing yet.
-   */
+  /** Beside a value still stating the fact, Approved or awaiting review, another figure waits. */
   @ParameterizedTest
-  @CsvSource({"APPROVED, true", "UNPROCESSED, false", "DRAFT, false"})
-  void anotherFigureBesideAStatedValueIsAnotherValue(ContextMemoryStatus stage, boolean disputed)
-      throws Exception {
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "UNPROCESSED", "DRAFT"})
+  void anotherFigureBesideAStatedValueIsAnotherValue(ContextMemoryStatus stage) throws Exception {
     ContextMemory existing = billedOnThe5th().withEntityStatus(stage);
 
     assertEquals(
-        new DuplicateMatch.AnotherValue(disputed ? List.of(existing) : List.of()),
-        keywordFinder().findMatch(billedOnThe10th(existing)));
+        new DuplicateMatch.AnotherValue(), keywordFinder().findMatch(billedOnThe10th(existing)));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
@@ -840,8 +845,7 @@ class SemanticMemoryDuplicateFinderTest {
 
   /**
    * A hold links nothing, so it names no document: a person's note showing a private file still
-   * holds a restricted copy's other figure for review, at extraction and at approval alike. The
-   * dispute names the note, which everyone may read, never the file it shows.
+   * holds a restricted copy's other figure for review, at extraction and at approval alike.
    */
   @Test
   void aDecisionShowingAPrivateFileStillHoldsARestrictedDocumentsOtherFigure() throws Exception {
@@ -860,8 +864,7 @@ class SemanticMemoryDuplicateFinderTest {
                 "Customers are billed on the 10th of each month.")
             .withSourceEntity(COPY);
 
-    assertEquals(
-        new DuplicateMatch.AnotherValue(List.of(note)), keywordFinder().findMatch(otherFigure));
+    assertEquals(new DuplicateMatch.AnotherValue(), keywordFinder().findMatch(otherFigure));
     assertTrue(
         keywordFinder()
             .isHeldByADecision(otherFigure.withEntityStatus(ContextMemoryStatus.UNPROCESSED)));
@@ -961,8 +964,7 @@ class SemanticMemoryDuplicateFinderTest {
                     note.getQuestion(),
                     "Customers are billed on the 10th of each month."));
 
-    assertEquals(
-        held ? new DuplicateMatch.AnotherValue(List.of(note)) : new DuplicateMatch.None(), match);
+    assertEquals(held ? new DuplicateMatch.AnotherValue() : new DuplicateMatch.None(), match);
   }
 
   /**

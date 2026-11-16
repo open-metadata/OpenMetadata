@@ -123,13 +123,15 @@ open a review over their own memory and approve it there
 
 ## Amendment — 2026-11-16: a dispute follows the value that replaced it
 
-Two memories can dispute one Approved value, each from its own document. Approving the first
-supersedes it, so the second's dispute names a retired value, and approving the second superseded
-nothing and left two values Approved.
+Two memories can dispute one Approved value, such as two other values a document gives for its
+question. Approving the first supersedes it, so the second's dispute names a retired value, and
+approving the second superseded nothing and left two values Approved.
 
 Approving a review now follows each disputed memory another decision superseded to the Approved
 memory holding its claim now (`MemoryConflictDecision.laterValues`, through at most ten
-replacements, never the reviewed memory itself, whose own retry is item 5's). The review is pointed
-at that memory, keeping the dispute's reason, written as the resolver impersonated by
-`governance-bot`, who must be able to read it, and the decision is refused with 412 so the reviewer
-compares the memory that replaced the one they saw. Rejecting is unaffected.
+replacements, never the reviewed memory itself, whose own retry is item 5's), and refuses the
+decision with 412. When that memory has the reviewed one's readers (`sameAudience`: visibility and
+anchor, and owners and principals for a Private or Shared one) and the resolver may read it, the
+review is first pointed at it, keeping the dispute's reason, written as the resolver impersonated by
+`governance-bot`, so the reviewer compares it. Otherwise nothing is written, and the memory needs a
+requeue. Rejecting is unaffected.

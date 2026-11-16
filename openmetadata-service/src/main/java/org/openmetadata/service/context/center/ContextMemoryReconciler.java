@@ -15,7 +15,6 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
@@ -49,10 +48,6 @@ public class ContextMemoryReconciler {
   /** How a memory a file states was written: extracted from it, or corrected by a person since. */
   static final List<ContextMemorySourceType> DOCUMENT_FACT_SOURCES =
       List.of(ContextMemorySourceType.FILE_EXTRACTION, ContextMemorySourceType.MANUAL);
-
-  /** Why a value another document contradicts waits in review; names no memory and no content. */
-  public static final String ANOTHER_DOCUMENTS_VALUE =
-      "Review required: another document gives another value for the same question";
 
   private final ContextMemoryRepository memoryRepository;
   private final DuplicateFinder duplicateFinder;
@@ -153,7 +148,8 @@ public class ContextMemoryReconciler {
       ContextMemory match = removeMostSimilar(derivedByQuestion, pill);
       if (match == null) {
         if (isReleasedWhenUnclaimed(pill)) {
-          planRelease(sourceRef, pill, plan);
+          planRelease(
+              sourceRef, pill, plan, memoryRepository.hasOtherSources(pill.getId(), sourceRef));
         }
       } else {
         planMatchedMemory(sourceRef, pill, match, derivedByQuestion, plan);
@@ -189,8 +185,9 @@ public class ContextMemoryReconciler {
 
   /**
    * A fact another document states links to its memory, in whatever stage it is. Another value for
-   * its question there opens a conflict review against the Approved one, or, beside values still
-   * awaiting review, starts Unprocessed; so does another value for a fact a person decided there.
+   * its question there, or for a fact a person decided there, starts Unprocessed under every
+   * provider, naming nothing; so does one beside a shared pill this run releases to the documents
+   * still stating it, which the lookup still counts as this document's own.
    */
   private void planNewMemory(
       EntityReference sourceRef, ContextMemory pill, boolean heldAlready, ReconciliationPlan plan) {
@@ -201,8 +198,7 @@ public class ContextMemoryReconciler {
       plan.writes.add(() -> memoryRepository.linkExtractedMemory(memoryId, sourceRef));
       plan.kept++;
     } else {
-      disputeAnotherValue(pill, match);
-      planCreate(pill, heldAlready || isHeldBy(match), plan);
+      planCreate(pill, heldAlready || isHeldBy(match) || isHeldByAReleasedValue(pill, plan), plan);
     }
   }
 
@@ -211,36 +207,14 @@ public class ContextMemoryReconciler {
         || match instanceof DuplicateMatch.AnotherValue;
   }
 
-  /**
-   * The value enters review in Draft, disputing each Approved value another document gives, so
-   * a conflict review opens and approving it supersedes them. The reason is fixed: the other
-   * document's memory is named by reference, and its readers compare the two in Context Center.
-   */
-  private static void disputeAnotherValue(ContextMemory pill, DuplicateMatch match) {
-    if (match instanceof DuplicateMatch.AnotherValue another && !another.approved().isEmpty()) {
-      long detectedAt = System.currentTimeMillis();
-      pill.withEntityStatus(ContextMemoryStatus.DRAFT)
-          .withStatusReason(ANOTHER_DOCUMENTS_VALUE)
-          .withDisputes(
-              another.approved().stream()
-                  .map(approved -> anotherValueDispute(approved, detectedAt))
-                  .toList());
-    }
+  private static boolean isHeldByAReleasedValue(ContextMemory pill, ReconciliationPlan plan) {
+    return plan.releasedShared.stream()
+        .anyMatch(released -> MemoryReviewHolds.givesAnotherValue(released, pill));
   }
 
-  private static MemoryDispute anotherValueDispute(ContextMemory approved, long detectedAt) {
-    return new MemoryDispute()
-        .withMemory(new EntityReference().withId(approved.getId()).withType(Entity.CONTEXT_MEMORY))
-        .withReason(ANOTHER_DOCUMENTS_VALUE)
-        .withDetectedAt(detectedAt);
-  }
-
-  /**
-   * A value held for review starts Unprocessed, whatever stage extraction derived it in, unless it
-   * already entered review in Draft.
-   */
+  /** A value held for review starts Unprocessed, whatever stage extraction derived it in. */
   private void planCreate(ContextMemory pill, boolean heldForReview, ReconciliationPlan plan) {
-    if (heldForReview && pill.getEntityStatus() != ContextMemoryStatus.DRAFT) {
+    if (heldForReview) {
       pill.setEntityStatus(ContextMemoryStatus.UNPROCESSED);
     }
     plan.writes.add(
@@ -264,10 +238,17 @@ public class ContextMemoryReconciler {
     }
   }
 
+  /** A pill still {@code statedElsewhere} keeps its value for the documents that state it. */
   private void planRelease(
-      EntityReference sourceRef, ContextMemory memory, ReconciliationPlan plan) {
+      EntityReference sourceRef,
+      ContextMemory memory,
+      ReconciliationPlan plan,
+      boolean statedElsewhere) {
     plan.writes.add(() -> memoryRepository.releaseExtractedMemory(memory.getId(), sourceRef));
     plan.changingIds.add(memory.getId());
+    if (statedElsewhere) {
+      plan.releasedShared.add(memory);
+    }
     plan.deleted++;
   }
 
@@ -281,7 +262,7 @@ public class ContextMemoryReconciler {
         || !memoryRepository.hasOtherSources(existing.getId(), sourceRef)) {
       return false;
     }
-    planRelease(sourceRef, existing, plan);
+    planRelease(sourceRef, existing, plan, true);
     unmatched.put(factKey(derived), derived);
     return true;
   }
@@ -468,6 +449,9 @@ public class ContextMemoryReconciler {
 
     /** Fact keys of unclaimed derived values resembling a Draft or decided pill. */
     private final Set<String> heldForReview = new HashSet<>();
+
+    /** Pills this run releases that other documents still state. */
+    private final List<ContextMemory> releasedShared = new ArrayList<>();
 
     private int created;
     private int updated;

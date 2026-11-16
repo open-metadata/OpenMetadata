@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.context.center;
 
-import java.util.List;
 import org.openmetadata.schema.entity.context.ContextMemory;
 
 /**
@@ -33,14 +32,11 @@ public sealed interface DuplicateMatch {
 
   /**
    * Another document answers the fact's question with another value ({@link
-   * MemoryReviewHolds#givesAnotherValue}): the memory opens a conflict review against the {@code
-   * approved} ones, or, when none is Approved yet, waits for review beside the pending ones.
+   * MemoryReviewHolds#givesAnotherValue}), so its memory waits for review under every provider.
+   * The hold names nothing: sharing settings cannot prove every reader of this memory may read the
+   * other document.
    */
-  record AnotherValue(List<ContextMemory> approved) implements DuplicateMatch {
-    public AnotherValue {
-      approved = List.copyOf(approved);
-    }
-  }
+  record AnotherValue() implements DuplicateMatch {}
 
   /** No memory states the fact. */
   record None() implements DuplicateMatch {}

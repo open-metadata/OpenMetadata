@@ -1,7 +1,6 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -34,7 +33,6 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
-import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
@@ -1299,11 +1297,11 @@ class ContextMemoryReconcilerTest {
   }
 
   /**
-   * OSS derives Approved, but another file's original value beside a person's Approved correction
-   * of the same question is another value: it enters a conflict review against the correction.
+   * OSS derives Approved, but another file's original value beside a person's correction may be
+   * the very value they replaced: it waits for review instead of grounding.
    */
   @Test
-  void aDifferentValueForACorrectedFactOpensAConflictReviewInOss() throws IOException {
+  void aDifferentValueForADecidedFactIsHeldForReviewInOss() throws IOException {
     ContextMemory corrected =
         otherFilesFact(
             REFUND_WINDOW,
@@ -1325,7 +1323,7 @@ class ContextMemoryReconcilerTest {
 
     ArgumentCaptor<ContextMemory> created = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository).create(isNull(), created.capture());
-    assertDisputes(created.getValue(), corrected);
+    assertHeldNamingNothing(created.getValue());
     assertEquals("30 days", created.getValue().getAnswer());
     verify(memoryRepository, never()).linkExtractedMemory(any(), any());
     verify(judge, never()).completeStructured(anyString(), anyString(), any());
@@ -1333,14 +1331,14 @@ class ContextMemoryReconcilerTest {
 
   /**
    * The Heronfield report: another file's hours beside Approved hours never come out Approved
-   * beside them. The new value enters review in Draft disputing the Approved one, with a reason
-   * that names neither, so a conflict review opens; OSS derives Approved and Collate Unprocessed.
+   * beside them. The new value waits for review under every provider, naming nothing, since sharing
+   * settings cannot prove every reader of it may read the other file.
    */
   @ParameterizedTest
   @EnumSource(
       value = ContextMemoryStatus.class,
       names = {"APPROVED", "UNPROCESSED"})
-  void anotherFilesApprovedValueOpensAConflictReview(ContextMemoryStatus derivedIn)
+  void anotherFilesApprovedValueHoldsTheNewValueForReview(ContextMemoryStatus derivedIn)
       throws IOException {
     ContextMemory approved =
         otherFilesFact(
@@ -1363,7 +1361,7 @@ class ContextMemoryReconcilerTest {
 
     ArgumentCaptor<ContextMemory> created = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository).create(isNull(), created.capture());
-    assertDisputes(created.getValue(), approved);
+    assertHeldNamingNothing(created.getValue());
     verify(memoryRepository, never()).linkExtractedMemory(any(), any());
   }
 
@@ -1391,24 +1389,46 @@ class ContextMemoryReconcilerTest {
 
     ArgumentCaptor<ContextMemory> created = ArgumentCaptor.forClass(ContextMemory.class);
     verify(memoryRepository).create(isNull(), created.capture());
-    assertEquals(ContextMemoryStatus.UNPROCESSED, created.getValue().getEntityStatus());
-    assertNull(created.getValue().getDisputes());
-    assertNull(created.getValue().getStatusReason());
+    assertHeldNamingNothing(created.getValue());
+  }
+
+  /**
+   * Revising one of two files that share a fact: the pill is released from the revised file only,
+   * and the other file still states it, so the revised value waits beside it instead of grounding
+   * next to it. A pill no other file states leaves with its fact, holding nothing.
+   */
+  @ParameterizedTest
+  @CsvSource({"true, UNPROCESSED", "false, APPROVED"})
+  void aRevisedValueBesideASharedPillTheRunReleasesWaitsForReview(
+      boolean statedElsewhere, ContextMemoryStatus created) {
+    ContextMemory shared =
+        pill(
+            "When is the customer billed?",
+            "Customers are billed on the 5th of each month.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    existing(shared);
+    when(memoryRepository.hasOtherSources(shared.getId(), source)).thenReturn(statedElsewhere);
+
+    reconcile(
+        List.of(
+            derived(
+                "When is the customer billed?",
+                "Customers are billed on the 10th of each month.")));
+
+    verify(memoryRepository).releaseExtractedMemory(shared.getId(), source);
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), captor.capture());
+    assertEquals(created, captor.getValue().getEntityStatus());
   }
 
   private static final String HERONFIELD_HOURS = "What are the Heronfield support desk hours?";
 
-  /** Held in Draft for one dispute naming {@code approved} by id, for the fixed reason. */
-  private static void assertDisputes(ContextMemory held, ContextMemory approved) {
-    assertEquals(ContextMemoryStatus.DRAFT, held.getEntityStatus());
-    assertEquals(ContextMemoryReconciler.ANOTHER_DOCUMENTS_VALUE, held.getStatusReason());
-    assertEquals(1, held.getDisputes().size());
-    MemoryDispute dispute = held.getDisputes().getFirst();
-    assertEquals(approved.getId(), dispute.getMemory().getId());
-    assertEquals(Entity.CONTEXT_MEMORY, dispute.getMemory().getType());
-    assertNull(dispute.getMemory().getName(), "the reference is resolved, never copied");
-    assertEquals(ContextMemoryReconciler.ANOTHER_DOCUMENTS_VALUE, dispute.getReason());
-    assertNotNull(dispute.getDetectedAt());
+  /** Unprocessed for a person, with no dispute or reason that could name the other document. */
+  private static void assertHeldNamingNothing(ContextMemory held) {
+    assertEquals(ContextMemoryStatus.UNPROCESSED, held.getEntityStatus());
+    assertNull(held.getDisputes());
+    assertNull(held.getStatusReason());
   }
 
   /** Another file's new value for a fact a person rejected waits for review, in OSS too. */

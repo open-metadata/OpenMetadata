@@ -14,6 +14,7 @@
 package org.openmetadata.service.context.review;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -31,6 +32,8 @@ import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MemoryConflictReviewResolution;
@@ -340,6 +343,48 @@ class MemoryConflictDecisionTest {
                 300L)
             .size(),
         "a replacement already disputed is disputed once");
+  }
+
+  /** A replacement is named only to the reviewed memory's own readers. */
+  @Test
+  void onlyAReplacementWithTheReviewedMemorysReadersMayBeNamed() {
+    EntityReference file = new EntityReference().withId(UUID.randomUUID()).withType("contextFile");
+    EntityReference otherFile =
+        new EntityReference().withId(UUID.randomUUID()).withType("contextFile");
+    EntityReference alice = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    EntityReference bob = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    ContextMemory reviewed =
+        shared(memory("reviewed", ContextMemoryStatus.DRAFT, 1L), MemoryVisibility.ENTITY, file);
+
+    assertTrue(
+        MemoryConflictDecision.sameAudience(
+            reviewed, shared(memory("same", null, 1L), MemoryVisibility.ENTITY, file)));
+    assertFalse(
+        MemoryConflictDecision.sameAudience(
+            reviewed, shared(memory("other-file", null, 1L), MemoryVisibility.ENTITY, otherFile)));
+    assertFalse(
+        MemoryConflictDecision.sameAudience(
+            reviewed, shared(memory("public", null, 1L), MemoryVisibility.PUBLIC, file)));
+    ContextMemory alicesNote =
+        shared(memory("note", ContextMemoryStatus.DRAFT, 1L), MemoryVisibility.PRIVATE, null)
+            .withOwners(List.of(alice));
+    assertTrue(
+        MemoryConflictDecision.sameAudience(
+            alicesNote,
+            shared(memory("alice", null, 1L), MemoryVisibility.PRIVATE, null)
+                .withOwners(List.of(alice))));
+    assertFalse(
+        MemoryConflictDecision.sameAudience(
+            alicesNote,
+            shared(memory("bob", null, 1L), MemoryVisibility.PRIVATE, null)
+                .withOwners(List.of(bob))));
+  }
+
+  private static ContextMemory shared(
+      ContextMemory memory, MemoryVisibility visibility, EntityReference anchor) {
+    return memory
+        .withShareConfig(new MemoryShareConfig().withVisibility(visibility))
+        .withPrimaryEntity(anchor);
   }
 
   private static ContextMemory replacedBy(ContextMemory memory, ContextMemory successor) {

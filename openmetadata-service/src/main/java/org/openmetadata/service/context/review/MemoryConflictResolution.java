@@ -186,8 +186,9 @@ public final class MemoryConflictResolution {
 
   /**
    * Approving over a claim another decision replaced since detection would leave two values
-   * Approved. The review is pointed at the value that replaced it, written as the person deciding,
-   * who must be able to read it, and the decision is refused so they compare it first.
+   * Approved, so the decision is refused. When the value that replaced it has the reviewed memory's
+   * readers and the person deciding may read it, the review is first pointed at it, written as that
+   * person, so they compare it; otherwise nothing is written and the memory needs a requeue.
    */
   private static void requireNoLaterValue(
       ContextMemory reviewed,
@@ -199,14 +200,33 @@ public final class MemoryConflictResolution {
             ? MemoryConflictDecision.laterValues(reviewed, disputed, MemoryConflictResolution::live)
             : Map.of();
     if (!later.isEmpty()) {
-      List<MemoryDispute> repointed =
-          MemoryConflictDecision.repointed(disputes, later, System.currentTimeMillis());
-      write(
-          new MemoryChange(
-              reviewed, JsonUtils.deepCopy(reviewed, ContextMemory.class).withDisputes(repointed)),
-          user);
-      throw new PreconditionFailedException(MemoryConflictDecision.REPLACED_SINCE_DETECTION);
+      boolean nameable =
+          later.values().stream().allMatch(value -> mayBeNamedFor(reviewed, value, user));
+      if (nameable) {
+        repoint(reviewed, MemoryConflictDecision.repointed(disputes, later, now()), user);
+      }
+      throw new PreconditionFailedException(
+          nameable
+              ? MemoryConflictDecision.REPLACED_SINCE_DETECTION
+              : MemoryConflictDecision.REPLACED_OUT_OF_SIGHT);
     }
+  }
+
+  private static boolean mayBeNamedFor(ContextMemory reviewed, ContextMemory value, String user) {
+    return MemoryConflictDecision.sameAudience(reviewed, value)
+        && ContextMemoryVisibility.isVisibleToUser(
+            value, user, SubjectContext.getSubjectContext(user).isAdmin());
+  }
+
+  private static void repoint(ContextMemory reviewed, List<MemoryDispute> disputes, String user) {
+    write(
+        new MemoryChange(
+            reviewed, JsonUtils.deepCopy(reviewed, ContextMemory.class).withDisputes(disputes)),
+        user);
+  }
+
+  private static long now() {
+    return System.currentTimeMillis();
   }
 
   private static Optional<ContextMemory> live(UUID memoryId) {

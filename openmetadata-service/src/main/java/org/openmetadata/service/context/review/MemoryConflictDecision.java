@@ -22,6 +22,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -29,11 +30,15 @@ import java.util.function.Function;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryDispute;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MemoryConflictReviewResolution;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryReviewHolds;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
 /**
@@ -55,6 +60,9 @@ final class MemoryConflictDecision {
   static final String REPLACED_SINCE_DETECTION =
       "Another decision replaced a memory this review disputes; the review now disputes the memory"
           + " that replaced it, so compare them again before deciding";
+  static final String REPLACED_OUT_OF_SIGHT =
+      "Another decision replaced a memory this review disputes with one this review cannot name;"
+          + " requeue this memory so it is reviewed again";
 
   /** How many replacements a disputed claim is followed through to the value holding it now. */
   private static final int MAX_REPLACEMENTS = 10;
@@ -97,6 +105,53 @@ final class MemoryConflictDecision {
     return memory.getSupersededBy() != null
         && (memory.getEntityStatus() == ContextMemoryStatus.SUPERSEDED
             || memory.getEntityStatus() == ContextMemoryStatus.DEPRECATED);
+  }
+
+  /**
+   * Whether naming {@code value} in {@code reviewed}'s disputes reveals nothing to its readers: the
+   * same visibility and anchor, and for a Private or Shared memory the same owners and principals.
+   */
+  static boolean sameAudience(ContextMemory reviewed, ContextMemory value) {
+    MemoryVisibility visibility = visibilityOf(reviewed);
+    return visibility == visibilityOf(value)
+        && Objects.equals(anchorId(reviewed), anchorId(value))
+        && (visibility == MemoryVisibility.ENTITY
+            || visibility == MemoryVisibility.PUBLIC
+            || sameReaders(reviewed, value));
+  }
+
+  private static MemoryVisibility visibilityOf(ContextMemory memory) {
+    MemoryShareConfig share = memory.getShareConfig();
+    return share == null || share.getVisibility() == null
+        ? MemoryVisibility.PRIVATE
+        : share.getVisibility();
+  }
+
+  private static UUID anchorId(ContextMemory memory) {
+    return memory.getPrimaryEntity() == null ? null : memory.getPrimaryEntity().getId();
+  }
+
+  private static boolean sameReaders(ContextMemory reviewed, ContextMemory value) {
+    return ids(reviewed.getOwners()).equals(ids(value.getOwners()))
+        && sharedWithIds(reviewed).equals(sharedWithIds(value));
+  }
+
+  private static Set<UUID> ids(List<EntityReference> references) {
+    Set<UUID> ids = new HashSet<>();
+    listOrEmpty(references).forEach(reference -> ids.add(reference.getId()));
+    return ids;
+  }
+
+  private static Set<UUID> sharedWithIds(ContextMemory memory) {
+    Set<UUID> ids = new HashSet<>();
+    MemoryShareConfig share = memory.getShareConfig();
+    if (share != null) {
+      listOrEmpty(share.getSharedWith()).stream()
+          .map(MemorySharedPrincipal::getPrincipal)
+          .filter(Objects::nonNull)
+          .forEach(principal -> ids.add(principal.getId()));
+    }
+    return ids;
   }
 
   /**
@@ -205,12 +260,9 @@ final class MemoryConflictDecision {
     }
   }
 
-  /** A memory saved before stages existed has none, and was in use: it counts as Approved. */
   /** A memory saved before stages existed has none and counts as Approved. */
   static boolean isApproved(ContextMemory memory) {
-    return memory != null
-        && (memory.getEntityStatus() == null
-            || memory.getEntityStatus() == ContextMemoryStatus.APPROVED);
+    return memory != null && MemoryReviewHolds.isApproved(memory);
   }
 
   private static void requireUnchangedSinceDetection(
