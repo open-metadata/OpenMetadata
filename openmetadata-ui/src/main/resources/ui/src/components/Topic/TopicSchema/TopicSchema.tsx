@@ -19,8 +19,9 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
+import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {
   FC,
@@ -45,8 +46,9 @@ import {
   DEFAULT_TOPIC_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
-import { EntityType } from '../../../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import {
   DataTypeTopic,
   Field,
@@ -54,10 +56,16 @@ import {
   Topic,
 } from '../../../generated/entity/data/topic';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
+import {
+  getTopicSchemaFieldsByFQN,
+  updateTopicSchemaField,
+} from '../../../rest/topicsAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
@@ -73,16 +81,17 @@ import {
   getSchemaFieldCount,
   isLargeSchema,
   shouldCollapseSchema,
-  updateFieldDescription,
-  updateFieldTags,
+  updateColumnInNestedStructure,
 } from '../../../utils/TablePureUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
 import { ColumnsType } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
@@ -119,6 +128,23 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   const [viewType, setViewType] = useState<SchemaViewType>(
     SchemaViewType.FIELDS
   );
+  const [paginatedFields, setPaginatedFields] = useState<Field[]>([]);
+  const [fieldsLoading, setFieldsLoading] = useState(true);
+
+  const {
+    currentPage,
+    pageSize,
+    handlePageChange,
+    handlePageSizeChange,
+    showPagination,
+    paging,
+    handlePagingChange,
+  } = usePaging();
+
+  const { filters, setFilters } = useTableFilters({
+    columnSearch: undefined as string | undefined,
+  });
+  const searchText = filters.columnSearch ?? '';
 
   const viewTypeOptions = [
     {
@@ -132,7 +158,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     data: topicDetails,
     isVersionView,
     permissions,
-    onUpdate,
     currentVersionData,
     openColumnDetailPanel,
     selectedColumn,
@@ -163,6 +188,98 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [currentVersionData, isVersionView, topicDetails]
   );
 
+  // The version view diffs the full stored schema; the live view pages it from the server.
+  const schemaFields = useMemo(
+    () => (isVersionView ? messageSchema?.schemaFields ?? [] : paginatedFields),
+    [isVersionView, messageSchema?.schemaFields, paginatedFields]
+  );
+
+  const fetchSchemaFields = useCallback(
+    async (page = 1, searchQuery?: string) => {
+      if (!topicDetails.fullyQualifiedName) {
+        return;
+      }
+      setFieldsLoading(true);
+      try {
+        const response = await getTopicSchemaFieldsByFQN(
+          topicDetails.fullyQualifiedName,
+          {
+            limit: pageSize,
+            offset: (page - 1) * pageSize,
+            fields: TabSpecificField.TAGS,
+            q: searchQuery,
+          }
+        );
+        setPaginatedFields(response.data);
+        handlePagingChange(response.paging);
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+        setPaginatedFields([]);
+        handlePagingChange({ offset: 1, limit: pageSize, total: 0 });
+      } finally {
+        setFieldsLoading(false);
+      }
+    },
+    [topicDetails.fullyQualifiedName, pageSize, handlePagingChange]
+  );
+
+  // topicDetails.version is a dependency so a field saved from the column detail
+  // panel (which PATCHes the topic) reloads the page the user is on.
+  useEffect(() => {
+    if (!isVersionView) {
+      fetchSchemaFields(currentPage, searchText || undefined);
+    }
+  }, [
+    isVersionView,
+    currentPage,
+    searchText,
+    fetchSchemaFields,
+    topicDetails.version,
+  ]);
+
+  const handleFieldsPageChange = useCallback(
+    ({ currentPage }: PagingHandlerParams) => handlePageChange(currentPage),
+    [handlePageChange]
+  );
+
+  const searchProps = useMemo(
+    () => ({
+      placeholder: t('message.find-in-table'),
+      searchValue: searchText,
+      onSearch: (value: string) => {
+        setFilters({ columnSearch: value || undefined });
+        handlePageChange(INITIAL_PAGING_VALUE, {
+          cursorType: null,
+          cursorValue: undefined,
+        });
+      },
+    }),
+    [searchText, handlePageChange, setFilters, t]
+  );
+
+  const paginationProps = useMemo(
+    () => ({
+      currentPage,
+      showPagination,
+      isLoading: fieldsLoading,
+      isNumberBased: Boolean(searchText),
+      pageSize,
+      paging,
+      pagingHandler: handleFieldsPageChange,
+      onShowSizeChange: handlePageSizeChange,
+    }),
+    [
+      currentPage,
+      showPagination,
+      fieldsLoading,
+      searchText,
+      pageSize,
+      paging,
+      handleFieldsPageChange,
+      handlePageSizeChange,
+    ]
+  );
+
   // Consumer via useGenericContext() (Task 8 rule 2). Ungated: `isReadOnly` above
   // (currentVersionData or topicDetails.deleted) is passed separately to each
   // TableDescription/TableTags render site below, never folded into these edit
@@ -188,15 +305,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
 
   const schemaAllRowKeys = useMemo(() => {
-    return getAllRowKeysByKeyName<Field>(
-      messageSchema?.schemaFields ?? [],
-      'fullyQualifiedName'
-    );
-  }, [messageSchema?.schemaFields]);
+    return getAllRowKeysByKeyName<Field>(schemaFields, 'fullyQualifiedName');
+  }, [schemaFields]);
 
   useScrollToElement(
     HIGHLIGHTED_ROW_SELECTOR,
-    Boolean(fqn && messageSchema?.schemaFields?.length)
+    Boolean(fqn && schemaFields.length)
   );
 
   const getRowClassName = useCallback(
@@ -204,45 +318,56 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [fqn]
   );
 
-  const schemaStats = useMemo(() => {
-    const fields = messageSchema?.schemaFields ?? [];
+  const schemaStats = useMemo(
+    () => ({
+      totalFields: getSchemaFieldCount(schemaFields),
+      maxDepth: getSchemaDepth(schemaFields),
+      isLargeSchema: isLargeSchema(schemaFields),
+      shouldCollapse: shouldCollapseSchema(schemaFields),
+    }),
+    [schemaFields]
+  );
 
-    return {
-      totalFields: getSchemaFieldCount(fields),
-      maxDepth: getSchemaDepth(fields),
-      isLargeSchema: isLargeSchema(fields),
-      shouldCollapse: shouldCollapseSchema(fields),
-    };
-  }, [messageSchema?.schemaFields]);
+  const updateSchemaField = async (
+    fieldFqn: string,
+    update: Partial<Field>,
+    key: keyof Field
+  ) => {
+    try {
+      const response = await updateTopicSchemaField(fieldFqn, update);
+      const cleanResponse = isEmpty(response.children)
+        ? omit(response, 'children')
+        : response;
+      setPaginatedFields((prev) =>
+        updateColumnInNestedStructure<Field>(prev, fieldFqn, cleanResponse, key)
+      );
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  };
 
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field
   ) => {
-    if (selectedTags && editColumnTag && !isUndefined(onUpdate)) {
-      const schema = cloneDeep(messageSchema);
-      updateFieldTags<Field>(
-        editColumnTag.fullyQualifiedName ?? '',
-        selectedTags,
-        schema?.schemaFields
+    if (editColumnTag.fullyQualifiedName) {
+      await updateSchemaField(
+        editColumnTag.fullyQualifiedName,
+        { tags: selectedTags },
+        'tags'
       );
-      await onUpdate({ ...topicDetails, messageSchema: schema });
     }
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
-    if (!isUndefined(editFieldDescription) && !isUndefined(onUpdate)) {
-      const schema = cloneDeep(messageSchema);
-      updateFieldDescription<Field>(
-        editFieldDescription.fullyQualifiedName ?? '',
-        updatedDescription,
-        schema?.schemaFields
+    if (editFieldDescription?.fullyQualifiedName) {
+      await updateSchemaField(
+        editFieldDescription.fullyQualifiedName,
+        { description: updatedDescription },
+        'description'
       );
-      await onUpdate({ ...topicDetails, messageSchema: schema });
-      setEditFieldDescription(undefined);
-    } else {
-      setEditFieldDescription(undefined);
     }
+    setEditFieldDescription(undefined);
   };
 
   const handleColumnClick = useCallback(
@@ -271,13 +396,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {
-    setDisplayedColumns(messageSchema?.schemaFields ?? []);
-  }, [messageSchema?.schemaFields, setDisplayedColumns]);
+    setDisplayedColumns(schemaFields);
+  }, [schemaFields, setDisplayedColumns]);
 
   const toggleExpandAll = () => {
     if (expandedRowKeys.length < schemaAllRowKeys.length) {
       const safeKeys = getSafeExpandAllKeys(
-        messageSchema?.schemaFields ?? [],
+        schemaFields,
         schemaStats.isLargeSchema,
         schemaAllRowKeys
       );
@@ -295,7 +420,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     tagFilterState,
     filteredData: filteredSchemaFields,
     handleTableChange,
-  } = useTreeTagFilter<Field>(messageSchema?.schemaFields ?? []);
+  } = useTreeTagFilter<Field>(schemaFields);
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
@@ -342,13 +467,13 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(messageSchema?.schemaFields ?? []);
+    const tags = getAllTags(schemaFields);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [messageSchema?.schemaFields]);
+  }, [schemaFields]);
 
   const renderDescription = useCallback(
     (_: string, record: Field, index: number) => (
@@ -469,21 +594,14 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
 
   useEffect(() => {
-    const fields = messageSchema?.schemaFields ?? [];
-
     if (schemaStats.shouldCollapse) {
       // For large schemas, expand only 2 levels deep for better performance
-      const optimalKeys = getExpandAllKeysToDepth(fields, 2);
-      setExpandedRowKeys(optimalKeys);
+      setExpandedRowKeys(getExpandAllKeysToDepth(schemaFields, 2));
     } else {
       // For small schemas, expand all for better UX
       setExpandedRowKeys(schemaAllRowKeys);
     }
-  }, [
-    schemaStats.shouldCollapse,
-    schemaAllRowKeys,
-    messageSchema?.schemaFields,
-  ]);
+  }, [schemaStats.shouldCollapse, schemaAllRowKeys, schemaFields]);
 
   const hasNoSchemaContent =
     isEmpty(messageSchema?.schemaFields) && isEmpty(messageSchema?.schemaText);
@@ -563,6 +681,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       <Table
         className={classNames('align-table-filter-left', className)}
         columns={columns}
+        customPaginationProps={isVersionView ? undefined : paginationProps}
         data-testid="topic-schema-fields-table"
         dataSource={filteredSchemaFields}
         defaultVisibleColumns={DEFAULT_TOPIC_VISIBLE_COLUMNS}
@@ -579,10 +698,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             toggleExpandAll={toggleExpandAll}
           />
         }
+        loading={!isVersionView && fieldsLoading}
         pagination={false}
         rowClassName={getRowClassName}
         rowKey="fullyQualifiedName"
         scroll={TABLE_SCROLL_VALUE}
+        searchProps={isVersionView ? undefined : searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
         onChange={handleTableChange}

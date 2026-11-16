@@ -7,8 +7,12 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -1690,5 +1694,96 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
     assertEquals(fqn, updated.getFullyQualifiedName());
     assertEquals(2, fieldFqns.size());
     assertTrue(fieldFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), fieldFqns::toString);
+  }
+
+  @Test
+  void schemaFieldSearch_matchesNestedFieldsAndPages(TestNamespace ns) {
+    final Topic topic = createSearchableSchemaTopic(ns);
+
+    final JsonNode nested = schemaFieldPage(topic, "/columns/search?q=STREET");
+    assertEquals(List.of("street"), fieldNames(nested));
+    assertEquals(1, nested.path("paging").path("total").asInt());
+
+    final JsonNode byDescription = schemaFieldPage(topic, "/columns/search?q=postal");
+    assertEquals(List.of("zip"), fieldNames(byDescription));
+
+    final JsonNode firstPage = schemaFieldPage(topic, "/columns/search?limit=2&offset=0");
+    assertEquals(List.of("id", "address"), fieldNames(firstPage));
+    assertEquals(5, firstPage.path("paging").path("total").asInt());
+    assertEquals(
+        "2",
+        new String(
+            Base64.getDecoder().decode(firstPage.path("paging").path("after").asText()),
+            StandardCharsets.UTF_8));
+
+    final JsonNode lastPage = schemaFieldPage(topic, "/columns/search?limit=2&offset=4");
+    assertEquals(List.of("zip"), fieldNames(lastPage));
+    assertTrue(lastPage.path("paging").path("after").isMissingNode());
+  }
+
+  @Test
+  void schemaFieldPage_ordinalPositionSortKeepsSchemaOrder(TestNamespace ns) {
+    final Topic topic = createSearchableSchemaTopic(ns);
+
+    final JsonNode page =
+        schemaFieldPage(topic, "/columns?limit=1&offset=1&sortBy=ordinalPosition");
+
+    assertEquals(List.of("address"), fieldNames(page));
+    assertEquals(2, page.path("paging").path("total").asInt());
+  }
+
+  @Test
+  void schemaFieldSearch_unknownTopic_404() {
+    assertThrows(
+        Exception.class,
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .executeForString(
+                    HttpMethod.GET,
+                    "/v1/topics/name/" + UUID.randomUUID() + ".missing/columns/search?q=id",
+                    null));
+  }
+
+  private Topic createSearchableSchemaTopic(TestNamespace ns) {
+    final MessagingService service = MessagingServiceTestFactory.createKafka(ns);
+    final Field address =
+        new Field()
+            .withName("address")
+            .withDataType(FieldDataType.RECORD)
+            .withChildren(
+                List.of(
+                    new Field().withName("street").withDataType(FieldDataType.STRING),
+                    new Field().withName("city").withDataType(FieldDataType.STRING),
+                    new Field()
+                        .withName("zip")
+                        .withDataType(FieldDataType.STRING)
+                        .withDescription("Postal code")));
+    final CreateTopic request = new CreateTopic();
+    request.setName(ns.prefix("topic_field_search"));
+    request.setService(service.getFullyQualifiedName());
+    request.setPartitions(1);
+    request.setMessageSchema(
+        new MessageSchema()
+            .withSchemaType(SchemaType.Avro)
+            .withSchemaFields(
+                List.of(new Field().withName("id").withDataType(FieldDataType.STRING), address)));
+    return createEntity(request);
+  }
+
+  private JsonNode schemaFieldPage(Topic topic, String pathAndQuery) {
+    final String encodedFqn =
+        URLEncoder.encode(topic.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    final String response =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/topics/name/" + encodedFqn + pathAndQuery, null);
+    return JsonUtils.readTree(response);
+  }
+
+  private static List<String> fieldNames(JsonNode page) {
+    final List<String> names = new ArrayList<>();
+    page.path("data").forEach(field -> names.add(field.path("name").asText()));
+    return names;
   }
 }

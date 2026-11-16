@@ -33,12 +33,14 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Topic;
@@ -52,6 +54,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.type.topic.TopicSampleData;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -337,6 +340,58 @@ public class TopicRepository extends EntityRepository<Topic> {
     daoCollection.entityExtensionDAO().delete(topicId, TOPIC_SAMPLE_DATA_EXTENSION);
     setFieldsInternal(topic, Fields.EMPTY_FIELDS);
     return topic;
+  }
+
+  /**
+   * Matches name, displayName or description at every nesting level, so a hit on a nested field
+   * comes back as its own row. Pages over the flattened match list in schema order.
+   */
+  public ResultList<Field> searchSchemaFieldsByFQN(
+      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+    final String requestedFields =
+        fieldsParam != null && fieldsParam.contains(FIELD_TAGS) ? FIELD_TAGS : "";
+    final Topic topic = getByName(null, fqn, getFields(requestedFields), include, false);
+    final List<Field> matches =
+        filterSchemaFields(flattenSchemaFields(schemaFieldsOf(topic)), query);
+    return pageOfSchemaFields(matches, limit, offset);
+  }
+
+  private static List<Field> schemaFieldsOf(Topic topic) {
+    return topic.getMessageSchema() == null
+        ? List.of()
+        : listOrEmpty(topic.getMessageSchema().getSchemaFields());
+  }
+
+  static List<Field> flattenSchemaFields(List<Field> fields) {
+    final List<Field> flattened = new ArrayList<>();
+    for (Field field : fields) {
+      flattened.add(field);
+      flattened.addAll(flattenSchemaFields(listOrEmpty(field.getChildren())));
+    }
+    return flattened;
+  }
+
+  static List<Field> filterSchemaFields(List<Field> fields, String query) {
+    if (nullOrEmpty(query) || query.isBlank()) {
+      return fields;
+    }
+    final String searchTerm = query.trim().toLowerCase(Locale.ROOT);
+    return fields.stream().filter(field -> schemaFieldMatches(field, searchTerm)).toList();
+  }
+
+  private static boolean schemaFieldMatches(Field field, String searchTerm) {
+    return Stream.of(field.getName(), field.getDisplayName(), field.getDescription())
+        .anyMatch(value -> value != null && value.toLowerCase(Locale.ROOT).contains(searchTerm));
+  }
+
+  static ResultList<Field> pageOfSchemaFields(List<Field> fields, int limit, int offset) {
+    final int total = fields.size();
+    final int fromIndex = Math.min(offset, total);
+    final int toIndex = Math.min(offset + limit, total);
+    final String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
+    final String after = toIndex < total ? String.valueOf(toIndex) : null;
+    return new ResultList<>(
+        new ArrayList<>(fields.subList(fromIndex, toIndex)), before, after, total);
   }
 
   private void setFieldFQN(String parentFQN, List<Field> fields) {

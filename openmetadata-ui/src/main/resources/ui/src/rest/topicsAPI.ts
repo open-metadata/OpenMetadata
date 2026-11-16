@@ -13,9 +13,9 @@
 
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
-import { PagingWithoutTotal, RestoreRequestType } from 'Models';
+import { PagingResponse, PagingWithoutTotal, RestoreRequestType } from 'Models';
 import { APPLICATION_JSON_CONTENT_TYPE_HEADER } from '../constants/constants';
-import { Topic } from '../generated/entity/data/topic';
+import { Field, Topic } from '../generated/entity/data/topic';
 import { EntityHistory } from '../generated/type/entityHistory';
 import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
@@ -139,6 +139,49 @@ export const updateTopicVotes = async (id: string, data: QueryVote) => {
   const response = await APIClient.put<QueryVote, AxiosResponse<Topic>>(
     `${BASE_URL}/${id}/vote`,
     data
+  );
+
+  return response.data;
+};
+
+export interface TopicSchemaFieldParams {
+  limit?: number;
+  offset?: number;
+  fields?: string;
+  include?: Include;
+  q?: string;
+}
+
+// The API sorts by name unless told otherwise; Field has no ordinal position,
+// so this key compares every field as equal and the stable sort keeps schema order.
+const SCHEMA_ORDER_SORT = 'ordinalPosition';
+
+export const getTopicSchemaFieldsByFQN = async (
+  fqn: string,
+  params?: TopicSchemaFieldParams
+) => {
+  const { q, ...rest } = params ?? {};
+  const response = await APIClient.get<PagingResponse<Field[]>>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}/columns${q ? '/search' : ''}`,
+    {
+      params: {
+        ...rest,
+        ...(q ? { q } : { sortBy: SCHEMA_ORDER_SORT }),
+        include: rest.include ?? Include.All,
+      },
+    }
+  );
+
+  return response.data;
+};
+
+export const updateTopicSchemaField = async (
+  fqn: string,
+  field: Partial<Field>
+) => {
+  const response = await APIClient.put<Field>(
+    `/columns/name/${getEncodedFqn(fqn)}?entityType=topic`,
+    field
   );
 
   return response.data;
