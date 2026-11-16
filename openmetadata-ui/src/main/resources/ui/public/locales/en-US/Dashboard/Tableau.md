@@ -59,7 +59,7 @@ To set it up, a site administrator:
 
 OpenMetadata requests these scopes: `tableau:content:read`, `tableau:users:read`, `tableau:server:read`, `tableau:flows:read`, `tableau:flow_runs:read`, `tableau:jobs:read`, `tableau:tasks:read`. The token is valid for 5 minutes, so the clock of the host running the ingestion must be correct.
 
-Connected app sign-in has been tested on Tableau Cloud. On Tableau Server it needs version 2025.3 or later: Tableau's REST API reference adds the connected app scope for listing a workbook's views, which the connector reads charts from, in Tableau Server 2025.3 (API 3.27). On an older Tableau Server, use a Personal Access Token.
+Tableau Server needs 2025.3 or later, where Tableau added the connected app scope for reading workbook views (charts). On older versions, use a Personal Access Token.
 
 For more information, visit the official <a href="https://help.tableau.com/current/online/en-us/connected_apps_direct.htm" target="_blank">docs</a>.
 
