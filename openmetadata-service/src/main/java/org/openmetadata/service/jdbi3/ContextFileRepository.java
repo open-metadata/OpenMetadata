@@ -7,10 +7,12 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
 import jakarta.ws.rs.core.UriInfo;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
@@ -42,7 +44,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-@Repository
+@Repository(name = "ContextFileRepository")
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
@@ -77,6 +79,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
 
   public ContextFileContentRepository getContentRepository() {
     return contentRepository;
+  }
+
+  /** Reads the stored asset through the provider that owns its bytes, including on recovery. */
+  public CompletableFuture<InputStream> readAsset(Asset asset) {
+    return AssetServiceFactory.getService().read(asset);
   }
 
   @Override
@@ -596,14 +603,24 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   private void deleteAsset(String assetId) {
-    AssetService assetService = AssetServiceFactory.getService();
     Asset asset = null;
     try {
       asset = assetRepository.getById(assetId);
     } catch (Exception ignored) {
       // If the asset metadata is already gone, continue deleting any remaining references.
     }
-    if (asset != null && assetService != null) {
+    if (asset != null) {
+      deleteAsset(asset);
+    } else {
+      assetRepository.delete(assetId);
+    }
+  }
+
+  /** Collate overrides this to retain shared chat assets and select their original store. */
+  public void deleteAsset(Asset asset) {
+    AssetService assetService = AssetServiceFactory.getService();
+    String assetId = asset.getId();
+    if (assetService != null) {
       try {
         assetService
             .delete(asset)

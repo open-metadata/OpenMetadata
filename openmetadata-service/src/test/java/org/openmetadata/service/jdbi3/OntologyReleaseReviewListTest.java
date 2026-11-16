@@ -167,6 +167,28 @@ class OntologyReleaseReviewListTest {
         });
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void anArchivedOntologysOpenReviewIsNotListed(ConnectionType dialect) {
+    withReviews(
+        dialect,
+        reviews -> {
+          User requester = reviews.user("requester");
+          User alice = reviews.user("alice");
+          Ontology archived = reviews.anotherOntology("archived", true);
+          reviews.inReview("live", requester, List.of(alice), List.of(alice), List.of());
+          reviews.inReview(archived, "gone", requester, List.of(alice), List.of(alice), List.of());
+
+          assertAll(
+              () -> assertEquals(List.of("live"), reviews.list(View.ASSIGNED, alice)),
+              () -> assertEquals(List.of("live"), reviews.list(View.PENDING, alice)),
+              () -> assertEquals(List.of("live"), reviews.list(View.CREATED, requester)),
+              () -> assertEquals(List.of(), reviews.list(View.ASSIGNED, alice, archived)));
+        });
+  }
+
   private static TaskReviewVote approval(User voter) {
     return new TaskReviewVote()
         .withVoter(voter.getEntityReference())
@@ -299,6 +321,10 @@ class OntologyReleaseReviewListTest {
     }
 
     Ontology anotherOntology(String label) {
+      return anotherOntology(label, false);
+    }
+
+    Ontology anotherOntology(String label, boolean deleted) {
       Ontology other =
           new Ontology()
               .withId(UUID.randomUUID())
@@ -306,6 +332,7 @@ class OntologyReleaseReviewListTest {
               .withFullyQualifiedName(label + run)
               .withIri(URI.create("https://example.org/" + label + "/" + run))
               .withNamespace(URI.create("https://example.org/" + label + "/" + run + "/"))
+              .withDeleted(deleted)
               .withVersion(0.1)
               .withUpdatedAt(1L)
               .withUpdatedBy("admin");

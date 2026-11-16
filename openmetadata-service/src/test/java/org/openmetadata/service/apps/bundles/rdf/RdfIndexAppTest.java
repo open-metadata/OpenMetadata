@@ -730,13 +730,14 @@ class RdfIndexAppTest {
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
       startedJob(testApp);
       testApp.execute(jobContext());
+      assertEquals(AppRunRecord.Status.STOPPED, testApp.pushedRecord.getStatus());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
 
       when(reindexLockDAO.tryAcquireLock(
               anyString(), anyString(), anyString(), anyLong(), anyLong()))
           .thenReturn(true);
-      doThrow(new IllegalStateException("Fuseki unreachable"))
-          .when(mockRdfRepository)
-          .ensureStorageReady();
+      final String failure = "Fuseki unreachable";
+      doThrow(new IllegalStateException(failure)).when(mockRdfRepository).ensureStorageReady();
       try {
         testApp.execute(jobContext());
       } finally {
@@ -744,6 +745,7 @@ class RdfIndexAppTest {
       }
 
       assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
+      assertTrue(testApp.getJobData().getFailure().getMessage().contains(failure));
       assertEquals(RdfProjectionState.DEGRADED, projectionStateAfter(testApp.pushedRecord));
     }
 
@@ -1074,6 +1076,9 @@ class RdfIndexAppTest {
         verify(mockRdfRepository).compact(any());
         verify(mockRdfRepository, never()).reloadOntologies();
         assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+        assertTrue(
+            jobConfig.getFailure().getMessage().contains("Fuseki refused the update"),
+            jobConfig.getFailure().getMessage());
       } finally {
         doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
       }
