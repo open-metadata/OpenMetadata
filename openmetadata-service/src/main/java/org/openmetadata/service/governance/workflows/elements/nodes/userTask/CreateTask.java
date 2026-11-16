@@ -205,10 +205,11 @@ public class CreateTask implements TaskListener {
       // A request can end (withdrawn, overridden, cancelled) or be revised while delivery is
       // still creating its task; that task is closed once this Flowable command commits.
       ReviewPolicy reviewPolicy =
-          new ReviewPolicy()
-              .withApprovalThreshold(approvalThreshold)
-              .withRejectionThreshold(rejectionThreshold)
-              .withPartialDecisions(partialDecisions(delegateTask));
+          reviewPolicy(
+              approvalThreshold,
+              rejectionThreshold,
+              partialDecisions(delegateTask),
+              task.getAssignees());
       ChangeRequestRun.from(varHandler)
           .filter(
               run ->
@@ -231,7 +232,9 @@ public class CreateTask implements TaskListener {
               approvalThreshold,
               task.getAssignees());
       delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : taskApprovalThreshold);
-      delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
+      delegateTask.setVariable(
+          "rejectionThreshold",
+          catalogCounts ? 1 : capAtUsersAbleToVote(rejectionThreshold, task.getAssignees()));
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
       delegateTask.setVariable("taskEntityId", task.getId().toString());
@@ -978,12 +981,48 @@ public class CreateTask implements TaskListener {
    * WorkflowStartVariables#APPROVAL_MODE_ALL_ASSIGNEES} every assignee entry must approve, so the
    * node's threshold is raised to the entry count; a team is one entry, covered by any member.
    * Every other mode keeps the node's threshold.
+   *
+   * <p>The threshold never exceeds the number of users able to vote. The requester is removed from
+   * the assignees to prevent self-approval, so a node requiring two approvals from an owner and a
+   * reviewer would otherwise leave the task open forever when the reviewer made the change. A list
+   * holding a team is not capped, since any number of its members can vote.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
    */
   static int resolveApprovalThreshold(
       String approvalMode, int nodeThreshold, List<EntityReference> assignees) {
-    return WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
-        ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
-        : nodeThreshold;
+    int threshold =
+        WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
+            ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
+            : nodeThreshold;
+    return capAtUsersAbleToVote(threshold, assignees);
+  }
+
+  /**
+   * The policy a change request is decided by. Both thresholds get the same cap as the task's, or
+   * the only eligible reviewer's decision would read as reviewers failing to agree.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static ReviewPolicy reviewPolicy(
+      int nodeApprovalThreshold,
+      int rejectionThreshold,
+      boolean partialDecisions,
+      List<EntityReference> assignees) {
+    return new ReviewPolicy()
+        .withApprovalThreshold(capAtUsersAbleToVote(nodeApprovalThreshold, assignees))
+        .withRejectionThreshold(capAtUsersAbleToVote(rejectionThreshold, assignees))
+        .withPartialDecisions(partialDecisions);
+  }
+
+  /**
+   * Caps an approval or rejection threshold at the users able to vote, so neither is out of reach
+   * once the requester is removed. ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static int capAtUsersAbleToVote(int threshold, List<EntityReference> assignees) {
+    boolean onlyUsers =
+        assignees != null
+            && !assignees.isEmpty()
+            && assignees.stream().allMatch(assignee -> Entity.USER.equals(assignee.getType()));
+    return onlyUsers ? Math.min(threshold, assignees.size()) : threshold;
   }
 
   static List<EntityReference> resolveExistingTaskAssignees(

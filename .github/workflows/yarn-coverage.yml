@@ -42,6 +42,7 @@ jobs:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             ui:
+              - '.github/workflows/yarn-coverage.yml'
               - 'openmetadata-ui/src/main/resources/ui/src/**'
               - 'openmetadata-ui/src/main/resources/ui/jest.config.js'
               - 'openmetadata-ui/src/main/resources/ui/package.json'
@@ -84,20 +85,6 @@ jobs:
           restore-keys: |
             yarn-pkg-cache-${{ runner.os }}-
 
-      - name: Get npm cache directory
-        id: npm-cache-dir
-        shell: bash
-        run: echo "dir=$(npm config get cache)" >> ${GITHUB_OUTPUT}
-
-      - name: Restore NPM dependencies
-        uses: actions/cache/restore@v6
-        id: npm-cache
-        with:
-          path: ${{ steps.npm-cache-dir.outputs.dir }}
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
       - name: Install Antlr4 CLI
         run: |
           sudo make install_antlr_cli
@@ -117,7 +104,9 @@ jobs:
           done
       - name: Run Coverage
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: yarn test:cov-summary
+        # jest.config.js keeps '50%' for laptops; on the 4-vCPU hosted runner
+        # that is only 2 workers, so CI asks for all 4.
+        run: yarn test:cov-summary --maxWorkers=4
         id: yarn_coverage
       - name: Jest coverage comment
         id: coverage_comment
