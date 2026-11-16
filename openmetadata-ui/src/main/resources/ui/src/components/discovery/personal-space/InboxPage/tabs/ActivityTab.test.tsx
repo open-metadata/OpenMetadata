@@ -32,6 +32,7 @@ let activityState: {
   total: number;
   isLoading: boolean;
   isCapped?: boolean;
+  cutAt?: number;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -54,6 +55,7 @@ jest.mock('../useInboxActivity', () => ({
       total: activityState.total,
       isLoading: activityState.isLoading,
       isCapped: activityState.isCapped ?? false,
+      cutAt: activityState.cutAt,
       error: activityState.error ?? null,
       refetch: mockRefetch,
     };
@@ -506,6 +508,7 @@ describe('ActivityTab', () => {
       total: 2,
       isLoading: false,
       isCapped: true,
+      cutAt: DAY,
     };
 
     render(<ActivityTab />);
@@ -543,6 +546,7 @@ describe('ActivityTab', () => {
       total: 2,
       isLoading: false,
       isCapped: true,
+      cutAt: DAY,
     };
 
     render(<ActivityTab />);
@@ -551,6 +555,29 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('activity-group')).toHaveTextContent(
       'label.one-update'
     );
+  });
+
+  // A Mentions feed keeps an old event mentioned today, so its last card can
+  // sit past the cut; the floor goes on the day the feed was cut.
+  it('marks the day the feed was cut, not the day of its last card', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'old-mentioned-today', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: 3 * DAY,
+    };
+
+    render(<ActivityTab />);
+
+    const [cutDay, olderDay] = screen.getAllByTestId('activity-group');
+
+    expect(cutDay).toHaveTextContent('label.number-update-plural:1+');
+    expect(olderDay).toHaveTextContent('label.one-update');
   });
 
   it('says nothing about a cap when the feed is complete', () => {

@@ -50,6 +50,9 @@ export interface InboxActivityResult {
   threads: Conversation[];
   // Either list came back a full page, so the window may hold more.
   isCapped: boolean;
+  // Where the feed stops being whole: older items may be missing from here on.
+  // Unset when the cut can't be placed in the feed's own times.
+  cutAt?: number;
 }
 
 // Exactly one of `activity` or `feed`, matching ActivityFeedItem's props.
@@ -152,7 +155,9 @@ const getEventTimestamp = ({ timestamp }: ActivityEvent) => timestamp ?? 0;
  * A capped list stops at its oldest item, so the other list is cut there too:
  * past it the feed would show one kind alone, as if the other had none.
  * Mentions is left whole: its events carry their own time, not the mention's,
- * so an old event mentioned today would fall before the cut.
+ * so an old event mentioned today would fall before the cut. Its feed is then
+ * incomplete from where its conversations stop; where its events stop can't
+ * be told in their times.
  * ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item
  */
 const cutToCompleteSpan = (
@@ -168,10 +173,9 @@ const cutToCompleteSpan = (
   const threadFloor = isThreadCapped
     ? Math.min(...threads.map(getFeedSortTimestamp))
     : 0;
-  const completeFrom =
-    filter === ActivityFilter.Mentions
-      ? 0
-      : Math.max(activityFloor, threadFloor);
+  const isMentions = filter === ActivityFilter.Mentions;
+  const completeFrom = isMentions ? 0 : Math.max(activityFloor, threadFloor);
+  const cutAt = isMentions ? threadFloor : completeFrom;
 
   return {
     activities: activities.filter(
@@ -181,6 +185,7 @@ const cutToCompleteSpan = (
       (thread) => getFeedSortTimestamp(thread) >= completeFrom
     ),
     isCapped: isActivityCapped || isThreadCapped,
+    cutAt: cutAt || undefined,
   };
 };
 
@@ -314,6 +319,8 @@ const inboxActivityQuery = (
 
 export interface UseInboxActivity extends InboxCount {
   items: InboxActivityItem[];
+  // See InboxActivityResult.
+  cutAt?: number;
   isLoading: boolean;
   error: unknown;
   refetch: () => void;
@@ -361,6 +368,7 @@ export const useInboxActivity = (
     items,
     total: items.length,
     isCapped: data?.isCapped ?? false,
+    cutAt: data?.cutAt,
     isLoading,
     // A failed background refresh keeps the cached feed on screen.
     error: data ? null : error,

@@ -19,7 +19,7 @@ import {
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
-import { countBy, groupBy, last } from 'lodash';
+import { countBy, groupBy } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
@@ -94,6 +94,9 @@ const UserGroupIcon = ({ item }: { item: InboxActivityItem }) => {
   ) : null;
 };
 
+// A day group is keyed by its date.
+const getDayKey = (timestamp: number) => formatDate(timestamp);
+
 // How each grouping keys an item, titles its group and marks its header.
 const GROUPING: Record<
   ActivityGrouping,
@@ -104,7 +107,7 @@ const GROUPING: Record<
   }
 > = {
   [ActivityGrouping.Day]: {
-    key: (item) => formatDate(getInboxItemTimestamp(item)),
+    key: (item) => getDayKey(getInboxItemTimestamp(item)),
     title: (item, t) => getActivityDayLabel(getInboxItemTimestamp(item), t),
   },
   [ActivityGrouping.Asset]: {
@@ -359,11 +362,8 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   const userId = user?.id;
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isCapped, isLoading, error, refetch } = useInboxActivity(
-    filter,
-    dateRange,
-    userId
-  );
+  const { items, isCapped, cutAt, isLoading, error, refetch } =
+    useInboxActivity(filter, dateRange, userId);
 
   // Looking at the list is what clears the sidebar's unread badge; feeds have no
   // server-side read state to update. Another user's feed is not the inbox.
@@ -413,18 +413,15 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   // Groups keep the feed's newest-first order, as does each group's cards. Only
   // the revealed batch renders, but a header counts its whole group.
-  // A capped feed is cut inside its oldest day, so only that day's count can
-  // fall short. The cut is the whole feed's, before any type filter, so a
-  // filter that empties that day marks no other
-  // (ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item).
+  // A capped feed is incomplete from the day it was cut, so only that day's
+  // count can fall short. The cut is where the feed's lists stopped, not its
+  // last card: a type filter, or an old event mentioned today, can leave a
+  // card past it (ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item).
   const groups = useMemo(() => {
     const { key, title } = GROUPING[grouping];
     const totals = countBy(filteredItems, key);
-    const oldest = last(items);
     const cutKey =
-      isCapped && oldest && grouping === ActivityGrouping.Day
-        ? key(oldest)
-        : undefined;
+      cutAt && grouping === ActivityGrouping.Day ? getDayKey(cutAt) : undefined;
 
     return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
       key: key(groupItems[0]),
@@ -434,7 +431,7 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
       total: totals[key(groupItems[0])],
       isFloor: key(groupItems[0]) === cutKey,
     }));
-  }, [items, filteredItems, visibleItems, grouping, isCapped, t]);
+  }, [filteredItems, visibleItems, grouping, cutAt, t]);
   const GroupIcon = GROUPING[grouping].Icon;
   const timeFormat =
     grouping === ActivityGrouping.Day

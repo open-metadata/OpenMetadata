@@ -307,6 +307,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ))}
       </div>
     ),
+    Button: ({
+      children,
+      onClick,
+    }: {
+      children?: ReactNode;
+      onClick?: () => void;
+    }) => <button onClick={onClick}>{children}</button>,
     Tabs,
   };
 });
@@ -1009,6 +1016,23 @@ describe('TasksTab', () => {
       renderTab();
 
       expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    // A filter that hides every loaded row leaves nothing to scroll, so the
+    // sentinel can't retry the failed page; the list must offer it.
+    it('offers a retry for a failed page under a filter that empties the list', () => {
+      hookState = { ...hookState, hasMore: true, isLoadMoreError: true };
+      renderTab();
+      fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
+      const retry = screen.getByTestId('inbox-tasks-load-more-error');
+
+      expect(retry).toHaveTextContent('server.entity-fetch-error');
+
+      fireEvent.click(within(retry).getByText('label.retry'));
+
+      expect(mockLoadMore).toHaveBeenCalledTimes(1);
     });
 
     it('stops reading on at the scan cap', () => {

@@ -301,6 +301,7 @@ describe('fetchInboxActivity', () => {
     expect(result.activities).toHaveLength(200);
     expect(result.threads.map(({ id }) => id)).toEqual(['newer']);
     expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(400);
   });
 
   // A mention event keeps its own time, so an old event mentioned today would
@@ -320,6 +321,22 @@ describe('fetchInboxActivity', () => {
 
     expect(result.activities.map(({ id }) => id)).toEqual(['mentioned-today']);
     expect(result.isCapped).toBe(true);
+    // Incomplete from where the conversations stop, not from the old event.
+    expect(result.cutAt).toBe(400);
+  });
+
+  // Mention events carry their own time, so where a capped list of them stops
+  // can't be placed in the feed.
+  it('places no cut when only the Mentions events are capped', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i, timestamp: 100 })),
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+
+    const result = await fetchInboxActivity(ActivityFilter.Mentions, 'u1');
+
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBeUndefined();
   });
 
   it('cuts the events at the oldest conversation of a capped conversation list', async () => {
@@ -341,6 +358,7 @@ describe('fetchInboxActivity', () => {
     expect(result.activities.map(({ id }) => id)).toEqual(['newer']);
     expect(result.threads).toHaveLength(100);
     expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(400);
   });
 
   it('returns empty lists when the user id is not resolved yet', async () => {
