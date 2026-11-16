@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../../../components/common/Loader/Loader';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { INCIDENT_TASK_TYPES } from '../../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -125,6 +126,8 @@ export interface TaskDetailPanelProps {
   // Fired after a comment is added/edited/deleted with the reloaded task, so the
   // list row's comment count stays in sync.
   onCommentsChanged?: (task: Task) => void;
+  // Fired with the full task once it loads, and again whenever it changes.
+  onLoaded?: (task: Task) => void;
 }
 
 // Locate the whitespace-delimited token in the title that contains the asset
@@ -157,8 +160,8 @@ const matchAssetToken = (
 
 // The title reads as plain text in the heading's font and colour; only the
 // hover underline says it links to the asset. `!` beats the legacy
-// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
-// and blue.
+// `.prose-typography a` rule (fonts.less), which gives Typography's links a
+// medium weight and blue colour; `[font:inherit]` restores the heading weight.
 const TITLE_LINK_CLASS =
   'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
 
@@ -361,6 +364,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onResolved,
   onTaskUpdated,
   onCommentsChanged,
+  onLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
@@ -373,10 +377,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<AxiosError>();
-  // A failed first load renders its own placeholder; only a failed reload of a
-  // task already on screen needs the toast.
-  const hasTaskRef = useRef(Boolean(fallbackTask));
-  hasTaskRef.current = Boolean(task);
   const [readyReviewTask, setReadyReviewTask] = useState<string>();
   const handleReviewReady = useCallback(
     (ready: boolean) => {
@@ -388,6 +388,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
   const [loadedTaskId, setLoadedTaskId] = useState<string>();
+  // A failed first load renders its own placeholder, even over the list row;
+  // only a failed reload of a fully loaded task needs the toast.
+  const hasTaskRef = useRef(false);
+  hasTaskRef.current = loadedTaskId === taskId;
   // Gates approve/reject/resolve on the server's ResolveTask verdict (assignee,
   // reviewer, owner; self-approval denied). Fail closed: undefined until the
   // permission resolves so the buttons never flash for a user who can't act.
@@ -513,6 +517,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
+
+  useEffect(() => {
+    if (task && hasFullTask) {
+      onLoaded?.(task);
+    }
+  }, [task, hasFullTask, onLoaded]);
+
   const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
       return { actions: [], isResolveDenied: false };
@@ -779,7 +790,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   }
 
-  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
+  // The list row has no assignees, so its badge would read "Unassigned".
+  const getStatusBadge = () =>
+    hasFullTask ? getTaskStatusLabel(task, currentUserIds, t) : undefined;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -824,6 +837,31 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   };
 
+  // The list row carries only what the header needs; the details and timeline
+  // read fields (payload, assignees, ontologyReview) only the full task has.
+  const renderBody = () => {
+    if (!hasFullTask) {
+      return isLoading ? (
+        <Loader size="small" />
+      ) : (
+        <TaskUnavailable error={loadError} onRetry={loadTask} />
+      );
+    }
+
+    return (
+      <>
+        {renderDetails()}
+
+        <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
+          incidentStatuses={about?.incidentStatuses}
+          task={task}
+          onCommentChanged={handleCommentMutated}
+        />
+      </>
+    );
+  };
+
   return (
     <Box
       className="tw:h-full tw:w-full tw:min-h-0"
@@ -839,7 +877,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
-          statusBadge={statusBadge}
+          statusBadge={getStatusBadge()}
           task={task}
           typeBadge={descriptor.typeBadge}
           onAssigneeUpdate={handleAssigneeTransition}
@@ -865,14 +903,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
-        {renderDetails()}
-
-        <TaskActivityTimeline
-          createdEvent={descriptor.createdEvent}
-          incidentStatuses={about?.incidentStatuses}
-          task={task}
-          onCommentChanged={handleCommentMutated}
-        />
+        {renderBody()}
       </Box>
 
       <Box

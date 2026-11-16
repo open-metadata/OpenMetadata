@@ -398,14 +398,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/playwright/constant/productTour.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/ProductTour.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/constant/profilerConfiguration.ts"
       ],
       "specs": [
@@ -1964,6 +1956,7 @@
         "playwright/e2e/Features/LandingPageWidgets/DomainDataProductsWidgets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/FollowingWidget.spec.ts",
         "playwright/e2e/Features/MetricAssets.spec.ts",
+        "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/RestoreEntityInheritedFields.spec.ts",
         "playwright/e2e/Features/SearchSeparation/Topic.spec.ts",
         "playwright/e2e/Features/TableSearch.spec.ts",
@@ -2421,7 +2414,6 @@
         "playwright/e2e/Flow/NestedChildrenUpdates.spec.ts",
         "playwright/e2e/Flow/NotificationAlerts.spec.ts",
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
-        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
         "playwright/e2e/Flow/ServiceForm.spec.ts",
@@ -4408,7 +4400,6 @@
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",
         "playwright/e2e/Flow/ServiceDocPanel.spec.ts",
@@ -8485,7 +8476,6 @@
         "playwright/e2e/Features/Tasks/TaskNavigation.spec.ts",
         "playwright/e2e/Features/Tasks/TeamActivity.spec.ts",
         "playwright/e2e/Flow/ApiDocs.spec.ts",
-        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Pages/DomainAdvanced.spec.ts",
         "playwright/e2e/Pages/DomainUIInteractions.spec.ts",
         "playwright/e2e/Pages/Domains.spec.ts",
@@ -8582,6 +8572,14 @@
       ],
       "specs": [
         "playwright/e2e/Features/Pagination.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/ProductTour/ProductTourModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/WelcomeScreen.spec.ts"
       ]
     },
     {
@@ -9334,6 +9332,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/Topic/TopicSchema/TopicSchema.tsx"
       ],
       "specs": [
+        "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/Topic.spec.ts"
       ]
     },
@@ -10097,6 +10096,7 @@
         "playwright/e2e/Features/PersonaAIContextList.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AuditLogs.spec.ts",
@@ -10127,6 +10127,7 @@
         "playwright/e2e/Features/PersonaAIContextList.spec.ts",
         "playwright/e2e/Features/QueryEntity.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Flow/UsersPagination.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
@@ -11178,6 +11179,7 @@
         "playwright/e2e/Features/Pagination.spec.ts",
         "playwright/e2e/Features/SchemaSearch.spec.ts",
         "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
@@ -12005,15 +12007,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/observability/ObservabilityPageShell/ObservabilityPageShell.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/AIMode/AiAlertPermissions.spec.ts",
-        "playwright/e2e/Features/AIMode/ObservabilityLayout.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/observability/TestCaseDetail/TestCaseDetail.tsx"
       ],
       "specs": [
@@ -12149,22 +12142,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/product-tour/ProductTour/ProductTour.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/ProductTour.spec.ts"
-      ]
-    },
-    {
-      "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/product-tour/ProductTour/ProductTour.utils.ts"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/ProductTour.spec.ts"
       ]
     },
     {
@@ -13000,7 +12977,6 @@
         "playwright/e2e/Flow/PasswordFieldClear.spec.ts",
         "playwright/e2e/Flow/PersonaDeletionUserProfile.spec.ts",
         "playwright/e2e/Flow/PersonaFlow.spec.ts",
-        "playwright/e2e/Flow/ProductTour.spec.ts",
         "playwright/e2e/Flow/SchemaTable.spec.ts",
         "playwright/e2e/Flow/SearchRBAC.spec.ts",
         "playwright/e2e/Flow/ServiceCreationPermissions.spec.ts",

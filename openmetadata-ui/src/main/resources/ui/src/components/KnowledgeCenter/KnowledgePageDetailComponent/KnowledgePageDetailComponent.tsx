@@ -92,7 +92,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -1096,15 +1096,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
         <PermissionPlaceholder
-          description={
-            <Transi18next
-              i18nKey="message.no-access-placeholder"
-              renderElement={<b />}
-              values={{
-                entity: t('label.view-entity', { entity: t('label.article') }),
-              }}
-            />
-          }
+          description={t('message.no-access-placeholder', {
+            entity: t('label.view-entity', { entity: t('label.article') }),
+          })}
           icon={<Lock />}
           title={t('label.access-denied')}
         />
