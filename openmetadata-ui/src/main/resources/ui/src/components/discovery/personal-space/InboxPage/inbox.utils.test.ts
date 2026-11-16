@@ -12,7 +12,7 @@
  */
 
 import { TFunction } from 'i18next';
-import { DateTime } from 'luxon';
+import { DateTime, Settings } from 'luxon';
 import { ReactionOperation } from '../../../../enums/reactions.enum';
 import {
   ActivityEvent,
@@ -30,9 +30,6 @@ import {
 } from '../../../../rest/conversationsAPI';
 
 jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
-  getStartOfDayInMillis: (value: number) => value ?? 0,
-  getEndOfDayInMillis: (value: number) => value ?? 0,
-  getEpochMillisForPastDays: (days: number) => days,
   getCurrentMillis: () => 0,
 }));
 
@@ -96,12 +93,25 @@ describe('INBOX_DATE_RANGE_OPTIONS', () => {
     });
   });
 
-  it('starts Today at the start of the current day', () => {
-    // DateTimeUtils is mocked to echo its input: the start of 0 days back.
-    expect(getInboxDateRange(INBOX_DATE_RANGE_OPTIONS.today.days)).toEqual({
-      startTs: 0,
-      endTs: 0,
-    });
+  // The feed heads its days in the viewer's zone; a UTC day would start
+  // Today at 05:30 in India, and just after midnight still show yesterday.
+  it("bounds a window by the viewer's own days, not UTC's", () => {
+    const { defaultZone, now } = Settings;
+    Settings.defaultZone = 'Asia/Kolkata';
+    Settings.now = () => Date.parse('2026-11-16T19:30:00Z');
+
+    try {
+      expect(getInboxDateRange(INBOX_DATE_RANGE_OPTIONS.today.days)).toEqual({
+        startTs: Date.parse('2026-11-16T18:30:00Z'),
+        endTs: Date.parse('2026-11-17T18:29:59.999Z'),
+      });
+      expect(getInboxDateRange(3).startTs).toBe(
+        Date.parse('2026-11-13T18:30:00Z')
+      );
+    } finally {
+      Settings.defaultZone = defaultZone;
+      Settings.now = now;
+    }
   });
 });
 
