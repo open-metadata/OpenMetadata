@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.task-dag-control-btn {
-  .react-flow__controls-button {
-    height: 24px;
-    width: 24px;
-  }
-}
+
+export const TASK_STATUS_DOT_CLASS: Record<string, string> = {
+  Successful: 'tw:bg-visualization-green-3',
+  Failed: 'tw:bg-visualization-red-3',
+  Pending: 'tw:bg-visualization-yellow-2',
+};
