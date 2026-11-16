@@ -16,8 +16,6 @@ package org.openmetadata.service.resources.types;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionDenied;
-import static org.openmetadata.service.exception.CatalogExceptionMessage.permissionNotAllowed;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Operation;
@@ -64,8 +62,6 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.type.Permission;
-import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -80,9 +76,7 @@ import org.openmetadata.service.jdbi3.TypeRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
-import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.PolicyDeniedException;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -383,7 +377,10 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
     if (fields.getFieldList().contains("customProperties")) {
       try {
         if (Entity.entityHasField(name, Entity.FIELD_EXTENSION)) {
-          authorizeViewCustomFieldsOnType(securityContext, name);
+          OperationContext operationContext =
+              new OperationContext(name, MetadataOperation.VIEW_CUSTOM_FIELDS);
+          authorizer.authorize(
+              securityContext, operationContext, ResourceContext.forEntityType(name));
           return addHref(uriInfo, repository.getByName(uriInfo, name, fields, include, false));
         }
       } catch (EntityNotFoundException e) {
@@ -734,33 +731,6 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   // Types describe the shape of every entity, custom properties included, so reading them takes
   // what listing types takes
   // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
-  /**
-   * Custom property definitions belong to the entity type, not to an asset, so conditions such as
-   * matchTeam() or isOwner() cannot be evaluated here. Refuse only an unconditional deny or a
-   * missing allow; per-asset ViewCustomFields is still enforced when the asset's extension is read.
-   */
-  private void authorizeViewCustomFieldsOnType(SecurityContext securityContext, String type) {
-    Permission permission =
-        authorizer.getPermission(securityContext, null, type).getPermissions().stream()
-            .filter(p -> p.getOperation() == MetadataOperation.VIEW_CUSTOM_FIELDS)
-            .findFirst()
-            .orElse(null);
-    String user = securityContext.getUserPrincipal().getName();
-    if (permission == null || permission.getAccess() == Access.NOT_ALLOW) {
-      throw new AuthorizationException(
-          permissionNotAllowed(user, List.of(MetadataOperation.VIEW_CUSTOM_FIELDS)));
-    }
-    if (permission.getAccess() == Access.DENY) {
-      throw new PolicyDeniedException(
-          permissionDenied(
-              user,
-              MetadataOperation.VIEW_CUSTOM_FIELDS,
-              permission.getRole(),
-              permission.getPolicy(),
-              permission.getRule() == null ? null : permission.getRule().getName()));
-    }
-  }
-
   private void authorizeTypeRead(SecurityContext securityContext) {
     authorizer.authorize(
         securityContext,

@@ -5,16 +5,22 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.Function;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
@@ -242,5 +248,101 @@ class CompiledRuleTest {
         new PolicyContext(
             Entity.ROLE, "botRole", "botRole", "BotNonAdminImpersonationPolicy", null);
     denyRule.evaluateDenyRule(operationContext, botSubject, targetResource, policyContext);
+  }
+
+  @Test
+  void everyConditionFunctionIsClassifiedAsResourceDependentOrSubjectOnly() {
+    Set<String> subjectOnly = Set.of("inAnyTeam", "hasAnyRole", "isImpersonated", "impersonatedBy");
+    Set<String> declared =
+        Arrays.stream(RuleEvaluator.class.getMethods())
+            .filter(method -> method.isAnnotationPresent(Function.class))
+            .map(method -> method.getAnnotation(Function.class).name())
+            .collect(Collectors.toSet());
+    Set<String> unclassified =
+        declared.stream()
+            .filter(name -> !CompiledRule.RESOURCE_DEPENDENT_FUNCTIONS.contains(name))
+            .filter(name -> !subjectOnly.contains(name))
+            .collect(Collectors.toSet());
+
+    assertTrue(
+        unclassified.isEmpty(),
+        "Classify new condition functions in CompiledRule.RESOURCE_DEPENDENT_FUNCTIONS or here: "
+            + unclassified);
+  }
+
+  @Test
+  void entityTypeRequestSkipsDenyThatReadsTheAsset() {
+    CompiledRule denyOutsideTeam = conditionalDeny("!matchTeam()");
+
+    assertDoesNotThrow(() -> evaluateViewCustomFieldsDeny(denyOutsideTeam, ownerlessTable(true)));
+    assertThrows(
+        AuthorizationException.class,
+        () -> evaluateViewCustomFieldsDeny(denyOutsideTeam, ownerlessTable(false)),
+        "an ordinary context still evaluates the condition");
+  }
+
+  @Test
+  void entityTypeRequestStillEvaluatesSubjectOnlyAndUnconditionalDenies() {
+    ResourceContextInterface typeLevel = ownerlessTable(true);
+
+    assertThrows(
+        AuthorizationException.class,
+        () -> evaluateViewCustomFieldsDeny(conditionalDeny("!isImpersonated()"), typeLevel));
+    assertThrows(
+        AuthorizationException.class,
+        () -> evaluateViewCustomFieldsDeny(conditionalDeny(null), typeLevel));
+  }
+
+  private static CompiledRule conditionalDeny(String condition) {
+    return new CompiledRule(
+        new Rule()
+            .withName("deny")
+            .withResources(List.of("table"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition(condition));
+  }
+
+  private static void evaluateViewCustomFieldsDeny(
+      CompiledRule denyRule, ResourceContextInterface resourceContext) {
+    OperationContext operationContext =
+        new OperationContext("table", MetadataOperation.VIEW_CUSTOM_FIELDS);
+    SubjectContext subject = new SubjectContext(new User().withName("caller"), null);
+    PolicyContext policyContext = new PolicyContext(Entity.ROLE, "role", "role", "policy", null);
+    denyRule.evaluateDenyRule(operationContext, subject, resourceContext, policyContext);
+  }
+
+  private static ResourceContextInterface ownerlessTable(boolean entityTypeLevel) {
+    return new ResourceContextInterface() {
+      @Override
+      public String getResource() {
+        return "table";
+      }
+
+      @Override
+      public List<EntityReference> getOwners() {
+        return null;
+      }
+
+      @Override
+      public List<TagLabel> getTags() {
+        return null;
+      }
+
+      @Override
+      public EntityInterface<?> getEntity() {
+        return null;
+      }
+
+      @Override
+      public List<EntityReference> getDomains() {
+        return null;
+      }
+
+      @Override
+      public boolean isEntityTypeLevel() {
+        return entityTypeLevel;
+      }
+    };
   }
 }

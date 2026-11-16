@@ -30,9 +30,9 @@ import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * GET /metadata/types/name/{entityType}?fields=customProperties authorizes ViewCustomFields on the
- * entity type, where no asset exists. Asset-dependent conditions (matchTeam(), isOwner(), ...) can't
- * be evaluated there, so a conditional deny must not refuse it (#37759), while an unconditional
- * ViewCustomFields deny still must (#17152).
+ * entity type, where no asset exists. A deny whose condition reads the asset (matchTeam(),
+ * isOwner(), ...) must not refuse it (#37759); unconditional and subject-only denies still must.
+ * ADR:2026-11-16-entity-type-reads-skip-deny-rules-whose-condition-reads-the-asset
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -79,6 +79,20 @@ class TypeCustomPropertiesPermissionIT {
             .withOperations(List.of(MetadataOperation.VIEW_CUSTOM_FIELDS))
             .withEffect(Rule.Effect.DENY);
     OpenMetadataClient client = clientForPrincipalWithRules(ns, "cpfields", List.of(deny));
+
+    assertThrows(ForbiddenException.class, () -> getTypeWithCustomProperties(client));
+  }
+
+  @Test
+  void subjectOnlyDeny_stillBlocksTypeCustomProperties(TestNamespace ns) {
+    Rule deny =
+        new Rule()
+            .withName(ns.shortPrefix() + "cpOrgDeny")
+            .withResources(List.of(DATA_PRODUCT))
+            .withOperations(List.of(MetadataOperation.VIEW_CUSTOM_FIELDS))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("inAnyTeam('Organization')");
+    OpenMetadataClient client = clientForPrincipalWithRules(ns, "cporg", List.of(deny));
 
     assertThrows(ForbiddenException.class, () -> getTypeWithCustomProperties(client));
   }
