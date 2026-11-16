@@ -80,7 +80,7 @@ const IncidentTypeAreaChartWidget = ({
         />
         <Typography
           as="p"
-          className="tw:mt-2"
+          className="tw:mt-4"
           color="secondary"
           data-testid="widget-description"
           size="text-xs">

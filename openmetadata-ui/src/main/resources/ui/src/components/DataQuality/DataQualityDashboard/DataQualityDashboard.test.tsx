@@ -522,6 +522,7 @@ describe('DataQualityDashboard', () => {
           incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESPONSE,
           name: 'response-time',
           title: 'label.response-time',
+          description: 'message.response-time-card-description',
         })
       );
 
@@ -531,6 +532,7 @@ describe('DataQualityDashboard', () => {
           incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESOLUTION,
           name: 'resolution-time',
           title: 'label.resolution-time',
+          description: 'message.resolution-time-card-description',
         })
       );
     });

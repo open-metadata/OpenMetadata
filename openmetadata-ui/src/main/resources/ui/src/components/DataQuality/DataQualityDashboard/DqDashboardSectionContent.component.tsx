@@ -203,6 +203,7 @@ export const DqDashboardSectionContent = ({
           />
           <IncidentTimeChartWidget
             chartFilter={defaultFilters}
+            description={t('message.response-time-card-description')}
             height={60}
             incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
             name="response-time"
@@ -210,6 +211,7 @@ export const DqDashboardSectionContent = ({
           />
           <IncidentTimeChartWidget
             chartFilter={defaultFilters}
+            description={t('message.resolution-time-card-description')}
             height={60}
             incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESOLUTION}
             name="resolution-time"
