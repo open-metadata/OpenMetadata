@@ -359,9 +359,10 @@ public class SystemRepository implements DeploymentSettingPreparer {
 
   /**
    * Writes both security settings unless one changed since {@code stored} was read, which fails
-   * with a 412 instead of silently undoing that change.
+   * with a 412 instead of silently undoing that change. Returns what is stored now, for a later
+   * write that must not undo a change made in between either.
    */
-  public void updateSecurityConfigurationIfCurrent(
+  public StoredSecurityConfiguration updateSecurityConfigurationIfCurrent(
       SecurityConfiguration updated, StoredSecurityConfiguration stored) {
     Settings authentication =
         new Settings()
@@ -373,11 +374,40 @@ public class SystemRepository implements DeploymentSettingPreparer {
             .withConfigValue(updated.getAuthorizerConfiguration());
     assertDeploymentFieldsUnchanged(authentication);
     assertDeploymentFieldsUnchanged(authorizer);
-    dao.updateSecuritySettingsIfCurrent(
-        securityUpdate(authentication, stored.authenticationJson()),
-        securityUpdate(authorizer, stored.authorizerJson()));
+    SecuritySettingsUpdate authenticationUpdate =
+        securityUpdate(authentication, stored.authenticationJson());
+    SecuritySettingsUpdate authorizerUpdate = securityUpdate(authorizer, stored.authorizerJson());
+    dao.updateSecuritySettingsIfCurrent(authenticationUpdate, authorizerUpdate);
     settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
     settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+    return new StoredSecurityConfiguration(
+        updated, authenticationUpdate.updatedJson(), authorizerUpdate.updatedJson());
+  }
+
+  /**
+   * Writes both security settings whatever the rows hold, for when one is missing and there is
+   * nothing to compare with, and returns what is stored now. A failed write is thrown, never
+   * answered with a response the caller could ignore.
+   */
+  public StoredSecurityConfiguration storeSecurityConfiguration(
+      SecurityConfiguration configuration) {
+    Settings authentication =
+        new Settings()
+            .withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(configuration.getAuthenticationConfiguration());
+    Settings authorizer =
+        new Settings()
+            .withConfigType(SettingsType.AUTHORIZER_CONFIGURATION)
+            .withConfigValue(configuration.getAuthorizerConfiguration());
+    assertDeploymentFieldsUnchanged(authentication);
+    assertDeploymentFieldsUnchanged(authorizer);
+    String authenticationJson = prepareSettingForUpdate(authentication);
+    String authorizerJson = prepareSettingForUpdate(authorizer);
+    dao.insertSettings(SettingsType.AUTHENTICATION_CONFIGURATION.value(), authenticationJson);
+    dao.insertSettings(SettingsType.AUTHORIZER_CONFIGURATION.value(), authorizerJson);
+    settingUpdated(SettingsType.AUTHENTICATION_CONFIGURATION);
+    settingUpdated(SettingsType.AUTHORIZER_CONFIGURATION);
+    return new StoredSecurityConfiguration(configuration, authenticationJson, authorizerJson);
   }
 
   private SecuritySettingsUpdate securityUpdate(Settings setting, String expectedJson) {

@@ -5,7 +5,8 @@
 - **Deciders:** Mohit Yadav
 - **Guard:** `SsoSecurityConfigApplyIT` (CF-02, CF-03, LD-12), `SsoSamlLoginIT` (SA-11),
   `SsoOidcConfidentialLoginIT` (OC-15), `SystemRepositorySecurityConfigPatchTest`,
-  `SamlValidatorTest`
+  `SamlValidatorTest`, `SystemResourceSecurityConfigApplyTest`,
+  `SystemRepositorySecuritySettingsTest`
 - **Related:** 2.1.0 release testing, SSO row
 
 ## Context
@@ -21,6 +22,13 @@ every change was dropped answered 204.
 ## Decision
 - When the server cannot apply a saved configuration, it stores the previous one again and
   answers 400 with the reason. The configuration that was running keeps running.
+- It stores the previous one again only while both rows still hold what the refused save wrote,
+  compared and set as a save is: when another save replaced them meanwhile, that save is kept and
+  the refused one is answered 412. When storing the previous one fails, the answer is 500 and says
+  the refused configuration may still be stored.
+- A `PUT` writes over the rows it read with the same compare-and-set as a `PATCH`, so what a
+  refused `PUT` stores again is exactly what it replaced. A `PUT` racing another save is answered
+  412, as a `PATCH` is.
 - A `PUT`, which skips the full validation a `PATCH` and `/security/validate` run, still makes the
   checks that need no network: the client authentication method of a confidential OIDC client must
   be one the server performs (`client_secret_basic`, `client_secret_post`), and SAML request or
@@ -34,5 +42,6 @@ every change was dropped answered 204.
 - An unreachable identity provider at save time is not decided here.
 
 ## Consequences
-What a save reports is what every server runs. A failed apply costs a second write. Adding a
-provider block or a provider-specific setting means extending the `PATCH` filter.
+What a save reports is what every server runs. A failed apply costs a second write, and two
+admins saving at the same moment can be answered 412 and have to read the configuration again.
+Adding a provider block or a provider-specific setting means extending the `PATCH` filter.
