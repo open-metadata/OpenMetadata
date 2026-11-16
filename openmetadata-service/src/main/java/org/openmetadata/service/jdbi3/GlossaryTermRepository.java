@@ -3122,7 +3122,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
     placeUnder(updated, moveRequest.getParent());
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
     GlossaryTermUpdater updater = new GlossaryTermUpdater(original, updated, Operation.PUT);
     updater.moveAndStore();

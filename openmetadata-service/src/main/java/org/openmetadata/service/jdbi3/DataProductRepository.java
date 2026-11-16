@@ -309,7 +309,9 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     updated.setDomains(updatedDomains);
     updated.setVersion(EntityUtil.nextVersion(original.getVersion()));
     updated.setUpdatedAt(System.currentTimeMillis());
-    updated.setUpdatedBy(updatedBy != null ? updatedBy : original.getUpdatedBy());
+    if (updatedBy != null) {
+      EntityUtil.recordWriter(updated, updatedBy);
+    }
 
     ChangeDescription change = new ChangeDescription().withPreviousVersion(original.getVersion());
     fieldDeleted(change, FIELD_DOMAINS, JsonUtils.pojoToJson(removedDomains));
@@ -729,7 +731,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     } else {
       dataProduct.setChangeDescription(change);
     }
-    dataProduct.setUpdatedBy(updatedBy);
+    EntityUtil.recordWriter(dataProduct, updatedBy);
     storeEntity(dataProduct, true);
     invalidate(dataProduct);
   }

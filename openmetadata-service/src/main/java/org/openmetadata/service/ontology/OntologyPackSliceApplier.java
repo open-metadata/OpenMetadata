@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.OntologyPackSource;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.resources.ontology.OntologyChangeSetMapper;
+import org.openmetadata.service.security.ImpersonationContext;
 
 /** Applies one slice as a stamped change set through the regular change-set application path. */
 public final class OntologyPackSliceApplier implements OntologyPackInstallJobHandler.SliceApplier {
@@ -48,7 +49,8 @@ public final class OntologyPackSliceApplier implements OntologyPackInstallJobHan
     final long revision = ontologies.getState(request.ontologyId()).getWorkingRevision();
     final OntologyChangeSet draft =
         mapper.createToEntity(changeSet(request, revision), request.user());
-    final OntologyChangeSet created = changeSets.create(null, draft, request.user(), null);
+    final OntologyChangeSet created =
+        changeSets.create(null, draft, request.user(), ImpersonationContext.getImpersonatedBy());
     final OntologyChangeSet applied =
         applications.apply(null, created.getId(), request.user()).getEntity();
     requireApplied(request, applied);

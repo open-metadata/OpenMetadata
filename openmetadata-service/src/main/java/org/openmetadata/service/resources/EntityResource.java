@@ -1521,16 +1521,12 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
                         WebsocketNotificationHandler.sendDeleteOperationCompleteNotification(
                             jobId, securityContext, deleteResponse.entity());
                       } catch (Exception e) {
-                        // Log before notifying. The WebSocket notification is the ONLY report this
-                        // path
-                        // had, so a failed async delete was invisible to anyone not holding a live
-                        // socket
-                        // — no stack trace, no error line, nothing. A 100k-table service delete
-                        // that
-                        // dies
-                        // here looks exactly like one still grinding, which is precisely the
-                        // ambiguity
-                        // that made the nightly scale failures undiagnosable.
+                        // Log before notifying. The WebSocket notification is the ONLY report
+                        // this path had, so a failed async delete was invisible to anyone not
+                        // holding a live socket — no stack trace, no error line, nothing. A
+                        // 100k-table service delete that dies here looks exactly like one still
+                        // grinding, which is precisely the ambiguity that made the nightly scale
+                        // failures undiagnosable.
                         LOG.error(
                             "Async delete failed for {} {} (jobId {}, recursive={}, hardDelete={})",
                             entityType,
@@ -1870,14 +1866,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   // impersonation from the thread: the job takes the request's, so each asset is authorized as the
   // request would be, and clears it when it ends.
   private static Runnable asRequester(PatchRequester requester, Runnable job) {
-    return () -> {
-      ImpersonationContext.setImpersonatedBy(requester.actor().impersonatedBy());
-      try {
-        job.run();
-      } finally {
-        ImpersonationContext.clear();
-      }
-    };
+    return ImpersonationContext.runAs(requester.actor().impersonatedBy(), job);
   }
 
   public Response importCsvInternalAsync(

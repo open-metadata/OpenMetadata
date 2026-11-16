@@ -46,6 +46,7 @@ import org.openmetadata.service.ontology.OntologyDecisionNotice;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
 import org.openmetadata.service.ontology.OntologyReview;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 
@@ -627,7 +628,7 @@ public final class OntologyReleaseRepository extends OntologyEntityRepository<On
 
   private void persistWorkflowState(
       final OntologyRelease original, final OntologyRelease updated, final String user) {
-    updated.setUpdatedBy(user);
+    EntityUtil.recordWriter(updated, user);
     updated.setUpdatedAt(System.currentTimeMillis());
     new ReleaseUpdater(original, updated).updateWithOptimisticLocking();
   }

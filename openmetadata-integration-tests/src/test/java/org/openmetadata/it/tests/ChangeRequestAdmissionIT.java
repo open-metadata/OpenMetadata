@@ -206,6 +206,36 @@ class ChangeRequestAdmissionIT {
   }
 
   @Test
+  void approvedChangeABotStagedForAHumanIsPublishedNamingTheBot(TestNamespace ns) throws Exception {
+    Glossary glossary = gated(ns);
+    User botUser = createBotUser(ns, "crpub");
+    createBot(ns.prefix("crpub_bot"), botUser, true);
+    User human = SharedEntities.get().USER2;
+    patchAs(
+        impersonationClient(generateBotToken(botUser), human.getName()),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"impersonated\"}]");
+
+    resolveAs(
+        SdkClients.user1Client(),
+        awaitOpenApprovalTask(glossary.getFullyQualifiedName()),
+        "approve",
+        TaskResolutionType.Approved,
+        null);
+    Awaitility.await("approved description published")
+        .atMost(Duration.ofSeconds(120))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(() -> "impersonated".equals(descriptionOf(glossary.getId())));
+
+    Glossary published = SdkClients.adminClient().glossaries().get(glossary.getId().toString());
+    assertEquals(human.getName(), published.getUpdatedBy());
+    assertEquals(
+        botUser.getName(),
+        published.getImpersonatedBy(),
+        "The published version must name the bot that staged the change for the human");
+  }
+
+  @Test
   void entityOutsideTheFilterIsNotGated(TestNamespace ns) {
     Glossary gatedOne = gated(ns);
     Glossary other = gatedGlossary(ns, "other");

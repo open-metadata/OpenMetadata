@@ -454,7 +454,11 @@ public final class ChangeApplyService {
               currentTree.toString(), MutationPlanner.applyTo(currentTree, fieldOps).toString());
       final ApprovedApplication approval =
           new ApprovedApplication(
-              request.getId(), revision.getId(), request.getEntityId(), request.getRequestedBy());
+              request.getId(),
+              revision.getId(),
+              request.getEntityId(),
+              request.getRequestedBy(),
+              request.getImpersonatedBy());
       repository.applyApprovedChange(approval, patch);
     }
     if (!relationOps.isEmpty()) {
