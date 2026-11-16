@@ -354,7 +354,10 @@ in vector search and under concurrent writes. This amends v4.
   in the separately redacted references. A reference refresh clears existing entity embedding fields
   and chunk documents before rebuilding a live, eligible memory's vectors. An archived memory keeps
   its deleted state and loses its old vector text. An unavailable embedding provider leaves the old
-  text cleared. Pre-release instances reindex `contextMemory` after upgrading to replace earlier text.
+  text cleared. Ordinary memory indexing removes the legacy vector fields even when vector
+  initialization is absent. Reference refreshes of other entity types keep an embedding whose
+  fingerprint is already current. Pre-release instances reindex `contextMemory` after upgrading to
+  replace earlier text.
 - A source copy locks and rereads the original memory's row, then creates the copy and removes the
   source link in that transaction. The locked row supplies its content and stage. A retired or
   deleted memory produces no copy, so a decision that landed after an earlier read cannot be
@@ -365,7 +368,8 @@ in vector search and under concurrent writes. This amends v4.
   that transaction. These rules replace v4's non-transactional archive moves and separate mark write.
 - Source archival archives the individual memory, without cascading through `parentMemory` or
   `rootMemory`: a child can still be stated by another live document. Ordinary user deletion keeps
-  its hierarchy checks and explicit recursive behavior.
+  its hierarchy checks and explicit recursive behavior. Source restore likewise leaves each child's
+  own live or deleted state unchanged.
 
-Guarded by `ContextMemoryBodyTextContributorTest`, `SearchRepositoryBehaviorTest`,
+Guarded by `ContextMemoryBodyTextContributorTest`, `ContextMemoryIndexTest`, `VectorEmbeddingHandlerTest`, `SearchRepositoryBehaviorTest`,
 `MemorySourceLifecycleTest` and `ContextMemoryExtractionIT`.

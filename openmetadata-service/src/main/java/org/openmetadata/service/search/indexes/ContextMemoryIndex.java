@@ -60,6 +60,16 @@ public class ContextMemoryIndex implements TaggableIndex {
   /** The file a memory shows as its source; an article source is not indexed. */
   public static final String FIELD_SOURCE_FILE_ID = "sourceFile.id";
 
+  public static final Set<String> VECTOR_FIELDS =
+      Set.of(
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "parentId",
+          "chunkIndex",
+          "chunkCount");
+
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
       Set.of(
           ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
@@ -92,6 +102,8 @@ public class ContextMemoryIndex implements TaggableIndex {
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    // Reference refreshes must remove old text even when the embedding provider is disabled.
+    VECTOR_FIELDS.forEach(field -> doc.put(field, null));
     doc.put("title", memory.getTitle());
     doc.put("summary", memory.getSummary());
     doc.put("question", memory.getQuestion());

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import java.util.Locale;
+import java.util.Objects;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -62,11 +63,27 @@ public class VectorEmbeddingHandler implements EntityLifecycleEventHandler {
 
   /** Removes old disclosure-bearing text before rebuilding from the entity's current content. */
   public void refreshEmbedding(EntityInterface<?> entity) {
-    deleteChunks(entity);
-    clearEntityEmbedding(entity);
+    if (!hasCurrentEmbedding(entity)) {
+      deleteChunks(entity);
+      clearEntityEmbedding(entity);
+    }
     if (entity != null && !Boolean.TRUE.equals(entity.getDeleted())) {
       updateEmbedding(entity);
     }
+  }
+
+  private boolean hasCurrentEmbedding(EntityInterface<?> entity) {
+    if (entity == null
+        || !isSupported(entity)
+        || Boolean.TRUE.equals(entity.getDeleted())
+        || !Entity.isVectorEmbeddable(entity)) {
+      return false;
+    }
+    String indexName = resolveEntityIndexName(extractEntityType(entity));
+    return indexName != null
+        && Objects.equals(
+            VectorDocBuilder.computeFingerprintForEntity(entity),
+            vectorService.getExistingFingerprint(indexName, entity.getId().toString()));
   }
 
   @Override

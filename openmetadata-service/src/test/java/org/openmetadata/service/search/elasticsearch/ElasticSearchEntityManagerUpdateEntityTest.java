@@ -60,7 +60,18 @@ class ElasticSearchEntityManagerUpdateEntityTest {
 
   @Test
   void absentMemoryReferencesAreRemovedFromExistingDocuments() {
-    Set<String> fields = Set.of("primaryEntity", "sourceEntity", "sourceFile");
+    Set<String> fields =
+        Set.of(
+            "primaryEntity",
+            "sourceEntity",
+            "sourceFile",
+            "embedding",
+            "textToEmbed",
+            "textToLLMContext",
+            "fingerprint",
+            "parentId",
+            "chunkIndex",
+            "chunkCount");
     Map<String, Object> doc = new HashMap<>();
     doc.put("name", "memory");
     fields.forEach(field -> doc.put(field, null));

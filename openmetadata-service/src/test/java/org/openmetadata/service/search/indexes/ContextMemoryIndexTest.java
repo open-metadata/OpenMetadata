@@ -44,9 +44,24 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
 class ContextMemoryIndexTest {
+  @Test
+  void aMemoryRewriteDiscardsLegacyVectorFieldsWithoutAnEmbeddingProvider() {
+    Map<String, Object> doc = new HashMap<>();
+    ContextMemoryIndex.VECTOR_FIELDS.forEach(field -> doc.put(field, "private-acquisition-plan"));
+
+    new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(doc);
+
+    for (String field : ContextMemoryIndex.VECTOR_FIELDS) {
+      assertTrue(doc.containsKey(field), field);
+      assertNull(doc.get(field), field);
+    }
+    assertTrue(
+        SearchClient.FIELDS_TO_REMOVE_WHEN_NULL.containsAll(ContextMemoryIndex.VECTOR_FIELDS));
+  }
 
   private static MockedStatic<Entity> entityStaticMock;
 

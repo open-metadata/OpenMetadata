@@ -1286,6 +1286,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
   }
 
+  @Override
+  protected void restoreChildren(UUID id, String updatedBy) {
+    if (!MemoryRelinking.isRelinking(id)) {
+      super.restoreChildren(id, updatedBy);
+    }
+  }
+
   /**
    * Reindexes the memory from the database after the write commits. A source-link change can leave
    * the stored memory unchanged, and an unchanged update never rewrites the search document. Only

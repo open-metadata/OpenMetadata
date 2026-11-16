@@ -1287,11 +1287,14 @@ class MemorySourceLifecycleTest {
         .when(memories)
         .delete(Entity.ADMIN_USER_NAME, second.getId(), false, false);
 
-    assertThrows(
-        PreconditionFailedException.class,
-        () ->
-            new MemorySourceLifecycle(memories)
-                .archiveExtractedMemories(source.getId(), source.getType()));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, source, first.getEntityReference(), second.getEntityReference());
+      assertThrows(
+          PreconditionFailedException.class,
+          () ->
+              new MemorySourceLifecycle(memories)
+                  .archiveExtractedMemories(source.getId(), source.getType()));
+    }
 
     assertTrue(
         Boolean.TRUE.equals(second.getDeleted()), "one failure must not strand later memories");

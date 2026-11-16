@@ -10,9 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
@@ -43,6 +40,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -748,11 +746,24 @@ class ContextMemoryExtractionIT {
     ContextMemory root = extracted(original.getEntityReference()).getFirst();
     ContextFile other = file(ns, "child-source", "Child fact " + ns.shortPrefix());
     ContextMemory child =
-        pill("Child fact", other.getEntityReference(), ContextMemorySourceType.MANUAL)
+        pill(
+                "Child fact " + ns.shortPrefix(),
+                other.getEntityReference(),
+                ContextMemorySourceType.MANUAL)
             .withRootMemory(root.getEntityReference())
             .withParentMemory(root.getEntityReference());
     memoryRepository().create(null, child);
     namespace.trackRoot(Entity.CONTEXT_MEMORY, child.getId());
+    ContextMemory deletedChild =
+        pill(
+                "A retired child " + ns.shortPrefix(),
+                other.getEntityReference(),
+                ContextMemorySourceType.MANUAL)
+            .withRootMemory(root.getEntityReference())
+            .withParentMemory(root.getEntityReference());
+    memoryRepository().create(null, deletedChild);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, deletedChild.getId());
+    memoryRepository().delete(Entity.ADMIN_USER_NAME, deletedChild.getId(), false, false);
 
     try {
       RestClient.admin().delete(FILES, original.getId());
@@ -762,8 +773,10 @@ class ContextMemoryExtractionIT {
       assertEquals(Set.of(other.getId()), sourceIds(child));
       RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
       assertEquals(root.getId(), readMemory(root).getId());
+      assertArchived(ns, deletedChild);
     } finally {
       memoryRepository().delete(Entity.ADMIN_USER_NAME, child.getId(), false, true);
+      memoryRepository().delete(Entity.ADMIN_USER_NAME, deletedChild.getId(), false, true);
     }
   }
 
@@ -792,9 +805,10 @@ class ContextMemoryExtractionIT {
     assertEquals(Set.of(stale.getId()), Set.copyOf(ids(extracted(other.getEntityReference()))));
   }
 
-  @Test
-  void restrictingAFileClearsOldVectorTextEvenWhenEmbeddingIsUnavailable(TestNamespace ns)
-      throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void restrictingAFileClearsOldVectorTextEvenWhenEmbeddingIsUnavailable(
+      boolean handlerAvailable, TestNamespace ns) throws Exception {
     ContextFile document =
         fileOwnedBy(ns, "vector-source", "Refund policy " + ns.shortPrefix(), null);
     ContextMemory memory =
@@ -819,10 +833,33 @@ class ContextMemoryExtractionIT {
                 "textToLLMContext",
                 "source file: " + document.getName()),
             "ctx._source.putAll(params)");
-    EmbeddingClient embedding = mock(EmbeddingClient.class);
-    when(embedding.isAvailable()).thenReturn(true);
-    when(embedding.embed(anyString()))
-        .thenThrow(new EmbeddingUnavailableException("Provider unavailable"));
+    Awaitility.await("legacy vector text is present before restricting the file")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchMemorySource(searchMemoryAsOwner(memory), memory);
+              assertEquals(
+                  "source file: " + document.getName(), source.path("textToEmbed").asText());
+              assertEquals(
+                  "source file: " + document.getName(), source.path("textToLLMContext").asText());
+            });
+    EmbeddingClient embedding =
+        new EmbeddingClient() {
+          @Override
+          protected float[] doEmbed(String text) {
+            throw new EmbeddingUnavailableException("Provider unavailable");
+          }
+
+          @Override
+          public int getDimension() {
+            return 384;
+          }
+
+          @Override
+          public String getModelId() {
+            return "unavailable-test-provider";
+          }
+        };
     VectorIndexService vector =
         search.getSearchClient() instanceof ElasticSearchClient elastic
             ? new ElasticSearchVectorService(elastic.getNewClient(), embedding)
@@ -832,7 +869,7 @@ class ContextMemoryExtractionIT {
     handler.setAccessible(true);
     Object previous = handler.get(search);
     try {
-      handler.set(search, new VectorEmbeddingHandler(vector));
+      handler.set(search, handlerAvailable ? new VectorEmbeddingHandler(vector) : null);
       share(document, privately());
       Awaitility.await("old vector text no longer discloses the restricted source")
           .atMost(Duration.ofSeconds(60))
