@@ -1244,6 +1244,41 @@ public class BotImpersonationIT {
         "The table a bulk request creates for the user must name the bot");
   }
 
+  @Test
+  void test_impersonatedCsvImport_namesTheBotNotTheImporter(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "csv", admin);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(tableRequest(ns, schema, "csv").withDescription("Before the CSV import"));
+    String exported =
+        SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+
+    impersonation
+        .viaBot()
+        .databaseSchemas()
+        .importCsv(
+            schema.getFullyQualifiedName(),
+            exported.replace("Before the CSV import", "Imported by the bot"),
+            false,
+            false);
+
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, ADMIN_USER_NAME, impersonation.bot()),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        versionAuthors(SdkClients.adminClient().tables().getVersionList(table.getId())),
+        "A row the bot imports for its user must name the bot, not the user as their own bot");
+    assertEquals(
+        new VersionAuthor(0.2, ADMIN_USER_NAME, impersonation.bot()),
+        versionAuthors(SdkClients.adminClient().databaseSchemas().getVersionList(schema.getId()))
+            .getFirst(),
+        "The import's summary version on the schema must name the bot");
+  }
+
   private record IdentityCall(HttpMethod method, String path, Object body) {}
 
   private record VersionAuthor(double version, String updatedBy, String impersonatedBy) {}
