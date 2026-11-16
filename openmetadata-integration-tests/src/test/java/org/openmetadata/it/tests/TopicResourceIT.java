@@ -1709,6 +1709,9 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
 
     final JsonNode firstPage = schemaFieldPage(topic, "/columns/search?limit=2&offset=0");
     assertEquals(List.of("id", "address"), fieldNames(firstPage));
+    assertTrue(
+        firstPage.path("data").findValues("children").stream().allMatch(JsonNode::isNull),
+        "search rows must not repeat nested matches as children");
     assertEquals(5, firstPage.path("paging").path("total").asInt());
     assertEquals(
         "2",

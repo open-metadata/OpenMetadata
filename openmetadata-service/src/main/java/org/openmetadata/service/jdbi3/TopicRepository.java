@@ -390,8 +390,18 @@ public class TopicRepository extends EntityRepository<Topic> {
     final int toIndex = Math.min(offset + limit, total);
     final String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     final String after = toIndex < total ? String.valueOf(toIndex) : null;
-    return new ResultList<>(
-        new ArrayList<>(fields.subList(fromIndex, toIndex)), before, after, total);
+    final List<Field> page =
+        fields.subList(fromIndex, toIndex).stream().map(TopicRepository::withoutChildren).toList();
+    return new ResultList<>(new ArrayList<>(page), before, after, total);
+  }
+
+  /**
+   * Search lists every match as its own row, so a matched parent must not also carry its children:
+   * a child that matches too would appear twice with the same FQN. Copied because the parent topic
+   * may be a cached instance.
+   */
+  private static Field withoutChildren(Field field) {
+    return JsonUtils.deepCopy(field, Field.class).withChildren(null);
   }
 
   private void setFieldFQN(String parentFQN, List<Field> fields) {
