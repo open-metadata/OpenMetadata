@@ -30,6 +30,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -194,11 +195,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [isVersionView, messageSchema?.schemaFields, paginatedFields]
   );
 
+  const latestFetchId = useRef(0);
+
   const fetchSchemaFields = useCallback(
     async (page = 1, searchQuery?: string) => {
       if (!topicDetails.fullyQualifiedName) {
         return;
       }
+      const fetchId = ++latestFetchId.current;
+      const isStale = () => fetchId !== latestFetchId.current;
       setFieldsLoading(true);
       try {
         const response = await getTopicSchemaFieldsByFQN(
@@ -210,14 +215,22 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             q: searchQuery,
           }
         );
+        if (isStale()) {
+          return;
+        }
         setPaginatedFields(response.data);
         handlePagingChange(response.paging);
       } catch (error) {
+        if (isStale()) {
+          return;
+        }
         showErrorToast(error as AxiosError);
         setPaginatedFields([]);
         handlePagingChange({ offset: 1, limit: pageSize, total: 0 });
       } finally {
-        setFieldsLoading(false);
+        if (!isStale()) {
+          setFieldsLoading(false);
+        }
       }
     },
     [topicDetails.fullyQualifiedName, pageSize, handlePagingChange]
@@ -328,22 +341,19 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [schemaFields]
   );
 
+  // Errors propagate so the description modal and tag editor stay open and toast on failure.
   const updateSchemaField = async (
     fieldFqn: string,
     update: Partial<Field>,
     key: keyof Field
   ) => {
-    try {
-      const response = await updateTopicSchemaField(fieldFqn, update);
-      const cleanResponse = isEmpty(response.children)
-        ? omit(response, 'children')
-        : response;
-      setPaginatedFields((prev) =>
-        updateColumnInNestedStructure<Field>(prev, fieldFqn, cleanResponse, key)
-      );
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
+    const response = await updateTopicSchemaField(fieldFqn, update);
+    const cleanResponse = isEmpty(response.children)
+      ? omit(response, 'children')
+      : response;
+    setPaginatedFields((prev) =>
+      updateColumnInNestedStructure<Field>(prev, fieldFqn, cleanResponse, key)
+    );
   };
 
   const handleFieldTagsChange = async (

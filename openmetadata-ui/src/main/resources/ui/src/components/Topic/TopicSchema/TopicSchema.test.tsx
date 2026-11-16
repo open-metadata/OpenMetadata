@@ -32,6 +32,7 @@ import {
 } from '../../../rest/topicsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
+import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
@@ -121,7 +122,7 @@ jest.mock(
       <div data-testid="editor-modal">
         <button
           data-testid="save-description"
-          onClick={() => onSave('updated description')}>
+          onClick={() => onSave('updated description').catch(() => undefined)}>
           Save
         </button>
       </div>
@@ -282,6 +283,42 @@ describe('Topic Schema', () => {
       { description: 'updated description' }
     );
     expect(mockOnUpdate).not.toHaveBeenCalled();
+    expect(TableDescription).toHaveBeenCalledWith(
+      expect.objectContaining({
+        columnData: {
+          fqn: 'sample_kafka.customer_events.first_name',
+          field: 'updated description',
+        },
+      }),
+      expect.anything()
+    );
+    expect(screen.queryByTestId('editor-modal')).toBeNull();
+  });
+
+  it('keeps the description editor open when the save fails', async () => {
+    mockUpdateTopicSchemaField.mockRejectedValue(new Error('save failed'));
+
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await screen.findByText('first_name');
+    const firstNameRow = screen
+      .getAllByRole('row')
+      .find((row) => row.textContent?.includes('first_name'));
+
+    fireEvent.click(
+      await findByTestId(firstNameRow as HTMLElement, 'edit-button')
+    );
+    const saveButton = await screen.findByTestId('save-description');
+    await act(async () => {
+      fireEvent.click(saveButton);
+    });
+
+    expect(mockUpdateTopicSchemaField).toHaveBeenCalled();
+    expect(screen.getByTestId('editor-modal')).toBeInTheDocument();
   });
 
   it('shows an error toast and an empty table when the fetch fails', async () => {
@@ -314,6 +351,10 @@ describe('Topic Schema', () => {
     expect(
       await screen.findByTestId('topic-schema-fields-table')
     ).toBeInTheDocument();
+    // Rows come from the stored messageSchema, not from a server page.
+    expect(
+      (await screen.findAllByTestId('table-description')).length
+    ).toBeGreaterThanOrEqual(SCHEMA_FIELDS.length);
     expect(mockGetTopicSchemaFields).not.toHaveBeenCalled();
   });
 
