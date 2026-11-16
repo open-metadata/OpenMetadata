@@ -81,7 +81,6 @@ from metadata.ingestion.source.pipeline.tableaupipeline.models import (
     TableauFlowLineage,
     TableauLineageDatabase,
     TableauLineageTable,
-    TableauLinkedFlow,
     TableauPipelineDetails,
     TableauPipelineKind,
     TableauPublishedDatasource,
@@ -406,6 +405,11 @@ class TableaupipelineSource(PipelineServiceSource):
         for base, display_name, input_description in inputs:
             task_name = self._task_name(INPUT_TASK_PREFIX, base, used_names)
             if task_name is None:
+                logger.warning(
+                    "Skipping input %s of flow %s: Tableau returned it with no id or name.",
+                    display_name,
+                    self.get_pipeline_name(pipeline_details),
+                )
                 continue
             input_tasks.append(
                 Task(
@@ -422,6 +426,10 @@ class TableaupipelineSource(PipelineServiceSource):
         for output in flow_lineage.output_steps:
             task_name = self._task_name(OUTPUT_TASK_PREFIX, output.id or output.name, used_names)
             if task_name is None:
+                logger.warning(
+                    "Skipping an output step of flow %s that Tableau returned with no id or name.",
+                    self.get_pipeline_name(pipeline_details),
+                )
                 continue
             output_tasks.append(
                 Task(
@@ -513,9 +521,16 @@ class TableaupipelineSource(PipelineServiceSource):
 
         yield from self._flow_asset_edges(flow_lineage, pairs, pipeline_ref)
         for flow in flow_lineage.next_downstream_flows:
+            if not flow.luid:
+                logger.warning(
+                    "Skipping lineage from flow %s to downstream flow %s: Tableau returned it with no luid.",
+                    self.get_pipeline_name(pipeline_details),
+                    flow.name or "with no name",
+                )
+                continue
             yield from self._edges_or_error(
                 f"downstream flow {flow.name or flow.luid}",
-                partial(self._downstream_flow_edges, flow, pipeline_ref),
+                partial(self._downstream_flow_edges, flow.luid, pipeline_ref),
             )
 
     def _flow_asset_pairs(
@@ -528,6 +543,7 @@ class TableaupipelineSource(PipelineServiceSource):
         pairs come from the lineage of the fields its output steps write; when
         Tableau cannot say, no pair is drawn rather than every input being tied
         to every output."""
+        self._report_assets_without_id(pipeline_details, flow_lineage)
         inputs = self._asset_ids([*flow_lineage.upstream_tables, *flow_lineage.upstream_datasources])
         outputs = self._asset_ids([*flow_lineage.downstream_tables, *flow_lineage.downstream_datasources])
         if not inputs or not outputs:
@@ -545,6 +561,23 @@ class TableaupipelineSource(PipelineServiceSource):
                 self.get_pipeline_name(pipeline_details),
             )
         return pairs
+
+    def _report_assets_without_id(
+        self, pipeline_details: TableauPipelineDetails, flow_lineage: TableauFlowLineage
+    ) -> None:
+        """Lineage pairs are Metadata API ids, so an asset without one gets no edge."""
+        for direction, assets in (
+            ("input", [*flow_lineage.upstream_tables, *flow_lineage.upstream_datasources]),
+            ("output", [*flow_lineage.downstream_tables, *flow_lineage.downstream_datasources]),
+        ):
+            for asset in assets:
+                if not asset.id:
+                    logger.warning(
+                        "Skipping %s %s of flow %s in lineage: Tableau returned it with no id.",
+                        direction,
+                        asset.name or "with no name",
+                        self.get_pipeline_name(pipeline_details),
+                    )
 
     @staticmethod
     def _asset_ids(assets: Iterable[TableauLineageTable | TableauPublishedDatasource]) -> list[str]:
@@ -699,14 +732,12 @@ class TableaupipelineSource(PipelineServiceSource):
             )
         )
 
-    def _downstream_flow_edges(self, flow: TableauLinkedFlow, pipeline_ref: EntityReference) -> list[AddLineageRequest]:
+    def _downstream_flow_edges(self, flow_luid: str, pipeline_ref: EntityReference) -> list[AddLineageRequest]:
         """Pipeline -> pipeline edge to a flow of the same service, deferred to
         the bulk lineage step when that flow has not been ingested yet."""
-        if not flow.luid:
-            return []
-        edges = self._resolved_flow_edges(pipeline_ref, flow.luid)
+        edges = self._resolved_flow_edges(pipeline_ref, flow_luid)
         if not edges:
-            self._pending_flow_edges.append((pipeline_ref, flow.luid))
+            self._pending_flow_edges.append((pipeline_ref, flow_luid))
         return edges
 
     def _resolved_flow_edges(self, pipeline_ref: EntityReference, flow_luid: str) -> list[AddLineageRequest]:
@@ -993,6 +1024,11 @@ class TableaupipelineSource(PipelineServiceSource):
                 # run twice, leaving its Pending row behind once it finishes.
                 run_key = start_time or end_time
                 if run_key is None:
+                    logger.warning(
+                        "Skipping run %s of %s: Tableau returned it with no start or end time.",
+                        run.id,
+                        self.get_pipeline_name(pipeline_details),
+                    )
                     continue
 
                 task_statuses = [

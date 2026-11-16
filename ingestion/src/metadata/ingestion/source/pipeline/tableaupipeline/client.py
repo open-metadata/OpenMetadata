@@ -374,6 +374,11 @@ class TableauPipelineClient:
             for task in Pager(self.tableau_server.tasks):
                 if task.target is not None and task.target.id:
                     targets.setdefault(str(task.target.id), task.target.type)
+                else:
+                    logger.warning(
+                        "Skipping Tableau extract refresh task %s: it does not name a data source or workbook.",
+                        task.id,
+                    )
         except Exception as exc:
             self.extract_refresh_listing_complete = False
             logger.warning("Unable to list Tableau extract refresh tasks: %s", exc)
@@ -481,6 +486,13 @@ class TableauPipelineClient:
             logger.warning(
                 "Tableau did not say which data source or workbook its refresh jobs refreshed; "
                 "extract refresh pipelines are ingested without status."
+            )
+        elif jobs_without_target:
+            logger.warning(
+                "%s of %s Tableau refresh jobs could not be tied to a data source or workbook; "
+                "their runs are not ingested.",
+                jobs_without_target,
+                lookups,
             )
         return {
             target: sorted(target_runs, key=_started_at, reverse=True)[: self.number_of_status]
