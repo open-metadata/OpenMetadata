@@ -103,6 +103,8 @@ export const useTestCaseList = ({
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const latestRequestId = useRef(0);
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
 
   const fetchTestCases = useCallback(
     async (
@@ -194,14 +196,15 @@ export const useTestCaseList = ({
   const handlePagingClick = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
       // Another page reaches the fetch effect through `currentPage`. The same page changes
-      // nothing the effect watches, so that refresh is fetched here.
-      if (page === currentPage) {
+      // nothing the effect watches, so that refresh is fetched here. A pending restore
+      // may retain an older callback, so compare against the live page.
+      if (page === currentPageRef.current) {
         fetchTestCases(page);
       } else {
         handlePageChange(page);
       }
     },
-    [currentPage, handlePageChange, fetchTestCases]
+    [handlePageChange, fetchTestCases]
   );
 
   const handleAfterDeleteAction = useCallback(() => {

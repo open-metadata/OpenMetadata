@@ -156,6 +156,49 @@ describe('useTestCaseListPage (integration)', () => {
     );
   });
 
+  it('keeps rows and pager aligned when a restore finishes after navigating away', async () => {
+    (getListTestCaseBySearch as jest.Mock).mockImplementation(({ offset }) =>
+      Promise.resolve({
+        data: [{ name: `row-${offset}-a` }, { name: `row-${offset}-b` }],
+        paging: { total: 100 },
+      })
+    );
+    const { result } = await renderLoadedPage();
+    const { pageSize } = result.current.pagingData;
+
+    await act(async () => {
+      result.current.handleShowDeletedChange(true);
+    });
+    await act(async () => {
+      result.current.pagingData.pagingHandler({ currentPage: 2 });
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+    // A pending restore retains the callback from the render where it started.
+    const completeRestore = result.current.handleAfterDeleteAction;
+
+    await act(async () => {
+      result.current.pagingData.pagingHandler({ currentPage: 3 });
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.pagingData.currentPage).toBe(3);
+    expect(result.current.testCase[0].name).toBe(`row-${2 * pageSize}-a`);
+
+    (getListTestCaseBySearch as jest.Mock).mockClear();
+
+    await act(async () => {
+      completeRestore();
+    });
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.pagingData.currentPage).toBe(2);
+    expect(result.current.testCase[0].name).toBe(`row-${pageSize}-a`);
+    expect(listRequests()).toHaveLength(1);
+    expect(listRequests()[0][0]).toEqual(
+      expect.objectContaining({ offset: pageSize, include: 'deleted' })
+    );
+  });
+
   it('refreshes the page it is on when asked for the same page', async () => {
     const { result } = await renderLoadedPage();
 
