@@ -184,9 +184,18 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (classifications == null || classifications.isEmpty()) {
       return termCountMap;
     }
-    // The bulk count cannot take the navbar filter; under a pick each count uses the list's filter.
-    if (pickNarrowsTags()) {
-      classifications.forEach(c -> termCountMap.put(c.getFullyQualifiedName(), getTermCount(c)));
+    // The bulk count cannot take the navbar filter; under a pick each count uses the list's filter,
+    // resolved once so the batch shares one domain lookup.
+    ListFilter navbar = navbarTagFilter();
+    if (navbar.getQueryParam("domainId") != null) {
+      for (Classification classification : classifications) {
+        ListFilter filter =
+            new ListFilter(Include.NON_DELETED)
+                .addQueryParam("parent", classification.getFullyQualifiedName());
+        navbar.getQueryParams().forEach(filter::addQueryParam);
+        termCountMap.put(
+            classification.getFullyQualifiedName(), daoCollection.tagDAO().listCount(filter));
+      }
       return termCountMap;
     }
 
@@ -280,10 +289,10 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     return daoCollection.tagDAO().listCount(filter);
   }
 
-  private static boolean pickNarrowsTags() {
-    ListFilter probe = new ListFilter();
-    EntityUtil.addNavbarDomainFilter(probe, Entity.TAG, () -> null);
-    return probe.getQueryParam("domainId") != null;
+  private static ListFilter navbarTagFilter() {
+    ListFilter navbar = new ListFilter();
+    EntityUtil.addNavbarDomainFilter(navbar, Entity.TAG, () -> null);
+    return navbar;
   }
 
   private Integer getUsageCount(Classification classification) {
