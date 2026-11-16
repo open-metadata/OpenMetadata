@@ -72,12 +72,14 @@ def _is_accepted(token: str) -> bool:
 
 
 def sign_in(body: bytes) -> tuple[int, str]:
-    """Tableau's answer to a sign-in request: a PAT is accepted as is, a connected-app JWT only if valid."""
-    token = ET.fromstring(body).find("credentials").get("jwt")
-    if token and not _is_accepted(token):
+    """Tableau's answer to a sign-in request: the test PAT, or a connected-app JWT that passes direct trust."""
+    credentials = ET.fromstring(body).find("credentials")
+    token = credentials.get("jwt")
+    accepted = _is_accepted(token) if token else all(credentials.get(key) == value for key, value in PAT.items())
+    if not accepted:
         return 401, (
             f'<tsResponse {NS}><error code="401001"><summary>Signin Error</summary>'
-            "<detail>Invalid connected app token</detail></error></tsResponse>"
+            "<detail>Invalid credentials</detail></error></tsResponse>"
         )
     return 200, (
         f'<tsResponse {NS}><credentials token="t"><site id="site-it" contentUrl="it"/>'
