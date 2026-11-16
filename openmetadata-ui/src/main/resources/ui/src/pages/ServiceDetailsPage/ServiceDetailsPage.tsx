@@ -2125,7 +2125,10 @@ const ServiceDetailsPage: FunctionComponent = () => {
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {
-            entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+            // A 403 keeps the previous service's details, so name the one requested.
+            entity: `${
+              isForbidden ? decodedServiceFQN : getEntityName(serviceDetails)
+            } ${t('label.service')}`,
           })}
         />
       </div>
