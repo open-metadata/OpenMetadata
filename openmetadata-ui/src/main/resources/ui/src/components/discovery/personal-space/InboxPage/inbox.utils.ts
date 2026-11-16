@@ -428,12 +428,20 @@ export const ACTIVITY_LIMIT = 200;
 export const CONVERSATION_LIMIT = 100;
 
 // Presets capped to the activity API's 30-day window (drops 60-day+); titles are
-// translated by the picker's consumer.
-export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = Object.fromEntries(
-  (
-    Object.entries(PROFILER_FILTER_RANGE) as [string, DateFilterType[string]][]
-  ).filter(([, value]) => value.days <= MAX_ACTIVITY_DAYS)
-);
+// translated by the picker's consumer. Every window runs to the end of today,
+// as the activity API takes no end time, so the profiler's "Yesterday" (which
+// would read as yesterday alone) is offered as "Today".
+export const INBOX_DATE_RANGE_OPTIONS: DateFilterType = {
+  today: { days: 0, title: 'label.today' },
+  ...Object.fromEntries(
+    (
+      Object.entries(PROFILER_FILTER_RANGE) as [
+        string,
+        DateFilterType[string]
+      ][]
+    ).filter(([, value]) => value.days > 1 && value.days <= MAX_ACTIVITY_DAYS)
+  ),
+};
 
 // Convert the Inbox date window to the `days` param the /activity API takes,
 // clamped to the server's 30-day cap (defaults to the cap when unset).

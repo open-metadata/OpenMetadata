@@ -133,6 +133,24 @@ describe('useInboxInfiniteList', () => {
     expect(api.hasMore).toBe(false);
   });
 
+  it('loads the next page on request, without the sentinel', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page(1, { after: 'c1', total: 2 }))
+      .mockResolvedValueOnce(page(2, { total: 2 }));
+
+    renderHarness(fetchPage);
+    await waitFor(() => expect(api.items).toHaveLength(1));
+
+    await act(async () => {
+      api.loadMore();
+    });
+
+    await waitFor(() => expect(api.items.map((i) => i.id)).toEqual([1, 2]));
+
+    expect(fetchPage).toHaveBeenLastCalledWith('c1');
+  });
+
   it('exposes a failed first page as an error instead of an empty list', async () => {
     const failure = new Error('boom');
     const fetchPage = jest.fn().mockRejectedValue(failure);

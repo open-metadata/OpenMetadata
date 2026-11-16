@@ -5265,6 +5265,7 @@
     "import-terms-into-glossary": "Importar termos para {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "Neste Banco de Dados",
+    "inbox-activity-capped": "Somente as atualizações mais recentes deste intervalo de datas são exibidas.",
     "inbox-desc": "Suas tarefas e atividades, tudo em um só lugar.",
     "incident-group-filtered": "Somente os incidentes que correspondem aos filtros dos grupos são listados.",
     "incident-group-seen-range": "visto pela primeira vez {{firstSeen}} · visto por último {{lastSeen}}",

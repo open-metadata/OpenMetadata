@@ -5265,6 +5265,7 @@
     "import-terms-into-glossary": "ייבוא מונחים אל {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "במסד נתונים זה",
+    "inbox-activity-capped": "מוצגים רק העדכונים האחרונים בטווח התאריכים הזה.",
     "inbox-desc": "המשימות והפעילות שלך, הכול במקום אחד.",
     "incident-group-filtered": "מוצגות רק התקריות שתואמות את מסנני הקבוצות.",
     "incident-group-seen-range": "נצפה לראשונה {{firstSeen}} · נצפה לאחרונה {{lastSeen}}",

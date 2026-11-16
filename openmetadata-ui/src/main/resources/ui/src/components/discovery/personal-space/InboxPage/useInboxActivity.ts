@@ -146,6 +146,34 @@ const clipToWindow = (
         isWithinInboxRange(timestamp, dateRange)
       );
 
+const getEventTimestamp = ({ timestamp }: ActivityEvent) => timestamp ?? 0;
+
+/**
+ * A capped list stops at its oldest item, so the other list is cut there too:
+ * past it the feed would show one kind alone, as if the other had none.
+ */
+const cutToCompleteSpan = (
+  activities: ActivityEvent[],
+  threads: Conversation[],
+  isActivityCapped: boolean
+): InboxActivityResult => {
+  const isThreadCapped = threads.length >= CONVERSATION_LIMIT;
+  const completeFrom = Math.max(
+    isActivityCapped ? Math.min(...activities.map(getEventTimestamp)) : 0,
+    isThreadCapped ? Math.min(...threads.map(getFeedSortTimestamp)) : 0
+  );
+
+  return {
+    activities: activities.filter(
+      (activity) => getEventTimestamp(activity) >= completeFrom
+    ),
+    threads: threads.filter(
+      (thread) => getFeedSortTimestamp(thread) >= completeFrom
+    ),
+    isCapped: isActivityCapped || isThreadCapped,
+  };
+};
+
 /**
  * The selected sub-tab's activity events plus its conversations, for the
  * viewer `userId` or, when `isScoped`, for another user `userId`.
@@ -199,17 +227,14 @@ export const fetchInboxActivity = async (
 
   const clipped = clipToWindow(filter, activities, { startTs, endTs });
 
-  return {
-    activities: clipped,
+  // A full page may hold only the newest of more events, unless the clip
+  // dropped some: then the page already reached past the window's start, so
+  // the window is complete.
+  return cutToCompleteSpan(
+    clipped,
     threads,
-    // A full page may hold only the newest of more events, unless the clip
-    // dropped some: then the page already reached past the window's start, so
-    // the window is complete.
-    isCapped:
-      (activities.length >= ACTIVITY_LIMIT &&
-        clipped.length === activities.length) ||
-      threads.length >= CONVERSATION_LIMIT,
-  };
+    activities.length >= ACTIVITY_LIMIT && clipped.length === activities.length
+  );
 };
 
 /**

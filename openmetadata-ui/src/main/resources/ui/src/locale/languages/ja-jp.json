@@ -5265,6 +5265,7 @@
     "import-terms-into-glossary": "{{glossary}} に用語をインポートします。",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "このデータベース内",
+    "inbox-activity-capped": "この期間の最新の更新のみが表示されています。",
     "inbox-desc": "タスクとアクティビティをひとつの場所に。",
     "incident-group-filtered": "グループのフィルターに一致するインシデントのみが表示されています。",
     "incident-group-seen-range": "初回検出 {{firstSeen}} · 最終検出 {{lastSeen}}",

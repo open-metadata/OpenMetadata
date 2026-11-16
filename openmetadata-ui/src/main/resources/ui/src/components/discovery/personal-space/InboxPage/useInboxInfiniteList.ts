@@ -51,6 +51,8 @@ export interface UseInboxInfiniteList<T> {
   sentinelRef: RefObject<HTMLDivElement>;
   setItems: (update: SetStateAction<T[]>) => void;
   setTotal: (update: SetStateAction<number>) => void;
+  // Fetches the next page now, as crossing the sentinel would.
+  loadMore: () => void;
 }
 
 type ListData<T> = InfiniteData<InboxListPage<T>, string | undefined>;
@@ -202,5 +204,6 @@ export function useInboxInfiniteList<T>(
     sentinelRef,
     setItems,
     setTotal,
+    loadMore,
   };
 }
