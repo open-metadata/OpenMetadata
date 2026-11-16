@@ -155,24 +155,29 @@ public class SearchListFilter extends Filter<SearchListFilter> {
     return String.format("\"_source\": {%s}", addCondition(conditions));
   }
 
+  // A domain filter matches the domain and its sub-domains, as the navbar pick does.
   private String getDomainCondition() {
     String domain = getQueryParam("domains");
     if (!nullOrEmpty(domain)) {
-      return String.format(
-          "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
+      return domainSubtreeCondition(domain, false);
     }
     return getNavbarDomainCondition();
   }
 
-  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  // The navbar pick optionally keeps items with no domain too.
   private String getNavbarDomainCondition() {
     String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
     if (nullOrEmpty(navDomain)) {
       return "";
     }
-    String fqn = escapeJsonString(navDomain);
+    return domainSubtreeCondition(
+        navDomain, Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM)));
+  }
+
+  private String domainSubtreeCondition(String domainFqn, boolean keepUnassigned) {
+    String fqn = escapeJsonString(domainFqn);
     String unassigned =
-        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
+        keepUnassigned
             ? String.format(
                 ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
             : "";

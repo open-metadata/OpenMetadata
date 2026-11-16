@@ -15,6 +15,8 @@ import { DomainFilterChip } from './DomainFilterChip.component';
 
 const mockSwitch = jest.fn();
 let mockActiveDomain = 'Sales';
+let mockIsDomainRestricted = false;
+let mockUserDomains: { id: string; type: string }[] = [];
 
 jest.mock('../../../hooks/useDomainStore', () => ({
   useDomainStore: () => ({
@@ -24,6 +26,8 @@ jest.mock('../../../hooks/useDomainStore', () => ({
       type: 'domain',
       name: mockActiveDomain,
     },
+    isDomainRestricted: mockIsDomainRestricted,
+    userDomains: mockUserDomains,
   }),
 }));
 
@@ -34,7 +38,18 @@ jest.mock('../../../hooks/useSwitchActiveDomain', () => ({
 describe('DomainFilterChip', () => {
   beforeEach(() => {
     mockActiveDomain = 'Sales';
+    mockIsDomainRestricted = false;
+    mockUserDomains = [];
     mockSwitch.mockReset();
+  });
+
+  it('offers no clear to a user locked to a single domain', () => {
+    mockIsDomainRestricted = true;
+    mockUserDomains = [{ id: 's1', type: 'domain' }];
+    render(<DomainFilterChip />);
+
+    expect(screen.getByTestId('domain-filter-chip')).toHaveTextContent('Sales');
+    expect(screen.queryByTestId('domain-filter-chip-clear')).toBeNull();
   });
 
   it('names the selected domain and clears it', () => {

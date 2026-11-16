@@ -155,7 +155,7 @@ final class MemoryConflictDecision {
   }
 
   /** Legacy memories have no content clock until their next write; their audit time stands in. */
-  private static long contentTime(ContextMemory memory) {
+  static long contentTime(ContextMemory memory) {
     Long contentTime = memory.getLastContentUpdatedAt();
     return contentTime == null ? memory.getUpdatedAt() : contentTime;
   }

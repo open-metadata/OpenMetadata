@@ -130,6 +130,28 @@ class ContextMemoryIndexTest {
     assertNull(doc.get("sourceAssistantMessage"));
   }
 
+  /**
+   * A write carries a memory's source as its source entity alone, so the index names that file as
+   * the source a filter can read; an article is no file.
+   */
+  @Test
+  void buildSearchIndexDoc_namesTheFileAWriteCarriesAsItsSource() {
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    EntityReference page = new EntityReference().withId(UUID.randomUUID()).withType(Entity.PAGE);
+
+    Map<String, Object> fromFile =
+        new ContextMemoryIndex(baseMemory().withSourceEntity(file))
+            .buildSearchIndexDocInternal(new HashMap<>());
+    Map<String, Object> fromPage =
+        new ContextMemoryIndex(baseMemory().withSourceEntity(page))
+            .buildSearchIndexDocInternal(new HashMap<>());
+
+    assertNotNull(fromFile.get("sourceFile"));
+    assertEquals(file.getId(), ((EntityReference) fromFile.get("sourceFile")).getId());
+    assertNull(fromPage.get("sourceFile"), "an article is no file");
+  }
+
   @Test
   void buildSearchIndexDoc_nullUsageCountDefaultsToZero() {
     ContextMemory memory = baseMemory().withUsageCount(null);

@@ -20,6 +20,7 @@ import com.fasterxml.jackson.core.JsonPointer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -98,6 +99,18 @@ public final class DestinationSecrets {
     SecretOwner owner = ownerOf(copy);
     transform(copy, (config, fields) -> ConfigSecrets.decrypt(owner, config, fields));
     return copy;
+  }
+
+  /**
+   * The destination as it reads when judging what it says rather than sending it: decrypted, or as
+   * stored when a secret does not open, so a value waiting to be entered again stops no edit.
+   */
+  public static SubscriptionDestination decryptedOrAsStored(SubscriptionDestination destination) {
+    try {
+      return decrypted(destination);
+    } catch (BadRequestException e) {
+      return destination;
+    }
   }
 
   /**

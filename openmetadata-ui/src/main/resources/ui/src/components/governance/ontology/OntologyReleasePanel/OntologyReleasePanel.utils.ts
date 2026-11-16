@@ -32,6 +32,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import {
+  countChangesByKind,
   flattenConceptChanges,
   suggestVersion,
   type ChangeKindCounts,
@@ -87,6 +88,23 @@ const flattenWorkingDiff = (working: WorkingDiffPage) => [
 
 export const getWorkingChanges = (working: WorkingDiffPage | undefined) =>
   working ? flattenWorkingDiff(working) : [];
+
+/**
+ * The changes the review dialog counts, per kind and in total. A truncated diff
+ * only holds its first page, so its total is the server's unpublished count.
+ */
+export const getWorkingChangeCounts = (
+  working: WorkingDiffPage | undefined,
+  unpublishedChanges: number | undefined,
+  isFirstRelease: boolean
+) => {
+  const counts = countChangesByKind(getWorkingChanges(working));
+  if (working?.paging?.after && unpublishedChanges !== undefined) {
+    counts.total = Math.max(unpublishedChanges - Number(isFirstRelease), 0);
+  }
+
+  return counts;
+};
 
 export const suggestWorkingVersion = (
   changes: ReturnType<typeof getWorkingChanges>,
@@ -328,6 +346,73 @@ export const filterHistoryReleases = (
           (text) => text?.toLowerCase().includes(needle)
         ))
   );
+};
+
+/** The avatar letter for a person shown only by name. */
+export const initialsOf = (name: string) => name.trim().charAt(0).toUpperCase();
+
+export type ReleaseDisplayStatus =
+  | 'active'
+  | 'superseded'
+  | 'approved'
+  | 'inReview'
+  | 'rejected'
+  | 'withdrawn'
+  | 'draft';
+
+/**
+ * The lifecycle word a release row shows. The server keeps only the review
+ * status, so the rest is read from position: an approved release older than
+ * the active one was replaced by it, and a draft whose last review was
+ * withdrawn reads as withdrawn.
+ */
+export const releaseDisplayStatus = (
+  release: OntologyRelease,
+  activeRelease?: OntologyRelease,
+  /** Read from the release's events: a withdrawal clears its review task. */
+  isWithdrawn = false
+): ReleaseDisplayStatus => {
+  if (release.id === activeRelease?.id) {
+    return 'active';
+  }
+  switch (release.entityStatus) {
+    case EntityStatus.Approved:
+      return activeRelease &&
+        release.releaseRevision < activeRelease.releaseRevision
+        ? 'superseded'
+        : 'approved';
+    case EntityStatus.InReview:
+      return 'inReview';
+    case EntityStatus.Rejected:
+      return 'rejected';
+    default:
+      return isWithdrawn ? 'withdrawn' : 'draft';
+  }
+};
+
+const parseVersion = (version?: string) => {
+  const parts = version?.split('.').map(Number);
+
+  return parts?.length === 3 && parts.every(Number.isInteger)
+    ? parts
+    : undefined;
+};
+
+/** Which part of the version a release moved from its baseline; unknown when either has none. */
+export const releaseBump = (
+  version?: string,
+  baseVersion?: string
+): VersionBump | undefined => {
+  const next = parseVersion(version);
+  const base = parseVersion(baseVersion);
+  if (!next || !base) {
+    return undefined;
+  }
+  if (next[0] !== base[0]) {
+    return VersionBump.Major;
+  }
+
+  return next[1] === base[1] ? VersionBump.Patch : VersionBump.Minor;
 };
 
 /** Row counts by change type; a deprecation edits an existing concept. */

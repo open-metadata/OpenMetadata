@@ -1806,6 +1806,66 @@ public interface TimeSeriesDAOs {
     String SYSTEM_PROFILE_EXTENSION = "table.systemProfile";
     String TABLE_COLUMN_PROFILE_EXTENSION = "table.columnProfile";
 
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE <table> set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    void updateSystemProfile(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @BindJson("json") String json,
+        @Bind("timestamp") Long timestamp,
+        @Bind("operation") String operation);
+
+    default void updateSystemProfile(
+        String entityFQNHash, String extension, String json, Long timestamp, String operation) {
+      updateSystemProfile(
+          getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
+    }
+
+    // System-profile operation is stored under profileData, and the unique key is built from that
+    // same path via the generated operation column, so the lookup must read the identical path.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json ->> '$.profileData.operation' = :operation",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json #>>'{profileData,operation}' = :operation",
+        connectionType = POSTGRES)
+    String getSystemProfileAtTimestamp(
+        @Define("table") String table,
+        @BindFQN("entityFQNHash") String entityFQNHash,
+        @Bind("extension") String extension,
+        @Bind("timestamp") long timestamp,
+        @Bind("operation") String operation);
+
+    default String getSystemProfileAtTimestamp(
+        String entityFQNHash, String extension, long timestamp, String operation) {
+      return getSystemProfileAtTimestamp(
+          getTimeSeriesTableName(), entityFQNHash, extension, timestamp, operation);
+    }
+
+    default void storeSystemProfile(
+        String fqn,
+        String extension,
+        String jsonSchema,
+        String entityJson,
+        Long timestamp,
+        String operation,
+        boolean update) {
+      if (update) {
+        updateSystemProfile(fqn, extension, entityJson, timestamp, operation);
+      } else {
+        insert(fqn, extension, jsonSchema, entityJson);
+      }
+    }
+
     @SqlQuery(
         "SELECT json FROM profiler_data_time_series "
             + "WHERE entityFQNHash = :entityFQNHash AND extension = :extension "

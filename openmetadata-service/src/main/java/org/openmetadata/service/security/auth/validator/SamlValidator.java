@@ -3,12 +3,16 @@ package org.openmetadata.service.security.auth.validator;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.onelogin.saml2.Auth;
+import com.onelogin.saml2.authn.AuthnRequestParams;
+import com.onelogin.saml2.exception.SettingsException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.CertificateParsingException;
@@ -23,9 +27,11 @@ import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
+import org.openmetadata.catalog.type.SamlSecurityConfig;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.util.ValidationErrorBuilder;
 import org.openmetadata.service.util.ValidationHttpUtil;
 
@@ -34,6 +40,25 @@ public class SamlValidator {
 
   /** {@code GeneralName} tags for dNSName (2) and uniformResourceIdentifier (6) — RFC 5280 §4.2.1.6. */
   private static final Set<Integer> DNS_AND_URI_SAN_TYPES = Set.of(2, 6);
+
+  /**
+   * RelayState of the configuration check's sign-in request, so it can be told apart in the
+   * identity provider's logs. OneLogin only builds a sign-in URL without an HTTP request when it
+   * is given a RelayState, and the live login always sends one too.
+   */
+  private static final String CONFIGURATION_CHECK_RELAY_STATE = "openmetadata-configuration-check";
+
+  private static final int PROBE_TIMEOUT_MILLIS = 5000;
+  private static final int MAX_ERROR_BODY_BYTES = 64 * 1024;
+
+  /** OneLogin's settings error when the SP key or certificate it must sign or decrypt with fails. */
+  private static final String SP_CREDENTIALS_NOT_LOADED = "sp_cert_not_found_and_required";
+
+  private static final String SP_CREDENTIALS_NOT_LOADED_MESSAGE =
+      "OpenMetadata could not load the SP private key and certificate used to sign SAML requests"
+          + " and decrypt assertions. The private key must be an unencrypted PKCS#8 PEM key"
+          + " (-----BEGIN PRIVATE KEY-----); convert a PKCS#1 key (-----BEGIN RSA PRIVATE KEY-----)"
+          + " with 'openssl pkcs8 -topk8 -nocrypt'.";
 
   public FieldError validateSamlConfiguration(
       AuthenticationConfiguration authConfig, SamlSSOClientConfig samlConfig) {
@@ -290,68 +315,69 @@ public class SamlValidator {
     }
   }
 
+  /**
+   * Builds the sign-in request before asking the outbound URL policy, because building needs no
+   * network: a configuration the live login cannot turn into a request fails here even when the
+   * policy keeps the server from sending it, as for an identity provider on a private network.
+   */
   private FieldError validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
-    if (!isProbeAllowed(samlConfig.getIdp().getSsoLoginUrl())) {
-      return null;
+    String signInUrl;
+    try {
+      signInUrl = buildSignInUrl(samlConfig);
+    } catch (IOException
+        | GeneralSecurityException
+        | SettingsException
+        | IllegalArgumentException e) {
+      return signInRequestError(e);
     }
+    String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
+    return isProbeAllowed(ssoUrl) ? checkIdpAcceptsSignIn(signInUrl, ssoUrl) : null;
+  }
+
+  /**
+   * The URL the live login redirects users to: the same OneLogin AuthnRequest, signed whenever the
+   * configuration signs requests. An identity provider that requires signed requests rejects an
+   * unsigned probe even when the configuration does sign, so only the real request gets the answer
+   * users will get (ADR:2026-11-09-the-saml-configuration-check-sends-the-live-sign-in-request).
+   */
+  private static String buildSignInUrl(SamlSSOClientConfig samlConfig)
+      throws IOException, GeneralSecurityException, SettingsException {
+    Auth auth =
+        new Auth(SamlSettingsHolder.buildSettings(withDefaultSecurity(samlConfig)), null, null);
+    return auth.login(
+        CONFIGURATION_CHECK_RELAY_STATE, new AuthnRequestParams(false, false, true), true);
+  }
+
+  /** Validation treats a missing security block as the schema defaults; so does the probe. */
+  private static SamlSSOClientConfig withDefaultSecurity(SamlSSOClientConfig samlConfig) {
+    return samlConfig.getSecurity() != null
+        ? samlConfig
+        : JsonUtils.deepCopy(samlConfig, SamlSSOClientConfig.class)
+            .withSecurity(new SamlSecurityConfig());
+  }
+
+  private static FieldError signInRequestError(Exception cause) {
+    String reason = String.valueOf(cause.getMessage());
+    LOG.warn("Could not build the SAML sign-in request to check the configuration: {}", reason);
+    return reason.contains(SP_CREDENTIALS_NOT_LOADED)
+        ? ValidationErrorBuilder.createFieldError(
+            ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, SP_CREDENTIALS_NOT_LOADED_MESSAGE)
+        : ValidationErrorBuilder.createFieldError(
+            "", "Could not build the SAML sign-in request: " + reason);
+  }
+
+  private FieldError checkIdpAcceptsSignIn(String signInUrl, String ssoUrl) {
     HttpURLConnection conn = null;
     try {
-      String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
-      LOG.debug("Testing IdP SSO URL with SAML request: {}", ssoUrl);
-
-      // Create a minimal SAML request to test the SSO URL
-      String samlRequest = createTestSamlRequest(samlConfig);
-
-      // Build URL with SAML request parameter (HTTP-Redirect binding)
-      String urlWithParams =
-          ssoUrl + (ssoUrl.contains("?") ? "&" : "?") + "SAMLRequest=" + samlRequest;
-
-      URL url = new URL(urlWithParams);
-      conn = openConnection(url);
+      conn = openConnection(new URL(signInUrl));
       conn.setRequestMethod("GET");
-      conn.setConnectTimeout(5000);
-      conn.setReadTimeout(5000);
+      conn.setConnectTimeout(PROBE_TIMEOUT_MILLIS);
+      conn.setReadTimeout(PROBE_TIMEOUT_MILLIS);
       conn.setInstanceFollowRedirects(false);
-      int responseCode = conn.getResponseCode();
-      LOG.debug("IdP response code to SAML request: {}", responseCode);
-
-      // Analyze response
-      if (responseCode == 404) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO Login URL not found (HTTP 404). The URL '" + ssoUrl + "' does not exist.");
-      } else if (responseCode == 405) {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO URL doesn't accept GET requests (HTTP 405). Please check the SSO URL configuration.");
-      } else if (responseCode >= 200 && responseCode < 400) {
-        // 200 or 302 means the IdP accepted our SAML request
-        return null; // Success - SSO Login URL validated
-      } else if (responseCode >= 400 && responseCode < 500) {
-        // 400-499 could mean wrong URL or IdP rejecting the request
-        // Read a bit of the response to check for specific errors
-        String responseSnippet = readResponseSnippet(conn);
-        if (responseSnippet.toLowerCase().contains("saml")
-            || responseSnippet.toLowerCase().contains("invalid")) {
-          // Warning case - treat as success
-          LOG.warn(
-              "SSO URL responded with client error (HTTP {}). This might be due to the test SAML request format.",
-              responseCode);
-          return null;
-        }
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO URL returned error (HTTP "
-                + responseCode
-                + "). Please verify the URL is correct.");
-      } else {
-        return ValidationErrorBuilder.createFieldError(
-            ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL,
-            "SSO URL is not accessible (HTTP " + responseCode + ")");
-      }
-    } catch (Exception e) {
-      LOG.warn("SSO URL validation failed", e);
-      // Warning case - treat as success since URL format might be valid
+      return errorForResponse(conn, ssoUrl);
+    } catch (IOException | IllegalArgumentException e) {
+      // Users' browsers, not this server, follow the SSO URL at login, so an IdP the server cannot
+      // reach is only a warning.
       LOG.warn("SSO URL validation warning: {}", e.getMessage());
       return null;
     } finally {
@@ -359,6 +385,53 @@ public class SamlValidator {
         conn.disconnect();
       }
     }
+  }
+
+  private static FieldError errorForResponse(HttpURLConnection conn, String ssoUrl)
+      throws IOException {
+    int responseCode = conn.getResponseCode();
+    LOG.debug("IdP response code to SAML request: {}", responseCode);
+    FieldError error = null;
+    if (responseCode == HttpURLConnection.HTTP_NOT_FOUND) {
+      error =
+          ssoUrlError(
+              "SSO Login URL not found (HTTP 404). The URL '" + ssoUrl + "' does not exist.");
+    } else if (responseCode == HttpURLConnection.HTTP_BAD_METHOD) {
+      error =
+          ssoUrlError(
+              "SSO URL doesn't accept GET requests (HTTP 405). Please check the SSO URL configuration.");
+    } else if (responseCode < HttpURLConnection.HTTP_OK
+        || responseCode >= HttpURLConnection.HTTP_BAD_REQUEST) {
+      error = rejectionError(responseCode, readResponseBody(conn));
+    }
+    return error;
+  }
+
+  private static FieldError rejectionError(int responseCode, String responseBody) {
+    boolean isClientError =
+        responseCode >= HttpURLConnection.HTTP_BAD_REQUEST
+            && responseCode < HttpURLConnection.HTTP_INTERNAL_ERROR;
+    String outcome =
+        isClientError
+            ? "The identity provider rejected the SAML sign-in request (HTTP " + responseCode + ")"
+            : "SSO URL is not accessible (HTTP " + responseCode + ")";
+    String fallback =
+        isClientError
+            ? outcome
+                + ". Please verify the SSO Login URL and this application's SAML settings at the"
+                + " identity provider."
+            : outcome;
+    String message =
+        IdpErrorResponse.reasonOf(responseBody)
+            .map(reason -> outcome + ": " + reason)
+            .orElse(fallback);
+    LOG.warn("SAML configuration check failed: {}", message);
+    return ssoUrlError(message);
+  }
+
+  private static FieldError ssoUrlError(String message) {
+    return ValidationErrorBuilder.createFieldError(
+        ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, message);
   }
 
   /**
@@ -381,75 +454,18 @@ public class SamlValidator {
     return (HttpURLConnection) url.openConnection();
   }
 
-  private String createTestSamlRequest(SamlSSOClientConfig samlConfig) {
-    try {
-      // Create a minimal SAML AuthnRequest XML
-      String timestamp =
-          java.time.Instant.now().truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString();
-      String requestId = "_" + java.util.UUID.randomUUID();
-
-      String samlRequestXml =
-          "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
-              + "<samlp:AuthnRequest xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\" "
-              + "xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" "
-              + "ID=\""
-              + requestId
-              + "\" "
-              + "Version=\"2.0\" "
-              + "IssueInstant=\""
-              + timestamp
-              + "\" "
-              + "Destination=\""
-              + samlConfig.getIdp().getSsoLoginUrl()
-              + "\" "
-              + "AssertionConsumerServiceURL=\""
-              + samlConfig.getSp().getAcs()
-              + "\">"
-              + "<saml:Issuer>"
-              + samlConfig.getSp().getEntityId()
-              + "</saml:Issuer>"
-              + "</samlp:AuthnRequest>";
-
-      // Compress (deflate) the request
-      java.io.ByteArrayOutputStream bytesOut = new java.io.ByteArrayOutputStream();
-      java.util.zip.Deflater deflater =
-          new java.util.zip.Deflater(java.util.zip.Deflater.DEFLATED, true);
-      java.util.zip.DeflaterOutputStream deflaterStream =
-          new java.util.zip.DeflaterOutputStream(bytesOut, deflater);
-      deflaterStream.write(samlRequestXml.getBytes(StandardCharsets.UTF_8));
-      deflaterStream.finish();
-
-      // Base64 encode
-      String base64Request = Base64.getEncoder().encodeToString(bytesOut.toByteArray());
-
-      // URL encode for use in query parameter
-      return java.net.URLEncoder.encode(base64Request, StandardCharsets.UTF_8);
-    } catch (Exception e) {
-      LOG.warn("Failed to create test SAML request", e);
-      // Return a dummy encoded string if we can't create proper request
-      return "dGVzdA==";
+  private static String readResponseBody(HttpURLConnection conn) {
+    try (InputStream body = responseStream(conn)) {
+      return new String(body.readNBytes(MAX_ERROR_BODY_BYTES), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      LOG.debug("Could not read the identity provider's response", e);
+      return "";
     }
   }
 
-  private String readResponseSnippet(HttpURLConnection conn) {
-    try {
-      InputStream inputStream = conn.getErrorStream();
-      if (inputStream == null) {
-        inputStream = conn.getInputStream();
-      }
-      if (inputStream != null) {
-        try (InputStream responseStream = inputStream) {
-          byte[] buffer = new byte[500];
-          int bytesRead = responseStream.read(buffer);
-          if (bytesRead > 0) {
-            return new String(buffer, 0, bytesRead, StandardCharsets.UTF_8);
-          }
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Could not read response", e);
-    }
-    return "";
+  private static InputStream responseStream(HttpURLConnection conn) throws IOException {
+    InputStream errorStream = conn.getErrorStream();
+    return errorStream != null ? errorStream : conn.getInputStream();
   }
 
   private void validateX509Certificate(String certData, String certName) throws Exception {

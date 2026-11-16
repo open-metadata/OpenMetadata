@@ -1,7 +1,7 @@
 # Only an admin adds roles or policies to a team
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-13 (MCP `create_entity` applies the same check)
 - **Deciders:** Sonika Shah
 - **Guard:** `TeamResourceIT` (`test_ownerCannotAddRolesOrPoliciesToOwnTeam`,
   `test_ownerCannotAddRolesToOwnTeamThroughPut`, `test_ownerCanOnlyMoveOwnTeamUnderTeamTheyCanEdit`,
@@ -9,7 +9,8 @@
   `test_importCsv_ownerDryRunReimportsNestedHierarchy`),
   `BotImpersonationIT.test_impersonatedAdmin_cannotAddTeamRolesOrImportTeams`,
   `UserResourceIT`
-  (`test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin`)
+  (`test_patchUser_joinClosedTeamWithReplace_forbiddenForNonAdmin`),
+  `CreateEntityToolTest#aNonAdminCannotCreateATeamWithDefaultRoles`
 
 ## Context
 Members hold a team's `defaultRoles` as inherited roles and are governed by its `policies`, and by
@@ -32,3 +33,11 @@ the same rule as a user's roles rather than the rules for an ordinary team edit.
 A non-admin who manages a team keeps editing its name, description, owners and members. Letting
 someone other than an admin manage a team's roles would need its own permission, not `EditAll` on
 the team.
+
+## Amendment: MCP create_entity applies the same check (v2)
+
+MCP `create_entity` built teams without this check, so anyone with Create Team could hand a new
+team's members an Admin default role. The check now lives in `TeamGrantAuthorizer`, which
+`TeamResource` and `create_entity` both call, so the two cannot drift. An impersonated request is
+detected from the request's impersonated user on MCP, which passes its own security context, and
+from `ImpersonationContext` on REST, where Jersey wraps the context.

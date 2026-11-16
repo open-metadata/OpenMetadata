@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
@@ -12,8 +14,11 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,15 +35,23 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.SearchResultListMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryReconcilerTest {
 
   @Mock private ContextMemoryRepository memoryRepository;
+  @Mock private SearchRepository searchRepository;
+  @Mock private SearchClient searchClient;
+  @Mock private LLMCompletionClient judge;
 
   private final EntityReference source =
       new EntityReference().withId(UUID.randomUUID()).withName("page").withType(Entity.PAGE);
@@ -92,7 +105,7 @@ class ContextMemoryReconcilerTest {
               if (memory == second) {
                 throw new LLMCompletionException("Failed to parse LLM JSON array response");
               }
-              return null;
+              return new DuplicateMatch.None();
             });
 
     assertThrows(
@@ -138,7 +151,8 @@ class ContextMemoryReconcilerTest {
     ContextMemory fresh = derived("What is personal data?", "Information identifying a person.");
     existing(stored);
     ContextMemoryReconciler reconciler =
-        new ContextMemoryReconciler(memoryRepository, ignored -> stored);
+        new ContextMemoryReconciler(
+            memoryRepository, ignored -> new DuplicateMatch.Equivalent(stored));
 
     ContextMemoryReconciler.ReconcileResult result =
         reconciler.reconcile(
@@ -156,7 +170,8 @@ class ContextMemoryReconcilerTest {
     ContextMemory fresh = derived("What is personal data?", "Information identifying a person.");
     existing(retired);
     ContextMemoryReconciler reconciler =
-        new ContextMemoryReconciler(memoryRepository, ignored -> retired);
+        new ContextMemoryReconciler(
+            memoryRepository, ignored -> new DuplicateMatch.Equivalent(retired));
 
     ContextMemoryReconciler.ReconcileResult result =
         reconciler.reconcile(source, Entity.PAGE, List.of(fresh));
@@ -1112,7 +1127,8 @@ class ContextMemoryReconcilerTest {
             ContextMemorySourceType.FILE_EXTRACTION,
             ContextMemoryStatus.APPROVED);
     ContextMemoryReconciler reconciler =
-        new ContextMemoryReconciler(memoryRepository, ignored -> equivalent);
+        new ContextMemoryReconciler(
+            memoryRepository, ignored -> new DuplicateMatch.Equivalent(equivalent));
 
     ContextMemoryReconciler.ReconcileResult result =
         reconciler.reconcile(
@@ -1195,5 +1211,195 @@ class ContextMemoryReconcilerTest {
     assertEquals(ContextMemoryScope.ENTITY_SCOPED, repaired.getMemoryScope());
     assertEquals(source.getId(), repaired.getPrimaryEntity().getId());
     assertEquals(MemoryVisibility.ENTITY, repaired.getShareConfig().getVisibility());
+  }
+
+  private final EntityReference copy =
+      new EntityReference()
+          .withId(UUID.randomUUID())
+          .withName("copy.md")
+          .withType(Entity.CONTEXT_FILE);
+
+  private ContextMemory fileFact(
+      EntityReference file,
+      String question,
+      String answer,
+      ContextMemorySourceType type,
+      ContextMemoryStatus status) {
+    return pill(question, answer, type, status).withPrimaryEntity(file).withSourceEntity(file);
+  }
+
+  /** Another file's memory, as the duplicate check loads it from the memory index. */
+  private ContextMemory otherFilesFact(
+      String question, String answer, ContextMemorySourceType type, ContextMemoryStatus status) {
+    EntityReference original =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("original.md")
+            .withType(Entity.CONTEXT_FILE);
+    return fileFact(original, question, answer, type, status);
+  }
+
+  /** The file engine's duplicate check, over a memory index that ranks {@code indexed}. */
+  private ContextMemoryReconciler reconcilerOverIndex(ContextMemory... indexed) throws IOException {
+    List<Map<String, Object>> hits =
+        Arrays.stream(indexed)
+            .map(memory -> Map.<String, Object>of("id", memory.getId().toString()))
+            .toList();
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchClient.searchSimilarContextMemories(anyString(), anyString(), anyInt()))
+        .thenReturn(new SearchResultListMapper(hits, hits.size()));
+    lenient().when(memoryRepository.isReadableByEveryone(any())).thenReturn(true);
+    for (ContextMemory memory : indexed) {
+      lenient()
+          .when(
+              memoryRepository.get(
+                  isNull(), eq(memory.getId()), any(), eq(Include.NON_DELETED), eq(false)))
+          .thenReturn(memory);
+      lenient().when(memoryRepository.hasOrgWideAnchor(memory)).thenReturn(true);
+    }
+    when(memoryRepository.listExtractedMemories(copy.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of());
+    return new ContextMemoryReconciler(
+        memoryRepository,
+        new SemanticMemoryDuplicateFinder(
+            memoryRepository, () -> null, () -> searchRepository, judge));
+  }
+
+  /** A person rejected the fact: another file stating it links to that decision, not a copy. */
+  @Test
+  void aFactEquivalentToARejectedMemoryLinksToItAndStaysRejected() throws IOException {
+    ContextMemory rejected =
+        otherFilesFact(
+            REFUND_WINDOW,
+            "30 days",
+            ContextMemorySourceType.FILE_EXTRACTION,
+            ContextMemoryStatus.REJECTED);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        reconcilerOverIndex(rejected)
+            .reconcile(
+                copy,
+                Entity.CONTEXT_FILE,
+                List.of(
+                    fileFact(
+                        copy,
+                        REFUND_WINDOW,
+                        "30 days",
+                        ContextMemorySourceType.FILE_EXTRACTION,
+                        ContextMemoryStatus.APPROVED)));
+
+    assertEquals(new ContextMemoryReconciler.ReconcileResult(0, 0, 1, 0), result);
+    verify(memoryRepository).linkExtractedMemory(rejected.getId(), copy);
+    verify(memoryRepository, never()).create(any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+    verify(judge, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /**
+   * OSS derives Approved, but another file's original value beside a person's correction may be
+   * the very value they replaced: it waits for review instead of grounding.
+   */
+  @Test
+  void aDifferentValueForADecidedFactIsHeldForReviewInOss() throws IOException {
+    ContextMemory corrected =
+        otherFilesFact(
+            REFUND_WINDOW,
+            "The refund window is 45 days",
+            ContextMemorySourceType.MANUAL,
+            ContextMemoryStatus.APPROVED);
+
+    reconcilerOverIndex(corrected)
+        .reconcile(
+            copy,
+            Entity.CONTEXT_FILE,
+            List.of(
+                fileFact(
+                    copy,
+                    REFUND_WINDOW,
+                    "30 days",
+                    ContextMemorySourceType.FILE_EXTRACTION,
+                    ContextMemoryStatus.APPROVED)));
+
+    ArgumentCaptor<ContextMemory> created = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), created.capture());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, created.getValue().getEntityStatus());
+    assertEquals("30 days", created.getValue().getAnswer());
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+    verify(judge, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** Another file's new value for a fact a person rejected waits for review, in OSS too. */
+  @Test
+  void aDifferentValueBesideARejectedFactIsHeldForReviewInOss() throws IOException {
+    ContextMemory rejected =
+        otherFilesFact(
+            "When is the customer billed?",
+            "Customers are billed on the 5th of each month.",
+            ContextMemorySourceType.FILE_EXTRACTION,
+            ContextMemoryStatus.REJECTED);
+
+    reconcilerOverIndex(rejected)
+        .reconcile(
+            copy,
+            Entity.CONTEXT_FILE,
+            List.of(
+                fileFact(
+                    copy,
+                    "When is the customer billed?",
+                    "Customers are billed on the 10th of each month.",
+                    ContextMemorySourceType.FILE_EXTRACTION,
+                    ContextMemoryStatus.APPROVED)));
+
+    ArgumentCaptor<ContextMemory> created = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), created.capture());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, created.getValue().getEntityStatus());
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+    verify(judge, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** An identical copy takes every memory of the original, with the decisions people made. */
+  @Test
+  void identicalReuseCarriesDecisionsAndWaitingMemories() {
+    EntityReference original =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withName("original.md")
+            .withType(Entity.CONTEXT_FILE);
+    List<ContextMemory> memories =
+        List.of(
+            fileFact(
+                original,
+                "Q1",
+                "A1",
+                ContextMemorySourceType.FILE_EXTRACTION,
+                ContextMemoryStatus.REJECTED),
+            fileFact(
+                original,
+                "Q2",
+                "A2",
+                ContextMemorySourceType.FILE_EXTRACTION,
+                ContextMemoryStatus.UNPROCESSED),
+            fileFact(
+                original,
+                "Q3",
+                "A3",
+                ContextMemorySourceType.FILE_EXTRACTION,
+                ContextMemoryStatus.APPROVED),
+            fileFact(
+                original,
+                "Q4",
+                "A4",
+                ContextMemorySourceType.MANUAL,
+                ContextMemoryStatus.APPROVED));
+    when(memoryRepository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(memories);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        new ContextMemoryReconciler(memoryRepository).reuseExtractedFrom(copy, original);
+
+    assertEquals(new ContextMemoryReconciler.ReconcileResult(0, 0, 4, 0), result);
+    memories.forEach(memory -> verify(memoryRepository).linkExtractedMemory(memory.getId(), copy));
+    verify(memoryRepository, never()).create(any(), any());
+    verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
   }
 }
