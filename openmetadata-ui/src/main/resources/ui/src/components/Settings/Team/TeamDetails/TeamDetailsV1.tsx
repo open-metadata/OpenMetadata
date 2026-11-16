@@ -45,11 +45,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
-import {
-  GLOSSARIES_DOCS,
-  ROLE_DOCS,
-  TEAMS_DOCS,
-} from '../../../../constants/docs.constants';
+import { ROLE_DOCS, TEAMS_DOCS } from '../../../../constants/docs.constants';
 import { ExportTypes } from '../../../../constants/Export.constants';
 import {
   GlobalSettingOptions,
@@ -742,13 +738,13 @@ const TeamDetailsV1 = ({
           )}
           footer={
             <>
-              <Typography as="p">
+              <Typography as="p" className="tw:text-secondary" size="text-xs">
                 <Transi18next
                   i18nKey="message.refer-to-our-doc"
                   renderElement={
                     <a
                       aria-label={t('label.doc-plural-lowercase')}
-                      href={GLOSSARIES_DOCS}
+                      href={TEAMS_DOCS}
                       rel="noreferrer"
                       target="_blank"
                     />
