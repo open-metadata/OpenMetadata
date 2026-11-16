@@ -142,7 +142,7 @@ def _extract_pbit(zip_ref: zipfile.ZipFile, extract_dir: str) -> None:
     base = Path(extract_dir).resolve()
     for member in zip_ref.infolist():
         if not (base / member.filename).resolve().is_relative_to(base):
-            logger.warning(f"Skipping .pbit entry that escapes the extract directory: {member.filename!r}")
+            logger.warning("Skipping .pbit entry that escapes the extract directory: %r", member.filename)
             continue
         zip_ref.extract(member, base)
 
@@ -193,7 +193,7 @@ def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | N
                     _extract_pbit(zip_ref, f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Skipping .pbit file {file_path}: {exc}")
+                logger.warning("Skipping .pbit file %s: %s", file_path, exc)
 
         return _get_datamodel_schema_list(path)
 
