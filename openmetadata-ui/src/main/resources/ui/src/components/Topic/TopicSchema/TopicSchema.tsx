@@ -103,6 +103,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
+import { FIELD_SORT_ORDERS } from './TopicSchema.constants';
 import {
   SchemaViewType,
   TopicSchemaFieldsProps,
@@ -133,7 +134,6 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
   const [paginatedFields, setPaginatedFields] = useState<Field[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(true);
-  const [nameSortOrder, setNameSortOrder] = useState<'asc' | 'desc'>();
 
   const {
     currentPage,
@@ -145,10 +145,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     handlePagingChange,
   } = usePaging();
 
+  // Search and Name sort live in the URL with the page, so a reload restores all three.
   const { filters, setFilters } = useTableFilters({
     columnSearch: undefined as string | undefined,
+    fieldSort: undefined as string | undefined,
   });
   const searchText = filters.columnSearch ?? '';
+  const nameSortOrder = FIELD_SORT_ORDERS.find(
+    (order) => order === filters.fieldSort
+  );
 
   const viewTypeOptions = [
     {
@@ -445,13 +450,15 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       }
       const { order } = Array.isArray(sorter) ? sorter[0] : sorter;
       const descendingOrder = order === 'descend' ? 'desc' : undefined;
-      setNameSortOrder(order === 'ascend' ? 'asc' : descendingOrder);
       handlePageChange(INITIAL_PAGING_VALUE, {
         cursorType: null,
         cursorValue: undefined,
       });
+      setFilters({
+        fieldSort: order === 'ascend' ? 'asc' : descendingOrder,
+      });
     },
-    [handleTableChange, handlePageChange]
+    [handleTableChange, handlePageChange, setFilters]
   );
 
   const renderSchemaName = useCallback(
