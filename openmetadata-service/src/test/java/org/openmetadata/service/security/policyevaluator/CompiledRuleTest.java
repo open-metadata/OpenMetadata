@@ -248,20 +248,36 @@ class CompiledRuleTest {
   }
 
   @Test
-  void entityTypeRequestSkipsDenyOnlyWhenItsOutcomeReadTheAsset() {
+  void entityTypeRequestDeniesWhenACallerOnlyBranchHoldsInEitherOrder() {
     ResourceContextInterface typeLevel = ownerlessTable(true);
 
-    assertThrows(
-        AuthorizationException.class,
-        () ->
-            evaluateViewCustomFieldsDeny(
-                conditionalDeny("!isImpersonated() || !matchTeam()"), typeLevel),
-        "decided by the subject before the asset is read");
-    assertDoesNotThrow(
-        () ->
-            evaluateViewCustomFieldsDeny(
-                conditionalDeny("isImpersonated() || !matchTeam()"), typeLevel),
-        "needed the asset's owners to decide");
+    for (String condition :
+        List.of(
+            "!matchTeam() || !isImpersonated()",
+            "!isImpersonated() || !matchTeam()",
+            "!(matchTeam() && isImpersonated())",
+            "!(isImpersonated() && matchTeam())")) {
+      assertThrows(
+          AuthorizationException.class,
+          () -> evaluateViewCustomFieldsDeny(conditionalDeny(condition), typeLevel),
+          condition);
+    }
+  }
+
+  @Test
+  void entityTypeRequestSkipsDenyWhoseOutcomeDependsOnTheAssetInEitherOrder() {
+    ResourceContextInterface typeLevel = ownerlessTable(true);
+
+    for (String condition :
+        List.of(
+            "isImpersonated() || !matchTeam()",
+            "!matchTeam() || isImpersonated()",
+            "!isImpersonated() && !matchTeam()",
+            "!matchTeam() && !isImpersonated()",
+            "!matchTeam() && isImpersonated()")) {
+      assertDoesNotThrow(
+          () -> evaluateViewCustomFieldsDeny(conditionalDeny(condition), typeLevel), condition);
+    }
   }
 
   @Test
