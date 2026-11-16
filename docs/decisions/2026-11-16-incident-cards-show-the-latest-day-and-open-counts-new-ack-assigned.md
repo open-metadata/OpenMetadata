@@ -1,7 +1,7 @@
 # Incident status cards show the latest day's events, and Open counts New, Ack and Assigned
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (card descriptions say "with daily activity")
+- **Status:** Superseded by ADR:2026-11-16-incident-cards-describe-their-counts-as-daily-activity
+- **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Observability, UI team
 - **Guard:** reviewer
 - **Related:** open-metadata/openmetadata-collate#8576
@@ -36,10 +36,3 @@ acknowledged or assigned never appeared in it.
   show daily activity. Changing that requires a new record.
 - Days are UTC buckets. Users far from UTC can see evening events on the next day's bucket. Fixing
   that needs `time_zone` on the aggregation, which is backend work and out of scope.
-
-## Amendment — card descriptions say "with daily activity"
-
-The descriptions no longer say "on the latest day with activity" or "across days with activity".
-They now say what each card counts "with daily activity", for example "Incidents resolved with
-daily activity" and "Average response time with daily activity in the period". The cards still
-show the latest day with events; only the wording changed.
