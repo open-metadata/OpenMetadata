@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Tooltip } from 'antd';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { isEmpty, isUndefined } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -22,6 +22,7 @@ import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getFrequentlyJoinedColumns } from '../../../utils/EntityColumnUtils';
+import { parseVersionDiffArray } from '../../../utils/EntityDiffPureUtils';
 import { searchInColumns } from '../../../utils/EntitySearchUtils';
 import {
   getAllRowKeysByKeyName,
@@ -32,7 +33,7 @@ import {
   getTableExpandableConfig,
   prepareConstraintIcon,
 } from '../../../utils/TableUtils';
-import FilterTablePlaceHolder from '../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
+import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -154,7 +155,9 @@ function VersionTable<T extends Column | SearchIndexField>({
       let deletedTableConstraint: TableConstraint[] | undefined;
 
       addedTableConstraintDiffs?.forEach((diff) => {
-        const constraintNewValue = JSON.parse(diff.newValue);
+        const constraintNewValue = parseVersionDiffArray<TableConstraint>(
+          diff.newValue
+        ).filter((constraint) => Array.isArray(constraint.columns));
         constraintNewValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
             addedTableConstraint = [
@@ -166,7 +169,9 @@ function VersionTable<T extends Column | SearchIndexField>({
       });
 
       deletedTableConstraintDiffs?.forEach((diff) => {
-        const constraintOldValue = JSON.parse(diff.oldValue);
+        const constraintOldValue = parseVersionDiffArray<TableConstraint>(
+          diff.oldValue
+        ).filter((constraint) => Array.isArray(constraint.columns));
         constraintOldValue?.forEach((constraint: TableConstraint) => {
           if (constraint.columns?.includes(name)) {
             deletedTableConstraint = [
@@ -234,7 +239,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     ]
   );
 
-  const versionTableColumns: ColumnsType<T> = useMemo(
+  const versionTableColumns = useMemo<ColumnsType<T>>(
     () => [
       {
         title: t('label.name'),
@@ -252,12 +257,15 @@ function VersionTable<T extends Column | SearchIndexField>({
         render: (dataTypeDisplay: T['dataTypeDisplay']) => {
           return dataTypeDisplay ? (
             <Tooltip
+              arrow
+              excludeTriggerFromTabOrder
               title={
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
                   textVariant="white"
                 />
-              }>
+              }
+              triggerClassName="tw:inline-flex">
               <div className="cursor-pointer">
                 <RichTextEditorPreviewerV1
                   markdown={dataTypeDisplay?.toLowerCase() ?? ''}
@@ -358,7 +366,11 @@ function VersionTable<T extends Column | SearchIndexField>({
       }}
       loading={isLoading}
       locale={{
-        emptyText: <FilterTablePlaceHolder />,
+        emptyText: (
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+          </div>
+        ),
       }}
       pagination={false}
       rowKey="fullyQualifiedName"

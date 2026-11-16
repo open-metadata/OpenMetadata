@@ -1,10 +1,10 @@
 {
   "name": "MyTask",
-  "displayName": "My Task",
-  "description": "Displays a real-time feed of assigned tasks to help users track and manage their workload efficiently.",
+  "displayName": "My Tasks",
+  "description": "Open tasks assigned to the user or their teams, with incidents flagged first and access requests and approvals resolvable from the card.",
   "entityType": "KnowledgePanel",
   "fullyQualifiedName": "KnowledgePanel.MyTask",
   "data": {
-    "gridSizes": ["small", "medium"]
+    "gridSizes": ["small", "medium", "large"]
   }
 }

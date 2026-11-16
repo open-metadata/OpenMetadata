@@ -3,16 +3,21 @@ import {
   ButtonGroupItem,
 } from '@/components/base/button-group/button-group';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Select } from '@/components/base/select/select';
 import { useBreakpoint } from '@/hooks/use-breakpoint';
 import { useCoreTranslation } from '@/i18n/useCoreTranslation';
 import { cx } from '@/utils/cx';
 import {
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_PAGE_SIZE_OPTIONS,
+} from './pagination.constants';
+import {
   ArrowLeft,
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-} from '@untitledui/icons';
+} from '../../../icons';
 import type { ChangeEvent, KeyboardEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import type { PaginationRootProps } from './pagination-base';
@@ -52,17 +57,8 @@ const PaginationItem = ({
 const compactTextClassName =
   'tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary';
 
-const compactControlClassName =
-  'tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg';
-
 const compactPageControlClassName =
   'tw:flex tw:h-6 tw:min-w-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:px-1.5';
-
-const compactIconButtonClassName = cx(
-  compactControlClassName,
-  'tw:cursor-pointer tw:border tw:border-primary tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
-  'tw:hover:bg-primary_hover tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled'
-);
 
 const compactPageItemClassName = ({ isSelected }: { isSelected: boolean }) =>
   cx(
@@ -84,7 +80,7 @@ const compactPageInputClassName = cx(
 // harmless; keeping it would erase the border itself. `focus-visible:outline-none!` stays —
 // it reproduces what `[&>button]:focus-visible:outline-none!` used to do (no edge while focused).
 const compactRowsPerPageSelectClassName =
-  'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:focus-visible:outline-none! tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
+  'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:focus-visible:outline-none! tw:[&>button>span]:h-6 tw:[&>button>span]:gap-0.5 tw:[&>button>span]:px-1.5 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section]:justify-center tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
 
 const compactRowsPerPageItemClassName =
   'tw:px-0 tw:[&>div]:h-8 tw:[&>div]:px-2 tw:[&>div]:py-0 tw:[&>div]:outline-none! tw:[&[data-focused]>div]:bg-primary_hover tw:[&[data-selected]>div]:bg-primary tw:[&>div>div]:min-w-0 tw:[&>div>div>span]:text-xs tw:[&>div>div>span]:leading-[18px]';
@@ -115,11 +111,10 @@ const MobilePagination = ({
         'tw:flex tw:items-center tw:justify-between tw:md:hidden',
         className
       )}>
-      <Button
-        aria-label={t('label.previous-page', 'Go to previous page')}
-        color="secondary"
-        iconLeading={ArrowLeft}
-        size="sm"
+      <ButtonUtility
+        icon={ArrowLeft}
+        size="lg"
+        tooltip={t('label.previous-page', 'Go to previous page')}
         onClick={() => onPageChange?.(Math.max(1, page - 1))}
       />
 
@@ -128,11 +123,10 @@ const MobilePagination = ({
         <span className="tw:font-medium">{total}</span>
       </span>
 
-      <Button
-        aria-label={t('label.next-page', 'Go to next page')}
-        color="secondary"
-        iconLeading={ArrowRight}
-        size="sm"
+      <ButtonUtility
+        icon={ArrowRight}
+        size="lg"
+        tooltip={t('label.next-page', 'Go to next page')}
         onClick={() => onPageChange?.(Math.min(total, page + 1))}
       />
     </nav>
@@ -410,14 +404,17 @@ interface PaginationCardWithControlsProps extends PaginationProps {
   pageSizeOptions?: number[];
   /** The function to call when rows per page changes. */
   onPageSizeChange?: (pageSize: number) => void;
+  /** Hide the page input and numbered pages, leaving only prev/next + records. */
+  minimal?: boolean;
 }
 
 export const PaginationCardWithControls = ({
   page = 1,
   total = 10,
-  pageSize = 10,
-  pageSizeOptions = [10, 25, 50],
+  pageSize = DEFAULT_PAGE_SIZE,
+  pageSizeOptions = DEFAULT_PAGE_SIZE_OPTIONS,
   className,
+  minimal = false,
   onPageChange,
   onPageSizeChange,
   ...props
@@ -504,68 +501,76 @@ export const PaginationCardWithControls = ({
       page={currentPage}
       total={totalPages}
       onPageChange={handlePageChange}>
-      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>
-            {t('label.page', 'Page')}
-          </span>
-          <input
-            aria-label={t('label.current-page', 'Current page')}
-            className={compactPageInputClassName}
-            inputMode="numeric"
-            max={totalPages}
-            min={1}
-            style={{ width: pageInputWidth }}
-            type="text"
-            value={pageInput}
-            onBlur={commitPageInput}
-            onChange={handlePageInputChange}
-            onKeyDown={handlePageInputKeyDown}
-          />
-          <span className={compactTextClassName}>of {totalPages}</span>
-        </div>
+      <div
+        className={cx(
+          'tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:gap-x-5 tw:gap-y-3',
+          minimal ? 'tw:justify-center' : 'tw:justify-between'
+        )}>
+        {!minimal && (
+          <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
+            <span className={compactTextClassName}>
+              {t('label.page', 'Page')}
+            </span>
+            <input
+              aria-label={t('label.current-page', 'Current page')}
+              className={compactPageInputClassName}
+              inputMode="numeric"
+              max={totalPages}
+              min={1}
+              style={{ width: pageInputWidth }}
+              type="text"
+              value={pageInput}
+              onBlur={commitPageInput}
+              onChange={handlePageInputChange}
+              onKeyDown={handlePageInputKeyDown}
+            />
+            <span className={compactTextClassName}>of {totalPages}</span>
+          </div>
+        )}
 
         <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1">
           <Pagination.PrevTrigger asChild>
-            <button
-              className={compactIconButtonClassName}
+            <ButtonUtility
               data-testid="previous"
-              type="button">
-              <ChevronLeft className="tw:size-3.5" />
-            </button>
+              icon={ChevronLeft}
+              size="sm"
+            />
           </Pagination.PrevTrigger>
 
-          <Pagination.Context>
-            {({ pages }) => (
-              <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
-                {pages.map((page, index) =>
-                  page.type === 'page' ? (
-                    <Pagination.Item
-                      className={compactPageItemClassName}
-                      key={index}
-                      {...page}
-                      asChild>
-                      <button type="button">{page.value}</button>
-                    </Pagination.Item>
-                  ) : (
-                    <Pagination.Ellipsis
-                      className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
-                      key={index}>
-                      &#8230;
-                    </Pagination.Ellipsis>
-                  )
-                )}
-              </div>
-            )}
-          </Pagination.Context>
+          {minimal && (
+            <span className={cx(compactTextClassName, 'tw:whitespace-nowrap')}>
+              {t('label.page', 'Page')} {currentPage} of {totalPages}
+            </span>
+          )}
+
+          {!minimal && (
+            <Pagination.Context>
+              {({ pages }) => (
+                <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
+                  {pages.map((page, index) =>
+                    page.type === 'page' ? (
+                      <Pagination.Item
+                        className={compactPageItemClassName}
+                        key={index}
+                        {...page}
+                        asChild>
+                        <button type="button">{page.value}</button>
+                      </Pagination.Item>
+                    ) : (
+                      <Pagination.Ellipsis
+                        className="tw:mx-0 tw:flex tw:h-6 tw:w-4 tw:shrink-0 tw:items-center tw:justify-center tw:px-0 tw:text-sm tw:font-medium tw:leading-5 tw:text-quaternary"
+                        key={index}>
+                        &#8230;
+                      </Pagination.Ellipsis>
+                    )
+                  )}
+                </div>
+              )}
+            </Pagination.Context>
+          )}
 
           <Pagination.NextTrigger asChild>
-            <button
-              className={compactIconButtonClassName}
-              data-testid="next"
-              type="button">
-              <ChevronRight className="tw:size-3.5" />
-            </button>
+            <ButtonUtility data-testid="next" icon={ChevronRight} size="sm" />
           </Pagination.NextTrigger>
         </div>
 

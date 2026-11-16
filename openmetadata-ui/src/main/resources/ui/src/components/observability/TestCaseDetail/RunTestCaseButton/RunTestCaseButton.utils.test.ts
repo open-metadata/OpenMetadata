@@ -139,6 +139,12 @@ describe('getRunDisabledReasonKey', () => {
   it('allows the run otherwise', () => {
     expect(getRunDisabledReasonKey([pipeline()])).toBeUndefined();
   });
+
+  it('explains pipelines that could not be loaded, rather than reading them as none', () => {
+    expect(getRunDisabledReasonKey([], true)).toBe(
+      'message.pipelines-could-not-be-loaded'
+    );
+  });
 });
 
 describe('getTriggerPermissions', () => {

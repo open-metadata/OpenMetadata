@@ -277,10 +277,10 @@ test.describe('Glossary Asset Operations', () => {
 
       if (await assetCard.isVisible({ timeout: 3000 }).catch(() => false)) {
         // Try checkbox selection
-        const checkbox = assetCard.locator('input[type="checkbox"]');
+        const checkbox = assetCard.getByTestId('asset-checkbox');
 
         if (await checkbox.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await checkbox.check();
+          await checkbox.click();
 
           const removeButton = page.getByTestId('delete-all-button');
 
@@ -415,10 +415,10 @@ test.describe('Glossary Asset Operations', () => {
         await addAssetsButton.click();
 
         // Wait for dropdown to appear
-        await page.locator('.ant-dropdown').waitFor({ timeout: 3000 });
+        await page.getByRole('menu').waitFor({ timeout: 3000 });
 
         // Click on the option to add assets
-        const addOption = page.locator('.ant-dropdown-menu-item').first();
+        const addOption = page.getByRole('menu').getByRole('menuitem').first();
 
         if (await addOption.isVisible()) {
           await addOption.click();

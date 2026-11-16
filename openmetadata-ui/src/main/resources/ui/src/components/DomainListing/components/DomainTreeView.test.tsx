@@ -14,7 +14,6 @@
 import {
   act,
   fireEvent,
-  render,
   screen,
   waitFor,
   within,
@@ -29,6 +28,7 @@ import {
   getDomainChildrenPaginated,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DomainTreeView from './DomainTreeView';
 
 // Holds the latest callbacks passed to the Tree mock so tests can invoke them.
@@ -114,10 +114,6 @@ jest.mock('../../../utils/DomainRestrictionUtils', () => ({
   filterDomainsToAllowed: jest.fn((domains: unknown[]) => domains),
 }));
 
-jest.mock('../../../utils/DomainUtils', () => ({
-  convertDomainsToTreeOptions: jest.fn((domains: unknown[]) => domains),
-}));
-
 jest.mock('../../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn((v: string) => v ?? ''),
   getDecodedFqn: jest.fn((v: string) => v ?? ''),
@@ -183,7 +179,7 @@ const defaultProps = {
 };
 
 const renderComponent = (props: Partial<typeof defaultProps> = {}) =>
-  render(
+  renderWithQueryClient(
     <MemoryRouter>
       <DomainTreeView {...defaultProps} {...props} />
     </MemoryRouter>

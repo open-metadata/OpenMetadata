@@ -104,7 +104,9 @@ test.describe(
             r.url().includes('/api/v1/services/ingestionPipelines'),
           200
         );
-        await expect(page.getByTestId('logs-button').first()).toBeVisible();
+        await expect(
+          page.getByTestId('logs-button').filter({ visible: true })
+        ).not.toHaveCount(0);
         await page.getByTestId('logs-button').first().click();
         await pipelinesResponse;
       });

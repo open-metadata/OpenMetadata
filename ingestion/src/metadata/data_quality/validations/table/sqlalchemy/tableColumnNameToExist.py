@@ -13,6 +13,8 @@
 Validator for table column nanme to exist test case
 """
 
+from typing import TYPE_CHECKING, cast
+
 from sqlalchemy import inspect
 
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
@@ -23,6 +25,9 @@ from metadata.data_quality.validations.table.base.tableColumnNameToExist import 
 )
 from metadata.utils.logger import test_suite_logger
 
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import QueryRunner
+
 logger = test_suite_logger()
 
 
@@ -31,7 +36,7 @@ class TableColumnNameToExistValidator(BaseTableColumnNameToExistValidator, SQAVa
 
     def _run_results(self):
         """compute result of the test case"""
-        names = inspect(self.runner.table).c
+        names = [col.name for col in inspect(cast("QueryRunner", self.runner).table).c]
         if not names:
             raise ValueError(f"Column names for test case {self.test_case.name} returned None")
 

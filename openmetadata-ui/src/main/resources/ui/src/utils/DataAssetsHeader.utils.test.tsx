@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { render } from '@testing-library/react';
-import { Tooltip, Typography } from 'antd';
 import React from 'react';
 import { EntityType } from '../enums/entity.enum';
 import {
@@ -92,6 +92,7 @@ jest.mock('./EntityDataBreadcrumbUtils', () => ({
 jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
+  getSafeHttpUrl: jest.requireActual('./StringUtils').getSafeHttpUrl,
 }));
 
 jest.mock('./TablePureUtils', () => ({
@@ -144,6 +145,12 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     expect(JSON.stringify(assetData.extraInfo)).toContain('label.row-plural');
     expect(JSON.stringify(assetData.extraInfo)).toContain('14567');
 
+    // source-system creation time, read from lifeCycle.created
+    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
+    expect(JSON.stringify(assetData.extraInfo)).toContain(
+      'formatted-1609459200000'
+    );
+
     //  If Data does not present
     const assetWithNoExtraData = getDataAssetsHeaderInfo(
       EntityType.TABLE,
@@ -153,6 +160,7 @@ describe('Tests for DataAssetsHeaderUtils', () => {
         retentionPeriod: undefined,
         usageSummary: undefined,
         profile: undefined,
+        lifeCycle: undefined,
       },
       'Redshift',
       []
@@ -184,6 +192,41 @@ describe('Tests for DataAssetsHeaderUtils', () => {
     );
     expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
       '14567'
+    );
+
+    expect(JSON.stringify(assetWithNoExtraData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+  });
+
+  it('Function getDataAssetsHeaderInfo should render an epoch-0 table creation time', () => {
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      { ...MOCK_TABLE, lifeCycle: { created: { timestamp: 0 } } },
+      'Redshift',
+      []
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).toContain('label.created-time');
+    expect(JSON.stringify(assetData.extraInfo)).toContain('formatted-0');
+  });
+
+  it('Function getDataAssetsHeaderInfo should hide a year-0001 placeholder table creation time', () => {
+    const assetData = getDataAssetsHeaderInfo(
+      EntityType.TABLE,
+      {
+        ...MOCK_TABLE,
+        lifeCycle: { created: { timestamp: -62135596800000 } },
+      },
+      'Redshift',
+      []
+    );
+
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'label.created-time'
+    );
+    expect(JSON.stringify(assetData.extraInfo)).not.toContain(
+      'formatted--62135596800000'
     );
   });
 
@@ -391,6 +434,28 @@ describe('Tests for DataAssetsHeaderUtils', () => {
       'getUsagePercentile'
     );
   });
+
+  it.each([
+    ['http://my-server.ai', 'http://my-server.ai'],
+    ['javascript:alert(document.cookie)', null],
+    ['s3://models/forecast', null],
+  ])(
+    'should link the MlModel server %s only when it is an http(s) URL',
+    (server, expectedHref) => {
+      const { extraInfo } = getDataAssetsHeaderInfo(
+        EntityType.MLMODEL,
+        { ...mockMlModelDetails, server, dashboard: undefined },
+        'forecast_sales',
+        []
+      );
+      const { container, getByText } = render(<>{extraInfo}</>);
+
+      expect(getByText(server)).toBeInTheDocument();
+      expect(container.querySelector('a')?.getAttribute('href') ?? null).toBe(
+        expectedHref
+      );
+    }
+  );
 
   // Test for Container entity
   it('Function getDataAssetsHeaderInfo should return data for Container entity', () => {
@@ -748,9 +813,9 @@ describe('ExtraInfoLabel', () => {
   it('should handle React node as value', () => {
     const nodeValue = (
       <Tooltip title="Full text value">
-        <Typography.Text ellipsis className="w-full">
+        <Typography ellipsis className="w-full">
           Truncated text value
-        </Typography.Text>
+        </Typography>
       </Tooltip>
     );
 

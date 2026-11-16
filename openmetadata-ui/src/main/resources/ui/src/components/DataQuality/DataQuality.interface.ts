@@ -52,7 +52,8 @@ export type DataQualityPageParams = TestCaseSearchParams & {
 
 export interface IncidentTypeAreaChartWidgetProps {
   title: string;
-  incidentStatusType: TestCaseResolutionStatusTypes;
+  description: string;
+  incidentStatusTypes: TestCaseResolutionStatusTypes[];
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
   redirectPath?: LinkProps['to'];
@@ -61,6 +62,7 @@ export interface IncidentTypeAreaChartWidgetProps {
 
 export interface IncidentTimeChartWidgetProps {
   title: string;
+  description: string;
   incidentMetricType: IncidentTimeMetricsType;
   name: string;
   chartFilter?: DataQualityDashboardChartFilters;
@@ -72,6 +74,7 @@ export interface TestCaseStatusAreaChartWidgetProps {
   title: string;
   testCaseStatus: TestCaseStatus;
   name: string;
+  /** Not read: the chart colour follows `testCaseStatus`. Kept because Collate passes it. */
   chartColorScheme?: AreaChartColorScheme;
   chartFilter?: DataQualityDashboardChartFilters;
   height?: number;

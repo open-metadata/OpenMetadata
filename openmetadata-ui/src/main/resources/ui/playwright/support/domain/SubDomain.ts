@@ -16,6 +16,7 @@ import {
   deleteFixtureEntity,
   okJson,
   quoteFqnSegment,
+  requireEntityIdentity,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
@@ -28,7 +29,7 @@ type UserTeamRef = {
   id?: string;
 };
 
-type ResponseDataType = {
+type SubDomainData = {
   name: string;
   displayName: string;
   description: string;
@@ -40,9 +41,14 @@ type ResponseDataType = {
   parent?: string;
 };
 
+type ResponseDataType = SubDomainData & {
+  id: string;
+  fullyQualifiedName: string;
+};
+
 export class SubDomain {
   id: string;
-  data: ResponseDataType;
+  data: SubDomainData;
 
   responseData: ResponseDataType = {} as ResponseDataType;
 
@@ -67,7 +73,10 @@ export class SubDomain {
     const response = await apiContext.post('/api/v1/domains', {
       data: this.data,
     });
-    const data = await okJson(response, 'SubDomain.create');
+    const data = requireEntityIdentity(
+      await okJson<SubDomainData>(response, 'SubDomain.create'),
+      'SubDomain.create'
+    );
     this.responseData = data;
 
     return data;
@@ -103,7 +112,10 @@ export class SubDomain {
         },
       })
     );
-    this.responseData = await okJson(response, 'SubDomain.patch');
+    this.responseData = requireEntityIdentity(
+      await okJson<SubDomainData>(response, 'SubDomain.patch'),
+      'SubDomain.patch'
+    );
 
     return {
       entity: this.responseData,

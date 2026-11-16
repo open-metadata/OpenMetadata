@@ -40,6 +40,7 @@ import {
   createNewPage,
   getDefaultAdminAPIContext,
 } from '../../../utils/common';
+import { signInThroughForm } from '../../../utils/formSignIn';
 
 type WorkerFixtures = {
   isolatedAdmin: UserClass;
@@ -111,7 +112,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
-      await isolatedAdmin.login(page);
+      await signInThroughForm(page, isolatedAdmin);
       await use(page);
     } finally {
       await context.close();
@@ -127,7 +128,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
     const context = await browser.newContext();
     const page = await context.newPage();
     try {
-      await dataConsumer.login(page);
+      await signInThroughForm(page, dataConsumer);
       await use(page);
     } finally {
       await context.close();

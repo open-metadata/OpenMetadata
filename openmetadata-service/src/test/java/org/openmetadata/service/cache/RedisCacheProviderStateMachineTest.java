@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.time.Duration;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -107,6 +108,18 @@ class RedisCacheProviderStateMachineTest {
     recordSuccess();
     assertTrue(provider.available(), "3 consecutive successes must recover");
     assertTrue(failureTimestamps().isEmpty(), "recovery clears the failure window");
+  }
+
+  @Test
+  void successfulOperationsCannotRecoverBeforeSkippedWritesAreDeleted() throws Exception {
+    flipUnavailableViaThreshold();
+    recordSuccess();
+    recordSuccess();
+
+    provider.set("pending-key", "new-value", Duration.ofMinutes(1));
+    recordSuccess();
+
+    assertFalse(provider.available(), "pending stale keys must be deleted before reads resume");
   }
 
   @Test

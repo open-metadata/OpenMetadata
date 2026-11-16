@@ -10,8 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
-import { Col, Row, Tooltip, Typography } from 'antd';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+  Grid,
+  Tooltip,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -25,6 +30,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { ColumnsType } from '../../common/Table/Table.interface';
 
 import {
@@ -301,7 +307,11 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
       <div
         className="d-inline-flex gap-1 hover-icon-group vertical-align-inherit flex-column items-start"
         style={{ maxWidth: '80%' }}>
-        <Tooltip destroyTooltipOnHide title={getEntityName(record)}>
+        <Tooltip
+          arrow
+          excludeTriggerFromTabOrder
+          title={getEntityName(record)}
+          triggerClassName="tw:inline-flex">
           <span className="break-word">
             {isVersionView ? (
               <RichTextEditorPreviewerV1 markdown={getEntityName(record)} />
@@ -323,7 +333,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
 
   const renderDataType = useCallback(
     (dataType: DataType, record: Field) => (
-      <Typography.Text>
+      <Typography className="tw:text-primary">
         {isVersionView ? (
           <RichTextEditorPreviewerV1
             markdown={record.dataTypeDisplay ?? dataType}
@@ -331,7 +341,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
         ) : (
           record.dataTypeDisplay ?? dataType
         )}
-      </Typography.Text>
+      </Typography>
     ),
     [isVersionView]
   );
@@ -497,8 +507,10 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
   );
 
   return (
-    <Row gutter={[16, 16]}>
-      <Col span={24}>
+    <Grid
+      className="layout-row layout-grid"
+      style={{ ...getLayoutGutter(16, 16) }}>
+      <Grid.Item className="layout-column" span={24}>
         <Table
           className={classNames('align-table-filter-left')}
           columns={columns}
@@ -550,7 +562,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
           onChange={handleTableChange}
         />
-      </Col>
+      </Grid.Item>
       {editFieldDescription && (
         <EntityAttachmentProvider
           entityFqn={editFieldDescription.fullyQualifiedName}
@@ -569,7 +581,7 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           />
         </EntityAttachmentProvider>
       )}
-    </Row>
+    </Grid>
   );
 };
 

@@ -32,6 +32,7 @@ import {
 } from '../../../../../../generated/api/policies/createPolicy';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -104,11 +105,15 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
           description,
           rules: [condition ? { ...rest, condition } : rest],
         };
-        await addPolicy(payload);
+        const policy = await addPolicy(payload);
         showSuccessToast(
           t('server.create-entity-success', { entity: t('label.policy') })
         );
-        onNavigate({ type: 'policies' });
+        onNavigate({
+          type: 'policies-detail',
+          fqn: policy.fullyQualifiedName ?? policy.name,
+          name: getEntityName(policy),
+        });
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -131,7 +136,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
       <div className="tw:overflow-y-auto">
         <HookForm form={form}>
           <Box
-            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0"
+            className="tw:flex-1 tw:p-6 tw:max-w-[50%] tw:w-full tw:pt-0 tw:mx-auto"
             data-testid="add-policy-container"
             direction="col"
             gap={5}>
@@ -172,7 +177,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
 
       {/* Fixed footer */}
       <Box
-        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-primary tw:px-6 tw:py-4"
+        className="tw:shrink-0 tw:border-t tw:border-secondary tw:bg-surface tw:px-6 tw:py-4"
         data-testid="add-policy-footer"
         direction="row"
         gap={3}

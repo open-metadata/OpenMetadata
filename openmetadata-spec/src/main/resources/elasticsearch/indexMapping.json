@@ -250,7 +250,8 @@
     "indexMappingFile": "/elasticsearch/%s/test_case_index_mapping.json",
     "alias": "testCase",
     "parentAliases": ["testSuite", "all", "dataAssetEmbeddings"],
-    "childAliases": ["testCaseResolutionStatus", "testCaseResult"]
+    "childAliases": ["testCaseResolutionStatus", "testCaseResult"],
+    "dataInsightAliases": ["di-data-assets-testcase"]
   },
   "testCaseResult": {
     "indexName": "test_case_result_search_index",
@@ -618,6 +619,13 @@
     "parentAliases": [
       "all"
     ],
+    "childAliases": []
+  },
+  "dataContract": {
+    "indexName": "data_contract_search_index",
+    "indexMappingFile": "/elasticsearch/%s/data_contract_index_mapping.json",
+    "alias": "dataContract",
+    "parentAliases": [],
     "childAliases": []
   },
   "mcpServer": {

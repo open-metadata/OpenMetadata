@@ -39,6 +39,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.pipeline.tableaupipeline import metadata as metadata_module
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.metadata import (
@@ -446,7 +447,7 @@ class TestOwners:
 
 class TestTags:
     def test_yields_tag_classification(self, source):
-        results = list(source.yield_tag(PIPELINE_DETAILS))
+        results = list(source.yield_tag_details(PIPELINE_DETAILS))
         rights = [r.right for r in results if r.right is not None]
         assert rights, f"No tag results: {results}"
 
@@ -460,7 +461,7 @@ class TestTags:
         assert "daily" in tag_names, f"Expected 'daily' in {tag_names}"
 
     def test_no_tags_yields_nothing(self, source):
-        assert list(source.yield_tag(PIPELINE_DETAILS_MIN)) == []
+        assert list(source.yield_tag_details(PIPELINE_DETAILS_MIN)) == []
 
 
 class TestPipelineList:
@@ -668,7 +669,7 @@ class TestExceptionPaths:
     def test_yield_tag_respects_include_tags_off(self, source):
         source.source_config = MagicMock()
         source.source_config.includeTags = False
-        results = list(source.yield_tag(PIPELINE_DETAILS))
+        results = list(source.yield_tag_details(PIPELINE_DETAILS))
         assert results == []
 
     def test_tag_labels_respects_include_tags_off(self, source):
@@ -719,3 +720,18 @@ class TestCloseLifecycle:
         source.close()
 
         source.metadata.compute_percentile.assert_called_once()
+
+
+class TestFlowRecordErrors:
+    def test_an_unreadable_flow_record_does_not_mute_a_metadata_api_outage(self, source, mock_conn, caplog):
+        mock_conn.get_flow_lineage.side_effect = [
+            TableauFlowRecordError("Unable to parse flow-a"),
+            TableauMetadataApiError("Metadata API is down"),
+        ]
+
+        with caplog.at_level(logging.WARNING):
+            source._get_flow_lineage("flow-a")
+            source._get_flow_lineage("flow-b")
+
+        assert "Unable to parse flow-a" in caplog.text
+        assert "Metadata API is down" in caplog.text

@@ -11,8 +11,7 @@
  *  limitations under the License.
  */
 
-import { TypographyProps } from 'antd';
-import { ParagraphProps } from 'antd/lib/typography/Paragraph';
+import { TypographyProps } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 
 export interface HeaderProps {
@@ -20,9 +19,10 @@ export interface HeaderProps {
     header: ReactNode;
     subHeader: ReactNode;
   };
-  titleProps?: TypographyProps;
-  subHeaderProps?: ParagraphProps;
+  titleProps?: Partial<TypographyProps>;
+  subHeaderProps?: Partial<TypographyProps>;
   isBeta?: boolean;
+  badge?: ReactNode;
   learningPageId?: string;
   title?: string;
 }

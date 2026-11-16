@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, test } from '@playwright/test';
+import { LONG_ACTION_TIMEOUT } from '../../constant/common';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
+import { openMetricDefinitionEditor } from '../../utils/metric';
 import { performUserLogin } from '../../utils/user';
 
 /**
@@ -60,7 +62,7 @@ const expectMetricStatus = async (
 
         return metric.entityStatus;
       },
-      { intervals: [1_000, 2_000, 5_000], timeout: 120_000 }
+      { intervals: [1_000, 2_000, 5_000], timeout: LONG_ACTION_TIMEOUT }
     )
     .toBe(status);
 
@@ -267,9 +269,7 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     try {
       await metric.create(apiContext);
       await metric.visitEntityPage(page);
-      await page.getByTestId('metric-definition-edit').click();
-      const dialog = page.getByTestId('metric-definition-edit-dialog');
-      await expect(dialog).toBeVisible();
+      const dialog = await openMetricDefinitionEditor(page);
       await dialog
         .getByRole('textbox', { name: /Code/ })
         .fill(updatedExpression);

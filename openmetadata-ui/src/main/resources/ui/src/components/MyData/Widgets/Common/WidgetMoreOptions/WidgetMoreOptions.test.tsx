@@ -11,18 +11,22 @@
  *  limitations under the License.
  */
 
+import { TotalOccurrences } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetMoreOptions from './WidgetMoreOptions';
 
 const mockProps = {
   menuItems: [
-    { key: 'edit', label: 'Edit', icon: <TaskIcon data-testid="edit-icon" /> },
+    {
+      key: 'edit',
+      label: 'Edit',
+      icon: <TotalOccurrences data-testid="edit-icon" />,
+    },
     {
       key: 'delete',
       label: 'Delete',
-      icon: <TaskIcon data-testid="delete-icon" />,
+      icon: <TotalOccurrences data-testid="delete-icon" />,
     },
     { key: 'share', label: 'Share', disabled: true },
   ],
@@ -70,9 +74,7 @@ describe('WidgetMoreOptions', () => {
     const editOption = screen.getByText('Edit');
     fireEvent.click(editOption);
 
-    expect(mockProps.onMenuClick).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'edit' })
-    );
+    expect(mockProps.onMenuClick).toHaveBeenCalledWith('edit');
   });
 
   it('renders menu items with icons when provided', () => {
@@ -93,8 +95,9 @@ describe('WidgetMoreOptions', () => {
 
     const shareOption = screen.getByText('Share');
 
-    expect(shareOption.closest('li')).toHaveClass(
-      'ant-dropdown-menu-item-disabled'
+    expect(shareOption.closest('[role="menuitem"]')).toHaveAttribute(
+      'aria-disabled',
+      'true'
     );
   });
 
@@ -159,8 +162,6 @@ describe('WidgetMoreOptions', () => {
     const editOption = screen.getByText('Edit Widget');
     fireEvent.click(editOption);
 
-    expect(mockProps.onMenuClick).toHaveBeenCalledWith(
-      expect.objectContaining({ key: 'edit-widget' })
-    );
+    expect(mockProps.onMenuClick).toHaveBeenCalledWith('edit-widget');
   });
 });

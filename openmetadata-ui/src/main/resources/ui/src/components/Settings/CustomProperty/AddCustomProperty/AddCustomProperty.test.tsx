@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createInstance } from 'i18next';
 import { HelmetProvider } from 'react-helmet-async';
@@ -37,6 +43,13 @@ const stringType: Type = {
   description: 'String field type',
   category: Category.Field,
 };
+const dateType: Type = {
+  id: '3a2f1d6e-8c4b-4f5a-9e7d-2b1c0a9f8e7d',
+  name: 'date-cp',
+  displayName: 'Date',
+  description: 'Date field type',
+  category: Category.Field,
+};
 const tableType: Type = {
   id: '153a0c07-6480-404e-990b-555a42c8a7b5',
   name: 'table',
@@ -45,6 +58,8 @@ const tableType: Type = {
 };
 const invalidNameMessage = String.raw`Name must start with a letter or number. Invalid characters: " * : ^ $ \ < > & ~ /`;
 const i18n = createInstance();
+const getNameInput = () =>
+  within(screen.getByTestId('custom-property-name')).getByRole('textbox');
 
 const renderForm = (element = <AddCustomProperty open />) => {
   render(
@@ -105,6 +120,7 @@ describe('AddCustomProperty form validation', () => {
   });
 
   beforeEach(() => {
+    jest.clearAllMocks();
     (
       getTypeByFQN as jest.MockedFunction<typeof getTypeByFQN>
     ).mockResolvedValue(tableType);
@@ -137,7 +153,7 @@ describe('AddCustomProperty form validation', () => {
     renderForm();
     await fillRequiredFields(user);
 
-    fireEvent.change(screen.getByTestId('name'), { target: { value: name } });
+    fireEvent.change(getNameInput(), { target: { value: name } });
     fireEvent.submit(screen.getByTestId('custom-property-form'));
 
     expect(await screen.findByText(invalidNameMessage)).toBeVisible();
@@ -150,7 +166,7 @@ describe('AddCustomProperty form validation', () => {
     renderForm();
     await fillRequiredFields(user);
 
-    fireEvent.change(screen.getByTestId('name'), {
+    fireEvent.change(getNameInput(), {
       target: { value: 'a'.repeat(257) },
     });
     fireEvent.submit(screen.getByTestId('custom-property-form'));
@@ -187,7 +203,7 @@ describe('AddCustomProperty form validation', () => {
       renderForm();
       await fillRequiredFields(user);
 
-      const nameInput = screen.getByTestId('name');
+      const nameInput = getNameInput();
       fireEvent.change(nameInput, { target: { value: 'invalid:name' } });
       fireEvent.submit(screen.getByTestId('custom-property-form'));
 
@@ -209,6 +225,56 @@ describe('AddCustomProperty form validation', () => {
       });
     }
   );
+
+  it('rejects a name already used on the entity type, ignoring case', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderForm(
+      <AddCustomProperty
+        open
+        typeDetail={{
+          ...tableType,
+          customProperties: [
+            {
+              name: 'priority',
+              description: '',
+              propertyType: { id: stringType.id ?? '', type: 'type' },
+            },
+          ],
+        }}
+      />
+    );
+    await fillRequiredFields(user);
+
+    fireEvent.change(getNameInput(), { target: { value: 'PRIORITY' } });
+    fireEvent.submit(screen.getByTestId('custom-property-form'));
+
+    expect(
+      await screen.findByText('Custom Property with this name already exists.')
+    ).toBeVisible();
+    expect(addPropertyToEntity).not.toHaveBeenCalled();
+  });
+
+  it('uses the entity type the caller passes instead of fetching it', () => {
+    renderForm(<AddCustomProperty open typeDetail={tableType} />);
+
+    expect(getTypeByFQN).not.toHaveBeenCalled();
+  });
+
+  it('requires a format for a date property', async () => {
+    (
+      getTypeListByCategory as jest.MockedFunction<typeof getTypeListByCategory>
+    ).mockResolvedValue({ data: [stringType, dateType], paging: { total: 2 } });
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderForm();
+
+    fireEvent.change(getNameInput(), { target: { value: 'releaseDate' } });
+    await user.click(screen.getByRole('button', { name: /Type/ }));
+    await user.click(await screen.findByRole('option', { name: 'Date' }));
+    fireEvent.submit(screen.getByTestId('custom-property-form'));
+
+    expect(await screen.findByText('Format is required')).toBeVisible();
+    expect(addPropertyToEntity).not.toHaveBeenCalled();
+  });
 
   it('returns to the property list without saving when cancelled', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });

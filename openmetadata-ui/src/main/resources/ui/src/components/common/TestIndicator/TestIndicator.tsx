@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Space } from 'antd';
+import { Box } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import React from 'react';
 import { TestIndicatorProps } from '../../Database/Profiler/TableProfiler/TableProfiler.interface';
@@ -19,17 +20,20 @@ import './test-indicator.less';
 
 const TestIndicator: React.FC<TestIndicatorProps> = ({ value, type }) => {
   return (
-    <Space
+    <Box
+      inline
       align="center"
-      className={classNames(
+      className={`layout-space layout-space-horizontal ${classNames(
         'test-indicator justify-center',
         type.toLowerCase()
-      )}
-      data-testid="test-status">
+      )}`}
+      data-testid="test-status"
+      gap={2}
+      itemClassName="layout-space-item">
       <div className="test-value" data-testid="test-value">
         {value}
       </div>
-    </Space>
+    </Box>
   );
 };
 

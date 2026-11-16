@@ -164,7 +164,7 @@ test.describe(
         // Suggestions are created as the suggester so their avatar drives the carousel
         const suggesterPage = await browser.newPage();
         try {
-          await suggesterUser.login(suggesterPage);
+          await suggesterUser.signIn(suggesterPage);
           const { apiContext: suggesterContext, afterAction: disposeContext } =
             await getApiContext(suggesterPage);
 
@@ -184,10 +184,7 @@ test.describe(
               {
                 suggestionType: 'Tag',
                 fieldPath: 'tags',
-                // suggestedValue is the canonical TagSuggestion form-schema field;
-                // tagsToAdd is what the UI maps to tagLabels, so send both
                 suggestedValue: JSON.stringify(SUGGESTED_TAG_LABELS),
-                tagsToAdd: SUGGESTED_TAG_LABELS,
               }
             );
             await createSuggestionTask(suggesterContext, descriptionOnlyTable, {
@@ -236,7 +233,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await adminUser.login(page);
+      await adminUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -258,7 +255,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await viewerUser.login(page);
+      await viewerUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -285,7 +282,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await descriptionEditorUser.login(page);
+      await descriptionEditorUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, mixedSuggestionsTable);
@@ -306,7 +303,7 @@ test.describe(
     }) => {
       test.slow();
 
-      await descriptionEditorUser.login(page);
+      await descriptionEditorUser.signIn(page);
 
       await test.step('Open the suggester suggestions', async () => {
         await openSuggesterSuggestions(page, descriptionOnlyTable);

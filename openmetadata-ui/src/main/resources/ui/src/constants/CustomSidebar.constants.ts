@@ -17,11 +17,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Building02,
-  Cube01,
+  DataProduct,
   Globe01,
   Home02,
   Settings01,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { ROUTES } from './constants';
 
@@ -43,7 +43,7 @@ export const getMarketplaceSidebarConfig = (t: TFunction): SidebarConfig => ({
     {
       label: t('label.data-product-plural'),
       href: `${ROUTES.DATA_MARKETPLACE}/data-products`,
-      icon: Cube01,
+      icon: DataProduct,
     },
     {
       label: t('label.domain-plural'),

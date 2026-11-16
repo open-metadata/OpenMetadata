@@ -23,7 +23,7 @@ import {
   HookForm,
   Toggle,
 } from '@openmetadata/ui-core-components';
-import { Users01 } from '@untitledui/icons';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import {
   Suspense,

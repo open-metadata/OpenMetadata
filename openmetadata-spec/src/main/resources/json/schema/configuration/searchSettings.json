@@ -13,6 +13,11 @@
           "description": "Flag to enable or disable RBAC Search Configuration globally.",
           "default": false
         },
+        "enableColumnIndexing": {
+          "type": "boolean",
+          "description": "Index table columns as standalone search documents in the column search index. Disabling it stops column indexing and deletes the column search index; enabling it creates the index again, and a reindex of tables fills it.",
+          "default": true
+        },
         "maxAggregateSize": {
           "type": "integer",
           "default": 10000

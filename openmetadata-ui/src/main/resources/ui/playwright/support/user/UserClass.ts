@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Page } from '@playwright/test';
+import { APIRequestContext, expect, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import {
   DATA_CONSUMER_RULES,
@@ -22,6 +22,7 @@ import {
   okJson,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
+import { signInViaApi } from '../../utils/apiSignIn';
 import {
   disableEtagConditionalReads,
   generateRandomUsername,
@@ -32,6 +33,10 @@ import { PolicyClass, PolicyRulesType } from '../access-control/PoliciesClass';
 import { RolesClass } from '../access-control/RolesClass';
 import { UserResponseDataType } from '../entity/Entity.interface';
 import { TeamClass } from '../team/TeamClass';
+
+// Mirrors REDIRECT_PATHNAME in src/constants/router.constants.ts, which specs
+// may not import.
+const REDIRECT_COOKIE_NAME = 'redirectUrlPath';
 
 export type UserData = {
   email: string;
@@ -306,6 +311,34 @@ export class UserClass {
       })
       .catch(() => undefined);
     await page.waitForLoadState('domcontentloaded').catch(() => undefined);
+
+    await this.completeSignIn(page);
+  }
+
+  /**
+   * Everything a signed-in page owes its caller once the session exists.
+   *
+   * Shared by {@link login} and {@link signIn} so the two differ only in how
+   * the session is established. Call sites depend on all three: conditional
+   * reads off (so a test sees fresh entity state rather than a 304), the
+   * getting-started dialog dismissed, and the sidebar collapsed — the last one
+   * changes page geometry, so a sign-in path that skipped it would move every
+   * locator in the spec.
+   */
+  protected async completeSignIn(page: Page) {
+    // After sign-in the app navigates to the stored path and leaves that cookie
+    // alive for one more second; a page opened inside that second is sent to
+    // the stored path instead of its own URL.
+    await expect
+      .poll(
+        async () =>
+          (
+            await page.context().cookies()
+          ).some(({ name }) => name === REDIRECT_COOKIE_NAME),
+        { message: 'the post-login redirect cookie should expire' }
+      )
+      .toBe(false);
+
     await disableEtagConditionalReads(page);
 
     const modal = await page
@@ -329,17 +362,50 @@ export class UserClass {
       .catch(() => false);
 
     if (hasOpenClass) {
-      await page.getByTestId('sidebar-toggle').click();
+      await page.getByTestId('sidebar-toggle').dispatchEvent('click');
     }
   }
 
+  /**
+   * The same signed-in page as {@link login}, established through the API
+   * instead of the sign-in form.
+   *
+   * Prefer this everywhere except a spec that is testing the form itself.
+   * `login()` performs nine UI interactions before the test has done anything;
+   * this performs one POST. Everything after the session exists is identical —
+   * both funnel through {@link completeSignIn} — so swapping a call site over
+   * changes how the page got signed in and nothing else.
+   *
+   * Returns the access token, so callers that also need an API context can
+   * build one without a second round trip.
+   */
+  async signIn(
+    page: Page,
+    userName = this.data.email,
+    password = this.data.password,
+    options: { suppressWelcomeScreen?: boolean; landingPath?: string } = {}
+  ): Promise<string> {
+    const token = await signInViaApi(page, {
+      email: userName,
+      password,
+      userName: this.responseData?.name ?? userName,
+      suppressWelcome: options.suppressWelcomeScreen ?? true,
+      landingPath: options.landingPath,
+    });
+
+    await this.completeSignIn(page);
+
+    return token;
+  }
+
   async logout(page: Page) {
-    await page.getByRole('menuitem', { name: 'Logout' }).click();
+    await page.getByTestId('app-bar-item-logout').click();
 
     // Wait for logout confirmation modal specifically
     await page
-      .locator('.ant-modal-body')
+      .getByRole('dialog')
       .filter({ hasText: 'Are you sure you want' })
+
       .waitFor({ state: 'visible' });
 
     const waitLogout = page.waitForResponse(

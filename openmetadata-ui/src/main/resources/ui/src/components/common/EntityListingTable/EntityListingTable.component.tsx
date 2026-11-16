@@ -72,8 +72,16 @@ const EntityListingTable = <T extends { id: string; name: string }>({
       selectionBehavior="toggle"
       selectionMode="multiple"
       onSelectionChange={handleSelectionChange}>
+      {/* React Aria requires a data column to identify rows; the selection column is insufficient. */}
       <Table.Header columns={columns}>
-        {(col) => <Table.Head id={col.id} key={col.id} label={col.label} />}
+        {(col) => (
+          <Table.Head
+            id={col.id}
+            isRowHeader={col.id === columns[0]?.id}
+            key={col.id}
+            label={col.label}
+          />
+        )}
       </Table.Header>
       <Table.Body
         items={entities}

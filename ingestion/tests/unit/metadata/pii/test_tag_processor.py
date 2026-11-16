@@ -12,10 +12,12 @@
 Unit tests for Tag Processor
 """
 
+from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsFloat, IsInstance, IsUUID
+from presidio_analyzer.nlp_engine import NlpEngine
 
 from _openmetadata_testutils.factories.metadata.generated.schema.entity.classification.tag import (
     TagFactory,
@@ -198,6 +200,55 @@ class TestTagProcessor:
         assert tag_label.source is TagSource.Classification
         assert tag_label.state is State.Suggested
         assert tag_label.labelType is LabelType.Generated
+
+    @pytest.mark.parametrize("malformed_spi", [True, False])
+    def test_real_sdk_parsing_classifies_acct_num_beside_malformed_spi(
+        self, workflow_config, pii_classification, malformed_spi
+    ) -> None:
+        pattern = PatternFactory.create(name="acct-num", regex="ACCT_NUM", score=0.85)
+        pii_recognizer = RecognizerFactory.create(
+            name="acct-num",
+            recognizerConfig=PatternRecognizerFactory.create(patterns=[pattern], supportedLanguage="en"),
+            target=recognizer.Target.column_name,
+        )
+        pii_tag = TagFactory.create(
+            tag_name="PII",
+            tag_classification=pii_classification,
+            autoClassificationEnabled=True,
+            recognizers=[pii_recognizer],
+        )
+        spi = pii_tag.model_dump(mode="json", exclude_none=True)
+        spi["name"] = "SPI"
+        spi["fullyQualifiedName"] = "PII.SPI"
+        spi["recognizers"][0]["recognizerConfig"]["patterns"][0]["regex"] = "DOES_NOT_MATCH"
+        if malformed_spi:
+            spi["recognizers"][0]["recognizerConfig"].pop("supportedLanguage")
+        sdk = object.__new__(OpenMetadata)
+        sdk.client = Mock()
+        sdk._use_raw_data = False
+        sdk.client.get.side_effect = [
+            {"data": [pii_classification.model_dump(mode="json", exclude_none=True)], "paging": {"total": 1}},
+            {"data": [pii_tag.model_dump(mode="json", exclude_none=True), spi], "paging": {"total": 2}},
+        ]
+        workflow_config.source.sourceConfig.config.confidence = 80
+        nlp_engine = Mock(spec=NlpEngine)
+        nlp_engine.process_text.return_value = SimpleNamespace(tokens=[], tokens_indices=[], lemmas=[], entities=[])
+        processor = TagProcessor(
+            config=workflow_config,
+            metadata=sdk,
+            classification_filter=["PII"],
+            score_tags_for_column=ScoreTagsForColumnService(nlp_engine=nlp_engine),
+        )
+
+        assert [tag.fullyQualifiedName for tag in processor.candidate_tags] == (
+            ["PII.PII"] if malformed_spi else ["PII.PII", "PII.SPI"]
+        )
+
+        column = Column(
+            name=ColumnName(root="ACCT_NUM"), fullyQualifiedName="svc.db.table.ACCT_NUM", dataType=DataType.VARCHAR
+        )
+        labels = processor.create_column_tag_labels(column, [])
+        assert [label.tagFQN.root for label in labels] == ["PII.PII"]
 
     def test_skip_column_with_existing_pii_tag(self, processor: TagProcessor) -> None:
         """Test that columns with existing PII tags are skipped"""

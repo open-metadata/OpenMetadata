@@ -11,8 +11,29 @@
  *  limitations under the License.
  */
 
+import {
+  Database01,
+  LayersThree01,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
+import type { FC } from 'react';
 import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { Domain, DomainType } from '../generated/entity/domains/domain';
+
+export const DOMAIN_TYPE_DISPLAY: Record<
+  DomainType,
+  { icon: FC<{ className?: string }>; labelKey: string }
+> = {
+  [DomainType.Aggregate]: { icon: LayersThree01, labelKey: 'label.aggregate' },
+  [DomainType.ConsumerAligned]: {
+    icon: User01,
+    labelKey: 'label.consumer-aligned',
+  },
+  [DomainType.SourceAligned]: {
+    icon: Database01,
+    labelKey: 'label.source-aligned',
+  },
+};
 
 export const DOMAIN_TYPE_DATA = [
   {

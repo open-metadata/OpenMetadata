@@ -15,13 +15,19 @@ package org.openmetadata.service.secrets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.SecretsManager.SECRET_FIELD_PREFIX;
 
 import java.lang.reflect.Field;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.service.fernet.Fernet;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -70,6 +76,20 @@ class AWSSSMSecretsManagerLocalStackTest {
   }
 
   @Test
+  void anOwnedParameterHeldUnderItsArnIsDeletedWithItsOwner() {
+    OwnedSecrets owned = secretsManager.ownedSecrets();
+    SecretOwner owner = SecretOwner.builder("localstack").id(UUID.randomUUID()).build();
+    String parameterName = ownedSecretName(owned, owner);
+    String arn = rawClient.getParameter(request -> request.name(parameterName)).parameter().arn();
+
+    owned.delete(Set.of(SECRET_FIELD_PREFIX + arn), owner);
+
+    assertFalse(
+        secretsManager.existSecret(parameterName),
+        "a parameter held under its ARN must be deleted by its name");
+  }
+
+  @Test
   void createReadAndUpdateRoundTripAgainstLocalStack() {
     String parameterName = "/openmetadata/it/ssm-round-trip";
 
@@ -103,6 +123,48 @@ class AWSSSMSecretsManagerLocalStackTest {
     assertFalse(secretsManager.existSecret(parameterName), "a deleted parameter must not exist");
   }
 
+  @Test
+  void hardDeletingAMigratedServiceRemovesTheParameterAtItsOldPath() {
+    String serviceName = "ssm-fabric-migrated";
+    String legacyParameterName =
+        secretsManager.buildSecretId(true, "database", serviceName) + "/clientsecret";
+    secretsManager.upsertSecret(legacyParameterName, "legacy-client-secret");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConnection("secret:" + legacyParameterName),
+        "MicrosoftFabric",
+        serviceName,
+        ServiceType.DATABASE);
+
+    assertFalse(
+        secretsManager.existSecret(legacyParameterName),
+        "the parameter the moved field still references must be deleted with the service");
+  }
+
+  @Test
+  void hardDeleteKeepsAParameterTheServiceOnlyReferences() {
+    String sharedParameterName = "/shared/vault/ssm-fabric-client-secret";
+    secretsManager.upsertSecret(sharedParameterName, "managed-by-the-user");
+
+    secretsManager.deleteSecretsFromServiceConnectionConfig(
+        fabricConnection("secret:" + sharedParameterName),
+        "MicrosoftFabric",
+        "ssm-fabric-shared",
+        ServiceType.DATABASE);
+
+    assertTrue(
+        secretsManager.existSecret(sharedParameterName),
+        "a parameter the user manages outside the service must survive its hard delete");
+  }
+
+  private static Map<String, Object> fabricConnection(String clientSecret) {
+    return Map.of(
+        "hostPort", "fabric.datawarehouse.fabric.microsoft.com",
+        "clientId", "client-id",
+        "tenantId", "tenant-id",
+        "authType", Map.of("clientSecret", clientSecret));
+  }
+
   private SecretsManager.SecretsConfig localStackConfig() {
     Parameters parameters = new Parameters();
     parameters.setAdditionalProperty("region", LOCALSTACK.getRegion());
@@ -120,6 +182,19 @@ class AWSSSMSecretsManagerLocalStackTest {
             StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(LOCALSTACK.getAccessKey(), LOCALSTACK.getSecretKey())))
         .build();
+  }
+
+  private static String ownedSecretName(OwnedSecrets owned, SecretOwner owner) {
+    SnowflakeConnection stored =
+        (SnowflakeConnection)
+            owned.encrypt(
+                new SnowflakeConnection().withPassword("owned"),
+                owner,
+                List.of("connection"),
+                Set.of());
+    return Fernet.getInstance()
+        .decryptIfApplies(stored.getPassword())
+        .substring(SECRET_FIELD_PREFIX.length());
   }
 
   private static void resetSingleton() throws Exception {

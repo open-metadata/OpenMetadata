@@ -43,6 +43,8 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.utils import model_str
 
 METADATA_LOGGER = "metadata"
+# collate-data-diff logs a long Table Diff's progress here, at INFO: about once a minute, and when it completes
+DATA_DIFF_PROGRESS_LOGGER = "data_diff.progress"
 BASE_LOGGING_FORMAT = "[%(asctime)s] %(levelname)-8s {%(name)s:%(module)s:%(lineno)d} - %(message)s"
 logging.basicConfig(format=BASE_LOGGING_FORMAT, datefmt="%Y-%m-%d %H:%M:%S")
 
@@ -212,6 +214,8 @@ def set_loggers_level(level: int | str = logging.INFO):
     :param level: logging level
     """
     logging.getLogger(METADATA_LOGGER).setLevel(level)
+    # data-diff's other loggers stay quiet below the root logger's WARNING: they log every segment
+    logging.getLogger(DATA_DIFF_PROGRESS_LOGGER).setLevel(level)
 
 
 def log_ansi_encoded_string(

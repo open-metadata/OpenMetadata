@@ -43,7 +43,7 @@ public final class ContextMemoryBodyTextContributor implements VectorBodyTextCon
     return ContextMemoryBodyTextContributor::extractBodyText;
   }
 
-  static String extractBodyText(EntityInterface entity) {
+  static String extractBodyText(EntityInterface<?> entity) {
     if (!(entity instanceof ContextMemory memory)) {
       return null;
     }

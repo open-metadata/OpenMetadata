@@ -15,7 +15,7 @@ docker run --detach \
   --log-driver local --log-opt max-size=5m --log-opt max-file=1 --log-opt compress=false \
   --env MYSQL_ROOT_PASSWORD=playwright-fixture-root \
   --volume "$workspace_root/docker/development/playwright-autopilot-mysql.sql:/docker-entrypoint-initdb.d/autopilot.sql:ro" \
-  mysql:8.0.42 \
+  "${PW_AUTOPILOT_MYSQL_IMAGE:-mysql:8.0.42}" \
   --innodb-buffer-pool-size=64M --innodb-redo-log-capacity=32M \
   --max-connections=40 --performance-schema=OFF >/dev/null
 

@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PageLayout } from '@openmetadata/ui-core-components';
+import { Box, PageLayout } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
+import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
   getGlossaryHomeCrumb,
@@ -31,6 +32,10 @@ const ColumnBulkOperations = () => {
     { label: t('label.column-bulk-operations') },
   ];
 
+  const deprecatedBadge = (
+    <DeprecatedFeatureBadge featureName={t('label.column-bulk-operations')} />
+  );
+
   return (
     <PageLayoutV1
       pageTitle={t('label.column-bulk-operations')}
@@ -41,6 +46,7 @@ const ColumnBulkOperations = () => {
         })}>
         {isAiMode ? (
           <PageLayout.PageHeader
+            badge={deprecatedBadge}
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin
@@ -54,7 +60,14 @@ const ColumnBulkOperations = () => {
             variant="gradient"
           />
         ) : (
-          <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+          <Box align="center" className="tw:mb-3" gap={2}>
+            <HeaderBreadcrumb
+              noMargin
+              items={breadcrumbItems}
+              showHome={false}
+            />
+            {deprecatedBadge}
+          </Box>
         )}
         <ColumnGrid />
       </div>

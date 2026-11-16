@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.data.metric import (
 from metadata.generated.schema.type.basic import EntityName, Markdown
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.ingestion.source.database.semantic_metric_lineage import SQL_KEYWORDS
 from metadata.ingestion.source.database.semantic_metrics import (
     aggregation_name,
     describe,
@@ -68,47 +69,6 @@ _FUNCTION_CALL_RE = re.compile(rf"({_IDENTIFIER})\s*\(")
 # otherwise offer ``MONTH`` as a column candidate, and a date-dimension table really
 # can have a column by that name — a literal must never reach column resolution.
 _STRING_LITERAL_RE = re.compile(r"'(?:[^']|'')*'|\"(?:[^\"]|\"\")*\"")
-
-# Bare words a Spark expression can contain that are never column references. The
-# authoritative filter is resolution against the source table's real columns; this
-# only keeps the obvious noise out of the lookup.
-_SQL_KEYWORDS = frozenset(
-    {
-        "and",
-        "as",
-        "asc",
-        "between",
-        "by",
-        "case",
-        "cast",
-        "desc",
-        "distinct",
-        "else",
-        "end",
-        "false",
-        "filter",
-        "following",
-        "from",
-        "in",
-        "interval",
-        "is",
-        "like",
-        "not",
-        "null",
-        "or",
-        "order",
-        "over",
-        "partition",
-        "preceding",
-        "range",
-        "rows",
-        "then",
-        "true",
-        "unbounded",
-        "when",
-        "where",
-    }
-)
 
 
 class MetricViewFormat(BaseModel):
@@ -368,7 +328,7 @@ def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
             refs.append((".".join(segments[:-1]), segments[-1]))
     for identifier in _IDENTIFIER_RE.findall(remainder):
         name = identifier.strip("`")
-        if name.lower() in _SQL_KEYWORDS or name.lower() in function_heads:
+        if name.lower() in SQL_KEYWORDS or name.lower() in function_heads:
             continue
         refs.append((None, name))
     return refs

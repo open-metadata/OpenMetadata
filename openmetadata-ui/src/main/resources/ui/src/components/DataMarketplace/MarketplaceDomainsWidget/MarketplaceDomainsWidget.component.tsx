@@ -12,7 +12,7 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Globe01, Plus } from '@untitledui/icons';
+import { Globe01, Plus } from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -225,8 +225,9 @@ const MarketplaceDomainsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-domain-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.domain') })}
+                {t('label.add-entity', { entity: t('label.domain') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (

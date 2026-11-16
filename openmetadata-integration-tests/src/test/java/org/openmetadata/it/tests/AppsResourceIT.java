@@ -15,29 +15,54 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
+import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_IMPERSONATION_ROLE;
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.awaitility.Awaitility;
+import org.flowable.engine.ProcessEngines;
+import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.engine.runtime.ProcessInstanceQuery;
+import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -49,15 +74,51 @@ import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.SourceConfig;
+import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.bundles.autoPilot.AutoPilotApp;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.search.SearchRepository;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.TriggerBuilder;
+import org.quartz.impl.JobExecutionContextImpl;
+import org.quartz.spi.OperableTrigger;
+import org.quartz.spi.TriggerFiredBundle;
 
 /**
  * Integration tests for Apps API.
@@ -78,6 +139,111 @@ public class AppsResourceIT {
   @BeforeAll
   static void setup() {
     Apps.setDefaultClient(SdkClients.adminClient());
+  }
+
+  @Test
+  void dataInsights_scheduledRunIgnoresIncompleteBackfill(TestNamespace ns) {
+    RecordingDataInsightsApp app =
+        runDataInsights(
+            ns, ScheduleTimeline.DAILY.value(), new BackfillConfiguration().withEnabled(true));
+
+    assertEquals(AppRunRecord.Status.COMPLETED, app.reported.getStatus());
+    assertNull(app.reported.getFailureContext());
+    assertTrue(app.getBackfill().isEmpty());
+  }
+
+  @Test
+  void dataInsights_manualRunReportsIncompleteBackfillAsFailed(TestNamespace ns) {
+    RecordingDataInsightsApp app =
+        runDataInsights(ns, ON_DEMAND_JOB, new BackfillConfiguration().withEnabled(true));
+
+    assertEquals(AppRunRecord.Status.FAILED, app.reported.getStatus());
+    IndexingError failure =
+        (IndexingError) app.reported.getFailureContext().getAdditionalProperties().get("failure");
+    assertTrue(failure.getMessage().contains("Backfill requires both startDate and endDate"));
+  }
+
+  @Test
+  void dataInsights_manualRunUsesValidBackfill(TestNamespace ns) {
+    String date = LocalDate.now(ZoneOffset.UTC).toString();
+    RecordingDataInsightsApp app =
+        runDataInsights(
+            ns,
+            ON_DEMAND_JOB,
+            new BackfillConfiguration().withEnabled(true).withStartDate(date).withEndDate(date));
+
+    assertEquals(AppRunRecord.Status.COMPLETED, app.reported.getStatus());
+    assertNull(app.reported.getFailureContext());
+    assertEquals(new DataInsightsApp.Backfill(date, date), app.getBackfill().orElseThrow());
+  }
+
+  @Test
+  void dataInsights_manualRunIgnoresDisabledBackfill(TestNamespace ns) {
+    RecordingDataInsightsApp app =
+        runDataInsights(ns, ON_DEMAND_JOB, new BackfillConfiguration().withEnabled(false));
+
+    assertEquals(AppRunRecord.Status.COMPLETED, app.reported.getStatus());
+    assertNull(app.reported.getFailureContext());
+    assertTrue(app.getBackfill().isEmpty());
+  }
+
+  private RecordingDataInsightsApp runDataInsights(
+      TestNamespace ns, String runType, BackfillConfiguration backfill) {
+    DataInsightsAppConfig config =
+        new DataInsightsAppConfig()
+            .withBackfillConfiguration(backfill)
+            .withModuleConfiguration(
+                new ModuleConfiguration()
+                    .withDataAssets(new DataAssetsConfig().withEnabled(false))
+                    .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
+                    .withCostAnalysis(new CostAnalysisConfig().withEnabled(false)));
+    RecordingDataInsightsApp application = new RecordingDataInsightsApp();
+    JobExecutionContext context = dataInsightsContext(ns, runType, application);
+    try {
+      application.init(
+          new App()
+              .withName(ns.shortPrefix("di_backfill"))
+              .withAppConfiguration(JsonUtils.getMap(config)));
+      assertTrue(application.getBackfill().isEmpty());
+      application.startApp(context);
+      assertNotNull(application.reported, "the run must publish its final status");
+      return application;
+    } finally {
+      application.uninstall();
+    }
+  }
+
+  private JobExecutionContext dataInsightsContext(
+      TestNamespace ns, String runType, DataInsightsApp application) {
+    JobDetail jobDetail =
+        JobBuilder.newJob(DataInsightsApp.class).usingJobData(TRIGGER_TYPE_KEY, runType).build();
+    OperableTrigger trigger =
+        (OperableTrigger) TriggerBuilder.newTrigger().forJob(jobDetail).startNow().build();
+    trigger.setFireInstanceId(ns.shortPrefix("di_backfill_run"));
+    Date now = new Date();
+    TriggerFiredBundle bundle =
+        new TriggerFiredBundle(jobDetail, trigger, null, false, now, now, null, null);
+    return new JobExecutionContextImpl(null, bundle, application);
+  }
+
+  private static class RecordingDataInsightsApp extends DataInsightsApp {
+    private final AppRunRecord record = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+    private AppRunRecord reported;
+
+    private RecordingDataInsightsApp() {
+      super(Entity.getCollectionDAO(), Entity.getSearchRepository());
+    }
+
+    @Override
+    protected AppRunRecord getJobRecord(JobExecutionContext context) {
+      return record;
+    }
+
+    @Override
+    protected void pushAppStatusUpdates(
+        JobExecutionContext context, AppRunRecord appRecord, boolean update) {
+      reported = appRecord;
+    }
   }
 
   private void waitForAppJobCompletion(String appName) {
@@ -373,8 +539,7 @@ public class AppsResourceIT {
     Awaitility.await("Trigger " + appName)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               Apps.trigger(appName).run();
@@ -418,8 +583,7 @@ public class AppsResourceIT {
         .atMost(Duration.ofMinutes(2))
         .pollDelay(Duration.ofMillis(500))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            e -> e.getMessage() != null && e.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(
@@ -461,6 +625,93 @@ public class AppsResourceIT {
                 httpClient.execute(
                     HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class));
     assertTrue(exception.getMessage().contains("thisShouldFail"));
+  }
+
+  @Test
+  void test_triggerApp_triggerOnlyPrincipalCannotOverrideConfiguration(TestNamespace ns) {
+    String trigger = "/v1/apps/trigger/SearchIndexingApplication";
+    HttpClient dataSteward = dataStewardClient(ns).getHttpClient();
+
+    Map<String, Object> configurationKey = new HashMap<>();
+    configurationKey.put("notAConfiguredKey", true);
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, configurationKey, Void.class));
+    assertEquals(403, denied.getStatusCode());
+    assertTrue(denied.getMessage().contains("EditAll"), denied.getMessage());
+
+    Map<String, Object> undeclaredParameter =
+        Map.of("entityLink", "<#E::databaseService::my_service>");
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, undeclaredParameter, Void.class));
+    assertEquals(403, rejected.getStatusCode(), rejected.getMessage());
+    assertTrue(rejected.getMessage().contains("EditAll"), rejected.getMessage());
+  }
+
+  /**
+   * An app's bot is the account named after the app. When a person already holds that name,
+   * installing the app must refuse rather than turn the person's account into the bot, which would
+   * hand the app's privileges to whoever signs in as that person.
+   */
+  @Test
+  void test_installApp_doesNotAdoptAPersonsAccountAsItsBot(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    String appName = "BotNameTaken" + suffix;
+    String botName = appName + "Bot";
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/apps/marketplace",
+            new CreateAppMarketPlaceDefinitionReq()
+                .withName(appName)
+                .withDisplayName("Bot Name Taken")
+                .withDescription("An app whose bot name a person already holds")
+                .withFeatures("test features")
+                .withDeveloper("Test Developer")
+                .withDeveloperUrl("https://www.example.com")
+                .withPrivacyPolicyUrl("https://www.example.com/privacy")
+                .withSupportEmail("support@example.com")
+                .withClassName("org.openmetadata.service.resources.apps.TestApp")
+                .withAppType(AppType.Internal)
+                .withScheduleType(ScheduleType.Scheduled)
+                .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+                .withAppConfiguration(new HashMap<>())
+                .withPermission(NativeAppPermission.All),
+            AppMarketPlaceDefinition.class);
+    CreateUser createPerson =
+        new CreateUser().withName(botName).withEmail("bot_name_taken_" + suffix + "@test.om.org");
+    User person = ns.trackRoot(Entity.USER, admin.users().create(createPerson));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> Apps.install().name(appName).execute());
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+
+    User saved = admin.users().get(person.getId().toString());
+    assertNotEquals(Boolean.TRUE, saved.getIsBot());
+    assertEquals(person.getVersion(), saved.getVersion());
+    assertThrows(OpenMetadataException.class, () -> admin.bots().getByName(botName));
+    assertThrows(OpenMetadataException.class, () -> Apps.getByName(appName));
+  }
+
+  /**
+   * A user of its own holding the seeded DataSteward role. The shared data-steward client only mints
+   * a token, so its account exists only if another test happened to create it first.
+   */
+  private static OpenMetadataClient dataStewardClient(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String name = "trigger_steward_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser createUser = new CreateUser();
+    createUser.setName(name);
+    createUser.setEmail(name + "@test.om.org");
+    createUser.setRoles(List.of(admin.roles().getByName("DataSteward").getId()));
+    User steward = ns.trackRoot(Entity.USER, admin.users().create(createUser));
+    return SdkClients.createClient(
+        steward.getName(), steward.getEmail(), new String[] {"DataSteward"});
   }
 
   @Test
@@ -733,6 +984,7 @@ public class AppsResourceIT {
       CreateApp createApp =
           new CreateApp()
               .withName(marketPlaceDef.getName())
+              .withDisplayName(marketPlaceDef.getDisplayName())
               .withAppConfiguration(marketPlaceDef.getAppConfiguration())
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
               .withAllowBotImpersonation(false);
@@ -744,8 +996,12 @@ public class AppsResourceIT {
           httpClient.execute(
               HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
       assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+      assertEquals("No Impersonation App", retrievedApp.getBot().getDisplayName());
 
       String botUserName = appName + "Bot";
+      assertEquals(
+          "No Impersonation App",
+          SdkClients.adminClient().bots().getByName(botUserName).getDisplayName());
       User botUser =
           httpClient.execute(
               HttpMethod.GET,
@@ -754,6 +1010,7 @@ public class AppsResourceIT {
               User.class);
 
       assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertEquals("No Impersonation App", botUser.getDisplayName());
       assertTrue(
           botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_ROLE)),
           "Bot without impersonation should have ApplicationBotRole");
@@ -806,6 +1063,7 @@ public class AppsResourceIT {
       CreateApp createApp =
           new CreateApp()
               .withName(marketPlaceDef.getName())
+              .withDisplayName(marketPlaceDef.getDisplayName())
               .withAppConfiguration(marketPlaceDef.getAppConfiguration())
               .withAppSchedule(new AppSchedule().withScheduleTimeline(ScheduleTimeline.HOURLY))
               .withAllowBotImpersonation(true);
@@ -817,8 +1075,12 @@ public class AppsResourceIT {
           httpClient.execute(
               HttpMethod.GET, "/v1/apps/name/" + appName + "?fields=bot", null, App.class);
       assertNotNull(retrievedApp.getBot(), "Bot should be created for the app");
+      assertEquals("With Impersonation App", retrievedApp.getBot().getDisplayName());
 
       String botUserName = appName + "Bot";
+      assertEquals(
+          "With Impersonation App",
+          SdkClients.adminClient().bots().getByName(botUserName).getDisplayName());
       User botUser =
           httpClient.execute(
               HttpMethod.GET,
@@ -827,6 +1089,7 @@ public class AppsResourceIT {
               User.class);
 
       assertNotNull(botUser.getRoles(), "Bot user should have roles assigned");
+      assertEquals("With Impersonation App", botUser.getDisplayName());
       assertTrue(
           botUser.getRoles().stream().anyMatch(r -> r.getName().equals(APP_BOT_IMPERSONATION_ROLE)),
           "Bot with impersonation should have ApplicationBotImpersonationRole");
@@ -961,6 +1224,413 @@ public class AppsResourceIT {
     App finalApp = Apps.getByName(autopilotAppName);
     Map<String, Object> finalConfig = JsonUtils.getMap(finalApp.getAppConfiguration());
     assertTrue((Boolean) finalConfig.get("active"), "AutoPilot should be active at test end");
+  }
+
+  @Test
+  void test_autopilotInvalidPayloadDoesNotStartWorkflow(TestNamespace ns) {
+    User caller = createAutoPilotTriggerCaller(ns);
+    OpenMetadataClient client =
+        SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
+    App app = Apps.getByName("AutoPilotApplication");
+    Object originalConfig = app.getAppConfiguration();
+    List<String> instancesBefore =
+        autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList();
+    try {
+      setAutoPilotConfig(app, Map.of("active", true));
+      String triggerPath = "/v1/apps/trigger/AutoPilotApplication";
+      assertEquals(
+          400,
+          assertThrows(
+                  InvalidRequestException.class,
+                  () -> client.getHttpClient().executeForString(HttpMethod.POST, triggerPath, null))
+              .getStatusCode());
+      for (String payload :
+          List.of(
+              "{}",
+              "{\"active\":null}",
+              "{\"active\":\"invalid\"}",
+              "{\"entityLink\":null}",
+              "{\"entityLink\":\"\"}",
+              "{\"entityLink\":\" \"}",
+              "{\"entityLink\":\"invalid-link\"}")) {
+        OpenMetadataClient actor = payload.contains("active") ? SdkClients.adminClient() : client;
+        assertEquals(
+            400,
+            assertThrows(
+                    InvalidRequestException.class,
+                    () ->
+                        actor
+                            .getHttpClient()
+                            .executeForString(HttpMethod.POST, triggerPath, payload),
+                    payload)
+                .getStatusCode(),
+            payload);
+      }
+      assertEquals(
+          instancesBefore,
+          autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList());
+    } finally {
+      setAutoPilotConfig(app, originalConfig);
+    }
+  }
+
+  @Test
+  void test_autopilotInactiveDoesNotRequireTarget(TestNamespace ns) {
+    User caller = createAutoPilotTriggerCaller(ns);
+    OpenMetadataClient client =
+        SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
+    App app = Apps.getByName("AutoPilotApplication");
+    Object originalConfig = app.getAppConfiguration();
+    List<String> instancesBefore =
+        autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList();
+    try {
+      setAutoPilotConfig(app, Map.of("active", false));
+      client
+          .getHttpClient()
+          .executeForString(HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", null);
+      client
+          .getHttpClient()
+          .executeForString(HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", Map.of());
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST,
+              "/v1/apps/trigger/AutoPilotApplication",
+              Map.of("entityLink", "invalid-link"));
+      client
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", "{\"entityLink\":null}");
+
+      setAutoPilotConfig(app, Map.of("active", true));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.POST,
+                      "/v1/apps/trigger/AutoPilotApplication",
+                      Map.of("active", false)));
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", Map.of("active", false));
+      SdkClients.adminClient()
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.POST,
+              "/v1/apps/trigger/AutoPilotApplication",
+              "{\"active\":false,\"entityLink\":null}");
+      assertEquals(
+          instancesBefore,
+          autoPilotInstances(null).stream().map(ProcessInstance::getId).sorted().toList());
+    } finally {
+      setAutoPilotConfig(app, originalConfig);
+    }
+  }
+
+  @ParameterizedTest(name = "existingAgent={0}, derivedApp={1}, ownsService={2}")
+  @CsvSource({
+    "false,false,false", "true,false,false", "false,true,false", "true,true,false",
+    "false,false,true", "true,false,true", "false,true,true", "true,true,true"
+  })
+  void test_autopilotTriggerRequiresTriggerOnEffectiveService(
+      boolean existingAgent, boolean derivedApp, boolean ownsService, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DatabaseService allowedService = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseService otherService = DatabaseServiceTestFactory.createPostgres(ns);
+    User caller =
+        ownsService
+            ? createAutoPilotTriggerCaller(ns)
+            : createAutoPilotTriggerCaller(
+                ns, allowedService.getName(), MetadataOperation.TRIGGER, true);
+    if (ownsService) {
+      allowedService.setOwners(List.of(caller.getEntityReference()));
+      admin.databaseServices().update(allowedService.getId().toString(), allowedService);
+    }
+    OpenMetadataClient client =
+        SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
+
+    App app = derivedApp ? installDerivedAutoPilot(ns) : Apps.getByName("AutoPilotApplication");
+    Object originalConfig = app.getAppConfiguration();
+    String triggerPath = "/v1/apps/trigger/" + app.getName();
+    String allowedLink = "<#E::databaseService::" + allowedService.getFullyQualifiedName() + ">";
+    String otherLink = "<#E::databaseService::" + otherService.getFullyQualifiedName() + ">";
+    AsyncExecutor executor =
+        ProcessEngines.getDefaultProcessEngine().getProcessEngineConfiguration().getAsyncExecutor();
+    boolean executorWasActive = executor.isActive();
+    executor.shutdown();
+    try {
+      IngestionPipeline existing = null;
+      if (existingAgent) {
+        existing =
+            admin
+                .ingestionPipelines()
+                .create(
+                    new CreateIngestionPipeline()
+                        .withName(ns.shortPrefix("metadataAgent"))
+                        .withDisplayName("Metadata Agent")
+                        .withPipelineType(PipelineType.METADATA)
+                        .withService(otherService.getEntityReference())
+                        .withAirflowConfig(new AirflowConfig().withStartDate(new Date(0)))
+                        .withSourceConfig(
+                            new SourceConfig().withConfig(new DatabaseServiceMetadataPipeline())));
+      }
+      setAutoPilotConfig(app, Map.of("active", true, "entityLink", allowedLink));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(HttpMethod.POST, triggerPath, Map.of("entityLink", otherLink)));
+      assertTrue(autoPilotInstances(otherLink).isEmpty());
+      assertEquals(
+          existingAgent ? 1 : 0,
+          admin
+              .databaseServices()
+              .get(otherService.getId().toString(), "pipelines")
+              .getPipelines()
+              .size());
+      if (existingAgent) {
+        IngestionPipeline unchanged = admin.ingestionPipelines().get(existing.getId().toString());
+        assertEquals(existing.getDeployed(), unchanged.getDeployed());
+        assertEquals(existing.getVersion(), unchanged.getVersion());
+        JsonNode runs =
+            admin
+                .getHttpClient()
+                .execute(
+                    HttpMethod.GET,
+                    "/v1/services/ingestionPipelines/"
+                        + existing.getFullyQualifiedName()
+                        + "/pipelineStatus",
+                    null,
+                    JsonNode.class);
+        assertTrue(runs.get("data").isEmpty());
+      }
+
+      setAutoPilotConfig(app, Map.of("active", true, "entityLink", otherLink));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.getHttpClient().executeForString(HttpMethod.POST, triggerPath, null));
+      assertThrows(
+          ForbiddenException.class,
+          () -> client.getHttpClient().executeForString(HttpMethod.POST, triggerPath, Map.of()));
+
+      if (!ownsService) {
+        assertThrows(
+            ForbiddenException.class,
+            () ->
+                client
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/services/databaseServices/" + allowedService.getId(),
+                        "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Updated description\"}]",
+                        RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+      }
+      client
+          .getHttpClient()
+          .executeForString(HttpMethod.POST, triggerPath, Map.of("entityLink", allowedLink));
+      assertEquals(
+          1,
+          autoPilotInstances(allowedLink).size(),
+          "Authorized active run must start its workflow");
+      assertTrue(autoPilotInstances(otherLink).isEmpty());
+    } finally {
+      try {
+        for (String link : List.of(allowedLink, otherLink)) {
+          for (ProcessInstance process : autoPilotInstances(link)) {
+            WorkflowHandler.getInstance()
+                .getRuntimeService()
+                .deleteProcessInstance(process.getId(), "test cleanup");
+          }
+        }
+        if (derivedApp) {
+          Apps.uninstall(app.getName(), true);
+        } else {
+          setAutoPilotConfig(app, originalConfig);
+        }
+      } finally {
+        if (executorWasActive) {
+          executor.start();
+        }
+      }
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"EDIT_ALL,true", "TRIGGER,false"})
+  void test_autopilotRequiresBothTriggerPermissions(
+      MetadataOperation serviceOperation, boolean appTrigger, TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    User caller = createAutoPilotTriggerCaller(ns, service.getName(), serviceOperation, appTrigger);
+    OpenMetadataClient client =
+        SdkClients.createClient(caller.getEmail(), caller.getEmail(), new String[] {});
+    ResourcePermission permission =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/permissions/databaseService/" + service.getId(),
+                null,
+                ResourcePermission.class);
+    assertTrue(
+        permission.getPermissions().stream()
+            .anyMatch(
+                p ->
+                    p.getOperation() == serviceOperation
+                        && p.getAccess() == Permission.Access.ALLOW));
+    App app = Apps.getByName("AutoPilotApplication");
+    Object originalConfig = app.getAppConfiguration();
+    String link = "<#E::databaseService::" + service.getFullyQualifiedName() + ">";
+    try {
+      setAutoPilotConfig(app, Map.of("active", true, "entityLink", link));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              client
+                  .getHttpClient()
+                  .executeForString(
+                      HttpMethod.POST, "/v1/apps/trigger/AutoPilotApplication", null));
+      assertTrue(autoPilotInstances(link).isEmpty());
+    } finally {
+      setAutoPilotConfig(app, originalConfig);
+    }
+  }
+
+  private App installDerivedAutoPilot(TestNamespace ns) {
+    String name = ns.shortPrefix("derivedApp");
+    CreateAppMarketPlaceDefinitionReq request =
+        new CreateAppMarketPlaceDefinitionReq()
+            .withName(name)
+            .withDisplayName("Derived AutoPilot")
+            .withDescription("Local application fixture")
+            .withFeatures("Service agents")
+            .withDeveloper("Test Developer")
+            .withDeveloperUrl("https://example.com")
+            .withPrivacyPolicyUrl("https://example.com/privacy")
+            .withSupportEmail("support@example.com")
+            .withClassName(DerivedAutoPilotApp.class.getName())
+            .withAppType(AppType.Internal)
+            .withScheduleType(ScheduleType.NoSchedule)
+            .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+            .withAppConfiguration(Map.of("active", true))
+            .withPermission(NativeAppPermission.All);
+    ns.trackRoot(
+        Entity.APP_MARKET_PLACE_DEF,
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT, "/v1/apps/marketplace", request, AppMarketPlaceDefinition.class));
+    return Apps.install().name(name).execute();
+  }
+
+  /** Shares the suite's installed AutoPilot workflow. */
+  public static class DerivedAutoPilotApp extends AutoPilotApp {
+    public DerivedAutoPilotApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+      super(collectionDAO, searchRepository);
+    }
+
+    @Override
+    public void install(String installedBy) {}
+
+    @Override
+    public void uninstall() {
+      ApplicationContext.getInstance().unregisterApp(this);
+    }
+  }
+
+  private List<ProcessInstance> autoPilotInstances(String entityLink) {
+    ProcessInstanceQuery query =
+        WorkflowHandler.getInstance()
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processDefinitionKey(getTriggerWorkflowId("AutoPilotWorkflow"));
+    if (entityLink != null) {
+      query.variableValueEquals(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE), entityLink);
+    }
+    return query.list();
+  }
+
+  private User createAutoPilotTriggerCaller(TestNamespace ns) {
+    return createAutoPilotTriggerCaller(ns, null, MetadataOperation.TRIGGER, true);
+  }
+
+  private User createAutoPilotTriggerCaller(
+      TestNamespace ns,
+      String serviceName,
+      MetadataOperation serviceOperation,
+      boolean appTrigger) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    List<Rule> rules = new ArrayList<>();
+    if (appTrigger) {
+      rules.add(
+          new Rule()
+              .withName("triggerApps")
+              .withEffect(Rule.Effect.ALLOW)
+              .withResources(List.of(Entity.APPLICATION))
+              .withOperations(List.of(MetadataOperation.TRIGGER)));
+    }
+    if (serviceName != null) {
+      rules.add(
+          new Rule()
+              .withName("serviceOperation")
+              .withEffect(Rule.Effect.ALLOW)
+              .withResources(List.of(Entity.DATABASE_SERVICE))
+              .withOperations(List.of(serviceOperation))
+              .withCondition("matchAnyServiceName('" + serviceName + "')"));
+      if (serviceOperation == MetadataOperation.TRIGGER) {
+        rules.add(
+            new Rule()
+                .withName("readOnlyService")
+                .withEffect(Rule.Effect.DENY)
+                .withResources(List.of(Entity.DATABASE_SERVICE))
+                .withOperations(List.of(MetadataOperation.EDIT_ALL))
+                .withCondition("matchAnyServiceName('" + serviceName + "')"));
+      }
+    }
+    Policy policy =
+        ns.trackRoot(
+            Entity.POLICY,
+            admin
+                .policies()
+                .create(
+                    new CreatePolicy().withName(ns.shortPrefix("triggerPolicy")).withRules(rules)));
+    Role role =
+        ns.trackRoot(
+            Entity.ROLE,
+            admin
+                .roles()
+                .create(
+                    new CreateRole()
+                        .withName(ns.shortPrefix("triggerRole"))
+                        .withPolicies(List.of(policy.getFullyQualifiedName()))));
+    return ns.trackRoot(
+        Entity.USER,
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(ns.shortPrefix("caller"))
+                    .withEmail(ns.shortPrefix("caller") + "@example.com")
+                    .withRoles(List.of(role.getId()))));
+  }
+
+  private void setAutoPilotConfig(App app, Object config) {
+    String patch =
+        JsonUtils.pojoToJson(
+            List.of(Map.of("op", "replace", "path", "/appConfiguration", "value", config)));
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/apps/" + app.getId(),
+            patch,
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
   }
 
   /** Verify that an enabled app can be installed and a disabled app cannot. */

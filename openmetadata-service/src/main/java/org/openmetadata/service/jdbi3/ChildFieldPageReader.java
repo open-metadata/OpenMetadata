@@ -27,17 +27,17 @@ public final class ChildFieldPageReader {
   /** Per-type enrichment of one page: custom metrics, extensions, profiles, PII masking. */
   public interface ChildPageEnricher {
     List<FieldInterface> enrich(
-        EntityInterface parent, List<FieldInterface> page, String fieldsParam);
+        EntityInterface<?> parent, List<FieldInterface> page, String fieldsParam);
 
     /** For the entity types whose children need nothing beyond tags. */
     ChildPageEnricher NONE = (parent, page, fieldsParam) -> page;
   }
 
-  private final EntityRepository<? extends EntityInterface> repository;
+  private final EntityRepository<? extends EntityInterface<?>> repository;
   private final ChildFieldResolver.ChildContainerSpec spec;
 
   public ChildFieldPageReader(
-      EntityRepository<? extends EntityInterface> repository,
+      EntityRepository<? extends EntityInterface<?>> repository,
       ChildFieldResolver.ChildContainerSpec spec) {
     this.repository = repository;
     this.spec = spec;
@@ -55,7 +55,7 @@ public final class ChildFieldPageReader {
    * always done with an unrecognised value.
    */
   public ResultList<FieldInterface> read(
-      EntityInterface parent,
+      EntityInterface<?> parent,
       int limit,
       int offset,
       String fieldsParam,
@@ -100,7 +100,7 @@ public final class ChildFieldPageReader {
   }
 
   private ResultList<FieldInterface> buildChildPage(
-      EntityInterface parent,
+      EntityInterface<?> parent,
       List<FieldInterface> allChildren,
       int limit,
       int offset,

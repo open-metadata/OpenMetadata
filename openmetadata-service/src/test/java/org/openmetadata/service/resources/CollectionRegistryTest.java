@@ -14,6 +14,8 @@
 package org.openmetadata.service.resources;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -23,16 +25,13 @@ import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.policies.PolicyResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
 
 class CollectionRegistryTest {
   private static final List<String> HIGH_ORDER_ONTOLOGY_COLLECTIONS =
-      List.of(
-          "/v1/ontology/subsets",
-          "/v1/ontology/structure",
-          "/v1/ontology/bulk",
-          "/v1/ontology/reasoning");
+      List.of("/v1/ontology/bulk", "/v1/ontology/reasoning");
 
   @Test
   void resolvesKnownConstructorSignaturesInExistingPrecedenceOrder() throws Exception {
@@ -47,6 +46,15 @@ class CollectionRegistryTest {
     assertSignature(JdbiAndFallbackSignaturesResource.class, Jdbi.class, Authorizer.class);
     assertSignature(LimitsAndNoArgsResource.class, Limits.class);
     assertSignature(NoArgsResource.class);
+  }
+
+  @Test
+  void startupDoesNotRewriteSeededPolicies() throws Exception {
+    // The registry calls upgrade() on every resource at each start; an override that edits seeded
+    // policies would undo an admin's changes on every restart
+    // (ADR:2026-11-03-seeded-policies-are-not-reset-on-startup).
+    assertEquals(
+        EntityResource.class, PolicyResource.class.getMethod("upgrade").getDeclaringClass());
   }
 
   @Test
@@ -65,6 +73,16 @@ class CollectionRegistryTest {
 
     HIGH_ORDER_ONTOLOGY_COLLECTIONS.forEach(
         path -> assertTrue(registry.hasCollection(path), () -> "Missing collection " + path));
+  }
+
+  @Test
+  void doesNotRegisterRetiredGlossaryModelingCollections() {
+    final CollectionRegistry registry = CollectionRegistry.getInstance();
+
+    for (String path :
+        List.of("/v1/ontology/subsets", "/v1/ontology/structure", "/v1/ontology/modeling")) {
+      assertFalse(registry.hasCollection(path), () -> "Retired collection " + path);
+    }
   }
 
   private static void assertSignature(Class<?> resourceClass, Class<?>... parameterTypes)

@@ -16,23 +16,36 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
+import org.openmetadata.schema.api.rdf.RdfReasoningInput;
+import org.openmetadata.schema.api.rdf.RdfSourceRevision;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipObject;
+import org.openmetadata.service.rdf.reasoning.ReasoningFreshness;
 import org.openmetadata.service.util.PostCommitActionQueue;
 
 class RdfUpdaterTest {
@@ -45,7 +58,7 @@ class RdfUpdaterTest {
     queueField = RdfUpdater.class.getDeclaredField("writeQueue");
     queueField.setAccessible(true);
     originalQueue = queueField.get(null);
-    queueField.set(null, (Consumer<RdfLiveWrite>) submitted::add);
+    queueField.set(null, (Consumer<List<RdfLiveWrite>>) submitted::addAll);
   }
 
   @AfterEach
@@ -125,6 +138,126 @@ class RdfUpdaterTest {
   }
 
   @Test
+  void cascadeProjectsEveryProjectableEntityInOneDeferredEnqueue() {
+    final Table first = new Table().withId(UUID.randomUUID()).withName("first");
+    final Table second = new Table().withId(UUID.randomUUID()).withName("second");
+    PostCommitActionQueue.begin();
+    RdfUpdater.updateEntities(List.of(first, second));
+
+    final List<Runnable> deferred = PostCommitActionQueue.drain();
+    assertEquals(1, deferred.size());
+    assertTrue(submitted.isEmpty());
+    PostCommitActionQueue.run(deferred);
+
+    assertEquals(
+        List.of(first.getId(), second.getId()),
+        submitted.stream().map(write -> ((RdfLiveWrite.EntityUpdate) write).entityId()).toList());
+  }
+
+  @Test
+  void aSoftDeletedEntityLeavesTheGraph() {
+    final Table table = new Table().withId(UUID.randomUUID()).withName("t").withDeleted(true);
+    RdfUpdater.updateEntity(table);
+    RdfUpdater.updateEntities(List.of(table));
+    assertEquals(
+        List.of(
+            new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(table), table.getId()),
+            new RdfLiveWrite.EntityDelete(Entity.getEntityTypeFromObject(table), table.getId())),
+        submitted);
+  }
+
+  @Test
+  void aCascadeRestoreIsPlannedOnceAfterItCommits() throws ReflectiveOperationException {
+    final List<List<UUID>> planned = new ArrayList<>();
+    final Field plannerField = RdfUpdater.class.getDeclaredField("restorePlanner");
+    plannerField.setAccessible(true);
+    final Object originalPlanner = plannerField.get(null);
+    plannerField.set(null, recordingPlanner(planned));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
+    final Table schemaChild = new Table().withId(UUID.randomUUID()).withName("child");
+    final Table root = new Table().withId(UUID.randomUUID()).withName("root");
+    try {
+      PostCommitActionQueue.begin();
+      RdfUpdater.restoring(
+          () -> {
+            RdfUpdater.recordRestored(List.of(schemaChild));
+            RdfUpdater.restoring(
+                () -> {
+                  RdfUpdater.recordRestored(List.of(root));
+                  return null;
+                });
+            return null;
+          });
+      assertTrue(planned.isEmpty());
+
+      PostCommitActionQueue.run(PostCommitActionQueue.drain());
+
+      assertEquals(List.of(List.of(schemaChild.getId(), root.getId())), planned);
+    } finally {
+      plannerField.set(null, originalPlanner);
+    }
+  }
+
+  @Test
+  void aRestoreWhosePlanFailsStillReturnsAndMarksTheProjectionDegraded()
+      throws ReflectiveOperationException {
+    final Field plannerField = RdfUpdater.class.getDeclaredField("restorePlanner");
+    plannerField.setAccessible(true);
+    final Object originalPlanner = plannerField.get(null);
+    plannerField.set(
+        null,
+        new RdfRestorePlanner(
+            recordingSources(new ArrayList<>()),
+            (type, ids) -> {
+              throw new IllegalStateException("liveness unavailable");
+            }));
+    EntityInterface.CANONICAL_ENTITY_NAME_MAP.put("table", Entity.TABLE);
+    final Table table = new Table().withId(UUID.randomUUID()).withName("restored");
+    RdfProjectionHealth.markReady();
+    try {
+      final String response =
+          RdfUpdater.restoring(
+              () -> {
+                RdfUpdater.recordRestored(List.of(table));
+                return "restored";
+              });
+
+      assertEquals("restored", response);
+      assertTrue(RdfProjectionHealth.isDegraded());
+    } finally {
+      plannerField.set(null, originalPlanner);
+      RdfProjectionHealth.markReady();
+    }
+  }
+
+  private static RdfRestorePlanner recordingPlanner(final List<List<UUID>> planned) {
+    return new RdfRestorePlanner(recordingSources(planned), (type, ids) -> Set.copyOf(ids));
+  }
+
+  private static RdfRestorePlanner.Sources recordingSources(final List<List<UUID>> planned) {
+    return new RdfRestorePlanner.Sources() {
+      @Override
+      public List<EntityRelationshipObject> relationshipsOf(
+          final String entityType, final List<UUID> entityIds) {
+        planned.add(entityIds);
+        return List.of();
+      }
+
+      @Override
+      public Set<RdfEntityLiveness.Endpoint> labelledEntities(
+          final String labelType, final List<UUID> labelIds) {
+        return Set.of();
+      }
+
+      @Override
+      public List<RdfRestorePlanner.GlossaryRelation> glossaryRelations(
+          final Collection<UUID> termIds) {
+        return List.of();
+      }
+    };
+  }
+
+  @Test
   void excludedDeletesAreNotEnqueued() {
     RdfUpdater.deleteEntity(new EntityReference().withType("aiChart").withId(UUID.randomUUID()));
     assertTrue(submitted.isEmpty());
@@ -137,6 +270,50 @@ class RdfUpdaterTest {
     RdfUpdater.removeGlossaryTermRelation(fromId, toId, "broader");
     assertEquals(
         List.of(new RdfLiveWrite.GlossaryRelationChange(fromId, toId, "broader", true)), submitted);
+  }
+
+  @Test
+  void anUntrackedWriteThatCannotBeRecordedLeavesReasoningFreshnessUnknown()
+      throws ReflectiveOperationException {
+    final AtomicLong failures = new AtomicLong();
+    final RdfLiveWriteStore store = mock(RdfLiveWriteStore.class);
+    when(store.recordUntrackedWrite()).thenThrow(new IllegalStateException("SQL unavailable"));
+    doAnswer(
+            invocation -> {
+              failures.incrementAndGet();
+              return null;
+            })
+        .when(store)
+        .markDegraded(anyString());
+    when(store.isDegraded()).thenAnswer(invocation -> failures.get() > 0);
+    final Field storeField = RdfUpdater.class.getDeclaredField("liveWriteStore");
+    storeField.setAccessible(true);
+    final Object originalStore = storeField.get(null);
+    storeField.set(null, store);
+    RdfProjectionHealth.initialize(store);
+    try {
+      final UUID generation = UUID.randomUUID();
+      final RdfReasoningInput input =
+          new RdfReasoningInput()
+              .withSourceRevision(
+                  new RdfSourceRevision()
+                      .withDatasetGeneration(generation)
+                      .withLiveWriteWatermark(0L));
+
+      RdfUpdater.recordUntrackedWrite();
+
+      assertTrue(RdfProjectionHealth.isDegraded());
+      assertEquals(
+          RdfReasoningFreshness.UNKNOWN,
+          ReasoningFreshness.of(
+              input,
+              new ReasoningFreshness.Serving(
+                  generation, 0, RdfProjectionHealth.isDegraded(), null, null)));
+    } finally {
+      storeField.set(null, originalStore);
+      RdfProjectionHealth.initialize(null);
+      RdfProjectionHealth.markReady();
+    }
   }
 
   @Test

@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
@@ -81,6 +82,7 @@ import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
@@ -159,6 +161,24 @@ public class SearchIndexFactory {
     return SearchIndex.COMMON_REINDEX_FIELDS;
   }
 
+  /**
+   * {@link SearchIndex#getFieldsLoadedOnWrite()} for the given entity type, probed the same way as
+   * {@link #getReindexFieldsFor(String)}. Asked on every live write, so a failed probe loads
+   * nothing rather than failing the write.
+   */
+  public java.util.Set<String> getFieldsLoadedOnWriteFor(String entityType) {
+    java.util.Set<String> fields = java.util.Set.of();
+    try {
+      SearchIndex probe = buildIndex(entityType, null);
+      if (probe != null) {
+        fields = probe.getFieldsLoadedOnWrite();
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to probe fields loaded on write for {}: {}", entityType, e.getMessage());
+    }
+    return fields;
+  }
+
   public SearchIndex buildIndex(String entityType, Object entity) {
     return switch (entityType) {
       case Entity.TABLE -> new TableIndex((Table) entity);
@@ -221,6 +241,7 @@ public class SearchIndexFactory {
       case Entity.CONTEXT_FILE -> new ContextFileIndex((ContextFile) entity);
       case Entity.CONTEXT_MEMORY -> new ContextMemoryIndex((ContextMemory) entity);
       case Entity.PAGE -> new PageIndex((Page) entity);
+      case Entity.DATA_CONTRACT -> new DataContractIndex((DataContract) entity);
       case Entity.DATA_PRODUCT -> new DataProductIndex((DataProduct) entity);
       case Entity.METADATA_SERVICE -> new MetadataServiceIndex((MetadataService) entity);
       case Entity.ENTITY_REPORT_DATA -> new EntityReportDataIndex((ReportData) entity);

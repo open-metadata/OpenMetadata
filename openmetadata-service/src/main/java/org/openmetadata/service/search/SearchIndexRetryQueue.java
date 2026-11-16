@@ -30,7 +30,7 @@ public final class SearchIndexRetryQueue {
 
   private SearchIndexRetryQueue() {}
 
-  public static void enqueue(EntityInterface entity, String operation, Throwable failure) {
+  public static void enqueue(EntityInterface<?> entity, String operation, Throwable failure) {
     if (entity == null) {
       return;
     }
@@ -44,7 +44,7 @@ public final class SearchIndexRetryQueue {
   }
 
   public static void enqueueWithPropagation(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       ChangeDescription propagationChangeDescription,
       String failureReason) {
     if (entity == null) {
@@ -60,7 +60,7 @@ public final class SearchIndexRetryQueue {
   }
 
   public static void enqueueWithPropagation(
-      EntityInterface entity,
+      EntityInterface<?> entity,
       ChangeDescription propagationChangeDescription,
       String operation,
       Throwable failure) {

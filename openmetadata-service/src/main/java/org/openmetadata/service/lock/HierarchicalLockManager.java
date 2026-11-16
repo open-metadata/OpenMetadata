@@ -41,7 +41,7 @@ public class HierarchicalLockManager {
    */
   @Transaction
   public DeletionLock acquireDeletionLock(
-      EntityInterface entity, String lockedBy, boolean cascade) {
+      EntityInterface<?> entity, String lockedBy, boolean cascade) {
     // Check if any parent is already locked
     checkParentLocks(entity);
 
@@ -96,7 +96,7 @@ public class HierarchicalLockManager {
   /**
    * Check if any parent entity has an active deletion lock
    */
-  private void checkParentLocks(EntityInterface entity) {
+  private void checkParentLocks(EntityInterface<?> entity) {
     String fqn = entity.getFullyQualifiedName();
     List<String> parentFqns = getParentFqns(fqn);
 
@@ -119,7 +119,7 @@ public class HierarchicalLockManager {
   /**
    * Check if entity creation/update is allowed (no parent deletion in progress)
    */
-  public void checkModificationAllowed(EntityInterface entity) {
+  public void checkModificationAllowed(EntityInterface<?> entity) {
     String fqn = entity.getFullyQualifiedName();
 
     // Fast path: check cache first
@@ -133,7 +133,7 @@ public class HierarchicalLockManager {
    * Batch check if entities creation/update is allowed (no parent deletion in progress)
    * More efficient than calling checkModificationAllowed for each entity
    */
-  public void checkModificationsAllowed(List<? extends EntityInterface> entities) {
+  public void checkModificationsAllowed(List<? extends EntityInterface<?>> entities) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
@@ -141,7 +141,7 @@ public class HierarchicalLockManager {
     // Collect all FQNs
     Set<String> allFqns =
         entities.stream()
-            .map(EntityInterface::getFullyQualifiedName)
+            .map(EntityInterface<?>::getFullyQualifiedName)
             .filter(Objects::nonNull)
             .collect(java.util.stream.Collectors.toSet());
 
@@ -155,7 +155,7 @@ public class HierarchicalLockManager {
     }
 
     // Slow path: for potentially locked FQNs, check database
-    for (EntityInterface entity : entities) {
+    for (EntityInterface<?> entity : entities) {
       String fqn = entity.getFullyQualifiedName();
       if (fqn != null && potentiallyLocked.contains(fqn)) {
         checkParentLocks(entity);
@@ -325,7 +325,7 @@ public class HierarchicalLockManager {
   /**
    * Estimate completion time based on entity type and cascade scope
    */
-  private Instant estimateCompletionTime(EntityInterface entity, boolean cascade) {
+  private Instant estimateCompletionTime(EntityInterface<?> entity, boolean cascade) {
     // Simple estimation - can be made more sophisticated based on entity counts
     int estimatedMinutes = cascade ? 30 : 5;
 

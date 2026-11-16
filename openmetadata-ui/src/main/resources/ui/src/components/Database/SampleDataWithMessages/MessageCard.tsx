@@ -11,7 +11,15 @@
  *  limitations under the License.
  */
 
-import { Collapse, Tag, Typography } from 'antd';
+import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
+  Badge,
+  Typography,
+} from '@openmetadata/ui-core-components';
+
 import { lazy, ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
@@ -21,14 +29,12 @@ const SchemaEditor = withSuspenseFallback(
   lazy(() => import('../SchemaEditor/SchemaEditor'))
 );
 
-const { Panel } = Collapse;
-
 const MessageCard = ({ message }: { message: string }) => {
   const { t } = useTranslation();
   const [header, setHeader] = useState<ReactNode>(
-    <Typography.Text ellipsis className="text-primary">
+    <Typography ellipsis className="text-primary">
       {message}
-    </Typography.Text>
+    </Typography>
   );
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -37,36 +43,50 @@ const MessageCard = ({ message }: { message: string }) => {
   useEffect(() => {
     if (isExpanded) {
       setHeader(
-        <Tag data-testid="expanded-header" id="sampleData-value">
+        <Badge
+          className="tw:mr-2 tw:inline-flex"
+          color="gray"
+          data-testid="expanded-header"
+          id="sampleData-value"
+          size="md"
+          type="color">
           {t('label.value')}
-        </Tag>
+        </Badge>
       );
     } else {
       setHeader(
-        <Typography.Text
+        <Typography
           ellipsis
           className="text-primary"
           data-testid="collapsed-header">
           {message}
-        </Typography.Text>
+        </Typography>
       );
     }
   }, [isExpanded]);
 
   return (
-    <Collapse className="message-card-collapse" onChange={toggleExpanded}>
-      <Panel data-testid="message-card" header={header} key="1">
-        <SchemaEditor
-          className="m-t-xs"
-          copyButtonClassName="tw:![top:-4px] tw:!right-1"
-          editorClass="topic-sample-data"
-          options={{
-            styleActiveLine: false,
-          }}
-          value={message.replace(/'/g, '"')}
-        />
-      </Panel>
-    </Collapse>
+    <Accordion
+      allowsMultipleExpanded
+      className="message-card-collapse"
+      onExpandedChange={toggleExpanded}>
+      <AccordionItem data-testid="message-card" id="1" key="1">
+        <AccordionHeader className="tw:flex-row-reverse">
+          {header}
+        </AccordionHeader>
+        <AccordionPanel unmountOnCollapse>
+          <SchemaEditor
+            className="m-t-xs"
+            copyButtonClassName="tw:![top:-4px] tw:!right-1"
+            editorClass="topic-sample-data"
+            options={{
+              styleActiveLine: false,
+            }}
+            value={message.replace(/'/g, '"')}
+          />
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
   );
 };
 

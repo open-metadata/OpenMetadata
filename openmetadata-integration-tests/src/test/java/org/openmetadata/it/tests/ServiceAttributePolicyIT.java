@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -32,6 +33,8 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.services.CreateDatabaseService;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -39,8 +42,10 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.ServiceAttributes;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -147,6 +152,119 @@ public class ServiceAttributePolicyIT {
                     "the compiled RBAC query is cached, so this only passes if the cache key "
                         + "tracks the resolved service state");
               });
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  /**
+   * Issue #22095 regression for the security impact: a PUT create-or-update that omits
+   * {@code serviceAttributes} must not wipe an admin-set {@code environment}, or a Deny
+   * {@code matchAnyServiceEnvironment('Production')} quietly goes inert and the service's assets
+   * become visible. Before the fix the omission PUT nulls the inline {@code serviceAttributes},
+   * the resolver drops the service from the environment reverse index, and the Deny stops
+   * applying on both read paths with no error logged.
+   */
+  @Test
+  @ResourceLock(value = SharedResourceLocks.SEARCH_SETTINGS, mode = ResourceAccessMode.READ_WRITE)
+  void denyOnServiceEnvironment_survivesAPutThatOmitsServiceAttributes(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String prefix = ns.shortPrefix();
+      DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+      DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+      Table table = createTable(admin, prefix + "_envhidden", schema);
+
+      Role denyRole =
+          createDenyRole(admin, prefix, "matchAnyServiceEnvironment('Production')", cleanup);
+      OpenMetadataClient restricted = createUserClient(admin, prefix, denyRole, cleanup);
+
+      boolean originalAccessControl = enableSearchAccessControl(admin);
+      cleanup.push(() -> restoreSearchAccessControl(admin, originalAccessControl));
+
+      // Before the environment is set the table is both readable and indexed — establishing this
+      // first is what makes the "hidden" assertions below meaningful.
+      assertNotNull(restricted.tables().get(table.getId().toString(), ""));
+      Awaitility.await("table is indexed and visible before the environment is set")
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () ->
+                  assertTrue(
+                      searchFqns(restricted, "table_search_index", prefix)
+                          .contains(table.getFullyQualifiedName())));
+
+      // Admin sets environment=Production through the PATCH path (the UI "Service Attributes"
+      // card).
+      DatabaseService fetched = admin.databaseServices().get(service.getId().toString());
+      fetched.setServiceAttributes(
+          new ServiceAttributes().withEnvironment(ServiceAttributes.Environment.PRODUCTION));
+      admin.databaseServices().update(fetched.getId().toString(), fetched);
+
+      // The Deny now applies on both read paths.
+      assertThrows(
+          ForbiddenException.class,
+          () -> restricted.tables().get(table.getId().toString(), ""),
+          "a Deny on the service's environment must deny a direct GET of its table");
+      assertThrows(
+          ForbiddenException.class,
+          () -> restricted.databaseServices().get(service.getId().toString(), ""),
+          "the service is its own service, so it is hidden alongside its assets");
+      Awaitility.await("environment-tagged service's table leaves the restricted search results")
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () ->
+                  assertFalse(
+                      searchFqns(restricted, "table_search_index", prefix)
+                          .contains(table.getFullyQualifiedName()),
+                      "search must agree with the authorization decision"));
+
+      // A credential-rotation-style PUT that OMITS serviceAttributes. Before the fix this wipes
+      // environment and the Deny silently stops applying; after the fix the admin-set value is
+      // preserved.
+      PostgresConnection rotatedConn =
+          new PostgresConnection().withHostPort("localhost:5432").withUsername("rotated");
+      CreateDatabaseService putBody =
+          new CreateDatabaseService()
+              .withName(service.getName())
+              .withServiceType(CreateDatabaseService.DatabaseServiceType.Postgres)
+              .withConnection(new DatabaseConnection().withConfig(rotatedConn));
+      admin
+          .getHttpClient()
+          .execute(HttpMethod.PUT, "/v1/services/databaseServices", putBody, DatabaseService.class);
+
+      // The Deny must STILL apply after the omission PUT.
+      assertThrows(
+          ForbiddenException.class,
+          () -> restricted.tables().get(table.getId().toString(), ""),
+          "after a PUT omitting serviceAttributes the Deny must still deny the table");
+      assertThrows(
+          ForbiddenException.class,
+          () -> restricted.databaseServices().get(service.getId().toString(), ""),
+          "the service is still hidden after the omission PUT");
+      Awaitility.await("table stays absent from search after the omission PUT")
+          .atMost(Duration.ofSeconds(90))
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () ->
+                  assertFalse(
+                      searchFqns(restricted, "table_search_index", prefix)
+                          .contains(table.getFullyQualifiedName()),
+                      "search must keep agreeing with the authorization decision"));
+
+      // And the admin-set environment survived the omission PUT on the persisted row.
+      DatabaseService reloaded = admin.databaseServices().get(service.getId().toString());
+      assertNotNull(reloaded.getServiceAttributes(), "serviceAttributes must not have been wiped");
+      assertEquals(
+          ServiceAttributes.Environment.PRODUCTION,
+          reloaded.getServiceAttributes().getEnvironment(),
+          "the omission PUT must not wipe the admin-set environment");
     } finally {
       drain(cleanup);
     }

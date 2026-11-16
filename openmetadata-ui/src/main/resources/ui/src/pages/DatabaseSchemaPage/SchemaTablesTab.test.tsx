@@ -32,10 +32,6 @@ jest.mock('../../components/common/DisplayName/DisplayName', () =>
   jest.fn().mockImplementation(() => <div>DisplayName</div>)
 );
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue({ fqn: 'test-service.test-schema' }),
 }));

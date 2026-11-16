@@ -94,6 +94,7 @@ export interface BlockEditorAttachmentProps {
 }
 
 export interface EditorSlotsProps {
+  editable?: boolean;
   editor: Editor | null;
   menuType: MenuType;
 }

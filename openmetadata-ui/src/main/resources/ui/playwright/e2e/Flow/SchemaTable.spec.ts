@@ -82,14 +82,6 @@ const crudColumnDisplayName = async (
   );
 };
 
-test.beforeEach(
-  async ({ editDescriptionPage, editTagsPage, editGlossaryTermPage }) => {
-    await redirectToHomePage(editDescriptionPage);
-    await redirectToHomePage(editTagsPage);
-    await redirectToHomePage(editGlossaryTermPage);
-  }
-);
-
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
   await table.create(apiContext);
@@ -165,6 +157,7 @@ test('Copy column link button should copy the column URL to clipboard', async ({
     page,
     buttonTestId: 'copy-column-link-button',
     containerTestId: 'entity-table',
+    rowName: table.columnsName[0],
     expectedUrlPath: '/table/',
     entityFqn: table.entityResponseData?.['fullyQualifiedName'] ?? '',
   });

@@ -19,7 +19,10 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Delete, PlusCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  Plus,
+  Trash01 as Delete,
+} from '@openmetadata/ui-core-components/icons';
 import { useEffect, useState } from 'react';
 import { Controller, useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -169,10 +172,9 @@ const GlossaryTermReferencesModal = ({
                   />
                   <ButtonUtility
                     className="tw:mt-1"
-                    color="tertiary"
                     data-testid="delete-ref-btn"
                     icon={Delete}
-                    size="sm"
+                    size="lg"
                     tooltip={t('label.delete')}
                     onClick={() => remove(index)}
                   />
@@ -182,7 +184,7 @@ const GlossaryTermReferencesModal = ({
                 className="tw:w-fit"
                 color="link-color"
                 data-testid="add-references-button"
-                iconLeading={PlusCircle}
+                iconLeading={Plus}
                 size="sm"
                 onClick={() => append(EMPTY_REFERENCE)}>
                 {t('label.add')}

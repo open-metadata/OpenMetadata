@@ -10,15 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+
+import { Typography } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AuthProvider } from '../../../generated/settings/settings';
 import {
   getProviderDisplayName,
   getProviderIcon,
+  ProviderIcon,
 } from '../../../utils/SSOUtils';
 import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
+import SsoProviderIcon from '../SsoProviderIcon/SsoProviderIcon';
 import './sso-doc-panel.less';
 import { FIELD_MAPPINGS, PROVIDER_FILE_MAP } from './SSODocPanel.constants';
 
@@ -72,21 +75,20 @@ const SSODocPanel: FC<SSODocPanelProp> = ({ serviceName, activeField }) => {
       <div className="sso-doc-header">
         {getProviderIcon(serviceName) && (
           <div className="sso-provider-icon">
-            <img
+            <SsoProviderIcon
               alt={`${serviceName} icon`}
-              height={22}
-              src={getProviderIcon(serviceName) as string}
-              width={22}
+              icon={getProviderIcon(serviceName) as ProviderIcon}
+              size={22}
             />
           </div>
         )}
-        <Typography.Title className="sso-provider-title text-md">
+        <Typography as="h1" className="sso-provider-title text-md">
           {serviceName === AuthProvider.Basic
             ? t('label.basic-configuration')
             : `${getProviderDisplayName(serviceName)} ${t(
                 'label.sso-configuration'
               )}`}
-        </Typography.Title>
+        </Typography>
       </div>
       <ServiceDocPanel
         activeField={resolvedField}

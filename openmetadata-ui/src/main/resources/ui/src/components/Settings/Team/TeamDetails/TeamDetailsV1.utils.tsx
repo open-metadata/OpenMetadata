@@ -52,9 +52,13 @@ export const getTabs = (
       count: currentTeam?.policies?.length,
       key: TeamsPageTab.POLICIES,
     },
+    customProperties: {
+      name: i18n.t('label.custom-property-plural'),
+      key: TeamsPageTab.CUSTOM_PROPERTIES,
+    },
   };
 
-  const commonTabs = [tabs.roles, tabs.policies];
+  const commonTabs = [tabs.roles, tabs.policies, tabs.customProperties];
 
   if (isOrganization) {
     return [tabs.teams, ...commonTabs];

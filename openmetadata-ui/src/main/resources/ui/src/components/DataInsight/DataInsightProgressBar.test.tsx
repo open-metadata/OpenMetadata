@@ -74,11 +74,11 @@ describe('Test DataInsightProgressBar Component', () => {
   });
 
   it('uses the active theme color for the progress stroke', async () => {
-    const { container } = render(<DataInsightProgressBar {...MOCK_DATA} />, {
+    render(<DataInsightProgressBar {...MOCK_DATA} />, {
       wrapper: MemoryRouter,
     });
 
-    expect(container.querySelector('.ant-progress-bg')).toHaveStyle({
+    expect(screen.getByRole('progressbar').firstElementChild).toHaveStyle({
       backgroundColor: '#123456',
     });
   });

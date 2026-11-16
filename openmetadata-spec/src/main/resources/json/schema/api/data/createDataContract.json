@@ -22,8 +22,7 @@
       "$ref": "../../type/basic.json#/definitions/markdown"
     },
     "entityStatus": {
-      "$ref": "../../type/status.json",
-      "default": "Draft"
+      "$ref": "../../type/status.json"
     },
     "entity": {
       "description": "Reference to the data entity (table, topic, etc.) this contract applies to.",
@@ -59,6 +58,13 @@
       "items": {
         "$ref": "../../entity/datacontract/odcs/odcsDataContract.json#/definitions/odcsQualityRule"
       },
+      "default": null
+    },
+    "odcsPreservedFields": {
+      "description": "ODCS metadata without a native OpenMetadata mapping, retained as a generic JSON document for export. Native fields remain authoritative. Omission on PUT preserves it; an empty object clears it.",
+      "type": "object",
+      "existingJavaType": "com.fasterxml.jackson.databind.JsonNode",
+      "additionalProperties": true,
       "default": null
     },
     "odcsElementExtensions": {

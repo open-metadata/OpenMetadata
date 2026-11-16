@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from 'react';
+import { forwardRef } from 'react';
 import type { TextProps as AriaTextProps } from 'react-aria-components';
 import { Text as AriaText } from 'react-aria-components';
 import { cx } from '@/utils/cx';
@@ -10,22 +11,25 @@ interface HintTextProps extends AriaTextProps {
   children: ReactNode;
 }
 
-export const HintText = ({ isInvalid, className, ...props }: HintTextProps) => {
-  return (
-    <AriaText
-      {...props}
-      className={cx(
-        'tw:text-sm tw:text-tertiary',
+export const HintText = forwardRef<HTMLElement, Omit<HintTextProps, 'ref'>>(
+  function HintText({ isInvalid, className, ...props }, ref) {
+    return (
+      <AriaText
+        {...props}
+        className={cx(
+          'tw:text-sm tw:text-tertiary',
 
-        // Invalid state
-        isInvalid && 'tw:text-error-primary',
-        'tw:group-invalid:text-error-primary',
+          // Invalid state
+          isInvalid && 'tw:text-error-primary',
+          'tw:group-invalid:text-error-primary',
 
-        className
-      )}
-      slot={isInvalid ? 'errorMessage' : 'description'}
-    />
-  );
-};
+          className
+        )}
+        ref={ref}
+        slot={isInvalid ? 'errorMessage' : 'description'}
+      />
+    );
+  }
+);
 
 HintText.displayName = 'HintText';

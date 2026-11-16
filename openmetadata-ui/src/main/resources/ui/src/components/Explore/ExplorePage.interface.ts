@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { ItemType } from 'antd/lib/menu/hooks/useItems';
+import type { FC, ReactNode } from 'react';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { Kpi } from '../../generated/dataInsight/kpi/kpi';
@@ -59,10 +59,19 @@ export type UrlParams = {
 
 export type SearchHitCounts = Record<ExploreSearchIndex, number>;
 
+export type ExploreTabItem = {
+  key: string;
+  label: string;
+  icon: FC<{ className?: string }>;
+  iconClassName?: string;
+  count: number;
+};
+
 export interface ExploreProps {
+  additionalSearchResults?: ReactNode;
   aggregations?: Aggregations;
   activeTabKey: SearchIndex;
-  tabItems: ItemType[];
+  tabItems: ExploreTabItem[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
   showRankingDetails?: boolean;

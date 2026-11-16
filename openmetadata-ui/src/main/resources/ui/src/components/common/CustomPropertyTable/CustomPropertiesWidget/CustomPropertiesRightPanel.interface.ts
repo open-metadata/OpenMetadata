@@ -16,12 +16,16 @@ import { CustomPropertiesWidgetSettings } from './CustomPropertiesWidget.interfa
 export interface CustomPropertiesRightPanelProps {
   properties: CustomProperty[];
   extension?: Record<string, unknown>;
-  versionDataKeys?: string[];
   widgetSettings?: CustomPropertiesWidgetSettings;
   /** Link to the Custom Properties tab, set when the widget hides properties. */
   viewAllPath?: string;
   hasEditPermissions: boolean;
+  /**
+   * Renders a version page: every property as a read-only row whose value
+   * carries the version diff, since the cards cannot show one.
+   */
   isVersionView?: boolean;
-  onExtensionUpdate: (extension?: Record<string, unknown>) => Promise<void>;
+  /** Properties that first got a value in the version. */
+  addedKeys?: string[];
   onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;
 }

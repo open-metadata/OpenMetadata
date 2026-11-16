@@ -47,7 +47,7 @@ def test_native_mapping_preserves_names_and_descriptions(name, value, expected):
 
 
 @pytest.fixture(params=[DatabricksSource, UnitycatalogSource], ids=["databricks", "unitycatalog"])
-def source(request):
+def source(request, existing_tag_lookup):
     instance = object.__new__(request.param)
     instance.source_config = DatabaseServiceMetadataPipeline(includeTags=True)
     instance.context = TopologyContextManager(instance.topology)
@@ -60,7 +60,7 @@ def source(request):
         return []
 
     instance.metadata.es_search_from_fqn.side_effect = search
-    instance.metadata.get_by_name.side_effect = AssertionError("Label lookup must not access the server")
+    instance.metadata.get_by_name.side_effect = existing_tag_lookup
     instance.engine = MagicMock()
     instance._connection_map = {}
     instance._sql_connection_map = {}

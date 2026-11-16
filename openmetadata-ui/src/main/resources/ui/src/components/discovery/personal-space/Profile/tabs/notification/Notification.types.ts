@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type { FC } from 'react';
+
 export type {
   ModifiedCreateEventSubscription,
   ModifiedDestination,
@@ -23,4 +25,21 @@ export type NotificationView =
   | { type: 'list' }
   | { type: 'add' }
   | { type: 'edit'; fqn: string }
-  | { type: 'detail'; fqn: string; name: string };
+  | { type: 'detail'; fqn: string; name: string }
+  | { type: 'section'; key: string; subPath?: string };
+
+export type NotificationIcon = FC<{ className?: string }>;
+
+/** A card on the Notification landing; each one opens a view of the panel. */
+export interface NotificationLandingCard {
+  id: string;
+  icon: NotificationIcon;
+  title: string;
+  description: string;
+  view: NotificationView;
+  isBeta?: boolean;
+}
+
+export interface NotificationLandingProps {
+  onNavigate: (view: NotificationView) => void;
+}

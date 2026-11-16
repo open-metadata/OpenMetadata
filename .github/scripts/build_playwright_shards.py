@@ -31,6 +31,8 @@ FULL_PROJECTS = {
     "SystemCertificationTags",
     "IntakeForm",
     "AdvancedSearch",
+    "visual-regression",
+    "Knowledge Graph",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -41,24 +43,36 @@ PROJECT_LANES = {
     "DataAssetRulesEnabled": "data-asset-rules",
     "DataAssetRulesDisabled": "data-asset-rules",
     "SearchRBAC": "search-rbac",
-    "DomainIsolation": "domain-isolation",
-    "search-nightly": "search",
+    # DomainIsolation and search-nightly share the single-worker global-state
+    # runner: each is a few minutes of tests behind ~3 minutes of environment
+    # setup. DomainIsolation toggles enableAccessControl inside each file's own
+    # beforeAll/afterAll, and SearchSettings restores defaults in its afterAll,
+    # so with one worker no setting leaks across files. SearchRBAC stays apart
+    # because it enables RBAC in a separate setup project, leaving a window in
+    # which another file could turn it off before SearchRBAC.spec.ts runs.
+    "DomainIsolation": "global-state",
+    "search-nightly": "global-state",
     "Reindex": "reindex",
     "GlobalSettings": "global-state",
     "SystemCertificationTags": "global-state",
     "IntakeForm": "global-state",
     "AdvancedSearch": "advanced-search",
+    # Self-contained lanes: each runs a whole project on its own runner and is
+    # switched on by its own path filter (--enable-lane), never by spec impact.
+    # visual renders inside the Playwright image its baselines were captured
+    # in; rdf needs Fuseki and an RDF-enabled server seeded from scratch.
+    "visual-regression": "visual",
+    "Knowledge Graph": "rdf",
 }
+GATED_LANES = {"visual", "rdf"}
 PROJECT_DEPENDENCIES = {
     "DataAssetRulesDisabled": {"DataAssetRulesEnabled"},
 }
 LANE_WORKERS = {
-    "domain-isolation": 1,
     "global-state": 1,
     "import-export": 2,
     "ingestion": 1,
     "reindex": 1,
-    "search": 1,
     "search-rbac": 1,
 }
 TARGET_MS = 20 * 60 * 1000
@@ -78,6 +92,9 @@ TARGET_MS = 20 * 60 * 1000
 # 19-minute budget feasible again.
 COMMON_SHARD_BUDGET_MS = 19 * 60 * 1000
 EFFICIENCY = 0.85
+# Four Linux visual shards sustained 70–74% of ideal worker parallelism in
+# run 40957818435; reserve browser startup and capture scheduling overhead.
+VISUAL_EFFICIENCY = 0.70
 # Raised 24 → 28 together with the budget revert above. Current chromium
 # content (~71,700 predicted worker-seconds) needs 25 shards at a
 # 19-minute budget — over the old cap, which is exactly why #30784 had to
@@ -94,10 +111,23 @@ COMMON_MAX_SHARDS = 28
 # suite. 30 s preserves a reasonable margin so the first plan after re-enable
 # does not silently over-pack the shard.
 FALLBACK_TEST_MS = 30_000
+# A history run whose tests are, at the median, this much slower than the same
+# tests in the other runs measured a degraded runner, not the suite. Weights are
+# p75 across runs, so with 3-4 runs one such run sets most of them: run
+# 36754924437 was 1.48x slower and alone pushed chromium past COMMON_MAX_SHARDS,
+# failing planning (and ejecting the merge group) for content that fits in 26.
+# Healthy runs sit within ~0.9-1.05 of each other.
+MAX_HISTORY_RUN_SLOWDOWN = 1.3
+# Fewer shared tests than this and a run's slowdown is noise, so it is kept.
+MIN_SHARED_TESTS_FOR_SLOWDOWN = 100
 CHECKED_IN_TIMING_BASELINE = (
     Path(__file__).resolve().parents[1] / "playwright/timing-baseline.json"
 )
 AUDITED_PARALLEL_SUITES = {
+    # Each connector scene owns its page and read fixtures; splitting the
+    # light/dark describes keeps the expanded branch matrix within the budget.
+    ("VisualRegression/connectionBranches.spec.ts", "Connection branches light"),
+    ("VisualRegression/connectionBranches.spec.ts", "Connection branches dark"),
     ("Features/AdvancedSearch.spec.ts", "Advanced Search"),
     # Six long-running tests (each 5-10 min per test.setTimeout) inside one
     # top-level describe. Left as a single atomic unit, its total weight
@@ -184,6 +214,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--history", type=Path, action="append", default=[])
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--github-output", type=Path)
+    parser.add_argument(
+        "--enable-lane",
+        action="append",
+        default=[],
+        choices=sorted(GATED_LANES),
+        help="Run this self-contained lane in full (repeatable).",
+    )
     return parser.parse_args()
 
 
@@ -328,17 +365,61 @@ def percentile_75(values: list[int]) -> int:
     return round(quartiles[2])
 
 
+def timed_tests(payload: dict[str, Any]) -> dict[str, int]:
+    return {
+        test["id"]: int(test["durationMs"])
+        for test in payload.get("tests", [])
+        if test.get("id") and int(test.get("durationMs", 0)) > 0
+    }
+
+
+def run_slowdown(run: dict[str, int], others: list[dict[str, int]]) -> float | None:
+    """Median ratio of a run's test durations to the other runs' median, or
+    None when too few tests are shared to tell."""
+    ratios = [
+        duration / statistics.median(other[test_id] for other in shared)
+        for test_id, duration in run.items()
+        if (shared := [other for other in others if test_id in other])
+    ]
+    if len(ratios) < MIN_SHARED_TESTS_FOR_SLOWDOWN:
+        return None
+    return statistics.median(ratios)
+
+
+def drop_slow_history_runs(
+    runs: list[tuple[Path, dict[str, Any]]],
+) -> list[tuple[Path, dict[str, Any]]]:
+    timed = [timed_tests(payload) for _, payload in runs]
+    kept = []
+    for index, run in enumerate(runs):
+        others = timed[:index] + timed[index + 1 :]
+        slowdown = run_slowdown(timed[index], others)
+        if slowdown is not None and slowdown > MAX_HISTORY_RUN_SLOWDOWN:
+            print(
+                f"::warning::Ignoring timing history {run[0]}: its tests ran "
+                f"{slowdown:.2f}x slower than the other runs "
+                f"(limit {MAX_HISTORY_RUN_SLOWDOWN}x), so it measured the runner, "
+                "not the suite.",
+                file=sys.stderr,
+            )
+        else:
+            kept.append(run)
+    return kept
+
+
 def load_history(
     paths: list[Path],
 ) -> tuple[dict[str, int], dict[tuple[str, str], int]]:
     durations: dict[str, list[int]] = defaultdict(list)
     identity_durations: dict[tuple[str, str], list[int]] = defaultdict(list)
+    runs = []
     for path in paths:
         if not path.exists():
             continue
         payload = json.loads(path.read_text(encoding="utf-8"))
-        if payload.get("mode") != "full":
-            continue
+        if payload.get("mode") == "full":
+            runs.append((path, payload))
+    for _, payload in drop_slow_history_runs(runs):
         for test in payload.get("tests", []):
             test_id = test.get("id")
             duration = max(0, int(test.get("durationMs", 0)))
@@ -575,13 +656,14 @@ def lane_bounds(lane: str, mode: str) -> tuple[int, int]:
         return (5, COMMON_MAX_SHARDS) if mode == "full" else (1, COMMON_MAX_SHARDS)
     if lane in {
         "advanced-search",
-        "domain-isolation",
         "global-state",
         "import-export",
         "ingestion",
         "reindex",
-        "search",
         "search-rbac",
+        # Visual states own their page and HTTP fixtures. Split the growing
+        # catalog within the existing budget instead of lengthening its job.
+        "visual",
     }:
         return (1, 8) if mode == "full" else (1, 2)
     return (1, 1)
@@ -591,12 +673,16 @@ def shard_budget_ms_for_lane(lane: str) -> int:
     return COMMON_SHARD_BUDGET_MS if lane == "chromium" else TARGET_MS
 
 
+def lane_efficiency(lane: str | None) -> float:
+    return VISUAL_EFFICIENCY if lane == "visual" else EFFICIENCY
+
+
 def shard_count(units: list[Unit], lane: str, mode: str) -> int:
     workers = LANE_WORKERS.get(lane, 3)
     minimum, maximum = lane_bounds(lane, mode)
     total_weight = sum(unit.weight_ms for unit in units)
     calculated = math.ceil(
-        total_weight / (workers * shard_budget_ms_for_lane(lane) * EFFICIENCY)
+        total_weight / (workers * shard_budget_ms_for_lane(lane) * lane_efficiency(lane))
     )
     return max(minimum, min(maximum, max(1, calculated)))
 
@@ -613,9 +699,13 @@ def assign_lpt(units: list[Unit], count: int) -> list[list[Unit]]:
     return shards
 
 
-def predicted_execution_ms(units: list[Unit], workers: int) -> int:
+def predicted_execution_ms(
+    units: list[Unit], workers: int, lane: str | None = None
+) -> int:
     return max(
-        math.ceil(sum(unit.weight_ms for unit in units) / (workers * EFFICIENCY)),
+        math.ceil(
+            sum(unit.weight_ms for unit in units) / (workers * lane_efficiency(lane))
+        ),
         max((unit.weight_ms for unit in units), default=0),
     )
 
@@ -633,11 +723,11 @@ def assign_lane_within_budget(
     budget_ms = shard_budget_ms_for_lane(lane)
     while True:
         shards = [shard for shard in assign_lpt(units, count) if shard]
-        if all(predicted_execution_ms(shard, workers) <= budget_ms for shard in shards):
+        if all(predicted_execution_ms(shard, workers, lane) <= budget_ms for shard in shards):
             return shards
         if count >= maximum:
             heaviest_ms = max(
-                predicted_execution_ms(shard, workers) for shard in shards
+                predicted_execution_ms(shard, workers, lane) for shard in shards
             )
             raise SystemExit(
                 f"Lane {lane} needs more than {maximum} shards to stay within the "
@@ -654,7 +744,7 @@ def write_plan(
     shard_id = f"{lane}-{index + 1:02d}"
     workers = LANE_WORKERS.get(lane, 3)
     total_weight_ms = sum(unit.weight_ms for unit in units)
-    predicted_ms = predicted_execution_ms(units, workers)
+    predicted_ms = predicted_execution_ms(units, workers, lane)
     budget_ms = shard_budget_ms_for_lane(lane)
     if predicted_ms > budget_ms:
         raise SystemExit(
@@ -703,7 +793,7 @@ def main() -> None:
         if not any(selector_matches_unit(selector, unit) for unit in discovered_units)
     ]
     # An unmatched selector whose spec file exists on disk has simply had all of
-    # its tests filtered out of this lane by the tag grep (e.g. an @ontology-rdf
+    # its tests filtered out of this lane by the tag grep (e.g. a @knowledge-graph
     # spec picked up by change-detection but only runnable in the dedicated RDF
     # lane). Warn and skip it. A selector whose spec file does NOT exist is a
     # stale/typo'd path that matches nothing anywhere — keep failing on that.
@@ -722,8 +812,18 @@ def main() -> None:
             "Playwright selectors reference specs that do not exist: "
             + ", ".join(missing_selectors)
         )
-    units = [unit for unit in discovered_units if selected_projects(unit, selection)]
+    units = [
+        unit
+        for unit in discovered_units
+        if selected_projects(unit, selection)
+        and PROJECT_LANES[unit.project] not in GATED_LANES
+    ]
     units = include_project_dependencies(units, discovered_units)
+    units += [
+        unit
+        for unit in discovered_units
+        if PROJECT_LANES[unit.project] in set(args.enable_lane)
+    ]
     if not units:
         raise SystemExit("Playwright selection produced no runnable test units")
 
@@ -736,8 +836,14 @@ def main() -> None:
     # below requires that full-mode planning stay unblocked even when a
     # newly re-enabled suite has no baseline. In full mode, the softer
     # emit_unweighted_warnings above still surfaces the issue as a warning.
+    # Gated lanes always select their complete catalog. Missing timings use
+    # fallback weights; the unit and shard budget checks still apply below.
     stale_files = (
-        stale_baseline_files_in_plan(units, test_weights, identity_weights)
+        stale_baseline_files_in_plan(
+            [unit for unit in units if PROJECT_LANES[unit.project] not in GATED_LANES],
+            test_weights,
+            identity_weights,
+        )
         if selection["mode"] != "full"
         else []
     )
@@ -826,7 +932,7 @@ def main() -> None:
             f"{details}\n\n"
             "Common fixes:\n"
             "  * If this suite belongs on a dedicated lane (import-export, "
-            "domain-isolation, ingestion, reindex), verify the top-level "
+            "global-state, ingestion, reindex), verify the top-level "
             "describe still carries the correct `{ tag: '...' }` option — a "
             "recent edit (e.g. removing `.fixme` or `.skip`) may have dropped "
             "it, landing the suite on the wrong project. See FILE_LANE_HINTS "

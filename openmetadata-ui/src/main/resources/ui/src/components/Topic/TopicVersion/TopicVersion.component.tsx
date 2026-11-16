@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { Space, Tag } from 'antd';
+import { Badge, Box, Tabs } from '@openmetadata/ui-core-components';
+
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC, useEffect, useMemo, useState } from 'react';
@@ -29,8 +29,8 @@ import {
   getEntityVersionTags,
 } from '../../../utils/EntityVersionUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { stringToHTML } from '../../../utils/RichTextStringUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
-import { stringToHTML } from '../../../utils/StringUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import Description from '../../common/EntityDescription/Description';
@@ -128,9 +128,14 @@ const TopicVersion: FC<TopicVersionProp> = ({
     );
 
     return isEmpty(schemaTypeDiffText) ? undefined : (
-      <Tag data-testid="schema-type-diff">
+      <Badge
+        className="tw:inline-flex tw:mr-2"
+        color="gray"
+        data-testid="schema-type-diff"
+        size="sm"
+        type="color">
         {stringToHTML(schemaTypeDiffText)}
-      </Tag>
+      </Badge>
     );
   }, [changeDescription, currentVersionData]);
 
@@ -163,7 +168,13 @@ const TopicVersion: FC<TopicVersionProp> = ({
             <div
               className="entity-tag-right-panel-container tw:flex-[0_0_220px]"
               data-testid="entity-right-panel">
-              <Space className="w-full" direction="vertical" size="large">
+              <Box
+                inline
+                align="stretch"
+                className="layout-space w-full"
+                direction="col"
+                gap={6}
+                itemClassName="layout-space-item">
                 <DataProductsContainer
                   newLook
                   activeDomains={domains}
@@ -180,7 +191,7 @@ const TopicVersion: FC<TopicVersionProp> = ({
                     tagType={TagSource[tagType as TagSource]}
                   />
                 ))}
-              </Space>
+              </Box>
             </div>
           </Box>
         ),

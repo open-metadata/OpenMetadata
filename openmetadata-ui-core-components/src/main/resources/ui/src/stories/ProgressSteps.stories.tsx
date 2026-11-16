@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Cube01, File02, Settings01, Users01 } from '@untitledui/icons';
+import { Cube01, File02, Settings01, Users01 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import type { ProgressStepItem } from '../components/application/progress-steps/progress-steps';
 import { ProgressSteps } from '../components/application/progress-steps/progress-steps';

@@ -1,0 +1,195 @@
+[
+  {
+    "category": "databaseServices",
+    "connector": "Dbt",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Dremio",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Epic",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Informix",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "MicrosoftAccess",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "MicrosoftFabric",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "QueryLog",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SapBw4Hana",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SapSuccessFactors",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "ServiceNow",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SSAS",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Synapse",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "PowerBIReportServer",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "SapS4Hana",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "ThoughtSpot",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "DataFactory",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Matillion",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "MicrosoftFabricPipeline",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Mulesoft",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "SapBw4HanaPipeline",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Snowplow",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Spark",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "SSIS",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Stitch",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Wherescape",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "mlmodelServices",
+    "connector": "Sklearn",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "mlmodelServices",
+    "connector": "VertexAI",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "Alation",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "Collibra",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "MetadataES",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "OpenMetadata",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "driveServices",
+    "connector": "SharePoint",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "storageServices",
+    "connector": "ADLS",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "securityServices",
+    "connector": "Ranger",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "apiServices",
+    "connector": "WEBHOOK",
+    "reason": "Explicitly excluded by the OSS service registry"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "MyDb",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/myDbConnection.json",
+    "reason": "Schema helper/example not registered in the OSS connector chooser"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "Pulsar",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/pulsarConnection.json",
+    "reason": "Schema helper/example not registered in the OSS connector chooser"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Backend",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/backendConnection.json",
+    "reason": "Schema helper/example not registered in the OSS connector chooser"
+  }
+]

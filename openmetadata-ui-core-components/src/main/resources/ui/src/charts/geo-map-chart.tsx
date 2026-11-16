@@ -30,7 +30,6 @@ export const GeoMapChart = ({
   ariaLabel,
   resolveRegion,
   showScale,
-  colorRange,
   tooltip,
   option,
   onRegionClick,
@@ -72,22 +71,12 @@ export const GeoMapChart = ({
           mapName,
           resolveRegion,
           showScale,
-          colorRange,
           tooltip,
           option,
         },
         theme
       ).option,
-    [
-      data,
-      ariaLabel,
-      mapName,
-      resolveRegion,
-      showScale,
-      colorRange,
-      tooltip,
-      option,
-    ]
+    [data, ariaLabel, mapName, resolveRegion, showScale, tooltip, option]
   );
 
   const onEvents = useMemo(

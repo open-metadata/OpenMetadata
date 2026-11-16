@@ -299,7 +299,6 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         4. Update the pipeline status at the end
         """
         pipeline_state = PipelineState.success
-        self.timer.trigger()
         diagnostics.install(self)
         # Emit a "run started" update immediately. The reporting timer's first
         # tick is a full REPORTS_INTERVAL_SECONDS away, so without this a run
@@ -313,6 +312,7 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
         # carries this attribute at runtime).
         pipeline_fqn = getattr(self.config, "ingestionPipelineFQN", None)
         try:
+            self.timer.trigger()
             with (
                 diagnostics.operation("workflow.execute", fqn=pipeline_fqn),
                 diagnostics.dump_on_memory_error(),
@@ -354,13 +354,18 @@ class BaseWorkflow(ABC, WorkflowStatusMixin):
                     self.set_ingestion_pipeline_status(pipeline_state, ingestion_status)
                 finally:
                     self.send_progress_update(self.terminal_progress_update_type(pipeline_state))
-                try:
-                    self.print_status()
-                finally:
-                    self.stop()
+                self.print_status()
             finally:
-                # Must run after every other emitter so the tail is captured.
-                cleanup_streamable_logging()
+                # `stop()` is in the outer `finally` so it runs even if
+                # `build_ingestion_status()` (or any later emitter) raises —
+                # otherwise the non-daemon `RepeatedTimer` thread, the OM
+                # client, and step resources would leak and hang the process
+                # at shutdown.
+                try:
+                    self.stop()
+                finally:
+                    # Must run after every other emitter so the tail is captured.
+                    cleanup_streamable_logging()
 
     @property
     def run_id(self) -> str:

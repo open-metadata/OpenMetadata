@@ -46,22 +46,9 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/src/pages/ForgotPassword/**'
       - 'openmetadata-ui/src/main/resources/ui/src/pages/ResetPassword/**'
       - 'openmetadata-ui/src/main/resources/ui/src/components/common/LoginButton/**'
-      # Shared primitives that the auth screens render. The core-components
-      # migration in #33575 changed the DOM shape of Button (dropped the
-      # legacy `signin-button` class) and Input (react-aria wrapper puts
-      # the testid on a `<div data-input-wrapper>` instead of the actual
-      # `<input>`); catching that cross-package breakage on the ORIGINATING
-      # PR is the whole point of adding these paths. The `form/**` and
-      # `form-field/**` layers are here because the Basic and LDAP fixtures
-      # locate inputs via `getByLabel(/email/i)` / `getByLabel(/password/i)`,
-      # and `render-field-element.tsx` is what wires the label → input
-      # association plus forwards signup test IDs — the same class of
-      # cross-package regression as Button/Input would otherwise slip past
-      # the PR gate (greptile r4056182832).
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/buttons/**'
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/input/**'
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/base/form/**'
-      - 'openmetadata-ui-core-components/src/main/resources/ui/src/components/application/form-field/**'
+      # ui-core-components primitives (buttons/input/form/form-field) are
+      # intentionally NOT in this PR gate; drift is caught by the nightly run.
+      # ADR:2026-10-13-sso-pr-gate-covers-auth-owned-paths-only
       # Backend auth surface — narrow to the packages the SSO matrix
       # actually exercises (login/refresh, JWT filter, SAML handler,
       # OIDC/SAML code flow, LDAP/basic authenticators, the servlet
@@ -128,11 +115,11 @@ jobs:
   # Detects whether the PR touches Okta-specific files so the Okta leg (a
   # ~40-min live-tenant run) can be selectively enabled on PRs that touch
   # its own code without paying the cost on every unrelated auth PR.
-  # Mirrors the `check-changes` pattern used by playwright-visual.yml et al.
+  # Mirrors the `check-changes` pattern used by playwright-e2e-reusable.yml.
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # dorny/paths-filter calls the PR-files API on pull_request events; the
     # workflow-level `contents: read` block implicitly zeroes every other
@@ -185,8 +172,9 @@ jobs:
   #   4. Every SsoScenarios describe block is tagged `[@<slug>, @sso-matrix]`
   #      — the filter picks a leg's own describes automatically.
   sso-login:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: check-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: test
     timeout-minutes: 45
     # Static full-9 matrix. Per-event filtering is handled by the step-level
@@ -218,7 +206,10 @@ jobs:
           - name: 'msal-mock'
             env_prefix: 'MSAL_MOCK'
             filter: '--grep @msal-mock'
-            needs_docker: ''
+            # The MSAL SDK stays mocked in-page, but the ID token it hands
+            # the SPA comes from the mock IdP (`/test/id-token`) so the
+            # server verifies it against a real JWKS.
+            needs_docker: 'mock-oidc'
           - name: 'auth0-mock'
             env_prefix: 'AUTH0_MOCK'
             filter: '--grep @auth0-mock'
@@ -353,7 +344,18 @@ jobs:
       - name: Install dependencies
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
+        run: |
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Install Playwright Browsers
         if: env.SKIP_LEG != 'true'
@@ -493,9 +495,9 @@ jobs:
   # with per-cell emoji and right-alignment — no monospace hack needed.
   # The summary Python script builds the full payload; this step just POSTs.
   notify-slack:
-    if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
+    if: ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
       # since these run before every notify + fetch the tree/artifacts the
@@ -539,62 +541,4 @@ jobs:
           if [ "$(echo "$response" | jq -r '.ok')" != "true" ]; then
             echo "::error::Slack post failed: $response"
             exit 1
-          fi
-
-  # continue-on-error on the post step: fork PRs run under a read-only
-  # GITHUB_TOKEN and the comment API returns 403 — swallow that rather
-  # than red-x'ing the whole workflow for a nice-to-have.
-  notify-pr:
-    if: ${{ always() && github.event_name == 'pull_request' }}
-    needs: sso-login
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: write
-    steps:
-      - name: Checkout (for shared summary script)
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          sparse-checkout: |
-            .github/scripts/build_sso_login_summary.py
-          sparse-checkout-cone-mode: false
-
-      - name: Download leg outcomes
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          pattern: sso-login-outcome-*
-          path: outcomes
-
-      - name: Build consolidated summary
-        env:
-          RUN_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          REF_NAME: ${{ github.ref_name }}
-          EVENT_NAME: ${{ github.event_name }}
-        run: python3 .github/scripts/build_sso_login_summary.py /tmp/sso-summary
-
-      - name: Post sticky PR comment
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          marker='<!-- sso-login-nightly-summary -->'
-
-          # Sticky lookup: match the marker AND scope to the workflow bot's
-          # own comments. Marker-only would let any PR participant paste
-          # the string into their comment and have subsequent runs
-          # overwrite it.
-          existing=$(gh api "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-            --paginate --jq \
-            ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
-            | head -n1 || true)
-
-          if [ -n "$existing" ]; then
-            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" \
-              -F body=@/tmp/sso-summary/pr_comment.md
-          else
-            gh api -X POST "repos/${REPO}/issues/${PR_NUMBER}/comments" \
-              -F body=@/tmp/sso-summary/pr_comment.md
           fi

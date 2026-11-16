@@ -11,6 +11,7 @@
 """Validate the logic and status handling of the base workflow."""
 
 import json
+import logging
 import uuid
 from collections.abc import Iterable
 from types import SimpleNamespace
@@ -56,6 +57,11 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.step import Step  # noqa: TC001
 from metadata.ingestion.api.steps import Sink
 from metadata.ingestion.api.steps import Source as WorkflowSource
+from metadata.timer.repeated_timer import RepeatedTimer
+from metadata.utils.streamable_logger import (
+    StreamableLogHandler,
+    StreamableLogHandlerManager,
+)
 from metadata.workflow.ingestion import IngestionWorkflow
 
 
@@ -136,6 +142,22 @@ class OkSink(Sink):
         """Nothing to do"""
 
 
+class EmptyErrorSink(Sink):
+    """Sink that yields failures with empty error strings — the production
+    trigger for the build_ingestion_status ValidationError (e.g.
+    ``str(NotImplementedError())`` returns ``""``)."""
+
+    def _run(self, element: int) -> Either:
+        return Either(left=StackTraceError(name="empty-error", error="", stackTrace="trace"))
+
+    @classmethod
+    def create(cls, _: dict, __: OpenMetadataConnection) -> "EmptyErrorSink":
+        return cls()
+
+    def close(self) -> None:
+        """Nothing to do"""
+
+
 class SimpleWorkflow(IngestionWorkflow):
     """
     Simple Workflow for testing
@@ -153,6 +175,16 @@ class OkWorkflow(IngestionWorkflow):
     def set_steps(self):
         self.source = SimpleSource()
         self.steps: tuple[Step] = (OkSink(),)
+
+
+class EmptyErrorWorkflow(IngestionWorkflow):
+    """Workflow wired to EmptyErrorSink — every record produces a failure
+    with an empty error string (the production trigger for the
+    build_ingestion_status ValidationError)."""
+
+    def set_steps(self):
+        self.source = SimpleSource()
+        self.steps: tuple[Step] = (EmptyErrorSink(),)
 
 
 class BrokenWorkflow(IngestionWorkflow):
@@ -482,13 +514,14 @@ class TestWorkflowExecuteTeardown:
         """
         stop() is part of the public cleanup contract — callers that invoke
         it without going through execute() (or in addition to execute()) must
-        still get step buffers flushed and step resources released. Substitute
-        a mock timer (the real one would raise on join() of an unstarted
-        thread) and stub the OM client teardown so we exercise just the
-        cleanup contract.
+        still get step buffers flushed and step resources released, and must
+        not crash even when the status timer was never started. The real
+        RepeatedTimer is used here (no mock) so this exercises the
+        unstarted-thread teardown path. The OM client teardown is stubbed so
+        we exercise just the cleanup contract without hitting the server.
         """
         workflow = SimpleWorkflow(config=config)
-        workflow._timer = MagicMock()
+        assert workflow._timer is None
         step = workflow.steps[0]
 
         with (
@@ -498,6 +531,44 @@ class TestWorkflowExecuteTeardown:
             workflow.stop()
 
             mock_step_close.assert_called_once()
+
+    def test_execute_persists_failed_status_when_trigger_raises(self):
+        """
+        If the status timer cannot be started (e.g. OS thread-resource
+        exhaustion makes `Thread.start()` raise inside `trigger()`), `trigger()`
+        now runs inside `execute()`'s try/finally, so the `finally` still runs:
+        the terminal `failed` pipeline status is persisted, steps are flushed
+        via `close_steps()`, and `stop()` cleans up — instead of skipping all
+        teardown because `trigger()` was outside the try/finally. The original
+        error must propagate unmasked (no `RuntimeError: cannot join thread
+        before it is started` from an unstarted-timer `stop()`).
+        """
+        workflow = SimpleWorkflow(config=config)
+        assert workflow._timer is None
+
+        with (
+            patch.object(RepeatedTimer, "trigger", side_effect=RuntimeError("can't start new thread")),
+            patch.object(
+                workflow,
+                "set_ingestion_pipeline_status",
+                wraps=workflow.set_ingestion_pipeline_status,
+            ) as mock_set_status,
+            patch.object(workflow, "close_steps", wraps=workflow.close_steps) as mock_close_steps,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+            pytest.raises(RuntimeError, match="can't start new thread"),
+        ):
+            workflow.execute()
+
+        mock_set_status.assert_called_once()
+        assert mock_set_status.call_args.args[0] is PipelineState.failed
+        # close_steps runs in execute()'s finally (flush) and again inside
+        # stop() (idempotent no-op via _steps_closed).
+        assert mock_close_steps.call_count == 2
+        mock_stop.assert_called_once()
+        # The timer thread was created but never started; stop() must not
+        # have raised on join, so the workflow's _timer is set.
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
 
     def test_close_steps_is_idempotent_across_execute_and_stop(self):
         """
@@ -513,6 +584,81 @@ class TestWorkflowExecuteTeardown:
             workflow.execute()
 
             mock_step_close.assert_called_once()
+
+    def test_stop_still_runs_when_build_ingestion_status_raises(self):
+        """
+        stop() must run even if build_ingestion_status() raises — e.g. when a
+        step failure has an empty error string that, after TruncatedStr converts
+        it to None, fails StepSummary re-validation. Before the fix, stop()
+        was nested under an inner try/finally only reached after
+        build_ingestion_status() returned, so a raise here skipped stop()
+        entirely — leaking the RepeatedTimer thread and OM client and hanging
+        the process at shutdown.
+        """
+        workflow = SimpleWorkflow(config=config)
+
+        with (
+            patch.object(
+                workflow,
+                "build_ingestion_status",
+                side_effect=RuntimeError("status build boom"),
+            ) as mock_build,
+            patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop,
+            patch("metadata.workflow.base.cleanup_streamable_logging") as mock_cleanup,
+        ):
+            with pytest.raises(RuntimeError, match="status build boom"):
+                workflow.execute()
+
+            mock_build.assert_called_once()
+            mock_stop.assert_called_once()
+            mock_cleanup.assert_called_once()
+            assert workflow._timer is not None
+            assert not workflow._timer.thread.is_alive()
+
+    def test_empty_error_string_does_not_break_execute_or_leak_teardown(self):
+        """
+        End-to-end: a step failure with an empty error string (the production
+        trigger — e.g. ``str(NotImplementedError()) == ""``) must not cause
+        build_ingestion_status() to raise ValidationError. After the
+        TruncatedStr fix, empty strings are preserved (not converted to None),
+        so StepSummary.model_validate round-trips cleanly, execute() completes
+        without raising, and stop() runs exactly once.
+        """
+        workflow = EmptyErrorWorkflow(config=config)
+
+        with patch.object(workflow, "stop", wraps=workflow.stop) as mock_stop:
+            workflow.execute()
+
+        mock_stop.assert_called_once()
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+
+
+def test_streamable_handler_is_released_when_client_close_raises():
+    workflow = OkWorkflow(config=config)
+    handler = StreamableLogHandler(
+        metadata=workflow.metadata,
+        pipeline_fqn="test-service.test-pipeline",
+        run_id=uuid.uuid4(),
+        enable_streaming=False,
+    )
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    StreamableLogHandlerManager.set_handler(handler)
+
+    try:
+        with (
+            patch.object(workflow.metadata, "close", side_effect=RuntimeError("client close failed")),
+            pytest.raises(RuntimeError, match="client close failed"),
+        ):
+            workflow.execute()
+
+        assert StreamableLogHandlerManager.get_handler() is None
+        assert handler not in root_logger.handlers
+        assert workflow._timer is not None
+        assert not workflow._timer.thread.is_alive()
+    finally:
+        StreamableLogHandlerManager.cleanup()
 
 
 @pytest.mark.parametrize(
@@ -614,6 +760,37 @@ def test_execute_workflow_preserves_execution_error_when_status_write_also_fails
 
     assert isinstance(error.value.__context__, RuntimeError)
     assert str(error.value.__context__) == "source execution failed"
+
+
+def test_execute_workflow_propagates_trigger_error_unmasked(tmp_path):
+    """
+    When the status timer cannot be started, `execute_workflow` must propagate
+    the original `Thread.start()` error (`RuntimeError("can't start new thread")`)
+    and NOT mask it with `RuntimeError("cannot join thread before it is
+    started")` from the unstarted-timer teardown. The CLI `finally` must also
+    still run `stop()` cleanly and write the status file, proving teardown is
+    not skipped due to the timer error.
+    """
+    workflow = SimpleWorkflow(config=config)
+    status_file = tmp_path / "status.json"
+
+    with (
+        patch.object(RepeatedTimer, "trigger", side_effect=RuntimeError("can't start new thread")),
+        pytest.raises(RuntimeError) as exc_info,
+    ):
+        execute_workflow(
+            workflow=workflow,
+            config_dict={"workflowConfig": {"raiseOnError": False}},
+            status_file=status_file,
+        )
+
+    msg = str(exc_info.value)
+    assert "can't start new thread" in msg
+    assert "cannot join thread before it is started" not in msg
+    # The CLI finally still ran stop() cleanly and wrote the status file,
+    # proving teardown was not skipped due to the timer error.
+    assert status_file.exists()
+    assert json.loads(status_file.read_text())["steps"] is not None
 
 
 @pytest.mark.parametrize("workflow_class,success", [(OkWorkflow, True), (SimpleWorkflow, False)])

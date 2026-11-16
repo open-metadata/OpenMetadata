@@ -11,8 +11,10 @@
 
 """SQLAlchemy validator for rule library SQL expression tests"""
 
+from typing import TYPE_CHECKING, cast
+
 from jinja2.sandbox import SandboxedEnvironment
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 
 from metadata.data_quality.validations.column.base.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator as BaseValidator,
@@ -22,12 +24,20 @@ from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
 )
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_utils import escape_identifier_for_text_clause
+
+if TYPE_CHECKING:
+    from metadata.profiler.processor.runner import QueryRunner
 
 logger = test_suite_logger()
 
 
 class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Column Rule Library SQL Expression validator."""
+
+    def get_table_name(self) -> str:
+        """Use the same physical table and bind as the rule's row-count query."""
+        return cast("QueryRunner", self.runner).get_table_reference()
 
     def compile_sql_expression(self, column_name: str, table_name: str) -> tuple[str, dict[str, str]]:
         """Compile SQL expression with SQLAlchemy bind parameters using Jinja2.
@@ -50,7 +60,7 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
 
         bind_params_template = {
             "column_name": column_name,
-            "table_name": table_name,
+            "table_name": escape_identifier_for_text_clause(table_name),
         }
         for param_name in user_params:
             bind_params_template[param_name] = f":{param_name}"
@@ -82,3 +92,12 @@ class ColumnRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
             self.runner._session.rollback()
             logger.exception(f"Error executing SQL expression: {exc}")  # noqa: TRY401
             raise exc  # noqa: TRY201
+
+    def _run_row_count(self) -> int:
+        """Count the rows of the unsampled, unpartitioned table, the rows the rule's SQL reads"""
+        runner = cast("QueryRunner", self.runner)
+        try:
+            return runner.session.execute(select(func.count()).select_from(runner.table)).scalar() or 0
+        except Exception:
+            runner.session.rollback()
+            raise

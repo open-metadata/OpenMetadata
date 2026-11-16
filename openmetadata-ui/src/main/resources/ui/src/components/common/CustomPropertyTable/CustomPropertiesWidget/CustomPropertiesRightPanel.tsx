@@ -10,25 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  ButtonUtility,
-  Divider,
-  Input,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import {
   ArrowUpRight,
-  SearchLg,
+  Search,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { Fragment, lazy, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router-dom';
-import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
+import NoSearchResultsPlaceholder from '../../EmptyPlaceholder/NoSearchResultsPlaceholder';
 import WidgetCard from '../../WidgetCard/WidgetCard';
 import { CustomPropertyCard } from '../CustomPropertyCard/CustomPropertyCard';
-import { matchesPropertySearch } from '../CustomPropertyCard/CustomPropertyCard.utils';
+import {
+  hasVersionValue,
+  matchesPropertySearch,
+} from '../CustomPropertyCard/CustomPropertyCard.utils';
+import { CustomPropertyVersionValue } from '../CustomPropertyCard/CustomPropertyVersionValue';
 import { CustomPropertiesRightPanelProps } from './CustomPropertiesRightPanel.interface';
 import {
   CUSTOM_PROPERTIES_WIDGET_DEFAULT_SIZE,
@@ -41,22 +39,15 @@ import {
 } from './CustomPropertiesWidget.utils';
 import { CustomPropertyListItem } from './CustomPropertyListItem';
 
-const PropertyValue = withSuspenseFallback(
-  lazy(() =>
-    import('../PropertyValue').then((m) => ({ default: m.PropertyValue }))
-  )
-);
-
 /** Custom properties rendered as a side widget (right panel or persona tab). */
 export const CustomPropertiesRightPanel = ({
   properties,
   extension,
-  versionDataKeys,
   widgetSettings,
   viewAllPath,
   hasEditPermissions,
-  isVersionView,
-  onExtensionUpdate,
+  isVersionView = false,
+  addedKeys = [],
   onValueSave,
 }: CustomPropertiesRightPanelProps) => {
   const { t } = useTranslation();
@@ -85,6 +76,7 @@ export const CustomPropertiesRightPanel = ({
       ),
     [laidOut, searchText]
   );
+  const canEdit = hasEditPermissions && !isVersionView;
   const searchLabel = t('label.search-entity', {
     entity: t('label.property-plural'),
   });
@@ -115,19 +107,34 @@ export const CustomPropertiesRightPanel = ({
     { property, width, size = defaultSize }: LaidOutCustomProperty,
     isBordered: boolean
   ) => {
-    const spanClass = { 'tw:col-span-2': width === 'full' };
+    // A preview row always spans the whole widget so the list stays one
+    // column; a full-width card honours the half/full width set on it.
+    const isRow = size === 'small' || isVersionView;
+    const spanClass = { 'tw:col-span-2': isRow || width === 'full' };
 
-    if (size === 'small') {
+    if (isRow) {
+      const value = extension?.[property.name];
+
       return (
         <CustomPropertyListItem
           className={classNames(spanClass, {
             'tw:rounded-xl tw:border tw:border-secondary tw:bg-primary':
               isBordered,
           })}
-          hasEditPermissions={hasEditPermissions}
+          hasEditPermissions={canEdit}
           key={property.name}
           property={property}
-          value={extension?.[property.name]}
+          value={value}
+          valueContent={
+            isVersionView &&
+            hasVersionValue(property.propertyType.name, value) ? (
+              <CustomPropertyVersionValue
+                isAdded={addedKeys.includes(property.name)}
+                property={property}
+                value={value}
+              />
+            ) : undefined
+          }
           onValueSave={onValueSave}
         />
       );
@@ -140,7 +147,7 @@ export const CustomPropertiesRightPanel = ({
         })}
         key={property.name}>
         <CustomPropertyCard
-          hasEditPermissions={hasEditPermissions}
+          hasEditPermissions={canEdit}
           isCompact={width === 'half'}
           property={property}
           value={extension?.[property.name]}
@@ -149,47 +156,6 @@ export const CustomPropertiesRightPanel = ({
       </li>
     );
   };
-
-  if (isVersionView) {
-    return (
-      <WidgetCard
-        className="no-scrollbar"
-        headerExtra={
-          viewAllPath && (
-            <Link className="text-sm" to={viewAllPath}>
-              {t('label.view-all')}
-            </Link>
-          )
-        }
-        title={t('label.custom-property-plural')}>
-        <div className="custom-property-right-panel-container">
-          {properties.map((record, index) => (
-            <Fragment key={record.name}>
-              <div
-                className={classNames(
-                  'custom-property-right-panel-card tw:py-3.5',
-                  {
-                    'top-border-radius': index === 0,
-                    'bottom-border-radius': index === properties.length - 1,
-                  }
-                )}>
-                <PropertyValue
-                  isRenderedInRightPanel
-                  isVersionView
-                  extension={extension}
-                  hasEditPermissions={hasEditPermissions}
-                  property={record}
-                  versionDataKeys={versionDataKeys}
-                  onExtensionUpdate={onExtensionUpdate}
-                />
-              </div>
-              {index !== properties.length - 1 && <Divider />}
-            </Fragment>
-          ))}
-        </div>
-      </WidgetCard>
-    );
-  }
 
   if (widgetSettings && !widgetSettings.showHeader) {
     return (
@@ -206,15 +172,15 @@ export const CustomPropertiesRightPanel = ({
     <div className="tw:w-full" ref={searchWrapperRef}>
       <Input
         aria-label={searchLabel}
+        autoComplete="off"
         className="tw:w-full"
-        icon={SearchLg}
+        icon={Search}
         inputDataTestId="custom-properties-widget-search"
         placeholder={searchLabel}
         size="sm"
         trailingSlot={
           <ButtonUtility
-            className="tw:mr-2 tw:p-1"
-            color="tertiary"
+            className="tw:mr-2"
             data-testid="custom-properties-widget-search-close"
             icon={XClose}
             size="xs"
@@ -239,22 +205,18 @@ export const CustomPropertiesRightPanel = ({
         <>
           {viewAllPath && (
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="custom-properties-widget-view-all"
               href={viewAllPath}
               icon={ArrowUpRight}
-              size="xs"
+              size="sm"
               tooltip={t('label.view-all')}
             />
           )}
           <span className="tw:flex" ref={searchButtonWrapperRef}>
             <ButtonUtility
-              className="tw:p-1"
-              color="tertiary"
               data-testid="custom-properties-widget-search-button"
-              icon={SearchLg}
-              size="xs"
+              icon={Search}
+              size="sm"
               tooltip={searchLabel}
               onClick={() => setIsSearchOpen(true)}
             />
@@ -271,15 +233,16 @@ export const CustomPropertiesRightPanel = ({
           {visibleItems.map((item) => renderItem(item, false))}
         </ul>
       ) : (
-        <Typography
-          className="tw:px-4 tw:pb-4 tw:text-center tw:text-tertiary"
-          data-testid="no-matching-custom-properties"
-          size="text-sm">
-          {t('message.no-entity-found-for-name', {
-            entity: t('label.property-plural'),
-            name: searchText,
-          })}
-        </Typography>
+        <div className="tw:relative tw:mx-4 tw:min-h-60">
+          <NoSearchResultsPlaceholder
+            data-testid="no-matching-custom-properties"
+            description={t('message.check-spelling-or-try-shorter-term')}
+            title={t('message.no-entity-found-for-name', {
+              entity: t('label.property-plural'),
+              name: searchText,
+            })}
+          />
+        </div>
       )}
     </WidgetCard>
   );

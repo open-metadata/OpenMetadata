@@ -81,7 +81,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, use) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await use(page);
     await page.close();
   },
@@ -212,7 +212,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     await userPage.click('[data-testid="table_queries"]');
     await queryListResponse;
     await userPage.click('[data-testid="query-btn"]');
-    await userPage.click('[data-menu-id*="edit-query"]');
+    await userPage.getByTestId('edit-query').click();
     await userPage.locator(CODE_EDITOR_LINE).click();
     await userPage.keyboard.type('updated');
     const saveQueryResponse = userPage.waitForResponse('/api/v1/queries/*');

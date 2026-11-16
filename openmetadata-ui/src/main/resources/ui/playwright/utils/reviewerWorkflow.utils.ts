@@ -41,7 +41,9 @@ const getFQN = (entity: EntityWithFQN): string => {
 export const createUserApprovalWorkflow = async (
   apiContext: APIRequestContext,
   entityType = 'dataProduct',
-  workflowName?: string
+  workflowName?: string,
+  // JsonLogic per entity type; an entity it evaluates TRUE for is excluded from triggering.
+  filter?: Record<string, string>
 ) => {
   const id = uuid();
   const name = workflowName ?? `pw-user-approval-${entityType}-${id}`;
@@ -57,6 +59,7 @@ export const createUserApprovalWorkflow = async (
         entityTypes: [entityType],
         events: ['Created', 'Updated'],
         exclude: [],
+        ...(filter ? { filter } : {}),
       },
       output: ['relatedEntity', 'updatedBy'],
     },
@@ -216,9 +219,8 @@ export const addReviewerToEntity = async (
     await page.getByTestId('Add').click();
   }
 
-  await page.waitForSelector(
-    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-    { state: 'detached' }
+  await waitForAllLoadersToDisappear(
+    page.locator('[data-testid="select-owner-tabs"]')
   );
   await page
     .locator("[data-testid='select-owner-tabs']")
@@ -229,9 +231,8 @@ export const addReviewerToEntity = async (
   );
   await page.fill('[data-testid="owner-select-users-search-bar"]', name);
   await searchOwner;
-  await page.waitForSelector(
-    '[data-testid="select-owner-tabs"] [data-testid="loader"]',
-    { state: 'detached' }
+  await waitForAllLoadersToDisappear(
+    page.locator('[data-testid="select-owner-tabs"]')
   );
   await page
     .getByText(displayName, {

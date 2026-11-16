@@ -72,13 +72,16 @@ const computeSuggestedTags = (
 const computeSuggestionState = (
   isTagTask: boolean,
   suggestedTags: TagLabel[],
-  newDescription?: string
+  newDescription?: string,
+  hasTagOperation = false
 ): { suggestedValue?: string; isSuggestionEmpty: boolean } => {
   if (isTagTask) {
     return {
       suggestedValue:
-        suggestedTags.length > 0 ? JSON.stringify(suggestedTags) : undefined,
-      isSuggestionEmpty: suggestedTags.length === 0,
+        suggestedTags.length > 0 || hasTagOperation
+          ? JSON.stringify(suggestedTags)
+          : undefined,
+      isSuggestionEmpty: suggestedTags.length === 0 && !hasTagOperation,
     };
   }
 
@@ -93,7 +96,7 @@ export const getNormalizedTaskPayload = (
 ): NormalizedTaskPayload => {
   const payload = task.payload;
   const isTagTask = task.type === TaskEntityType.TagUpdate;
-  const fieldPath = payload?.fieldPath ?? payload?.field;
+  const fieldPath = payload?.fieldPath;
   const currentDescription =
     payload?.currentDescription ?? payload?.currentValue;
   const newDescription = payload?.newDescription ?? payload?.suggestedValue;
@@ -114,10 +117,16 @@ export const getNormalizedTaskPayload = (
     suggestedTagsFromLegacyPayload
   );
 
+  const hasTagOperation =
+    tagsToAdd.length > 0 ||
+    tagsToRemove.length > 0 ||
+    suggestedTagsFromLegacyPayload.length > 0;
+
   const { suggestedValue, isSuggestionEmpty } = computeSuggestionState(
     isTagTask,
     suggestedTags,
-    newDescription
+    newDescription,
+    isTagTask && hasTagOperation
   );
 
   return {

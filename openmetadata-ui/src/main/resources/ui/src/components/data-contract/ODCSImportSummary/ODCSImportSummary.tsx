@@ -16,12 +16,12 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   CheckCircle,
   CheckVerified01,
   XCircle,
   XClose,
-} from '@untitledui/icons';
+} from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ODCSImportReport } from '../../../generated/entity/datacontract/contractValidation';
@@ -44,7 +44,7 @@ const STATUS_BADGES = {
   },
   [ImportStatus.ReadyWithWarnings]: {
     color: 'warning',
-    icon: AlertTriangle,
+    icon: Alert,
     label: 'label.ready-with-warnings',
   },
   [ImportStatus.Blocked]: {
@@ -74,7 +74,7 @@ const SummaryLine = ({
   );
   if (!isOk) {
     icon = isWarning ? (
-      <AlertTriangle
+      <Alert
         aria-hidden="true"
         className="tw:text-utility-warning-600"
         size={16}

@@ -100,25 +100,31 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Verify every reserved column header is rendered in order', async () => {
-      const headers = page.getByTestId('sample-data-table').locator('thead th');
-
-      for (const [
-        index,
-        columnName,
-      ] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
-        await expect(headers.nth(index)).toContainText(columnName);
-      }
+      // A single ordered assertion covers both the contents and the order,
+      // and fails with the whole header row rather than one cell at a time.
+      await expect(
+        page.getByTestId('sample-data-table').locator('thead th')
+      ).toHaveText(
+        RESERVED_SAMPLE_COLUMN_NAMES.map((name) => new RegExp(name))
+      );
     });
 
     await test.step('Verify each cell value sits under its own column', async () => {
-      const rows = page.getByTestId('sample-data-table').locator('tbody tr');
+      const rows = await page
+        .getByTestId('sample-data-table')
+        .locator('tbody tr')
+        .all();
 
-      for (const [columnIndex] of RESERVED_SAMPLE_COLUMN_NAMES.entries()) {
-        for (const rowIndex of [0, 2]) {
-          await expect(
-            rows.nth(rowIndex).locator('td').nth(columnIndex)
-          ).toContainText(`sample_value_${columnIndex}_${rowIndex}`);
-        }
+      // Assert the row's cells as one ordered list: the point of the check is
+      // that each value sits under its own column, which an ordered
+      // whole-row assertion states directly.
+      for (const rowIndex of [0, 2]) {
+        await expect(rows[rowIndex].locator('td')).toHaveText(
+          RESERVED_SAMPLE_COLUMN_NAMES.map(
+            (_, columnIndex) =>
+              new RegExp(`sample_value_${columnIndex}_${rowIndex}`)
+          )
+        );
       }
     });
   });
@@ -136,7 +142,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-10')).toBeVisible();
       await page.getByTestId('row-limit-option-10').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('10');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('10');
     });
 
     await test.step('Change row limit to 1000', async () => {
@@ -145,7 +153,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-1000')).toBeVisible();
       await page.getByTestId('row-limit-option-1000').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('1000');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('1000');
     });
 
     await test.step('Reset row limit back to 100', async () => {
@@ -154,7 +164,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-100')).toBeVisible();
       await page.getByTestId('row-limit-option-100').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('100');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('100');
     });
   });
 
@@ -178,7 +190,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Close the dropdown', async () => {
-      await page.getByTestId('sample-data').click();
+      await page.keyboard.press('Escape');
       await expect(page.getByTestId('export-button')).not.toBeVisible();
     });
   });
@@ -394,7 +406,9 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('row-limit-option-10')).toBeVisible();
       await page.getByTestId('row-limit-option-10').click();
 
-      await expect(page.getByTestId('row-limit-select')).toContainText('10');
+      await expect(
+        page.getByTestId('row-limit-select').getByRole('button')
+      ).toHaveText('10');
     });
 
     await test.step('Switch to Schema tab and back to Sample Data', async () => {

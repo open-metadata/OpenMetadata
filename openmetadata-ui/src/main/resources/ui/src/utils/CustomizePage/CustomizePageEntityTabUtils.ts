@@ -80,7 +80,7 @@ export const getDetailsTabWithNewLabel = (
 // Resolve the tab actually on screen: the selected tab only when it is in the rendered
 // list, else the first rendered tab (persona order, hidden dropped), else the default.
 export const getRenderedActiveTab = <T extends string = EntityTabs>(
-  tabs: DetailsTabItem[] | undefined,
+  tabs: Pick<DetailsTabItem, 'key'>[] | undefined,
   selectedTab?: T,
   defaultTab: T = EntityTabs.OVERVIEW as T
 ): T =>

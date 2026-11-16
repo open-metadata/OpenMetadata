@@ -18,24 +18,24 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const ArrowDown: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
   <svg
     aria-hidden="true"
+    color={color}
     fill="none"
     height={size}
-    stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
-      d="m2 10.761 6.942 6.809a1.517 1.517 0 0 0 2.116 0L18 10.761m-8 6.444V2"
+      d="M10 4.167v11.667m0 0 5.833-5.833M10 15.834l-5.833-5.833"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.3}
     />
   </svg>
 );

@@ -10,8 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Owner } from '@openmetadata/ui-core-components';
-import { Col, Divider, Row, Typography } from 'antd';
+import {
+  Divider,
+  Grid,
+  Owner,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { getLayoutGutter } from '../../../../utils/common/layout.utils';
+
 import { get } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,51 +53,55 @@ const DomainSummary = ({
           )}
         />
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
 
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
+        <Grid
+          className="layout-row layout-grid m-md m-t-0"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
+            <Typography
               className="summary-panel-section-title"
               data-testid="owner-header">
               {t('label.owner-plural')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             <Owner
               isCompactView={false}
               owners={entityDetails.owners ?? []}
               showLabel={false}
             />
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
 
-        <Row className="m-md m-t-0" gutter={[0, 8]}>
-          <Col span={24}>
-            <Typography.Text
+        <Grid
+          className="layout-row layout-grid m-md m-t-0"
+          style={getLayoutGutter(0, 8)}>
+          <Grid.Item className="layout-column" span={24}>
+            <Typography
               className="summary-panel-section-title"
               data-testid="expert-header">
               {t('label.expert-plural')}
-            </Typography.Text>
-          </Col>
-          <Col span={24}>
+            </Typography>
+          </Grid.Item>
+          <Grid.Item className="layout-column" span={24}>
             {experts.length > 0 ? (
               <Owner isCompactView={false} owners={experts} showLabel={false} />
             ) : (
-              <Typography.Text
+              <Typography
                 className="text-grey-body"
                 data-testid="no-expert-header">
                 {t('label.no-entity', {
                   entity: t('label.expert-lowercase'),
                 })}
-              </Typography.Text>
+              </Typography>
             )}
-          </Col>
-        </Row>
+          </Grid.Item>
+        </Grid>
 
-        <Divider className="m-y-xs" />
+        <Divider className="m-y-xs summary-panel-divider" />
       </>
     </SummaryPanelSkeleton>
   );

@@ -14,7 +14,9 @@ package org.openmetadata.service.rdf.rebuild;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
@@ -22,15 +24,22 @@ import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.jdbi.v3.core.transaction.TransactionIsolationLevel;
 import org.openmetadata.service.rdf.storage.RdfWriteOutcomeUnknownException;
 
-/** Durable journal and database fences shared by every OpenMetadata server. */
+/**
+ * Durable journal and database fences shared by every OpenMetadata server. The only writer of
+ * {@code rdf_active_dataset}, so every promotion gets a new generation; see
+ * ADR:2026-10-11-rdf-freshness-watermarks-have-one-writer-per-table.
+ */
 public final class RdfRebuildStore {
   public static final long LEASE_MILLIS = 120_000;
   public static final JournalLimits DEFAULT_LIMITS = new JournalLimits(256L * 1024 * 1024, 100_000);
   public static final String UNCERTAIN_WRITE = "RDF rebuild received an uncertain write outcome";
   private static final String ACTIVE_DATASET =
       "SELECT datasetName FROM rdf_active_dataset WHERE id = 'active'";
+  private static final String SERVING_GENERATION =
+      "SELECT generation FROM rdf_active_dataset WHERE id = 'active'";
   private static final String STATE =
       "SELECT rebuildId, buildDataset, expiresAt, failure FROM rdf_rebuild_state WHERE id = 'active'";
+  private static final Duration PAUSE_POLL = Duration.ofSeconds(1);
 
   private final Jdbi jdbi;
   private final Clock clock;
@@ -45,10 +54,11 @@ public final class RdfRebuildStore {
   public void initialize(final String configuredDataset) {
     try (Handle handle = jdbi.open()) {
       handle.execute(
-          "INSERT INTO rdf_active_dataset (id, datasetName, updatedAt, updatedBy) "
-              + "SELECT 'active', ?, ?, 'system' WHERE NOT EXISTS "
+          "INSERT INTO rdf_active_dataset (id, datasetName, generation, updatedAt, updatedBy) "
+              + "SELECT 'active', ?, ?, ?, 'system' WHERE NOT EXISTS "
               + "(SELECT 1 FROM rdf_active_dataset WHERE id = 'active')",
           configuredDataset,
+          newGeneration(),
           clock.millis());
     } catch (UnableToExecuteStatementException exception) {
       // Concurrent startup can win the insert; it must never overwrite an existing promotion.
@@ -56,12 +66,34 @@ public final class RdfRebuildStore {
         throw exception;
       }
     }
+    try (Handle handle = jdbi.open()) {
+      // A pointer written before generations existed gets one; the first server to start wins.
+      handle.execute(
+          "UPDATE rdf_active_dataset SET generation = ? WHERE id = 'active' AND generation IS NULL",
+          newGeneration());
+    }
   }
 
   public String activeDataset() {
     try (Handle handle = jdbi.open()) {
       return handle.createQuery(ACTIVE_DATASET).mapTo(String.class).findOne().orElse(null);
     }
+  }
+
+  /** Identity of the serving dataset. Every promotion assigns a new one, even to a reused name. */
+  public UUID servingGeneration() {
+    try (Handle handle = jdbi.open()) {
+      final List<String> generations =
+          handle.createQuery(SERVING_GENERATION).mapTo(String.class).list();
+      if (generations.isEmpty() || generations.getFirst() == null) {
+        throw new IllegalStateException("The RDF serving dataset has no generation");
+      }
+      return UUID.fromString(generations.getFirst());
+    }
+  }
+
+  private static String newGeneration() {
+    return UUID.randomUUID().toString();
   }
 
   public State state() {
@@ -82,6 +114,35 @@ public final class RdfRebuildStore {
                     result.getString("failure")))
         .findOne()
         .orElse(null);
+  }
+
+  /**
+   * Waits, holding no lock, while storage maintenance holds serving writes back, for at most {@code
+   * maxWait}. The write still re-checks under the serving-dataset row lock.
+   */
+  void awaitLiveWritesAllowed(final Duration maxWait) {
+    final long deadline = System.nanoTime() + maxWait.toNanos();
+    boolean waiting = isPaused();
+    while (waiting && System.nanoTime() < deadline) {
+      try {
+        Thread.sleep(PAUSE_POLL.toMillis());
+        waiting = isPaused();
+      } catch (InterruptedException exception) {
+        Thread.currentThread().interrupt();
+        waiting = false;
+      }
+    }
+  }
+
+  private boolean isPaused() {
+    return jdbi.withHandle(handle -> RdfLiveWritePause.isPaused(handle, clock.millis()));
+  }
+
+  /** Whether {@code delivery} comes from the maintenance job holding the pause right now. */
+  boolean isPauseHolder(final RdfWriteDelivery delivery) {
+    return jdbi.withHandle(
+            handle -> RdfLiveWritePause.holder(handle, clock.millis()).filter(delivery::holds))
+        .isPresent();
   }
 
   public <T> T withActiveLock(final Function<Session, T> action) {
@@ -199,6 +260,14 @@ public final class RdfRebuildStore {
       return activeDataset;
     }
 
+    /**
+     * Refuses the write when storage maintenance has paused writes to the serving dataset, unless
+     * it comes from the job holding the pause.
+     */
+    void requireLiveWritesAllowed(final RdfWriteDelivery delivery) {
+      RdfLiveWritePause.requireWritable(handle, clock.millis(), delivery);
+    }
+
     public State state() {
       return RdfRebuildStore.state(handle);
     }
@@ -250,11 +319,17 @@ public final class RdfRebuildStore {
         return false;
       }
       handle.execute(
-          "UPDATE rdf_active_dataset SET datasetName = ?, updatedAt = ?, updatedBy = ? WHERE id = 'active'",
+          "UPDATE rdf_active_dataset SET datasetName = ?, generation = ?, updatedAt = ?, updatedBy = ? "
+              + "WHERE id = 'active'",
           current.buildDataset(),
+          newGeneration(),
           clock.millis(),
           updatedBy);
-      handle.execute("UPDATE rdf_inference_rule SET dirty = TRUE WHERE deleted = FALSE");
+      // Bumping dirtyVersion keeps a materialization run that read the old dataset from marking
+      // its rules clean when it finishes after the flip.
+      handle.execute(
+          "UPDATE rdf_inference_rule SET dirty = TRUE, dirtyVersion = dirtyVersion + 1 "
+              + "WHERE deleted = FALSE");
       remove(rebuildId);
       return true;
     }

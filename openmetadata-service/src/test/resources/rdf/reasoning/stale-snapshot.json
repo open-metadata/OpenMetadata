@@ -1,0 +1,14 @@
+{
+  "id": "e1d2c3b4-a5f6-4789-8a0b-1c2d3e4f5a6b",
+  "jobId": "7c2d4e6f-8a9b-4c1d-9e2f-3a4b5c6d7e8f",
+  "input": {
+    "sourceRevision": {
+      "datasetGeneration": "9d72cf3b-3657-4ee3-809c-5bc70b9308bd",
+      "liveWriteWatermark": 18442
+    },
+    "ontologySelection": "APPROVED",
+    "ruleBundleDigest": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  "publishedAt": 1791496862000,
+  "freshness": "STALE"
+}

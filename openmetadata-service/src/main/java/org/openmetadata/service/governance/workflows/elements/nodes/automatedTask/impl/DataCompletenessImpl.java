@@ -56,7 +56,7 @@ public class DataCompletenessImpl implements JavaDelegate {
                       inputNamespaces.namespaceFor(RELATED_ENTITY_VARIABLE),
                       RELATED_ENTITY_VARIABLE));
 
-      EntityInterface entity = Entity.getEntity(entityLink, "*", Include.ALL);
+      EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
       Map<String, Object> entityMap = JsonUtils.getMap(entity);
 
       // Calculate completeness
@@ -229,6 +229,12 @@ public class DataCompletenessImpl implements JavaDelegate {
   private Object getNestedValue(Map<String, Object> map, String path) {
     if (map == null || path == null) {
       return null;
+    }
+
+    if (path.startsWith("extension.")
+        && map.get("extension") instanceof Map<?, ?> extension
+        && extension.containsKey(path.substring("extension.".length()))) {
+      return extension.get(path.substring("extension.".length()));
     }
 
     String[] parts = path.split("\\.");

@@ -11,14 +11,20 @@
  *  limitations under the License.
  */
 
-import { Input } from '@openmetadata/ui-core-components';
-import { Button, Card, Col, Row, Typography } from 'antd';
+import {
+  Box,
+  Button,
+  Card,
+  Grid,
+  Input,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { TEST_DEFINITION_FILTERS } from '../../../constants/TestDefinition.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
+import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import {
@@ -27,7 +33,7 @@ import {
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
 import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from './TestDefinitionTable.component';
@@ -105,50 +111,59 @@ const TestDefinitionList = () => {
   });
 
   if (!viewPermission) {
-    return <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.PERMISSION} />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder data-testid="permission-error-placeholder" />
+      </div>
+    );
   }
 
   return (
     <>
-      <Row className="p-b-md" gutter={[16, 16]}>
-        <Col span={24}>
+      <Grid
+        className="layout-row layout-grid p-b-md"
+        style={{ ...getLayoutGutter(16, 16) }}>
+        <Grid.Item className="layout-column" span={24}>
           <Card>
-            <Row justify="space-between">
-              <Col>
-                <div className="flex gap-2 items-center m-b-xss">
-                  <Typography.Title className="m-b-0" level={5}>
-                    {t('label.data-quality-rule-plural')}
-                  </Typography.Title>
-                  <LearningIcon
-                    pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                    title={t('label.data-quality-rule-plural')}
-                  />
-                </div>
-                <Typography.Text type="secondary">
-                  {t('message.page-sub-header-for-test-definitions')}
-                </Typography.Text>
-              </Col>
-              {createPermission && (
-                <Col>
-                  <Button
-                    data-testid="add-test-definition-button"
-                    type="primary"
-                    onClick={openCreateForm}>
-                    {t('label.add-entity', {
-                      entity: t('label.test-definition'),
-                    })}
-                  </Button>
-                </Col>
-              )}
-            </Row>
+            <Card.Content>
+              <Box className="layout-row" justify="between" wrap="wrap">
+                <Box className="layout-column tw:block">
+                  <div className="flex gap-2 items-center m-b-xss">
+                    <Typography
+                      as="h5"
+                      className="m-b-0"
+                      size="text-md"
+                      weight="semibold">
+                      {t('label.test-library')}
+                    </Typography>
+                    <LearningIcon
+                      pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
+                      title={t('label.test-library')}
+                    />
+                  </div>
+                  <Typography color="secondary">
+                    {t('message.page-sub-header-for-test-definitions')}
+                  </Typography>
+                </Box>
+                {createPermission && (
+                  <Box className="layout-column tw:block">
+                    <Button
+                      color="primary"
+                      data-testid="add-test-definition-button"
+                      onClick={openCreateForm}>
+                      {t('label.add-entity', {
+                        entity: t('label.test-definition'),
+                      })}
+                    </Button>
+                  </Box>
+                )}
+              </Box>
+            </Card.Content>
           </Card>
-        </Col>
+        </Grid.Item>
 
-        <Col span={24}>
-          <Card
-            bodyStyle={{
-              padding: 0,
-            }}>
+        <Grid.Item className="layout-column" span={24}>
+          <Card>
             <div className="tw:flex tw:flex-col tw:gap-2 tw:p-4">
               <div className="tw:flex tw:gap-2 tw:items-center">
                 <Input
@@ -181,8 +196,8 @@ const TestDefinitionList = () => {
               onSortChange={handleSortChange}
             />
           </Card>
-        </Col>
-      </Row>
+        </Grid.Item>
+      </Grid>
 
       {isFormVisible && (
         <TestDefinitionForm

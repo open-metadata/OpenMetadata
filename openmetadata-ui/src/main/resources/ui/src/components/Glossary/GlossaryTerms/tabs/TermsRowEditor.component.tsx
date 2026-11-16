@@ -11,8 +11,12 @@
  *  limitations under the License.
  */
 
-import { Button, Select } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import {
+  Button,
+  ButtonUtility,
+  Select,
+} from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
@@ -116,11 +120,12 @@ const TermsRow: React.FC<TermsRowProps> = ({
           onChange={handleTermsChange}
         />
       </div>
-      <Button
+      <ButtonUtility
         color="tertiary-destructive"
         data-testid={`remove-row-${rowId}`}
-        iconLeading={Trash01}
-        size="sm"
+        icon={Trash01}
+        size="lg"
+        tooltip={t('label.remove')}
         onClick={() => onRemove(rowId)}
       />
     </div>

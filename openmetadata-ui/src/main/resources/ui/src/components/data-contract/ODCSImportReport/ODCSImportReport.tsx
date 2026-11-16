@@ -19,7 +19,11 @@ import {
   Box,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { AlertTriangle, InfoCircle, XCircle } from '@untitledui/icons';
+import {
+  Alert,
+  InfoCircle,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -41,7 +45,7 @@ type IssueTone = 'error' | 'warning' | 'info';
 
 const ISSUE_ICONS = {
   error: { Icon: XCircle, className: 'tw:text-utility-error-600' },
-  warning: { Icon: AlertTriangle, className: 'tw:text-utility-warning-600' },
+  warning: { Icon: Alert, className: 'tw:text-utility-warning-600' },
   info: { Icon: InfoCircle, className: 'tw:text-utility-gray-500' },
 } as const;
 

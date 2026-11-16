@@ -15,7 +15,7 @@ import type { AuthenticationResult, Configuration } from '@azure/msal-browser';
 import { CookieStorage } from 'cookie-storage';
 import jwtDecode, { JwtPayload } from 'jwt-decode';
 import { first, get, isEmpty, isNil } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import type { WebStorageStateStore } from 'oidc-client';
 import {
   AuthenticationConfigurationWithScope,
   OidcUser,
@@ -25,7 +25,6 @@ import {
   REFRESHABLE_AUTH_ERRORS,
   UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../constants/Auth.constants';
-import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
@@ -37,7 +36,6 @@ import { isDev } from './EnvironmentUtils';
 import { getBasePath } from './HistoryUtils';
 import { t } from './i18next/LocalUtil';
 import { oidcTokenStorage } from './OidcTokenStorage';
-import { SSO_TEST_LOGIN_STORE_PREFIX } from './SsoTestLoginPopup';
 import { setOidcToken } from './SwTokenStorageUtils';
 
 export interface AuthFieldError {
@@ -50,7 +48,7 @@ export interface AuthFieldValidationResult {
   errors: AuthFieldError[];
 }
 
-const OIDC_SCOPE = 'openid email profile';
+export const OIDC_SCOPE = 'openid email profile';
 
 const cookieStorage = new CookieStorage();
 
@@ -100,41 +98,6 @@ export const getUserManagerConfig = (
     scope,
     userStore: oidcTokenStorage,
     stateStore: oidcTokenStorage,
-  };
-};
-
-/**
- * Build an isolated UserManager config used ONLY for the SSO "Test Login" popup.
- * Tokens land in a dedicated prefixed store (never the app's oidcTokenStorage),
- * but the popup uses the SAME configured callback URL the real login uses — so
- * the test exercises the actual registered redirect URI and never requires the
- * admin to register an extra one. Isolation is achieved by diverting the popup
- * at the callback (see isSsoTestLoginPopup), not by using a separate route.
- */
-export const getCandidateUserManagerConfig = (
-  authClient: AuthenticationConfigurationWithScope
-): Record<string, string | boolean | WebStorageStateStore> => {
-  const {
-    authority = '',
-    clientId = '',
-    callbackUrl,
-    scope,
-    responseType,
-  } = authClient;
-  const testStore = new WebStorageStateStore({
-    store: globalThis.localStorage,
-    prefix: SSO_TEST_LOGIN_STORE_PREFIX,
-  });
-
-  return {
-    authority,
-    client_id: clientId,
-    redirect_uri: getRedirectUri(callbackUrl),
-    response_type: responseType ?? 'id_token',
-    scope: scope || OIDC_SCOPE,
-    loadUserInfo: false,
-    userStore: testStore,
-    stateStore: testStore,
   };
 };
 
@@ -283,7 +246,7 @@ export const getAuthConfig = (
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
-} as const;
+};
 
 export const getNameFromEmail = (email: string) => {
   if (new RegExp(EMAIL_REG_EX).exec(email)) {
@@ -430,10 +393,6 @@ export const getNameFromUserData = (
   };
 };
 
-export const isTourRoute = (pathname: string) => {
-  return pathname === ROUTES.TOUR;
-};
-
 /**
  * Providers whose login flow the server drives through its own authenticator, so the login
  * configuration (failed-attempt lockout, access block time, JWT expiry) is actually enforced.
@@ -450,6 +409,18 @@ export const isLoginConfigurationApplicable = (
   provider === AuthProvider.Basic ||
   provider === AuthProvider.LDAP ||
   provider === AuthProvider.Openmetadata;
+
+/**
+ * Whether the server, rather than the browser, completes sign-in. The server then applies the
+ * identity provider's display name and picture to the user itself, and the name it hands the
+ * browser is the OpenMetadata username, not a display name.
+ * ADR:2026-10-17-the-server-applies-the-sso-profile-on-server-driven-logins
+ */
+export const isServerDrivenLogin = (
+  clientType?: ClientType,
+  provider?: AuthProvider
+): boolean =>
+  clientType === ClientType.Confidential || provider === AuthProvider.Saml;
 
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
@@ -612,10 +583,12 @@ const REQUIRED_FIELDS_BY_PROVIDER: Record<string, string[]> = {
   // returned shape. The runtime-blocking check is that a provider is set.
   [AuthProvider.Basic]: ['provider'],
   [AuthProvider.LDAP]: ['provider'],
-  // IdP flows all need the four top-level fields to boot their client SDK:
-  // authority (issuer/discovery root), clientId (OAuth client), callbackUrl
-  // (redirect target), providerName (visible sign-in button text). Nested
-  // configuration blocks are server-side and not exposed to the SPA.
+  // IdP flows all need three top-level fields to boot their client SDK:
+  // authority (issuer/discovery root), clientId (OAuth client) and callbackUrl
+  // (redirect target). Nested configuration blocks are server-side and not
+  // exposed to the SPA. Only Custom OIDC's sign-in button shows providerName;
+  // the others render a fixed label. openmetadata.yaml leaves providerName
+  // empty for them, and the server requires it for Custom OIDC only.
   [AuthProvider.CustomOidc]: [
     'provider',
     'providerName',
@@ -623,34 +596,10 @@ const REQUIRED_FIELDS_BY_PROVIDER: Record<string, string[]> = {
     'callbackUrl',
     'authority',
   ],
-  [AuthProvider.Google]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
-  [AuthProvider.Auth0]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
-  [AuthProvider.Azure]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
-  [AuthProvider.Okta]: [
-    'provider',
-    'providerName',
-    'clientId',
-    'callbackUrl',
-    'authority',
-  ],
+  [AuthProvider.Google]: ['provider', 'clientId', 'callbackUrl', 'authority'],
+  [AuthProvider.Auth0]: ['provider', 'clientId', 'callbackUrl', 'authority'],
+  [AuthProvider.Azure]: ['provider', 'clientId', 'callbackUrl', 'authority'],
+  [AuthProvider.Okta]: ['provider', 'clientId', 'callbackUrl', 'authority'],
   // SAML's `getAuthConfig` branch above intentionally omits `providerName`
   // from the returned client shape (SAML renders a fixed "Sign in with SAML
   // SSO" label), so requiring it here would always trip ConfigErrorPage.
@@ -689,7 +638,7 @@ export const validateAuthFieldsDetailed = (
 ): AuthFieldValidationResult => {
   const provider = configJson?.provider as string | undefined;
   const required =
-    (provider && REQUIRED_FIELDS_BY_PROVIDER[provider]) ??
+    (provider ? REQUIRED_FIELDS_BY_PROVIDER[provider] : undefined) ??
     // Fall back to the legacy required-field list when the provider is
     // unknown — the caller (AuthProvider) also independently short-circuits
     // on an unsupported provider, but this keeps the validator's contract

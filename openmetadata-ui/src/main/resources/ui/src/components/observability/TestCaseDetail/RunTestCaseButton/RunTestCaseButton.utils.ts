@@ -103,9 +103,16 @@ export const isRunInProgress = (
  * the button, so a missing permission is not a reason here. A run already in
  * progress is not one either: it may belong to another suite's pipeline, be
  * stuck, or predate the change the user wants to re-check, so that is their
- * call.
+ * call. A failed read of the pipelines is not an empty one: the suite may
+ * well have a pipeline.
  */
-export const getRunDisabledReasonKey = (pipelines: IngestionPipeline[]) => {
+export const getRunDisabledReasonKey = (
+  pipelines: IngestionPipeline[],
+  hasPipelineLoadError = false
+) => {
+  if (hasPipelineLoadError) {
+    return 'message.pipelines-could-not-be-loaded';
+  }
   if (pipelines.length === 0) {
     return 'message.no-pipeline-linked';
   }

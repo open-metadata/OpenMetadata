@@ -12,7 +12,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '../../../icons';
 import { Tooltip } from '@/components/base/tooltip/tooltip';
 
 export interface FormItemLabelProps {
@@ -32,7 +32,7 @@ export const FormItemLabel = ({
     {tooltip && (
       <Tooltip
         title={tooltip}
-        triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-fg-quaternary tw:transition tw:duration-200 tw:hover:text-fg-quaternary_hover tw:focus:text-fg-quaternary_hover"
+        triggerClassName="tw:flex tw:items-center tw:cursor-pointer tw:text-utility-gray-500 tw:transition tw:duration-200 tw:hover:text-utility-gray-600 tw:focus:text-utility-gray-600"
         triggerIsDisabled={false}>
         <HelpCircle className="tw:size-4" />
       </Tooltip>

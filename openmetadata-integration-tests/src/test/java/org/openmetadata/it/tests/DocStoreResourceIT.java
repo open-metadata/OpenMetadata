@@ -1,9 +1,12 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.it.util.UriTestUtils.assertHttpStatusFor;
+import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -15,18 +18,26 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreatePersona;
 import org.openmetadata.schema.entities.docStore.CreateDocument;
 import org.openmetadata.schema.entities.docStore.Data;
 import org.openmetadata.schema.entities.docStore.Document;
+import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.system.ui.Configuration;
 import org.openmetadata.schema.system.ui.KnowledgePanel;
 import org.openmetadata.schema.system.ui.Page;
 import org.openmetadata.schema.system.ui.PageType;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -346,6 +357,105 @@ public class DocStoreResourceIT {
     deleteDocument(pageDoc.getFullyQualifiedName());
   }
 
+  /**
+   * A persona's UI customization must load for every user the persona applies to, even when their
+   * roles grant no access to documents; otherwise the UI silently falls back to the stock
+   * navigation and landing page. Each way of holding a persona counts: assigned directly, inherited
+   * as a team's default persona, or set as the user's default persona. The relaxation stops at the
+   * caller's own personas.
+   */
+  @Test
+  void personaLayoutIsReadableThroughPersonaAssignment(TestNamespace ns) throws Exception {
+    String readerPrefix = ns.shortPrefix("layout_reader");
+    OpenMetadataClient reader =
+        DenyPolicyPrincipals.clientDenied(
+            readerPrefix, Entity.DOCUMENT, MetadataOperation.VIEW_BASIC);
+    Persona direct = createPersona(ns, "layout_direct");
+    Persona fromTeam = createPersona(ns, "layout_team");
+    Persona byDefault = createPersona(ns, "layout_default");
+    Persona other = createPersona(ns, "layout_other");
+    assignPersonas(readerPrefix + "_user", direct, byDefault);
+    assignTeamDefaultPersona(readerPrefix + "_team", fromTeam);
+    List<Document> assignedLayouts =
+        List.of(
+            createDocument(personaLayout(direct)),
+            createDocument(personaLayout(fromTeam)),
+            createDocument(personaLayout(byDefault)));
+    Document otherLayout = createDocument(personaLayout(other));
+    String panelName = ns.prefix("layout_reader_panel");
+    Document panel =
+        createDocument(
+            new CreateDocument()
+                .withName(panelName)
+                .withFullyQualifiedName(panelName)
+                .withEntityType("KnowledgePanel")
+                .withData(new Data().withAdditionalProperty("name", "panel")));
+
+    try {
+      for (Document layout : assignedLayouts) {
+        Document read =
+            assertDoesNotThrow(
+                () -> getDocumentByName(reader, layout.getFullyQualifiedName()),
+                layout.getFullyQualifiedName());
+
+        assertEquals(layout.getId(), read.getId());
+        assertEquals(layout.getData(), read.getData());
+      }
+      assertHttpStatusFor(
+          reader,
+          403,
+          HttpMethod.GET,
+          documentByNamePath(otherLayout.getFullyQualifiedName()),
+          null);
+      assertHttpStatusFor(
+          reader, 403, HttpMethod.GET, documentByNamePath(panel.getFullyQualifiedName()), null);
+    } finally {
+      for (Document layout : assignedLayouts) {
+        deleteDocument(layout.getFullyQualifiedName());
+      }
+      deleteDocument(otherLayout.getFullyQualifiedName());
+      deleteDocument(panel.getFullyQualifiedName());
+    }
+  }
+
+  private Persona createPersona(TestNamespace ns, String suffix) {
+    return ns.trackRoot(
+        Entity.PERSONA,
+        SdkClients.adminClient()
+            .personas()
+            .create(
+                new CreatePersona()
+                    .withName(ns.shortPrefix(suffix))
+                    .withDescription("Persona layout document integration test")));
+  }
+
+  private void assignPersonas(String userName, Persona persona, Persona defaultPersona) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User user = admin.users().getByName(userName, "personas,defaultPersona");
+    user.setPersonas(List.of(persona.getEntityReference()));
+    user.setDefaultPersona(defaultPersona.getEntityReference());
+    admin.users().update(user.getId().toString(), user);
+  }
+
+  private void assignTeamDefaultPersona(String teamName, Persona persona) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Team team = admin.teams().getByName(teamName, "defaultPersona");
+    team.setDefaultPersona(persona.getEntityReference());
+    admin.teams().update(team.getId().toString(), team);
+  }
+
+  private CreateDocument personaLayout(Persona persona) {
+    return new CreateDocument()
+        .withName(persona.getName() + "-layout")
+        .withFullyQualifiedName(Entity.PERSONA + Entity.SEPARATOR + persona.getFullyQualifiedName())
+        .withEntityType("page")
+        .withData(new Data().withAdditionalProperty("navigation", "glossary-only"));
+  }
+
+  private static String documentByNamePath(String fqn) {
+    return "/v1/docStore/name/" + encodeURIComponent(fqn);
+  }
+
   private Document createDocument(CreateDocument createRequest) throws Exception {
     String response =
         SdkClients.adminClient()
@@ -365,11 +475,15 @@ public class DocStoreResourceIT {
   }
 
   private Document getDocumentByName(String fqn) throws Exception {
+    return getDocumentByName(SdkClients.adminClient(), fqn);
+  }
+
+  private Document getDocumentByName(OpenMetadataClient client, String fqn) throws Exception {
     String response =
-        SdkClients.adminClient()
+        client
             .getHttpClient()
             .executeForString(
-                HttpMethod.GET, "/v1/docStore/name/" + fqn, null, RequestOptions.builder().build());
+                HttpMethod.GET, documentByNamePath(fqn), null, RequestOptions.builder().build());
     return MAPPER.readValue(response, Document.class);
   }
 

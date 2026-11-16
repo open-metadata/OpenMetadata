@@ -18,6 +18,7 @@ import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext } from '../../../utils/common';
 import { waitForPageLoaded } from '../../../utils/polling';
+import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
 
 /**
  * Task Resolution Tests
@@ -39,7 +40,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
   const nonAssigneeUser = new UserClass();
   const table = new TableClass();
 
-  let taskId: string;
+  let createdTask: CreatedTask;
 
   test.beforeAll('Setup test data and create task', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -69,8 +70,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
           assignees: [assigneeUser.responseData.name],
         },
       });
-      const task = await taskResponse.json();
-      taskId = task.id;
+      createdTask = (await taskResponse.json()) as CreatedTask;
     } finally {
       await afterAction();
     }
@@ -91,7 +91,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
   });
 
   test('assignee should see approve/reject buttons', async ({ page }) => {
-    await assigneeUser.login(page);
+    await assigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     // Stay on the default "All" activity-feed view (do NOT switch to the
@@ -100,7 +100,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, createdTask);
 
     if (await taskCard.isVisible()) {
       // Should see approve and reject buttons
@@ -115,7 +115,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
   test('non-assignee should NOT see approve/reject buttons', async ({
     page,
   }) => {
-    await nonAssigneeUser.login(page);
+    await nonAssigneeUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -129,7 +129,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, createdTask);
 
     if (await taskCard.isVisible()) {
       // Should NOT see approve/reject buttons
@@ -159,10 +159,10 @@ test.describe('Task Resolution - Approve/Reject', () => {
         },
       },
     });
-    const task = await taskResponse.json();
+    const freshTask = (await taskResponse.json()) as CreatedTask;
     await afterAction();
 
-    await adminUser.login(page);
+    await adminUser.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -176,7 +176,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, freshTask);
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -244,7 +244,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
       const task = await taskResponse.json();
       feedbackTaskId = task.id;
 
-      await assigneeUser.login(page);
+      await assigneeUser.signIn(page);
       const {
         apiContext: assigneeApiContext,
         afterAction: afterAssigneeAction,
@@ -285,6 +285,7 @@ test.describe('Task Resolution - Team Assignee', () => {
   const nonTeamMember = new UserClass();
   const team = new TeamClass();
   const table = new TableClass();
+  let teamTask: CreatedTask;
 
   test.beforeAll('Setup test data', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -313,7 +314,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       await table.create(apiContext);
 
       // Create task assigned to team
-      await apiContext.post('/api/v1/tasks', {
+      const teamTaskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
           type: 'DescriptionUpdate',
@@ -325,6 +326,7 @@ test.describe('Task Resolution - Team Assignee', () => {
           },
         },
       });
+      teamTask = (await teamTaskResponse.json()) as CreatedTask;
     } finally {
       await afterAction();
     }
@@ -347,7 +349,7 @@ test.describe('Task Resolution - Team Assignee', () => {
   test('team member should be able to approve task assigned to team', async ({
     page,
   }) => {
-    await teamMember.login(page);
+    await teamMember.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -361,7 +363,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, teamTask);
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');
@@ -374,7 +376,7 @@ test.describe('Task Resolution - Team Assignee', () => {
   test('non-team member should NOT see approve button for team task', async ({
     page,
   }) => {
-    await nonTeamMember.login(page);
+    await nonTeamMember.signIn(page);
     await table.visitEntityPage(page);
 
     await page.getByTestId('activity_feed').click();
@@ -388,7 +390,7 @@ test.describe('Task Resolution - Team Assignee', () => {
       await waitForPageLoaded(page);
     }
 
-    const taskCard = page.locator('[data-testid="task-feed-card"]').first();
+    const taskCard = getTaskCard(page, teamTask);
 
     if (await taskCard.isVisible()) {
       const approveBtn = taskCard.getByTestId('approve-button');

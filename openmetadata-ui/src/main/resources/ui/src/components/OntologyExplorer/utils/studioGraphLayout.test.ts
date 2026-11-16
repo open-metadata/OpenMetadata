@@ -314,3 +314,162 @@ describe('calculateStudioNodePositions', () => {
     );
   });
 });
+
+describe('calculateStudioNodePositions on large ontologies', () => {
+  const NODE_W = 150;
+  const NODE_H = 36;
+
+  const fourAryTree = (count: number) => {
+    const nodes = Array.from({ length: count }, (_, index) => ({
+      id: `c${index}`,
+      data: { label: `Concept ${index}` },
+    }));
+    const edges = nodes.slice(1).map((node, index) => ({
+      id: `e${index + 1}`,
+      source: node.id,
+      target: `c${Math.floor(index / 4)}`,
+      data: { relationType: 'subClassOf' },
+    }));
+
+    return { nodes, edges };
+  };
+
+  const boundsOf = (positions: Record<string, { x: number; y: number }>) => {
+    const points = Object.values(positions);
+    const xs = points.map((point) => point.x);
+    const ys = points.map((point) => point.y);
+    const width = Math.max(...xs) - Math.min(...xs) + NODE_W;
+    const height = Math.max(...ys) - Math.min(...ys) + NODE_H;
+
+    return { aspect: width / height, height, width };
+  };
+
+  const expectNoOverlap = (
+    positions: Record<string, { x: number; y: number }>
+  ) => {
+    const cells = new Set(
+      Object.values(positions).map(
+        ({ x, y }) => `${Math.round(x / NODE_W)}:${Math.round(y / NODE_H)}`
+      )
+    );
+
+    expect(cells.size).toBe(Object.keys(positions).length);
+  };
+
+  it.each([
+    [50, 3000, 1800],
+    [400, 7000, 4500],
+    [2000, 15000, 9000],
+  ])(
+    'keeps a %i concept 4-ary hierarchy near the viewport shape',
+    async (count, maxWidth, maxHeight) => {
+      const { nodes, edges } = fourAryTree(count);
+
+      const positions = await calculateStudioNodePositions(nodes, edges, {
+        viewportHeight: 900,
+        viewportWidth: 1600,
+      });
+      const { aspect, height, width } = boundsOf(positions);
+
+      expect(Object.keys(positions)).toHaveLength(count);
+      expect(aspect).toBeGreaterThan(1.2);
+      expect(aspect).toBeLessThan(2.4);
+      expect(width).toBeLessThan(maxWidth);
+      expect(height).toBeLessThan(maxHeight);
+
+      expectNoOverlap(positions);
+    },
+    60000
+  );
+
+  it('keeps ranks in left to right order after folding', async () => {
+    const { nodes, edges } = fourAryTree(400);
+
+    const positions = await calculateStudioNodePositions(nodes, edges);
+
+    expect(positions.c0.x).toBeLessThan(positions.c1.x);
+    expect(positions.c1.x).toBeLessThan(positions.c5.x);
+    expect(positions.c5.x).toBeLessThan(positions.c21.x);
+  });
+
+  it('follows a tall viewport when it is given one', async () => {
+    const { nodes, edges } = fourAryTree(400);
+
+    const { aspect } = boundsOf(
+      await calculateStudioNodePositions(nodes, edges, {
+        viewportHeight: 1600,
+        viewportWidth: 900,
+      })
+    );
+
+    expect(aspect).toBeGreaterThan(0.35);
+    expect(aspect).toBeLessThan(1.1);
+  });
+
+  it('spreads 2,000 isolated concepts into a grid instead of a four-wide strip', async () => {
+    const nodes = Array.from({ length: 2000 }, (_, index) => ({
+      id: `i${index}`,
+      data: { label: `Isolated ${index}` },
+    }));
+
+    const positions = await calculateStudioNodePositions(nodes, []);
+    const { aspect } = boundsOf(positions);
+
+    expect(aspect).toBeGreaterThan(1.2);
+    expect(aspect).toBeLessThan(2.4);
+
+    expectNoOverlap(positions);
+  });
+
+  it('packs 1,000 two-concept components into a viewport shaped block', async () => {
+    const nodes = Array.from({ length: 2000 }, (_, index) => ({
+      id: `p${index}`,
+      data: { label: `Pair ${index}` },
+    }));
+    const edges = Array.from({ length: 1000 }, (_, index) => ({
+      id: `pe${index}`,
+      source: `p${index * 2 + 1}`,
+      target: `p${index * 2}`,
+      data: { relationType: 'subClassOf' },
+    }));
+
+    const positions = await calculateStudioNodePositions(nodes, edges);
+    const { aspect } = boundsOf(positions);
+
+    expect(aspect).toBeGreaterThan(1.2);
+    expect(aspect).toBeLessThan(2.4);
+
+    expectNoOverlap(positions);
+  }, 60000);
+
+  it('leaves a small ontology as plain left to right ranks', async () => {
+    const nodes = ['Party', 'Patient', 'Doctor', 'Visit'].map((id) => ({
+      id,
+      data: { label: id },
+    }));
+    const positions = await calculateStudioNodePositions(nodes, [
+      {
+        id: 'a',
+        source: 'Patient',
+        target: 'Party',
+        data: { relationType: 'subClassOf' },
+      },
+      {
+        id: 'b',
+        source: 'Doctor',
+        target: 'Party',
+        data: { relationType: 'subClassOf' },
+      },
+      {
+        id: 'c',
+        source: 'Visit',
+        target: 'Patient',
+        data: { relationType: 'subClassOf' },
+      },
+    ]);
+
+    expect(positions.Patient.x).toBe(positions.Doctor.x);
+    expect(positions.Party.x).toBeLessThan(positions.Patient.x);
+    expect(positions.Patient.x).toBeLessThan(positions.Visit.x);
+  });
+});

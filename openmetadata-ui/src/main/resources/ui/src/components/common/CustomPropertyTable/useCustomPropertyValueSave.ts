@@ -17,34 +17,42 @@ import { buildUpdatedExtension } from '../../../utils/CustomProperty.utils';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { EntityWithExtension } from './useCustomPropertyValueSave.interface';
 
-/** Persists custom property values through the entity page's GenericProvider. */
-export const useCustomPropertyValueSave = <T extends EntityWithExtension>() => {
-  const { data: entityDetails, onUpdate } = useGenericContext<T>();
+/**
+ * Persists custom property values through the entity page's GenericProvider, or through
+ * the caller's own entity and update handler when it has no provider to read from (the
+ * team and user detail pages are outside the customizable-page system).
+ */
+export const useCustomPropertyValueSave = <
+  T extends EntityWithExtension
+>(source?: {
+  entityDetails?: T;
+  onUpdate?: (updatedData: T, key?: keyof T) => Promise<void>;
+}) => {
+  const context = useGenericContext<T>();
+  const entityDetails = source?.entityDetails ?? context.data;
+  const onUpdate = source?.onUpdate ?? context.onUpdate;
 
-  const onExtensionUpdate = useCallback(
-    async (updatedExtension?: Record<string, unknown>) => {
-      if (!isUndefined(onUpdate) && entityDetails) {
-        await onUpdate(
-          { ...entityDetails, extension: updatedExtension },
-          'extension' as keyof T
-        );
+  const onPropertyValueSave = useCallback(
+    async (property: CustomProperty, value: unknown) => {
+      if (isUndefined(onUpdate) || !entityDetails) {
+        return;
       }
+
+      await onUpdate(
+        {
+          ...entityDetails,
+          extension: buildUpdatedExtension(
+            entityDetails.extension,
+            property.name,
+            property.propertyType.name ?? '',
+            value
+          ),
+        },
+        'extension' as keyof T
+      );
     },
     [entityDetails, onUpdate]
   );
 
-  const onPropertyValueSave = useCallback(
-    (property: CustomProperty, value: unknown) =>
-      onExtensionUpdate(
-        buildUpdatedExtension(
-          entityDetails?.extension,
-          property.name,
-          property.propertyType.name ?? '',
-          value
-        )
-      ),
-    [entityDetails?.extension, onExtensionUpdate]
-  );
-
-  return { onExtensionUpdate, onPropertyValueSave };
+  return { onPropertyValueSave };
 };

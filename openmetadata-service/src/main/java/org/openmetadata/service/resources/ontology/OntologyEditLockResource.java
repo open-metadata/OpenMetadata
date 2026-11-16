@@ -112,10 +112,7 @@ public class OntologyEditLockResource {
   }
 
   static MetadataOperation editOperation(final String resourceType) {
-    return switch (resourceType) {
-      case Entity.GLOSSARY, Entity.GLOSSARY_TERM -> MetadataOperation.EDIT_GLOSSARY_TERMS;
-      default -> MetadataOperation.EDIT_ALL;
-    };
+    return MetadataOperation.EDIT_ALL;
   }
 
   private static String user(final SecurityContext securityContext) {

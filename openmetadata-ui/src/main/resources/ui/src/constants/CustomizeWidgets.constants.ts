@@ -117,7 +117,7 @@ export const DATA_PRODUCTS_WIDGET: CommonWidgetType = {
 
 export const KNOWLEDGE_ARTICLE_WIDGET = {
   fullyQualifiedName: DetailPageWidgetKeys.KNOWLEDGE_ARTICLE,
-  name: i18n.t('label.article-plural'),
+  name: i18n.t('label.context-center'),
   data: {
     gridSizes: ['large'] as GridSizes[],
   },
@@ -156,30 +156,5 @@ export const DUMMY_OWNER_LIST = [
     name: 'Engineering',
     type: EntityType.TEAM,
     id: '123',
-  },
-];
-
-export const WIDGET_CUSTOM_PROPERTIES = [
-  {
-    name: 'name',
-    value: 'OpenMetadata',
-    propertyType: {
-      name: 'string',
-      type: 'string',
-      id: '123',
-    },
-    description: 'Name',
-    displayName: 'Name',
-  },
-  {
-    name: 'email',
-    value: 'customproperty@OpenMetadata.com',
-    propertyType: {
-      name: 'string',
-      type: 'string',
-      id: '123',
-    },
-    description: 'Email',
-    displayName: 'Email',
   },
 ];

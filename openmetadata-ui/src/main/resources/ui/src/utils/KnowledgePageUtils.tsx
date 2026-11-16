@@ -20,10 +20,12 @@ import {
 } from '../interface/knowledge-center.interface';
 
 import { Box } from '@openmetadata/ui-core-components';
+import {
+  Article,
+  QuickLink as QuickLinkIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { RecentlyViewedData } from 'Models';
 import { Link } from 'react-router-dom';
-import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
-import { ReactComponent as QuickLinkIcon } from '../assets/svg/quick-link.svg';
 import { usePersistentStorage } from '../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import contextCenterClassBase from './ContextCenterClassBase';
@@ -107,7 +109,7 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
 
   return (
     <Link
-      className="no-underline text-primary text-sm"
+      className="tw:no-underline tw:text-link tw:text-sm"
       data-testid={`${testIdPrefix}-${
         knowledgePage.displayName || knowledgePage.fullyQualifiedName
       }`}
@@ -118,12 +120,11 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
         {isQuickLink ? (
           <QuickLinkIcon
             className="tw:shrink-0"
-            height={16}
+            size={16}
             style={{ verticalAlign: 'middle' }}
-            width={16}
           />
         ) : (
-          <FileIcon className="tw:shrink-0" height={16} width={16} />
+          <Article className="tw:shrink-0" size={16} />
         )}
 
         <span className="tw:truncate">

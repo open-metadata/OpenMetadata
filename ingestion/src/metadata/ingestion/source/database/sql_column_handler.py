@@ -33,6 +33,7 @@ from metadata.ingestion.source.database.json_schema_extractor import (
 )
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.schema_inference import InferenceLimits, InferenceReport
 
 logger = ingestion_logger()
 
@@ -429,6 +430,10 @@ class SqlColumnHandlerMixin:
             DEFAULT_JSON_SCHEMA_SAMPLE_SIZE,
         )
 
+    def _get_schema_inference_limits(self) -> InferenceLimits:
+        """Get the depth and per-column child limits for the inferred JSON children."""
+        return InferenceLimits.from_source_config(getattr(self, "source_config", None))
+
     def _is_json_column(self, column: Column) -> bool:
         """Check if a column is a JSON type column."""
         if column.dataType and column.dataType.value in JSON_COLUMN_TYPES:
@@ -476,6 +481,8 @@ class SqlColumnHandlerMixin:
         )
 
         sample_size = self._get_json_schema_sample_size()
+        limits = self._get_schema_inference_limits()
+        report = InferenceReport()
         column_names = [col.name.root for col in columns_to_process]
 
         try:
@@ -490,10 +497,13 @@ class SqlColumnHandlerMixin:
                 if col_name in json_values_by_column:
                     json_values = json_values_by_column[col_name]
                     if json_values:
-                        json_schema_str, children = infer_json_schema_from_sample(json_values)
+                        json_schema_str, children = infer_json_schema_from_sample(
+                            json_values, limits=limits, report=report, path=col_name
+                        )
                         if json_schema_str:
                             column.jsonSchema = json_schema_str
-                        if children:
+                        # An empty list means the limits cut every child of a column of JSON objects.
+                        if children is not None:
                             column.children = children
                             if self._is_string_column(column):
                                 column.dataType = DataType.JSON
@@ -501,6 +511,9 @@ class SqlColumnHandlerMixin:
                         logger.debug(
                             f"Extracted JSON schema for column [{col_name}] in table [{schema_name}.{table_name}]"
                         )
+            status = getattr(self, "status", None)
+            if status is not None:
+                report.emit(status, f"{schema_name}.{table_name}", limits)
 
         except Exception as exc:
             logger.debug(traceback.format_exc())

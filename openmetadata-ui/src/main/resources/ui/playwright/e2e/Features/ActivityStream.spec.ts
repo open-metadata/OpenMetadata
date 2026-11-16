@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test as base } from '../../support/fixtures/base';
 import { UserClass } from '../../support/user/UserClass';
@@ -64,7 +65,7 @@ test.describe('Activity Stream on Entity Pages', () => {
   });
 
   test.beforeEach(async ({ page }) => {
-    await adminUser.login(page);
+    await adminUser.signIn(page);
   });
 
   test('activity feed tab shows activity events for entity', async ({
@@ -94,8 +95,8 @@ test.describe('Activity Stream on Entity Pages', () => {
       page
         .locator('#feedData [data-testid="message-container"]')
         .filter({ hasText: seededActivitySummary })
-        .first()
-    ).toBeVisible({ timeout: 30_000 });
+        .filter({ visible: true })
+    ).not.toHaveCount(0, { timeout: ACTION_TIMEOUT });
   });
 
   test('activity events are created when entity description is updated', async ({
@@ -230,7 +231,9 @@ test.describe('Activity Stream on Entity Pages', () => {
     const countBadge = activityFeedTab.getByTestId('count');
 
     await expect(countBadge).toBeVisible();
-    await expect(countBadge).toHaveText(/^[1-9]\d*$/, { timeout: 30_000 });
+    await expect(countBadge).toHaveText(/^[1-9]\d*$/, {
+      timeout: ACTION_TIMEOUT,
+    });
   });
 
   test('activity stream API is called when visiting entity page', async ({

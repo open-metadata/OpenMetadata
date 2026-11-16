@@ -57,14 +57,14 @@ describe('ChangePasswordRow', () => {
   });
 
   it('should render the collapsed row with only the change-password action', () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
 
     expect(screen.getByTestId('change-password-button')).toBeInTheDocument();
     expect(screen.queryByTestId('new-password-input')).not.toBeInTheDocument();
   });
 
   it('should reveal the form fields when the action is clicked', () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
 
     expect(screen.getByTestId('current-password-input')).toBeInTheDocument();
@@ -76,7 +76,7 @@ describe('ChangePasswordRow', () => {
   });
 
   it('should keep the submit button disabled until every requirement is met', () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
 
     expect(screen.getByTestId('update-password-button')).toBeDisabled();
@@ -93,7 +93,7 @@ describe('ChangePasswordRow', () => {
   });
 
   it('should show the strength meter only once a new password is typed', () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
 
     expect(
@@ -109,7 +109,7 @@ describe('ChangePasswordRow', () => {
   });
 
   it('should warn when the confirmation does not match', () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
     typeInto('new-password-input', VALID_PASSWORD);
     typeInto('confirm-password-input', 'Test@12345');
@@ -119,7 +119,7 @@ describe('ChangePasswordRow', () => {
   });
 
   it('should submit a SELF change-password request and collapse on success', async () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
     fillValidForm();
     fireEvent.click(screen.getByTestId('update-password-button'));
@@ -144,7 +144,7 @@ describe('ChangePasswordRow', () => {
   it('should surface an error toast and keep the form open on failure', async () => {
     mockChangePassword.mockRejectedValue(new Error('failed'));
 
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
     fillValidForm();
     fireEvent.click(screen.getByTestId('update-password-button'));
@@ -156,7 +156,7 @@ describe('ChangePasswordRow', () => {
   });
 
   it('should discard the typed values when cancelled', () => {
-    render(<ChangePasswordRow username="john" />);
+    render(<ChangePasswordRow isSelf username="john" />);
     openForm();
     fillValidForm();
     fireEvent.click(screen.getByTestId('cancel-change-password-button'));
@@ -165,5 +165,27 @@ describe('ChangePasswordRow', () => {
     expect(
       screen.getByTestId('new-password-input').querySelector('input')
     ).toHaveValue('');
+  });
+
+  it('lets an admin reset another user without the current password', async () => {
+    render(<ChangePasswordRow isSelf={false} username="john" />);
+    openForm();
+
+    expect(
+      screen.queryByTestId('current-password-input')
+    ).not.toBeInTheDocument();
+
+    typeInto('new-password-input', VALID_PASSWORD);
+    typeInto('confirm-password-input', VALID_PASSWORD);
+    fireEvent.click(screen.getByTestId('update-password-button'));
+
+    await waitFor(() =>
+      expect(mockChangePassword).toHaveBeenCalledWith({
+        newPassword: VALID_PASSWORD,
+        confirmPassword: VALID_PASSWORD,
+        username: 'john',
+        requestType: RequestType.User,
+      })
+    );
   });
 });

@@ -44,7 +44,12 @@ function TestRovingFocus({
   });
 
   return (
-    <div data-testid="container" ref={containerRef} tabIndex={-1}>
+    <div
+      data-testid="container"
+      ref={(element) => {
+        containerRef.current = element;
+      }}
+      tabIndex={-1}>
       {Array.from({ length: totalItems }).map((_, i) => (
         // eslint-disable-next-line react/no-array-index-key -- index-addressed test buttons
         <button data-testid={`item-${i}`} key={i} {...getItemProps(i)}>

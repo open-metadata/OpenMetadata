@@ -14,11 +14,12 @@
 import {
   Autocomplete,
   Button,
+  ButtonUtility,
   Input,
   SelectItemType,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useListData } from 'react-stately';
@@ -327,12 +328,13 @@ export const DataCompletenessForm: React.FC<DataCompletenessFormProps> = ({
 
               <div className="tw:w-1/10 tw:flex tw:justify-center">
                 {scoringLevels.length > 1 && (
-                  <Button
+                  <ButtonUtility
                     color="tertiary-destructive"
-                    iconLeading={Trash01}
+                    icon={Trash01}
                     isDisabled={isFormDisabled}
-                    size="sm"
-                    onPress={() => removeScoringLevel(index)}
+                    size="lg"
+                    tooltip={t('label.remove')}
+                    onClick={() => removeScoringLevel(index)}
                   />
                 )}
               </div>

@@ -16,6 +16,7 @@ import { useCallback, useMemo } from 'react';
 import { EChart } from './echart';
 import { buildPieOption, isPieEmpty } from './options/pie';
 import type { PieChartProps } from './props';
+import { withTooltipRender } from './tooltip-render';
 import type { ChartTheme } from './types';
 
 /** Pie chart; a donut when `innerRadius` is set. */
@@ -23,6 +24,10 @@ export const PieChart = ({
   data,
   ariaLabel,
   innerRadius,
+  outerRadius,
+  minAngle,
+  padAngle,
+  track,
   centerLabel,
   showLabels,
   legend,
@@ -36,13 +41,44 @@ export const PieChart = ({
   className,
   'data-testid': dataTestId,
 }: PieChartProps) => {
+  const builtTooltip = useMemo(
+    () => withTooltipRender(tooltip, data),
+    [tooltip, data]
+  );
+
   const getOption = useCallback(
     (theme: ChartTheme) =>
       buildPieOption(
-        { data, ariaLabel, innerRadius, showLabels, legend, tooltip, option },
+        {
+          data,
+          ariaLabel,
+          innerRadius,
+          outerRadius,
+          minAngle,
+          padAngle,
+          track,
+          clickable: Boolean(onSliceClick),
+          showLabels,
+          legend,
+          tooltip: builtTooltip,
+          option,
+        },
         theme
       ),
-    [data, ariaLabel, innerRadius, showLabels, legend, tooltip, option]
+    [
+      data,
+      ariaLabel,
+      innerRadius,
+      outerRadius,
+      minAngle,
+      padAngle,
+      track,
+      onSliceClick,
+      showLabels,
+      legend,
+      builtTooltip,
+      option,
+    ]
   );
 
   const onEvents = useMemo(
@@ -68,7 +104,7 @@ export const PieChart = ({
       emptyState={emptyState}
       height={height}
       isDark={isDark}
-      isEmpty={isPieEmpty(data)}
+      isEmpty={!track && isPieEmpty(data)}
       loading={loading}
       option={getOption}
       onEvents={onEvents}>

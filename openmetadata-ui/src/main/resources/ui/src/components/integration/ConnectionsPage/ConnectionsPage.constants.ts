@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import {
   ServiceEmptyStateConfig,
   SERVICE_EMPTY_STATE,
@@ -107,9 +107,6 @@ export const CATEGORY_TO_ENTITY_TYPE = Object.fromEntries(
 // The mode is derived from the response's own `total`, never guessed.
 export const SERVICES_ESTATE_LIMIT = 500;
 
-export const GRID_PAGE_SIZE_OPTIONS = [12, 24, 48];
-// Same steps as the grid so switching layout keeps the page you were on rather than resizing it.
-export const LIST_PAGE_SIZE_OPTIONS = [12, 24, 48];
 export const VIEW_MODE_PARAM = 'viewMode';
 export const CATEGORY_PARAM = 'category';
 // Health filter, set either by this page's own dropdown or by the landing Platform Health
@@ -161,7 +158,7 @@ export const ALL_SERVICES_SEARCH_INDEX = Object.values(
 // matches the "All Connections" entry in the tab rail (ConnectionsSecondaryNav's CATEGORY_ICONS
 // covers only the per-category tabs, not this one) rather than reusing a per-category icon.
 export const ALL_CONNECTIONS_EMPTY_STATE: ServiceEmptyStateConfig = {
-  icon: SearchLg,
+  icon: Search,
   titleKey: 'message.empty-all-connections-title',
   descriptionKey: 'message.empty-all-connections-description',
 };

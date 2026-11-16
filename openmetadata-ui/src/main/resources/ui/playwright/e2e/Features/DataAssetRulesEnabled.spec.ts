@@ -22,6 +22,7 @@ import { DashboardDataModelClass } from '../../support/entity/DashboardDataModel
 import { DatabaseClass } from '../../support/entity/DatabaseClass';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { DirectoryClass } from '../../support/entity/DirectoryClass';
+import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
 import { FileClass } from '../../support/entity/FileClass';
 import { MetricClass } from '../../support/entity/MetricClass';
 import { MlModelClass } from '../../support/entity/MlModelClass';
@@ -50,12 +51,14 @@ import {
   assignDataProduct,
   clickOutside,
   searchDataProductOptions,
+  toastNotification,
 } from '../../utils/common';
 import { DATA_ASSET_RULES } from '../../utils/dataAssetRules';
-import { setDomain } from '../../utils/domainPicker';
+import { getDomainNode, setDomain } from '../../utils/domainPicker';
 import {
   addOwner,
   assignGlossaryTerm,
+  updateDescription,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
 import { test } from '../fixtures/pages';
@@ -343,6 +346,14 @@ test.describe(
     const pickerDataProduct = new DataProduct([productDomain]);
     const sameDomainTable = new TableClass();
     const otherDomainTable = new TableClass();
+    // In assetDomain with a Data Product from assetDomain, so moving it to
+    // productDomain is rejected by the rule.
+    const rejectedDomainTable = new TableClass();
+    // Domain comes only from its schema; carries a Data Product of that domain.
+    // Owns its service so patching the schema's domain leaves shared fixtures alone.
+    const inheritedDomainTable = new TableClass({
+      service: new DatabaseServiceClass(),
+    });
 
     test.beforeAll('Setup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -374,11 +385,63 @@ test.describe(
           },
         ],
       });
+      await rejectedDomainTable.create(apiContext);
+      await rejectedDomainTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/domains',
+            value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+          },
+          {
+            op: 'add',
+            path: '/dataProducts',
+            value: [
+              {
+                id: sameDomainDataProduct.responseData.id,
+                type: 'dataProduct',
+              },
+            ],
+          },
+        ],
+      });
+      await inheritedDomainTable.create(apiContext);
+      await apiContext.patch(
+        `/api/v1/databaseSchemas/${inheritedDomainTable.schemaResponseData.id}`,
+        {
+          data: [
+            {
+              op: 'add',
+              path: '/domains',
+              value: [{ id: assetDomain.responseData.id, type: 'domain' }],
+            },
+          ],
+          headers: { 'Content-Type': 'application/json-patch+json' },
+        }
+      );
+      await inheritedDomainTable.patch({
+        apiContext,
+        patchData: [
+          {
+            op: 'add',
+            path: '/dataProducts',
+            value: [
+              {
+                id: sameDomainDataProduct.responseData.id,
+                type: 'dataProduct',
+              },
+            ],
+          },
+        ],
+      });
       await afterAction();
     });
 
     test.afterAll('Cleanup cross-domain data', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
+      await inheritedDomainTable.delete(apiContext);
+      await rejectedDomainTable.delete(apiContext);
       await otherDomainTable.delete(apiContext);
       await sameDomainTable.delete(apiContext);
       await pickerDataProduct.delete(apiContext);
@@ -425,6 +488,77 @@ test.describe(
         fullyQualifiedName: otherDomainFqn,
       });
       await expect(otherDomainOption).toBeHidden();
+    });
+
+    // The table's domain is inherited from its schema, so the rule must count
+    // it instead of treating the table as domain-less and rejecting every edit.
+    test('should allow updates to an asset with an inherited domain and a Data Product', async ({
+      page,
+    }) => {
+      await authenticateAdminPage(page);
+      await inheritedDomainTable.visitEntityPage(page);
+
+      const description = `edited with inherited domain ${Date.now()}`;
+      await updateDescription(
+        page,
+        description,
+        false,
+        undefined,
+        EntityTypeEndpoint.Table
+      );
+
+      await expect(
+        page.getByTestId('asset-description-container').getByText(description)
+      ).toBeVisible();
+      await expect(
+        page
+          .getByTestId('KnowledgePanel.DataProducts')
+          .getByTestId(
+            `data-product-${sameDomainDataProduct.responseData.fullyQualifiedName}`
+          )
+      ).toBeVisible();
+    });
+
+    // A rejected domain change must not leave the picker on the rejected
+    // domain: the header keeps the saved one, and so must the reopened picker.
+    test('should keep the saved domain selected after the rule rejects a domain change', async ({
+      page,
+    }) => {
+      await authenticateAdminPage(page);
+      await rejectedDomainTable.visitEntityPage(page);
+
+      const patchResponse = await setDomain(page, productDomain.responseData, {
+        verify: 'none',
+      });
+
+      expect(patchResponse?.status()).toBe(400);
+
+      await toastNotification(page, /Data Product Domain Validation/);
+      await expect(
+        page.getByTestId(
+          `domain-tag-${assetDomain.responseData.fullyQualifiedName}`
+        )
+      ).toBeVisible();
+
+      await page.getByTestId('add-domain').click();
+      const searchBox = page.getByTestId('domain-selectable-tree-search');
+      await expect(searchBox).toBeVisible();
+
+      // Searched one at a time: the unsearched root listing is capped, so a
+      // busy CI catalog may not have either test domain on it.
+      for (const [target, selected] of [
+        [assetDomain, 'true'],
+        [productDomain, 'false'],
+      ] as const) {
+        const node = getDomainNode(page, target.responseData);
+        await expect(async () => {
+          await searchBox.fill('');
+          await searchBox.fill(target.responseData.name);
+          await expect(node).toBeVisible({ timeout: 5_000 });
+        }).toPass({ timeout: 90_000 });
+
+        await expect(node).toHaveAttribute('data-selected', selected);
+      }
     });
 
     // With the rule enabled, the "Add Assets" picker on a Data Product stays

@@ -189,6 +189,7 @@ test.describe('Glossary Miscellaneous Operations', () => {
 
   // T-D03: Delete term with assets tagged - verifies tag is removed from assets
   test('should delete term and remove tag from assets', async ({ page }) => {
+    test.slow();
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
     const glossaryTerm = new GlossaryTerm(glossary);

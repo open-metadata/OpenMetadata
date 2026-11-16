@@ -141,6 +141,115 @@ public interface JobDAO {
   int countInFlightMemoryJobs(
       @Bind("jobKey") String jobKey, @Bind("includeRunning") boolean includeRunning);
 
+  default int countInFlightMemoryGlossaryJobs(String memoryId) {
+    return countInFlightMemoryGlossaryJobs(memoryId, true);
+  }
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs "
+              + "WHERE jobType = 'MEMORY_GLOSSARY_DERIVATION' "
+              + "AND (status = 'PENDING' OR (:includeRunning = true AND status = 'RUNNING')) "
+              + "AND JSON_SEARCH(jobArgs, 'one', :memoryId, NULL, '$.memoryIds[*]') IS NOT NULL",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT COUNT(*) FROM background_jobs "
+              + "WHERE jobType = 'MEMORY_GLOSSARY_DERIVATION' "
+              + "AND (status = 'PENDING' OR (:includeRunning = true AND status = 'RUNNING')) "
+              + "AND EXISTS (SELECT 1 FROM jsonb_array_elements_text(jobArgs->'memoryIds') "
+              + "AS source(memoryId) WHERE source.memoryId = :memoryId)",
+      connectionType = POSTGRES)
+  int countInFlightMemoryGlossaryJobs(
+      @Bind("memoryId") String memoryId, @Bind("includeRunning") boolean includeRunning);
+
+  String MEMORY_GLOSSARY_DERIVATION_HANDLER = "MemoryGlossaryDerivationJobHandler";
+  String MEMORY_GLOSSARY_DERIVATION_JOB_TYPE = "MEMORY_GLOSSARY_DERIVATION";
+  int MEMORY_GLOSSARY_BATCH_LIMIT = 20;
+  // A batch only grows while its start is still this far away, so no worker can have read it yet.
+  long MEMORY_GLOSSARY_BATCH_APPEND_MARGIN_MS = 5_000L;
+
+  // A pending job reloads the latest memory, but a running job may already hold stale content.
+  // Deduplicate pending jobs only, so an edit retains one follow-up if its old result is discarded.
+  @Transaction
+  default Optional<Long> enqueueMemoryGlossaryDerivationJob(
+      List<String> memoryIds, String jobArgs, String createdBy) {
+    for (String memoryId : memoryIds.stream().distinct().sorted().toList()) {
+      if (lockMemoryForGlossaryQueue(memoryId) == null
+          || countInFlightMemoryGlossaryJobs(memoryId, false) > 0) {
+        return Optional.empty();
+      }
+    }
+    return Optional.of(
+        insertJobInternal(
+            MEMORY_GLOSSARY_DERIVATION_JOB_TYPE,
+            MEMORY_GLOSSARY_DERIVATION_HANDLER,
+            jobArgs,
+            createdBy,
+            null));
+  }
+
+  // Coalesces memories extracted from one source into a single delayed job, so a document that
+  // yields many memories costs one derivation instead of one per memory.
+  @Transaction
+  default Optional<Long> enqueueMemoryGlossaryDerivationBatch(
+      String memoryId, String batchKey, String jobArgs, String createdBy, long runAt) {
+    if (lockMemoryForGlossaryQueue(memoryId) == null
+        || countInFlightMemoryGlossaryJobs(memoryId, false) > 0) {
+      return Optional.empty();
+    }
+    Long pendingId =
+        lockOpenMemoryGlossaryBatch(
+            batchKey, MEMORY_GLOSSARY_BATCH_LIMIT, MEMORY_GLOSSARY_BATCH_APPEND_MARGIN_MS);
+    if (pendingId != null && appendToMemoryGlossaryBatch(pendingId, memoryId) > 0) {
+      return Optional.of(pendingId);
+    }
+    return Optional.of(
+        insertJobInternal(
+            MEMORY_GLOSSARY_DERIVATION_JOB_TYPE,
+            MEMORY_GLOSSARY_DERIVATION_HANDLER,
+            jobArgs,
+            createdBy,
+            runAt));
+  }
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'MEMORY_GLOSSARY_DERIVATION' "
+              + "AND status = 'PENDING' "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.batchKey')) = :batchKey "
+              + "AND JSON_LENGTH(jobArgs, '$.memoryIds') < :limit "
+              + "AND runAt > (UNIX_TIMESTAMP(NOW(3)) * 1000) + :marginMs "
+              + "ORDER BY id DESC LIMIT 1 FOR UPDATE",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'MEMORY_GLOSSARY_DERIVATION' "
+              + "AND status = 'PENDING' "
+              + "AND jobArgs->>'batchKey' = :batchKey "
+              + "AND jsonb_array_length(jobArgs->'memoryIds') < :limit "
+              + "AND runAt > (EXTRACT(EPOCH FROM NOW()) * 1000) + :marginMs "
+              + "ORDER BY id DESC LIMIT 1 FOR UPDATE",
+      connectionType = POSTGRES)
+  Long lockOpenMemoryGlossaryBatch(
+      @Bind("batchKey") String batchKey, @Bind("limit") int limit, @Bind("marginMs") long marginMs);
+
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET jobArgs = JSON_ARRAY_APPEND(jobArgs, '$.memoryIds', :memoryId), "
+              + "updatedAt = (UNIX_TIMESTAMP(NOW(3)) * 1000) WHERE id = :id AND status = 'PENDING'",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlUpdate(
+      value =
+          "UPDATE background_jobs SET jobArgs = jsonb_set(jobArgs, '{memoryIds}', "
+              + "(jobArgs->'memoryIds') || to_jsonb(CAST(:memoryId AS text))), "
+              + "updatedAt = (EXTRACT(EPOCH FROM NOW()) * 1000) WHERE id = :id AND status = 'PENDING'",
+      connectionType = POSTGRES)
+  int appendToMemoryGlossaryBatch(@Bind("id") long id, @Bind("memoryId") String memoryId);
+
+  @SqlQuery("SELECT id FROM context_memory WHERE id = :memoryId FOR UPDATE")
+  String lockMemoryForGlossaryQueue(@Bind("memoryId") String memoryId);
+
   @ConnectionAwareSqlUpdate(
       value =
           "UPDATE background_jobs SET runAt = :runAt, updatedAt = GREATEST(updatedAt + 1, :updatedAt) "
@@ -205,7 +314,8 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
-              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
+              + " AND (:includeMemoryJobs = true OR jobType NOT IN "
+              + "('CONTEXT_MEMORY_EXTRACTION', 'MEMORY_GLOSSARY_DERIVATION'))"
               + " AND COALESCE(runAt, 0) <= UNIX_TIMESTAMP(NOW(3)) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = MYSQL)
@@ -214,7 +324,8 @@ public interface JobDAO {
           "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
               + "progress, total, result, error, message, cancelRequested, completedAt FROM background_jobs"
               + " WHERE status = 'PENDING'"
-              + " AND (:includeMemoryJobs = true OR jobType <> 'CONTEXT_MEMORY_EXTRACTION')"
+              + " AND (:includeMemoryJobs = true OR jobType NOT IN "
+              + "('CONTEXT_MEMORY_EXTRACTION', 'MEMORY_GLOSSARY_DERIVATION'))"
               + " AND COALESCE(runAt, 0) <= EXTRACT(EPOCH FROM NOW()) * 1000"
               + " ORDER BY createdAt LIMIT 1",
       connectionType = POSTGRES)
@@ -285,14 +396,33 @@ public interface JobDAO {
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob findCsvJobById(@Bind("id") long id);
 
-  @SqlQuery(
-      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
-          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
-          + "FROM background_jobs WHERE createdBy = :createdBy "
-          + "AND jobType = 'ONTOLOGY_BULK' ORDER BY createdAt DESC LIMIT :limit")
+  // The optional glossaryId predicate lets the Ontology bulk jobs panel fetch
+  // only the selected glossary's jobs server-side, so jobs beyond the limit for
+  // other glossaries cannot push this glossary's active jobs out of the page.
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+              + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+              + "FROM background_jobs WHERE createdBy = :createdBy "
+              + "AND jobType = 'ONTOLOGY_BULK' "
+              + "AND (:glossaryId IS NULL "
+              + "OR JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.request.glossaryId')) = :glossaryId) "
+              + "ORDER BY createdAt DESC LIMIT :limit",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+              + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+              + "FROM background_jobs WHERE createdBy = :createdBy "
+              + "AND jobType = 'ONTOLOGY_BULK' "
+              + "AND (:glossaryId IS NULL OR jobArgs->'request'->>'glossaryId' = :glossaryId) "
+              + "ORDER BY createdAt DESC LIMIT :limit",
+      connectionType = POSTGRES)
   @RegisterRowMapper(BackgroundJobMapper.class)
   List<BackgroundJob> listOntologyBulkJobsByUser(
-      @Bind("createdBy") String createdBy, @Bind("limit") int limit);
+      @Bind("createdBy") String createdBy,
+      @Bind("glossaryId") String glossaryId,
+      @Bind("limit") int limit);
 
   @SqlQuery(
       "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
@@ -300,6 +430,63 @@ public interface JobDAO {
           + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_BULK'")
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob findOntologyBulkJobById(@Bind("id") long id);
+
+  @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_PACK_INSTALL'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findOntologyPackInstallJobById(@Bind("id") long id);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'ONTOLOGY_PACK_INSTALL' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.ontologyId')) = :ontologyId "
+              + "ORDER BY id LIMIT 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'ONTOLOGY_PACK_INSTALL' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND jobArgs->>'ontologyId' = :ontologyId ORDER BY id LIMIT 1",
+      connectionType = POSTGRES)
+  Long findActiveOntologyPackInstallJobId(@Bind("ontologyId") String ontologyId);
+
+  /** The job that was already active for the ontology, or the id of the one this call inserted. */
+  record OntologyPackInstallEnqueue(long jobId, boolean inserted) {}
+
+  // Two starts for one ontology both read "no active job" and both insert unless they queue on a
+  // row they share. The ontology row is that row, and the lock releases when the transaction ends.
+  @Transaction
+  default OntologyPackInstallEnqueue enqueueOntologyPackInstall(
+      String ontologyId, String methodName, String jobArgs, String createdBy, String message) {
+    if (lockOntologyForPackInstall(ontologyId) == null) {
+      return null;
+    }
+    final Long active = findActiveOntologyPackInstallJobId(ontologyId);
+    if (active != null) {
+      return new OntologyPackInstallEnqueue(active, false);
+    }
+    return new OntologyPackInstallEnqueue(
+        insertTrackedJobInternal(
+            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+            methodName,
+            jobArgs,
+            createdBy,
+            null,
+            0,
+            0,
+            message),
+        true);
+  }
+
+  @SqlQuery("SELECT id FROM ontology_entity WHERE id = :ontologyId FOR UPDATE")
+  String lockOntologyForPackInstall(@Bind("ontologyId") String ontologyId);
+
+  @SqlUpdate("UPDATE background_jobs SET result = :result, updatedAt = :updatedAt WHERE id = :id")
+  void updateJobResult(
+      @Bind("id") long id, @Bind("result") String result, @Bind("updatedAt") long updatedAt);
 
   @SqlQuery(
       "SELECT result FROM background_jobs WHERE id = :id "
@@ -376,7 +563,8 @@ public interface JobDAO {
   @SqlUpdate(
       "UPDATE background_jobs SET status = 'FAILED', error = 'Job stopped responding and was marked failed.', "
           + "message = 'Job stopped responding and was marked failed.', updatedAt = :updatedAt, completedAt = :updatedAt "
-          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK') "
+          + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK', "
+          + "'ONTOLOGY_PACK_INSTALL', 'MEMORY_GLOSSARY_DERIVATION') "
           + "AND status = 'RUNNING' AND updatedAt < :staleBefore")
   int markStaleRunningJobsFailed(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);

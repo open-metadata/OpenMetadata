@@ -37,6 +37,7 @@ import org.openmetadata.service.resources.kpi.KpiResource;
 public class KpiResourceIT extends BaseEntityIT<Kpi, CreateKpiRequest> {
 
   public KpiResourceIT() {
+    supportsEntityStatus = false;
     supportsPatch = false;
     supportsFollowers = false;
     supportsTags = false;

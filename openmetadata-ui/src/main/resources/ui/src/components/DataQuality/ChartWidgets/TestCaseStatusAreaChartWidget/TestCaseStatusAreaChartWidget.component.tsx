@@ -15,27 +15,28 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Alert, Check } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, last, toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as SuccessIcon } from '../../../../assets/svg/ic-check.svg';
-import { ReactComponent as FailedIcon } from '../../../../assets/svg/ic-warning-2.svg';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
 import { TestCaseStatusAreaChartWidgetProps } from '../../DataQuality.interface';
 import '../chart-widgets.less';
-import { EMPTY_CHART_DATA } from '../ChartWidgets.constants';
+import {
+  EMPTY_CHART_DATA,
+  TEST_CASE_STATUS_CHART_STATUS,
+} from '../ChartWidgets.constants';
 import './test-case-status-area-chart-widget.less';
 
 const TestCaseStatusAreaChartWidget = ({
   testCaseStatus,
   name,
   title,
-  chartColorScheme,
   chartFilter,
   height,
   redirectPath,
@@ -73,10 +74,10 @@ const TestCaseStatusAreaChartWidget = ({
 
   const bodyElement = useMemo(() => {
     const latestValue = last(chartData)?.count ?? 0;
-    let Icon = SuccessIcon;
+    let Icon = Check;
 
     if (testCaseStatus === TestCaseStatus.Failed) {
-      Icon = FailedIcon;
+      Icon = Alert;
     }
 
     const showEmptyFooter =
@@ -117,17 +118,18 @@ const TestCaseStatusAreaChartWidget = ({
         </div>
 
         {showEmptyFooter ? (
-          <Tooltip title={t('label.no-data')}>
+          <Tooltip title={t('label.no-data')} triggerClassName="tw:w-full">
             <div className="test-case-status-widget-footer">
               {footerWhenEmpty}
             </div>
           </Tooltip>
         ) : (
           <CustomAreaChart
-            colorScheme={chartColorScheme}
+            ariaLabel={title}
             data={chartData}
             height={height}
             name={name}
+            status={TEST_CASE_STATUS_CHART_STATUS[testCaseStatus]}
           />
         )}
       </>
@@ -136,7 +138,6 @@ const TestCaseStatusAreaChartWidget = ({
     title,
     chartData,
     name,
-    chartColorScheme,
     height,
     footerWhenEmpty,
     isChartLoading,

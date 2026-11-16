@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Check } from '@untitledui/icons';
+import { Check } from '../../../../icons';
 import { normalizeHexColor } from '@/colors/colorValidation';
 import {
   ENTITY_PALETTE_HEX,

@@ -103,11 +103,6 @@
   font-size: var(--om-font-size-13);
 }
 
-.task-form-settings-sidebar-action {
-  border-radius: var(--om-radius-14);
-  height: 44px;
-}
-
 .task-form-settings-main {
   display: grid;
   gap: var(--om-space-24);
@@ -141,12 +136,12 @@
   text-transform: uppercase;
 }
 
-.task-form-settings-hero__title.ant-typography {
+.task-form-settings-hero__title {
   color: var(--om-legacy-color-102a72);
   margin-bottom: 0;
 }
 
-.task-form-settings-hero__description.ant-typography {
+.task-form-settings-hero__description {
   color: var(--om-legacy-color-52607a);
   font-size: var(--om-font-size-md);
   margin-bottom: 0;
@@ -193,7 +188,7 @@
 }
 
 .task-form-settings-form-grid__span-2 {
-  grid-column: 1 / -1;
+  grid-column: ~'1 / -1'; // escaped: LESS would evaluate 1 / -1 as -1
 }
 
 .task-form-settings-workspace {
@@ -293,12 +288,6 @@
 .task-form-builder-section__preview {
   position: sticky;
   top: 24px;
-}
-
-.task-form-builder-section__preview .ant-card {
-  border: 1px dashed var(--om-legacy-color-c9d7ff);
-  border-radius: var(--om-radius-18);
-  box-shadow: none;
 }
 
 @media (max-width: 1440px) {

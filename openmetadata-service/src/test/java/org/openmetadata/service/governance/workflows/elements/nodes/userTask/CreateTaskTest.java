@@ -21,6 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -32,24 +36,91 @@ import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.flowable.task.service.delegate.DelegateTask;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
 class CreateTaskTest {
+
+  @Test
+  void approvalThresholdKeepsTheNodeValueWithoutTheAllAssigneesMode() {
+    assertEquals(1, CreateTask.resolveApprovalThreshold(null, 1, users(3)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, users(3)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("anyAssignee", 1, users(3)));
+  }
+
+  @Test
+  void allAssigneesModeRaisesTheThresholdToTheEntryCount() {
+    assertEquals(3, CreateTask.resolveApprovalThreshold("allAssignees", 1, users(3)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, List.of(team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, List.of(team())));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, null));
+  }
+
+  @Test
+  void approvalThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.resolveApprovalThreshold(null, 2, users(1)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 3, users(2)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of()));
+  }
+
+  @Test
+  void rejectionThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, users(1)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, users(2)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of()));
+    assertEquals(1, CreateTask.reviewPolicy(2, 2, true, users(1)).getRejectionThreshold());
+  }
+
+  @Test
+  void changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote() {
+    ReviewPolicy oneReviewerLeft = CreateTask.reviewPolicy(2, 1, true, users(1));
+    assertEquals(1, oneReviewerLeft.getApprovalThreshold());
+    assertEquals(1, oneReviewerLeft.getRejectionThreshold());
+    assertTrue(oneReviewerLeft.getPartialDecisions());
+
+    assertEquals(2, CreateTask.reviewPolicy(2, 1, true, users(3)).getApprovalThreshold());
+    assertEquals(
+        2,
+        CreateTask.reviewPolicy(2, 1, false, List.of(users(1).get(0), team()))
+            .getApprovalThreshold());
+  }
+
+  private static List<EntityReference> users(int count) {
+    return java.util.stream.IntStream.range(0, count)
+        .mapToObj(
+            index ->
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType("user")
+                    .withName("reviewer" + index))
+        .toList();
+  }
+
+  private static EntityReference team() {
+    return new EntityReference().withId(UUID.randomUUID()).withType("team").withName("reviewers");
+  }
 
   @Test
   void testResolveExistingTaskAssigneesDefersToCurrentDatabaseAssignmentsDuringPendingStart() {
@@ -781,13 +852,15 @@ class CreateTaskTest {
             .withWorkflowInstanceId(UUID.randomUUID());
 
     assertTrue(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
   void testIsNotSupersedableWhenNoPriorTaskExists() {
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(null, UUID.randomUUID(), UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            null, UUID.randomUUID(), UUID.randomUUID(), null));
   }
 
   @Test
@@ -797,7 +870,8 @@ class CreateTaskTest {
         new Task().withId(UUID.randomUUID()).withWorkflowDefinitionId(workflowDefinitionId);
 
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
@@ -812,7 +886,7 @@ class CreateTaskTest {
 
     assertFalse(
         CreateTask.isSupersedablePriorApprovalTask(
-            prior, workflowDefinitionId, workflowInstanceId));
+            prior, workflowDefinitionId, workflowInstanceId, null));
   }
 
   @Test
@@ -824,7 +898,8 @@ class CreateTaskTest {
             .withWorkflowInstanceId(UUID.randomUUID());
 
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(prior, UUID.randomUUID(), UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, UUID.randomUUID(), UUID.randomUUID(), null));
   }
 
   @Test
@@ -835,7 +910,7 @@ class CreateTaskTest {
             .withWorkflowDefinitionId(UUID.randomUUID())
             .withWorkflowInstanceId(UUID.randomUUID());
 
-    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, null, UUID.randomUUID()));
+    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, null, UUID.randomUUID(), null));
   }
 
   @Test
@@ -847,7 +922,8 @@ class CreateTaskTest {
             .withWorkflowDefinitionId(workflowDefinitionId)
             .withWorkflowInstanceId(UUID.randomUUID());
 
-    assertFalse(CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, null));
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, null, null));
   }
 
   @Test
@@ -870,7 +946,7 @@ class CreateTaskTest {
 
       assertTrue(
           CreateTask.isSupersedablePriorApprovalTask(
-              prior, workflowDefinitionId, UUID.randomUUID()));
+              prior, workflowDefinitionId, UUID.randomUUID(), null));
     }
   }
 
@@ -890,7 +966,8 @@ class CreateTaskTest {
           .thenReturn(workflowInstanceRepository);
 
       assertFalse(
-          CreateTask.isSupersedablePriorApprovalTask(prior, UUID.randomUUID(), UUID.randomUUID()));
+          CreateTask.isSupersedablePriorApprovalTask(
+              prior, UUID.randomUUID(), UUID.randomUUID(), null));
     }
   }
 
@@ -905,7 +982,8 @@ class CreateTaskTest {
             .withStatus(TaskEntityStatus.Cancelled);
 
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   @Test
@@ -919,7 +997,198 @@ class CreateTaskTest {
             .withStatus(TaskEntityStatus.Approved);
 
     assertTrue(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
+  }
+
+  @Test
+  void testIsNotSupersedableWhenRequesterDiffers() {
+    // Per-requester scoping (pending-change workflows): a prior task by a different requester must
+    // survive so each requester keeps their own approval task - the fix for cross-user supersede.
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task priorByAdmin =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withUpdatedBy("admin");
+
+    assertFalse(
+        CreateTask.isSupersedablePriorApprovalTask(
+            priorByAdmin, workflowDefinitionId, UUID.randomUUID(), "karan"));
+  }
+
+  @Test
+  void testIsSupersedableWhenRequesterMatches() {
+    // A new edit by the same requester supersedes that requester's own prior task.
+    UUID workflowDefinitionId = UUID.randomUUID();
+    Task priorByKaran =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withWorkflowDefinitionId(workflowDefinitionId)
+            .withWorkflowInstanceId(UUID.randomUUID())
+            .withUpdatedBy("karan");
+
+    assertTrue(
+        CreateTask.isSupersedablePriorApprovalTask(
+            priorByKaran, workflowDefinitionId, UUID.randomUUID(), "karan"));
+  }
+
+  // ---- reviewsStaleRevision ----
+
+  @Test
+  void testRunOfAReplacedRevisionReviewsAStaleRevision() {
+    // Revision 2's run created its task first; revision 1's run finishes last and must not
+    // supersede it.
+    DelegateTask delegateTask = changeRequestRun();
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(false);
+
+      assertTrue(CreateTask.reviewsStaleRevision(delegateTask));
+    }
+  }
+
+  @Test
+  void testRunOfTheActiveRevisionIsNotStale() {
+    DelegateTask delegateTask = changeRequestRun();
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(true);
+
+      assertFalse(CreateTask.reviewsStaleRevision(delegateTask));
+    }
+  }
+
+  @Test
+  void testRunOfAReplacedRevisionLeavesTheLiveReviewAlone() {
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(false);
+
+      supersedeFor(changeRequestRun(), taskRepository);
+    }
+
+    verify(taskRepository, never()).listNonTerminalTasksByEntityAndCategory(any(), any());
+  }
+
+  @Test
+  void testRunOfTheActiveRevisionSupersedesTheRequestersPriorReview() {
+    TaskRepository taskRepository = Mockito.mock(TaskRepository.class);
+    try (MockedStatic<ChangeRequestService> requests = mockStatic(ChangeRequestService.class)) {
+      requests.when(() -> ChangeRequestService.isActiveRevision(any(), eq(1))).thenReturn(true);
+
+      supersedeFor(changeRequestRun(), taskRepository);
+    }
+
+    verify(taskRepository)
+        .listNonTerminalTasksByEntityAndCategory("glossary", TaskCategory.Approval);
+  }
+
+  private static void supersedeFor(DelegateTask delegateTask, TaskRepository taskRepository) {
+    new CreateTask()
+        .supersedePriorApprovalTask(
+            delegateTask,
+            taskRepository,
+            new Glossary().withFullyQualifiedName("glossary"),
+            TaskCategory.Approval,
+            UUID.randomUUID(),
+            UUID.randomUUID(),
+            "karan");
+  }
+
+  @Test
+  void testRunWithoutAChangeRequestIsNeverStale() {
+    assertFalse(CreateTask.reviewsStaleRevision(Mockito.mock(DelegateTask.class)));
+  }
+
+  // ---- resolveRequester ----
+
+  @Test
+  void testResolveRequesterUsesGlobalEditorForChangeRequestRun() {
+    DelegateTask delegateTask = changeRequestRun();
+    when(delegateTask.getVariable("global_updatedBy")).thenReturn("karan");
+    // The gate leaves the held edit unpublished, so the persisted entity carries the previous
+    // editor.
+    Glossary entity = new Glossary().withUpdatedBy("admin");
+
+    String requester = new CreateTask().resolveRequester(delegateTask, entity, null);
+
+    assertEquals(
+        "karan",
+        requester,
+        "A change request's task must key to the editor who caused this run, not the entity");
+  }
+
+  @Test
+  void testResolveRequesterFallsBackToEntityForOtherRuns() {
+    DelegateTask delegateTask = Mockito.mock(DelegateTask.class);
+    Glossary entity = new Glossary().withUpdatedBy("admin");
+
+    String requester = new CreateTask().resolveRequester(delegateTask, entity, null);
+
+    assertEquals("admin", requester, "Other tasks keep the entity-derived requester");
+  }
+
+  @Test
+  void testResolveRequesterFallsBackWhenGlobalEditorBlank() {
+    DelegateTask delegateTask = changeRequestRun();
+    when(delegateTask.getVariable("global_updatedBy")).thenReturn(null);
+    Glossary entity = new Glossary().withUpdatedBy("admin");
+
+    String requester = new CreateTask().resolveRequester(delegateTask, entity, null);
+
+    assertEquals(
+        "admin", requester, "A missing global editor must fall back, never null the requester");
+  }
+
+  // A run that reviews a change request carries the request in its global variables.
+  private static DelegateTask changeRequestRun() {
+    DelegateTask delegateTask = Mockito.mock(DelegateTask.class);
+    when(delegateTask.getVariable("global_changeRequestId"))
+        .thenReturn(UUID.randomUUID().toString());
+    when(delegateTask.getVariable("global_changeRequestRevision")).thenReturn(1);
+    when(delegateTask.getVariable("global_changeRequestWorkflow")).thenReturn("HookWorkflow");
+    return delegateTask;
+  }
+
+  // ---- resolveUserReferenceOrDefault (createdBy alignment) ----
+
+  @Test
+  void testResolveUserReferenceOrDefaultResolvesRequesterByName() {
+    EntityReference fallback =
+        new EntityReference().withType("user").withName("admin").withFullyQualifiedName("admin");
+    EntityReference karan =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("user")
+            .withName("karan")
+            .withFullyQualifiedName("karan");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "karan", Include.NON_DELETED))
+          .thenReturn(karan);
+
+      EntityReference ref = new CreateTask().resolveUserReferenceOrDefault("karan", fallback);
+
+      assertEquals(
+          "karan", ref.getName(), "createdBy must resolve to the requester, not the fallback");
+    }
+  }
+
+  @Test
+  void testResolveUserReferenceOrDefaultFallsBackWhenLookupFails() {
+    EntityReference fallback =
+        new EntityReference().withType("user").withName("admin").withFullyQualifiedName("admin");
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "ghost", Include.NON_DELETED))
+          .thenThrow(new RuntimeException("not found"));
+
+      EntityReference ref = new CreateTask().resolveUserReferenceOrDefault("ghost", fallback);
+
+      assertEquals("admin", ref.getName(), "An unresolvable user must keep the fallback creator");
+    }
   }
 
   @Test
@@ -934,7 +1203,8 @@ class CreateTaskTest {
             .withResolution(new TaskResolution().withType(TaskResolutionType.Approved));
 
     assertFalse(
-        CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
+        CreateTask.isSupersedablePriorApprovalTask(
+            prior, workflowDefinitionId, UUID.randomUUID(), null));
   }
 
   // ---- mergeManualGrantReason ----

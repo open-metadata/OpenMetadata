@@ -30,11 +30,14 @@ import {
   NotificationTemplate,
   ProviderType,
 } from '../../../../../../generated/entity/events/notificationTemplate';
+import { AlertType as CapabilitiesAlertType } from '../../../../../../generated/events/api/alertCapabilitiesRequest';
 import { Effect } from '../../../../../../generated/events/api/createEventSubscription';
 import { EventFilterRule } from '../../../../../../generated/events/eventFilterRule';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
-import { FilterResourceDescriptor } from '../../../../../../generated/events/filterResourceDescriptor';
-import { getResourceFunctions } from '../../../../../../rest/alertsAPI';
+import {
+  AlertSelectionProvider,
+  useAlertSelection,
+} from '../../../../../../hooks/useAlertSelection';
 import { getAllNotificationTemplates } from '../../../../../../rest/notificationtemplateAPI';
 import alertsClassBase from '../../../../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -48,7 +51,6 @@ import NotificationSourceSelect from './NotificationSourceSelect';
 
 interface AlertConfigLoadingState {
   templates: boolean;
-  functions: boolean;
 }
 
 // ─── Inline read-only trigger display ────────────────────────────────────────
@@ -63,7 +65,7 @@ function ReadOnlyTriggerDisplay({
   const { t } = useTranslation();
 
   return (
-    <Card className="tw:w-full" size="md">
+    <Card className="tw:w-full" size="md" variant="muted">
       <Card.Content>
         <Box direction="col" gap={3}>
           <Box direction="col" gap={1}>
@@ -170,47 +172,10 @@ function NotificationAlertConfigView({
   );
   const [loadingState, setLoadingState] = useState<AlertConfigLoadingState>({
     templates: false,
-    functions: false,
   });
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
-  const [filterResources, setFilterResources] = useState<
-    FilterResourceDescriptor[]
-  >([]);
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
-
-  const {
-    supportedFilters,
-    supportedTriggers,
-    containerEntities,
-    supportedEventTypes,
-  } = useMemo(() => {
-    const resource = filterResources.find(
-      (resource) => resource.name === alertDetails.filteringRules?.resources[0]
-    );
-
-    return {
-      supportedFilters: resource?.supportedFilters,
-      supportedTriggers: resource?.supportedActions,
-      containerEntities: resource?.containerEntities,
-      supportedEventTypes: resource?.supportedEventTypes,
-    };
-  }, [filterResources, alertDetails]);
-
-  const fetchFunctions = useCallback(async () => {
-    try {
-      setLoadingState((prev) => ({ ...prev, functions: true }));
-      const response = await getResourceFunctions();
-      setFilterResources(response.data);
-    } catch {
-      showErrorToast(
-        t('server.entity-fetch-error', { entity: t('label.config') })
-      );
-    } finally {
-      setLoadingState((prev) => ({ ...prev, functions: false }));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   const TemplateSection = useMemo(
     () => alertsClassBase.getAlertAiTemplateSection(),
@@ -252,20 +217,8 @@ function NotificationAlertConfigView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [TemplateSection]);
 
-  useEffect(() => {
-    fetchFunctions();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const isLoading = useMemo(
-    () => Object.values(loadingState).some(Boolean),
-    [loadingState]
-  );
-
-  if (isLoading) {
-    return <Loader />;
-  }
-
+  // The filters, triggers and destinations show what the server says every source of the alert
+  // supports, as in every alert view, so the view waits for its first answer.
   const {
     alertResources,
     alertFilters,
@@ -273,15 +226,35 @@ function NotificationAlertConfigView({
     destinations,
     alertTimeout,
     alertReadTimeout,
-  } = extractAlertViewData(alertDetails, modifiedAlertData);
+  } = useMemo(
+    () => extractAlertViewData(alertDetails, modifiedAlertData),
+    [alertDetails, modifiedAlertData]
+  );
+  const selection = useAlertSelection({
+    alertType: CapabilitiesAlertType.Notification,
+    sources: alertResources,
+  });
+  const {
+    supportedFilters,
+    supportedTriggers,
+    containerEntities,
+    supportedEventTypes,
+  } = selection.support;
+
+  const isLoading = useMemo(
+    () => Object.values(loadingState).some(Boolean) || !selection.ready,
+    [loadingState, selection.ready]
+  );
+
+  if (isLoading) {
+    return <Loader />;
+  }
 
   return (
     <Box className="tw:w-[60%]" direction="col" gap={4}>
       <NotificationSourceSelect
-        isViewMode
-        filterResources={filterResources}
+        capabilities={selection.capabilities}
         value={alertResources}
-        onChange={() => {}}
       />
 
       {!isEmpty(alertFilters) && (
@@ -311,17 +284,19 @@ function NotificationAlertConfigView({
 
       <Box className="tw:border-t tw:border-secondary" />
 
-      <NotificationDestinationBridge
-        isViewMode
-        renderValidationField={() => null}
-        values={{
-          destinations,
-          readTimeout: alertReadTimeout,
-          resources: alertResources,
-          timeout: alertTimeout,
-        }}
-        onChange={() => {}}
-      />
+      <AlertSelectionProvider value={selection}>
+        <NotificationDestinationBridge
+          isViewMode
+          renderValidationField={() => null}
+          values={{
+            destinations,
+            readTimeout: alertReadTimeout,
+            resources: alertResources,
+            timeout: alertTimeout,
+          }}
+          onChange={() => {}}
+        />
+      </AlertSelectionProvider>
 
       {TemplateSection && (
         <>

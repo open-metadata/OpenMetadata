@@ -12,6 +12,7 @@
  */
 import { expect, Locator, Page } from '@playwright/test';
 import { getEncodedFqn } from './entity';
+import { waitForAggregation } from './searchAggregation';
 
 type EntityFields = {
   id: string;
@@ -183,7 +184,9 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
+  await expect(
+    comboboxInput.or(triggerButton).filter({ visible: true })
+  ).not.toHaveCount(0);
 
   if (isSearchable) {
     if ((await triggerButton.count()) === 0) {
@@ -274,7 +277,7 @@ export const selectOption = async (
 };
 
 export const selectRange = async (
-  page: Page,
+  _page: Page,
   ruleLocator: Locator,
   startDate: string,
   endDate: string
@@ -356,16 +359,14 @@ export const fillRule = async (
       await expect
         .poll(
           async () => {
+            const aggregation = waitForAggregation(
+              page,
+              { value: searchData },
+              { timeout: 5_000 }
+            ).catch(() => null);
             await dropdownInput.fill('');
             await dropdownInput.fill(searchData);
-
-            await page
-              .waitForResponse(
-                (response) =>
-                  response.url().includes('/api/v1/search/aggregate'),
-                { timeout: 5_000 }
-              )
-              .catch(() => null);
+            await aggregation;
 
             return countMatchingOptions();
           },
@@ -432,6 +433,21 @@ export const fillRule = async (
     }
   }
 };
+
+// A column entry carries its table's tags in `policyTags`, an access-control
+// field the advanced search never queries (ADR:2026-10-08-column-entries-carry-only-their-own-tags).
+// Another test tagging that table would otherwise leak into substring checks.
+const stringifySearchableHits = (hits: { _source?: object }[]) =>
+  JSON.stringify(
+    hits.map(({ _source, ...hit }) => {
+      const { policyTags: _policyTags, ...source } = (_source ?? {}) as Record<
+        string,
+        unknown
+      >;
+
+      return { ...hit, _source: source };
+    })
+  );
 
 // Tag-like fields (tags, tier, certification, glossary) now apply the
 // original-cased value while other fields still apply the lowercased
@@ -530,7 +546,9 @@ export const checkMustNotPaths = async (
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
 
-    expect(JSON.stringify(json.hits.hits)).not.toContain(searchCriteria);
+    expect(stringifySearchableHits(json.hits.hits)).not.toContain(
+      searchCriteria
+    );
   }
 
   // The summary renders the rule's stored value. Tag-like fields keep the
@@ -740,11 +758,12 @@ export const checkAddRuleOrGroupWithOperator = async (
     const json = await res.json();
     const hits = json.hits.hits;
 
+    const hitsString = stringifySearchableHits(hits);
+
     if (operator === 'AND') {
-      expect(JSON.stringify(hits)).toContain(searchCriteria1);
-      expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
+      expect(hitsString).toContain(searchCriteria1);
+      expect(hitsString).not.toContain(searchCriteria2);
     } else {
-      const hitsString = JSON.stringify(hits);
       const containsCriteria1 = hitsString.includes(searchCriteria1);
       const containsCriteria2 = hitsString.includes(searchCriteria2);
 

@@ -11,12 +11,11 @@
  *  limitations under the License.
  */
 
-import Icon from '@ant-design/icons';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import CodeMirror from '@uiw/react-codemirror';
-import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/ic-duplicate.svg';
 import { JSON_TAB_SIZE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -80,17 +79,15 @@ const SchemaEditor = ({
       data-testid="code-mirror-container">
       {showCopyButton && (
         <div className={classNames('query-editor-button', copyButtonClassName)}>
-          <Tooltip
-            title={
+          <ButtonUtility
+            data-testid="query-copy-button"
+            icon={Copy01}
+            size="lg"
+            tooltip={
               hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
-            }>
-            <Button
-              className="query-editor-copy-button"
-              data-testid="query-copy-button"
-              icon={<Icon component={CopyIcon} />}
-              onClick={() => onCopyToClipBoard(internalValue)}
-            />
-          </Tooltip>
+            }
+            onClick={() => onCopyToClipBoard(internalValue)}
+          />
         </div>
       )}
 

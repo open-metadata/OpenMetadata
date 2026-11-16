@@ -16,12 +16,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.validation.constraints.DecimalMin;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.service.aicontext.PersonaContextBuilder.MaterializedPersonaContext;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class GetPersonaContextToolTest {
 
@@ -39,6 +42,29 @@ class GetPersonaContextToolTest {
                     McpResponseTrim.serializedLength(Map.of("content", part))
                         <= McpResponseTrim.MAX_RESPONSE_CHARS - 10_000));
     assertTrue(parts.getFirst().endsWith("\n"));
+  }
+
+  @Test
+  void splitsIntoFullSizedPartsAtTheLowestAllowedCap() throws NoSuchFieldException {
+    // Read from the schema, so lowering the minimum below what the part budget needs fails here.
+    int minimumCap =
+        Integer.parseInt(
+            MCPConfiguration.class
+                .getDeclaredField("maxResponseChars")
+                .getAnnotation(DecimalMin.class)
+                .value());
+    SecurityConfigurationManager manager = SecurityConfigurationManager.getInstance();
+    MCPConfiguration previous = SecurityConfigurationManager.getCurrentMcpConfig();
+    manager.setCurrentMcpConfig(new MCPConfiguration().withMaxResponseChars(minimumCap));
+    try {
+      String content = "a".repeat(10_000);
+
+      List<String> parts = GetPersonaContextTool.split(content);
+
+      assertEquals(List.of(content), parts);
+    } finally {
+      manager.setCurrentMcpConfig(previous);
+    }
   }
 
   @Test

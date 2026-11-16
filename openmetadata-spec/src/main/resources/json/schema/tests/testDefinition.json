@@ -5,7 +5,7 @@
   "description": "Test Definition is a type of test using which test cases are created to capture data quality tests against data entities.",
   "type": "object",
   "javaType": "org.openmetadata.schema.tests.TestDefinition",
-  "javaInterfaces": ["org.openmetadata.schema.EntityInterface"],
+  "javaInterfaces": ["org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>"],
   "definitions": {
     "testPlatform": {
       "javaType": "org.openmetadata.schema.tests.TestPlatform",

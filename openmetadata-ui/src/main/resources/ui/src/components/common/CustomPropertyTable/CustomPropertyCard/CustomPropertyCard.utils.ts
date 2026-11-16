@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { isArray, isEmpty, isNil, isPlainObject } from 'lodash';
+import { isArray, isEmpty, isNil, isPlainObject, isString } from 'lodash';
 import {
   HYPERLINK_TYPE_CUSTOM_PROPERTY,
   TABLE_TYPE_CUSTOM_PROPERTY,
@@ -58,6 +58,17 @@ export const isPropertyValueEmpty = (
   return typeof value === 'object' && isEmpty(value);
 };
 
+/**
+ * A changed value of any type arrives in a version as a word-diff HTML
+ * string, so a non-empty string counts as a value whatever the type.
+ */
+export const hasVersionValue = (
+  propertyTypeName: string | undefined,
+  value: unknown
+): boolean =>
+  (isString(value) && value !== '') ||
+  !isPropertyValueEmpty(propertyTypeName, value);
+
 /** Item count shown next to the title of list-shaped properties. */
 export const getPropertyItemCount = (
   propertyTypeName: string | undefined,
@@ -98,7 +109,9 @@ export const filterAndSortProperties = (
   properties: CustomProperty[],
   extension: Record<string, unknown> | undefined,
   searchText: string,
-  sortMode: CustomPropertySortMode
+  sortMode: CustomPropertySortMode,
+  // The card grid packs full-width cards last; a table has no such layout.
+  { groupWideLast = true }: { groupWideLast?: boolean } = {}
 ): CustomProperty[] => {
   const filtered = properties.filter((property) =>
     matchesPropertySearch(property, searchText)
@@ -125,7 +138,9 @@ export const filterAndSortProperties = (
   // Full-width cards (tables, SQL, markdown, time intervals) follow the
   // half-width ones so the two-column grid stays packed, as in the design.
   const byWidth = (property: CustomProperty) =>
-    Number(Boolean(getPropertyTypeMeta(property.propertyType.name).isWide));
+    groupWideLast
+      ? Number(Boolean(getPropertyTypeMeta(property.propertyType.name).isWide))
+      : 0;
 
   return filtered.sort(
     (a, b) => byWidth(a) - byWidth(b) || comparators[sortMode](a, b)

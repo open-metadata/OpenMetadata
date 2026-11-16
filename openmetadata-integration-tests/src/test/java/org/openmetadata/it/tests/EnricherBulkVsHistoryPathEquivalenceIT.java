@@ -198,7 +198,7 @@ class EnricherBulkVsHistoryPathEquivalenceIT {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends EntityInterface> T loadViaBulkPath(String entityType, T entity) {
+  private <T extends EntityInterface<?>> T loadViaBulkPath(String entityType, T entity) {
     EntityRepository<T> repo = (EntityRepository<T>) Entity.getEntityRepository(entityType);
     EntityUtil.Fields allFields = repo.getFields("*");
     T raw = repo.findByName(entity.getFullyQualifiedName(), Include.NON_DELETED, false);
@@ -207,7 +207,7 @@ class EnricherBulkVsHistoryPathEquivalenceIT {
   }
 
   @SuppressWarnings("unchecked")
-  private <T extends EntityInterface> T loadViaVersionPath(
+  private <T extends EntityInterface<?>> T loadViaVersionPath(
       String entityType, T entity, Class<T> clazz) {
     EntityRepository<T> repo = (EntityRepository<T>) Entity.getEntityRepository(entityType);
     EntityRepository.EntityHistoryWithOffset history =
@@ -217,7 +217,7 @@ class EnricherBulkVsHistoryPathEquivalenceIT {
     return JsonUtils.readOrConvertValue(versions.getFirst(), clazz);
   }
 
-  private <T extends EntityInterface> void assertBothPathsProduceIdenticalDiDocs(
+  private <T extends EntityInterface<?>> void assertBothPathsProduceIdenticalDiDocs(
       String entityType, T entity, Class<T> clazz) throws Exception {
     Long now = System.currentTimeMillis();
     Long endTs = TimestampUtils.getEndOfDayTimestamp(now);

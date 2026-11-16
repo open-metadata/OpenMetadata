@@ -187,6 +187,26 @@ describe('Tooltip — show/hide behaviour', () => {
     expect(screen.getByText('Always visible')).toBeInTheDocument();
   });
 
+  // Pointer events are blocked only while a tooltip enters (see tooltip.tsx);
+  // a settled tooltip must take the pointer so links and "view more" buttons
+  // in it stay hoverable and clickable.
+  it('keeps a settled tooltip interactive', async () => {
+    const onPress = vi.fn();
+    render(
+      <Tooltip isOpen title={<Button onPress={onPress}>View more</Button>}>
+        <button>trigger</button>
+      </Tooltip>
+    );
+
+    expect(screen.getByRole('tooltip')).not.toHaveClass(
+      'tw:pointer-events-none'
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: 'View more' }));
+
+    expect(onPress).toHaveBeenCalled();
+  });
+
   it('does not show tooltip on interaction when trigger is disabled', async () => {
     const user = userEvent.setup();
     setupPointerModality();
@@ -278,6 +298,49 @@ describe('Tooltip — disabled trigger', () => {
     expect(wrapper).not.toHaveAttribute('tabindex');
   });
 
+  it('opens on hover when the trigger is excluded from the tab order', async () => {
+    const user = userEvent.setup();
+    setupPointerModality();
+
+    render(
+      <Tooltip excludeTriggerFromTabOrder title="Tooltip text">
+        <div>
+          trigger <button type="button">inner</button>
+        </div>
+      </Tooltip>
+    );
+
+    const wrapper = screen.getByText(/trigger/).parentElement as HTMLElement;
+
+    expect(wrapper.tagName).toBe('SPAN');
+    expect(wrapper).not.toHaveAttribute('tabindex');
+
+    await user.hover(screen.getByText(/trigger/));
+
+    await waitFor(() => {
+      expect(screen.getByText('Tooltip text')).toBeInTheDocument();
+    });
+  });
+
+  it('opens on hover over a disabled child excluded from the tab order', async () => {
+    const user = userEvent.setup();
+    setupPointerModality();
+
+    render(
+      <Tooltip excludeTriggerFromTabOrder title="Why disabled">
+        <Button isDisabled data-testid="d">
+          Add
+        </Button>
+      </Tooltip>
+    );
+
+    await user.hover(screen.getByTestId('d').parentElement as HTMLElement);
+
+    await waitFor(() => {
+      expect(screen.getByText('Why disabled')).toBeInTheDocument();
+    });
+  });
+
   it('leaves an enabled button unwrapped by a span', () => {
     render(
       <Tooltip title="t">
@@ -286,5 +349,34 @@ describe('Tooltip — disabled trigger', () => {
     );
 
     expect(screen.getByTestId('e').parentElement?.tagName).not.toBe('SPAN');
+  });
+});
+
+describe('Tooltip — variant', () => {
+  it('draws the light variant on the floating surface with primary text', () => {
+    render(
+      <Tooltip isOpen description="Details" title="Light title" variant="light">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('Light title').parentElement).toHaveClass(
+      'tw:bg-floating'
+    );
+    expect(screen.getByText('Light title')).toHaveClass('tw:text-primary');
+    expect(screen.getByText('Details')).toHaveClass('tw:text-tertiary');
+  });
+
+  it('keeps the dark tooltip by default', () => {
+    render(
+      <Tooltip isOpen title="Dark title">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('Dark title').parentElement).toHaveClass(
+      'tw:bg-primary-solid'
+    );
+    expect(screen.getByText('Dark title')).toHaveClass('tw:text-white');
   });
 });

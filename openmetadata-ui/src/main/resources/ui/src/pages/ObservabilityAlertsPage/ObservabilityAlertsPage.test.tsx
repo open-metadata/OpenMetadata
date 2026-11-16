@@ -137,10 +137,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    ...jest.requireActual('@openmetadata/ui-core-components'),
     Table: MockTable,
     TableCard: MockTableCard,
     Box: Passthrough,
-    Button: Passthrough,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Popover: Passthrough,
     PopoverTrigger: Passthrough,
@@ -452,8 +452,7 @@ describe('Observability Alerts Page Tests', () => {
       });
     });
 
-    const addButton = await screen.findByText(/label.add-entity/);
-    fireEvent.click(addButton);
+    fireEvent.click(await screen.findByTestId('create-observability'));
 
     expect(mockNavigate).toHaveBeenCalledWith('/observability/alerts/add');
   });

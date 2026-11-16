@@ -18,6 +18,14 @@ import { DashboardClass } from '../support/entity/DashboardClass';
 import { MlModelClass } from '../support/entity/MlModelClass';
 import { PipelineClass } from '../support/entity/PipelineClass';
 import { SearchIndexClass } from '../support/entity/SearchIndexClass';
+import { ApiServiceClass } from '../support/entity/service/ApiServiceClass';
+import { DashboardServiceClass } from '../support/entity/service/DashboardServiceClass';
+import { DatabaseServiceClass } from '../support/entity/service/DatabaseServiceClass';
+import { MessagingServiceClass } from '../support/entity/service/MessagingServiceClass';
+import { MlmodelServiceClass } from '../support/entity/service/MlmodelServiceClass';
+import { PipelineServiceClass } from '../support/entity/service/PipelineServiceClass';
+import { SearchIndexServiceClass } from '../support/entity/service/SearchIndexServiceClass';
+import { StorageServiceClass } from '../support/entity/service/StorageServiceClass';
 import { TableClass } from '../support/entity/TableClass';
 import { TopicClass } from '../support/entity/TopicClass';
 import { EntityData } from '../support/interfaces/ConditionalPermissions.interface';
@@ -30,22 +38,57 @@ export const isOwnerRole = new RolesClass();
 export const matchAnyTagRole = new RolesClass();
 export const userWithOwnerPermission = new UserClass();
 export const userWithTagPermission = new UserClass();
-export const apiCollectionWithOwner = new ApiCollectionClass();
-export const apiCollectionWithTag = new ApiCollectionClass();
-export const containerWithOwner = new ContainerClass();
-export const containerWithTag = new ContainerClass();
-export const dashboardWithOwner = new DashboardClass();
-export const dashboardWithTag = new DashboardClass();
-export const mlModelWithOwner = new MlModelClass();
-export const mlModelWithTag = new MlModelClass();
-export const pipelineWithOwner = new PipelineClass();
-export const pipelineWithTag = new PipelineClass();
-export const searchIndexWithOwner = new SearchIndexClass();
-export const searchIndexWithTag = new SearchIndexClass();
-export const tableWithOwner = new TableClass();
-export const tableWithTag = new TableClass();
-export const topicWithOwner = new TopicClass();
-export const topicWithTag = new TopicClass();
+// Every fixture below is used to navigate to a per-asset service page
+// (assetOwnerUrl/assetTagUrl below), so each passes its own service instead of
+// sharing the shard's.
+export const apiCollectionWithOwner = new ApiCollectionClass({
+  service: new ApiServiceClass(),
+});
+export const apiCollectionWithTag = new ApiCollectionClass({
+  service: new ApiServiceClass(),
+});
+export const containerWithOwner = new ContainerClass({
+  service: new StorageServiceClass(),
+});
+export const containerWithTag = new ContainerClass({
+  service: new StorageServiceClass(),
+});
+export const dashboardWithOwner = new DashboardClass({
+  service: new DashboardServiceClass(),
+});
+export const dashboardWithTag = new DashboardClass({
+  service: new DashboardServiceClass(),
+});
+export const mlModelWithOwner = new MlModelClass({
+  service: new MlmodelServiceClass(),
+});
+export const mlModelWithTag = new MlModelClass({
+  service: new MlmodelServiceClass(),
+});
+export const pipelineWithOwner = new PipelineClass({
+  service: new PipelineServiceClass(),
+});
+export const pipelineWithTag = new PipelineClass({
+  service: new PipelineServiceClass(),
+});
+export const searchIndexWithOwner = new SearchIndexClass({
+  service: new SearchIndexServiceClass(),
+});
+export const searchIndexWithTag = new SearchIndexClass({
+  service: new SearchIndexServiceClass(),
+});
+export const tableWithOwner = new TableClass({
+  service: new DatabaseServiceClass(),
+});
+export const tableWithTag = new TableClass({
+  service: new DatabaseServiceClass(),
+});
+export const topicWithOwner = new TopicClass({
+  service: new MessagingServiceClass(),
+});
+export const topicWithTag = new TopicClass({
+  service: new MessagingServiceClass(),
+});
 
 const withOwner = {
   apiCollectionWithOwner,

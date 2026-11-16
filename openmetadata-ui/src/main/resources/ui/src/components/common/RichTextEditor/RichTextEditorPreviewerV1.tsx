@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { FC, lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -19,6 +19,7 @@ import {
   formatClientContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import { getTrimmedContent } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
@@ -76,10 +77,10 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
-        'text-right': i18n.dir() === 'rtl',
+        'text-right': getLanguageDirection(i18n) === 'rtl',
       })}
       data-testid="viewer-container"
-      dir={i18n.dir()}>
+      dir={getLanguageDirection(i18n)}>
       <div
         className={classNames(
           'markdown-parser',
@@ -97,10 +98,11 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
       </div>
       {hasReadMore && showReadMoreBtn && (
         <Button
-          className="text-xs text-right"
+          className="tw:text-xs tw:font-normal"
+          color="link-color"
           data-testid={`read-${readMore ? 'less' : 'more'}-button`}
-          type="link"
-          onClick={handleReadMoreToggle}>
+          size="sm"
+          onPress={handleReadMoreToggle}>
           {readMore ? t('label.less-lowercase') : t('label.more-lowercase')}
         </Button>
       )}

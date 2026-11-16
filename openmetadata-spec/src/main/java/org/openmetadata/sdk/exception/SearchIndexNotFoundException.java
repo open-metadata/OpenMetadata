@@ -15,6 +15,14 @@ public class SearchIndexNotFoundException extends WebServiceException {
     super(status, ERROR_TYPE, message);
   }
 
+  /**
+   * Reports {@code message} under an explicit status. A search against a name OpenMetadata does not
+   * manage is the caller's mistake, a 400, not the 500 the single-argument constructor implies.
+   */
+  public static SearchIndexNotFoundException withStatus(Response.Status status, String message) {
+    return new SearchIndexNotFoundException(status, message);
+  }
+
   public static SearchIndexNotFoundException byMessage(
       String name, String errorMessage, Response.Status status) {
     return new SearchIndexNotFoundException(status, buildMessageByName(name, errorMessage));

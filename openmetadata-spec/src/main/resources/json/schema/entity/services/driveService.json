@@ -6,7 +6,7 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.entity.services.DriveService",
   "javaInterfaces": [
-    "org.openmetadata.schema.EntityInterface",
+    "org.openmetadata.schema.EntityInterface<org.openmetadata.schema.type.EntityStatus>",
     "org.openmetadata.schema.ServiceEntityInterface"
   ],
   "definitions": {

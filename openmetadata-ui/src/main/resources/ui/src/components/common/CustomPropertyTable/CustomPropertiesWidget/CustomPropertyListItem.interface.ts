@@ -20,6 +20,8 @@ export interface CustomPropertyListItemProps {
   itemRef?: Ref<HTMLLIElement>;
   property: CustomProperty;
   value: unknown;
+  /** Replaces the one-line value summary, e.g. a version diff. */
+  valueContent?: ReactNode;
   hasEditPermissions: boolean;
-  onValueSave: (property: CustomProperty, value: unknown) => Promise<void>;
+  onValueSave?: (property: CustomProperty, value: unknown) => Promise<void>;
 }

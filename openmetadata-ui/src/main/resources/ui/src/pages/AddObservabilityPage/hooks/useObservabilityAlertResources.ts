@@ -11,21 +11,15 @@
  *  limitations under the License.
  */
 
-import type { FormInstance } from 'antd';
-import { Form } from 'antd';
-import { CreateEventSubscription } from '../../../generated/events/api/createEventSubscription';
+import { UseFormReturn } from 'react-hook-form';
 import { ModifiedCreateEventSubscription } from '../AddObservabilityPage.interface';
+const NO_SOURCES: string[] = [];
 
-/**
- * The alert source picked in a classic antd alert form. Kept in this file, which already
- * imports antd Form, so the antd import does not spread to a new file.
- */
-export function useSelectedAlertTrigger(
-  form: FormInstance<ModifiedCreateEventSubscription>
-): string | undefined {
-  const [selectedTrigger] =
-    Form.useWatch<CreateEventSubscription['resources']>(['resources'], form) ??
-    [];
-
-  return selectedTrigger;
+export function useSelectedAlertSources(
+  form: UseFormReturn<ModifiedCreateEventSubscription>
+): { sources: string[]; input: ModifiedCreateEventSubscription['input'] } {
+  return {
+    sources: form.watch('resources') ?? NO_SOURCES,
+    input: form.watch('input'),
+  };
 }

@@ -51,10 +51,56 @@ describe('getPropertyValueSummary', () => {
     );
   });
 
+  it('renders raw markdown as plain text (not raw syntax)', () => {
+    const rawMarkdown =
+      '# Header\n\n**Bold text** and *italic*\n\n- List item 1\n- List item 2';
+    const summary = summarize('markdown', rawMarkdown);
+
+    expect(summary).not.toContain('#');
+    expect(summary).not.toContain('**');
+    expect(summary).not.toMatch(/^\s*-\s/m);
+    expect(summary).toContain('Bold');
+    expect(summary).toContain('italic');
+  });
+
+  it('collapses a markdown link to its link text without raw syntax', () => {
+    const summary = summarize(
+      'markdown',
+      'See [Collate](https://example.com) for details.'
+    );
+
+    expect(summary).not.toContain('[');
+    expect(summary).not.toContain(']');
+    expect(summary).not.toContain('](');
+    expect(summary).toContain('Collate');
+  });
+
   it('shows the duration of a time interval', () => {
     expect(summarize('timeInterval', { start: 0, end: 2 * HOUR_MS })).toBe(
       '2 hours'
     );
+  });
+
+  it('renders the defined bound of a one-bound interval as plain text', () => {
+    expect(summarize('timeInterval', JSON.parse('{"start": 100}'))).toBe('100');
+    expect(summarize('timeInterval', { end: 2 * HOUR_MS })).toBe(
+      String(2 * HOUR_MS)
+    );
+  });
+
+  it('does not throw and ignores a null bound instead of rendering "0 minutes"', () => {
+    expect(() =>
+      summarize('timeInterval', { start: 100, end: null })
+    ).not.toThrow();
+    expect(summarize('timeInterval', { start: 100, end: null })).toBe('100');
+    expect(summarize('timeInterval', { start: null, end: 2 * HOUR_MS })).toBe(
+      String(2 * HOUR_MS)
+    );
+  });
+
+  it('returns an empty string when neither bound is finite', () => {
+    expect(summarize('timeInterval', {})).toBe('');
+    expect(summarize('timeInterval', { start: null, end: null })).toBe('');
   });
 
   it('prefers the display text of a hyperlink and falls back to its url', () => {

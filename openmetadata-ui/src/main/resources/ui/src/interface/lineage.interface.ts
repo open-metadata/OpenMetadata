@@ -18,7 +18,6 @@ import { ContainerDataModel } from '../generated/api/data/createContainer';
 import { EsLineageData } from '../generated/api/lineage/esLineageData';
 import { LineageDirection } from '../generated/api/lineage/lineageDirection';
 import { LineageSettings } from '../generated/configuration/lineageSettings';
-import { Chart } from '../generated/entity/data/chart';
 import { MlFeature } from '../generated/entity/data/mlmodel';
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
@@ -66,6 +65,11 @@ export interface EdgeDetails {
   docId?: string;
   extraInfo?: EdgeDetails;
   tempLineageTables?: TempLineageTable[];
+  /**
+   * Set on an edge synthesised from one `tempLineageTables` hop: the key of
+   * the stored edge it came from (see getEdgeEndpointsKey). Not stored itself.
+   */
+  tempHopOf?: string;
   createdAt?: number;
   createdBy?: string;
   updatedAt?: number;
@@ -82,11 +86,14 @@ export type NodeData = {
 };
 
 export interface LineageNodeType
-  extends Exclude<EntityReference, 'type'>,
-    Pick<
-      TableSearchSource,
-      'entityType' | 'deleted' | 'serviceType' | 'testSuite' | 'columns'
+  extends EntityReference,
+    Partial<
+      Pick<
+        TableSearchSource,
+        'entityType' | 'deleted' | 'testSuite' | 'columns'
+      >
     > {
+  serviceType?: string;
   nodeDepth?: number;
   paging?: {
     entityDownstreamCount?: number;
@@ -104,13 +111,16 @@ export interface LineageNodeType
   flattenChildren?: EntityChildren;
   dataModel?: ContainerDataModel;
   mlFeatures?: MlFeature[];
-  charts?: Chart[];
+  charts?: EntityReference[];
   messageSchema?: MessageSchemaObject;
   responseSchema?: APISchema;
   requestSchema?: APISchema;
   fields?: SearchIndexField[];
   isTempTable?: boolean;
   lineageMapSubtitle?: string;
+  lineageMapCount?: { count: number; entity: string };
+  // The scene's Asset band ships no field list, only how many fields there are.
+  lineageMapChildrenCount?: number;
 }
 
 export interface EntityLineageResponse {

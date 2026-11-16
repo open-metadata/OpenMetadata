@@ -61,18 +61,17 @@ def _declare(source, name, *columns):
 
 @pytest.fixture
 def bigquery_partitioned_table(bigquery_source):
-    """One row in the latest day partition and three older ones, dated by the server's CURRENT_DATE()."""
+    """Seed rows on both sides of the inferred three-day window, away from its cutoff."""
     _declare(bigquery_source, "events", Column("id", bq.INT64), Column("event_date", bq.DATE))
     bigquery_source.run(
         f"CREATE TABLE {bigquery_source.qualified}.events (id INT64 NOT NULL, event_date DATE NOT NULL) "
         "PARTITION BY event_date"
     )
-    # Days 3, 5 and 10 stay outside the default [CURRENT_DATE - 1 DAY, ...) window even across midnight UTC.
     bigquery_source.run(
         f"INSERT INTO {bigquery_source.qualified}.events (id, event_date) VALUES "
         "(1, CURRENT_DATE()), "
-        "(2, DATE_SUB(CURRENT_DATE(), INTERVAL 3 DAY)), "
-        "(3, DATE_SUB(CURRENT_DATE(), INTERVAL 5 DAY)), "
+        "(2, DATE_SUB(CURRENT_DATE(), INTERVAL 2 DAY)), "
+        "(3, DATE_SUB(CURRENT_DATE(), INTERVAL 4 DAY)), "
         "(4, DATE_SUB(CURRENT_DATE(), INTERVAL 10 DAY))"
     )
     return "events"

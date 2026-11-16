@@ -13,11 +13,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchDropdownOption } from '../../../components/SearchDropdown/SearchDropdown.interface';
-import {
-  ABORTED_CHART_COLOR_SCHEME,
-  FAILED_CHART_COLOR_SCHEME,
-  SUCCESS_CHART_COLOR_SCHEME,
-} from '../../../constants/Chart.constants';
 import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
@@ -408,37 +403,31 @@ describe('DataQualityDashboard', () => {
       jest.clearAllMocks();
     });
 
-    it('should pass correct color schemes to TestCaseStatusAreaChartWidget components', async () => {
+    it('should pass status, name and title to each TestCaseStatusAreaChartWidget', async () => {
       render(<DataQualityDashboard />, { wrapper: MemoryRouter });
 
       await waitFor(() => {
         expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalled();
       });
 
-      // Verify success widget gets success color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: SUCCESS_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Success,
           name: 'success',
           title: 'label.success',
         })
       );
 
-      // Verify aborted widget gets aborted color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: ABORTED_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Aborted,
           name: 'aborted',
           title: 'label.aborted',
         })
       );
 
-      // Verify failed widget gets failed color scheme
       expect(mockTestCaseStatusAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          chartColorScheme: FAILED_CHART_COLOR_SCHEME,
           testCaseStatus: TestCaseStatus.Failed,
           name: 'failed',
           title: 'label.failed',
@@ -488,12 +477,17 @@ describe('DataQualityDashboard', () => {
       // Check open incident widget
       expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          incidentStatusType: TestCaseResolutionStatusTypes.New,
+          incidentStatusTypes: [
+            TestCaseResolutionStatusTypes.New,
+            TestCaseResolutionStatusTypes.ACK,
+            TestCaseResolutionStatusTypes.Assigned,
+          ],
           name: 'open-incident',
           title: 'label.open-incident-plural',
+          description: 'message.open-incident-card-description',
           redirectPath: expect.objectContaining({
             pathname: '/incident-manager',
-            search: expect.stringContaining('testCaseResolutionStatusType=New'),
+            search: expect.not.stringContaining('testCaseResolutionStatusType'),
           }),
         })
       );
@@ -501,9 +495,10 @@ describe('DataQualityDashboard', () => {
       // Check resolved incident widget
       expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          incidentStatusType: TestCaseResolutionStatusTypes.Resolved,
+          incidentStatusTypes: [TestCaseResolutionStatusTypes.Resolved],
           name: 'resolved-incident',
           title: 'label.resolved-incident-plural',
+          description: 'message.resolved-incident-card-description',
           redirectPath: expect.objectContaining({
             pathname: '/incident-manager',
             search: expect.stringContaining(
@@ -527,6 +522,7 @@ describe('DataQualityDashboard', () => {
           incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESPONSE,
           name: 'response-time',
           title: 'label.response-time',
+          description: 'message.response-time-card-description',
         })
       );
 
@@ -536,6 +532,7 @@ describe('DataQualityDashboard', () => {
           incidentMetricType: IncidentTimeMetricsType.TIME_TO_RESOLUTION,
           name: 'resolution-time',
           title: 'label.resolution-time',
+          description: 'message.resolution-time-card-description',
         })
       );
     });

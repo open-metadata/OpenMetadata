@@ -17,6 +17,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import LineageDetails
 
 T = TypeVar("T", bound=BaseModel)
@@ -28,6 +29,10 @@ class OMetaFQNLineageRequest(BaseModel):
     to_entity_fqn: str
     to_entity_type: str
     lineage_details: LineageDetails | None = None
+    # The sink writes the edge by FQN; producers that already resolved the entities pass
+    # their ids too, so consumers can reference both ends without looking them up again
+    from_entity_id: Uuid | None = None
+    to_entity_id: Uuid | None = None
 
 
 LineageRequest = AddLineageRequest | OMetaFQNLineageRequest

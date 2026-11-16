@@ -18,11 +18,12 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
@@ -30,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -39,7 +41,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
 import org.openmetadata.service.aicontext.PersonaContextCache;
+import org.openmetadata.service.aicontext.PersonaContextRuleValidation;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.jdbi3.AccessControlDAOs.PersonaUserCount;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -51,6 +55,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
   static final String PERSONA_PATCH_FIELDS = "users,default,contextDefinition";
   static final String FIELD_CONTEXT_DEFINITION = "contextDefinition";
   static final String FIELD_USERS = "users";
+  private static final String FIELD_USER_COUNT = "userCount";
   private static final int DEFAULT_MAX_ASSETS = 200;
   private static final int MAX_RULES = 25;
   private static final int MIN_CHARACTER_BUDGET = 10_000;
@@ -104,11 +109,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
         PERSONA_UPDATE_FIELDS);
     this.quoteFqn = true;
     supportsSearch = false;
+    fieldFetchers.put(FIELD_USERS, this::fetchAndSetUsers);
+    fieldFetchers.put(FIELD_USER_COUNT, this::fetchAndSetUserCounts);
   }
 
   @Override
   public void setFields(Persona persona, Fields fields, RelationIncludes relationIncludes) {
     persona.setUsers(fields.contains(FIELD_USERS) ? getUsers(persona) : persona.getUsers());
+    fetchAndSetUserCounts(List.of(persona), fields);
   }
 
   @Override
@@ -116,20 +124,78 @@ public class PersonaRepository extends EntityRepository<Persona> {
     persona.setContextDefinition(
         fields.contains(FIELD_CONTEXT_DEFINITION) ? persona.getContextDefinition() : null);
     persona.setUsers(fields.contains(FIELD_USERS) ? persona.getUsers() : null);
+    persona.setUserCount(fields.contains(FIELD_USER_COUNT) ? persona.getUserCount() : null);
   }
 
   @Override
   public void prepare(Persona persona, boolean update) {
+    persona.setUserCount(null);
     validateUsers(persona.getUsers());
     validateContextDefinition(persona.getContextDefinition());
+    validateChangedFilters(persona, update);
     if (Boolean.TRUE.equals(persona.getDefault())) {
       unsetExistingDefaultPersona(persona.getId().toString());
     }
   }
 
+  private void validateChangedFilters(Persona persona, boolean update) {
+    List<ContextRule> requestedRules =
+        persona.getContextDefinition() == null
+            ? List.of()
+            : listOrEmpty(persona.getContextDefinition().getRules()).stream()
+                .filter(rule -> !nullOrEmpty(rule.getQueryFilter()))
+                .toList();
+    if (!requestedRules.isEmpty()) {
+      Persona stored = update ? findByNameOrNull(persona.getName(), Include.ALL) : null;
+      PersonaContextDefinition previous = stored == null ? null : stored.getContextDefinition();
+      List<ContextRule> storedRules =
+          previous == null ? List.of() : listOrEmpty(previous.getRules());
+      boolean contextActivated =
+          previous != null
+              && !Boolean.TRUE.equals(previous.getEnabled())
+              && Boolean.TRUE.equals(persona.getContextDefinition().getEnabled());
+      for (ContextRule rule : requestedRules) {
+        if (requiresRuleValidation(rule, storedRules, contextActivated)) {
+          PersonaContextRuleValidation.validate(rule, Entity.getSearchRepository());
+        }
+      }
+    }
+  }
+
+  static boolean requiresRuleValidation(
+      ContextRule rule, List<ContextRule> storedRules, boolean contextActivated) {
+    boolean activated = contextActivated && Boolean.TRUE.equals(rule.getEnabled());
+    ContextRule previous = previousContextRule(rule, storedRules);
+    boolean unchanged =
+        previous != null
+            && Objects.equals(previous.getEntityType(), rule.getEntityType())
+            && Objects.equals(previous.getQueryFilter(), rule.getQueryFilter())
+            && (!Boolean.TRUE.equals(rule.getEnabled())
+                || Boolean.TRUE.equals(previous.getEnabled()));
+    return activated || !unchanged;
+  }
+
+  private static ContextRule previousContextRule(
+      ContextRule requested, List<ContextRule> storedRules) {
+    return storedRules.stream()
+        .filter(
+            stored ->
+                requested.getId() != null && Objects.equals(stored.getId(), requested.getId()))
+        .findFirst()
+        .orElseGet(
+            () ->
+                storedRules.stream()
+                    .filter(
+                        stored ->
+                            !nullOrEmpty(requested.getName())
+                                && requested.getName().equalsIgnoreCase(stored.getName()))
+                    .findFirst()
+                    .orElse(null));
+  }
+
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of("users");
+    return List.of(FIELD_USERS, FIELD_USER_COUNT);
   }
 
   @Override
@@ -164,6 +230,52 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   private List<EntityReference> getUsers(Persona persona) {
     return findTo(persona.getId(), PERSONA, Relationship.APPLIED_TO, Entity.USER);
+  }
+
+  private void fetchAndSetUserCounts(List<Persona> personas, Fields fields) {
+    if (fields.contains(FIELD_USER_COUNT) && !nullOrEmpty(personas)) {
+      Persona systemDefault = getSystemDefaultPersona();
+      List<PersonaUserCount> counts =
+          daoCollection
+              .personaDAO()
+              .countEffectiveUsers(
+                  personas.stream().map(persona -> persona.getId().toString()).toList(),
+                  systemDefault == null ? null : systemDefault.getId().toString(),
+                  Relationship.APPLIED_TO.ordinal(),
+                  Relationship.DEFAULTS_TO.ordinal(),
+                  Relationship.HAS.ordinal());
+      Map<UUID, Integer> byId = new HashMap<>();
+      counts.forEach(count -> byId.put(count.personaId(), count.userCount()));
+      personas.forEach(persona -> persona.setUserCount(byId.getOrDefault(persona.getId(), 0)));
+    }
+  }
+
+  // List endpoints go through setFieldsInBulk, which only runs fieldFetchers — setFields is never
+  // called there, so without this the list response carried no users.
+  private void fetchAndSetUsers(List<Persona> personas, Fields fields) {
+    if (!fields.contains(FIELD_USERS) || nullOrEmpty(personas)) {
+      return;
+    }
+    List<String> personaIds =
+        personas.stream().map(Persona::getId).map(UUID::toString).distinct().toList();
+    List<CollectionDAO.EntityRelationshipObject> records =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(personaIds, Relationship.APPLIED_TO.ordinal(), PERSONA, USER);
+    Map<UUID, EntityReference> userRefsById =
+        batchResolveRefs(USER, records.stream().map(r -> UUID.fromString(r.getToId())).toList());
+    Map<UUID, List<EntityReference>> personaToUsers = new HashMap<>();
+    for (CollectionDAO.EntityRelationshipObject relation : records) {
+      EntityReference userRef = userRefsById.get(UUID.fromString(relation.getToId()));
+      if (userRef != null) {
+        personaToUsers
+            .computeIfAbsent(UUID.fromString(relation.getFromId()), k -> new ArrayList<>())
+            .add(userRef);
+      }
+    }
+    for (Persona persona : personas) {
+      persona.setUsers(personaToUsers.getOrDefault(persona.getId(), new ArrayList<>()));
+    }
   }
 
   @Transaction
@@ -256,11 +368,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
             "Persona context rule contains sections that do not apply to " + ruleEntityType);
       }
       if (!nullOrEmpty(rule.getQueryFilter())) {
-        JsonNode queryFilter = JsonUtils.readTree(rule.getQueryFilter());
-        if (queryFilter == null || !queryFilter.isObject()) {
-          throw new IllegalArgumentException(
-              "Persona context queryFilter must be a JSON object for rule: " + rule.getName());
-        }
+        PersonaContextRuleValidation.query(rule.getQueryFilter());
       }
     }
   }

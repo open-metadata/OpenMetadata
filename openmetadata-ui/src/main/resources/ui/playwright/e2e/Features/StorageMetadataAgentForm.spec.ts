@@ -22,10 +22,10 @@ import {
   getCodeEditorText,
 } from '../../utils/codeEditor';
 import {
+  clickIgnoringToasts,
   createNewPage,
   redirectToHomePage,
   uuid,
-  waitForToastStackToClear,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
@@ -253,8 +253,7 @@ const openAutoClassificationAgentForm = async (
   }
 
   await page.getByTestId('add-new-ingestion-button').click();
-  await page.locator('[data-menu-id*="autoClassification"]').waitFor();
-  await page.locator('[data-menu-id*="autoClassification"]').click();
+  await page.getByTestId('agent-item-autoClassification').click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('add-ingestion-container').waitFor();
 };
@@ -292,8 +291,7 @@ test.describe(
 
       // Background async-delete toasts from parallel workers stack at
       // bottom-center over next-button and intercept the click; drain first.
-      await waitForToastStackToClear(page);
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
 
       await test.step('Error message is shown for out-of-range confidence', async () => {
         await expect(
@@ -311,8 +309,7 @@ test.describe(
       await test.step('Wizard advances after correcting the value', async () => {
         await confidenceField.clear();
         await confidenceField.fill('80');
-        await waitForToastStackToClear(page);
-        await page.getByTestId('next-button').click();
+        await clickIgnoringToasts(page.getByTestId('next-button'));
         await expect(
           page.locator('[data-testid="schedular-schedule"]')
         ).toBeVisible();
@@ -331,8 +328,7 @@ test.describe(
 
       // Background async-delete toasts from parallel workers stack at
       // bottom-center over next-button and intercept the click; drain first.
-      await waitForToastStackToClear(page);
-      await page.getByTestId('next-button').click();
+      await clickIgnoringToasts(page.getByTestId('next-button'));
 
       await test.step('Error message is shown for negative sample count', async () => {
         await expect(
@@ -353,8 +349,7 @@ test.describe(
       await test.step('Wizard advances after correcting the value', async () => {
         await sampleCountField.clear();
         await sampleCountField.fill('50');
-        await waitForToastStackToClear(page);
-        await page.getByTestId('next-button').click();
+        await clickIgnoringToasts(page.getByTestId('next-button'));
         await expect(
           page.locator('[data-testid="schedular-schedule"]')
         ).toBeVisible();

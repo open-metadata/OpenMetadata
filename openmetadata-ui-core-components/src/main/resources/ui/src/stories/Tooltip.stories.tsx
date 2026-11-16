@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { Meta, StoryObj } from '@storybook/react';
-import { HelpCircle } from '@untitledui/icons';
+import { HelpCircle } from '../icons';
 import { Tooltip } from '../components/base/tooltip/tooltip';
 import { Button } from '../components/base/buttons/button';
 
@@ -67,6 +67,18 @@ export const OnIcon: StoryObj = {
       title="Help tooltip on an icon"
       triggerClassName="tw:flex tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-quaternary_hover">
       <HelpCircle className="tw:size-5" />
+    </Tooltip>
+  ),
+};
+
+export const Light: StoryObj = {
+  parameters: { theme: 'both' },
+  render: () => (
+    <Tooltip
+      description="Glossary Approval Workflow"
+      title="Approved by ana.lopez"
+      variant="light">
+      <span>Hover over this status</span>
     </Tooltip>
   ),
 };

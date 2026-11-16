@@ -1,15 +1,18 @@
 {
   "abbreviation": "ISA-95",
+  "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to ANSI/ISA-95; ISA-95 is a standard of the International Society of Automation and is not licensed to this project.",
   "bundled": true,
-  "description": "A compact OpenMetadata starter subset of ANSI/ISA-95 manufacturing operations concepts.",
+  "description": "An OpenMetadata-authored concept outline aligned to the ANSI/ISA-95 equipment hierarchy and resource model. It is not the ISA-95 standard, which is a paid publication, and it does not reproduce its text.",
   "id": "isa-95",
-  "license": "MIT",
-  "licenseUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+  "industry": "manufacturing",
+  "layer": "L2",
+  "license": "Apache License 2.0",
+  "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
   "modules": [
     {
       "conceptCount": 9,
       "dependencies": [],
-      "description": "The ISA-95 role-based equipment hierarchy and resource model.",
+      "description": "A role-based equipment hierarchy and resource outline aligned to ISA-95.",
       "format": "turtle",
       "id": "manufacturing-operations",
       "name": "Manufacturing operations",
@@ -19,7 +22,8 @@
       "sha256": "fa7329eb8fc629b07d02cab1ef5256ddc48626c93dfcc4f5684d3ab05ef600bc"
     }
   ],
-  "name": "ISA-95",
+  "name": "ISA-95 Starter (OpenMetadata-authored)",
+  "publisher": "OpenMetadata",
   "sourceUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
   "standard": "ANSI/ISA-95",
   "version": "2025Q1-om1"

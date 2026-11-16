@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page, Request } from '@playwright/test';
+import { ACTION_TIMEOUT } from '../../constant/common';
 import { Domain } from '../../support/domain/Domain';
 import { Glossary } from '../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../support/glossary/GlossaryTerm';
@@ -405,7 +406,11 @@ test.describe(
         });
 
         await test.step('New row renders in the list', async () => {
-          await expect(page.getByText(scenario.label).first()).toBeVisible();
+          // The label text also appears in the page sub-heading, so address the
+          // listing row by the entity type it is keyed on.
+          await expect(
+            page.getByTestId(`row-${scenario.entityType}`)
+          ).toBeVisible();
           for (const propertyName of scenario.customPropertyNames) {
             await expect(
               page.getByText(`extension.${propertyName}`)
@@ -448,7 +453,7 @@ test.describe(
         await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await expect(
           page.getByTestId(`edit-${scenario.entityType}`)
-        ).toBeVisible({ timeout: 30000 });
+        ).toBeVisible({ timeout: ACTION_TIMEOUT });
 
         const openDesigner = async () => {
           await page.getByTestId(`edit-${scenario.entityType}`).click();
@@ -720,7 +725,7 @@ test.describe(
       await listResponse;
 
       const toggle = page.getByTestId('toggle-dataProduct');
-      await expect(toggle).toBeVisible({ timeout: 30000 });
+      await expect(toggle).toBeVisible({ timeout: ACTION_TIMEOUT });
 
       // UI now PATCHes just `/enabled` (see IntakeFormsPage#handleToggleEnabled)
       // to avoid clobbering server-managed fields like owners via a PUT round-trip.
@@ -851,7 +856,7 @@ test.describe(
       // Wait for the seeded row instead of a generic loader — the listing
       // loader sometimes lingers when the page is navigated to repeatedly.
       const deleteButton = page.getByTestId('delete-dataProduct');
-      await expect(deleteButton).toBeVisible({ timeout: 30000 });
+      await expect(deleteButton).toBeVisible({ timeout: ACTION_TIMEOUT });
       await deleteButton.click();
       const confirmDialog = page.getByRole('dialog');
       const cancel = confirmDialog.getByRole('button', { name: 'Cancel' });
@@ -965,7 +970,7 @@ test.describe(
         await page.goto(INTAKE_FORMS_URL, { waitUntil: 'domcontentloaded' });
         await expect(
           page.getByTestId(`row-${scenario.entityType}`)
-        ).toBeVisible({ timeout: 30000 });
+        ).toBeVisible({ timeout: ACTION_TIMEOUT });
         await expect(
           page.getByText(`extension.${deletedProperty}`)
         ).toHaveCount(0);
@@ -1076,11 +1081,13 @@ test.describe(
         await stewardInput.fill('admin');
 
         const listbox = page.getByRole('listbox');
-        await expect(listbox).toBeVisible({ timeout: 30000 });
+        await expect(listbox).toBeVisible({ timeout: ACTION_TIMEOUT });
         const adminOption = listbox
           .getByRole('option')
           .filter({ hasText: /admin/i });
-        await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
+        await expect(adminOption.filter({ visible: true })).not.toHaveCount(0, {
+          timeout: 15000,
+        });
         await adminOption.first().click();
 
         // Selecting the option collapses the Steward picker's input into a
@@ -1677,7 +1684,7 @@ test.describe(
         fullyQualifiedName: string;
       };
       const termRow = page.locator(`[data-row-key*="${termName}"]`);
-      await expect(termRow).toBeVisible({ timeout: 30000 });
+      await expect(termRow).toBeVisible({ timeout: ACTION_TIMEOUT });
       const editForm = await openEditGlossaryTermForm(page, termFqn);
       await expect(getFormNameInput(editForm)).toHaveValue(termName);
       await expect(page.getByTestId(stringFieldId)).toHaveCount(0);

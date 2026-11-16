@@ -12,6 +12,8 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import teradataSchema from '../../public/jsons/connectionSchemas/connections/database/teradataConnection.json';
+import mlflowSchema from '../../public/jsons/connectionSchemas/connections/mlmodel/mlflowConnection.json';
 import {
   getKeyValues,
   getSchemaProperties,
@@ -116,6 +118,41 @@ describe('getSchemaProperties', () => {
 });
 
 describe('getKeyValues', () => {
+  it.each([
+    {
+      schema: mlflowSchema,
+      field: 'registryUri',
+      value: 'http://localhost:5000',
+      serviceCategory: 'mlmodelServices',
+    },
+    {
+      schema: teradataSchema,
+      field: 'logdata',
+      value: 'EXAMPLE.REALM',
+      serviceCategory: 'databaseServices',
+    },
+  ])(
+    'renders $field as a password input using the generated schema',
+    ({ schema, field, value, serviceCategory }) => {
+      render(
+        <>
+          {getKeyValues({
+            obj: { [field]: value },
+            schemaPropertyObject: schema.properties,
+            schema,
+            serviceCategory,
+          })}
+        </>
+      );
+
+      expect(screen.getByTestId('input-field')).toHaveAttribute(
+        'type',
+        'password'
+      );
+      expect(screen.getByTestId('input-field')).toHaveValue(value);
+    }
+  );
+
   const renderConnection = (connection: Record<string, unknown>) =>
     render(
       <div>
@@ -153,5 +190,45 @@ describe('getKeyValues', () => {
       .find((input) => (input as HTMLInputElement).value === 'sftp-user');
 
     expect(username).toHaveAttribute('type', 'text');
+    expect(username).toHaveAttribute('readonly');
+  });
+
+  it('keeps all array values visible without an editable selector', () => {
+    renderConnection({ hosts: ['host-one', 'host-two'] });
+
+    expect(screen.getByText('host-one')).toBeVisible();
+    expect(screen.getByText('host-two')).toBeVisible();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+  });
+
+  it('skips a filter pattern whose includes and excludes are both empty', () => {
+    render(
+      <div>
+        {getKeyValues({
+          obj: {
+            databaseFilterPattern: { includes: [], excludes: [] },
+            schemaFilterPattern: { includes: ['public'], excludes: [] },
+          },
+          schemaPropertyObject: {},
+          schema: {},
+          serviceCategory: 'databaseServices',
+        })}
+      </div>
+    );
+
+    expect(
+      screen.queryByText('databaseFilterPattern:')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('schemaFilterPattern:')).toBeInTheDocument();
+    expect(screen.getByText('public')).toBeInTheDocument();
+  });
+
+  it('renders false and zero rather than dropping them as empty values', () => {
+    renderConnection({ enabled: false, retries: 0 });
+
+    expect(screen.getByRole('textbox', { name: 'enabled' })).toHaveValue(
+      'false'
+    );
+    expect(screen.getByRole('textbox', { name: 'retries' })).toHaveValue('0');
   });
 });

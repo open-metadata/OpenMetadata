@@ -12,7 +12,13 @@
  */
 import type { EditorOptions } from '@tiptap/core';
 import { Editor } from '@tiptap/react';
-import { DependencyList, useEffect, useRef, useState } from 'react';
+import {
+  DependencyList,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 
 function useForceUpdate() {
   const [, setValue] = useState(0);
@@ -31,6 +37,7 @@ export const useCustomEditor = (
   deps: DependencyList = []
 ) => {
   const [editor, setEditor] = useState<Editor | null>(null);
+  const editorRef = useRef<Editor | null>(null);
 
   const forceUpdate = useForceUpdate();
 
@@ -127,6 +134,7 @@ export const useCustomEditor = (
       ...options,
     });
 
+    editorRef.current = instance;
     setEditor(instance);
 
     const scheduleForceUpdate = () => {
@@ -152,6 +160,20 @@ export const useCustomEditor = (
       }
     };
   }, deps);
+
+  // Destroy before EditorContent unmounts. On unmount React runs this layout
+  // cleanup before the child's componentWillUnmount, which otherwise resets the
+  // live view's nodeViews and re-renders it. Paid once per editor, that made
+  // unmounting a table of description previewers (e.g. toggling deleted teams)
+  // block the main thread for over a minute.
+  useLayoutEffect(
+    () => () => {
+      if (editorRef.current && !editorRef.current.isDestroyed) {
+        editorRef.current.destroy();
+      }
+    },
+    []
+  );
 
   return editor;
 };

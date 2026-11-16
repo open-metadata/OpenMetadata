@@ -129,11 +129,11 @@ public class WorkflowVariableHandler {
    * its FQN does, so a stale FQN no longer breaks resolution. The FQN fallback covers in-flight
    * workflows started before {@code relatedEntityId} was recorded at the trigger.
    */
-  public EntityInterface getRelatedEntity(
+  public EntityInterface<?> getRelatedEntity(
       MessageParser.EntityLink entityLink, String fields, Include include) {
     Object idValue = getNamespacedVariable(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
     String relatedEntityId = idValue != null ? idValue.toString() : null;
-    EntityInterface entity;
+    EntityInterface<?> entity;
     if (nullOrEmpty(relatedEntityId)) {
       entity = Entity.getEntity(entityLink, fields, include);
     } else {
@@ -144,7 +144,8 @@ public class WorkflowVariableHandler {
     return entity;
   }
 
-  private String getNodeNamespace() {
+  /** The name of the node this execution or task belongs to, which namespaces its variables. */
+  public String getNodeNamespace() {
     String namespace;
     if (varScope instanceof DelegateExecution execution) {
       namespace =

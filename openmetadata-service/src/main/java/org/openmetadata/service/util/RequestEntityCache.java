@@ -90,7 +90,7 @@ public final class RequestEntityCache {
     }
   }
 
-  public static <T extends EntityInterface> T getById(
+  public static <T extends EntityInterface<?>> T getById(
       String entityType,
       UUID id,
       Fields fields,
@@ -103,7 +103,7 @@ public final class RequestEntityCache {
         entityClass);
   }
 
-  public static <T extends EntityInterface> T getByName(
+  public static <T extends EntityInterface<?>> T getByName(
       String entityType,
       String name,
       Fields fields,
@@ -116,7 +116,7 @@ public final class RequestEntityCache {
         entityClass);
   }
 
-  public static <T extends EntityInterface> void putById(
+  public static <T extends EntityInterface<?>> void putById(
       String entityType,
       UUID id,
       Fields fields,
@@ -130,7 +130,7 @@ public final class RequestEntityCache {
         entity);
   }
 
-  public static <T extends EntityInterface> void putByName(
+  public static <T extends EntityInterface<?>> void putByName(
       String entityType,
       String name,
       Fields fields,
@@ -144,7 +144,7 @@ public final class RequestEntityCache {
         entity);
   }
 
-  private static <T extends EntityInterface> T get(EntityCacheKey key, Class<T> entityClass) {
+  private static <T extends EntityInterface<?>> T get(EntityCacheKey key, Class<T> entityClass) {
     String cachedJson;
     try (Phase ignored = phase("requestCacheGet")) {
       cachedJson = entries().get(key);
@@ -157,7 +157,7 @@ public final class RequestEntityCache {
     }
   }
 
-  private static <T extends EntityInterface> void put(EntityCacheKey key, T entity) {
+  private static <T extends EntityInterface<?>> void put(EntityCacheKey key, T entity) {
     if (entity == null) {
       return;
     }

@@ -16,6 +16,7 @@ package org.openmetadata.service.jobs;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -24,14 +25,66 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.sql.ResultSet;
+import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 
 class JobDAOTest {
   private static final String ONTOLOGY_BULK_FILTER = "'ONTOLOGY_BULK'";
   private static final String RUNNING_FILTER = "status = 'RUNNING'";
   private static final String STALENESS_FILTER = "updatedAt < :staleBefore";
+
+  @Test
+  void pendingJobQueriesReserveWorkerCapacityForBothMemoryJobTypes() throws NoSuchMethodException {
+    final ConnectionAwareSqlQuery[] queries =
+        JobDAO.class
+            .getMethod("fetchPendingJobInternal", boolean.class)
+            .getAnnotationsByType(ConnectionAwareSqlQuery.class);
+
+    assertEquals(2, queries.length);
+    for (ConnectionAwareSqlQuery query : queries) {
+      assertTrue(query.value().contains(":includeMemoryJobs = true OR jobType NOT IN"));
+      assertTrue(query.value().contains("'CONTEXT_MEMORY_EXTRACTION'"));
+      assertTrue(query.value().contains("'MEMORY_GLOSSARY_DERIVATION'"));
+    }
+  }
+
+  @Test
+  void ontologyBulkListQuerySupportsGlossaryFilterForBothConnectionTypes()
+      throws NoSuchMethodException {
+    final ConnectionAwareSqlQuery[] queries =
+        JobDAO.class
+            .getMethod("listOntologyBulkJobsByUser", String.class, String.class, int.class)
+            .getAnnotationsByType(ConnectionAwareSqlQuery.class);
+
+    assertEquals(2, queries.length);
+    for (ConnectionAwareSqlQuery query : queries) {
+      assertTrue(query.value().contains("jobType = 'ONTOLOGY_BULK'"));
+      assertTrue(query.value().contains(":glossaryId IS NULL"));
+      assertTrue(query.value().contains(":glossaryId"));
+      assertTrue(query.value().contains("ORDER BY createdAt DESC LIMIT :limit"));
+    }
+    // MySQL variant uses JSON_EXTRACT; Postgres variant uses ->>'glossaryId'
+    boolean hasMysqlVariant = false;
+    boolean hasPostgresVariant = false;
+    for (ConnectionAwareSqlQuery query : queries) {
+      if (query.value().contains("JSON_UNQUOTE(JSON_EXTRACT")) {
+        hasMysqlVariant = true;
+        assertTrue(query.value().contains("$.request.glossaryId"));
+      }
+      if (query.value().contains("->>'glossaryId'")) {
+        hasPostgresVariant = true;
+      }
+    }
+    assertTrue(hasMysqlVariant, "Missing MySQL JSON_EXTRACT variant");
+    assertTrue(hasPostgresVariant, "Missing PostgreSQL ->> variant");
+  }
 
   @Test
   void staleWorkerRecoveryIsHeartbeatScopedAndIncludesOntologyJobs() throws NoSuchMethodException {
@@ -44,6 +97,75 @@ class JobDAOTest {
     assertTrue(update.value().contains(RUNNING_FILTER));
     assertTrue(update.value().contains(STALENESS_FILTER));
     assertEquals(2, method.getParameterCount());
+  }
+
+  @Test
+  void staleWorkerRecoveryReapsMemoryDerivationJobs() throws NoSuchMethodException {
+    final SqlUpdate update =
+        JobDAO.class
+            .getMethod("markStaleRunningJobsFailed", long.class, long.class)
+            .getAnnotation(SqlUpdate.class);
+
+    assertTrue(
+        update
+            .value()
+            .contains("'" + BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name() + "'"));
+  }
+
+  @Test
+  void memoryDerivationJobsTargetTheirRegisteredHandler() {
+    assertEquals(
+        MemoryGlossaryDerivationJobHandler.HANDLER_NAME, JobDAO.MEMORY_GLOSSARY_DERIVATION_HANDLER);
+  }
+
+  @Test
+  void memoryBatchAppendsToAnOpenPendingJob() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.lockOpenMemoryGlossaryBatch(
+            "contextFile:file-id",
+            JobDAO.MEMORY_GLOSSARY_BATCH_LIMIT,
+            JobDAO.MEMORY_GLOSSARY_BATCH_APPEND_MARGIN_MS))
+        .thenReturn(7L);
+    when(jobDao.appendToMemoryGlossaryBatch(7L, "memory-id")).thenReturn(1);
+
+    assertEquals(
+        Optional.of(7L),
+        jobDao.enqueueMemoryGlossaryDerivationBatch(
+            "memory-id", "contextFile:file-id", "{}", "admin", 100L));
+    verify(jobDao, never()).insertJobInternal(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void memoryBatchStartsANewDelayedJobWhenNoneIsOpen() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.insertJobInternal(
+            BackgroundJob.JobType.MEMORY_GLOSSARY_DERIVATION.name(),
+            JobDAO.MEMORY_GLOSSARY_DERIVATION_HANDLER,
+            "{}",
+            "admin",
+            100L))
+        .thenReturn(8L);
+
+    assertEquals(
+        Optional.of(8L),
+        jobDao.enqueueMemoryGlossaryDerivationBatch(
+            "memory-id", "contextFile:file-id", "{}", "admin", 100L));
+  }
+
+  @Test
+  void memoryBatchSkipsAMemoryAlreadyPending() {
+    JobDAO jobDao = mock(JobDAO.class, CALLS_REAL_METHODS);
+    when(jobDao.lockMemoryForGlossaryQueue("memory-id")).thenReturn("memory-id");
+    when(jobDao.countInFlightMemoryGlossaryJobs("memory-id", false)).thenReturn(1);
+
+    assertTrue(
+        jobDao
+            .enqueueMemoryGlossaryDerivationBatch(
+                "memory-id", "contextFile:file-id", "{}", "admin", 100L)
+            .isEmpty());
+    verify(jobDao, never()).insertJobInternal(any(), any(), any(), any(), any());
   }
 
   @Test
@@ -145,5 +267,29 @@ class JobDAOTest {
             "{}",
             "admin",
             null);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "ADMIN_OPS_REINDEX",
+        "ADMIN_OPS_DEPLOY_PIPELINES",
+        "ADMIN_OPS_SSO_CONFIG",
+        "ADMIN_OPS_AUTHORIZER_CONFIG",
+        "ADMIN_OPS_LIMITS_CONFIG",
+        "ADMIN_OPS_APP_CONFIG"
+      })
+  void workerReadsAQueuedAdminOpsJob(String storedJobType) throws Exception {
+    ResultSet row = mock(ResultSet.class);
+    when(row.getLong("id")).thenReturn(7L);
+    when(row.getString("jobType")).thenReturn(storedJobType);
+    when(row.getString("methodName")).thenReturn("AdminOpsJobHandler");
+    when(row.getString("jobArgs")).thenReturn("{}");
+    when(row.getString("status")).thenReturn("PENDING");
+
+    BackgroundJob job = new JobDAO.BackgroundJobMapper().map(row, null);
+
+    assertEquals(storedJobType, job.getJobType().value());
+    assertEquals(BackgroundJob.Status.PENDING, job.getStatus());
   }
 }

@@ -68,7 +68,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
   );
 
   const labelNode = (
-    <div style={{ maxWidth }}>
+    <div className="tw:min-w-0" style={{ maxWidth }}>
       <span
         className={cx('tw:block tw:truncate', labelClassName)}
         data-testid={labelTestId}>
@@ -78,7 +78,7 @@ export const TagChipContent: FC<TagChipContentProps> = ({
   );
 
   return (
-    <div className="tw:flex tw:items-center tw:gap-1">
+    <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-1">
       {iconNode && (
         <span
           aria-hidden

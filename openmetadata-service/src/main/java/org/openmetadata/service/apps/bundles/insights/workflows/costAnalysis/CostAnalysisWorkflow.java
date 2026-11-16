@@ -109,7 +109,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
 
     String keysetCursor = null;
     while (!stopped) {
-      ResultList<? extends EntityInterface> rawResult =
+      ResultList<? extends EntityInterface<?>> rawResult =
           databaseServices.readNextKeyset(keysetCursor);
       keysetCursor = rawResult.getPaging().getAfter();
       ResultList<DatabaseService> resultList = filterDatabaseServices(rawResult);
@@ -186,7 +186,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
       String tableKeysetCursor = null;
       while (!stopped) {
         try {
-          ResultList<? extends EntityInterface> resultList =
+          ResultList<? extends EntityInterface<?>> resultList =
               source.readNextKeyset(tableKeysetCursor);
           tableKeysetCursor = resultList.getPaging().getAfter();
           List<CostAnalysisTableData> costAnalysisTableData =
@@ -258,7 +258,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                   "Failed Processing Raw Cost Analysis Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
@@ -276,7 +276,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                 String.format("Failed Sinking Raw Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -306,7 +306,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
               String.format("Failed Aggregating Cost Analysis Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           aggregatedCostAnalysisReportDataAggregator.getName(),
           aggregatedCostAnalysisReportDataAggregator.getStats());
     }
@@ -331,7 +331,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                     "Failed Processing Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(
+        accumulateWorkflowStats(
             createReportdataProcessor.getName(), createReportdataProcessor.getStats());
       }
 
@@ -350,7 +350,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                       "Failed Sinking Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
           workflowStats.addFailure(error.get());
         } finally {
-          updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+          accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
         }
       }
     }
@@ -359,7 +359,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
   }
 
   private ResultList<DatabaseService> filterDatabaseServices(
-      ResultList<? extends EntityInterface> resultList) {
+      ResultList<? extends EntityInterface<?>> resultList) {
     return new ResultList<>(
         resultList.getData().stream()
             .map(object -> (DatabaseService) object)
@@ -385,6 +385,12 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
   private void deleteReportDataRecords(ReportData.ReportDataType reportDataType) {
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
         .deleteReportData(reportDataType);
+  }
+
+  private void accumulateWorkflowStats(String stepName, StepStats completedStepStats) {
+    workflowStats.accumulateWorkflowStepStats(stepName, completedStepStats);
+    workflowStats.updateWorkflowStats(
+        completedStepStats.getSuccessRecords(), completedStepStats.getFailedRecords());
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {

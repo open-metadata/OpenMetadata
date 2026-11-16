@@ -30,6 +30,12 @@ jest.mock('./RouterUtils', () => ({
     `/settings/${category}/${option}`,
 }));
 
+let mockIsAiShell = false;
+
+jest.mock('./SettingsModalLinkUtils', () => ({
+  isAiShell: () => mockIsAiShell,
+}));
+
 jest.mock('./ServicePureUtils', () => ({
   getCountLabel: (type: string) =>
     type === 'databaseServices' ? 'Databases' : 'Assets',
@@ -86,6 +92,26 @@ describe('ConnectionsRouterClassBase', () => {
       expect(router.getSettingsServicesPath('databaseServices')).toBe(
         '/settings/services/databaseServicesRoute'
       );
+    });
+
+    describe('in the AI shell, which serves no settings pages', () => {
+      beforeEach(() => {
+        mockIsAiShell = true;
+      });
+
+      afterEach(() => {
+        mockIsAiShell = false;
+      });
+
+      it('should return the connections listing', () => {
+        expect(router.getSettingsServicesPath()).toBe('/connections');
+      });
+
+      it('should open the listing on the service category', () => {
+        expect(router.getSettingsServicesPath('databaseServices')).toBe(
+          '/connections?category=databaseServices'
+        );
+      });
     });
   });
 

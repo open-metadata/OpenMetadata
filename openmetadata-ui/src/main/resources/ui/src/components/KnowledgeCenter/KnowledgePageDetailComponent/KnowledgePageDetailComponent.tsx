@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { Articles, Lock } from '@openmetadata/ui-core-components/icons';
+import {
+  File06 as Articles,
+  Lock01 as Lock,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, debounce, isEqual, isNil, isUndefined } from 'lodash';
@@ -19,6 +21,7 @@ import { EntityTags } from 'Models';
 import {
   FC,
   KeyboardEvent,
+  lazy,
   useCallback,
   useEffect,
   useMemo,
@@ -31,6 +34,10 @@ import { ActivityFeedLayoutType } from '../../../components/ActivityFeed/Activit
 import ActivityThreadPanel from '../../../components/ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
 import BlockEditor from '../../../components/BlockEditor/BlockEditor';
 import { BlockEditorRef } from '../../../components/BlockEditor/BlockEditor.interface';
+import type {
+  CustomPropertyProps,
+  ExtentionEntitiesKeys,
+} from '../../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { GenericProvider } from '../../../components/Customization/GenericProvider/GenericProvider';
@@ -44,6 +51,7 @@ import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import {
   getKnowledgePageFields,
+  isKnowledgePageFullWidthTab,
   KNOWLEDGE_PAGE_FIELDS,
   KNOWLEDGE_PAGE_UN_SAVED_CHANGE_STATE,
 } from '../../../constants/KnowledgeCenter.constant';
@@ -78,6 +86,7 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { withExtractionState } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -94,9 +103,23 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
+import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
+
+const CustomPropertyTable = withSuspenseFallback(
+  lazy(() =>
+    import('../../common/CustomPropertyTable/CustomPropertyTable').then(
+      (module) => ({ default: module.CustomPropertyTable })
+    )
+  )
+) as <T extends ExtentionEntitiesKeys>(
+  props: CustomPropertyProps<T>
+) => JSX.Element;
 
 // Pure helper (module scope): decides whether a locally-stashed draft should be
 // merged into the freshly fetched page, and produces the merged shape. Kept out of
@@ -151,6 +174,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
+  const extractionStateRequestRef = useRef(0);
   const knowledgePageIdRef = useRef<string | undefined>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -195,6 +219,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     hasViewAccess: hasViewPermission,
     canEditDescription,
     canEditDisplayName,
+    canEditCustomFields,
+    canViewCustomFields,
   } = useEntityPermissions(ResourceEntity.KNOWLEDGE_PAGE, fqn, {
     deleted: Boolean(knowledgePage?.deleted),
   });
@@ -204,6 +230,29 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       showErrorToast(permissionsError as AxiosError);
     }
   }, [permissionsError]);
+
+  // A body write changes whether the article reads Not processed, which its PATCH response omits.
+  // Callers start it once their write is settled: it never holds a save or a load.
+  const refreshExtractionState = useCallback(async (page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    const request = extractionStateRequestRef.current;
+    try {
+      const read = await getKnowledgePageByFqn(page.fullyQualifiedName, {
+        fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
+      });
+      if (request === extractionStateRequestRef.current) {
+        setKnowledgePage((prev) => withExtractionState(prev, read));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
+  // What an Extract or Retry left: newer than any refresh still in flight, which it discards.
+  const applyExtractionState = useCallback((page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    setKnowledgePage((prev) => withExtractionState(prev, page));
+  }, []);
 
   // Persists a locally-stashed draft (created while offline/unsaved) back to the
   // server once the canonical page has been fetched.
@@ -230,6 +279,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (response.id === knowledgePageIdRef.current) {
         setContentChangeState(ContentChangeState.SAVED);
       }
+      void refreshExtractionState(response);
     } catch (syncError) {
       showErrorToast(syncError as AxiosError);
       if (response.id === knowledgePageIdRef.current) {
@@ -246,6 +296,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.RELATED_ARTICLES,
           KNOWLEDGE_PAGE_FIELDS.EDITORS,
           KNOWLEDGE_PAGE_FIELDS.PARENT,
+          KNOWLEDGE_PAGE_FIELDS.EXTENSION,
+          KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
         ]),
       });
 
@@ -477,6 +529,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       } finally {
         endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
+      if (didSucceed) {
+        void refreshExtractionState(currentKnowledgePage);
+      }
     },
     [
       knowledgePage,
@@ -485,6 +540,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       beginTrackedSave,
       endTrackedSave,
       onArticleSaved,
+      refreshExtractionState,
     ]
   );
 
@@ -547,6 +603,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         reviewers: response.reviewers,
         domains: response.domains,
         dataProducts: response.dataProducts,
+        extension: response.extension,
         version: response.version,
       }));
 
@@ -842,6 +899,25 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           />
         ),
       },
+      {
+        name: t('label.custom-property-plural'),
+        label: (
+          <TabsLabel
+            id={EntityTabs.CUSTOM_PROPERTIES}
+            name={t('label.custom-property-plural')}
+          />
+        ),
+        key: EntityTabs.CUSTOM_PROPERTIES,
+        children: knowledgePage && (
+          <CustomPropertyTable<EntityType.KNOWLEDGE_PAGE>
+            entityDetails={knowledgePage}
+            entityType={EntityType.KNOWLEDGE_PAGE}
+            hasEditAccess={canEditCustomFields}
+            hasPermission={canViewCustomFields}
+            onEntityUpdate={updatePage}
+          />
+        ),
+      },
     ];
 
     return items;
@@ -851,6 +927,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     activeTab,
     canEditDisplayName,
     canEditDescription,
+    canEditCustomFields,
+    canViewCustomFields,
     displayName,
     fqn,
   ]);
@@ -926,9 +1004,17 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   );
 
   useEffect(() => {
-    return () => {
+    const flushDrafts = () => {
       saveDraftContent.flush();
       saveDraftDisplayName.flush();
+    };
+    // A reload or tab close never unmounts, so the last 300ms of edits would
+    // otherwise miss the draft stash and a stale draft gets synced on return.
+    window.addEventListener('pagehide', flushDrafts);
+
+    return () => {
+      window.removeEventListener('pagehide', flushDrafts);
+      flushDrafts();
     };
   }, [saveDraftContent, saveDraftDisplayName]);
 
@@ -944,7 +1030,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     let rightPanel = null;
     if (
       isRightPanelOpen &&
-      activeTab !== EntityTabs.ACTIVITY_FEED &&
+      !isKnowledgePageFullWidthTab(activeTab) &&
       knowledgePage
     ) {
       rightPanel = (
@@ -959,6 +1045,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             permissions={permissions}
             tags={tags}
             updatePageTag={updatePageTag}
+            onExtractionStateChange={applyExtractionState}
           />
         </GenericProvider>
       );
@@ -994,6 +1081,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
+    applyExtractionState,
   ]);
 
   useEffect(() => {
@@ -1007,7 +1095,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   if (!hasViewPermission) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
+        <PermissionPlaceholder
           description={
             <Transi18next
               i18nKey="message.no-access-placeholder"
@@ -1017,7 +1105,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
               }}
             />
           }
-          icon={<Lock className="tw:text-secondary" />}
+          icon={<Lock />}
           title={t('label.access-denied')}
         />
       </div>
@@ -1027,8 +1115,8 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   if (!knowledgePage) {
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
-        <EmptyPlaceholder
-          icon={<Articles className="tw:text-secondary" />}
+        <NoDataPlaceholder
+          icon={<Articles />}
           title={t('label.no-entity', { entity: t('label.article') })}
         />
       </div>
@@ -1037,6 +1125,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   return (
     <>
+      <DomainMismatchAlert
+        className="tw:mb-4"
+        domains={knowledgePage.domains}
+        entityId={knowledgePage.id}
+      />
       {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel

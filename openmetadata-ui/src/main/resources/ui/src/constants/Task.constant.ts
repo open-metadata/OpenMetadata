@@ -11,19 +11,8 @@
  *  limitations under the License.
  */
 
+import { TaskType } from '../generated/entity/tasks/task';
 import { TaskEntityType } from '../rest/tasksAPI';
-
-export const TASK_TYPES = {
-  RequestTag: 'message.request-tags-message',
-  RequestDescription: 'message.request-description-message',
-  UpdateTag: 'message.update-tag-message',
-  UpdateDescription: 'message.update-description-message',
-  RequestTestCaseFailureResolution:
-    'message.request-test-case-failure-resolution-message',
-  RequestApproval: 'message.request-approval-message',
-  RecognizerFeedbackApproval: 'message.recognizer-feedback-approval-message',
-  Generic: 'message.request-tags-message',
-};
 
 export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
   [TaskEntityType.GlossaryApproval]: 'message.request-approval-message',
@@ -43,4 +32,14 @@ export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
   [TaskEntityType.RecognizerFeedbackApproval]:
     'message.recognizer-feedback-approval-message',
   [TaskEntityType.CustomTask]: 'message.custom-task-message',
+  [TaskEntityType.MemoryConflictReview]:
+    'message.memory-conflict-review-message',
+  [TaskEntityType.MetadataCompletion]: 'message.metadata-completion-message',
 };
+
+// The server lets users with EditStatus / EditTests on the test case resolve
+// these even when ResolveTask on the task itself is denied.
+export const INCIDENT_TASK_TYPES: ReadonlySet<TaskType> = new Set([
+  TaskType.IncidentResolution,
+  TaskType.TestCaseResolution,
+]);

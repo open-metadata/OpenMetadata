@@ -59,14 +59,15 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.TokenInterface;
+import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.BasicAuthMechanism;
@@ -105,29 +106,40 @@ import org.openmetadata.service.util.email.EmailUtil;
 public class BasicAuthenticator implements AuthenticatorHandler {
   // No of cycles to perform hashing, increasing too much slows the algorithm
   private static final int HASHING_COST = 12;
+  static final String EMAIL_CONFIRMATION_PENDING =
+      "Confirm your email address with the link sent to it, then sign in.";
   private UserRepository userRepository;
   private TokenRepository tokenRepository;
-  private AuthorizerConfiguration authorizerConfiguration;
-  private boolean isSelfSignUpAvailable;
 
   @Override
   public void init(OpenMetadataApplicationConfig config) {
     this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     this.tokenRepository = Entity.getTokenRepository();
-    this.authorizerConfiguration = config.getAuthorizerConfiguration();
-    this.isSelfSignUpAvailable =
-        SecurityConfigurationManager.getCurrentAuthConfig().getEnableSelfSignup();
+  }
+
+  /** Read per request: a change saved in the UI applies without reinitializing authentication. */
+  private static boolean isSelfSignUpAvailable() {
+    AuthenticationConfiguration authConfig = SecurityConfigurationManager.getCurrentAuthConfig();
+    return authConfig != null && Boolean.TRUE.equals(authConfig.getEnableSelfSignup());
+  }
+
+  private static Set<String> allowedRegistrationDomains() {
+    AuthorizerConfiguration authorizer = SecurityConfigurationManager.getCurrentAuthzConfig();
+    return authorizer == null || authorizer.getAllowedEmailRegistrationDomains() == null
+        ? Set.of()
+        : authorizer.getAllowedEmailRegistrationDomains();
   }
 
   @Override
   public User registerUser(RegistrationRequest newRegistrationRequest) {
-    if (isSelfSignUpAvailable) {
+    if (isSelfSignUpAvailable()) {
       String newRegistrationRequestEmail = newRegistrationRequest.getEmail();
       String[] tokens = newRegistrationRequest.getEmail().split("@");
       String emailDomain = tokens[1];
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
+      Set<String> allowedDomains = allowedRegistrationDomains();
       if (!allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(emailDomain::equalsIgnoreCase)) {
+          && allowedDomains.stream()
+              .noneMatch(domain -> SecurityUtil.sameIdentifier(domain, emailDomain))) {
         LOG.error("Email with this Domain not allowed: {}", newRegistrationRequestEmail);
         throw new BadRequestException(
             "Email with the given domain is not allowed. Contact Administrator");
@@ -154,7 +166,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.get(
             null, emailVerificationToken.getUserId(), userRepository.getFieldsWithUserAuth("*"));
     if (Boolean.TRUE.equals(registeredUser.getIsEmailVerified())) {
-      LOG.info("User [{}] already registered.", emailToken);
+      LOG.info("User [{}] already registered.", registeredUser.getName());
       return;
     }
 
@@ -186,7 +198,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       UUID mailVerificationToken = UUID.randomUUID();
       EmailVerificationToken emailVerificationToken =
           TokenUtil.getEmailVerificationToken(user.getId(), mailVerificationToken);
-      LOG.info("Generated Email verification token [{}]", mailVerificationToken);
+      LOG.info("Generated an email verification token for user [{}]", user.getName());
       String emailVerificationLink =
           String.format(
               "%s/users/registrationConfirmation?user=%s&token=%s",
@@ -207,25 +219,28 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public void sendPasswordResetLink(
       UriInfo uriInfo, User user, String subject, String templateFilePath) throws IOException {
-    UUID mailVerificationToken = UUID.randomUUID();
-    PasswordResetToken resetToken =
-        TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
-    LOG.info("Generated Password Reset verification token [{}]", mailVerificationToken);
-    String passwordResetLink =
-        String.format(
-            "%s/users/password/reset?user=%s&token=%s",
-            EmailUtil.getOMBaseURL(),
-            URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
-            mailVerificationToken);
-    try {
-      EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
-    } catch (TemplateException e) {
-      LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
-      throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
+    // Without SMTP the link reaches nobody, so a stored token could only ever be misused.
+    if (Boolean.TRUE.equals(getSmtpSettings().getEnableSmtpServer())) {
+      UUID mailVerificationToken = UUID.randomUUID();
+      PasswordResetToken resetToken =
+          TokenUtil.getPasswordResetToken(user.getId(), mailVerificationToken);
+      LOG.info("Generated a password reset token for user [{}]", user.getName());
+      String passwordResetLink =
+          String.format(
+              "%s/users/password/reset?user=%s&token=%s",
+              EmailUtil.getOMBaseURL(),
+              URLEncoder.encode(user.getName(), StandardCharsets.UTF_8),
+              mailVerificationToken);
+      try {
+        EmailUtil.sendPasswordResetLink(passwordResetLink, user, subject, templateFilePath);
+      } catch (TemplateException e) {
+        LOG.error("Error in sending mail to the User : {}", e.getMessage(), e);
+        throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
+      }
+      // don't persist tokens delete existing
+      tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
+      tokenRepository.insertToken(resetToken);
     }
-    // don't persist tokens delete existing
-    tokenRepository.deleteTokenByUserAndType(user.getId(), PASSWORD_RESET.toString());
-    tokenRepository.insertToken(resetToken);
   }
 
   @Override
@@ -263,6 +278,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
+    userRepository.endSignIns(storedUser);
 
     // Update user about Password Change
     try {
@@ -272,7 +288,6 @@ public class BasicAuthenticator implements AuthenticatorHandler {
       LOG.error("Error in sending Password Change Mail to User. Reason : {}", ex.getMessage(), ex);
       throw new CustomExceptionMessage(424, FAILED_SEND_EMAIL, EMAIL_SENDING_ISSUE);
     }
-    LoginAttemptCache.getInstance().recordSuccessfulLogin(request.getUsername());
   }
 
   @Override
@@ -317,8 +332,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     storedUser.getAuthenticationMechanism().setConfig(storedBasicAuthMechanism);
     PutResponse<User> response =
         userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
-    // remove login/details from cache
-    LoginAttemptCache.getInstance().recordSuccessfulLogin(userName);
+    userRepository.endSignIns(storedUser);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
@@ -378,7 +392,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse getNewAccessToken(TokenRefreshRequest request) {
     if (CommonUtil.nullOrEmpty(request.getRefreshToken())) {
-      throw new BadRequestException("Token Cannot be Null or Empty String");
+      throw new AuthenticationException("Refresh token is required. Please login again.");
     }
     TokenInterface tokenInterface = tokenRepository.findByToken(request.getRefreshToken());
     User storedUser =
@@ -430,18 +444,16 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     RefreshToken storedRefreshToken =
         (RefreshToken) tokenRepository.findByToken(requestRefreshToken);
     if (storedRefreshToken.getExpiryDate().compareTo(Instant.now().toEpochMilli()) < 0) {
-      throw new CustomExceptionMessage(
-          BAD_REQUEST,
-          PASSWORD_RESET_TOKEN_EXPIRED,
-          "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
+      throw new AuthenticationException("Refresh token expired. Please login again.");
     }
-    // TODO: currently allow single login from a place, later multiple login can be added
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // A refresh token is used once: it is replaced by the new one in one statement, so a token
+    // deleted while this request ran, by a concurrent refresh or by a password change ending the
+    // user's sign-ins, leaves nothing to replace and no new token is issued
+    // (ADR:2026-11-03-a-password-change-ends-the-users-sign-ins).
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 
@@ -476,8 +488,8 @@ public class BasicAuthenticator implements AuthenticatorHandler {
   @Override
   public JwtResponse loginUser(LoginRequest loginRequest) throws IOException, TemplateException {
     String email = loginRequest.getEmail();
-    checkIfLoginBlocked(email);
     User storedUser = lookUserInProvider(email, loginRequest.getPassword());
+    checkIfLoginBlocked(storedUser);
     validatePassword(email, loginRequest.getPassword(), storedUser);
     Entity.getUserRepository().updateUserLastLoginTime(storedUser, System.currentTimeMillis());
     if (Entity.getAuditLogRepository() != null) {
@@ -488,27 +500,86 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     return getJwtResponse(storedUser, SecurityUtil.getLoginConfiguration().getJwtTokenExpiryTime());
   }
 
+  /**
+   * A self-registered account signs in once its address is confirmed: the registration domain
+   * allow-list holds only as long as registering proves the registrant owns the address. Accounts
+   * an admin created, and ones registered while no mail server was set up, have no confirmation
+   * pending and sign in as before. Checked after the password, so it reveals nothing to a guesser.
+   */
+  void requireConfirmedRegistration(User storedUser) {
+    if (!Boolean.TRUE.equals(storedUser.getIsEmailVerified())
+        && !tokenRepository
+            .findByUserIdAndType(storedUser.getId(), EMAIL_VERIFICATION.toString())
+            .isEmpty()) {
+      throw new AuthenticationException(EMAIL_CONFIRMATION_PENDING);
+    }
+  }
+
+  /**
+   * For callers that only have the address, such as the MCP login form. Failures are counted
+   * against the account's current password, so this loads the account first; an address with no
+   * active account has no lockout.
+   */
   @Override
   public void checkIfLoginBlocked(String email) {
-    if (LoginAttemptCache.getInstance().isLoginBlocked(email)) {
-      throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
+    User storedUser = findAccount(email);
+    if (storedUser != null) {
+      checkIfLoginBlocked(storedUser);
     }
   }
 
   @Override
   public void recordFailedLoginAttempt(String email, String userName)
       throws TemplateException, IOException {
-    LoginAttemptCache.getInstance().recordFailedLogin(email);
-    int failedLoginAttempt = LoginAttemptCache.getInstance().getUserFailedLoginCount(email);
+    User storedUser = findAccount(email);
+    if (storedUser != null) {
+      recordFailedLoginAttempt(storedUser);
+    }
+  }
+
+  private User findAccount(String email) {
+    try {
+      return lookUserInProvider(email, null);
+    } catch (CustomExceptionMessage | AuthenticationException e) {
+      return null;
+    }
+  }
+
+  private void checkIfLoginBlocked(User storedUser) {
+    if (LoginAttemptCache.getInstance().isLoginBlocked(failedLoginKey(storedUser))) {
+      throw new AuthenticationException(MAX_FAILED_LOGIN_ATTEMPT);
+    }
+  }
+
+  private void recordFailedLoginAttempt(User storedUser) throws TemplateException, IOException {
+    String failedLoginKey = failedLoginKey(storedUser);
+    LoginAttemptCache.getInstance().recordFailedLogin(failedLoginKey);
+    int failedLoginAttempt =
+        LoginAttemptCache.getInstance().getUserFailedLoginCount(failedLoginKey);
     if (failedLoginAttempt == SecurityUtil.getLoginConfiguration().getMaxLoginFailAttempts()) {
       sendAccountStatus(
-          userName,
-          email,
+          storedUser.getName(),
+          storedUser.getEmail(),
           "Multiple Failed Login Attempts.",
           String.format(
               "Someone is trying to access your account. Login is Blocked for %s seconds. Please change your password.",
               SecurityUtil.getLoginConfiguration().getAccessBlockTime()));
     }
+  }
+
+  /**
+   * Failed logins count against the password they were tried on, not just the account, so a new
+   * password starts with none. An admin reset, a self-service change, the reset link and the ops
+   * CLI all just store a new hash, and every login reads the hash from the database — so the
+   * lockout lifts on every server, including ones that never saw the reset. Clearing a counter
+   * when the password changes can only reach the counter of the server that made the change. See
+   * ADR:2026-10-15-basic-auth-failed-logins-count-against-the-stored-password.
+   */
+  static String failedLoginKey(User storedUser) {
+    String storedHash = storedPasswordHash(storedUser);
+    return storedUser.getEmail()
+        + ":"
+        + DigestUtils.sha256Hex(storedHash == null ? "" : storedHash);
   }
 
   public void validatePassword(String providedIdentity, String reqPassword, User omUser)
@@ -519,15 +590,32 @@ public class BasicAuthenticator implements AuthenticatorHandler {
     if (omUser.getAuthenticationMechanism() == null) {
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
-    @SuppressWarnings("unchecked")
-    LinkedHashMap<String, String> storedData =
-        (LinkedHashMap<String, String>) omUser.getAuthenticationMechanism().getConfig();
-    String storedHashPassword = storedData.get("password");
-    if (!BCrypt.verifyer().verify(reqPassword.toCharArray(), storedHashPassword).verified) {
-      // record Failed Login Attempts
-      recordFailedLoginAttempt(omUser.getEmail(), omUser.getName());
+    if (!matchesStoredPassword(omUser, reqPassword)) {
+      recordFailedLoginAttempt(omUser);
       throw new AuthenticationException(INVALID_USERNAME_PASSWORD);
     }
+    LoginAttemptCache.getInstance().recordSuccessfulLogin(failedLoginKey(omUser));
+    requireConfirmedRegistration(omUser);
+  }
+
+  /**
+   * The password check alone, with none of login's failed-attempt bookkeeping — so the Test Login
+   * dry-run can verify a password without ever counting towards locking the account.
+   */
+  static boolean matchesStoredPassword(User omUser, String password) {
+    String storedHashPassword = storedPasswordHash(omUser);
+    return storedHashPassword != null
+        && BCrypt.verifyer().verify(password.toCharArray(), storedHashPassword).verified;
+  }
+
+  private static String storedPasswordHash(User omUser) {
+    if (omUser.getAuthenticationMechanism() == null) {
+      return null;
+    }
+    @SuppressWarnings("unchecked")
+    Map<String, String> storedData =
+        (Map<String, String>) omUser.getAuthenticationMechanism().getConfig();
+    return storedData.get("password");
   }
 
   @Override

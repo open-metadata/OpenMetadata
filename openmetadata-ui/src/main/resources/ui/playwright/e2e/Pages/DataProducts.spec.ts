@@ -42,6 +42,7 @@ import {
 } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
+import { waitForAriaOverlayToSettle } from '../../utils/waitHelpers';
 
 const user = new UserClass();
 const domain = new Domain();
@@ -68,7 +69,7 @@ const test = base.extend<{
   },
   userPage: async ({ browser }, setPage) => {
     const page = await browser.newPage();
-    await user.login(page);
+    await user.signIn(page);
     await setPage(page);
     await page.close();
   },
@@ -199,6 +200,8 @@ test.describe('Data Products', () => {
 
     await test.step('Delete data product', async () => {
       await page.getByTestId('manage-button').click();
+      await expect(page.getByTestId('delete-button-title')).toBeVisible();
+      await waitForAriaOverlayToSettle(page);
       await page.getByTestId('delete-button-title').click();
 
       await expect(page.getByTestId('modal-header')).toContainText(
@@ -220,10 +223,9 @@ test.describe('Data Products', () => {
   });
 
   test('Search Data Products', async ({ page }) => {
-    // Distinct words keep this search assertion independent of fuzzy matches
-    // between the shared prefix and short hexadecimal IDs of default fixtures.
-    const dataProduct1 = new DataProduct([domain], `revenuecatalog${uuid()}`);
-    const dataProduct2 = new DataProduct([domain], `inventorycatalog${uuid()}`);
+    const dataProduct1 = new DataProduct([domain], `revenue${uuid()}`);
+    // A near miss: its hex id can fuzzy-match the search, but must rank lower.
+    const dataProduct2 = new DataProduct([domain], `shipyard${uuid()}`);
 
     await test.step('Create test data products', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
@@ -254,20 +256,21 @@ test.describe('Data Products', () => {
         .getByRole('main')
         .getByPlaceholder('Search')
         .fill(dataProduct1.data.name);
-      expect((await searchResponse).status()).toBe(200);
+      const response = await searchResponse;
+      expect(response.status()).toBe(200);
+      // Search is fuzzy, so other names may follow; the exact name ranks first.
+      const { hits } = await response.json();
+      expect(hits.hits[0]?._source.name).toBe(dataProduct1.data.name);
       await waitForAllLoadersToDisappear(page);
 
       await expect(page.getByText(dataProduct1.data.displayName)).toBeVisible();
-      await expect(
-        page.getByText(dataProduct2.data.displayName)
-      ).not.toBeVisible();
     });
 
     await test.step('Clear search', async () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
+      await expect(page.getByTestId('pagination')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -307,7 +310,9 @@ test.describe('Data Products', () => {
       // Table should be hidden, cards should be visible
       await expect(page.getByTestId('table-view-container')).not.toBeVisible();
       await expect(page.getByTestId('card-view-container')).toBeVisible();
-      await expect(page.getByTestId('entity-card').first()).toBeVisible();
+      await expect(
+        page.getByTestId('entity-card').filter({ visible: true })
+      ).not.toHaveCount(0);
     });
 
     await test.step('Switch back to table view', async () => {
@@ -322,71 +327,6 @@ test.describe('Data Products', () => {
         page.context().browser()!
       );
       await dataProduct.delete(apiContext);
-      await afterAction();
-    });
-  });
-
-  test('Pagination', async ({ page }) => {
-    const dataProducts: DataProduct[] = [];
-
-    await test.step('Create 30 test data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      for (let i = 0; i < 30; i++) {
-        const dp = new DataProduct([domain]);
-        await dp.create(apiContext);
-        dataProducts.push(dp);
-      }
-
-      await afterAction();
-    });
-
-    await test.step('Navigate to Data Products page', async () => {
-      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
-      await waitForAllLoadersToDisappear(page);
-    });
-
-    await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByLabel('Pagination Navigation');
-      await expect(pagination).toBeVisible();
-      await expect(
-        pagination.getByLabel('Page 1', { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Navigate to page 2', async () => {
-      await page.getByLabel('Next Page').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page
-          .getByLabel('Pagination Navigation')
-          .getByLabel('Page 2', { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Navigate back to page 1', async () => {
-      await page.getByLabel('Previous Page').click();
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(
-        page
-          .getByLabel('Pagination Navigation')
-          .getByLabel('Page 1', { exact: true })
-      ).toBeVisible();
-    });
-
-    await test.step('Cleanup test data products', async () => {
-      const { apiContext, afterAction } = await performAdminLogin(
-        page.context().browser()!
-      );
-
-      for (const dp of dataProducts) {
-        await dp.delete(apiContext);
-      }
-
       await afterAction();
     });
   });

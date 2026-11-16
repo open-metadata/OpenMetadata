@@ -16,26 +16,21 @@ import { getCountBadge } from './EntityDisplayPureUtils';
 const getBadgeClassName = (badge: ReactElement): string =>
   (badge as ReactElement<{ className: string }>).props.className;
 
+const getBadgeColor = (badge: ReactElement): string =>
+  (badge as ReactElement<{ color: string }>).props.color;
+
 describe('getCountBadge active class branch', () => {
-  it('renders the active classes when isActive is true', () => {
-    const className = getBadgeClassName(getCountBadge(1, '', true));
-
-    expect(className).toContain('bg-primary text-white no-border');
-    expect(className).not.toContain('ant-tag');
+  it('renders a brand badge when isActive is true', () => {
+    expect(getBadgeColor(getCountBadge(1, '', true))).toBe('brand');
   });
 
-  it('renders the ant-tag class when isActive is false', () => {
-    const className = getBadgeClassName(getCountBadge(1, '', false));
-
-    expect(className).toContain('ant-tag');
-    expect(className).not.toContain('bg-primary');
+  it('renders a gray badge when isActive is false', () => {
+    expect(getBadgeColor(getCountBadge(1, '', false))).toBe('gray');
   });
 
-  it('renders neither active nor ant-tag class when isActive is undefined', () => {
+  it('renders the plain bordered count when isActive is undefined', () => {
     const className = getBadgeClassName(getCountBadge(1));
 
-    expect(className).not.toContain('ant-tag');
-    expect(className).not.toContain('bg-primary');
     expect(className).toContain('global-border');
   });
 });

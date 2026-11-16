@@ -11,20 +11,28 @@
  *  limitations under the License.
  */
 
-import { CloseOutlined, LoadingOutlined } from '@ant-design/icons';
-import { Drawer, Empty, Spin, Typography } from 'antd';
+import {
+  Box,
+  CloseButton,
+  SlideoutMenu,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import React, { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   getLearningResourcesByContext,
   LearningResource,
 } from '../../../rest/learningResourceAPI';
+import {
+  opensInNewTab,
+  openUrlInNewTab,
+} from '../../../utils/platform/learning.utils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../common/Loader/Loader';
 import { LearningResourceCard } from '../LearningResourceCard/LearningResourceCard.component';
 import { ResourcePlayerModal } from '../ResourcePlayer/ResourcePlayerModal.component';
-import './learning-drawer.less';
 import { LearningDrawerProps } from './LearningDrawer.interface';
-
-const { Title } = Typography;
 
 export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   open,
@@ -69,6 +77,11 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
 
   const handleResourceClick = useCallback(
     (resource: LearningResource) => {
+      if (opensInNewTab(resource.resourceType)) {
+        openUrlInNewTab(resource.source.url);
+
+        return;
+      }
       setSelectedResource(resource);
       setPlayerOpen(true);
       onClose();
@@ -100,30 +113,29 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
   let drawerContent: React.ReactNode;
   if (isLoading) {
     drawerContent = (
-      <div className="learning-drawer-loading">
-        <Spin
-          data-testid="loader"
-          indicator={<LoadingOutlined spin style={{ fontSize: 24 }} />}
-        />
-      </div>
+      <Box align="center" className="tw:h-50" justify="center">
+        <Loader />
+      </Box>
     );
   } else if (hasError) {
     drawerContent = (
-      <Empty
-        description={t('message.failed-to-load-learning-resources')}
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
+      <Box className="tw:relative tw:min-h-80">
+        <SomethingWentWrongPlaceholder
+          description={t('message.failed-to-load-learning-resources')}
+        />
+      </Box>
     );
   } else if (resources.length === 0) {
     drawerContent = (
-      <Empty
-        description={t('message.no-learning-resources-available')}
-        image={Empty.PRESENTED_IMAGE_SIMPLE}
-      />
+      <Box className="tw:relative tw:min-h-80">
+        <NoDataPlaceholder
+          description={t('message.no-learning-resources-available')}
+        />
+      </Box>
     );
   } else {
     drawerContent = (
-      <div className="learning-drawer-cards">
+      <Box direction="col" gap={3}>
         {resources.map((resource) => (
           <LearningResourceCard
             key={resource.id}
@@ -131,35 +143,39 @@ export const LearningDrawer: React.FC<LearningDrawerProps> = ({
             onClick={handleResourceClick}
           />
         ))}
-      </div>
+      </Box>
     );
   }
 
   return (
     <>
-      <Drawer
-        destroyOnClose
-        className="learning-drawer"
-        closable={false}
+      <SlideoutMenu
+        isDismissable
         data-testid="learning-drawer"
-        open={open}
-        placement="right"
-        title={
-          <div className="learning-drawer-header">
-            <Title className="learning-drawer-title" level={5}>
-              {t('label.entity-resource', { entity: getPageTitle() })}
-            </Title>
-            <CloseOutlined
-              className="learning-drawer-close"
-              data-testid="close-drawer"
-              onClick={onClose}
-            />
-          </div>
-        }
+        dialogClassName="tw:gap-0"
+        isOpen={open}
         width={576}
-        onClose={onClose}>
-        <div className="learning-drawer-content">{drawerContent}</div>
-      </Drawer>
+        onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <header className="tw:w-full tw:border-b tw:border-secondary tw:px-6 tw:py-4">
+          <Box align="center" justify="between">
+            <Typography
+              as="h5"
+              className="tw:m-0 tw:text-primary"
+              size="text-md"
+              weight="semibold">
+              {t('label.entity-resource', { entity: getPageTitle() })}
+            </Typography>
+            <CloseButton
+              data-testid="close-drawer"
+              size="sm"
+              onPress={onClose}
+            />
+          </Box>
+        </header>
+        <SlideoutMenu.Content className="tw:h-auto tw:min-h-0 tw:flex-1 tw:gap-0 tw:bg-secondary tw:p-4 tw:md:px-4">
+          {drawerContent}
+        </SlideoutMenu.Content>
+      </SlideoutMenu>
 
       {selectedResource && (
         <ResourcePlayerModal

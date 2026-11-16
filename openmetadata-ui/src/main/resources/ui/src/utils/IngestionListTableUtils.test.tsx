@@ -37,7 +37,7 @@ jest.mock('./EntitySearchUtils', () => ({
   }),
 }));
 
-jest.mock('./StringUtils', () => ({
+jest.mock('./RichTextStringUtils', () => ({
   stringToHTML: jest.fn((text) => text),
 }));
 

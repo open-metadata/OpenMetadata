@@ -18,9 +18,19 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 class MessageParserTest {
+  @ParameterizedTest
+  @ValueSource(strings = {"ontology", "ontologyConcept", "ontologyProperty", "ontologyRelease"})
+  void parseIndependentOntologyLinks(String type) {
+    EntityLink link = EntityLink.parse("<#E::" + type + "::Sales.Customer>");
+    assertEquals(type, link.getEntityType());
+    assertEquals("Sales.Customer", link.getEntityFQN());
+  }
+
   @Test
   void parseMessage() {
     String s =
@@ -42,6 +52,14 @@ class MessageParserTest {
     assertEquals(new EntityLink("table", "tableFQN", "description", null, null), links.get(1));
     assertEquals(new EntityLink("table", "tableFQN", "columns", "c1", null), links.get(2));
     assertEquals(new EntityLink("table", "tableFQN", "columns", "c1", "description"), links.get(3));
+  }
+
+  @Test
+  void aLinkThatNeverClosesIsNotALink() {
+    assertEquals(
+        List.of(new EntityLink("table", "closedFQN", null, null, null)),
+        MessageParser.getEntityLinks(
+            "<#E::table::openFQN::columns::c1 text <#E::table::closedFQN> <#E::table::tail"));
   }
 
   @Test

@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,10 +35,12 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.Dashboard;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
+import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Directory;
 import org.openmetadata.schema.entity.data.File;
+import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -93,6 +96,7 @@ import org.openmetadata.service.search.indexes.ContainerIndex;
 import org.openmetadata.service.search.indexes.DashboardDataModelIndex;
 import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DashboardServiceIndex;
+import org.openmetadata.service.search.indexes.DataContractIndex;
 import org.openmetadata.service.search.indexes.DataProductIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
@@ -102,6 +106,7 @@ import org.openmetadata.service.search.indexes.DomainIndex;
 import org.openmetadata.service.search.indexes.DriveServiceIndex;
 import org.openmetadata.service.search.indexes.EntityReportDataIndex;
 import org.openmetadata.service.search.indexes.FileIndex;
+import org.openmetadata.service.search.indexes.FolderIndex;
 import org.openmetadata.service.search.indexes.GlossaryIndex;
 import org.openmetadata.service.search.indexes.GlossaryTermIndex;
 import org.openmetadata.service.search.indexes.IngestionPipelineIndex;
@@ -200,6 +205,29 @@ class SearchIndexFactoryTest {
     }
   }
 
+  @ParameterizedTest
+  @MethodSource("supportedIndexMappings")
+  void fieldsLoadedOnWriteAreAlsoReindexFields(
+      String entityType, Supplier<Object> entitySupplier, Class<? extends SearchIndex> indexClass) {
+    // A field loaded on a live write but skipped by reindex would be right until the next reindex
+    // and then drop back to 0.
+    Set<String> reindexFields = factory.getReindexFieldsFor(entityType);
+    Set<String> loadedOnWrite = factory.getFieldsLoadedOnWriteFor(entityType);
+    assertTrue(
+        reindexFields.containsAll(loadedOnWrite),
+        () -> entityType + " loads " + loadedOnWrite + " on write but reindexes " + reindexFields);
+  }
+
+  @Test
+  void computedCountsAreLoadedOnWrite() {
+    // Each count is computed on read and indexed as 0 when the written entity lacks it.
+    assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.METRIC));
+    assertEquals(Set.of("metricCount"), factory.getFieldsLoadedOnWriteFor(Entity.METRIC_GROUP));
+    assertEquals(Set.of("userCount"), factory.getFieldsLoadedOnWriteFor(Entity.TEAM));
+    assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.FOLDER));
+    assertEquals(Set.of("childrenCount"), factory.getFieldsLoadedOnWriteFor(Entity.GLOSSARY_TERM));
+  }
+
   // --- per-index reindex-field contract guards ------------------------------------
   // One test per Index class that overrides getRequiredReindexFields(). Each asserts the exact
   // fields that Index declares via fields.add(...). These fan-out fields are fields-gated in their
@@ -216,8 +244,20 @@ class SearchIndexFactoryTest {
   }
 
   @Test
+  void folderReindexFieldsIncludeParentAndChildrenCount() {
+    assertReindexFields(Entity.FOLDER, "parent", "childrenCount");
+  }
+
+  @Test
   void apiEndpointReindexFieldsIncludeSchemas() {
     assertReindexFields(Entity.API_ENDPOINT, "requestSchema", "responseSchema");
+  }
+
+  @Test
+  void searchIndexReindexFieldsIncludeFields() {
+    // Field-level tags are hydrated by SearchIndexRepository only when "fields" is requested, so a
+    // reindex drops them from the search_index doc without this entry.
+    assertReindexFields(Entity.SEARCH_INDEX, "fields");
   }
 
   @Test
@@ -247,7 +287,7 @@ class SearchIndexFactoryTest {
 
   @Test
   void glossaryTermReindexFieldsIncludeRelatedTerms() {
-    assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms");
+    assertReindexFields(Entity.GLOSSARY_TERM, "relatedTerms", "childrenCount");
   }
 
   @Test
@@ -397,6 +437,7 @@ class SearchIndexFactoryTest {
         Arguments.of(Entity.METRIC, (Supplier<Object>) Metric::new, MetricIndex.class),
         Arguments.of(
             Entity.METRIC_GROUP, (Supplier<Object>) MetricGroup::new, MetricGroupIndex.class),
+        Arguments.of(Entity.FOLDER, (Supplier<Object>) Folder::new, FolderIndex.class),
         Arguments.of(Entity.GLOSSARY, (Supplier<Object>) Glossary::new, GlossaryIndex.class),
         Arguments.of(
             Entity.GLOSSARY_TERM, (Supplier<Object>) GlossaryTerm::new, GlossaryTermIndex.class),
@@ -426,6 +467,8 @@ class SearchIndexFactoryTest {
             AiFrameworkControlIndex.class),
         Arguments.of(
             Entity.AUDIT_REPORT, (Supplier<Object>) AuditReport::new, AuditReportIndex.class),
+        Arguments.of(
+            Entity.DATA_CONTRACT, (Supplier<Object>) DataContract::new, DataContractIndex.class),
         Arguments.of(Entity.TAG, (Supplier<Object>) Tag::new, TagIndex.class),
         Arguments.of(
             Entity.CLASSIFICATION,

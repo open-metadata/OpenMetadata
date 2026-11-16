@@ -12,7 +12,7 @@
  */
 
 import { Button, Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { File06, Link03, Plus } from '@untitledui/icons';
+import { File06, Link03, Plus } from '@openmetadata/ui-core-components/icons';
 import { groupBy, isEmpty, startCase } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -56,7 +56,7 @@ type PageEntry = {
   displayName?: string;
   name?: string;
   pageType?: PageType;
-  page?: { url?: string };
+  page?: KnowledgePage['page'];
 };
 
 const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
@@ -162,7 +162,13 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       const Icon = isQuickLink ? Link03 : File06;
 
       const handleClick = () => {
-        const safeUrl = getSafeHttpUrl(page.page?.url);
+        const url =
+          page.page && typeof page.page === 'object' && 'url' in page.page
+            ? page.page.url
+            : undefined;
+        const safeUrl = getSafeHttpUrl(
+          typeof url === 'string' ? url : undefined
+        );
         if (isQuickLink && safeUrl) {
           window.open(safeUrl, '_blank', 'noopener,noreferrer');
         } else {
@@ -175,7 +181,7 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
 
       return (
         <li key={page.fullyQualifiedName ?? testId}>
-          <Tooltip title={label}>
+          <Tooltip title={label} triggerClassName="tw:w-full">
             <button
               aria-label={label}
               className="ask-sub-panel__item"

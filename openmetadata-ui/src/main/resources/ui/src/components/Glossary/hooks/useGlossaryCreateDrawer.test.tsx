@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { addGlossaries } from '../../../rest/glossaryAPI';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { useGlossaryCreateDrawer } from './useGlossaryCreateDrawer';
@@ -53,6 +53,14 @@ jest.mock('../../../hooks/useEntityRules', () => ({
 
 jest.mock('../../../rest/glossaryAPI', () => ({
   addGlossaries: jest.fn(),
+}));
+
+jest.mock('../../../rest/intakeFormsAPI', () => ({
+  getIntakeFormByEntityType: jest.fn().mockResolvedValue(null),
+}));
+
+jest.mock('../../../rest/metadataTypeAPI', () => ({
+  getCustomPropertiesByEntityType: jest.fn().mockResolvedValue([]),
 }));
 
 jest.mock('../../../rest/searchAPI', () => ({
@@ -99,6 +107,10 @@ const openAndFill = async () => {
   fireEvent.change(screen.getByLabelText('description-editor'), {
     target: { value: 'Business terms' },
   });
+  // Saving waits for the intake form, which loads when the drawer opens.
+  await waitFor(() =>
+    expect(screen.getByTestId('save-glossary')).toBeEnabled()
+  );
   fireEvent.click(screen.getByTestId('save-glossary'));
 };
 
@@ -141,11 +153,44 @@ describe('useGlossaryCreateDrawer', () => {
       })
     );
     expect(mockOnCreated).toHaveBeenCalledTimes(1);
+    expect(mockOnCreated).toHaveBeenCalledWith('Business');
     expect(mockNavigate).toHaveBeenCalledWith('/glossary/Business');
 
     await waitFor(() =>
       expect(screen.queryByTestId('add-glossary-form')).not.toBeInTheDocument()
     );
+  });
+
+  it('awaits onCreated before navigating so the sidebar is repopulated first', async () => {
+    // A controllable deferred so we can observe the ordering between the
+    // refresher and the navigation.
+    let resolveOnCreated: () => void = () => {};
+    mockOnCreated.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveOnCreated = resolve;
+        })
+    );
+    (addGlossaries as jest.Mock).mockResolvedValue({
+      fullyQualifiedName: 'Business',
+    });
+    renderWithQueryClient(<Harness />);
+
+    await openAndFill();
+
+    // onCreated is called immediately after addGlossaries resolves, but
+    // navigation must stay parked until onCreated's promise settles.
+    await waitFor(() => expect(mockOnCreated).toHaveBeenCalledTimes(1));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+
+    await act(async () => {
+      resolveOnCreated();
+    });
+
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalled());
+
+    expect(mockNavigate).toHaveBeenCalledWith('/glossary/Business');
   });
 
   it('keeps the drawer open with an inline error for a duplicate name', async () => {

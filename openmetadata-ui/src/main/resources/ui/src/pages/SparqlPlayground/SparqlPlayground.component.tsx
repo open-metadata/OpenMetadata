@@ -12,7 +12,7 @@
  */
 
 import { Badge, Card, Typography } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
+import { Home02 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';

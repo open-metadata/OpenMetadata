@@ -331,7 +331,7 @@ describe('AllWidgetsContent', () => {
       const { container } = render(<AllWidgetsContent {...defaultProps} />);
 
       const row = container.querySelector('.all-widgets-grid');
-      const cols = container.querySelectorAll('.ant-col');
+      const cols = container.querySelectorAll('.layout-column');
 
       expect(row).toBeInTheDocument();
       expect(row).toHaveClass('p-r-xs', 'overflow-y-auto');

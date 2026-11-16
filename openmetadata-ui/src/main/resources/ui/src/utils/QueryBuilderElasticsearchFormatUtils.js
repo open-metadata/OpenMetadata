@@ -1034,6 +1034,12 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
   const { op, elasticSearchQueryType, not } = resolvedOperator;
 
   const hasValue = Array.isArray(value) && value.length > 0;
+
+  // Only `exists` operators need no value; elsewhere an empty list means checkTree stripped it.
+  if (elasticSearchQueryType !== 'exists' && !hasValue) {
+    return undefined;
+  }
+
   if (isExtensionRule(parsedField, op, hasValue)) {
     const { entityType, extensionPropertyName } = parsedField;
     const omPropertyType = lookupOmPropertyType(
@@ -1234,17 +1240,45 @@ function producesNoConstraint(clause) {
 }
 
 /**
- * Reports whether the tree holds a condition the user started but did not finish — a row naming a
- * field whose value was never entered.
+ * Reports whether any rule has been field-nulled by RAQB's sanitizer. Every row the builder
+ * creates carries `settings.defaultField`, so a fieldless row only ever means lost data.
  *
- * Such a row is dropped from the emitted query (a bodiless clause like `{"term":{}}` is rejected by
- * both search engines), so persisting it would silently widen the filter to match everything. The
- * answer comes from asking elasticSearchFormat what the row actually produces, so this check and
- * buildEsRule cannot drift apart.
+ * @param {object} tree - The immutable query-builder tree
+ * @returns {boolean} - Whether any rule has a null/empty field
+ */
+export function hasBlankRule(tree) {
+  if (!tree) {
+    return false;
+  }
+
+  const type = tree.get('type');
+  if (type === 'rule') {
+    const field = tree.get('properties')?.get('field');
+
+    return !field;
+  }
+
+  const children = tree.get('children1');
+  if (!children || typeof children.valueSeq !== 'function') {
+    return false;
+  }
+
+  return children
+    .valueSeq()
+    .toArray()
+    .some((child) => hasBlankRule(child));
+}
+
+/**
+ * Reports whether the tree holds a condition the user started but did not finish — a row
+ * whose field carries no constraint in the emitted query.
  *
- * A row with no field picked is deliberately not flagged: that is the query builder's own empty
- * state, which it creates and keeps on its own, and it has always been dropped. Only a row that
- * names a field carries intent that could be silently lost.
+ * Such a row is dropped from the emitted query (a bodiless clause like `{"term":{}}` is
+ * rejected by both search engines), so persisting it would silently widen the filter to
+ * match everything. The answer comes from asking elasticSearchFormat what the row actually
+ * produces, so this check and buildEsRule cannot drift apart.
+ *
+ * A field-nulled row is flagged too — see `hasBlankRule`.
  *
  * @param {object} tree - The immutable query-builder tree
  * @param {object} config - The same config passed to elasticSearchFormat
@@ -1260,10 +1294,12 @@ export function hasUnfinishedRule(tree, config, syntax = ES_6_SYNTAX) {
   if (type === 'rule') {
     const field = tree.get('properties')?.get('field');
 
-    return (
-      Boolean(field) &&
-      producesNoConstraint(elasticSearchFormat(tree, config, syntax))
-    );
+    // No field means no constraint, so the row would be dropped from the emitted query.
+    if (!field) {
+      return true;
+    }
+
+    return producesNoConstraint(elasticSearchFormat(tree, config, syntax));
   }
 
   const children = tree.get('children1');

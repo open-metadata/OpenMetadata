@@ -12,7 +12,7 @@
  */
 
 import { Card, Skeleton, Tooltip } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
+import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { EventSubscriptionDiagnosticInfo } from '../../../generated/events/api/eventSubscriptionDiagnosticInfo';

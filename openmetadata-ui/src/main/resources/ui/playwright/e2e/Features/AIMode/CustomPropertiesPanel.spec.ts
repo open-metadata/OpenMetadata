@@ -42,6 +42,8 @@ import {
   fillDescriptionBox,
   getApiContext,
   redirectToHomePage,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from '../../../utils/common';
 import {
@@ -49,11 +51,15 @@ import {
   removeCustomPropertyViaApi,
 } from '../../../utils/customProperty';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { enableAiAppMode } from '../../Utils/appMode';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
 const TABLE_FQN = 'table';
+// No other spec adds, edits or removes worksheet custom properties, so an edit
+// made here cannot be overwritten by a parallel write to the same type.
+const WORKSHEET_FQN = 'worksheet';
 
 // ── Navigation helpers ─────────────────────────────────────────────────────────
 
@@ -64,7 +70,10 @@ const TABLE_FQN = 'table';
  * panel, click the "Custom Properties" nav item, and select the Table entity
  * card.  Leaves the page on the detail view with custom-property-table visible.
  */
-const navigateToTableCustomProperties = async (page: Page): Promise<void> => {
+const navigateToTypeCustomProperties = async (
+  page: Page,
+  typeFqn = TABLE_FQN
+): Promise<void> => {
   await enableAiAppMode(page);
   await redirectToHomePage(page);
 
@@ -88,10 +97,10 @@ const navigateToTableCustomProperties = async (page: Page): Promise<void> => {
   // Click the Table entity-type card and wait for the detail fetch.
   const typeResponse = page.waitForResponse(
     (res) =>
-      res.url().includes(`/api/v1/metadata/types/name/${TABLE_FQN}`) &&
+      res.url().includes(`/api/v1/metadata/types/name/${typeFqn}`) &&
       res.request().method() === 'GET'
   );
-  await page.getByTestId(`entity-type-card-${TABLE_FQN}`).click();
+  await page.getByTestId(`entity-type-card-${typeFqn}`).click();
   await typeResponse;
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('custom-property-table').waitFor();
@@ -123,10 +132,10 @@ const chooseSelectOption = async (
   optionName: string
 ): Promise<void> => {
   // The wrapper div contains a react-aria <button aria-haspopup="listbox">.
-  await page.getByTestId(wrapperTestId).getByRole('button').click();
-  const option = page.getByRole('option', { exact: true, name: optionName });
-  await expect(option).toBeVisible();
-  await option.click();
+  await selectOptionWithRetry(
+    page.getByTestId(wrapperTestId).getByRole('button'),
+    page.getByRole('option', { exact: true, name: optionName })
+  );
 };
 
 /**
@@ -158,11 +167,12 @@ const submitAddForm = async (page: Page): Promise<void> => {
  */
 const deletePropertyViaApi = async (
   page: Page,
-  propertyName: string
+  propertyName: string,
+  typeFqn = TABLE_FQN
 ): Promise<void> => {
   const { apiContext, afterAction } = await getApiContext(page);
   try {
-    await removeCustomPropertyViaApi(apiContext, TABLE_FQN, propertyName);
+    await removeCustomPropertyViaApi(apiContext, typeFqn, propertyName);
   } finally {
     await afterAction();
   }
@@ -200,7 +210,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
   test('adds a String custom property', async ({ page }) => {
     const name = `cp_string_${uuid()}`;
 
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -228,7 +238,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
   test('adds a Date custom property with format config', async ({ page }) => {
     const name = `cp_date_${uuid()}`;
 
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -258,7 +268,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
   test('adds an Entity Reference List custom property', async ({ page }) => {
     const name = `cp_erl_${uuid()}`;
 
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -299,7 +309,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const updatedDisplayName = `${name} (edited)`;
 
     // Create via UI to exercise the add path end-to-end.
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page, WORKSHEET_FQN);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -311,10 +321,13 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, 'Initial description');
     await submitAddForm(page);
 
-    // Find the row and click the Edit button (aria-label="Edit").
+    // Edit lives in the row's actions menu.
     const row = page.locator('tr').filter({ hasText: name });
     await expect(row).toBeVisible();
-    await row.getByRole('button', { name: 'Edit' }).click();
+    await selectOptionWithRetry(
+      row.getByTestId('property-actions'),
+      page.getByRole('menuitem', { name: 'Edit' })
+    );
 
     const editForm = page.getByTestId('custom-properties-edit-page');
     await editForm.waitFor();
@@ -329,17 +342,42 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     await fillDescriptionBox(page, 'Updated description');
 
     const saves = recordCustomPropertySaves(page);
+    // The detail page renders its table (as a loading skeleton) before its
+    // refetch of the type lands, and under load that refetch outlasts the row
+    // assertion. Only a GET after the successful PATCH counts: the save itself
+    // reads the type first, and again after each rejected attempt.
+    let patched = false;
+    const detailRefetch = waitForResponseWithStatus(
+      page,
+      (res) => {
+        if (
+          res.request().method() === 'PATCH' &&
+          res.url().includes('/api/v1/metadata/types/')
+        ) {
+          patched = res.ok();
+
+          return false;
+        }
+
+        return (
+          patched &&
+          res.request().method() === 'GET' &&
+          res.url().includes(`/api/v1/metadata/types/name/${WORKSHEET_FQN}`)
+        );
+      },
+      200
+    );
     await page.getByTestId('edit-custom-property-save').click();
+    await detailRefetch;
 
     // Back on detail page — updated display name is visible.
-    await page.getByTestId('custom-property-table').waitFor();
     await expect(
       page.locator('tr').filter({ hasText: updatedDisplayName })
     ).toBeVisible();
     await saves.expectSaved();
 
     // Cleanup (property name key is unchanged; display name is cosmetic).
-    await deletePropertyViaApi(page, name);
+    await deletePropertyViaApi(page, name, WORKSHEET_FQN);
   });
 
   // ── Delete ────────────────────────────────────────────────────────────────────
@@ -350,7 +388,7 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const name = `cp_del_${uuid()}`;
 
     // Create via UI.
-    await navigateToTableCustomProperties(page);
+    await navigateToTypeCustomProperties(page);
     await openAddPropertyForm(page);
 
     const form = page.getByTestId('custom-properties-add-page');
@@ -365,16 +403,21 @@ test.describe('Custom Properties Panel — AI Mode', () => {
     const row = page.locator('tr').filter({ hasText: name });
     await expect(row).toBeVisible();
 
-    // Click the Delete button on the row (aria-label="Delete").
-    await row.getByRole('button', { name: 'Delete' }).click();
+    // Delete lives in the row's actions menu.
+    await selectOptionWithRetry(
+      row.getByTestId('property-actions'),
+      page.getByRole('menuitem', { name: 'Delete' })
+    );
 
-    // Wait for the confirmation modal.
-    await page.getByTestId('delete-modal').waitFor();
+    // Wait for the confirmation popover.
+    await page.getByTestId('delete-custom-property-popover').waitFor();
 
     const saves = recordCustomPropertySaves(page);
-    await page.getByTestId('confirm-button').click();
+    await page.getByTestId('delete-custom-property-popover-confirm').click();
 
-    await page.getByTestId('delete-modal').waitFor({ state: 'hidden' });
+    await page
+      .getByTestId('delete-custom-property-popover')
+      .waitFor({ state: 'hidden' });
     await waitForAllLoadersToDisappear(page);
 
     await expect(
@@ -457,7 +500,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
   }) => {
     const page = await browser.newPage();
     try {
-      await viewOnlyUser.login(page);
+      await viewOnlyUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -482,7 +525,7 @@ test.describe('Custom Properties Panel — user without type permissions', () =>
  *
  * Strategy: beforeAll creates policy → role → user via UserClass/PoliciesClass/
  * RolesClass (in-memory, no JSON file written), seeds a property, then each
- * test creates a fresh page and logs in via typeUser.login(page).
+ * test creates a fresh page and signs in via typeUser.signIn(page).
  */
 
 let typeUser: UserClass;
@@ -578,7 +621,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   }) => {
     const page = await browser.newPage();
     try {
-      await typeUser.login(page);
+      await typeUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -605,7 +648,7 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
   test('detail page shows Add, Edit, Delete buttons', async ({ browser }) => {
     const page = await browser.newPage();
     try {
-      await typeUser.login(page);
+      await typeUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -629,11 +672,16 @@ test.describe('Custom Properties Panel — non-admin user with type permissions'
       // User has Create → Add button visible.
       await expect(page.getByTestId('add-custom-property-btn')).toBeVisible();
 
-      // User has EditAll + Delete → Edit and Delete buttons visible on the seeded row.
+      // User has EditAll + Delete → the row menu offers Edit and Delete.
       const row = page.locator('tr').filter({ hasText: typePropertyName });
       await expect(row).toBeVisible();
-      await expect(row.getByRole('button', { name: 'Edit' })).toBeVisible();
-      await expect(row.getByRole('button', { name: 'Delete' })).toBeVisible();
+      const actions = row.getByTestId('property-actions');
+      await scrollIntoViewAndSettle(actions);
+      await actions.click();
+      await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeVisible();
+      await expect(
+        page.getByRole('menuitem', { name: 'Delete' })
+      ).toBeVisible();
     } finally {
       await page.close();
     }
@@ -727,7 +775,7 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
   }) => {
     const page = await browser.newPage();
     try {
-      await viewAllUser.login(page);
+      await viewAllUser.signIn(page);
       await enableAiAppMode(page);
       await redirectToHomePage(page);
       await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
@@ -753,13 +801,10 @@ test.describe('Custom Properties Panel — user with ViewAll on All only', () =>
         page.getByTestId('add-custom-property-btn')
       ).not.toBeVisible();
 
-      // User has ViewAll policy only, buttons are not visible on the seeded row.
+      // User has ViewAll policy only, so the row has no actions menu.
       const row = page.locator('tr').filter({ hasText: customPropertyName });
       await expect(row).toBeVisible();
-      await expect(row.getByRole('button', { name: 'Edit' })).not.toBeVisible();
-      await expect(
-        row.getByRole('button', { name: 'Delete' })
-      ).not.toBeVisible();
+      await expect(row.getByTestId('property-actions')).not.toBeVisible();
     } finally {
       await page.close();
     }

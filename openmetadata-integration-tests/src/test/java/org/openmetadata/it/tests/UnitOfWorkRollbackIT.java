@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.BrokenBarrierException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -71,10 +72,13 @@ class UnitOfWorkRollbackIT {
   @Test
   void aUnitThatSwallowsItsDeadlockIsReplayedWholeInsteadOfCommittedInPart() throws Exception {
     CyclicBarrier bothHoldOneRow = new CyclicBarrier(2);
+    CountDownLatch winnerCommitted = new CountDownLatch(1);
     ExecutorService workers = Executors.newFixedThreadPool(2);
     try {
-      Future<Integer> left = workers.submit(() -> runUnit("left", "right", bothHoldOneRow));
-      Future<Integer> right = workers.submit(() -> runUnit("right", "left", bothHoldOneRow));
+      Future<Integer> left =
+          workers.submit(() -> runUnit("left", "right", bothHoldOneRow, winnerCommitted));
+      Future<Integer> right =
+          workers.submit(() -> runUnit("right", "left", bothHoldOneRow, winnerCommitted));
       List<Integer> attempts = List.of(left.get(2, MINUTES), right.get(2, MINUTES));
 
       assertEquals(
@@ -103,12 +107,18 @@ class UnitOfWorkRollbackIT {
     assertEquals(Set.of("timeout-before", "timeout-after"), markers("timeout-%"));
   }
 
-  private static int runUnit(String first, String second, CyclicBarrier barrier) {
+  private static int runUnit(
+      String first, String second, CyclicBarrier barrier, CountDownLatch winnerCommitted) {
     AtomicInteger attempts = new AtomicInteger();
     repository()
         .executeInTransaction(
             () -> {
               boolean firstAttempt = attempts.incrementAndGet() == 1;
+              if (!firstAttempt) {
+                // Postgres wakes the winner but does not grant it the row, so a replay that gets
+                // there first locks the row again and deadlocks the winner a second time.
+                await(winnerCommitted);
+              }
               jdbi()
                   .useHandle(
                       handle -> {
@@ -122,6 +132,7 @@ class UnitOfWorkRollbackIT {
                       });
               return null;
             });
+    winnerCommitted.countDown();
     return attempts.get();
   }
 
@@ -178,6 +189,17 @@ class UnitOfWorkRollbackIT {
       throw new IllegalStateException("interrupted while both units took their first lock", e);
     } catch (BrokenBarrierException | TimeoutException e) {
       throw new IllegalStateException("both units must hold one row before the deadlock", e);
+    }
+  }
+
+  private static void await(CountDownLatch winnerCommitted) {
+    try {
+      if (!winnerCommitted.await(1, MINUTES)) {
+        throw new IllegalStateException("the winning unit must commit before the loser replays");
+      }
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("interrupted while the winning unit committed", e);
     }
   }
 

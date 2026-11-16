@@ -10,32 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import {
+  RefreshCcw01,
+  TestCase as TestCaseIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
-import { RefreshCcw01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import { BetaBadge } from '../../../components/common/Badge/Badge.component';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
 import TestCaseFormDrawer from '../../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import TestCaseLastRunBanner from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
+import EntityDetailsPageSkeleton from '../../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
@@ -67,6 +70,7 @@ const IncidentManagerDetailPage = ({
   isVersionPage?: boolean;
 }) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const location = useCustomLocation();
   const originBreadcrumb = (
@@ -145,8 +149,8 @@ const IncidentManagerDetailPage = ({
                     }
                     incidentTask={incidentHeaderData.incidentTask}
                     nextRunTimestamp={nextRunTimestamp}
-                    parameterValues={testCase?.parameterValues}
                     taskLinkInfo={incidentHeaderData.taskLinkInfo}
+                    testCase={testCase}
                     testCaseResult={testCase?.testCaseResult}
                     testCaseStatus={testCase?.testCaseStatus}
                     testCaseStatusData={incidentHeaderData.testCaseStatusData}
@@ -169,9 +173,7 @@ const IncidentManagerDetailPage = ({
       isVersionPage,
       nextRunTimestamp,
       tabs,
-      testCase?.parameterValues,
-      testCase?.testCaseResult,
-      testCase?.testCaseStatus,
+      testCase,
     ]
   );
 
@@ -275,23 +277,28 @@ const IncidentManagerDetailPage = ({
   }, [onCopyToClipBoard]);
 
   if (isLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (!hasViewPermission) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.incident-manager'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.incident-manager'),
+          })}
+        />
+      </div>
     );
   }
 
   if (isUndefined(testCase)) {
-    return <ErrorPlaceHolder />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (
@@ -337,17 +344,14 @@ const IncidentManagerDetailPage = ({
             gap={4}
             wrap="wrap">
             <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-              <Box
-                align="center"
-                className={classNames(
-                  'tw:relative tw:size-9 tw:shrink-0',
-                  'tw:overflow-hidden tw:rounded-full',
-                  'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                )}
-                justify="center">
-                <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
-              </Box>
+              <FeaturedIcon
+                color="gray"
+                icon={TestCaseIcon}
+                size="md"
+                theme="surface"
+              />
               <TestCaseHeaderTitle
+                deleted={testCase.deleted}
                 displayName={displayName}
                 hasCopied={hasCopied}
                 testCaseName={testCase.name}
@@ -409,7 +413,13 @@ const IncidentManagerDetailPage = ({
               ))}
             </Tabs.List>
             {tabItems.map(({ key, children }) => (
-              <Tabs.Panel id={key} key={key}>
+              <Tabs.Panel
+                className={classNames({
+                  // Classic mode puts tab content on a white panel; AI mode keeps its own surface.
+                  'tw:rounded-xl tw:bg-surface': !isAiMode,
+                })}
+                id={key}
+                key={key}>
                 {children}
               </Tabs.Panel>
             ))}
@@ -429,7 +439,6 @@ const IncidentManagerDetailPage = ({
         <TestCaseFormDrawer
           open={isDimensionEdit}
           testCase={testCase}
-          variant="drawer"
           onClose={handleCancelDimension}
           onUpdate={setTestCase}
         />

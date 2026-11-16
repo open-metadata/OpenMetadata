@@ -113,6 +113,11 @@
       "description": "Include aggregations in the search response. Defaults to true. Set to false to skip aggregations for faster response times when only search results are needed.",
       "type": "boolean",
       "default": true
+    },
+    "includeHighlights": {
+      "description": "Include highlights in the search response. Defaults to true. Set to false to skip highlighting when the caller does not read it.",
+      "type": "boolean",
+      "default": true
     }
   },
   "additionalProperties": false

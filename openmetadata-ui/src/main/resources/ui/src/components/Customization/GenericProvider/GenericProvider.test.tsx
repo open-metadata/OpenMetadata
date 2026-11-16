@@ -15,6 +15,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { CustomizeEntityType } from '../../../constants/Customize.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { PageType } from '../../../generated/system/ui/page';
+import { useChangeSummary } from '../../../hooks/useChangeSummary';
 import { updateWidgetHeightRecursively } from '../../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import ActivityThreadPanel from '../../ActivityFeed/ActivityThreadPanel/ActivityThreadPanel';
@@ -27,6 +28,12 @@ jest.mock('../../../hooks/useCustomPages', () => ({
       pageType: PageType.Table,
       tabs: [],
     },
+  })),
+}));
+
+jest.mock('../../../hooks/useChangeSummary', () => ({
+  useChangeSummary: jest.fn().mockImplementation(() => ({
+    changeSummary: {},
   })),
 }));
 
@@ -147,6 +154,22 @@ describe('GenericProvider', () => {
 
     expect(screen.getByTestId('context-data')).toHaveTextContent(
       JSON.stringify(updatedData)
+    );
+  });
+
+  it('should request the change summary of the entity', () => {
+    render(
+      <MemoryRouter>
+        <GenericProvider {...defaultProps}>
+          <TestComponent />
+        </GenericProvider>
+      </MemoryRouter>
+    );
+
+    expect(useChangeSummary).toHaveBeenLastCalledWith(
+      EntityType.TABLE,
+      mockData.id,
+      { limit: 1000 }
     );
   });
 

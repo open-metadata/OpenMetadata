@@ -13,17 +13,18 @@
 import {
   Box,
   Card,
-  EmptyPlaceholder,
+  Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { QuickLink } from '@openmetadata/ui-core-components/icons';
-import { Skeleton } from 'antd';
+import {
+  Article,
+  Eye,
+  QuickLink,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { groupBy, isEmpty, map, startCase, uniqueId } from 'lodash';
 import { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as EyeIcon } from '../../../assets/svg/ic-eye.svg';
 import Loader from '../../../components/common/Loader/Loader';
 import WidgetCard from '../../../components/common/WidgetCard/WidgetCard';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
@@ -43,6 +44,7 @@ import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { getTags } from '../../../rest/tagAPI';
 import { getLink } from '../../../utils/KnowledgePageUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import BookMarkWidget from '../BookMarkWidget/BookMarkWidget';
 
 export interface KnowledgePageListRightPanelProps {
@@ -154,17 +156,11 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
       <div className="p-md p-x-lg" data-testid="loader">
         {Array.from({ length: 3 }).map(() => (
           <div className="m-b-lg" key={uniqueId()}>
-            <Box className="tw:w-full" direction="col">
-              <Skeleton
-                active
-                paragraph={{ rows: 1, width: 100 }}
-                title={false}
-              />
-              <Skeleton
-                active
-                paragraph={{ rows: 3, width: '100%' }}
-                title={false}
-              />
+            <Box className="tw:w-full tw:gap-4" direction="col">
+              <Skeleton height={16} width={100} />
+              <Skeleton height={16} />
+              <Skeleton height={16} />
+              <Skeleton height={16} />
             </Box>
           </div>
         ))}
@@ -175,7 +171,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
   if (!isLoading && isEmpty(quickLinksByTag) && !refreshTagsCategory) {
     return (
       <Card className="tw:relative tw:flex-1 tw:h-full tw:p-5">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           actions={
             permissions.Create
               ? [
@@ -190,7 +186,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 ]
               : []
           }
-          icon={<QuickLink className="tw:text-secondary" />}
+          icon={<QuickLink />}
           title={t('label.quick-link-plural')}
         />
       </Card>
@@ -214,11 +210,7 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
         <WidgetCard
           title={t('label.recently-viewed')}
           titleIcon={
-            <EyeIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={16}
-              width={16}
-            />
+            <Eye className="tw:text-quaternary tw:shrink-0" size={16} />
           }>
           {isEmpty(recentlyViewed) ? (
             <Typography className="tw:text-quaternary" size="text-xs">
@@ -244,10 +236,9 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
                 <WidgetCard
                   title={startCase(tagFqn.split(FQN_SEPARATOR_CHAR)[1])}
                   titleIcon={
-                    <FileIcon
+                    <Article
                       className="tw:text-quaternary tw:shrink-0"
-                      height={16}
-                      width={16}
+                      size={16}
                     />
                   }>
                   <Box direction="col" gap={2}>

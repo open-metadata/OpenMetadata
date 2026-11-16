@@ -257,7 +257,7 @@ export const AdvanceSearchProvider = ({
     return subfields;
   };
 
-  const loadData = async () => {
+  const loadData = async (isCancelled: () => boolean) => {
     const actualConfig = getTreeConfig({
       searchIndex: searchIndex,
       searchOutputType: searchOutputType,
@@ -267,6 +267,11 @@ export const AdvanceSearchProvider = ({
     let extensionSubField = customProps;
     if (extensionSubField === null) {
       extensionSubField = await fetchCustomPropertyType();
+      // Ignore responses from an earlier index or an effect that was unmounted.
+      // Otherwise they can remove fields from a workflow's active condition tree.
+      if (isCancelled()) {
+        return;
+      }
       setCustomProps(extensionSubField);
     }
 
@@ -314,7 +319,12 @@ export const AdvanceSearchProvider = ({
   }, [tab]);
 
   useEffect(() => {
-    loadData();
+    let cancelled = false;
+    void loadData(() => cancelled);
+
+    return () => {
+      cancelled = true;
+    };
   }, [searchOutputType, searchIndex]);
 
   useEffect(() => {

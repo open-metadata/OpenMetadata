@@ -57,17 +57,23 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryExtractionState;
+import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.jdbi3.DaoListFilter;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.context.MemoryExtractionAccess;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthRequest;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 
 @Slf4j
@@ -84,7 +90,9 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
   public static final Set<String> EXCLUDED_ENTITIES = Set.of(USER, BOT, TEST_SUITE, TEST_CASE);
   public static final String COLLECTION_PATH = "v1/contextCenter/pages";
   public static final String FIELDS =
-      "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts";
+      "owners,tags,followers,votes,page,parent,childrenCount,relatedEntities,relatedArticles,attachments,domains,dataProducts,extension";
+  private static final String EXTRACTION_RESPONSE_FIELDS =
+      Entity.FIELD_OWNERS + "," + MemoryExtractionState.NEVER_EXTRACTED;
   private final KnowledgePageMapper mapper = new KnowledgePageMapper();
 
   public KnowledgePageResource(Authorizer authorizer, Limits limits) {
@@ -361,10 +369,13 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
           @Max(value = 1000000, message = "must be less than or equal to 1000000")
           @QueryParam("limit")
           int limitParam) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
     DaoListFilter filter = new DaoListFilter(Include.NON_DELETED);
     if (knowledgePageType != null) {
       filter.addQueryParam("pageType", knowledgePageType.value());
     }
+    EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     return new ResultList<>(repository.listHierarchy(filter, limitParam));
   }
 
@@ -418,13 +429,16 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
                       allowableValues = {"asc", "desc"}))
           @QueryParam("sortOrder")
           String sortOrder) {
+    authorizer.authorizeRequests(
+        securityContext, getAuthRequestsForListOps(), AuthorizationLogic.ANY);
     SearchSortFilter sortFilter = buildHierarchySortFilter(sortBy, sortOrder);
+    SubjectContext caller = DefaultAuthorizer.getSubjectContext(securityContext);
     if (!CommonUtil.nullOrEmpty(activeFqn)) {
       return repository.getHierarchyWithSearchForActivePage(
-          activeFqn, knowledgePageType, sortFilter, offset, limit);
+          activeFqn, knowledgePageType, sortFilter, offset, limit, caller);
     } else {
       return repository.getHierarchyWithSearch(
-          parent, knowledgePageType, sortFilter, offset, limit);
+          parent, knowledgePageType, sortFilter, offset, limit, caller);
     }
   }
 
@@ -712,9 +726,7 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
       @Parameter(description = "Id of the Query", schema = @Schema(type = "UUID")) @PathParam("id")
           UUID id,
       @Valid VoteRequest request) {
-    return repository
-        .updateVote(securityContext.getUserPrincipal().getName(), id, request)
-        .toResponse();
+    return updateVoteInternal(securityContext, id, request);
   }
 
   @DELETE
@@ -805,6 +817,52 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
         .removeKnowledgePageUsedIn(
             uriInfo, securityContext.getUserPrincipal().getName(), id, entityIds)
         .toResponse();
+  }
+
+  @POST
+  @Path("/{id}/extract")
+  @Operation(
+      operationId = "extractKnowledgePageMemories",
+      summary = "Extract or retry an article's memories",
+      description =
+          "Queue memory extraction for an article whose extraction failed or never read its"
+              + " current body. The article's owners, an owning team's members and admins only."
+              + " Returns the article, Queued; the run starts once its quiet period has passed.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The article, now queued",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = Page.class))),
+        @ApiResponse(responseCode = "403", description = "Not an owner of the article or an admin"),
+        @ApiResponse(responseCode = "404", description = "Knowledge Page not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Already queued or being extracted, nothing to extract, or extraction unavailable"),
+        @ApiResponse(
+            responseCode = "503",
+            description =
+                "Memory extraction could not be queued. The article is left Failed to retry,"
+                    + " unless concurrent writes keep that from being recorded: it then stays"
+                    + " Queued, and a retry gets 409 until its body is next edited")
+      })
+  public Page requestExtraction(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the Knowledge Page", schema = @Schema(type = "UUID"))
+          @PathParam("id")
+          UUID id) {
+    MemoryExtractionAccess.requireOwnerOrAdmin(
+        getInternal(uriInfo, securityContext, id, Entity.FIELD_OWNERS, Include.NON_DELETED),
+        securityContext);
+    PageContextProcessingEngineHolder.get().requestExtraction(id);
+    return addHref(
+        uriInfo,
+        repository.get(
+            uriInfo, id, getFields(EXTRACTION_RESPONSE_FIELDS), Include.NON_DELETED, false));
   }
 
   @PUT

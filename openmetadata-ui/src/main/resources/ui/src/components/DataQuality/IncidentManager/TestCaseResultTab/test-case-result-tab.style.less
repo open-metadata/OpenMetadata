@@ -12,29 +12,6 @@
  */
 @import (reference) '../../../../styles/variables.less';
 
-.test-case-result-tooltip.ant-tooltip .ant-tooltip-inner {
-  background-color: var(--om-color-bg-surface);
-  color: var(--om-color-text-primary);
-  border-radius: @border-rad-sm;
-  font-size: @size-sm;
-  font-weight: @font-medium;
-}
-
-// Parameter label and value text styles (global for reuse)
-.parameter-label {
-  color: @grey-700;
-  font-size: @font-size-base;
-  font-weight: @font-medium;
-  min-width: 200px;
-  display: inline-block;
-}
-
-.parameter-value-text {
-  color: @grey-900;
-  font-size: @font-size-base;
-  font-weight: @font-medium;
-}
-
 .test-case-result-tab {
   .test-case-result-tab-graph {
     border: 1px solid @grey-200;
@@ -43,9 +20,6 @@
     background: var(--om-color-bg-surface);
   }
   .cm-gutters {
-    background-color: @grey-5;
-  }
-  .parameter-value {
     background-color: @grey-5;
   }
 

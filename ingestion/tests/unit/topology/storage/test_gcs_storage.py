@@ -163,8 +163,7 @@ class StorageUnitTest(TestCase):
         return_value=None,
     )
     @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
-    def __init__(self, method_name: str, test_connection, _get_manifest_file) -> None:
-        super().__init__(method_name)
+    def setUp(self, test_connection, _get_manifest_file) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_OBJECT_STORE_CONFIG)
 
@@ -298,7 +297,9 @@ class StorageUnitTest(TestCase):
             ),
         ]
         self.object_store_source.extract_column_definitions = (
-            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None: columns
+            lambda bucket_name, sample_key, config_source, client, metadata_entry, session=None, limits=None, report=None: (
+                columns
+            )
         )
 
         entity_ref = EntityReference(id=uuid.uuid4(), type="container")

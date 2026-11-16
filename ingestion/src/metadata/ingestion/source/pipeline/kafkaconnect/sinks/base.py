@@ -21,6 +21,11 @@ as branches in the shared lineage path.
 from abc import ABC, abstractmethod
 from typing import Any
 
+from metadata.generated.schema.entity.services.databaseService import (
+    DatabaseService,
+    DatabaseServiceType,
+)
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import SUPPORTED_DATASETS
 from metadata.ingestion.source.pipeline.kafkaconnect.models import (
     KafkaConnectColumnMapping,
@@ -37,6 +42,11 @@ sink_resolver_registry = enum_register()
 
 class SinkDatasetResolver(ABC):
     """Strategy for turning a sink connector's config into target datasets."""
+
+    # The type of the database services the connector's tables live in, when its config names
+    # those tables exactly. None leaves table lookup to search, which is what a connector whose
+    # config names no concrete table needs.
+    target_service_type: DatabaseServiceType | None = None
 
     @abstractmethod
     def resolve_datasets(
@@ -62,6 +72,17 @@ class SinkDatasetResolver(ABC):
     def topic_patterns(self, config: dict) -> list[str]:
         """Topic selectors that must be expanded against the messaging service."""
         return []
+
+    def target_service_names(self, config: dict, services: list[DatabaseService], configured: list[str]) -> list[str]:
+        """
+        Which of `services`, all of `target_service_type`, hold this connector's tables.
+
+        Consulted only when `target_service_type` is set. Each table is then looked up by exact
+        name in the services returned here, and one found in none of them or in several gets no
+        edge. `configured` is the pipeline service's lineageInformation.dbServiceNames, the only
+        binding a config that names no service can have.
+        """
+        return [model_str(service.name) for service in services if model_str(service.name) in configured]
 
 
 def get_resolver(connector_class: str) -> SinkDatasetResolver:

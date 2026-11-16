@@ -12,16 +12,19 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +36,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -42,7 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -78,6 +82,7 @@ class CompanyContextToolTest {
         result.get("error").toString().contains("not both and not neither"),
         result.get("error").toString());
     assertEquals(0, result.get("returnedCount"));
+    assertEquals(400, result.get("statusCode"));
   }
 
   @Test
@@ -94,18 +99,33 @@ class CompanyContextToolTest {
   }
 
   @Test
+  void searchReportsSemanticSearchNotEnabledWhenNoVectorServiceWasCreated() throws Exception {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(null);
+    entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "refund policy");
+    Map<String, Object> result =
+        tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), params);
+
+    assertTrue(
+        result.get("error").toString().contains("Semantic search is not enabled"),
+        result.toString());
+  }
+
+  @Test
   void cursorThreadsOffsetIntoVectorSearchClosingThePagingGap() throws Exception {
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
 
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     VectorSearchResponse response = new VectorSearchResponse(5L, Collections.emptyList());
 
-    try (MockedStatic<OpenSearchVectorService> vectorMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
-      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+    try (MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
       authorizerMock
           .when(() -> DefaultAuthorizer.getSubjectContext(any()))
           .thenReturn(mock(SubjectContext.class));
@@ -145,13 +165,11 @@ class CompanyContextToolTest {
     hit.put("fullyQualifiedName", "refunds");
     hit.put("answer", "Within 30 days.");
     hit.put("summary", null);
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
 
-    try (MockedStatic<OpenSearchVectorService> vectorMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
-      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+    try (MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
       authorizerMock
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(mock(SubjectContext.class));
@@ -180,15 +198,13 @@ class CompanyContextToolTest {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
 
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     VectorSearchResponse response = new VectorSearchResponse(0L, Collections.emptyList());
     SubjectContext subjectContext = mock(SubjectContext.class);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
 
-    try (MockedStatic<OpenSearchVectorService> vectorMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
-      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+    try (MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
       authorizerMock
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(subjectContext);
@@ -217,6 +233,7 @@ class CompanyContextToolTest {
       assertEquals(subjectContext, subject.getValue());
       assertEquals(List.of("FileExtraction"), filters.getValue().get("sourceType"));
       assertEquals(List.of("Shared"), filters.getValue().get("visibility"));
+      assertEquals(List.of("Approved"), filters.getValue().get("entityStatus"));
     }
   }
 
@@ -282,6 +299,27 @@ class CompanyContextToolTest {
 
     assertEquals("Q", result.get("question"));
     assertEquals("A", result.get("answer"));
+  }
+
+  @Test
+  void supersededFilePillIsNotReturnedByName() throws Exception {
+    stubMemory(
+        "pill-fqn",
+        sharedWith(
+            memory("pill-fqn", ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.SHARED)
+                .withEntityStatus(ContextMemoryStatus.DEPRECATED),
+            "bob"));
+    CatalogSecurityContext securityContext = securityContextFor("bob");
+
+    Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "bob",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", "pill-fqn")));
+
+    assertEquals(
+        "Requested entity is not a shared Company Context knowledge pill", result.get("error"));
+    assertFalse(result.containsKey("answer"));
   }
 
   /**
@@ -392,28 +430,37 @@ class CompanyContextToolTest {
                 new MemorySharedPrincipal()
                     .withPrincipal(
                         new EntityReference()
+                            .withId(userId(userName))
                             .withType(Entity.USER)
                             .withName(userName)
                             .withFullyQualifiedName(userName))));
     return memory;
   }
 
+  // Lenient: a pill rejected before the visibility check never reads the caller.
   private CatalogSecurityContext securityContextFor(String userName) {
     Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn(userName);
+    lenient().when(principal.getName()).thenReturn(userName);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
-    when(securityContext.getUserPrincipal()).thenReturn(principal);
+    lenient().when(securityContext.getUserPrincipal()).thenReturn(principal);
     return securityContext;
   }
 
   private <T> T withSubject(
       CatalogSecurityContext securityContext, String userName, Callable<T> body) throws Exception {
+    entityMock
+        .when(() -> Entity.getEntityByName(eq(Entity.USER), eq(userName), anyString(), any()))
+        .thenReturn(new User().withId(userId(userName)).withName(userName));
     try (MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(new User().withName(userName), null, null));
       return body.call();
     }
+  }
+
+  private static UUID userId(String userName) {
+    return UUID.nameUUIDFromBytes(userName.getBytes(StandardCharsets.UTF_8));
   }
 
   private ContextMemory memory(
@@ -423,6 +470,7 @@ class CompanyContextToolTest {
         .withFullyQualifiedName(fqn)
         .withQuestion("Q")
         .withAnswer("A")
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withSourceType(sourceType)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }

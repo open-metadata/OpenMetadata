@@ -32,6 +32,15 @@ export interface Team {
      */
     childrenCount?: number;
     /**
+     * Timestamp in Unix epoch time milliseconds corresponding to when this entity was created
+     * in OpenMetadata.
+     */
+    createdAt?: number;
+    /**
+     * User or Bot who created this entity in OpenMetadata.
+     */
+    createdBy?: string;
+    /**
      * Default persona for all users in this team. Only applicable to Group type teams.
      */
     defaultPersona?: EntityReference;
@@ -65,6 +74,10 @@ export interface Team {
      * Email address of the team.
      */
     email?: string;
+    /**
+     * Entity extension data with custom attributes added to the entity.
+     */
+    extension?: any;
     /**
      * External identifier for the team from an external identity provider (e.g., Azure AD group
      * ID).

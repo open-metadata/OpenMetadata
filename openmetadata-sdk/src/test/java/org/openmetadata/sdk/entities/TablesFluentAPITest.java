@@ -206,10 +206,8 @@ class TablesFluentAPITest {
     // Act
     Object result = Tables.findByName("service.db.schema.test_table").fetch();
 
-    // Assert — must be the wrappers.FluentTable, not the inner Tables.FluentTable
+    // Assert — must be the wrappers.FluentTable
     assertInstanceOf(org.openmetadata.sdk.fluent.wrappers.FluentTable.class, result);
-    assertFalse(
-        result instanceof Tables.FluentTable, "Must not return Tables.FluentTable (inner class)");
 
     // Verify rich API methods exist on the returned object
     org.openmetadata.sdk.fluent.wrappers.FluentTable fluent =

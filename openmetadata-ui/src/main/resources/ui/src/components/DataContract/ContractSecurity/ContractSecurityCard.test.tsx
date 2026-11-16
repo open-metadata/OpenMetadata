@@ -378,15 +378,17 @@ describe('ContractSecurityCard', () => {
   });
 
   it('should render classification tags with pink color', () => {
-    const { container } = render(
-      <ContractSecurityCard security={mockSecurityWithPolicies} />
-    );
+    render(<ContractSecurityCard security={mockSecurityWithPolicies} />);
 
-    const classificationTags = container.querySelectorAll(
-      '.contract-security-classification-container .ant-tag-pink'
+    const classificationTags = screen.getAllByTestId(
+      'contract-security-classification-tag'
     );
 
     expect(classificationTags).toHaveLength(2);
+
+    classificationTags.forEach((tag) =>
+      expect(tag).toHaveClass('tw:bg-utility-pink-50')
+    );
   });
 
   it('should handle columns without fullyQualifiedName', () => {

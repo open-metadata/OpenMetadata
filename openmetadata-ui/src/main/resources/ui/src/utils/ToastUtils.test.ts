@@ -10,34 +10,49 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-const { getIconAndClassName } =
-  jest.requireActual<typeof import('./ToastUtils')>('./ToastUtils');
+import { toast } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { showErrorToast } from './ToastUtils';
 
-describe('getIconAndClassName', () => {
-  it.each([
-    ['info', 'info', 'info'],
-    ['grey-info', 'grey-info', 'info'],
-    ['success', 'success', 'success'],
-    ['warning', 'warning', 'warning'],
-    ['error', 'error', 'error'],
-  ] as const)(
-    'maps %s alerts to their className and toast type',
-    (alertType, className, toastType) => {
-      expect(getIconAndClassName(alertType)).toMatchObject({
-        className,
-        type: toastType,
-      });
-    }
-  );
+// setupTests mocks ToastUtils globally; this suite tests the real one.
+jest.unmock('./ToastUtils');
 
-  it('shares one icon across info variants and uses a distinct icon per severity', () => {
-    const icons = (
-      ['info', 'grey-info', 'success', 'warning', 'error'] as const
-    ).map((alertType) => getIconAndClassName(alertType).icon);
+jest.mock('@openmetadata/ui-core-components', () => ({
+  toast: { error: jest.fn(), warning: jest.fn() },
+}));
 
-    expect(getIconAndClassName('info').icon).toBe(
-      getIconAndClassName('grey-info').icon
+const STALE_PATCH_MESSAGE =
+  'The JSON Object \'{"id":"1","name":"orders","tags":[],"votes":{}}\' contains no mapping for the name \'extension\'';
+
+const serverError = (method: string, message: string) =>
+  ({
+    config: { method },
+    response: { status: 400, data: { message } },
+  } as unknown as AxiosError);
+
+describe('showErrorToast', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('replaces a stale-patch error, which embeds the whole entity, with a refresh hint', () => {
+    showErrorToast(serverError('patch', STALE_PATCH_MESSAGE));
+
+    expect(toast.error).toHaveBeenCalledWith(
+      'server.entity-changed-refresh-and-retry',
+      {}
     );
-    expect(new Set(icons).size).toBe(4);
+  });
+
+  it('leaves the same message alone when it did not come from a PATCH', () => {
+    showErrorToast(serverError('put', STALE_PATCH_MESSAGE));
+
+    expect(toast.error).toHaveBeenCalledWith(STALE_PATCH_MESSAGE, {});
+  });
+
+  it('shows other PATCH errors as the server sent them', () => {
+    showErrorToast(serverError('patch', 'Name is required'));
+
+    expect(toast.error).toHaveBeenCalledWith('Name is required', {});
   });
 });

@@ -14,6 +14,8 @@ import { test as teardown } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 import { EntityDataClass } from '../support/entity/EntityDataClass';
+import { LineageDataClass } from '../support/entity/LineageDataClass';
+import { SharedInfra } from '../support/entity/SharedInfra';
 import { performAdminLogin } from '../utils/admin';
 
 teardown('cleanup entity data prerequisites', async ({ browser }) => {
@@ -22,20 +24,39 @@ teardown('cleanup entity data prerequisites', async ({ browser }) => {
   const { apiContext, afterAction } = await performAdminLogin(browser);
 
   try {
+    // Delete order matters:
+    //   1) Lineage leaves — free their references to SharedInfra parents.
+    //   2) SharedInfra.reset() — hard-delete the shared parent services
+    //      (databaseService, messagingService, dashboardService, …) and
+    //      remove the shared-infra JSON.
+    //   3) EntityDataClass — remove tag / domain / user prerequisites.
+    // Each layer uses Promise.allSettled internally so a missing entity
+    // does not raise.
+    await LineageDataClass.delete(apiContext);
+    await SharedInfra.reset(apiContext);
     await EntityDataClass.postRequisitesForTests(apiContext);
 
-    const filePath = path.join(
+    const entityFilePath = path.join(
       __dirname,
       '..',
       'output',
       'entity-response-data.json'
     );
+    const lineageFilePath = path.join(
+      __dirname,
+      '..',
+      'output',
+      'lineage-data.json'
+    );
 
-    // Remove file if it exists using synchronous deletion with force option
-    try {
-      fs.rmSync(filePath, { force: true });
-    } catch (err) {
-      // Ignore any errors during file deletion
+    // Remove response-data files if they exist. Ignore missing files.
+    // (shared-infra.json is removed inside SharedInfra.reset above.)
+    for (const filePath of [entityFilePath, lineageFilePath]) {
+      try {
+        fs.rmSync(filePath, { force: true });
+      } catch (err) {
+        // Ignore any errors during file deletion
+      }
     }
   } finally {
     await afterAction();

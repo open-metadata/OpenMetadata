@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import test, { expect, Page } from '@playwright/test';
+import { startCase } from 'lodash';
 import { getServiceSearchIndexMappings } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { ApiServiceClass } from '../../support/entity/service/ApiServiceClass';
@@ -38,17 +39,15 @@ const serviceCell = (page: Page, name: string) =>
     .or(page.getByRole('cell', { name }));
 
 // The Type column filter is a TableV2 column filter: TableV2 wraps the
-// dropdown body in `data-testid="filter-dropdown"` (the `ant-table-filter-dropdown`
-// prefixCls it passes is ignored by ColumnFilter, so that class never renders).
-// The checkbox is matched by its input value (getByLabel is unreliable under CI).
+// dropdown body in `data-testid="filter-dropdown"`. ColumnFilter renders core
+// checkboxes labelled with the start-cased value; the visible label is clicked
+// because the checkbox input itself is visually hidden.
 // Clicking a checkbox calls confirm() → applies the filter and closes the dropdown.
 const toggleServiceTypeFilter = async (page: Page, serviceType: string) => {
   await page.getByTestId('filter-icon').click();
   const dropdown = page.getByTestId('filter-dropdown');
   await expect(dropdown).toBeVisible();
-  await dropdown
-    .locator(`.ant-checkbox-wrapper:has(input[value="${serviceType}"])`)
-    .click();
+  await dropdown.getByText(startCase(serviceType), { exact: true }).click();
 };
 
 test.describe('Service Listing', () => {
@@ -166,7 +165,11 @@ test.describe('Service Listing', () => {
       databaseService2.entity.name
     );
 
-    await page.getByTestId('searchbar').fill(databaseService2.entity.name);
+    await page
+      .getByTestId('services-container')
+      .filter({ visible: true })
+      .getByTestId('searchbar')
+      .fill(databaseService2.entity.name);
     await searchService2Response;
 
     const searchService2Response2 = waitForFilteredServices(
@@ -192,7 +195,11 @@ test.describe('Service Listing', () => {
         request.url().includes('/api/v1/search/query') &&
         request.url().includes('query_filter')
     );
-    await page.getByTestId('searchbar').fill(searchTerm);
+    await page
+      .getByTestId('services-container')
+      .filter({ visible: true })
+      .getByTestId('searchbar')
+      .fill(searchTerm);
     const searchRequest = await capturedRequest;
 
     const url = new URL(searchRequest.url());
@@ -231,10 +238,16 @@ test.describe('Service Listing', () => {
         response.url().includes('/api/v1/search/query') &&
         response.url().includes('databaseService')
     );
-    await page.getByTestId('searchbar').fill(serviceDisplayName);
+    await page
+      .getByTestId('services-container')
+      .filter({ visible: true })
+      .getByTestId('searchbar')
+      .fill(serviceDisplayName);
     const searchRequest = await searchResponse;
     expect(searchRequest.status()).toBe(200);
-    await expect(serviceCell(page, serviceDisplayName).first()).toBeVisible();
+    await expect(
+      serviceCell(page, serviceDisplayName).filter({ visible: true })
+    ).not.toHaveCount(0);
   });
 
   test('service listing pages should use the correct search index for search', async ({
@@ -264,7 +277,11 @@ test.describe('Service Listing', () => {
         const searchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=${expectedIndex}*`
         );
-        await page.getByTestId('searchbar').fill(entityName);
+        await page
+          .getByTestId('services-container')
+          .filter({ visible: true })
+          .getByTestId('searchbar')
+          .fill(entityName);
         await searchResponse;
 
         await expect(serviceCell(page, entityName)).toBeVisible();

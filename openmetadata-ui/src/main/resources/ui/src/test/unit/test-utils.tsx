@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  notifyManager,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
 import {
   act,
   render,
@@ -72,4 +76,18 @@ export async function flushReactQuery(): Promise<void> {
     await new Promise((resolve) => setTimeout(resolve, 0));
     await new Promise((resolve) => setTimeout(resolve, 0));
   });
+}
+
+/**
+ * React Query notifies its observers on a timer, which the suite's global
+ * fake timers hold back. Call at the top of a test file whose assertions follow
+ * an awaited `act` rather than a `waitFor`: notifications then run at once, so
+ * a read that resolved inside the `act` is on screen when it returns.
+ */
+export function runQueryNotificationsSynchronously(): void {
+  beforeAll(() => notifyManager.setScheduler((callback) => callback()));
+
+  afterAll(() =>
+    notifyManager.setScheduler((callback) => setTimeout(callback, 0))
+  );
 }

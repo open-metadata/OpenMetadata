@@ -26,8 +26,11 @@ import com.sun.net.httpserver.HttpServer;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.lang.reflect.Method;
+import java.net.ConnectException;
 import java.net.InetSocketAddress;
+import java.net.URISyntaxException;
 import java.net.http.HttpClient;
+import java.net.http.HttpConnectTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.time.Duration;
@@ -40,8 +43,11 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArrayList;
+import javax.net.ssl.SSLHandshakeException;
 import org.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.Parameters;
 import org.openmetadata.schema.api.configuration.pipelineServiceClient.PipelineServiceClientConfiguration;
 import org.openmetadata.schema.entity.app.App;
@@ -451,6 +457,11 @@ class AirflowRESTClientTest {
             IngestionPipelineDeploymentException.class,
             () -> client.runPipeline(pipeline, null, Map.of("force", true)));
     assertTrue(triggerException.getMessage().contains("orders_metadata"));
+    // Airflow is unreachable: a typed 503, worded as the trigger it was, not a deploy.
+    assertEquals(503, triggerException.getResponse().getStatus());
+    assertEquals("TRIGGER_ERROR", triggerException.getErrorType());
+    assertTrue(
+        triggerException.getMessage().startsWith("Failed to trigger pipeline [orders_metadata]"));
 
     PipelineServiceClientException toggleException =
         assertThrows(PipelineServiceClientException.class, () -> client.toggleIngestion(pipeline));
@@ -483,8 +494,11 @@ class AirflowRESTClientTest {
         () -> client.getLastIngestionLogs(pipeline, "cursor"));
   }
 
-  @Test
-  void runPipelineThrowsDeploymentExceptionWhenAirflowReturnsAnError() throws Exception {
+  // Response.Status has no 422, which Airflow 3 can answer with: that goes on as a bad gateway.
+  @ParameterizedTest
+  @CsvSource({"500, 500", "422, 502"})
+  void runPipelineThrowsDeploymentExceptionWhenAirflowReturnsAnError(
+      int airflowStatus, int expectedStatus) throws Exception {
     try (AirflowTestServer server = new AirflowTestServer()) {
       String basePath = "/airflow";
       String prefix = basePath + "/pluginsv2/api/v2/openmetadata";
@@ -496,7 +510,7 @@ class AirflowRESTClientTest {
           200,
           "{\"csrf_token\":\"shared-token\"}",
           cookieHeaders("session=session-shared; Path=/", "csrf_token=cookie-shared; Path=/"));
-      server.enqueue("POST", prefix + "/trigger", 500, "{\"error\":\"failed\"}");
+      server.enqueue("POST", prefix + "/trigger", airflowStatus, "{\"error\":\"failed\"}");
 
       AirflowRESTClient client = newClient(server, basePath);
       IngestionPipeline pipeline = ingestionPipeline("orders_metadata", false);
@@ -506,8 +520,62 @@ class AirflowRESTClientTest {
               IngestionPipelineDeploymentException.class,
               () -> client.runPipeline(pipeline, null, Map.of("force", true)));
 
-      assertTrue(exception.getMessage().contains("Failed to trigger IngestionPipeline"));
+      // Read as the trigger it was, not a deploy, with Airflow's status kept.
+      assertEquals(expectedStatus, exception.getResponse().getStatus());
+      assertEquals(
+          "Failed to trigger pipeline [orders_metadata] due to"
+              + " [Airflow answered the trigger with HTTP "
+              + airflowStatus
+              + "].",
+          exception.getMessage());
     }
+  }
+
+  @Test
+  void aTriggerThatFailsBeforeAirflowAnswersSaysWhetherARetryCanHelp() {
+    // Not reached, or no answer in time: the same run can succeed once Airflow is back.
+    assertTriggerFailure(
+        503, "HTTP connect timed out", new HttpConnectTimeoutException("HTTP connect timed out"));
+    // Java's HTTP client can refuse a connection with no message at all.
+    assertTriggerFailure(503, "ConnectException", new ConnectException());
+    // Reached, but the TLS handshake failed: a retry fails the same way until the certificates
+    // are fixed.
+    assertTriggerFailure(
+        502, "PKIX path building failed", new SSLHandshakeException("PKIX path building failed"));
+    URISyntaxException malformedUrl =
+        new URISyntaxException("http://air flow", "Illegal character");
+    // The configured Airflow URL is malformed, which is the server's configuration to fix.
+    assertTriggerFailure(500, malformedUrl.getMessage(), malformedUrl);
+  }
+
+  @Test
+  void runPipelineIsA503WhenAirflowIsDownBeforeItsApiVersionIsKnown() throws Exception {
+    AirflowTestServer server = new AirflowTestServer();
+    AirflowRESTClient client = newClient(server, "/airflow");
+    server.close();
+
+    // The trigger URL needs the API version, so the run fails detecting it, not posting.
+    IngestionPipelineDeploymentException exception =
+        assertThrows(
+            IngestionPipelineDeploymentException.class,
+            () -> client.runPipeline(ingestionPipeline("orders_metadata", true), null));
+
+    assertEquals(503, exception.getResponse().getStatus());
+    assertTrue(
+        exception
+            .getMessage()
+            .startsWith(
+                "Failed to trigger pipeline [orders_metadata] due to [Unable to connect to Airflow APIs"));
+  }
+
+  private static void assertTriggerFailure(int status, String reason, Exception cause) {
+    IngestionPipelineDeploymentException exception =
+        AirflowRESTClient.triggerFailure("orders_metadata", cause);
+
+    assertEquals(status, exception.getResponse().getStatus());
+    assertEquals(
+        "Failed to trigger pipeline [orders_metadata] due to [" + reason + "].",
+        exception.getMessage());
   }
 
   @Test

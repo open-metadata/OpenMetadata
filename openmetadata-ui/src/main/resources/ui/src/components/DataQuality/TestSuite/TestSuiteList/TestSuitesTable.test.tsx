@@ -172,6 +172,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Table: MockTable,
     toOwnerRef: jest.fn().mockReturnValue({}),
     toOwnerRefs: jest.fn().mockReturnValue([]),
+    Typography: jest.requireActual('@openmetadata/ui-core-components')
+      .Typography,
   };
 });
 
@@ -291,6 +293,12 @@ describe('TestSuitesTable component', () => {
     expect(screen.getByText('10')).toBeInTheDocument();
     expect(screen.getByTestId('profiler-progress-widget')).toBeInTheDocument();
     expect(screen.getByTestId('owner-label')).toBeInTheDocument();
+    expect(
+      jest.requireMock('@openmetadata/ui-core-components').Owner
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({ labelVariant: 'cell' }),
+      expect.anything()
+    );
   });
 
   it('should render the logical suite link via observabilityRouterClassBase', () => {

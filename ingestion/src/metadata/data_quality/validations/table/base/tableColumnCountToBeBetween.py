@@ -60,7 +60,7 @@ class BaseTableColumnCountToBeBetweenValidator(BaseTestValidator):
         return self.get_test_case_result_object(
             self.execution_date,
             self.get_test_case_status(matched),
-            self.format_statistic_message("Column count", count, (min_bound, max_bound), matched),
+            self.format_statistic_message("Column count", count, (min_bound, max_bound), matched, noun="columns"),
             [TestResultValue(name=COLUMN_COUNT, value=str(count))],
         )
 

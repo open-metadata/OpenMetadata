@@ -32,5 +32,5 @@ public interface SourceConfigScoper {
   default void checkScopable(IngestionPipeline pipeline) {}
 
   /** The source config keys that narrow the run to {@code target}; see RunOptions. */
-  Map<String, Object> sourceConfigOverride(EntityInterface target);
+  Map<String, Object> sourceConfigOverride(EntityInterface<?> target);
 }

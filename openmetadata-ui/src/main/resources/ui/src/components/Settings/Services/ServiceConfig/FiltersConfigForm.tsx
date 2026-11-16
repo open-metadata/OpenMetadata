@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { Button } from '@openmetadata/ui-core-components';
+import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import Form, { IChangeEvent } from '@rjsf/core';
 import {
   FieldTemplateProps,
@@ -19,7 +20,6 @@ import {
   UiSchema,
 } from '@rjsf/utils';
 import { customizeValidator } from '@rjsf/validator-ajv8';
-import { CheckCircle } from '@untitledui/icons';
 import { isEmpty, isUndefined } from 'lodash';
 import {
   forwardRef,
@@ -127,7 +127,7 @@ const FiltersConfigForm = forwardRef<
   );
 
   const filterSchema = useMemo<RJSFSchema>(() => {
-    const properties: Record<string, unknown> = {};
+    const properties: NonNullable<RJSFSchema['properties']> = {};
     filterEntries.forEach(([fieldName, property]) => {
       properties[fieldName as string] = property;
     });

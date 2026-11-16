@@ -17,7 +17,7 @@ import { SearchedDataProps } from '../components/SearchedData/SearchedData.inter
 import { SearchIndexField } from '../generated/entity/data/searchIndex';
 import { Column } from '../generated/entity/data/table';
 import { getEntityName } from './EntityNameUtils';
-import { stripMarkdown } from './StringUtils';
+import { stripMarkdown } from './RichTextStringUtils';
 import { getDataTypeString } from './TablePureUtils';
 
 /**

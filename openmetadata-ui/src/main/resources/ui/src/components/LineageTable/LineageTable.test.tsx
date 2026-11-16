@@ -45,6 +45,9 @@ jest.mock('./useLineageTableState');
 jest.mock('../../rest/lineageAPI');
 jest.mock('../../utils/StringUtils', () => ({
   ...jest.requireActual('../../utils/StringUtils'),
+}));
+
+jest.mock('../../utils/RichTextStringUtils', () => ({
   stringToHTML: jest.fn((str: string) => str),
 }));
 jest.mock('../../hooks/useLineageStore', () => {
@@ -576,7 +579,8 @@ describe('LineageTable', () => {
 
       render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-      expect(mockUsePaging).toHaveBeenCalledWith(50);
+      // No fixed default: the table starts from the user's saved page size.
+      expect(mockUsePaging).toHaveBeenCalledWith();
     });
   });
 

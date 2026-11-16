@@ -2,7 +2,7 @@ import { Avatar } from '@/components/base/avatar/avatar';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { fontSizeClass } from '@/utils/tailwindClasses';
-import { Check } from '@untitledui/icons';
+import { Check } from '../../../icons';
 import { isValidElement, useContext } from 'react';
 import type { ListBoxItemProps as AriaListBoxItemProps } from 'react-aria-components';
 import {
@@ -78,7 +78,7 @@ export const SelectItem = ({
               'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
 
             // Icon styles
-            'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary',
+            'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-utility-gray-500',
             state.isDisabled && 'tw:*:data-icon:text-fg-disabled',
 
             sizes[size]

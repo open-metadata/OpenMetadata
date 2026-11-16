@@ -20,6 +20,8 @@ from datetime import datetime
 from functools import partial
 from itertools import product
 
+from metadata.domain.tags import TagDefinition
+from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
@@ -61,10 +63,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_table_fqn_from_query_name
 from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
@@ -72,6 +74,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.ingestion.source.pipeline.tableaupipeline.client import (
+    TableauFlowRecordError,
     TableauMetadataApiError,
 )
 from metadata.ingestion.source.pipeline.tableaupipeline.models import (
@@ -90,7 +93,6 @@ from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import clean_uri, get_database_name_for_lineage
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.lru_cache import LRUCache
-from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -187,6 +189,9 @@ class TableaupipelineSource(PipelineServiceSource):
         return self._current_flow_lineage  # pyright: ignore[reportReturnType]
 
     def _log_metadata_api_failure(self, exc: Exception) -> None:
+        if isinstance(exc, TableauFlowRecordError):
+            logger.warning("%s", exc)
+            return
         if self._metadata_api_failed:
             logger.debug("%s", exc)
             return
@@ -197,6 +202,14 @@ class TableaupipelineSource(PipelineServiceSource):
             exc,
         )
         self._metadata_api_failed = True
+
+    def _iter(self) -> Iterable[Either]:
+        """Fail a run whose flow or extract refresh listing stopped part way,
+        whatever the success threshold. Raised once the topology is done because
+        the runner only records a producer's exception, then reconciles anyway."""
+        yield from super()._iter()
+        if not (self.connection.flow_listing_complete and self.connection.extract_refresh_listing_complete):
+            raise WorkflowFatalError("Some Tableau flows or extract refreshes could not be listed, so this run failed.")
 
     def get_pipeline_name(self, pipeline_details: TableauPipelineDetails) -> str:
         return pipeline_details.display_name or pipeline_details.name
@@ -245,8 +258,11 @@ class TableaupipelineSource(PipelineServiceSource):
             )
 
     def mark_pipelines_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """A partial extract refresh listing would make every pipeline it missed
-        look deleted in Tableau, so nothing is marked deleted that run."""
+        """A partial flow or extract refresh listing would make every pipeline it
+        missed look deleted in Tableau, so nothing is marked deleted that run."""
+        if not self.connection.flow_listing_complete:
+            logger.warning("Some Tableau flows could not be listed, so no pipeline is marked as deleted this run.")
+            return
         if self.service_connection.includeExtractRefreshes and not self.connection.extract_refresh_listing_complete:
             logger.warning(
                 "Some Tableau extract refreshes could not be listed, so no pipeline is marked as deleted this run."
@@ -259,13 +275,16 @@ class TableaupipelineSource(PipelineServiceSource):
         the `includeTags` source config."""
         if not self.source_config.includeTags or not pipeline_details.tags:
             return
-        yield from get_ometa_tag_and_classification(
-            tags=list(pipeline_details.tags),
-            classification_name=TABLEAU_TAG_CLASSIFICATION,
-            tag_description="Tableau Tag",
-            classification_description="Tags associated with Tableau Prep flows",
-            include_tags=True,
-        )
+        for tag_name in pipeline_details.tags:
+            yield from self.register_tag(
+                entity_fqn=self.get_pipeline_fqn(pipeline_details),
+                definition=TagDefinition(
+                    classification_name=TABLEAU_TAG_CLASSIFICATION,
+                    tag_name=tag_name,
+                    tag_description="Tableau Tag",
+                    classification_description="Tags associated with Tableau Prep flows",
+                ),
+            )
 
     def get_owners(self, pipeline_details: TableauPipelineDetails) -> EntityReferenceList | None:
         """Resolve the Tableau owner of the flow, data source or workbook to an
@@ -285,15 +304,7 @@ class TableaupipelineSource(PipelineServiceSource):
     def _tag_labels_for_pipeline(self, pipeline_details: TableauPipelineDetails) -> list[TagLabel]:
         if not self.source_config.includeTags or not pipeline_details.tags:
             return []
-        return (
-            get_tag_labels(
-                metadata=self.metadata,
-                tags=list(pipeline_details.tags),
-                classification_name=TABLEAU_TAG_CLASSIFICATION,
-                include_tags=True,
-            )
-            or []
-        )
+        return self.get_tag_by_fqn(self.get_pipeline_fqn(pipeline_details)) or []
 
     def _get_tasks(self, pipeline_details: TableauPipelineDetails) -> list[Task]:
         """See _build_tasks — cached so yield_pipeline_status annotates the same

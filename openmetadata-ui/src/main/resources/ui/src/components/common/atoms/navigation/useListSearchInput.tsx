@@ -12,7 +12,7 @@
  */
 
 import { CloseButton } from '@openmetadata/ui-core-components';
-import { SearchLg } from '@untitledui/icons';
+import { Search } from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -118,9 +118,18 @@ export const useListSearchInput = ({
     onSearchChangeRef.current('');
   }, [debouncedSearch]);
 
-  const searchInputProps = useMemo(
+  const searchInputProps = useMemo<{
+    autoComplete: 'off';
+    icon: typeof Search;
+    placeholder: string;
+    value: string;
+    inputClassName: string | undefined;
+    trailingSlot: JSX.Element | undefined;
+    onChange: (value: string) => void;
+  }>(
     () => ({
-      icon: SearchLg,
+      autoComplete: 'off',
+      icon: Search,
       placeholder: t('label.search'),
       value: searchInputValue,
       // `InputBase` sizes its trailing padding from its own tooltip/invalid

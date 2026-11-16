@@ -56,7 +56,7 @@ public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityPr
   }
 
   public Response addProfileData(
-      UriInfo uriInfo, EntityInterface entity, CreateEntityProfile createEntityProfile) {
+      UriInfo uriInfo, EntityInterface<?> entity, CreateEntityProfile createEntityProfile) {
     RestUtil.validateTimestampMilliseconds(createEntityProfile.getTimestamp());
 
     EntityProfile entityProfile =
@@ -90,20 +90,22 @@ public class EntityProfileRepository extends EntityTimeSeriesRepository<EntityPr
   }
 
   private void insertSystemProfile(
-      EntityInterface entity, String extension, EntityProfile entityProfile) {
+      EntityInterface<?> entity, String extension, EntityProfile entityProfile) {
     // For system profile, timestamp corresponds to the operation time not the profiling time
     // We need to first check if there is an existing system profile at the same timestamp
     // If yes, we update the existing record
     // If no, we insert a new record
     SystemProfile systemProfile =
         (SystemProfile) deserializeProfileData(entityProfile).getProfileData();
+    TimeSeriesDAOs.ProfilerDataTimeSeriesDAO profilerDao =
+        (TimeSeriesDAOs.ProfilerDataTimeSeriesDAO) timeSeriesDao;
     String storedSystemProfile =
-        timeSeriesDao.getExtensionAtTimestampWithOperation(
+        profilerDao.getSystemProfileAtTimestamp(
             entity.getFullyQualifiedName(),
             extension,
             systemProfile.getTimestamp(),
             systemProfile.getOperation().value());
-    timeSeriesDao.storeTimeSeriesWithOperation(
+    profilerDao.storeSystemProfile(
         entity.getFullyQualifiedName(),
         SYSTEM_PROFILE_EXTENSION,
         "systemProfile",

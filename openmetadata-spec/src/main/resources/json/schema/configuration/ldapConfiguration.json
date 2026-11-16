@@ -30,7 +30,8 @@
     },
     "dnAdminPassword": {
       "description": "Password for LDAP Admin",
-      "type": "string"
+      "type": "string",
+      "format": "password"
     },
     "sslEnabled": {
       "description": "LDAPS (secure LDAP) or LDAP",

@@ -61,7 +61,7 @@ final class PolicyEvaluator {
     NOT_APPLICABLE
   }
 
-  static List<AIGovernancePolicyRuleResult> evaluate(EntityInterface entity, String entityType) {
+  static List<AIGovernancePolicyRuleResult> evaluate(EntityInterface<?> entity, String entityType) {
     List<AIGovernancePolicyRuleResult> rules = new ArrayList<>();
     rules.add(piiAccessRequiresDpia(entity));
     rules.add(subgroupFairnessQuarterly(entity));
@@ -72,7 +72,7 @@ final class PolicyEvaluator {
     return rules;
   }
 
-  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     boolean accessesPii =
         governance.dataClassification() != null
@@ -98,7 +98,7 @@ final class PolicyEvaluator {
         dpiaUrl == null ? (accessesPii ? "No DPIA on file" : "N/A") : dpiaUrl);
   }
 
-  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     String euRisk = euRiskClassification(governance.aiCompliance());
     boolean highRisk = "High".equals(euRisk) || "Unacceptable".equals(euRisk);
@@ -129,7 +129,7 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static AIGovernancePolicyRuleResult humanOversight(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult humanOversight(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     Boolean oversight = humanOversightFromGovernance(governance.aiCompliance());
     Status status;
@@ -152,7 +152,7 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static AIGovernancePolicyRuleResult auditLogRetention(EntityInterface entity) {
+  private static AIGovernancePolicyRuleResult auditLogRetention(EntityInterface<?> entity) {
     GovernanceSnapshot governance = governance(entity);
     DataClassificationSnapshot classification = governance.dataClassification();
     String value =
@@ -197,7 +197,7 @@ final class PolicyEvaluator {
         .withValue(value);
   }
 
-  private static GovernanceSnapshot governance(EntityInterface entity) {
+  private static GovernanceSnapshot governance(EntityInterface<?> entity) {
     GovernanceSnapshot result = GovernanceSnapshot.EMPTY;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
       result = governance(app.getGovernanceMetadata());
@@ -276,7 +276,7 @@ final class PolicyEvaluator {
     return result;
   }
 
-  private static Long lastBiasEval(EntityInterface entity) {
+  private static Long lastBiasEval(EntityInterface<?> entity) {
     Long result = null;
     if (entity instanceof AIApplication app && app.getBiasMetrics() != null) {
       result = app.getBiasMetrics().getLastEvaluatedAt();
@@ -318,8 +318,8 @@ final class PolicyEvaluator {
       long sinceMs,
       int limit,
       List<AIGovernancePolicyViolation> rows) {
-    List<? extends EntityInterface> entities = listEntities(entityType, limit);
-    for (EntityInterface entity : entities) {
+    List<? extends EntityInterface<?>> entities = listEntities(entityType, limit);
+    for (EntityInterface<?> entity : entities) {
       if (rows.size() >= limit) {
         return;
       }
@@ -354,15 +354,15 @@ final class PolicyEvaluator {
     }
   }
 
-  private static List<? extends EntityInterface> listEntities(String entityType, int limit) {
-    List<EntityInterface> result = new ArrayList<>();
+  private static List<? extends EntityInterface<?>> listEntities(String entityType, int limit) {
+    List<EntityInterface<?>> result = new ArrayList<>();
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
-      EntityRepository<? extends EntityInterface> repo = Entity.getEntityRepository(entityType);
+      EntityRepository<? extends EntityInterface<?>> repo = Entity.getEntityRepository(entityType);
       String after = null;
       do {
         int pageSize = Math.min(PAGE_SIZE, Math.max(1, limit - result.size()));
-        ResultList<? extends EntityInterface> page =
+        ResultList<? extends EntityInterface<?>> page =
             repo.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, pageSize, after);
         result.addAll(page.getData());
         after = page.getPaging() == null ? null : page.getPaging().getAfter();

@@ -76,6 +76,10 @@ def _get_kafka_connection(
             "group.id": broker.consumerGroupName,
             "auto.offset.reset": broker.consumerOffsets.value,
             "security.protocol": security_protocol.value,
+            # The source stores each offset after its event is processed. The default
+            # stores it as soon as poll() returns the message, which commits an event
+            # before its lineage is written and loses it if the run stops mid-event.
+            "enable.auto.offset.store": False,
         }
         if requires_ssl and ssl_config is not None:
             # confluent_kafka's ssl.*.location keys take file paths, but the

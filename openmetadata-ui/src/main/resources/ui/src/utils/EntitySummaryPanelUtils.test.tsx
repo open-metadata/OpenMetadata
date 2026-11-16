@@ -167,6 +167,23 @@ describe('EntitySummaryPanelUtils tests', () => {
       expect(linkBasedTitle).toEqual(mockLinkBasedSummaryTitleResponse);
     });
 
+    it.each(['javascript:alert(1)', 'data:text/html,<script>', 'not a url'])(
+      'getTitle should return title as text if sourceUrl is not http(s): %s',
+      (sourceUrl) => {
+        const title = getTitle({
+          ...mockEntityDataWithoutNesting[0],
+          sourceUrl,
+        });
+
+        render(<BrowserRouter>{title}</BrowserRouter>);
+
+        expect(screen.queryByRole('link')).not.toBeInTheDocument();
+        expect(screen.getByTestId('entity-title')).toHaveTextContent(
+          'dim_address Task'
+        );
+      }
+    );
+
     it('getTitle should return title as link without icon if type: dashboard present in listItem', () => {
       const linkBasedTitle = getTitle(mockEntityReferenceDashboardData);
 

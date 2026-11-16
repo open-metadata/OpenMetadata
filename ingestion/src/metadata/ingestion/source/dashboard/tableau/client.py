@@ -62,6 +62,12 @@ MAX_CACHED_PROJECTS = 200_000
 SOURCE_TABLE_SAMPLE_PAGE_SIZE = 50
 MAX_SAMPLED_WORKBOOKS = 3
 
+# Tableau attaches this warning to Metadata API responses while it (re)builds the store
+# behind the API: after the API is enabled and after upgrades, for up to a week. The data
+# next to it may be missing whole workbooks and data sources.
+# https://help.tableau.com/current/api/metadata_api/en-us/docs/meta_api_errors.html
+BACKFILL_RUNNING = "BACKFILL_RUNNING"
+
 
 class TableauWorkBookException(Exception):  # noqa: N818
     """
@@ -121,6 +127,7 @@ class TableauClient:
         self.owner_cache: dict[str, TableauOwner] = {}
         self.all_projects: LRUCache[str, ProjectItem] = LRUCache(maxsize=MAX_CACHED_PROJECTS)
         self.ssl_manager = ssl_manager
+        self.metadata_api_backfill_running = False
 
     def server_info(self):
         return self.tableau_server.server_info.get()
@@ -414,13 +421,30 @@ class TableauClient:
             )
         return True
 
+    def _query_metadata_api(self, query: str) -> dict | None:
+        """
+        Run a Metadata API query. Tableau returns its warnings in `errors`, next to the data,
+        and the Tableau client only raises on them when asked to, so they are read here.
+        """
+        result = self.tableau_server.metadata.query(query=query)
+        errors = (result or {}).get("errors") or []
+        if not self.metadata_api_backfill_running and any(
+            (error.get("extensions") or {}).get("code") == BACKFILL_RUNNING for error in errors
+        ):
+            self.metadata_api_backfill_running = True
+            logger.warning(
+                "Tableau Metadata API is still building its store (%s), so its results may be incomplete",
+                BACKFILL_RUNNING,
+            )
+        return result
+
     def _query_datasources(self, dashboard_id: str, entities_per_page: int, offset: int) -> TableauDatasources | None:
         """
         Method to query the graphql endpoint to get data sources
         """
         try:
-            datasources_graphql_result = self.tableau_server.metadata.query(
-                query=TABLEAU_DATASOURCES_QUERY.format(workbook_id=dashboard_id, first=entities_per_page, offset=offset)
+            datasources_graphql_result = self._query_metadata_api(
+                TABLEAU_DATASOURCES_QUERY.format(workbook_id=dashboard_id, first=entities_per_page, offset=offset)
             )
             if datasources_graphql_result and datasources_graphql_result.get("data"):
                 if datasources_graphql_result["data"].get("workbooks"):
@@ -489,7 +513,7 @@ class TableauClient:
         Fetch all custom SQL tables and cache their queries by workbook ID
         """
         try:
-            result = self.tableau_server.metadata.query(query=TALEAU_GET_CUSTOM_SQL_QUERY)
+            result = self._query_metadata_api(TALEAU_GET_CUSTOM_SQL_QUERY)
             if not result:
                 logger.debug("No result returned from GraphQL query")
                 return

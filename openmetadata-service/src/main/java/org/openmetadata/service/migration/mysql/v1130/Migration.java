@@ -9,6 +9,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v1130.MigrationUtil;
+import org.openmetadata.service.migration.utils.v1130.QuartzTablePurge;
 
 @Slf4j
 public class Migration extends MigrationProcessImpl {
@@ -20,6 +21,7 @@ public class Migration extends MigrationProcessImpl {
   @Override
   @SneakyThrows
   public void runDataMigration() {
+    QuartzTablePurge.purgeOnce(jdbi, ConnectionType.MYSQL);
     MigrationUtil.updateOwnerChartFormulas();
     try {
       MigrationUtil.migrateWebhookSecretKeyToAuthType(handle);

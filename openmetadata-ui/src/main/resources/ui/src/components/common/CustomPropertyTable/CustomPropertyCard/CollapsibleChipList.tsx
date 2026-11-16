@@ -58,9 +58,13 @@ export const CollapsibleChipList = <T,>({
     if (isExpanded || !container || fitCount <= 1) {
       return;
     }
-    const children = Array.from(container.children) as HTMLElement[];
-    const firstTop = children[0]?.offsetTop ?? 0;
-    if (children.some((child) => child.offsetTop > firstTop)) {
+    const [first, ...rest] = Array.from(container.children) as HTMLElement[];
+    // Rows are vertically centred, so the shorter toggle sits a few pixels
+    // lower than the chips on the same line. Only a child starting below the
+    // first row's bottom edge has wrapped.
+    const firstRowBottom =
+      (first?.offsetTop ?? 0) + Math.max(first?.offsetHeight ?? 0, 1);
+    if (rest.some((child) => child.offsetTop >= firstRowBottom)) {
       setFitCount((count) => count - 1);
     }
   });

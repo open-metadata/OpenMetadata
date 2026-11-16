@@ -106,7 +106,9 @@ test.describe('Metric List Page - Search', { tag: ['@Discovery'] }, () => {
     const searchInput = page.getByTestId('metric-search').getByRole('textbox');
     await expect(searchInput).toBeVisible();
 
-    await expect(page.getByTestId('metric-name').first()).toBeVisible();
+    await expect(
+      page.getByTestId('metric-name').filter({ visible: true })
+    ).not.toHaveCount(0);
 
     await test.step('search fires a scoped metric query and narrows the results', async () => {
       // The debounced search must actually reach the API. Regression #29538

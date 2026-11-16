@@ -45,6 +45,8 @@ import org.openmetadata.service.security.session.UserSession;
     value = "org.openmetadata.it.bootstrap.TestSuiteBootstrap#isRedisEnabled",
     disabledReason = "Sessions live in Redis on this profile; see SessionRedisMultiNodeIT")
 class SessionMultiNodeIT {
+  private static final String USER_REFRESH_TOKENS =
+      " WHERE userId = :userId AND tokenType = 'REFRESH_TOKEN'";
 
   @Test
   void refreshAndLogoutAreSharedAcrossNodes(TestNamespace ns) throws Exception {
@@ -325,6 +327,23 @@ class SessionMultiNodeIT {
   }
 
   @Test
+  void expiredRefreshTokenIsRejectedWithoutEchoingIt(TestNamespace ns) throws Exception {
+    SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
+    User user = createUser(ns);
+
+    SessionCookies cookies = new SessionCookies();
+    HttpClient client = HttpClient.newHttpClient();
+    login(client, cookies, cluster.nodeABaseUrl(), user.getEmail(), passwordFor(ns));
+    String refreshToken = expireRefreshTokens(user);
+
+    HttpResponse<String> refresh =
+        postRaw(client, cookies, cluster.nodeABaseUrl() + "/api/v1/auth/refresh", null);
+
+    assertEquals(401, refresh.statusCode(), refresh.body());
+    assertFalse(refresh.body().contains(refreshToken), refresh.body());
+  }
+
+  @Test
   void sessionLimitEvictsLeastRecentlyUsedAcrossNodes(TestNamespace ns) throws Exception {
     SessionMultiNodeCluster cluster = SessionMultiNodeCluster.getInstance();
     User user = createUser(ns);
@@ -497,6 +516,26 @@ class SessionMultiNodeIT {
                   .bind("id", session.getId())
                   .bind("json", JsonUtils.pojoToJson(session))
                   .execute();
+            });
+  }
+
+  private String expireRefreshTokens(User user) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle -> {
+              String sql =
+                  isPostgres(handle)
+                      ? "UPDATE user_tokens SET json = jsonb_set(json, '{expiryDate}', '1000')"
+                      : "UPDATE user_tokens SET json = JSON_SET(json, '$.expiryDate', 1000)";
+              handle
+                  .createUpdate(sql + USER_REFRESH_TOKENS)
+                  .bind("userId", user.getId().toString())
+                  .execute();
+              return handle
+                  .createQuery("SELECT token FROM user_tokens" + USER_REFRESH_TOKENS)
+                  .bind("userId", user.getId().toString())
+                  .mapTo(String.class)
+                  .one();
             });
   }
 

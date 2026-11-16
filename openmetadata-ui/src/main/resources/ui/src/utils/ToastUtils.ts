@@ -11,65 +11,17 @@
  *  limitations under the License.
  */
 import { toast } from '@openmetadata/ui-core-components';
-import {
-  AlertCircle,
-  AlertTriangle,
-  CheckCircle,
-  InfoCircle,
-} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { get, isString } from 'lodash';
 import React from 'react';
-import type { AlertBarProps } from '../components/AlertBar/AlertBar.interface';
 import { ClientErrors, ErrorTypes } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
 import { getErrorText } from './StringUtils';
 
-export const getIconAndClassName = (type: AlertBarProps['type']) => {
-  switch (type) {
-    case 'info':
-      return {
-        icon: InfoCircle,
-        className: 'info',
-        type: 'info',
-      };
-
-    case 'grey-info':
-      return {
-        icon: InfoCircle,
-        className: 'grey-info',
-        type: 'info',
-      };
-
-    case 'success':
-      return {
-        icon: CheckCircle,
-        className: 'success',
-        type: 'success',
-      };
-
-    case 'warning':
-      return {
-        icon: AlertTriangle,
-        className: 'warning',
-        type: 'warning',
-      };
-
-    case 'error':
-      return {
-        icon: AlertCircle,
-        className: 'error',
-        type: 'error',
-      };
-
-    default:
-      return {
-        icon: null,
-        className: '',
-        type: 'info',
-      };
-  }
-};
+// A JSON patch built from a stale copy targets a member the server no longer has, and the
+// server's message embeds the whole entity JSON.
+const STALE_PATCH_ERROR =
+  /^The JSON Object '[\s\S]*' contains no mapping for the name '/;
 
 interface AxiosErrorResolution {
   errorMessage: string | JSX.Element;
@@ -90,7 +42,11 @@ const resolveAxiosErrorMessage = (
     fallbackText && fallbackText.length > 0
       ? fallbackText
       : i18n.t('server.unexpected-error');
-  const errorMessage = getErrorText(error, fallback);
+  const serverMessage = getErrorText(error, fallback);
+  const errorMessage =
+    method === 'PATCH' && STALE_PATCH_ERROR.test(serverMessage)
+      ? i18n.t('server.entity-changed-refresh-and-retry')
+      : serverMessage;
   const isRuleViolation =
     get(error, 'response.data.errorType') === ErrorTypes.RULE_VIOLATION;
   const isUnauthorizedOrForbiddenGet =
