@@ -49,7 +49,7 @@ export const VersionButton = forwardRef<
       name: impersonatedBy ?? '',
     });
 
-    const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
+    const versionText = `v${parseFloat(toString(versionNumber)).toFixed(1)}`;
 
     return (
       <div
