@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -27,26 +28,60 @@ public final class ColumnFieldAccess {
   private static final Set<String> RESTRICTED_FIELDS =
       Set.of(PROFILE_FIELD, TableRepository.CUSTOM_METRICS);
 
+  /**
+   * A column search loads its table with every table field for {@code *}, which fills in each
+   * column's tags, custom metrics and extension, but not its profile.
+   */
+  private static final List<String> SEARCH_WILDCARD_FIELDS =
+      List.of(Entity.FIELD_TAGS, TableRepository.CUSTOM_METRICS, Entity.FIELD_EXTENSION);
+
   private ColumnFieldAccess() {}
 
-  /** {@code fieldsParam} without the fields the caller may not read on {@code table}. */
+  /**
+   * {@code fieldsParam} for a column read, without the fields the caller may not read on {@code
+   * table}. These reads match requested fields by substring, so {@code *} returns no column field
+   * and is left out.
+   */
   public static String readableFields(
       ViewPermissionFilter viewFilter,
       SecurityContext securityContext,
       ResourceContextInterface table,
       String fieldsParam) {
+    return readable(viewFilter, securityContext, table, fieldsParam, List.of());
+  }
+
+  /**
+   * {@code fieldsParam} for a column search, without the fields the caller may not read on {@code
+   * table}. {@code *} is read as the column fields the search returns for it.
+   */
+  public static String readableSearchFields(
+      ViewPermissionFilter viewFilter,
+      SecurityContext securityContext,
+      ResourceContextInterface table,
+      String fieldsParam) {
+    return readable(viewFilter, securityContext, table, fieldsParam, SEARCH_WILDCARD_FIELDS);
+  }
+
+  private static String readable(
+      ViewPermissionFilter viewFilter,
+      SecurityContext securityContext,
+      ResourceContextInterface table,
+      String fieldsParam,
+      List<String> wildcardFields) {
     if (nullOrEmpty(fieldsParam)) {
       return fieldsParam;
     }
     return Arrays.stream(fieldsParam.split(FIELD_SEPARATOR))
         .map(String::trim)
+        .flatMap(field -> ALL_FIELDS.equals(field) ? wildcardFields.stream() : Stream.of(field))
+        .distinct()
         .filter(field -> mayRead(viewFilter, securityContext, table, field))
         .collect(Collectors.joining(FIELD_SEPARATOR));
   }
 
   /**
    * Column enrichment matches requested fields by substring, so a field that merely contains a
-   * restricted name is held to that name's operation too, and the wildcard to every one of them.
+   * restricted name is held to that name's operation too.
    */
   private static boolean mayRead(
       ViewPermissionFilter viewFilter,
@@ -54,7 +89,7 @@ public final class ColumnFieldAccess {
       ResourceContextInterface table,
       String field) {
     return RESTRICTED_FIELDS.stream()
-        .filter(restricted -> ALL_FIELDS.equals(field) || field.contains(restricted))
+        .filter(field::contains)
         .allMatch(
             restricted ->
                 viewFilter.isPermitted(

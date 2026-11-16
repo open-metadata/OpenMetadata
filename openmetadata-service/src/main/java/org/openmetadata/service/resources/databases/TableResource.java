@@ -2113,7 +2113,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             query,
             limitParam,
             offsetParam,
-            readableColumnFields(securityContext, resourceContext, fieldsParam),
+            readableColumnSearchFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2216,7 +2216,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             query,
             limitParam,
             offsetParam,
-            readableColumnFields(securityContext, resourceContext, fieldsParam),
+            readableColumnSearchFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2232,6 +2232,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   private String readableColumnFields(
       SecurityContext securityContext, ResourceContext<Table> table, String fieldsParam) {
     return ColumnFieldAccess.readableFields(
+        viewPermissionFilter, securityContext, table, fieldsParam);
+  }
+
+  private String readableColumnSearchFields(
+      SecurityContext securityContext, ResourceContext<Table> table, String fieldsParam) {
+    return ColumnFieldAccess.readableSearchFields(
         viewPermissionFilter, securityContext, table, fieldsParam);
   }
 

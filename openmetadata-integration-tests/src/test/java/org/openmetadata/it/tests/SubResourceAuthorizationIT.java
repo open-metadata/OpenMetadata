@@ -157,6 +157,49 @@ public class SubResourceAuthorizationIT {
     }
   }
 
+  /**
+   * {@code fields=*} stands for the column fields each endpoint returns for it, each held to its own
+   * operation. A column search returns tags, custom metrics and extension for it, so a caller with
+   * ViewTests or ViewDataProfile alone still gets the tags; the other column reads return none of
+   * the restricted fields for it, to anyone.
+   */
+  @Test
+  void tableColumnWildcard_returnsTheColumnFieldsTheCallerMayView(TestNamespace ns) {
+    Table table = createTableWithTaggedId(ns);
+    addColumnProfileAndMetric(table, "id");
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient viewTestsOnly =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("starprofile"), "table", MetadataOperation.VIEW_DATA_PROFILE);
+    OpenMetadataClient viewDataProfileOnly =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("startests"), "table", MetadataOperation.VIEW_TESTS);
+    String fqn = encodeURIComponent(table.getFullyQualifiedName());
+    List<String> searches =
+        List.of(
+            "/v1/tables/" + table.getId() + "/columns/search?q=id&fields=*",
+            "/v1/tables/name/" + fqn + "/columns/search?q=id&fields=*");
+    List<String> reads =
+        List.of(
+            "/v1/tables/" + table.getId() + "/columns?fields=*",
+            "/v1/tables/name/" + fqn + "/columns?fields=*",
+            "/v1/columns/name/"
+                + encodeURIComponent(table.getFullyQualifiedName() + ".id")
+                + "?entityType=table&fields=*");
+
+    for (String path : searches) {
+      assertWildcardColumn(admin, path, true, true);
+      assertWildcardColumn(viewTestsOnly, path, true, true);
+      assertWildcardColumn(viewDataProfileOnly, path, true, false);
+    }
+    for (String path : reads) {
+      boolean adminGetsTags = !idColumn(admin, path).path("tags").isEmpty();
+      for (OpenMetadataClient client : List.of(admin, viewTestsOnly, viewDataProfileOnly)) {
+        assertWildcardColumn(client, path, adminGetsTags, false);
+      }
+    }
+  }
+
   @Test
   void tableEntityRelationship_requiresViewOnTheRootTable(TestNamespace ns) {
     Table table = createTable(ns);
@@ -897,9 +940,26 @@ public class SubResourceAuthorizationIT {
             Table.class);
   }
 
-  /** {@code path} answers the {@code id} column, alone or in a page. */
   private static void assertColumnFields(
       OpenMetadataClient client, String path, boolean hasProfile, boolean hasMetrics) {
+    JsonNode column = idColumn(client, path);
+    String context = path + " -> " + column;
+    assertEquals(hasProfile, column.hasNonNull("profile"), context);
+    assertEquals(hasMetrics, !column.path("customMetrics").isEmpty(), context);
+  }
+
+  /** {@code fields=*} never returns a column's profile, on any column endpoint. */
+  private static void assertWildcardColumn(
+      OpenMetadataClient client, String path, boolean hasTags, boolean hasMetrics) {
+    JsonNode column = idColumn(client, path);
+    String context = path + " -> " + column;
+    assertEquals(hasTags, !column.path("tags").isEmpty(), context);
+    assertEquals(hasMetrics, !column.path("customMetrics").isEmpty(), context);
+    assertFalse(column.hasNonNull("profile"), context);
+  }
+
+  /** {@code path} answers the {@code id} column, alone or in a page. */
+  private static JsonNode idColumn(OpenMetadataClient client, String path) {
     JsonNode body =
         JsonUtils.readTree(client.getHttpClient().executeForString(HttpMethod.GET, path, null));
     JsonNode column = body;
@@ -908,15 +968,39 @@ public class SubResourceAuthorizationIT {
         column = listed;
       }
     }
-    String context = path + " -> " + body;
-    assertEquals("id", column.path("name").asText(), context);
-    assertEquals(hasProfile, column.hasNonNull("profile"), context);
-    assertEquals(hasMetrics, !column.path("customMetrics").isEmpty(), context);
+    assertEquals("id", column.path("name").asText(), path + " -> " + body);
+    return column;
   }
 
   private static Table createTable(TestNamespace ns) {
     return TableTestFactory.createSimple(
         ns, DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName());
+  }
+
+  private static Table createTableWithTaggedId(TestNamespace ns) {
+    TagLabel tag =
+        new TagLabel()
+            .withTagFQN("PII.NonSensitive")
+            .withSource(TagLabel.TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    return SdkClients.adminClient()
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix("wildcard"))
+                .withDatabaseSchema(
+                    DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName())
+                .withColumns(
+                    List.of(
+                        new Column()
+                            .withName("id")
+                            .withDataType(ColumnDataType.BIGINT)
+                            .withTags(List.of(tag)),
+                        new Column()
+                            .withName("name")
+                            .withDataType(ColumnDataType.VARCHAR)
+                            .withDataLength(255))));
   }
 
   private static Table createTable(
