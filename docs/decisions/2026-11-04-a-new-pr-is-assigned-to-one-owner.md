@@ -39,8 +39,9 @@ token, which the default `GITHUB_TOKEN` can't provide.
 
 - A team owner `@open-metadata/<slug>` contributes candidates only if `<slug>` is listed under
   `assign.teams` in `.github/team-config.yml`. It then expands to the members of that GitHub team
-  (child teams included), read with a `members:read` token from the org bot App
-  (`secrets.GH_BOT_ID` / `secrets.GH_BOT_PK`). Logins under `assign.exclude` are dropped.
+  (child teams included), read with a `members:read` token from a dedicated GitHub App
+  (`secrets.GH_MEMBER_READ_ID` / `secrets.GH_MEMBER_READ_SECRET`). Logins under
+  `assign.exclude` are dropped.
 - Any other CODEOWNERS team contributes no candidates. `mergers`, which gates approval of CI
   changes, is deliberately not listed, so external PRs touching workflows go to the individual
   owners on those rules. An allow list keeps a future approval-only team out by default.

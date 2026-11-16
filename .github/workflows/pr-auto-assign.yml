@@ -38,14 +38,14 @@ jobs:
     steps:
       # Listing team members needs members:read, which the default GITHUB_TOKEN doesn't have.
       # Without it a team owner contributes no candidates and the PR stays unassigned.
-      # Same org bot App as openmetadata-collate's workflows, narrowed to members:read.
+      # Dedicated members:read App (GH_MEMBER_READ_*), separate from the org bot App.
       - name: Generate a token
         id: generate_token
         continue-on-error: true
         uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2.2.2
         with:
-          app-id: ${{ secrets.GH_BOT_ID }}
-          private-key: ${{ secrets.GH_BOT_PK }}
+          app-id: ${{ secrets.GH_MEMBER_READ_ID }}
+          private-key: ${{ secrets.GH_MEMBER_READ_SECRET }}
           owner: ${{ github.repository_owner }}
           permission-members: read
 
