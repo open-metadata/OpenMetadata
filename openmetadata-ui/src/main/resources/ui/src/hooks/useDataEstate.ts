@@ -43,9 +43,8 @@ const SERVICE_TYPE_FIELD = 'serviceType';
 
 /**
  * Columns share the data-asset alias and carry their table's `serviceType`, so
- * counting them sized every connector by its columns — a single connector came
- * out far larger than the header total, which comes from `total_data_assets`
- * and has no column type.
+ * counting them would size every connector by its column count. Data Insights
+ * and the "Total data assets" card do not count columns as assets either.
  */
 const EXCLUDE_COLUMNS_QUERY = JSON.stringify({
   query: {
@@ -73,9 +72,8 @@ export interface ConnectorCount {
 export interface DataEstate {
   /**
    * The sum of the per-connector counts, so the header always adds up to the
-   * bar beneath it. The estate-wide Data Insights total is the "Total data
-   * assets" card's figure; repeating it here put one number above a breakdown
-   * that summed to another.
+   * bar beneath it. The estate-wide Data Insights total belongs to the "Total
+   * data assets" card.
    */
   totalAssets: number;
   /**
