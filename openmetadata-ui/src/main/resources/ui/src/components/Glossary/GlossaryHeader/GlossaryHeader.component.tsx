@@ -94,6 +94,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
+import { useLifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 import Voting from '../../Entity/Voting/Voting.component';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
@@ -723,6 +724,16 @@ const GlossaryHeader = ({
     }
   }, [selectedData]);
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
+    entityId: selectedData.id,
+    entityStatus: selectedData.entityStatus,
+    lifecycleRequest: selectedData.lifecycleRequest,
+    canRequest: canEditAll && !isVersionView && !selectedData.deleted,
+    onRequest: (stage) =>
+      onUpdate({ ...selectedData, lifecycleRequest: stage }),
+  });
+
   const manageButtonContent: ManageMenuItem[] = buildManageButtonContent({
     t,
     isGlossary,
@@ -748,11 +759,14 @@ const GlossaryHeader = ({
         entityId={selectedData.id}
         entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         fqn={selectedData.fullyQualifiedName}
+        requestStages={lifecycleRequests.stages}
+        requestedStage={selectedData.lifecycleRequest}
         showDivider={false}
         status={entityStatus}
+        onRequest={lifecycleRequests.request}
       />
     );
-  }, [selectedData, isGlossary]);
+  }, [selectedData, isGlossary, lifecycleRequests]);
 
   const createButtons = useMemo(() => {
     if (permissions.Create || createGlossaryTermPermission) {

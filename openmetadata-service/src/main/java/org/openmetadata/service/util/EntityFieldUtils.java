@@ -103,6 +103,9 @@ public class EntityFieldUtils {
       case "entityStatus":
         setEntityStatus(entity, fieldValue);
         break;
+      case Entity.FIELD_LIFECYCLE_REQUEST:
+        entity.setLifecycleRequest(fieldValue == null ? null : parseEntityStatus(fieldValue));
+        break;
       default:
         setSimpleStringField(entity, fieldName, fieldValue);
         break;

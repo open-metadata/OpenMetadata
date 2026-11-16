@@ -51,6 +51,7 @@ import { QueryVote } from '../../../interface/entity/vote.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { ManageButtonProps } from '../../common/EntityPageInfos/ManageButton/ManageButton.interface';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { LifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 
 export type DataAssetsType =
   | Table
@@ -159,6 +160,8 @@ export type DataAssetsHeaderProps = {
   onUpdateVote?: (data: QueryVote, id: string) => Promise<void>;
   onUpdateRetentionPeriod?: (value: string) => Promise<void>;
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
+  /** Stages the user can ask the asset's lifecycle for, offered from its stage badge. */
+  lifecycleRequests?: LifecycleRequests;
   onMetricUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   isCustomizedView?: boolean;
   disableRunAgentsButton?: boolean;

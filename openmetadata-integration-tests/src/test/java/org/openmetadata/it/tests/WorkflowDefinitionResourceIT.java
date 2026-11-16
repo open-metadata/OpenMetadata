@@ -17,6 +17,7 @@ import static org.openmetadata.service.util.RestUtil.PENDING_CHANGE_HEADER;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17487,6 +17488,233 @@ public class WorkflowDefinitionResourceIT {
                 assertEquals(
                     EntityStatus.APPROVED,
                     admin.domains().get(domain.getId().toString()).getEntityStatus()));
+  }
+
+  /**
+   * A lifecycle playbook that moves its asset to Deprecated when a user requests it: name, entity
+   * filter and entity type.
+   */
+  private static final String DEPRECATE_ON_REQUEST_PLAYBOOK =
+      """
+      {
+        "name": "%1$s",
+        "description": "Lifecycle playbook with an on-request exit to Deprecated",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["%3$s"],
+            "events": ["Created", "Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"%3$s": %2$s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "ExitCheck0", "type": "automatedTask", "subType": "checkEntityAttributesTask",
+           "config": {"rules": "{\\"==\\":[{\\"var\\":\\"lifecycleRequest\\"},\\"Deprecated\\"]}"},
+           "inputNamespaceMap": {"relatedEntity": "global"}},
+          {"name": "ExitApprove0", "type": "userTask", "subType": "userApprovalTask",
+           "config": {"assignees": {"addOwners": true, "emptyAssigneeStrategy": "wait"},
+                      "approvalThreshold": 1, "rejectionThreshold": 1,
+                      "lifecycleMove": {"targetStage": "Deprecated"}},
+           "inputNamespaceMap": {"relatedEntity": "global"}, "output": ["updatedBy"]},
+          {"name": "ExitSet0", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "status", "fieldValue": "Deprecated"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "ExitApprove0"}},
+          {"name": "ExitClear0", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "lifecycleRequest", "fieldValue": ""},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "ExitCheck0"},
+          {"from": "ExitCheck0", "to": "ExitApprove0", "condition": "true"},
+          {"from": "ExitCheck0", "to": "end", "condition": "false"},
+          {"from": "ExitApprove0", "to": "ExitSet0", "condition": "approve"},
+          {"from": "ExitApprove0", "to": "ExitClear0", "condition": "reject"},
+          {"from": "ExitSet0", "to": "ExitClear0"},
+          {"from": "ExitClear0", "to": "end"}
+        ],
+        "config": {
+          "storeStageStatus": true,
+          "lifecycle": {"version": 1, "entityType": "%3$s", "gates": [],
+                        "exits": [{"stage": "Deprecated", "trigger": "onRequest"}]}
+        }
+      }""";
+
+  @Test
+  @Order(224)
+  void test_lifecycleRequestMovesTheAssetOnceApproved(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("deprecateApproved"));
+    WorkflowDefinition playbook = deployDeprecateOnRequestPlaybook(admin, ns, domain);
+
+    requestLifecycleStage(admin, domain, "Deprecated");
+    Task approval =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), playbook.getId());
+    ownerClient
+        .tasks()
+        .resolve(
+            approval.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("the approved request to deprecate the domain and clear itself")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              Domain current = admin.domains().get(domain.getId().toString());
+              assertEquals(EntityStatus.DEPRECATED, current.getEntityStatus());
+              assertNull(current.getLifecycleRequest());
+            });
+    assertEquals(List.of(), requestableStages(admin, Entity.DOMAIN, domain.getId()));
+  }
+
+  @Test
+  @Order(225)
+  void test_rejectedLifecycleRequestLeavesTheStage(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("deprecateRejected"));
+    EntityStatus before = domain.getEntityStatus();
+    WorkflowDefinition playbook = deployDeprecateOnRequestPlaybook(admin, ns, domain);
+
+    requestLifecycleStage(admin, domain, "Deprecated");
+    Task approval =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), playbook.getId());
+    ownerClient
+        .tasks()
+        .resolve(
+            approval.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Rejected));
+
+    await("the rejected request to clear itself")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> assertNull(admin.domains().get(domain.getId().toString()).getLifecycleRequest()));
+    assertEquals(before, admin.domains().get(domain.getId().toString()).getEntityStatus());
+  }
+
+  @Test
+  @Order(226)
+  void test_lifecycleRequestForAStageTheLifecycleDoesNotOfferIsRejected(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("archiveUnoffered"));
+    deployDeprecateOnRequestPlaybook(admin, ns, domain);
+
+    assertThrows(Exception.class, () -> requestLifecycleStage(admin, domain, "Archived"));
+    assertNull(admin.domains().get(domain.getId().toString()).getLifecycleRequest());
+  }
+
+  @Test
+  @Order(227)
+  void test_lifecycleRequestLeavesTheSeededReviewOfAGlossaryTermAlone(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Glossary glossary = createReviewedGlossary(ns, "lifecycleRequestReview");
+    GlossaryTerm term =
+        createTerm(admin, glossary, ns.shortPrefix("retiring"), "A term a user asks to deprecate");
+    WorkflowDefinition seededReview =
+        admin.workflowDefinitions().getByName("GlossaryTermApprovalWorkflow", null);
+    Task pendingReview =
+        awaitOpenApprovalTaskOf(admin, term.getFullyQualifiedName(), seededReview.getId());
+    WorkflowDefinition playbook =
+        deployDeprecateOnRequestPlaybook(admin, ns, Entity.GLOSSARY_TERM, term.getName());
+
+    requestLifecycleStage(admin, term, "Deprecated");
+    awaitOpenApprovalTaskOf(admin, term.getFullyQualifiedName(), playbook.getId());
+
+    assertEquals(
+        TaskEntityStatus.Open, admin.tasks().get(pendingReview.getId().toString()).getStatus());
+    assertEquals(
+        List.of(pendingReview.getId()),
+        listOpenApprovalTasks(admin, term.getFullyQualifiedName()).getData().stream()
+            .filter(task -> seededReview.getId().equals(task.getWorkflowDefinitionId()))
+            .map(Task::getId)
+            .toList());
+  }
+
+  @Test
+  @Order(228)
+  void test_requestableStagesFollowTheLifecycleThatOwnsTheEntity(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Domain offered = domainOwnedByUser1(admin, ns.shortPrefix("requestOffered"));
+    Domain notOffered = domainOwnedByUser1(admin, ns.shortPrefix("requestNotOffered"));
+    deployDeprecateOnRequestPlaybook(admin, ns, offered);
+
+    assertEquals(List.of("Deprecated"), requestableStages(admin, Entity.DOMAIN, offered.getId()));
+    assertEquals(List.of(), requestableStages(admin, Entity.DOMAIN, notOffered.getId()));
+  }
+
+  private Domain domainOwnedByUser1(OpenMetadataClient admin, String name) {
+    EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
+    return admin
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(name)
+                .withDescription("Domain a user can request to deprecate")
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withOwners(List.of(owner)));
+  }
+
+  private WorkflowDefinition deployDeprecateOnRequestPlaybook(
+      OpenMetadataClient admin, TestNamespace ns, Domain domain) throws Exception {
+    return deployDeprecateOnRequestPlaybook(admin, ns, Entity.DOMAIN, domain.getName());
+  }
+
+  private WorkflowDefinition deployDeprecateOnRequestPlaybook(
+      OpenMetadataClient admin, TestNamespace ns, String entityType, String entityName)
+      throws Exception {
+    // The name sorts before other stage workflows, such as the seeded approval workflows, so this
+    // playbook owns the entity's stage. It stays short: Flowable keeps the trigger's process
+    // definition id, "<name>Trigger:<version>:<deployment>", within 64 characters.
+    String workflowName = "ALifecycle_" + ns.shortPrefix();
+    WorkflowDefinition created =
+        admin
+            .workflowDefinitions()
+            .create(
+                MAPPER.readValue(
+                    DEPRECATE_ON_REQUEST_PLAYBOOK.formatted(
+                        workflowName, onlyEntityNamed(entityName), entityType),
+                    CreateWorkflowDefinition.class));
+    trackWorkflow(created.getName(), created.getId().toString());
+    waitForWorkflowDeployment(admin, workflowName);
+    return created;
+  }
+
+  private static List<String> requestableStages(
+      OpenMetadataClient client, String entityType, UUID id) throws Exception {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/metadata/types/lifecycleStages/%s/%s/requestableStages"
+                    .formatted(entityType, id),
+                null,
+                RequestOptions.builder().build());
+    return MAPPER.readValue(response, new TypeReference<List<String>>() {});
+  }
+
+  private static void requestLifecycleStage(OpenMetadataClient client, Domain domain, String stage)
+      throws Exception {
+    client.domains().patch(domain.getId(), lifecycleRequestPatch(stage));
+  }
+
+  private static void requestLifecycleStage(
+      OpenMetadataClient client, GlossaryTerm term, String stage) throws Exception {
+    client.glossaryTerms().patch(term.getId(), lifecycleRequestPatch(stage));
+  }
+
+  private static JsonNode lifecycleRequestPatch(String stage) throws Exception {
+    return MAPPER.readTree(
+        "[{\"op\":\"add\",\"path\":\"/lifecycleRequest\",\"value\":\"%s\"}]".formatted(stage));
   }
 
   private void deployHoldingPlaybook(

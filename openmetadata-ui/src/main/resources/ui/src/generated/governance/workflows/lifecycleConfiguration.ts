@@ -17,8 +17,13 @@
  */
 export interface LifecycleConfiguration {
     entityType: EntityType;
-    gates:      LifecycleGate[];
-    version:    number;
+    /**
+     * Moves off the onboarding path, such as to Deprecated or Archived, that the lifecycle
+     * makes from any stage.
+     */
+    exits?:  LifecycleExit[];
+    gates:   LifecycleGate[];
+    version: number;
 }
 
 export enum EntityType {
@@ -27,6 +32,48 @@ export enum EntityType {
     Glossary = "glossary",
     GlossaryTerm = "glossaryTerm",
     Metric = "metric",
+}
+
+/**
+ * A stage the lifecycle moves an asset to from any stage: once its conditions are met, or
+ * when a user requests it.
+ */
+export interface LifecycleExit {
+    /**
+     * JSON Logic condition the asset must meet. Required for an automatic exit.
+     */
+    conditions?: string;
+    stage:       EntityStatus;
+    /**
+     * automatic moves the asset once the conditions are met; onRequest waits until a user
+     * requests the move.
+     */
+    trigger: Trigger;
+}
+
+/**
+ * General lifecycle stage for entities that reference this vocabulary. Specialized entities
+ * can declare their own status schema and lifecycle policy. Entity types without an
+ * entityStatus property have no lifecycle. When a create request omits the stage, the
+ * server assigns the entity type's initial stage.
+ */
+export enum EntityStatus {
+    Approved = "Approved",
+    Archived = "Archived",
+    Deprecated = "Deprecated",
+    Draft = "Draft",
+    InReview = "In Review",
+    Rejected = "Rejected",
+    Unprocessed = "Unprocessed",
+}
+
+/**
+ * automatic moves the asset once the conditions are met; onRequest waits until a user
+ * requests the move.
+ */
+export enum Trigger {
+    Automatic = "automatic",
+    OnRequest = "onRequest",
 }
 
 /**
@@ -68,22 +115,6 @@ export interface LifecycleFieldCheck {
 export enum ValueType {
     Boolean = "boolean",
     Number = "number",
-}
-
-/**
- * General lifecycle stage for entities that reference this vocabulary. Specialized entities
- * can declare their own status schema and lifecycle policy. Entity types without an
- * entityStatus property have no lifecycle. When a create request omits the stage, the
- * server assigns the entity type's initial stage.
- */
-export enum EntityStatus {
-    Approved = "Approved",
-    Archived = "Archived",
-    Deprecated = "Deprecated",
-    Draft = "Draft",
-    InReview = "In Review",
-    Rejected = "Rejected",
-    Unprocessed = "Unprocessed",
 }
 
 /**

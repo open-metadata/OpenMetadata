@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.governance.workflows.LifecycleExitTrigger;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
@@ -88,6 +89,39 @@ public final class EntityStatusWorkflows implements StageOwnership {
         .min(Comparator.comparing(WorkflowDefinition::getName))
         .map(EntityStatusWorkflows::isLifecyclePlaybook)
         .orElse(false);
+  }
+
+  @Override
+  public List<String> requestableStagesOf(String entityType, EntityInterface<?> entity) {
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
+        .filter(workflow -> appliesTo(workflow, entityType, entity))
+        .min(Comparator.comparing(WorkflowDefinition::getName))
+        .map(EntityStatusWorkflows::onRequestStages)
+        .orElse(List.of());
+  }
+
+  /**
+   * Whether the active workflow of this name is a lifecycle playbook with an on-request exit, the
+   * only kind of workflow a lifecycle request is addressed to.
+   */
+  public static boolean takesLifecycleRequests(String workflowName) {
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
+        .anyMatch(
+            workflow ->
+                workflow.getName().equals(workflowName) && !onRequestStages(workflow).isEmpty());
+  }
+
+  /** The stages a lifecycle playbook moves an asset to when a user requests it. */
+  static List<String> onRequestStages(WorkflowDefinition workflow) {
+    List<String> stages = List.of();
+    if (isLifecyclePlaybook(workflow)) {
+      stages =
+          listOrEmpty(workflow.getConfig().getLifecycle().getExits()).stream()
+              .filter(exit -> exit.getTrigger() == LifecycleExitTrigger.ON_REQUEST)
+              .map(exit -> exit.getStage().value())
+              .toList();
+    }
+    return stages;
   }
 
   private static boolean isLifecyclePlaybook(WorkflowDefinition workflow) {

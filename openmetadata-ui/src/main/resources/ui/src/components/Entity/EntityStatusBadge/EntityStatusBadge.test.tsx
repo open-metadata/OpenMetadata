@@ -206,4 +206,107 @@ describe('EntityStatusBadge', () => {
       screen.queryByTestId('entity-status-badge-trigger')
     ).not.toBeInTheDocument();
   });
+
+  it('shows a pending lifecycle request next to the stage', () => {
+    render(
+      <EntityStatusBadge
+        requestedStage={EntityStatus.Deprecated}
+        showDivider={false}
+        status={EntityStatus.Approved}
+      />
+    );
+
+    expect(screen.getByText(EntityStatus.Approved)).toBeInTheDocument();
+    expect(screen.getByTestId('lifecycle-request-badge')).toHaveTextContent(
+      'label.deprecation-requested'
+    );
+  });
+
+  it('names a pending request for any other stage by the stage', () => {
+    render(
+      <EntityStatusBadge
+        requestedStage={EntityStatus.Rejected}
+        showDivider={false}
+        status={EntityStatus.Approved}
+      />
+    );
+
+    expect(screen.getByTestId('lifecycle-request-badge')).toHaveTextContent(
+      'label.stage-requested'
+    );
+  });
+
+  it('shows nothing for an Unprocessed asset with no pending request', () => {
+    const { container } = render(
+      <EntityStatusBadge status={EntityStatus.Unprocessed} />
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('shows only the pending request for an Unprocessed asset', () => {
+    render(
+      <EntityStatusBadge
+        requestedStage={EntityStatus.Archived}
+        showDivider={false}
+        status={EntityStatus.Unprocessed}
+      />
+    );
+
+    expect(screen.getByTestId('lifecycle-request-badge')).toBeInTheDocument();
+    expect(
+      screen.queryByText(EntityStatus.Unprocessed)
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the stages the lifecycle takes requests for from the stage badge', async () => {
+    const onRequest = jest.fn();
+    render(
+      <EntityStatusBadge
+        requestStages={[EntityStatus.Deprecated, EntityStatus.Archived]}
+        showDivider={false}
+        status={EntityStatus.Approved}
+        onRequest={onRequest}
+      />
+    );
+
+    await user.click(screen.getByTestId('entity-status-request-trigger'));
+
+    expect(await screen.findByText('label.archive')).toBeInTheDocument();
+
+    await user.click(screen.getByTestId('request-deprecated-button'));
+
+    expect(onRequest).toHaveBeenCalledWith(EntityStatus.Deprecated);
+  });
+
+  it('keeps a plain badge when the lifecycle takes no request', () => {
+    render(
+      <EntityStatusBadge
+        requestStages={[]}
+        showDivider={false}
+        status={EntityStatus.Approved}
+        onRequest={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('entity-status-request-trigger')
+    ).not.toBeInTheDocument();
+    expect(screen.getByText(EntityStatus.Approved)).toBeInTheDocument();
+  });
+
+  it('offers a request from an Unprocessed asset its lifecycle takes one from', () => {
+    render(
+      <EntityStatusBadge
+        requestStages={[EntityStatus.Deprecated]}
+        showDivider={false}
+        status={EntityStatus.Unprocessed}
+        onRequest={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('entity-status-request-trigger')
+    ).toBeInTheDocument();
+  });
 });

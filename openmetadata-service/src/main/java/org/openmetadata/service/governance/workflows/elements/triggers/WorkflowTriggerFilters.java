@@ -50,6 +50,30 @@ public final class WorkflowTriggerFilters {
       String fieldName,
       List<String> includeFields,
       List<String> excludedFields) {
+    return fieldTriggers(entityType, fieldName, includeFields, excludedFields, false);
+  }
+
+  /**
+   * As {@link #fieldTriggers(String, String, List, List)}, where a lifecycle field, such as a
+   * request to deprecate the asset, triggers a workflow that takes lifecycle requests whatever its
+   * include/exclude, and no other workflow.
+   */
+  public static boolean fieldTriggers(
+      String entityType,
+      String fieldName,
+      List<String> includeFields,
+      List<String> excludedFields,
+      boolean takesLifecycleRequests) {
+    return isLifecycleField(fieldName)
+        ? takesLifecycleRequests
+        : passesIncludeExclude(entityType, fieldName, includeFields, excludedFields);
+  }
+
+  private static boolean passesIncludeExclude(
+      String entityType,
+      String fieldName,
+      List<String> includeFields,
+      List<String> excludedFields) {
     boolean triggers = false;
     if (isTriggerField(entityType, fieldName)) {
       if (includeFields != null && !includeFields.isEmpty()) {
@@ -67,6 +91,12 @@ public final class WorkflowTriggerFilters {
   public static boolean isTriggerField(String entityType, String fieldName) {
     return WorkflowTriggerFieldsRegistry.getEffectiveFields(entityType).stream()
         .anyMatch(triggerField -> matchesField(fieldName, triggerField));
+  }
+
+  /** A field addressed to the asset's lifecycle, which only lifecycle playbooks react to. */
+  public static boolean isLifecycleField(String fieldName) {
+    return WorkflowTriggerFieldsRegistry.getLifecycleFields().stream()
+        .anyMatch(lifecycleField -> matchesField(fieldName, lifecycleField));
   }
 
   public static boolean matchesField(String fieldName, String triggerField) {

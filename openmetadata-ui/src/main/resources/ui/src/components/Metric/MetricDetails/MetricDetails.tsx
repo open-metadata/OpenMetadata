@@ -65,6 +65,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionModal } from '../../DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHeader.component';
+import { useLifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import './metric.less';
@@ -267,6 +268,19 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
     [metricPermissions, editAllPermission]
   );
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: EntityType.METRIC,
+    entityId: metricDetails.id,
+    entityStatus: metricDetails.entityStatus,
+    lifecycleRequest: metricDetails.lifecycleRequest,
+    canRequest: editAllPermission,
+    onRequest: (stage) =>
+      onMetricUpdate(
+        { ...metricDetails, lifecycleRequest: stage },
+        'lifecycleRequest'
+      ),
+  });
+
   const openAssetModal = useCallback(() => setIsAssetModalOpen(true), []);
 
   const assetSelectionQueryFilter = useMemo(
@@ -384,6 +398,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
                 </Button>
               )
             }
+            lifecycleRequests={lifecycleRequests}
             openTaskCount={feedCount.openTaskCount}
             permissions={metricPermissions}
             softDeleteMessagePostFix={` ${t(

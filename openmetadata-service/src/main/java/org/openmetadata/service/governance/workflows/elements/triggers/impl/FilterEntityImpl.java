@@ -25,6 +25,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -95,8 +96,10 @@ public class FilterEntityImpl implements JavaDelegate {
           passesExcludedFilter(
               entityLinkStr,
               TriggeringEvent.from(varHandler),
-              excludedFilter,
-              includeFields,
+              new FieldFilter(
+                  includeFields,
+                  excludedFilter,
+                  EntityStatusWorkflows.takesLifecycleRequests(mainWorkflowName(execution))),
               filterLogic);
     }
 
@@ -154,11 +157,22 @@ public class FilterEntityImpl implements JavaDelegate {
         : String.valueOf(key);
   }
 
+  /**
+   * The trigger's include/exclude, and whether its workflow is a lifecycle playbook that a lifecycle
+   * request is addressed to.
+   */
+  private record FieldFilter(
+      List<String> includeFields, List<String> excludedFields, boolean takesLifecycleRequests) {
+    boolean triggers(String entityType, String fieldName) {
+      return WorkflowTriggerFilters.fieldTriggers(
+          entityType, fieldName, includeFields, excludedFields, takesLifecycleRequests);
+    }
+  }
+
   private boolean passesExcludedFilter(
       String entityLinkStr,
       TriggeringEvent triggeringEvent,
-      List<String> excludedFilter,
-      List<String> includeFields,
+      FieldFilter fieldFilter,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
@@ -172,7 +186,8 @@ public class FilterEntityImpl implements JavaDelegate {
       List<FieldChange> changedFields = getAllChangedFields(change);
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
+              || changedFields.stream()
+                  .anyMatch(field -> fieldFilter.triggers(entityType, field.getName()));
     }
 
     return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
@@ -201,19 +216,5 @@ public class FilterEntityImpl implements JavaDelegate {
     allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
     allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
     return allChanges;
-  }
-
-  private boolean passesFieldBasedFilter(
-      String entityType,
-      List<FieldChange> changedFields,
-      List<String> includeFields,
-      List<String> excludedFilter) {
-    // A change fires the workflow when it touches one of this entity type's trigger fields,
-    // subject to include/exclude (see WorkflowTriggerFilters).
-    return changedFields.stream()
-        .anyMatch(
-            field ->
-                WorkflowTriggerFilters.fieldTriggers(
-                    entityType, field.getName(), includeFields, excludedFilter));
   }
 }

@@ -25,6 +25,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.LifeCycle;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TagLabel;
@@ -80,6 +81,11 @@ public interface EntityInterface<S extends Enum<S>> {
   }
 
   default S getEntityStatus() {
+    return null;
+  }
+
+  /** Stage a user requested the lifecycle to move this entity to, such as Deprecated. */
+  default EntityStatus getLifecycleRequest() {
     return null;
   }
 
@@ -185,6 +191,10 @@ public interface EntityInterface<S extends Enum<S>> {
   }
 
   default void setEntityStatus(S status) {
+    /* no-op implementation to be overridden */
+  }
+
+  default void setLifecycleRequest(EntityStatus lifecycleRequest) {
     /* no-op implementation to be overridden */
   }
 

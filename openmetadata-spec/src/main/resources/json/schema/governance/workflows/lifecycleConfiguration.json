@@ -27,6 +27,13 @@
       "items": {
         "$ref": "#/definitions/lifecycleGate"
       }
+    },
+    "exits": {
+      "description": "Moves off the onboarding path, such as to Deprecated or Archived, that the lifecycle makes from any stage.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/lifecycleExit"
+      }
     }
   },
   "required": [
@@ -36,6 +43,35 @@
   ],
   "additionalProperties": false,
   "definitions": {
+    "lifecycleExit": {
+      "description": "A stage the lifecycle moves an asset to from any stage: once its conditions are met, or when a user requests it.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.governance.workflows.LifecycleExit",
+      "properties": {
+        "stage": {
+          "$ref": "../../type/status.json"
+        },
+        "trigger": {
+          "description": "automatic moves the asset once the conditions are met; onRequest waits until a user requests the move.",
+          "type": "string",
+          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleExitTrigger",
+          "enum": [
+            "automatic",
+            "onRequest"
+          ]
+        },
+        "conditions": {
+          "description": "JSON Logic condition the asset must meet. Required for an automatic exit.",
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "stage",
+        "trigger"
+      ],
+      "additionalProperties": false
+    },
     "lifecycleGate": {
       "type": "object",
       "properties": {

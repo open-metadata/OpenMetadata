@@ -132,6 +132,7 @@ import Loader from '../../common/Loader/Loader';
 import { GenericProvider } from '../../Customization/GenericProvider/GenericProvider';
 import { AssetSelectionDrawer } from '../../DataAssets/AssetsSelectionModal/AssetSelectionDrawer';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
+import { useLifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
 import IconColorModal from '../../Modals/IconColorModal/IconColorModal';
@@ -816,6 +817,15 @@ const DomainDetails = ({
     []
   );
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: EntityType.DOMAIN,
+    entityId: domain.id,
+    entityStatus: domain.entityStatus,
+    lifecycleRequest: domain.lifecycleRequest,
+    canRequest: editAllPermission && !isVersionsView,
+    onRequest: (stage) => onUpdate({ ...domain, lifecycleRequest: stage }),
+  });
+
   // Wrapped in an IIFE so the permission-driven ternaries are scoped to
   // their own function for cyclomatic-complexity purposes.
   const manageButtonContent: ManageMenuItem[] = (() => [
@@ -1013,8 +1023,11 @@ const DomainDetails = ({
         entityId={domain.id}
         entityType={EntityType.DOMAIN}
         fqn={domain.fullyQualifiedName}
+        requestStages={lifecycleRequests.stages}
+        requestedStage={domain.lifecycleRequest}
         showDivider={false}
         status={domain.entityStatus}
+        onRequest={lifecycleRequests.request}
       />
     ) : null;
 

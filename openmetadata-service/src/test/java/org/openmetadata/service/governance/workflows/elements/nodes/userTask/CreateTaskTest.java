@@ -44,8 +44,10 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -1250,5 +1252,27 @@ class CreateTaskTest {
 
     assertTrue(result instanceof DataAccessRequestPayload);
     assertEquals("policy override", ((DataAccessRequestPayload) result).getManualGrantReason());
+  }
+
+  @Test
+  void aMoveFromAnyStageNamesTheStageTheAssetIsIn() {
+    Glossary glossary = new Glossary().withEntityStatus(EntityStatus.APPROVED);
+    LifecycleMove move = new LifecycleMove().withTargetStage(EntityStatus.DEPRECATED);
+
+    LifecycleMove named = CreateTask.fromCurrentStage(move, glossary);
+
+    assertEquals(EntityStatus.APPROVED, named.getStage());
+    assertEquals(EntityStatus.DEPRECATED, named.getTargetStage());
+  }
+
+  @Test
+  void aMoveThatNamesItsStageKeepsIt() {
+    Glossary glossary = new Glossary().withEntityStatus(EntityStatus.DRAFT);
+    LifecycleMove move =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.APPROVED);
+
+    assertSame(move, CreateTask.fromCurrentStage(move, glossary));
   }
 }

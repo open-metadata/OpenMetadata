@@ -25,6 +25,8 @@ import org.openmetadata.schema.utils.JsonUtils;
  * Fields whose change can trigger a governance workflow, split into a {@code common} set applicable
  * to every entity type and an {@code entitySpecific} map of additional fields specific to an entity type
  * (for example {@code table -> [columns]}). The effective set for an entity is the union of the two.
+ * {@code lifecycle} lists fields addressed to an asset's lifecycle, such as a request to deprecate
+ * it, which trigger only the lifecycle playbooks that take such requests, never other workflows.
  * {@code internal} lists system and bookkeeping fields that never trigger a workflow; it documents
  * why those fields are absent from the other two sets and is not consulted when filtering.
  *
@@ -38,6 +40,7 @@ public final class WorkflowTriggerFieldsRegistry {
 
   public record WorkflowTriggerFieldsConfig(
       @JsonProperty("common") List<String> common,
+      @JsonProperty("lifecycle") List<String> lifecycle,
       @JsonProperty("internal") List<String> internal,
       @JsonProperty("entitySpecific") Map<String, List<String>> entitySpecific) {}
 
@@ -60,6 +63,10 @@ public final class WorkflowTriggerFieldsRegistry {
 
   public static List<String> getCommonFields() {
     return CONFIG.common();
+  }
+
+  public static List<String> getLifecycleFields() {
+    return CONFIG.lifecycle();
   }
 
   public static List<String> getEntityFields(String entityType) {

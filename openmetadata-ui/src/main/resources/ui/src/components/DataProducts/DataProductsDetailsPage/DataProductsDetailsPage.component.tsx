@@ -122,6 +122,7 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
+import { useLifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 import Voting from '../../Entity/Voting/Voting.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
@@ -746,6 +747,15 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct.fullyQualifiedName]);
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: EntityType.DATA_PRODUCT,
+    entityId: dataProduct.id,
+    entityStatus: dataProduct.entityStatus,
+    lifecycleRequest: dataProduct.lifecycleRequest,
+    canRequest: editAllPermission,
+    onRequest: (stage) => onUpdate({ ...dataProduct, lifecycleRequest: stage }),
+  });
+
   const manageButtonContent: ManageMenuItem[] = getManageButtonContent({
     editAllPermission,
     editDisplayNamePermission,
@@ -981,11 +991,14 @@ const DataProductsDetailsPage = ({
         entityId={dataProduct.id}
         entityType={EntityType.DATA_PRODUCT}
         fqn={dataProduct.fullyQualifiedName}
+        requestStages={lifecycleRequests.stages}
+        requestedStage={dataProduct.lifecycleRequest}
         showDivider={false}
         status={entityStatus}
+        onRequest={lifecycleRequests.request}
       />
     ) : null;
-  }, [dataProduct]);
+  }, [dataProduct, lifecycleRequests]);
 
   if (isCustomPageLoading) {
     return <Loader />;

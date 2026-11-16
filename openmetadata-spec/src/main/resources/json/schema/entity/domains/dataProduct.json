@@ -260,6 +260,10 @@
     "entityStatus": {
       "description": "Status of the Data Product.",
       "$ref": "../../type/status.json"
+    },
+    "lifecycleRequest": {
+      "description": "Stage a user requested the lifecycle to move this asset to, such as Deprecated or Archived. The lifecycle clears it once it decides the request.",
+      "$ref": "../../type/status.json"
     }
   },
   "required": ["id", "name", "description"],

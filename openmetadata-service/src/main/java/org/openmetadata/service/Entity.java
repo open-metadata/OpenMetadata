@@ -152,6 +152,7 @@ public final class Entity {
   public static final String FIELD_LIFE_CYCLE = "lifeCycle";
   public static final String FIELD_CERTIFICATION = "certification";
   public static final String FIELD_ENTITY_STATUS = "entityStatus";
+  public static final String FIELD_LIFECYCLE_REQUEST = "lifecycleRequest";
   public static final String FIELD_ENTITY_TYPE = "entityType";
   public static final String FIELD_SERVICE_TYPE = "serviceType";
 

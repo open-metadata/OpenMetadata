@@ -15,6 +15,9 @@
     "entityStatus",
     "glossaryTerms"
   ],
+  "lifecycle": [
+    "lifecycleRequest"
+  ],
   "internal": [
     "allowImpersonation",
     "apiCollection",

@@ -113,7 +113,7 @@
           "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove",
           "properties": {
             "stage": {
-              "description": "Stage the asset is in while the approval is pending.",
+              "description": "Stage the asset is in while the approval is pending. Unset for a move the lifecycle makes from any stage, such as an exit to Deprecated; the task then names the stage the asset is in when it opens.",
               "$ref": "../../../../../type/status.json"
             },
             "targetStage": {
@@ -121,10 +121,7 @@
               "$ref": "../../../../../type/status.json"
             }
           },
-          "required": [
-            "stage",
-            "targetStage"
-          ],
+          "required": ["targetStage"],
           "additionalProperties": false
         },
         "taskStatus": {

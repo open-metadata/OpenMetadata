@@ -65,6 +65,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -1231,7 +1232,20 @@ public class CreateTask implements TaskListener {
       PreviewChanges changes) {
     return move == null
         ? applyProposedChangesIfApproval(taskType, entity, payload, changes)
-        : withLifecycleMove(payload, move);
+        : withLifecycleMove(payload, fromCurrentStage(move, entity));
+  }
+
+  // A move the lifecycle makes from any stage names no stage of its own; the task names the stage
+  // the asset is in when it opens.
+  static LifecycleMove fromCurrentStage(LifecycleMove move, EntityInterface<?> entity) {
+    LifecycleMove named = move;
+    if (move.getStage() == null && entity.getEntityStatus() != null) {
+      named =
+          new LifecycleMove()
+              .withStage(EntityStatus.fromValue(entity.getEntityStatus().toString()))
+              .withTargetStage(move.getTargetStage());
+    }
+    return named;
   }
 
   static Object withLifecycleMove(Object payload, LifecycleMove move) {

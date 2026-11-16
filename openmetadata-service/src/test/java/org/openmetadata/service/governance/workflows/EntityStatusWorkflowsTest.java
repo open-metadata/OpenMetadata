@@ -23,7 +23,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.governance.workflows.LifecycleConfiguration;
+import org.openmetadata.schema.governance.workflows.LifecycleExit;
+import org.openmetadata.schema.governance.workflows.LifecycleExitTrigger;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
@@ -207,6 +210,32 @@ class EntityStatusWorkflowsTest {
 
     assertTrue(EntityStatusWorkflows.writesStageInANode(workflow(metricApprovalWorkflow())));
     assertFalse(EntityStatusWorkflows.writesStageInANode(workflow(approvalOnly)));
+  }
+
+  @Test
+  void onRequestExitsAreTheStagesAUserCanRequest() throws IOException {
+    WorkflowDefinition playbook = playbook("MetricLifecycle");
+    playbook
+        .getConfig()
+        .getLifecycle()
+        .withExits(
+            List.of(
+                new LifecycleExit()
+                    .withStage(EntityStatus.DEPRECATED)
+                    .withTrigger(LifecycleExitTrigger.ON_REQUEST),
+                new LifecycleExit()
+                    .withStage(EntityStatus.ARCHIVED)
+                    .withTrigger(LifecycleExitTrigger.AUTOMATIC)
+                    .withConditions("{\"==\":[1,1]}")));
+
+    assertEquals(List.of("Deprecated"), EntityStatusWorkflows.onRequestStages(playbook));
+  }
+
+  @Test
+  void aWorkflowWithoutLifecycleExitsHasNoRequestableStages() throws IOException {
+    assertEquals(List.of(), EntityStatusWorkflows.onRequestStages(playbook("MetricLifecycle")));
+    assertEquals(
+        List.of(), EntityStatusWorkflows.onRequestStages(workflow(metricApprovalWorkflow())));
   }
 
   private static WorkflowDefinition playbook(String name) throws IOException {
