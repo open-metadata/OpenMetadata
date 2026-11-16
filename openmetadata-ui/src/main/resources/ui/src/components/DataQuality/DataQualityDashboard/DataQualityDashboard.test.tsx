@@ -477,12 +477,17 @@ describe('DataQualityDashboard', () => {
       // Check open incident widget
       expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          incidentStatusType: TestCaseResolutionStatusTypes.New,
+          incidentStatusTypes: [
+            TestCaseResolutionStatusTypes.New,
+            TestCaseResolutionStatusTypes.ACK,
+            TestCaseResolutionStatusTypes.Assigned,
+          ],
           name: 'open-incident',
           title: 'label.open-incident-plural',
+          description: 'message.open-incident-card-description',
           redirectPath: expect.objectContaining({
             pathname: '/incident-manager',
-            search: expect.stringContaining('testCaseResolutionStatusType=New'),
+            search: expect.not.stringContaining('testCaseResolutionStatusType'),
           }),
         })
       );
@@ -490,9 +495,10 @@ describe('DataQualityDashboard', () => {
       // Check resolved incident widget
       expect(mockIncidentTypeAreaChartWidget).toHaveBeenCalledWith(
         expect.objectContaining({
-          incidentStatusType: TestCaseResolutionStatusTypes.Resolved,
+          incidentStatusTypes: [TestCaseResolutionStatusTypes.Resolved],
           name: 'resolved-incident',
           title: 'label.resolved-incident-plural',
+          description: 'message.resolved-incident-card-description',
           redirectPath: expect.objectContaining({
             pathname: '/incident-manager',
             search: expect.stringContaining(
