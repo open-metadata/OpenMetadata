@@ -21,11 +21,10 @@ import {
   Modal,
   ModalOverlay,
   Owner,
+  PageLayout,
   Tabs,
   Typography,
-  PageLayout,
 } from '@openmetadata/ui-core-components';
-import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import {
   Copy01,
   TestSuite as TestSuiteIcon,
@@ -46,6 +45,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
@@ -58,7 +58,10 @@ import DataQualityTab from '../../Database/Profiler/DataQualityTab/DataQualityTa
 import { AddTestCaseList } from '../../DataQuality/AddTestCaseList/AddTestCaseList.component';
 import { AddTestCaseModalProps } from '../../DataQuality/AddTestCaseList/AddTestCaseList.interface';
 import TestSuitePipelineTab from '../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component';
-import { OBSERVABILITY_ROUTES, OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
+import {
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+  OBSERVABILITY_ROUTES,
+} from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 
 const breakableTooltipText = (text?: string) => (
@@ -393,7 +396,9 @@ const TestSuiteDetail = () => {
   }
 
   return (
-    <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS} data-testid="test-suite-detail-page">
+    <PageLayout
+      className={OBSERVABILITY_PAGE_LAYOUT_CLASS}
+      data-testid="test-suite-detail-page">
       <DocumentTitle
         title={t('label.entity-detail-plural', {
           entity: getEntityName(testSuite),

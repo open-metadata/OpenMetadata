@@ -14,10 +14,9 @@ import {
   Box,
   ButtonUtility,
   FeaturedIcon,
-  Tabs,
   PageLayout,
+  Tabs,
 } from '@openmetadata/ui-core-components';
-import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import {
   Collapse,
   Expand,
@@ -54,6 +53,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -66,7 +66,10 @@ import IncidentManagerPageHeader from '../../DataQuality/IncidentManager/Inciden
 import TestCaseLastRunBanner from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { OBSERVABILITY_ROUTES, OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
+import {
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+  OBSERVABILITY_ROUTES,
+} from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
 import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
@@ -345,7 +348,8 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
   return (
     <>
       <PageLayout
-        className={classNames(OBSERVABILITY_PAGE_LAYOUT_CLASS,
+        className={classNames(
+          OBSERVABILITY_PAGE_LAYOUT_CLASS,
           classNames({ 'version-data': isVersionPage })
         )}
         data-testid="test-case-detail-page">
