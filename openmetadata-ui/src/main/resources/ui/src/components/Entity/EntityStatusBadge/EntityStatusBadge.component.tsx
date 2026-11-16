@@ -10,28 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider, Tooltip } from '@openmetadata/ui-core-components';
+import { Box, Divider, HoverCard } from '@openmetadata/ui-core-components';
 import { lazy } from 'react';
+import { Button as AriaButton } from 'react-aria-components';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 
-// The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
-const EntityStatusDecisionTitle = withSuspenseFallback(
-  lazy(() =>
-    import('./EntityStatusDecision').then((module) => ({
-      default: module.EntityStatusDecisionTitle,
-    }))
-  )
-);
-const EntityStatusDecisionDescription = withSuspenseFallback(
-  lazy(() =>
-    import('./EntityStatusDecision').then((module) => ({
-      default: module.EntityStatusDecisionDescription,
-    }))
-  )
+// The card mounts its content only while open, so the lookup and its chunk load on hover.
+const EntityStatusDecision = withSuspenseFallback(
+  lazy(() => import('./EntityStatusDecision'))
 );
 
 export interface EntityStatusBadgeProps {
@@ -58,15 +48,6 @@ export const EntityStatusBadge = ({
   const badge = (
     <StatusBadge label={status} status={getEntityStatusClass(status)} />
   );
-  const decision =
-    entityType && entityId && fqn
-      ? {
-          entityType,
-          entityId,
-          entityLink: getEntityFeedLink(entityType, fqn),
-          status,
-        }
-      : undefined;
 
   return (
     <Box
@@ -76,14 +57,24 @@ export const EntityStatusBadge = ({
       gap={2}
       itemClassName="layout-space-item">
       {showDivider && <Divider className="m-x-xs h-6" orientation="vertical" />}
-      {decision ? (
-        <Tooltip
-          description={<EntityStatusDecisionDescription {...decision} />}
-          placement="bottom start"
-          title={<EntityStatusDecisionTitle {...decision} />}
-          triggerClassName="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2">
-          <span data-testid="entity-status-badge-trigger">{badge}</span>
-        </Tooltip>
+      {entityType && entityId && fqn ? (
+        <HoverCard
+          content={
+            <EntityStatusDecision
+              entityId={entityId}
+              entityLink={getEntityFeedLink(entityType, fqn)}
+              entityType={entityType}
+              status={status}
+            />
+          }
+          placement="bottom start">
+          {/* Focusable, so the card opens on keyboard focus as well as on hover. */}
+          <AriaButton
+            className="tw:cursor-default tw:rounded-md tw:outline-focus-ring tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2"
+            data-testid="entity-status-badge-trigger">
+            {badge}
+          </AriaButton>
+        </HoverCard>
       ) : (
         badge
       )}

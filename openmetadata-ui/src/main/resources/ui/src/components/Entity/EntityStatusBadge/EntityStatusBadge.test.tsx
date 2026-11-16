@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Decision } from '../../../generated/governance/workflows/approvalOutcome';
@@ -38,11 +38,16 @@ const hoverableBadge = () => (
   />
 );
 
-// Keyboard focus opens the tooltip at once; a hover opens it after its delay. The badge is the
-// only focusable element, so each Tab moves focus onto it or off it.
 // Jest runs on fake timers, so user-event advances them itself.
 const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
-const toggleTooltip = () => user.tab();
+// Keyboard focus on the badge opens the card once its open delay has passed.
+const CARD_OPEN_DELAY_MS = 300;
+const openCard = async () => {
+  await user.tab();
+  act(() => {
+    jest.advanceTimersByTime(CARD_OPEN_DELAY_MS);
+  });
+};
 
 describe('EntityStatusBadge', () => {
   beforeEach(() => {
@@ -103,16 +108,16 @@ describe('EntityStatusBadge', () => {
 
     expect(getStatusChange).not.toHaveBeenCalled();
 
-    await toggleTooltip();
+    await openCard();
 
+    expect(
+      await screen.findByTestId('entity-status-decision-outcome')
+    ).toHaveTextContent('message.workflow-run-approved-by');
     expect(getStatusChange).toHaveBeenCalledWith(
       'dataProduct',
       'product-id',
       '<#E::dataProduct::Finance.Invoices>'
     );
-    expect(
-      await screen.findByTestId('entity-status-decision-outcome')
-    ).toHaveTextContent('message.workflow-run-approved-by');
     expect(
       screen.getByTestId('entity-status-decision-detail')
     ).toHaveTextContent('Data product approval');
@@ -127,7 +132,7 @@ describe('EntityStatusBadge', () => {
     });
     renderWithQueryClient(hoverableBadge());
 
-    await toggleTooltip();
+    await openCard();
 
     expect(
       await screen.findByTestId('entity-status-decision-outcome')
@@ -145,7 +150,7 @@ describe('EntityStatusBadge', () => {
     });
     renderWithQueryClient(hoverableBadge());
 
-    await toggleTooltip();
+    await openCard();
 
     expect(
       await screen.findByTestId('entity-status-decision-outcome')
@@ -162,7 +167,7 @@ describe('EntityStatusBadge', () => {
       changedBy: 'ana.lopez',
     });
     const { rerender } = renderWithQueryClient(hoverableBadge());
-    await toggleTooltip();
+    await openCard();
     await screen.findByTestId('entity-status-decision-outcome');
 
     rerender(
@@ -176,11 +181,11 @@ describe('EntityStatusBadge', () => {
     );
     await screen.findByTestId('entity-status-decision-outcome');
 
-    // The tooltip stays open; the new status is a new lookup, made once for title and description.
+    // The card stays open; the new status is a new lookup.
     expect(getStatusChange).toHaveBeenCalledTimes(2);
   });
 
-  it('renders a plain badge without a tooltip when it does not know the entity', () => {
+  it('renders a plain badge without a card when it does not know the entity', () => {
     render(
       <EntityStatusBadge showDivider={false} status={EntityStatus.Draft} />
     );

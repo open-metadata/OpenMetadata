@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import Loader from '../../common/Loader/Loader';
 import {
   getStatusChange,
   getStatusChangeLines,
   StatusChangeLine,
 } from './EntityStatusDecision.utils';
 
-export interface EntityStatusDecisionProps {
+interface EntityStatusDecisionProps {
   entityType: string;
   entityId: string;
   entityLink: string;
@@ -30,54 +31,56 @@ export interface EntityStatusDecisionProps {
 // A status rarely changes while someone reads the page; hovering again reuses the answer.
 const STATUS_CHANGE_STALE_TIME_MS = 60_000;
 
-// The tooltip's title and description both read the status change; they share one query, so
-// opening the tooltip makes one lookup.
-const useStatusChange = ({
+/** Who set the entity's current status, looked up when the status badge is hovered. */
+const EntityStatusDecision = ({
   entityType,
   entityId,
   entityLink,
   status,
 }: EntityStatusDecisionProps) => {
-  const { t } = useTranslation();
   const { data: change, isLoading } = useQuery({
     // Keyed on the status too, so a status changed on this page is looked up again.
     queryKey: ['entityStatusChange', entityType, entityId, status],
     queryFn: () => getStatusChange(entityType, entityId, entityLink),
     staleTime: STATUS_CHANGE_STALE_TIME_MS,
   });
+  const { t } = useTranslation();
+  const [headline, ...details] = getStatusChangeLines(change);
   const read = (line: StatusChangeLine) =>
     line.text ?? t(line.key ?? '', line.values);
-  const [headline, ...details] = getStatusChangeLines(change).map(read);
-
-  return { isLoading, headline, details, changedAt: change?.changedAt };
-};
-
-/** The status tooltip's title: how the entity's current status was set. */
-export const EntityStatusDecisionTitle = (props: EntityStatusDecisionProps) => {
-  const { t } = useTranslation();
-  const { isLoading, headline } = useStatusChange(props);
 
   return isLoading ? (
-    <span>{t('label.loading')}</span>
+    <Loader size="small" />
   ) : (
-    <span data-testid="entity-status-decision-outcome">{headline}</span>
-  );
-};
-
-/** The status tooltip's description: who or what led to it, then when. */
-export const EntityStatusDecisionDescription = (
-  props: EntityStatusDecisionProps
-) => {
-  const { isLoading, details, changedAt } = useStatusChange(props);
-
-  return isLoading ? null : (
-    <Box data-testid="entity-status-decision" direction="col" gap={1}>
+    <Box
+      className="tw:max-w-80"
+      data-testid="entity-status-decision"
+      direction="col"
+      gap={1}>
+      <Typography
+        as="span"
+        data-testid="entity-status-decision-outcome"
+        size="text-sm"
+        weight="medium">
+        {read(headline)}
+      </Typography>
       {details.map((line) => (
-        <span data-testid="entity-status-decision-detail" key={line}>
-          {line}
-        </span>
+        <Typography
+          as="span"
+          color="secondary"
+          data-testid="entity-status-decision-detail"
+          key={line.key ?? line.text}
+          size="text-xs">
+          {read(line)}
+        </Typography>
       ))}
-      {changedAt && <span>{getShortRelativeTime(changedAt)}</span>}
+      {change?.changedAt && (
+        <Typography as="span" color="quaternary" size="text-xs">
+          {getShortRelativeTime(change.changedAt)}
+        </Typography>
+      )}
     </Box>
   );
 };
+
+export default EntityStatusDecision;
