@@ -288,8 +288,11 @@ public class SamlValidator {
         }
       }
 
-      if (Boolean.TRUE.equals(security.getSendSignedAuthRequest())
-          || Boolean.TRUE.equals(security.getSignSpMetadata())) {
+      boolean signs =
+          Boolean.TRUE.equals(security.getSendSignedAuthRequest())
+              || Boolean.TRUE.equals(security.getSignSpMetadata());
+      // Sign-in signs with the keystore's key when it reads one, and with the PEM values otherwise.
+      if (signs && !SamlSettingsHolder.readsSpCredentialsFromKeyStore(security)) {
         if (nullOrEmpty(samlConfig.getSp().getSpX509Certificate())) {
           throw new IllegalArgumentException(
               "SP X509 certificate is required when request signing is enabled");

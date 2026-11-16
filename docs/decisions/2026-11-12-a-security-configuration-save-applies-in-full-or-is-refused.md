@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Mohit Yadav
 - **Guard:** `SsoSecurityConfigApplyIT` (CF-02, CF-03, LD-12), `SsoSamlLoginIT` (SA-11),
-  `SsoOidcConfidentialLoginIT` (OC-15), `SystemRepositorySecurityConfigPatchTest`
+  `SsoOidcConfidentialLoginIT` (OC-15), `SystemRepositorySecurityConfigPatchTest`,
+  `SamlValidatorTest`
 - **Related:** 2.1.0 release testing, SSO row
 
 ## Context
@@ -23,7 +24,9 @@ every change was dropped answered 204.
 - A `PUT`, which skips the full validation a `PATCH` and `/security/validate` run, still makes the
   checks that need no network: the client authentication method of a confidential OIDC client must
   be one the server performs (`client_secret_basic`, `client_secret_post`), and SAML request or
-  metadata signing needs the SP certificate and key. Full validation also checks the method
+  metadata signing needs the SP key and certificate sign-in signs with: the keystore's when
+  sign-in reads one, the PEM values otherwise. The check and sign-in ask the same
+  `SamlSettingsHolder.readsSpCredentialsFromKeyStore`. Full validation also checks the method
   against the provider's discovery document.
 - A `PATCH` is filtered by the provider it leaves in place, so it can switch provider. A `PATCH`
   that asks to set values the provider does not use, with nothing else to apply, is refused with

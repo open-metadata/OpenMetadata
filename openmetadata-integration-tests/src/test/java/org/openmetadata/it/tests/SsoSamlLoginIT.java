@@ -21,9 +21,14 @@ import static org.openmetadata.it.sso.SsoFlows.requireActiveSession;
 
 import com.onelogin.saml2.util.Util;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URI;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.cert.Certificate;
 import java.util.ArrayList;
@@ -39,6 +44,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -69,6 +75,8 @@ class SsoSamlLoginIT {
   private static final String SP_ENTITY_ID = "openmetadata-saml-it";
   private static final String SESSION_COOKIE = "OM_SESSION";
   private static final int CONCURRENT_FIRST_LOGIN_ATTEMPTS = 5;
+  private static final String SP_KEYSTORE_ALIAS = "sp";
+  private static final String SP_KEYSTORE_PASSWORD = "sp-keystore-password";
 
   private static MockSamlIdp idp;
   private static SecurityConfigSwap securityConfig;
@@ -235,6 +243,71 @@ class SsoSamlLoginIT {
     } finally {
       securityConfig.restoreBaseline();
     }
+  }
+
+  /**
+   * conf/openmetadata.yaml documents request signing with a keystore (SAML_KEYSTORE_*), and sign-in
+   * signs with its key when no PEM values are set, so a save must accept that configuration too:
+   * read back and saved again, it keeps signing the sign-in request.
+   */
+  @Test
+  @DisplayName("SA-11 request signing with a keystore and no PEM values is saved and read back")
+  void requestSigningWithAKeyStoreIsSavedAndReadBack(@TempDir Path directory) throws Exception {
+    SecurityConfiguration signing = securityConfig.baselineCopy();
+    signing
+        .getAuthenticationConfiguration()
+        .getSamlConfiguration()
+        .getSecurity()
+        .withSendSignedAuthRequest(true)
+        .withKeyStoreFilePath(spKeyStore(directory).toString())
+        .withKeyStoreAlias(SP_KEYSTORE_ALIAS)
+        .withKeyStorePassword(SP_KEYSTORE_PASSWORD);
+    try {
+      Answer configured = SecurityConfigSwap.attemptPut(signing);
+      assertEquals(200, configured.status(), configured.body());
+
+      SecurityConfiguration read = SecurityConfigSwap.maskedLiveConfig();
+      read.getAuthorizerConfiguration().getAdminPrincipals().add("saml-keystore-admin");
+      Answer saved = SecurityConfigSwap.attemptPut(read);
+      assertEquals(200, saved.status(), saved.body());
+
+      Map<String, String> signInRequest = signInRequestQuery(new SsoBrowser());
+      assertTrue(signInRequest.containsKey("Signature"), "unsigned: " + signInRequest.keySet());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
+  }
+
+  /** A JKS keystore holding a key pair under {@link #SP_KEYSTORE_ALIAS}, as an operator mounts. */
+  private static Path spKeyStore(Path directory) throws Exception {
+    KeyStore keyStore = KeyStore.getInstance("JKS");
+    keyStore.load(null, null);
+    keyStore.setKeyEntry(
+        SP_KEYSTORE_ALIAS,
+        Util.loadPrivateKey(classpathResource("/saml/mock-idp-pkcs8.key")),
+        SP_KEYSTORE_PASSWORD.toCharArray(),
+        new Certificate[] {Util.loadCert(classpathResource("/saml/mock-idp.crt"))});
+    Path file = directory.resolve("saml-sp.jks");
+    try (OutputStream out = Files.newOutputStream(file)) {
+      keyStore.store(out, SP_KEYSTORE_PASSWORD.toCharArray());
+    }
+    return file;
+  }
+
+  private static String classpathResource(String path) throws IOException {
+    try (InputStream stream = MockSamlIdp.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+    }
+  }
+
+  private static Map<String, String> signInRequestQuery(SsoBrowser browser) {
+    HttpResponse<String> login =
+        browser.get(
+            MockHttp.withQuery(
+                SsoServer.url(SsoServer.SAML_LOGIN_PATH),
+                Map.of("callback", SsoServer.url(SsoServer.SPA_CALLBACK_PATH))));
+    assertEquals(302, login.statusCode(), login.body());
+    return MockHttp.decode(URI.create(location(login)).getRawQuery());
   }
 
   @Test
