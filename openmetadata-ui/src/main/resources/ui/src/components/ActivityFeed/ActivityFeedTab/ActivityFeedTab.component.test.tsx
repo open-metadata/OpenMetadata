@@ -286,6 +286,18 @@ describe('ActivityFeedTab', () => {
       expect(mockSetActiveTask).toHaveBeenCalledWith();
       expect(mockSetActiveActivity).toHaveBeenCalledWith(undefined);
     });
+
+    it('keeps the list when the current sub-tab is clicked again', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      fireEvent.click(
+        await screen.findByTestId('activity-feed-left-panel-all')
+      );
+
+      expect(mockRefreshActivityFeed).not.toHaveBeenCalled();
+      expect(mockSetActiveThread).not.toHaveBeenCalled();
+      expect(mockSetActiveActivity).not.toHaveBeenCalled();
+    });
   });
 
   describe('Activity fetch is gated by tab', () => {

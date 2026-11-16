@@ -577,6 +577,9 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = useCallback(
     (subTab: string) => {
+      if (subTab === activeTab) {
+        return;
+      }
       setIsFirstLoad(true);
       navigate(
         entityUtilClassBase.getEntityLink(
@@ -594,6 +597,7 @@ export const ActivityFeedTab = ({
       setIsFullWidth(false);
     },
     [
+      activeTab,
       entityType,
       fqn,
       navigate,
