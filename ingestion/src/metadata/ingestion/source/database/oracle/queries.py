@@ -25,6 +25,11 @@ where comments is not null and owner not in ('SYSTEM', 'SYS')
 """
 )
 
+# In a pluggable database, a view the dictionary keeps as a link to the root container
+# (every Oracle-maintained view of SYSTEM, XDB, DVSYS, ...) has a NULL TEXT, while TEXT_VC
+# holds the first 4000 bytes. DBMS_METADATA.GET_DDL refuses Oracle-maintained objects with
+# ORA-31603, and one refused row aborts the whole bulk fetch. So TEXT_VC is read when it
+# is complete, and GET_DDL is only called for objects of owners Oracle does not maintain.
 ORACLE_VIEW_DEFINITIONS = textwrap.dedent(
     """
 SELECT
@@ -32,7 +37,12 @@ SELECT
     LOWER(v.owner) AS "schema",
     text AS "view_def",
     CASE
+        WHEN text IS NULL AND text_length <= 4000 THEN text_vc
+    END AS "view_text_vc",
+    CASE
         WHEN text IS NOT NULL THEN NULL
+        WHEN text_length <= 4000 THEN NULL
+        WHEN v.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
     END AS "view_ddl"
 FROM {prefix}_VIEWS v
@@ -42,8 +52,10 @@ SELECT
     LOWER(m.mview_name) AS "view_name",
     LOWER(m.owner) AS "schema",
     query AS "view_def",
+    CAST(NULL AS VARCHAR2(4000)) AS "view_text_vc",
     CASE
         WHEN query IS NOT NULL THEN NULL
+        WHEN m.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
     END AS "view_ddl"
 FROM {prefix}_MVIEWS m
@@ -70,7 +82,12 @@ SELECT
     v.owner AS "schema",
     text AS "view_def",
     CASE
+        WHEN text IS NULL AND text_length <= 4000 THEN text_vc
+    END AS "view_text_vc",
+    CASE
         WHEN text IS NOT NULL THEN NULL
+        WHEN text_length <= 4000 THEN NULL
+        WHEN v.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
         ELSE DBMS_METADATA.GET_DDL('VIEW', view_name, owner)
     END AS "view_ddl"
 FROM {prefix}_VIEWS v
@@ -80,8 +97,10 @@ SELECT
     m.mview_name AS "view_name",
     m.owner AS "schema",
     query AS "view_def",
+    CAST(NULL AS VARCHAR2(4000)) AS "view_text_vc",
     CASE
         WHEN query IS NOT NULL THEN NULL
+        WHEN m.owner IN (SELECT username FROM {prefix}_USERS WHERE oracle_maintained = 'Y') THEN NULL
         ELSE DBMS_METADATA.GET_DDL('MATERIALIZED_VIEW', mview_name, owner)
     END AS "view_ddl"
 FROM {prefix}_MVIEWS m

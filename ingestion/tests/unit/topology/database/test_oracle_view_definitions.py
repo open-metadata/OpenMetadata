@@ -48,15 +48,17 @@ def catalog(tmp_path):
         connection.exec_driver_sql("INSERT INTO dual VALUES (NULL)")
         for prefix in ("ALL", "DBA"):
             connection.exec_driver_sql(f"CREATE TABLE {prefix}_USERS (username TEXT, oracle_maintained TEXT)")
-            connection.exec_driver_sql(f"CREATE TABLE {prefix}_VIEWS (owner TEXT, view_name TEXT, text TEXT)")
+            connection.exec_driver_sql(
+                f"CREATE TABLE {prefix}_VIEWS (owner TEXT, view_name TEXT, text TEXT, text_vc TEXT, text_length INTEGER)"
+            )
             connection.exec_driver_sql(f"CREATE TABLE {prefix}_MVIEWS (owner TEXT, mview_name TEXT, query TEXT)")
             for owner, flag, value in (("MY_SCHEMA", "N", 1), ("MY_OTHER_SCHEMA", "Y", 2), ("MySchema", "N", 3)):
                 connection.execute(
                     text(f"INSERT INTO {prefix}_USERS VALUES (:owner, :flag)"), {"owner": owner, "flag": flag}
                 )
                 connection.execute(
-                    text(f"INSERT INTO {prefix}_VIEWS VALUES (:owner, 'MY_VIEW', :sql)"),
-                    {"owner": owner, "sql": f"SELECT {value}"},
+                    text(f"INSERT INTO {prefix}_VIEWS VALUES (:owner, 'MY_VIEW', :sql, :sql, :length)"),
+                    {"owner": owner, "sql": f"SELECT {value}", "length": len(f"SELECT {value}")},
                 )
                 connection.execute(
                     text(f"INSERT INTO {prefix}_MVIEWS VALUES (:owner, 'MY_MVIEW', :sql)"),
@@ -120,7 +122,10 @@ def test_default_owner_and_bound_owner_with_quote(catalog):
     engine, _ = catalog
     owner = "My'Schema"
     with engine.begin() as connection:
-        connection.execute(text("INSERT INTO DBA_VIEWS VALUES (:owner, 'MY_VIEW', 'SELECT 42')"), {"owner": owner})
+        connection.execute(
+            text("INSERT INTO DBA_VIEWS (owner, view_name, text) VALUES (:owner, 'MY_VIEW', 'SELECT 42')"),
+            {"owner": owner},
+        )
     cache = {}
     try:
         with engine.connect() as connection:
@@ -136,7 +141,7 @@ def test_large_schema_is_loaded_once_without_per_view_reflection_entries(catalog
     count = 5000
     with engine.begin() as connection:
         connection.execute(
-            text("INSERT INTO DBA_VIEWS VALUES ('MY_SCHEMA', :name, :sql)"),
+            text("INSERT INTO DBA_VIEWS (owner, view_name, text) VALUES ('MY_SCHEMA', :name, :sql)"),
             [{"name": f"V_{index}", "sql": f"SELECT {index}"} for index in range(count)],
         )
     executions.clear()
@@ -188,7 +193,7 @@ def test_many_small_schemas_do_not_accumulate_snapshots(catalog):
     engine, executions = catalog
     with engine.begin() as connection:
         connection.execute(
-            text("INSERT INTO DBA_VIEWS VALUES (:owner, 'MY_VIEW', :sql)"),
+            text("INSERT INTO DBA_VIEWS (owner, view_name, text) VALUES (:owner, 'MY_VIEW', :sql)"),
             [{"owner": f"MY_SCHEMA_{index}", "sql": f"SELECT {index}"} for index in range(200)],
         )
     executions.clear()
@@ -345,7 +350,7 @@ def test_future_definitions_remain_cached_in_arbitrary_processing_order(catalog)
     engine, executions = catalog
     with engine.begin() as connection:
         connection.execute(
-            text("INSERT INTO DBA_VIEWS VALUES ('MY_SCHEMA', :name, :sql)"),
+            text("INSERT INTO DBA_VIEWS (owner, view_name, text) VALUES ('MY_SCHEMA', :name, :sql)"),
             [{"name": name, "sql": f"SELECT {index}"} for index, name in enumerate("ABCDEF")],
         )
     cache = {}
@@ -364,7 +369,9 @@ def test_large_definition_is_cached_in_full(catalog):
     engine, executions = catalog
     sql = "SELECT 42 /* " + "x" * (9 * 1024 * 1024) + " */"
     with engine.begin() as connection:
-        connection.execute(text("INSERT INTO DBA_VIEWS VALUES ('MY_SCHEMA', 'V_LARGE', :sql)"), {"sql": sql})
+        connection.execute(
+            text("INSERT INTO DBA_VIEWS (owner, view_name, text) VALUES ('MY_SCHEMA', 'V_LARGE', :sql)"), {"sql": sql}
+        )
     cache = {}
     executions.clear()
     with engine.connect() as connection:
@@ -453,3 +460,103 @@ def test_catalog_prefix_change_reloads_the_same_owner(catalog):
             "AS SELECT 99"
         )
     assert len(executions) == 2
+
+
+class TestOracleMaintainedLinkedViews:
+    """Issue #37851: in a pluggable database, an Oracle-maintained view kept as a link to
+    the root container has a NULL TEXT, and DBMS_METADATA.GET_DDL refuses Oracle-maintained
+    objects with ORA-31603. Calling GET_DDL for such a row inside the bulk query aborted the
+    whole schema's fetch, so every view in the schema went through the per-view fallback.
+    """
+
+    @staticmethod
+    def _add_views(engine, rows):
+        with engine.begin() as connection:
+            for prefix in ("ALL", "DBA"):
+                for owner, name, raw_text, text_vc, length in rows:
+                    connection.execute(
+                        text(f"INSERT INTO {prefix}_VIEWS VALUES (:owner, :name, :text, :text_vc, :length)"),
+                        {"owner": owner, "name": name, "text": raw_text, "text_vc": text_vc, "length": length},
+                    )
+
+    @staticmethod
+    def _refuse_ddl_for_maintained_owner(engine):
+        refused = []
+
+        @event.listens_for(engine, "connect")
+        def register_refusing_ddl(connection, record):
+            def get_ddl(object_type, name, owner):
+                if owner == "MY_OTHER_SCHEMA":
+                    refused.append(name)
+                    raise ValueError("ORA-31603: object not found in schema")
+                return f"CREATE VIEW {name} AS SELECT 9"
+
+            connection.create_function("get_ddl", 3, get_ddl)
+
+        engine.dispose()
+        return refused
+
+    @pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+    @pytest.mark.parametrize("preserve", [False, True])
+    def test_linked_views_of_a_maintained_owner_load_in_one_bulk_query(self, catalog, prefix, preserve):
+        engine, executions = catalog
+        self._add_views(
+            engine,
+            [
+                ("MY_OTHER_SCHEMA", "LINKED_VIEW", None, "SELECT 42", 9),
+                ("MY_OTHER_SCHEMA", "LONG_LINKED_VIEW", None, "SELECT 4", 5000),
+            ],
+        )
+        refused = self._refuse_ddl_for_maintained_owner(engine)
+        executions.clear()
+        schema = "MY_OTHER_SCHEMA" if preserve else "my_other_schema"
+
+        def name(value):
+            return value if preserve else value.lower()
+
+        cache = {}
+        try:
+            with engine.connect() as connection:
+                oracle = dialect(prefix, preserve)
+                definition = get_view_definition(oracle, connection, name("MY_VIEW"), schema, info_cache=cache)
+                assert definition.endswith("AS SELECT 2")
+                definition = get_view_definition(oracle, connection, name("MY_MVIEW"), schema, info_cache=cache)
+                assert definition.endswith("AS SELECT 12")
+                definition = get_view_definition(oracle, connection, name("LINKED_VIEW"), schema, info_cache=cache)
+                assert definition == f"CREATE OR REPLACE VIEW {name('LINKED_VIEW')} AS SELECT 42"
+                assert not get_view_definition(oracle, connection, name("LONG_LINKED_VIEW"), schema, info_cache=cache)
+            assert refused == []
+            assert [sql for sql, _ in executions if 'AS "view_def"' in sql] == [executions[0][0]]
+            assert not any(sql.lstrip().startswith(("SELECT text FROM", "SELECT get_ddl")) for sql, _ in executions)
+        finally:
+            cache.clear()
+
+    @pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+    def test_null_text_of_a_user_owned_view_still_uses_get_ddl_when_text_vc_is_truncated(self, catalog, prefix):
+        engine, _ = catalog
+        self._add_views(
+            engine,
+            [
+                ("MY_SCHEMA", "SHORT_LINKED_VIEW", None, "SELECT 5", 8),
+                ("MY_SCHEMA", "LONG_LINKED_VIEW", None, "SELECT 6", 5000),
+            ],
+        )
+        refused = self._refuse_ddl_for_maintained_owner(engine)
+        cache = {}
+        try:
+            with engine.connect() as connection:
+                oracle = dialect(prefix)
+                assert (
+                    get_view_definition(oracle, connection, "short_linked_view", "my_schema", info_cache=cache)
+                    == "CREATE OR REPLACE VIEW short_linked_view AS SELECT 5"
+                )
+                assert (
+                    get_view_definition(oracle, connection, "long_linked_view", "my_schema", info_cache=cache)
+                    == "CREATE VIEW LONG_LINKED_VIEW AS SELECT 9"
+                )
+                assert get_view_definition(oracle, connection, "my_view", "my_schema", info_cache=cache).endswith(
+                    "AS SELECT 1"
+                )
+            assert refused == []
+        finally:
+            cache.clear()
