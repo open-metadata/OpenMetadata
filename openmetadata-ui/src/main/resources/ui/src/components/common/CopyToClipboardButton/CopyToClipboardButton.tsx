@@ -44,6 +44,8 @@ export const CopyToClipboardButton: FunctionComponent<Props> = ({
 
   return (
     <Tooltip
+      // Forces the tooltip open after a copy and otherwise leaves hover to React Aria, so the flip is the point.
+      // eslint-disable-next-line openmetadata-ui-patterns/no-undefined-controlled-prop
       isOpen={hasCopied || undefined}
       placement={position}
       title={

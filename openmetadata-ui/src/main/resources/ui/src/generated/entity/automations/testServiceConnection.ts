@@ -1396,9 +1396,9 @@ export interface AirflowConnectionObject {
     /**
      * Domain of Salesforce instance
      *
-     * My Domain of the Salesforce org, without `.salesforce.com`, e.g. `mycompany.my` or
-     * `mycompany--sandbox.sandbox.my`. The OAuth client credentials flow only works on the
-     * org's My Domain, so `login` and `test` are rejected.
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -1931,6 +1931,16 @@ export interface AirflowConnectionObject {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      *

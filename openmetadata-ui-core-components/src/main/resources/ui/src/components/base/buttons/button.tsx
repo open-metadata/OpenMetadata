@@ -463,7 +463,10 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           <span
             data-text
             className={cx(
-              'tw:transition-inherit-all',
+              // Only the underline is the span's own colour. Transitioning the
+              // inherited `color` as well restarts every frame of the root's
+              // colour transition, so the label lags the background.
+              'tw:transition-[text-decoration-color] tw:duration-100 tw:ease-linear',
               !noTextPadding && 'tw:px-0.5',
               ellipsis && 'tw:truncate tw:min-w-0',
               wrap && 'tw:min-w-0 tw:wrap-break-word'

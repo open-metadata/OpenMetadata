@@ -37,6 +37,9 @@ interface LineageState {
   // state properties
   canEditLineage: boolean;
   lineageConfig: LineageConfig;
+  // The depths from the Lineage settings; reset() restores them, so the next
+  // lineage view does not fetch once at 3/3 and again at the saved depths.
+  savedLineageConfig: LineageConfig;
   tracedColumns: Set<string>;
   tracedNodes: Set<string>;
   zoomValue: number;
@@ -84,6 +87,7 @@ interface LineageState {
   // Actions
   setCanEditLineage: (canEditLineage: boolean) => void;
   setLineageConfig: (lineageConfig: LineageConfig) => void;
+  setSavedLineageConfig: (lineageConfig: LineageConfig) => void;
   setTracedColumns: (tracedColumns: Set<string>) => void;
   addTracedColumns: (newColumn: string) => void;
   setTracedNodes: (tracedNodes: Set<string>) => void;
@@ -159,6 +163,7 @@ const defaultLineageSettings = {
 export const useLineageStore = create<LineageState>((set, get) => ({
   canEditLineage: false,
   lineageConfig: defaultLineageSettings,
+  savedLineageConfig: defaultLineageSettings,
   tracedColumns: new Set(),
   tracedNodes: new Set(),
   zoomValue: ZOOM_VALUE,
@@ -196,6 +201,8 @@ export const useLineageStore = create<LineageState>((set, get) => ({
 
   // Actions
   setLineageConfig: (lineageConfig: LineageConfig) => set({ lineageConfig }),
+  setSavedLineageConfig: (lineageConfig: LineageConfig) =>
+    set({ lineageConfig, savedLineageConfig: lineageConfig }),
 
   setCanEditLineage: (canEditLineage: boolean) => set({ canEditLineage }),
 
@@ -323,7 +330,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   reset: () =>
     set({
       canEditLineage: false,
-      lineageConfig: defaultLineageSettings,
+      lineageConfig: get().savedLineageConfig,
       tracedColumns: new Set(),
       tracedNodes: new Set(),
       zoomValue: ZOOM_VALUE,

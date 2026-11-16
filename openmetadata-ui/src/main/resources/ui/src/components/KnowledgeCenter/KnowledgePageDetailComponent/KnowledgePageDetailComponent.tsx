@@ -104,6 +104,7 @@ import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
@@ -1124,6 +1125,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   return (
     <>
+      <DomainMismatchAlert
+        className="tw:mb-4"
+        domains={knowledgePage.domains}
+        entityId={knowledgePage.id}
+      />
       {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel

@@ -593,9 +593,9 @@ export interface AirflowConnectionObject {
      */
     salesforceApiVersion?: string;
     /**
-     * My Domain of the Salesforce org, without `.salesforce.com`, e.g. `mycompany.my` or
-     * `mycompany--sandbox.sandbox.my`. The OAuth client credentials flow only works on the
-     * org's My Domain, so `login` and `test` are rejected.
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**

@@ -47,6 +47,8 @@ class WorkbookDetails(BaseModel):
     elements: list["Elements"] = []
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
     lineage: list["WorkbookLineageEntry"] | None = None
+    # Not in Sigma's response: each element's column formulas by column name, read by SigmaSource.get_dashboard_details.
+    formulas: dict[str, dict[str, str]] = {}
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -122,6 +124,9 @@ class EdgeSourceResponse(BaseModel):
 
 class NodeDetails(BaseModel):
     id: str
+    urlId: str | None = None  # noqa: N815
+    # Not in Sigma's response: the id an element lineage names this node by, set by SigmaApiClient.get_lineage_details
+    nodeId: str | None = None  # noqa: N815
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
@@ -142,6 +147,7 @@ class NodeDetails(BaseModel):
 
 class DataModel(BaseModel):
     dataModelId: str  # noqa: N815
+    dataModelUrlId: str | None = None  # noqa: N815
     name: str | None = None
     url: str | None = None
     ownerId: str | None = None  # noqa: N815
@@ -156,11 +162,30 @@ class Connection(BaseModel):
     type: str
 
 
+class ConnectionPath(BaseModel):
+    connectionId: str  # noqa: N815
+    path: list[str]
+
+
+class ColumnEntry(BaseModel):
+    elementId: str  # noqa: N815
+    name: str
+    formula: str | None = None
+
+
+class ColumnsResponse(BaseModel):
+    entries: list[ColumnEntry] = []
+    nextPage: str | None = None  # noqa: N815
+
+
 class WorkbookLineageEntry(BaseModel):
+    type: str | None = None
     connectionId: str | None = None  # noqa: N815
     elementId: str | None = None  # noqa: N815
+    sourceIds: list[str] | None = None  # noqa: N815
     dataSourceIds: list[str] | None = None  # noqa: N815
     dataModelId: str | None = None  # noqa: N815
+    inodeId: str | None = None  # noqa: N815
 
 
 class WorkbookLineageResponse(BaseModel):

@@ -48,7 +48,7 @@ PROBE_LIMIT = 1
 # The OAuth client credentials flow only works on the org's My Domain. simple_salesforce
 # does not even try it on `login` or `test` and falls back to a password login, whose
 # error says nothing about the domain; any other wrong host gets this answer. See
-# ADR:2026-11-12-data360-pipeline-authenticates-on-the-org-my-domain.
+# ADR:2026-11-12-data360-salesforce-domain-is-a-required-my-domain.
 GENERIC_LOGIN_DOMAINS = ("login", "test")
 UNSUPPORTED_DOMAIN_ERROR = "request not supported on this domain"
 
@@ -92,10 +92,16 @@ class Data360PipelineConnection(BaseConnection[Data360PipelineConnectionConfig, 
         type ingested as a pipeline. Authenticating is not enough on its own, since
         Data 360 grants its scopes per API.
 
-        The client logs in when it is first built, so it is built inside the steps: a
-        rejected login then fails ``CheckAccess`` with its reason instead of escaping
-        before any step result is written."""
+        The client logs in to Salesforce when it is first built, so it is only
+        reached inside the steps: a wrong secret or domain then fails
+        `CheckAccess` with the Salesforce error instead of raising before any
+        step result exists."""
         service_connection = self.service_connection
+
+        def check_access() -> None:
+            # Reading `self.client` here, not when the dict is built, is what
+            # keeps the Salesforce login inside this step.
+            self.client.describe()
 
         def probe(getter):
             return lambda: getter(
@@ -104,10 +110,6 @@ class Data360PipelineConnection(BaseConnection[Data360PipelineConnectionConfig, 
                 log_warning=logger.warning,
                 first_page_only=True,
             )
-
-        def check_access():
-            # Not `self.client.describe`: that would log in right here, outside the steps.
-            return self.client.describe()
 
         test_fn = {
             "CheckAccess": check_access,
