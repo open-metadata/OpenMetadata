@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,9 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-.task-dag-control-btn {
-  .react-flow__controls-button {
-    height: 24px;
-    width: 24px;
-  }
-}
+
+import { CSSProperties } from 'react';
+import { ProOptions } from 'reactflow';
+
+// React Flow's stylesheet frames `default`/`output` nodes (white fill, border,
+// padding, 150px width); TaskNode draws its own card, so the wrapper is reset.
+export const TASK_NODE_WRAPPER_STYLE: CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  boxShadow: 'none',
+  padding: 0,
+  width: 'auto',
+};
+
+export const TASKS_DAG_PRO_OPTIONS: ProOptions = { hideAttribution: true };
