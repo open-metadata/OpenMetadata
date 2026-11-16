@@ -23,6 +23,10 @@ const STUDIO_EDIT_PORT_SHADOW_BLUR = 5;
 const STUDIO_EDIT_PORT_SHADOW_COLOR = 'rgba(21, 112, 239, 0.4)';
 const STUDIO_EDIT_PORT_SHADOW_OFFSET_Y = 2;
 
+/** How far the handle's outer edge sits right of its centre, which is the node's right edge. */
+export const STUDIO_EDIT_PORT_OUTER_OFFSET =
+  STUDIO_EDIT_PORT_RADIUS + STUDIO_EDIT_PORT_STROKE_WIDTH / 2;
+
 interface StudioEditPortCircleStyle {
   cursor: 'pointer';
   cx: number;

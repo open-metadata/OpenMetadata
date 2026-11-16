@@ -12,11 +12,11 @@
  */
 import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
 
+import { LayoutLeft } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
@@ -47,7 +47,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'resizable-panels-layout bg-grey')}
+        className={classNames(className, 'resizable-panels-layout')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
@@ -86,7 +86,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
               <ButtonUtility
                 className="mr-2"
                 data-testid="sidebar-toggle"
-                icon={SidebarCollapsedIcon}
+                icon={LayoutLeft}
                 size="lg"
                 tooltip={t('label.expand')}
                 tooltipPlacement="right"

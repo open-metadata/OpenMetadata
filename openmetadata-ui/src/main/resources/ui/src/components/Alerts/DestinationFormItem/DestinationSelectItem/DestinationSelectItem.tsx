@@ -57,8 +57,14 @@ function DestinationSelectItem({
   const { t } = useTranslation();
   const { control, setValue, unregister } = useFormContext();
 
-  const destinationItem =
-    useWatch({ name: `destinations.${id}`, control }) ?? {};
+  const watchedDestinationItem = useWatch({
+    name: `destinations.${id}`,
+    control,
+  });
+  const destinationItem = useMemo(
+    () => watchedDestinationItem ?? {},
+    [watchedDestinationItem]
+  );
   const { support } = useAlertSelectionContext();
   const [isSelectionWarningDismissed, setIsSelectionWarningDismissed] =
     useState(false);

@@ -283,7 +283,7 @@ const TreeItemContentComponent = ({
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
-                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:dark:bg-gray-blue-800 tw:pointer-events-none"
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-utility-gray-300 tw:pointer-events-none"
                 style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}

@@ -153,6 +153,11 @@ const AppInstall = () => {
       const data = await getMarketPlaceApplicationByFqn(fqn, {
         fields: TabSpecificField.OWNERS,
       });
+      if (data.enabled === false) {
+        navigate(getMarketPlaceAppDetailsPath(fqn), { replace: true });
+
+        return;
+      }
       setAppData(data);
 
       const schema = await applicationSchemaClassBase.importSchema(fqn);
@@ -177,7 +182,7 @@ const AppInstall = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [fqn]);
+  }, [fqn, navigate]);
 
   const onCancel = () => {
     navigate(getMarketPlaceAppDetailsPath(fqn));

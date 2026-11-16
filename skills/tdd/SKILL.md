@@ -64,12 +64,13 @@ Now improve the code while keeping tests green:
 - Remove duplication
 - Improve naming
 - Extract methods if needed (but don't over-abstract)
-- Run the full test suite for the module to check for regressions
+- Reuse passing checks and run the affected regression tests after behavioral refactoring.
+- Expand to a module suite only for merge readiness or a named unresolved risk.
 
 ```bash
 # Java — format then test
 mvn spotless:apply
-mvn test -pl openmetadata-service
+mvn test -pl openmetadata-service -Dtest=<AffectedTestClass>
 
 # Python — format, lint, then test
 cd ingestion && make py_format && make py_format_check

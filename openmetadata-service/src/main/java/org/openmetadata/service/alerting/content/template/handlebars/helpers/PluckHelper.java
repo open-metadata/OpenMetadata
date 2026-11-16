@@ -154,9 +154,10 @@ public class PluckHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{pluck }}")
-                    .withExample("{{pluck tags \"tagFQN\"}}"),
+                    .withExample("{{#each (pluck entity.tags \"tagFQN\")}}{{this}} {{/each}}"),
                 new HandlebarsHelperUsage()
                     .withSyntax("{{pluck }}")
-                    .withExample("{{#with (pluck certification \"tagLabel\")}}{{name}}{{/with}}")));
+                    .withExample(
+                        "{{#with (pluck entity.certification \"tagLabel\")}}{{name}}{{/with}}")));
   }
 }

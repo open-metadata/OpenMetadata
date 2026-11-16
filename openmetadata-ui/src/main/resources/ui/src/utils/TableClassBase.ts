@@ -44,6 +44,8 @@ export interface TableDetailPageTabProps {
   viewAllPermission: boolean;
   viewCustomPropertiesPermission: boolean;
   viewQueriesPermission: boolean;
+  /** View access on the Query resource itself; the Queries tab is hidden without it. */
+  viewQueryResourcePermission: boolean;
   editLineagePermission: boolean;
   viewProfilerPermission: boolean;
   viewSampleDataPermission: boolean;

@@ -47,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -293,10 +294,16 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   void queryFormsOutsideTheNonAdminProfileAreRejectedWithTheirCode() throws Exception {
     final Map<String, String> expectedFragmentByQuery =
         Map.of(
-            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 1", "QUERY_FORM_NOT_ALLOWED",
-            "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 1", "GRAPH_SELECTION_NOT_ALLOWED",
+            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 1",
+            "QUERY_FORM_NOT_ALLOWED",
+            "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 1",
+            "GRAPH_SELECTION_NOT_ALLOWED",
             "SELECT * WHERE { SERVICE <https://x.example/sparql> { ?s ?p ?o } }",
-                "FEDERATION_NOT_ALLOWED");
+            "FEDERATION_NOT_ALLOWED",
+            "SELECT * WHERE { ?s ?p ?o EXISTS { SERVICE <"
+                + FusekiTestImage.SELF_PING_URL
+                + "> { ?a ?b ?c } } } LIMIT 1",
+            "FEDERATION_NOT_ALLOWED");
 
     for (final Map.Entry<String, String> rejected : expectedFragmentByQuery.entrySet()) {
       final ToolOutcome outcome =

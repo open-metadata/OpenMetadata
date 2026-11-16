@@ -1675,50 +1675,88 @@ public class LineageRepository {
             .withNodes(entities)
             .withUpstreamEdges(new ArrayList<>())
             .withDownstreamEdges(new ArrayList<>());
-    getUpstreamLineage(primary.getId(), primary.getType(), lineage, upstreamDepth);
-    getDownstreamLineage(primary.getId(), primary.getType(), lineage, downstreamDepth);
+    walkLineage(primary, LineageDirection.UPSTREAM, upstreamDepth, lineage);
+    walkLineage(primary, LineageDirection.DOWNSTREAM, downstreamDepth, lineage);
 
     // Remove duplicate nodes
     lineage.withNodes(lineage.getNodes().stream().distinct().toList());
     return lineage;
   }
 
-  private void getUpstreamLineage(
-      UUID id, String entityType, EntityLineage lineage, int upstreamDepth) {
-    if (upstreamDepth == 0) {
-      return;
+  /**
+   * Walks one direction level by level and expands each entity once, at the shortest distance that
+   * reaches it. Expanding an entity again on every path to it would cost fan-out to the power of
+   * the depth, however small the graph.
+   */
+  private void walkLineage(
+      EntityReference primary, LineageDirection direction, int depth, EntityLineage lineage) {
+    Set<UUID> expanded = new HashSet<>(Set.of(primary.getId()));
+    List<EntityReference> level = List.of(primary);
+    for (int hop = 0; hop < depth && !level.isEmpty(); hop++) {
+      level = expandLevel(level, direction, lineage, expanded);
     }
-    List<EntityRelationshipRecord> records;
-    // pipeline information is not maintained
-    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
-      records = dao.relationshipDAO().findFromPipeline(id, Relationship.UPSTREAM.ordinal());
-    } else {
-      records = dao.relationshipDAO().findFrom(id, entityType, Relationship.UPSTREAM.ordinal());
-    }
-    final List<EntityReference> upstreamEntityReferences = new ArrayList<>();
-    for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(
-              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails =
-          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      upstreamEntityReferences.add(ref);
-      lineage
-          .getUpstreamEdges()
-          .add(
-              new Edge()
-                  .withFromEntity(ref.getId())
-                  .withToEntity(id)
-                  .withLineageDetails(lineageDetails));
-    }
-    lineage.getNodes().addAll(upstreamEntityReferences);
-    // from this id ---> find other ids
+  }
 
-    upstreamDepth--;
-    // Recursively add upstream nodes and edges
-    for (EntityReference entity : upstreamEntityReferences) {
-      getUpstreamLineage(entity.getId(), entity.getType(), lineage, upstreamDepth);
+  /** Adds the edges of every entity in the level and returns the entities they reach first. */
+  private List<EntityReference> expandLevel(
+      List<EntityReference> level,
+      LineageDirection direction,
+      EntityLineage lineage,
+      Set<UUID> expanded) {
+    List<EntityReference> nextLevel = new ArrayList<>();
+    for (EntityReference entity : level) {
+      for (EntityReference neighbour : addEdges(entity, direction, lineage)) {
+        if (expanded.add(neighbour.getId())) {
+          nextLevel.add(neighbour);
+        }
+      }
     }
+    return nextLevel;
+  }
+
+  /** Adds the entity's edges in the direction and returns the entities at their other ends. */
+  private List<EntityReference> addEdges(
+      EntityReference entity, LineageDirection direction, EntityLineage lineage) {
+    List<EntityReference> neighbours = new ArrayList<>();
+    for (EntityRelationshipRecord edgeRecord : findEdgeRecords(entity, direction)) {
+      EntityReference neighbour =
+          Entity.getEntityReferenceById(edgeRecord.getType(), edgeRecord.getId(), Include.ALL);
+      LineageDetails lineageDetails =
+          JsonUtils.readValue(edgeRecord.getJson(), LineageDetails.class);
+      neighbours.add(neighbour);
+      edgesOf(lineage, direction)
+          .add(edgeBetween(entity, neighbour, direction).withLineageDetails(lineageDetails));
+    }
+    lineage.getNodes().addAll(neighbours);
+    return neighbours;
+  }
+
+  private List<EntityRelationshipRecord> findEdgeRecords(
+      EntityReference entity, LineageDirection direction) {
+    int upstream = Relationship.UPSTREAM.ordinal();
+    // A pipeline or stored procedure also reaches the ends of the edges that name it as pipeline.
+    boolean edgePipeline = LineageEdgePipeline.isSupportedType(entity.getType());
+    return switch (direction) {
+      case UPSTREAM -> edgePipeline
+          ? dao.relationshipDAO().findFromPipeline(entity.getId(), upstream)
+          : dao.relationshipDAO().findFrom(entity.getId(), entity.getType(), upstream);
+      case DOWNSTREAM -> edgePipeline
+          ? dao.relationshipDAO().findToPipeline(entity.getId(), upstream)
+          : dao.relationshipDAO().findTo(entity.getId(), entity.getType(), upstream);
+    };
+  }
+
+  private static List<Edge> edgesOf(EntityLineage lineage, LineageDirection direction) {
+    return direction == LineageDirection.UPSTREAM
+        ? lineage.getUpstreamEdges()
+        : lineage.getDownstreamEdges();
+  }
+
+  private static Edge edgeBetween(
+      EntityReference entity, EntityReference neighbour, LineageDirection direction) {
+    return direction == LineageDirection.UPSTREAM
+        ? new Edge().withFromEntity(neighbour.getId()).withToEntity(entity.getId())
+        : new Edge().withFromEntity(entity.getId()).withToEntity(neighbour.getId());
   }
 
   /** The stored details of the upstream edge between two entities, or null when there is none. */
@@ -1819,42 +1857,6 @@ public class LineageRepository {
         patch,
         updatedBy,
         authorizeNewlyLinkedPipeline);
-  }
-
-  private void getDownstreamLineage(
-      UUID id, String entityType, EntityLineage lineage, int downstreamDepth) {
-    if (downstreamDepth == 0) {
-      return;
-    }
-    List<EntityRelationshipRecord> records;
-    if (entityType.equals(Entity.PIPELINE) || entityType.equals(Entity.STORED_PROCEDURE)) {
-      records = dao.relationshipDAO().findToPipeline(id, Relationship.UPSTREAM.ordinal());
-    } else {
-      records = dao.relationshipDAO().findTo(id, entityType, Relationship.UPSTREAM.ordinal());
-    }
-    final List<EntityReference> downstreamEntityReferences = new ArrayList<>();
-    for (EntityRelationshipRecord entityRelationshipRecord : records) {
-      EntityReference ref =
-          Entity.getEntityReferenceById(
-              entityRelationshipRecord.getType(), entityRelationshipRecord.getId(), Include.ALL);
-      LineageDetails lineageDetails =
-          JsonUtils.readValue(entityRelationshipRecord.getJson(), LineageDetails.class);
-      downstreamEntityReferences.add(ref);
-      lineage
-          .getDownstreamEdges()
-          .add(
-              new Edge()
-                  .withToEntity(ref.getId())
-                  .withFromEntity(id)
-                  .withLineageDetails(lineageDetails));
-    }
-    lineage.getNodes().addAll(downstreamEntityReferences);
-
-    downstreamDepth--;
-    // Recursively add upstream nodes and edges
-    for (EntityReference entity : downstreamEntityReferences) {
-      getDownstreamLineage(entity.getId(), entity.getType(), lineage, downstreamDepth);
-    }
   }
 
   @Transaction

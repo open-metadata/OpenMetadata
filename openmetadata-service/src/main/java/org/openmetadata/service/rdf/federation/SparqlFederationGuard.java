@@ -16,9 +16,7 @@ import org.apache.jena.sparql.modify.request.UpdateLoad;
 import org.apache.jena.sparql.modify.request.UpdateModify;
 import org.apache.jena.sparql.modify.request.UpdateVisitorBase;
 import org.apache.jena.sparql.syntax.ElementService;
-import org.apache.jena.sparql.syntax.ElementSubQuery;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
-import org.apache.jena.sparql.syntax.ElementWalker;
 import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig;
@@ -27,9 +25,11 @@ import org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig;
  * Inspects incoming SPARQL queries and updates for {@code SERVICE <uri>} clauses and rejects any
  * whose endpoint URI is not in the configured allowlist.
  *
- * <p>Detection uses Jena's {@link ElementWalker} so it sees only real SERVICE elements — the
- * keyword "SERVICE" inside a string literal or a comment is correctly ignored. The walker also
- * recurses into subqueries, OPTIONAL/UNION/MINUS branches, and nested SERVICE blocks.
+ * <p>Detection walks the parsed query with {@link SparqlQueryWalker}, so it sees only real SERVICE
+ * elements — the keyword "SERVICE" inside a string literal or a comment is correctly ignored — and
+ * sees them wherever the engine would evaluate them: OPTIONAL/UNION/MINUS branches, subqueries,
+ * nested SERVICE blocks, and EXISTS / NOT EXISTS inside FILTER, BIND, the projection, GROUP BY,
+ * HAVING, ORDER BY, or written as a bare pattern element.
  *
  * <p>Behavior:
  *
@@ -71,11 +71,8 @@ public final class SparqlFederationGuard {
    *     preserved. Variable endpoints surface as the literal string {@code ?varname}.
    */
   public List<String> serviceEndpoints(String sparql) {
-    final Optional<Query> parsed = parseQuietly(sparql);
     final EndpointCollector collector = new EndpointCollector();
-    parsed
-        .map(Query::getQueryPattern)
-        .ifPresent(queryPattern -> ElementWalker.walk(queryPattern, collector));
+    parseQuietly(sparql).ifPresent(query -> SparqlQueryWalker.walk(query, collector));
     return List.copyOf(collector.endpoints);
   }
 
@@ -163,15 +160,6 @@ public final class SparqlFederationGuard {
         endpoints.add(el.getServiceNode().getURI());
       }
     }
-
-    @Override
-    public void visit(ElementSubQuery el) {
-      // ElementWalker stops at subquery boundaries; descend manually so a SERVICE inside an
-      // inner SELECT still gets caught.
-      if (el.getQuery() != null && el.getQuery().getQueryPattern() != null) {
-        ElementWalker.walk(el.getQuery().getQueryPattern(), this);
-      }
-    }
   }
 
   private static final class UpdateEndpointCollector extends UpdateVisitorBase {
@@ -183,9 +171,7 @@ public final class SparqlFederationGuard {
 
     @Override
     public void visit(final UpdateModify update) {
-      if (update.getWherePattern() != null) {
-        ElementWalker.walk(update.getWherePattern(), endpointCollector);
-      }
+      SparqlQueryWalker.walk(update.getWherePattern(), endpointCollector);
     }
 
     /**

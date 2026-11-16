@@ -13,6 +13,7 @@
 
 import { Grid, Typography } from '@openmetadata/ui-core-components';
 
+import { CuratedAssets } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { get, isEmpty } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CuratedAssetsEmptyIcon } from '../../../../assets/svg/curated-assets-no-data-placeholder.svg';
 import { ReactComponent as CuratedAssetsNoDataIcon } from '../../../../assets/svg/curated-assets-not-found-placeholder.svg';
-import { ReactComponent as CuratedAssetsIcon } from '../../../../assets/svg/widget/curated-assets.svg';
 import withSuspenseFallback from '../../../../components/AppRouter/withSuspenseFallback';
 import { CURATED_ASSETS_LIST } from '../../../../constants/AdvancedSearch.constants';
 import {
@@ -456,11 +456,7 @@ const CuratedAssetsWidgetContent = ({
           sourceIcon && title ? (
             sourceIcon
           ) : (
-            <CuratedAssetsIcon
-              data-testid="star-outlined-icon"
-              height={24}
-              width={24}
-            />
+            <CuratedAssets data-testid="star-outlined-icon" size={24} />
           )
         }
         isEditView={isEditView}

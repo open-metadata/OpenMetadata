@@ -13,23 +13,34 @@
 package org.openmetadata.service.search.capability;
 
 /**
- * Per-entity-type flags that drive what the search-indexing layer can safely do. Today the only
- * consumer is {@code IndexUpdateScript.compatibleWith(...)} — soft-delete propagation must NOT
- * target an entity whose docs do not carry a top-level {@code deleted} field. The record is built
- * once per entity at registration time (see {@code Entity.registerEntity}) so new entity types
- * gain a correct capability record by default and can never silently drift.
+ * Per-entity-type flags that drive what the search-indexing layer can safely do. Soft-delete
+ * propagation and the {@code include} filter of a search listing both read {@link #deletedField}:
+ * the document field that marks an entity deleted. It is the top-level {@code deleted} for an
+ * entity, absent for most time series, and an embedded field for a time series that takes its
+ * deletion from a parent (an incident's {@code testCase.deleted}). The record is built once per
+ * entity at registration time (see {@code Entity.registerEntity}) so new entity types gain a
+ * correct capability record by default and can never silently drift.
  *
  * <p>The field set is intentionally minimal. New flags should be added only when a script or
  * validator actually consults them; otherwise we accumulate dead metadata.
  */
-public record EntityIndexCapability(
-    String entityType, boolean isTimeSeries, boolean hasFieldDeleted) {
+public record EntityIndexCapability(String entityType, boolean isTimeSeries, String deletedField) {
+
+  public static final String FIELD_DELETED = "deleted";
 
   public static EntityIndexCapability forEntity(String entityType) {
-    return new EntityIndexCapability(entityType, false, true);
+    return new EntityIndexCapability(entityType, false, FIELD_DELETED);
   }
 
   public static EntityIndexCapability forTimeSeries(String entityType) {
-    return new EntityIndexCapability(entityType, true, false);
+    return forTimeSeries(entityType, null);
+  }
+
+  public static EntityIndexCapability forTimeSeries(String entityType, String deletedField) {
+    return new EntityIndexCapability(entityType, true, deletedField);
+  }
+
+  public boolean hasFieldDeleted() {
+    return deletedField != null;
   }
 }

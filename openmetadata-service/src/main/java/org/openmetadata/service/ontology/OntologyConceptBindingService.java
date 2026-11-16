@@ -24,6 +24,8 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAssetBinding;
+import org.openmetadata.schema.type.OntologyAssetConceptLink;
+import org.openmetadata.schema.type.OntologyAssetConceptLinks;
 import org.openmetadata.schema.type.OntologyBindingAssetType;
 import org.openmetadata.schema.type.OntologyBoundColumn;
 import org.openmetadata.schema.type.OntologyColumnBinding;
@@ -77,6 +79,64 @@ public final class OntologyConceptBindingService {
       store.requireLiveOntology(concept);
       return page(access, concept, store.revision(conceptId), start, limit);
     }
+  }
+
+  /**
+   * The concepts one asset is bound to, for the reader of the asset. A concept the reader cannot
+   * view, or one whose ontology is archived, is left out rather than refused, so the answer never
+   * discloses what the reader may not see.
+   */
+  public OntologyAssetConceptLinks linksForAsset(
+      final Access access, final String assetType, final UUID assetId) {
+    final var type = assetType(assetType);
+    try (final var ignored = FreshReadScope.enter()) {
+      final var asset = authorized(access, type.value(), assetId, MetadataOperation.VIEW_BASIC);
+      final Map<UUID, Optional<OntologyProperty>> properties = new HashMap<>();
+      final List<OntologyAssetConceptLink> links = new ArrayList<>();
+      // Rows are paged by concept id and filtered afterwards, so concepts the reader cannot see
+      // never crowd visible links out of a fixed-size window.
+      UUID after = null;
+      List<BindingRow> rows;
+      do {
+        rows = store.forAssetAfter(assetId, after, MAX_PAGE_SIZE);
+        for (final var row : rows) {
+          if (row.assetType() == type) {
+            link(access, asset, row, properties).ifPresent(links::add);
+          }
+          after = row.conceptId();
+        }
+      } while (rows.size() == MAX_PAGE_SIZE);
+      return new OntologyAssetConceptLinks().withLinks(links);
+    }
+  }
+
+  private Optional<OntologyAssetConceptLink> link(
+      final Access access,
+      final EntityInterface<?> asset,
+      final BindingRow row,
+      final Map<UUID, Optional<OntologyProperty>> properties) {
+    final OntologyConcept concept;
+    try {
+      concept = concept(access, row.conceptId(), MetadataOperation.VIEW_BASIC);
+      store.requireLiveOntology(concept);
+    } catch (final AuthorizationException | EntityNotFoundException unavailable) {
+      LOG.debug("Concept {} is unavailable to the current reader", row.conceptId());
+      return Optional.empty();
+    }
+    final var hydration =
+        new Hydration(
+            access,
+            concept,
+            row.columns().isEmpty() ? Set.of() : store.ancestors(concept),
+            properties);
+    return Optional.of(
+        new OntologyAssetConceptLink()
+            .withConcept(concept.getEntityReference())
+            .withOntology(concept.getOntology())
+            .withColumns(
+                row.columns().stream()
+                    .map(column -> hydrateColumn(hydration, asset, column))
+                    .toList()));
   }
 
   public OntologyConceptBindingsResponse put(

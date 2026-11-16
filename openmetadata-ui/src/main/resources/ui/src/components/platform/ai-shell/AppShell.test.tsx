@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { act, render, screen } from '@testing-library/react';
+import { Location, MemoryRouter, useLocation } from 'react-router-dom';
+import { usePersonalSpaceStore } from '../../../hooks/usePersonalSpaceStore';
+import { useSettingsHash } from '../../../hooks/useSettingsHash';
 import { AppShell } from './AppShell';
 
 const mockPage = jest.fn();
@@ -93,6 +95,53 @@ describe('AppShell', () => {
 
     expect(screen.getByTestId('app-shell')).toHaveClass('tw:hidden!');
     expect(screen.getByTestId('route-content')).toBeInTheDocument();
+
+    window.history.replaceState(null, '', '/');
+  });
+
+  // The personal-space modal is lazy (stubbed above, as before its chunk loads),
+  // so the shell must count the settings pushes that closing pops.
+  it('closes settings opened before the modal loads back to the page entry', () => {
+    window.history.replaceState(null, '', '/explore');
+    let location = {} as Location;
+    let settings = {} as ReturnType<typeof useSettingsHash>;
+    const Probe = () => {
+      location = useLocation();
+      settings = useSettingsHash();
+
+      return null;
+    };
+
+    render(
+      <MemoryRouter initialEntries={['/explore']}>
+        <AppShell>
+          <Probe />
+        </AppShell>
+      </MemoryRouter>
+    );
+    // Drop the hash an earlier test left in the module-level store.
+    act(() => settings.clearHash());
+    const pageKey = location.key;
+    const pushView = (tab: string, subPath?: string) =>
+      act(() => {
+        window.history.replaceState(
+          null,
+          '',
+          `/explore#${tab}${subPath ? `/${subPath}` : ''}`
+        );
+        settings.setHash(tab, subPath, undefined, { push: true });
+      });
+
+    pushView('preferences');
+    pushView('personas');
+    pushView('personas', 'add');
+
+    expect(usePersonalSpaceStore.getState().activePanel).toBe('profile');
+
+    act(() => usePersonalSpaceStore.getState().close());
+
+    expect(location.key).toBe(pageKey);
+    expect(location.hash).toBe('');
 
     window.history.replaceState(null, '', '/');
   });

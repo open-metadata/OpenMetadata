@@ -69,7 +69,7 @@ export const TableRowActionsDropdown = () => {
 /**
  * `compact` matches the density of the AntD tables this component replaces —
  * entity pages show 20+ rows at a time and the `sm`/`md` heights push a third of
- * them below the fold. See docs/antd-migration/table.md.
+ * them below the fold.
  */
 type TableSize = 'compact' | 'sm' | 'md';
 

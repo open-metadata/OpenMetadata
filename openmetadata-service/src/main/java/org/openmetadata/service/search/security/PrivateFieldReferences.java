@@ -89,9 +89,16 @@ final class PrivateFieldReferences {
     return (boost < 0 ? field : field.substring(0, boost)).trim();
   }
 
-  /** Whether a Lucene query string names a private field. */
+  /**
+   * Whether a Lucene query string names a private field. Escapes Lucene would refuse count as
+   * naming one, since the name they spell cannot be read.
+   */
   static boolean inLuceneQuery(String query) {
-    return luceneFieldNames(query).stream().anyMatch(PrivateFieldReferences::isPrivateField);
+    try {
+      return luceneFieldNames(query).stream().anyMatch(PrivateFieldReferences::isPrivateField);
+    } catch (IllegalArgumentException e) {
+      return true;
+    }
   }
 
   /** The fields a Lucene query string names, as {@link LuceneFieldNames} reads them. */
@@ -171,12 +178,15 @@ final class PrivateFieldReferences {
    * Reads field names out of a query string the way Lucene's classic parser splits them: the term
    * before each colon outside a quoted phrase or a regular expression, whitespace allowed between
    * them, and the field an {@code _exists_} clause names. An escaped character belongs to its term;
-   * a leading {@code +} or {@code -} is an operator and a later one part of the term.
+   * a leading {@code +} or {@code -} is an operator and a later one part of the term. A name comes
+   * out with its escapes resolved as Lucene resolves them, {@code \}{@code uXXXX} included.
    */
   private static final class LuceneFieldNames {
     private static final String EXISTS = "_exists_";
     private static final String TERM_ENDS = "()[]{}^~!";
     private static final String PREFIX_OPERATORS = "+-";
+    private static final char ESCAPE = '\\';
+    private static final int HEX_DIGITS = 4;
     private final String query;
     private final List<String> fields = new ArrayList<>();
     private final StringBuilder term = new StringBuilder();
@@ -198,7 +208,7 @@ final class PrivateFieldReferences {
 
     private void read(char character) {
       switch (character) {
-        case '\\' -> appendEscaped();
+        case ESCAPE -> appendEscaped();
         case ':' -> endField();
         case '"', '/' -> readQuoted(character);
         default -> readUnquoted(character);
@@ -217,7 +227,9 @@ final class PrivateFieldReferences {
       }
     }
 
+    // The escape stays in the term, so the name is resolved once, the way Lucene resolves it.
     private void appendEscaped() {
+      term.append(ESCAPE);
       if (position + 1 < query.length()) {
         position++;
         term.append(query.charAt(position));
@@ -225,9 +237,10 @@ final class PrivateFieldReferences {
     }
 
     private void endField() {
-      String field = term.isEmpty() ? termBeforeSpace : term.toString();
+      String raw = term.isEmpty() ? termBeforeSpace : term.toString();
       endTerm();
       termBeforeSpace = null;
+      String field = raw == null ? null : unescape(raw);
       if (field != null && !isMatchAll(field)) {
         fields.add(field);
         existsFieldNext = EXISTS.equals(field);
@@ -242,9 +255,9 @@ final class PrivateFieldReferences {
       }
     }
 
-    private void addExistsField(String field) {
+    private void addExistsField(String raw) {
       if (existsFieldNext) {
-        fields.add(field);
+        fields.add(unescape(raw));
         existsFieldNext = false;
       }
     }
@@ -254,7 +267,8 @@ final class PrivateFieldReferences {
       termBeforeSpace = null;
       StringBuilder content = new StringBuilder();
       for (position++; position < query.length() && query.charAt(position) != delimiter; ) {
-        if (query.charAt(position) == '\\') {
+        if (query.charAt(position) == ESCAPE) {
+          content.append(ESCAPE);
           position++;
         }
         if (position < query.length()) {
@@ -263,6 +277,48 @@ final class PrivateFieldReferences {
         position++;
       }
       addExistsField(content.toString());
+    }
+
+    /**
+     * Resolves escapes as Lucene's classic parser does ({@code QueryParserBase.discardEscapeChar}):
+     * a backslash keeps the next character, and {@code \}{@code u} with four hex digits is that
+     * UTF-16 unit. Escapes Lucene refuses, truncated or not hex, throw.
+     */
+    private static String unescape(String raw) {
+      StringBuilder name = new StringBuilder(raw.length());
+      for (int i = 0; i < raw.length(); i++) {
+        char character = raw.charAt(i);
+        if (character != ESCAPE) {
+          name.append(character);
+          continue;
+        }
+        if (i + 1 == raw.length()) {
+          throw new IllegalArgumentException("A field name cannot end with an escape");
+        }
+        char escaped = raw.charAt(++i);
+        if (escaped == 'u') {
+          name.append(unicodeUnit(raw, i + 1));
+          i += HEX_DIGITS;
+        } else {
+          name.append(escaped);
+        }
+      }
+      return name.toString();
+    }
+
+    private static char unicodeUnit(String raw, int start) {
+      if (start + HEX_DIGITS > raw.length()) {
+        throw new IllegalArgumentException("Truncated unicode escape in a field name");
+      }
+      int unit = 0;
+      for (int i = start; i < start + HEX_DIGITS; i++) {
+        int digit = Character.digit(raw.charAt(i), 16);
+        if (digit < 0) {
+          throw new IllegalArgumentException("Invalid unicode escape in a field name");
+        }
+        unit = unit * 16 + digit;
+      }
+      return (char) unit;
     }
 
     // `*:*` matches every document, while `*:` before anything else searches every field.

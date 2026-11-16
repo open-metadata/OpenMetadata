@@ -276,7 +276,7 @@
                                     "description": "Details of patterns that matched during recognition",
                                     "type": "array",
                                     "items": {
-                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/0/properties/tags/items/properties/metadata/properties/recognizer/definitions/patternMatch"
+                                      "$ref": "#/properties/appConfig/oneOf/1/definitions/action/oneOf/9/properties/tier/properties/metadata/properties/recognizer/definitions/patternMatch"
                                     }
                                   }
                                 },
@@ -1421,6 +1421,21 @@
             "botToken": {
               "title": "Bot Token",
               "description": "Bot Token",
+              "type": "string",
+              "format": "password"
+            },
+            "connectionMode": {
+              "description": "Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance for production) receives events on a public HTTP endpoint and scales horizontally behind a load balancer. SocketMode uses an outbound WebSocket connection for single-instance deployments that cannot expose a public endpoint (on-prem/firewalled).",
+              "type": "string",
+              "enum": [
+                "Webhook",
+                "SocketMode"
+              ],
+              "default": "Webhook"
+            },
+            "appToken": {
+              "title": "App Token",
+              "description": "App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under App-Level Tokens with connections:write scope.",
               "type": "string",
               "format": "password"
             }

@@ -74,6 +74,6 @@ public class LimitHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{limit }}")
-                    .withExample("{{#each (limit failedTests 5)}}{{name}}{{/each}}")));
+                    .withExample("{{#each (limit entity.tags 5)}}{{tagFQN}} {{/each}}")));
   }
 }

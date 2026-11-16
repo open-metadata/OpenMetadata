@@ -17,6 +17,18 @@
 .react-flow__node {
   box-shadow: none;
 
+  // The wrapper's own focus ring is cleared with its box-shadow, so keyboard
+  // focus is drawn on the card inside it, following the card's corners.
+  &:focus-visible {
+    outline: none;
+
+    > .lineage-node,
+    > .lineage-scene-layer-node {
+      outline: 2px solid var(--tw-border-color-brand);
+      outline-offset: 2px;
+    }
+  }
+
   &.lineage-path-highlight > .lineage-node {
     border-color: var(--tw-color-fg-brand-primary);
     box-shadow: 0 0 0 3px var(--tw-color-utility-brand-100), var(--om-shadow-md);
@@ -64,6 +76,12 @@
     border-color: var(--lineage-node-border, var(--tw-border-color-secondary));
     border-radius: var(--om-radius-xl);
     box-shadow: 0 1px 3px var(--om-legacy-color-16-24-40-0-12);
+
+    // The Base tab sits on the top-left corner, so the card squares it off
+    // there as asset cards do; a rounded corner leaves a gap under the tab.
+    &.lineage-base-node {
+      border-top-left-radius: 0;
+    }
 
     &.lineage-path-highlight,
     &.custom-node-header-active {
@@ -658,10 +676,6 @@
         background-size: contain;
 
         content: '';
-      }
-
-      &::after {
-        content: 'Base';
       }
     }
   }

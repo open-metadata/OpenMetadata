@@ -5026,9 +5026,15 @@
                     "hostPort": {
                       "expose": true,
                       "title": "Host and Port",
-                      "description": "Host and Port of the MicroStrategy instance.",
+                      "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                       "type": "string",
                       "format": "uri"
+                    },
+                    "libraryPath": {
+                      "title": "Library Path",
+                      "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                      "type": "string",
+                      "default": "MicroStrategyLibrary"
                     },
                     "projectName": {
                       "title": "Project Name",
@@ -5037,9 +5043,74 @@
                     },
                     "loginMode": {
                       "title": "Login Mode",
-                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                       "type": "string",
                       "default": "1"
+                    },
+                    "verifySSL": {
+                      "default": "no-ssl",
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -5142,9 +5213,7 @@
                   },
                   "additionalProperties": false,
                   "required": [
-                    "hostPort",
-                    "username",
-                    "password"
+                    "hostPort"
                   ]
                 },
                 {
@@ -5361,6 +5430,12 @@
                       "description": "Sigma API version.",
                       "type": "string",
                       "default": "v2"
+                    },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -6011,6 +6086,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -23372,9 +23539,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -23394,7 +23560,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -23793,14 +23960,94 @@
                       "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryTopicSuffixName": {
                       "title": "Schema Registry Topic Suffix Name",
@@ -24053,14 +24300,94 @@
                       "description": "Confluent Redpanda Consumer Config",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Redpanda Schema Registry Config.",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "topicFilterPattern": {
                       "description": "Regex to only fetch topics that matches the pattern.",
@@ -34061,9 +34388,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -34112,7 +34438,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -43086,9 +43413,15 @@
                     "hostPort": {
                       "expose": true,
                       "title": "Host and Port",
-                      "description": "Host and Port of the MicroStrategy instance.",
+                      "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                       "type": "string",
                       "format": "uri"
+                    },
+                    "libraryPath": {
+                      "title": "Library Path",
+                      "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                      "type": "string",
+                      "default": "MicroStrategyLibrary"
                     },
                     "projectName": {
                       "title": "Project Name",
@@ -43097,9 +43430,74 @@
                     },
                     "loginMode": {
                       "title": "Login Mode",
-                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                       "type": "string",
                       "default": "1"
+                    },
+                    "verifySSL": {
+                      "default": "no-ssl",
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -43202,9 +43600,7 @@
                   },
                   "additionalProperties": false,
                   "required": [
-                    "hostPort",
-                    "username",
-                    "password"
+                    "hostPort"
                   ]
                 },
                 {
@@ -43421,6 +43817,12 @@
                       "description": "Sigma API version.",
                       "type": "string",
                       "default": "v2"
+                    },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -44071,6 +44473,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -61432,9 +61926,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -61454,7 +61947,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -61853,14 +62347,94 @@
                       "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryTopicSuffixName": {
                       "title": "Schema Registry Topic Suffix Name",
@@ -62113,14 +62687,94 @@
                       "description": "Confluent Redpanda Consumer Config",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Redpanda Schema Registry Config.",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "topicFilterPattern": {
                       "description": "Regex to only fetch topics that matches the pattern.",
@@ -72121,9 +72775,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -72172,7 +72825,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {

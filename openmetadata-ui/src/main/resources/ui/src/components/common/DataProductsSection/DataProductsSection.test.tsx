@@ -26,6 +26,11 @@ import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import DataProductsSection from './DataProductsSection';
 
 // Mock react-router-dom
+jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components/icons'),
+  DataProduct: () => <div data-testid="data-product-icon">DP</div>,
+}));
+
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   useLocation: jest.fn().mockReturnValue({
@@ -69,9 +74,6 @@ jest.mock('../../../assets/svg/close-icon.svg', () => ({
 }));
 jest.mock('../../../assets/svg/tick.svg', () => ({
   ReactComponent: () => <div data-testid="tick-icon-svg">Tick</div>,
-}));
-jest.mock('../../../assets/svg/ic-data-product.svg', () => ({
-  ReactComponent: () => <div data-testid="data-product-icon">DP</div>,
 }));
 
 // Mock ToastUtils

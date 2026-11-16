@@ -83,6 +83,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.tasks.TaskFieldTarget;
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
@@ -255,8 +256,13 @@ public class TaskRepository extends EntityRepository<Task> {
             .map(domain -> Entity.getEntityReferenceByName(DOMAIN, domain, NON_DELETED))
             .toList();
 
+    // A domain covers its sub-domains, as the navbar pick does.
     if (!nullOrEmpty(domains)) {
-      filter.addQueryParam("requestedDomainId", EntityUtil.getCommaSeparatedIdsFromRefs(domains));
+      filter.addQueryParam(
+          "requestedDomainId",
+          domains.stream()
+              .map(EntityUtil::domainAndSubDomainIds)
+              .collect(java.util.stream.Collectors.joining(",")));
     }
   }
 
@@ -302,25 +308,24 @@ public class TaskRepository extends EntityRepository<Task> {
     filter.removeQueryParam("requestedDomainId");
   }
 
-  private String intersectDomainIds(String requestedDomainId, String allowedDomainId) {
+  static String intersectDomainIds(String requestedDomainId, String allowedDomainId) {
     if (ListFilter.NULL_PARAM.equals(allowedDomainId)) {
       return ListFilter.NULL_PARAM;
     }
 
-    List<String> requestedIds =
-        Arrays.stream(requestedDomainId.split(","))
-            .map(String::trim)
-            .filter(id -> !id.isEmpty())
-            .toList();
-    Set<String> allowedIds =
-        new LinkedHashSet<>(
-            Arrays.stream(allowedDomainId.split(","))
-                .map(String::trim)
-                .filter(id -> !id.isEmpty())
-                .toList());
+    // The requested ids come bare (a domain and its sub-domains), the role's scope quoted.
+    List<String> requestedIds = bareIds(requestedDomainId);
+    Set<String> allowedIds = new LinkedHashSet<>(bareIds(allowedDomainId));
     List<String> intersection = requestedIds.stream().filter(allowedIds::contains).toList();
 
     return intersection.isEmpty() ? ListFilter.NULL_PARAM : String.join(",", intersection);
+  }
+
+  private static List<String> bareIds(String ids) {
+    return Arrays.stream(ids.replace("'", "").split(","))
+        .map(String::trim)
+        .filter(id -> !id.isEmpty())
+        .toList();
   }
 
   @Override
@@ -402,6 +407,8 @@ public class TaskRepository extends EntityRepository<Task> {
     // patch guard together stop the year-9999 / Infinity / past-date exploits on PATCH.
     if (!update) {
       TaskFieldValidator.validateDataAccessRequestExpiry(task);
+      TaskFieldTarget.fillDefault(task);
+      TaskFieldTarget.require(task);
     }
     validateNoDuplicateActiveDataAccessRequest(task);
 
@@ -2096,6 +2103,8 @@ public class TaskRepository extends EntityRepository<Task> {
           TaskFieldValidator.validateDataAccessRequestExpiry(updated);
         }
       }
+      TaskFieldTarget.fillDefault(updated);
+      TaskFieldTarget.requireChanged(original, updated);
       recordChange(
           FIELD_PAYLOAD, original.getPayload(), updated.getPayload(), true, Objects::equals, false);
     }

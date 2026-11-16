@@ -256,7 +256,7 @@ export default defineConfig({
     /* Emulate prefers-reduced-motion so CSS/react-aria trigger and overlay
      * transitions resolve instantly — a click landing before the animation
      * settles is a common flake source. Pixel/geometry-sensitive projects
-     * (visual-regression, Knowledge Graph, Ontology RDF) opt back out via
+     * (visual-regression, Knowledge Graph) opt back out via
      * reducedMotion: 'no-preference' below, because the graph's fit/centering
      * geometry shifts under reduced motion and the snapshot/geometry
      * assertions are calibrated for the default motion path. */
@@ -304,11 +304,6 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      name: 'ontology-rdf-setup',
-      testMatch: '**/ontology-rdf.setup.ts',
-      dependencies: ['entity-data-setup'],
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       grep: shardGrep,
@@ -320,7 +315,6 @@ export default defineConfig({
         ...(hasDedicatedIngestionLane ? [/@ingestion/] : []),
         ...(hasDedicatedImportExportLane ? [/@import-export/] : []),
         /@knowledge-graph/,
-        /@ontology-rdf/,
       ],
       teardown: entityTeardown,
       testIgnore: [
@@ -348,10 +342,13 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
+      grep: shardGrep,
       dependencies: ['setup', 'entity-data-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        locale: 'en-US',
+        timezoneId: 'UTC',
         storageState: 'playwright/.auth/admin.json',
         // Snapshots are captured under the default motion path.
         reducedMotion: 'no-preference',
@@ -431,17 +428,6 @@ export default defineConfig({
       dependencies: ['setup', 'entity-data-setup'],
       grep: /knowledge-graph/,
       teardown: 'entity-data-teardown',
-    },
-    {
-      name: 'Ontology RDF',
-      // Same graph canvas as Knowledge Graph — keep the default motion path so
-      // fit/centering geometry matches the assertions.
-      use: { ...devices['Desktop Chrome'], reducedMotion: 'no-preference' },
-      dependencies: ['ontology-rdf-setup'],
-      grep: /ontology-rdf/,
-      teardown: 'entity-data-teardown',
-      fullyParallel: false,
-      workers: 1,
     },
     {
       name: 'DataAssetRulesEnabled',

@@ -15,14 +15,13 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Alert, Check } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, last, toLower } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as SuccessIcon } from '../../../../assets/svg/ic-check.svg';
-import { ReactComponent as FailedIcon } from '../../../../assets/svg/ic-warning-2.svg';
 import { TestCaseStatus } from '../../../../generated/entity/feed/testCaseResult';
 import { fetchTestCaseStatusMetricsByDays } from '../../../../rest/dataQualityDashboardAPI';
 import CustomAreaChart from '../../../Visualisations/Chart/CustomAreaChart.component';
@@ -75,10 +74,10 @@ const TestCaseStatusAreaChartWidget = ({
 
   const bodyElement = useMemo(() => {
     const latestValue = last(chartData)?.count ?? 0;
-    let Icon = SuccessIcon;
+    let Icon = Check;
 
     if (testCaseStatus === TestCaseStatus.Failed) {
-      Icon = FailedIcon;
+      Icon = Alert;
     }
 
     const showEmptyFooter =

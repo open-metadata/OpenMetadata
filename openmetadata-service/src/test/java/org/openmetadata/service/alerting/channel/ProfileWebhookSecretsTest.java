@@ -22,13 +22,15 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Team;
@@ -45,12 +47,7 @@ class ProfileWebhookSecretsTest {
   private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String ENDPOINT = "https://hooks.example.com/services/T0/B0/hook-token";
   private static final String TOKEN_URL = "https://login.example.com/token";
-  private static final List<Function<SubscriptionConfig, Webhook>> SLOTS =
-      List.of(
-          SubscriptionConfig::getSlack,
-          SubscriptionConfig::getMsTeams,
-          SubscriptionConfig::getgChat,
-          SubscriptionConfig::getGeneric);
+  private static final String GENERIC = "generic";
 
   @BeforeEach
   void setUp() {
@@ -70,19 +67,18 @@ class ProfileWebhookSecretsTest {
 
     Profile stored = ProfileWebhookSecrets.ofANewEntity(sent);
 
-    for (Function<SubscriptionConfig, Webhook> slot : SLOTS) {
-      JsonNode webhook = JsonUtils.valueToTree(slot.apply(stored.getSubscription()));
-      assertEncrypted(webhook.at("/endpoint"), ENDPOINT);
+    JsonNode subscriptions = JsonUtils.valueToTree(stored.getSubscription());
+    for (String slot : List.of("slack", "msTeams", "gChat", GENERIC)) {
+      JsonNode webhook = subscriptions.path(slot);
+      assertEncrypted(slot, "/endpoint", webhook, ENDPOINT);
       if (webhook.at("/authType/type").asText().equals("oauth2")) {
-        assertEncrypted(webhook.at("/authType/clientId"), "client");
+        assertEncrypted(slot, "/authType/clientId", webhook, "client");
         assertEquals(TOKEN_URL, webhook.at("/authType/tokenUrl").asText());
       } else {
-        assertEncrypted(webhook.at("/authType/secretKey"), "gchat-key");
+        assertEncrypted(slot, "/authType/secretKey", webhook, "gchat-key");
       }
     }
-    assertEncrypted(
-        JsonUtils.valueToTree(stored.getSubscription().getGeneric()).at("/headers/X-Api-Key"),
-        "k1");
+    assertEncrypted(GENERIC, "/headers/X-Api-Key", subscriptions.path(GENERIC), "k1");
     String storedJson = JsonUtils.pojoToJson(stored);
     List.of("slack-secret", "teams-secret", "gchat-key", "generic-secret", "hook-token")
         .forEach(secret -> assertFalse(storedJson.contains(secret), secret));
@@ -117,7 +113,7 @@ class ProfileWebhookSecretsTest {
 
     assertEquals(storedSecret, clientSecretOf(same));
     assertTrue(Fernet.isTokenized(clientSecretOf(changed)));
-    assertEquals("a new secret", Fernet.getInstance().decrypt(clientSecretOf(changed)));
+    assertEquals("a new secret", opened(clientSecretOf(changed)));
   }
 
   @Test
@@ -162,8 +158,7 @@ class ProfileWebhookSecretsTest {
     Profile moved = ProfileWebhookSecrets.updated(stored, reentered);
     assertEquals(
         "https://moved.example.com",
-        Fernet.getInstance()
-            .decrypt(JsonUtils.valueToTree(moved).at("/subscription/generic/endpoint").asText()));
+        opened(JsonUtils.valueToTree(moved).at("/subscription/generic/endpoint")));
   }
 
   @Test
@@ -172,7 +167,7 @@ class ProfileWebhookSecretsTest {
 
     Profile updated = ProfileWebhookSecrets.updated(legacy, ProfileWebhookSecrets.masked(legacy));
 
-    assertEquals("legacy secret", Fernet.getInstance().decrypt(clientSecretOf(updated)));
+    assertEquals("legacy secret", opened(clientSecretOf(updated)));
   }
 
   @Test
@@ -271,11 +266,37 @@ class ProfileWebhookSecretsTest {
   void deliveryReadsTheSecretsDecrypted() {
     Profile stored = ProfileWebhookSecrets.ofANewEntity(profileWith(bearer("the key")));
 
-    Webhook sent = ProfileWebhookSecrets.decrypted(stored).getSubscription().getGeneric();
+    Webhook sent = ProfileWebhookSecrets.decrypted("a team", stored).getSubscription().getGeneric();
 
     assertEquals(URI.create(ENDPOINT), sent.getEndpoint());
     assertEquals("the key", ((Map<?, ?>) sent.getAuthType()).get("secretKey"));
     assertTrue(Fernet.isTokenized(stored.getSubscription().getGeneric().getEndpoint().toString()));
+  }
+
+  // A value written with a key the server no longer has, or in the per-holder format a 2.1
+  // pre-release wrote, is never sent; the profile's other webhooks still send.
+  @Test
+  void deliveryLeavesOutAWebhookWhoseSecretNoConfiguredKeyDecrypts() {
+    String token = Token.generate(new SecureRandom(), Key.generateKey(), "a value").serialise();
+    Profile stored =
+        ProfileWebhookSecrets.ofANewEntity(
+            new Profile()
+                .withSubscription(
+                    new SubscriptionConfig()
+                        .withSlack(oauth2("the secret"))
+                        .withGeneric(oauth2("x"))
+                        .withMsTeams(oauth2("y"))));
+    stored.getSubscription().getGeneric().withAuthType(oauth2Map(TOKEN_URL, "fernet:" + token));
+    stored
+        .getSubscription()
+        .getMsTeams()
+        .withAuthType(oauth2Map(TOKEN_URL, "fernet:bound:" + token));
+
+    SubscriptionConfig sent = ProfileWebhookSecrets.decrypted("a team", stored).getSubscription();
+
+    assertNull(sent.getGeneric());
+    assertNull(sent.getMsTeams());
+    assertEquals("the secret", ((Map<?, ?>) sent.getSlack().getAuthType()).get("clientSecret"));
   }
 
   @Test
@@ -287,9 +308,19 @@ class ProfileWebhookSecretsTest {
     assertEquals(images, ProfileWebhookSecrets.updated(null, images));
   }
 
-  private static void assertEncrypted(JsonNode value, String plaintext) {
-    assertTrue(Fernet.isTokenized(value.asText()), "stored in the clear: " + value);
-    assertEquals(plaintext, Fernet.getInstance().decrypt(value.asText()));
+  private static void assertEncrypted(
+      String slot, String field, JsonNode webhook, String plaintext) {
+    String value = webhook.at(field).asText();
+    assertTrue(Fernet.isTokenized(value), "the " + slot + " webhook is not encrypted: " + value);
+    assertEquals(plaintext, Fernet.getInstance().decrypt(value));
+  }
+
+  private static String opened(JsonNode value) {
+    return opened(value.asText());
+  }
+
+  private static String opened(String value) {
+    return Fernet.getInstance().decrypt(value);
   }
 
   private static void assertRefused(Runnable call, String reason) {

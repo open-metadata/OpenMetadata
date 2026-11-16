@@ -121,14 +121,47 @@ public final class OwnedSecrets {
 
   /**
    * Deletes the secrets of {@code references} that lie in the owner's namespace; anything else is
-   * left alone. A failed delete is logged and leaves an unused secret behind, so it never fails the
-   * caller's write.
+   * left alone. A secret is deleted by the name the provider resolves, the name its ownership was
+   * decided on, since a provider may read a secret under a spelling it does not delete by. A failed
+   * delete is logged and leaves an unused secret behind, so it never fails the caller's write.
    */
   public void delete(Collection<String> references, SecretOwner owner) {
     references.stream()
         .filter(reference -> isOwnedBy(reference, owner))
-        .map(OwnedSecrets::secretName)
+        .map(this::canonicalName)
+        .distinct()
         .forEach(this::deleteQuietly);
+  }
+
+  /**
+   * Deletes the owner's secrets that {@code before} refers to and {@code after} no longer does, once
+   * a write that replaced {@code before} with {@code after} is stored. References are compared by
+   * the name the provider resolves, so a secret {@code after} still reads under another spelling
+   * stays.
+   */
+  public void retire(Collection<String> before, Collection<String> after, SecretOwner owner) {
+    Set<String> stillRead =
+        after.stream()
+            .filter(this::isReference)
+            .map(this::canonicalName)
+            .collect(Collectors.toUnmodifiableSet());
+    delete(
+        before.stream()
+            .filter(this::isReference)
+            .filter(reference -> !stillRead.contains(canonicalName(reference)))
+            .toList(),
+        owner);
+  }
+
+  /**
+   * The name the provider reads {@code reference} by. Two references with the same resolved name
+   * read the same secret, however each is spelled.
+   */
+  public String resolvedName(String reference) {
+    if (!isReference(reference)) {
+      throw new IllegalArgumentException("Not a secret reference");
+    }
+    return canonicalName(reference);
   }
 
   /** Whether {@code reference} points into the namespace this deployment manages. */
