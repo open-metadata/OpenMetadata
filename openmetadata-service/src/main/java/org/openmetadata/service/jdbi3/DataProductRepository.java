@@ -89,6 +89,7 @@ import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -675,7 +676,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         stored,
         portChangeDescription(
             stored.getVersion(), Map.of(new PortChange(relationship, isAdd), ports)),
-        updatedBy,
+        new PortWriter(updatedBy, ImpersonationContext.getImpersonatedBy()),
         false);
   }
 
@@ -716,13 +717,20 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
   // {@code joinsFieldChange}: the same approval has just published field changes at this version,
   // so the port changes join that version's change description rather than replace it.
+  /**
+   * Who a port change is recorded for. An approval publishes a staged change as its requester, with
+   * the bot that staged it, not the reviewer's request.
+   */
+  private record PortWriter(String updatedBy, String impersonatedBy) {}
+
   private void recordPortChange(
       final DataProduct dataProduct,
       final ChangeDescription change,
-      final String updatedBy,
+      final PortWriter writer,
       final boolean joinsFieldChange) {
     final ChangeEvent changeEvent =
-        getChangeEvent(dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), updatedBy);
+        getChangeEvent(
+            dataProduct, change, DATA_PRODUCT, dataProduct.getVersion(), writer.updatedBy());
     Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     final ChangeDescription current = dataProduct.getChangeDescription();
     if (joinsFieldChange && current != null) {
@@ -731,7 +739,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     } else {
       dataProduct.setChangeDescription(change);
     }
-    EntityUtil.recordWriter(dataProduct, updatedBy);
+    dataProduct.setUpdatedBy(writer.updatedBy());
+    dataProduct.setImpersonatedBy(writer.impersonatedBy());
     storeEntity(dataProduct, true);
     invalidate(dataProduct);
   }
@@ -839,6 +848,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       final UUID entityId,
       final List<MutationOp> ops,
       final String requestedBy,
+      final String impersonatedBy,
       final boolean withFieldChanges) {
     validateStagedRelations(entityId, ops);
     final DataProduct dataProduct = get(null, entityId, getFields("*"));
@@ -848,7 +858,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     recordPortChange(
         dataProduct,
         portChangeDescription(dataProduct.getVersion(), changes),
-        requestedBy,
+        new PortWriter(requestedBy, impersonatedBy),
         withFieldChanges);
   }
 

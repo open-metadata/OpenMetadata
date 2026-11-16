@@ -1678,7 +1678,8 @@ public abstract class EntityCsv<T extends EntityInterface<?>> {
       final String type, final EntityInterface original, final EntityInterface entity) {
     Optional<StagedChange> staged = Optional.empty();
     final EntityRepository repository = Entity.getEntityRepository(type);
-    final ChangeActor actor = ChangeActor.recorded(importedBy, null);
+    final ChangeActor actor =
+        ChangeActor.recorded(importedBy, ImpersonationContext.getImpersonatedBy());
     if (original != null && isGated(type)) {
       final EntityInterface hydrated =
           repository.get(null, original.getId(), repository.getFields("*"), Include.ALL, false);

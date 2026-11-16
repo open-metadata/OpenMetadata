@@ -463,7 +463,11 @@ public final class ChangeApplyService {
     }
     if (!relationOps.isEmpty()) {
       repository.applyStagedRelations(
-          request.getEntityId(), relationOps, request.getRequestedBy(), !fieldOps.isEmpty());
+          request.getEntityId(),
+          relationOps,
+          request.getRequestedBy(),
+          request.getImpersonatedBy(),
+          !fieldOps.isEmpty());
     }
     final EntityInterface published =
         readCurrent(repository, request.getEntityId(), split.applicable());

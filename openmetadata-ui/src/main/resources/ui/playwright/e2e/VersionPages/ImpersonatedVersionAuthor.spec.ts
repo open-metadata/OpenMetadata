@@ -145,10 +145,10 @@ test.describe('Version history of a change made through impersonation', () => {
         .getByTestId(versionEntryTestId(impersonatedVersion))
         .getByTestId('version-impersonated-by')
     ).toContainText(bot.displayName);
+    const createdEntry = page.getByTestId(versionEntryTestId(createdVersion));
+    await expect(createdEntry).toBeVisible();
     await expect(
-      page
-        .getByTestId(versionEntryTestId(createdVersion))
-        .getByTestId('version-impersonated-by')
+      createdEntry.getByTestId('version-impersonated-by')
     ).toHaveCount(0);
   });
 });

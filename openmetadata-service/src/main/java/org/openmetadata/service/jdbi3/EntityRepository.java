@@ -6754,6 +6754,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    entities.forEach(entity -> entity.setImpersonatedBy(impersonatedBy));
     entities.forEach(this::evaluateRulesDeferredUntilInherited);
     entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
@@ -6857,6 +6859,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       final UUID entityId,
       final List<MutationOp> ops,
       final String requestedBy,
+      final String impersonatedBy,
       final boolean withFieldChanges) {
     throw new IllegalArgumentException(
         "%s has no relations an approval can hold".formatted(entityType));
@@ -15609,7 +15612,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // A refused create fails alone, with the 403 a refused update in this request gets.
     newEntities.removeIf(entity -> refusesBulkCreate(entity, userName, failedRequests));
-    newEntities.forEach(entity -> EntityUtil.recordWriter(entity, userName));
 
     // Batch create new entities
     if (!newEntities.isEmpty()) {

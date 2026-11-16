@@ -61,6 +61,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequestStatus;
 import org.openmetadata.schema.governance.changeRequest.MutationOp;
@@ -120,10 +121,14 @@ class ChangeRequestImportAndBulkIT {
   }
 
   private CsvImportResult importEdited(Glossary glossary, boolean dryRun) {
+    return importEdited(SdkClients.adminClient(), glossary, dryRun);
+  }
+
+  private CsvImportResult importEdited(
+      OpenMetadataClient client, Glossary glossary, boolean dryRun) {
     String exported = SdkClients.adminClient().glossaries().exportCsv(glossary.getName());
     String edited = exported.replace(TERM_DESCRIPTION, "edited through csv");
-    String result =
-        SdkClients.adminClient().glossaries().importCsv(glossary.getName(), edited, dryRun);
+    String result = client.glossaries().importCsv(glossary.getName(), edited, dryRun);
     return JsonUtils.readValue(result, CsvImportResult.class);
   }
 
@@ -140,6 +145,28 @@ class ChangeRequestImportAndBulkIT {
     GlossaryTerm after = SdkClients.adminClient().glossaryTerms().get(term.getId().toString(), "");
     assertEquals(TERM_DESCRIPTION, after.getDescription());
     assertEquals("admin", onlyPendingRequest(term.getId()).getRequestedBy());
+  }
+
+  @Test
+  void csvImportABotMakesForAUserIsStagedNamingTheBot(TestNamespace ns) {
+    Glossary glossary = plainGlossary(ns);
+    GlossaryTerm term = gatedTerm(ns, glossary);
+    User botUser = createBotUser(ns, "crcsvbot");
+    createBot(ns.prefix("crcsvbot_bot"), botUser, true);
+
+    CsvImportResult result =
+        importEdited(
+            impersonationClient(generateBotToken(botUser), Entity.ADMIN_USER_NAME),
+            glossary,
+            false);
+
+    assertEquals(1, result.getNumberOfRowsPendingApproval());
+    ChangeRequest request = onlyPendingRequest(term.getId());
+    assertEquals(Entity.ADMIN_USER_NAME, request.getRequestedBy());
+    assertEquals(
+        botUser.getName(),
+        request.getImpersonatedBy(),
+        "A row the bot imports for its user is held as the user's change through the bot");
   }
 
   // A CSV row with an empty owner column clears the term's owners; the ungoverned term shows the

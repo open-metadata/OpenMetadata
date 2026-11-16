@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*` and `test_editUndoneInItsSession*` cases), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ImpersonationContextTest`
-- **Related:** #37869, open-metadata/ai-platform#2213
+- **Guard:** `BotImpersonationIT` (the `test_impersonated*`, `test_admin*`, `test_botDeleteThenAdminRestore*` and `test_editUndoneInItsSession*` cases), `ChangeRequestAdmissionIT#approvedChangeABotStagedForAHumanIsPublishedNamingTheBot`, `ChangeRequestImportAndBulkIT#csvImportABotMakesForAUserIsStagedNamingTheBot`, `ImpersonationContextTest`, `EntityUtilTest`
+- **Related:** #37869, #37892, #37893, open-metadata/ai-platform#2213
 
 ## Context
 
@@ -19,6 +19,8 @@ was published without the bot that staged it. Session consolidation folded edits
 
 ## Decision
 
+For every entity type whose schema declares `impersonatedBy`:
+
 - A stored version's `impersonatedBy` is the bot of the request that wrote it, read from
   `ImpersonationContext` at write time: null for a direct or a system write, never copied from the
   stored entity. A write that sets `updatedBy` on a copy of the stored entity sets both through
@@ -29,7 +31,8 @@ was published without the bot that staged it. Session consolidation folded edits
   workflows writing as governance-bot, an approved change request published with the bot that
   staged it.
 - Work handed to another thread runs with the submitting request's bot through
-  `ImpersonationContext.propagate`, which clears it when the task ends.
+  `ImpersonationContext.propagate` (or `runAs` with a bot the job recorded), which clears it when
+  the task ends.
 - An update that leaves the version unchanged keeps both writer fields of the version that stays
   current.
 - In-session consolidation folds only edits with the same `updatedBy` and the same
@@ -37,10 +40,16 @@ was published without the bot that staged it. Session consolidation folded edits
 
 ## Consequences
 
-The version panel, change events and the audit log name the bot behind every change a bot made,
-and only those. A new write path either goes through an overload without a bot or through
-`EntityUtil.recordWriter`; setting `updatedBy` alone on a stored copy is a bug. A user who
-alternates their own edits and edits through a bot within the session window gets one version per
-switch instead of one merged version. The rule relies on `ImpersonationContext` being cleared at
-every request start and after every propagated task; a thread that leaked a bot would attribute
+For those types, the version panel, change events and the audit log name the bot behind every
+change a bot made, and only those. A new write path either goes through an overload without a bot
+or through `EntityUtil.recordWriter`; setting `updatedBy` alone on a stored copy is a bug. A user
+who alternates their own edits and edits through a bot within the session window gets one version
+per switch instead of one merged version. The rule relies on `ImpersonationContext` being cleared
+at every request start and after every propagated task; a thread that leaked a bot would attribute
 writes to it.
+
+Known gaps: twenty-seven versioned types (test suites and cases, tasks, intake forms, context files
+and others) have no `impersonatedBy` field and record no bot; their writers already go through
+`EntityUtil.recordWriter`, so adding the field is enough (#37893). An ontology pack install job does
+not carry its requester's bot yet (#37893). A pending change request still folds a user's own
+changes and a bot's changes for them into one request (#37892).

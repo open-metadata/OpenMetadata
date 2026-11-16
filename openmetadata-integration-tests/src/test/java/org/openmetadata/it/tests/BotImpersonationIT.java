@@ -65,6 +65,7 @@ import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.sdk.services.EntityServiceBase;
 import org.openmetadata.service.Entity;
 
 /**
@@ -1368,6 +1369,76 @@ public class BotImpersonationIT {
         "The async move runs off the request thread and must still name the bot");
   }
 
+  @Test
+  void test_impersonatedColumnBulkUpdateAsync_namesTheBot(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "colbulk", admin);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table table = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "colbulk"));
+
+    impersonation
+        .viaBot()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/columns/bulk-update-async",
+            Map.of(
+                "columnUpdates",
+                List.of(
+                    Map.of(
+                        "columnFQN",
+                        table.getFullyQualifiedName() + ".id",
+                        "entityType",
+                        Entity.TABLE,
+                        "description",
+                        "Written by the bot"))));
+
+    awaitVersions(SdkClients.adminClient().tables(), table.getId(), 2);
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, ADMIN_USER_NAME, impersonation.bot()),
+            new VersionAuthor(0.1, ADMIN_USER_NAME, null)),
+        versionAuthors(SdkClients.adminClient().tables().getVersionList(table.getId())),
+        "The async column update runs off the request thread and must still name the bot");
+  }
+
+  @Test
+  void test_impersonatedCreateMany_namesTheBot(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "many", admin);
+    Glossary glossary = createGlossary(ns, "impmany");
+
+    impersonation
+        .viaBot()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.POST,
+            "/v1/glossaryTerms/createMany",
+            List.of(
+                new CreateGlossaryTerm()
+                    .withName("first")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Created by the bot"),
+                new CreateGlossaryTerm()
+                    .withName("second")
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Created by the bot")));
+
+    for (String name : List.of("first", "second")) {
+      GlossaryTerm term =
+          SdkClients.adminClient()
+              .glossaryTerms()
+              .getByName(glossary.getFullyQualifiedName() + "." + name);
+      // The term's approval workflow may add versions of its own; the creation is v0.1.
+      assertEquals(
+          new VersionAuthor(0.1, ADMIN_USER_NAME, impersonation.bot()),
+          versionAuthors(SdkClients.adminClient().glossaryTerms().getVersionList(term.getId()))
+              .getLast(),
+          "A term the bot creates in bulk for its user must name the bot");
+    }
+  }
+
   private record IdentityCall(HttpMethod method, String path, Object body) {}
 
   private record VersionAuthor(double version, String updatedBy, String impersonatedBy) {}
@@ -1427,6 +1498,13 @@ public class BotImpersonationIT {
         .atMost(Duration.ofSeconds(60))
         .pollInterval(Duration.ofMillis(500))
         .until(() -> glossaryVersionAuthors(glossaryId).size() >= count);
+  }
+
+  private static void awaitVersions(EntityServiceBase<?> service, UUID entityId, int count) {
+    Awaitility.await("entity " + entityId + " reaches " + count + " versions")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofMillis(500))
+        .until(() -> versionAuthors(service.getVersionList(entityId)).size() >= count);
   }
 
   private static List<VersionAuthor> glossaryVersionAuthors(UUID glossaryId) {
