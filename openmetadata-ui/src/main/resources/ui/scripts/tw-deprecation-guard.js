@@ -126,7 +126,7 @@ const STYLE_LINE_CHECKS = [
   },
   {
     name: 'hex-colour',
-    re: /#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b(?=[^\w]|$)/,
+    re: /(?<!href=["'`])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b(?=[^\w]|$)/,
     why: 'hardcoded hex colour — use a semantic design token (docs/colors.md)',
   },
   {
