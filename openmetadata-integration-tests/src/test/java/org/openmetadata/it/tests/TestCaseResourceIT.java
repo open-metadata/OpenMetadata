@@ -3883,6 +3883,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .parameter("columnCount", "5")
             .create()
             .getName();
+    Awaitility.await("both test cases are searchable before checking the definition filter")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertTrue(
+                    searchTestCasesForSuite(null, tableEntityLink(table))
+                        .containsAll(List.of(rowCountCase, columnCountCase)),
+                    "Both test cases must be indexed before checking the definition filter"));
+
     RequestOptions options =
         RequestOptions.builder()
             .queryParam("entityLink", tableEntityLink(table))
