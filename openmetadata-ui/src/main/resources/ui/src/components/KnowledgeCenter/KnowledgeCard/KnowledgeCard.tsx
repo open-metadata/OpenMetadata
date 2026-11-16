@@ -95,7 +95,7 @@ const KnowledgeCardFooter: FC<KnowledgeCardFooterProps> = ({
         <UserPopOverCard
           showUserName
           className="tw:text-xs tw:font-medium tw:text-secondary tw:gap-2 tw:max-w-40"
-          displayName={getEntityName(owners?.[0])}
+          displayName={owners[0].displayName}
           profileWidth={20}
           type={owners?.[0]?.type === 'team' ? OwnerType.TEAM : OwnerType.USER}
           userName={owners[0].name ?? owners[0].displayName ?? ''}
