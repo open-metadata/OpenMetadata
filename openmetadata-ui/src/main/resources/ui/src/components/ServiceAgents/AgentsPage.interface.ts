@@ -109,7 +109,7 @@ export interface AgentRun {
   runId?: string;
   status: RunStatus;
   startedAt: string;
-  duration: number;
+  durationMs?: number;
   totals: RunTotals;
   steps: RunStep[];
 }

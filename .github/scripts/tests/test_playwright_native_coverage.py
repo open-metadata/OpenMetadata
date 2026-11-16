@@ -124,5 +124,5 @@ def test_every_setup_and_teardown_project_is_excluded_from_native_coverage():
             r"(?:\.(?:setup|teardown)\.ts|dataInsightApp\.ts)$", test_match.group(1)
         ):
             fixtures.add(name.group(1))
-    assert {"setup", "entity-data-setup", "data-insight-application", "ontology-rdf-setup"} <= fixtures
+    assert {"setup", "entity-data-setup", "data-insight-application"} <= fixtures
     assert fixtures - module.LIFECYCLE_PROJECTS == set()

@@ -238,6 +238,20 @@ class ChangeSelectionTest {
   }
 
   @Test
+  void aDecisionMadeChangeByChangeGivesEachVerdictItApplies() {
+    ApprovalDecision mixed = changes("ana", List.of(DESCRIPTION), List.of(TAG));
+
+    assertEquals(DecisionType.APPROVE, mixed.getDecision());
+    assertTrue(ChangeSelection.givesAny(mixed, DecisionType.APPROVE));
+    assertTrue(ChangeSelection.givesAny(mixed, DecisionType.REJECT));
+    assertTrue(ChangeSelection.givesAny(whole("ben", DecisionType.REJECT), DecisionType.REJECT));
+    assertFalse(ChangeSelection.givesAny(whole("ben", DecisionType.REJECT), DecisionType.APPROVE));
+    assertFalse(
+        ChangeSelection.givesAny(
+            changes("ben", List.of(DESCRIPTION, TAG), List.of()), DecisionType.REJECT));
+  }
+
+  @Test
   void describeNamesFieldsAndElements() {
     assertEquals("description, tags PII.Sensitive", ChangeSelection.describe(OPS));
   }

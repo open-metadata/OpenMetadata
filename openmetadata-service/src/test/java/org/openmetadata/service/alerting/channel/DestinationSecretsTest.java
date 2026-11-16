@@ -8,8 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
+import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +31,6 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.channel.webhook.WebhookConfigRules;
 import org.openmetadata.service.fernet.Fernet;
-import org.openmetadata.service.secrets.BoundCiphertext;
 
 class DestinationSecretsTest {
 
@@ -53,9 +55,8 @@ class DestinationSecretsTest {
     assertTrue(encryptedClientId.startsWith(Fernet.FERNET_PREFIX));
     assertTrue(encryptedClientSecret.startsWith(Fernet.FERNET_PREFIX));
 
-    assertEquals("my-client-id", opened(result.get(0), "/authType/clientId", encryptedClientId));
-    assertEquals(
-        "my-client-secret", opened(result.get(0), "/authType/clientSecret", encryptedClientSecret));
+    assertEquals("my-client-id", opened(encryptedClientId));
+    assertEquals("my-client-secret", opened(encryptedClientSecret));
   }
 
   @Test
@@ -84,7 +85,7 @@ class DestinationSecretsTest {
     String encryptedKey = (String) authMap.get("secretKey");
 
     assertTrue(encryptedKey.startsWith(Fernet.FERNET_PREFIX));
-    assertEquals("my-secret-key", opened(result.get(0), "/authType/secretKey", encryptedKey));
+    assertEquals("my-secret-key", opened(encryptedKey));
   }
 
   // Before the fix, a Slack/MS Teams/GChat destination carrying an authType was accepted by
@@ -111,9 +112,8 @@ class DestinationSecretsTest {
         encryptedClientSecret.startsWith(Fernet.FERNET_PREFIX),
         type + " clientSecret was not encrypted");
 
-    assertEquals("my-client-id", opened(result.get(0), "/authType/clientId", encryptedClientId));
-    assertEquals(
-        "my-client-secret", opened(result.get(0), "/authType/clientSecret", encryptedClientSecret));
+    assertEquals("my-client-id", opened(encryptedClientId));
+    assertEquals("my-client-secret", opened(encryptedClientSecret));
     assertEquals(type, result.get(0).getType());
   }
 
@@ -152,7 +152,7 @@ class DestinationSecretsTest {
 
     assertTrue(
         encryptedKey.startsWith(Fernet.FERNET_PREFIX), type + " secretKey was not encrypted");
-    assertEquals("my-secret-key", opened(result.get(0), "/authType/secretKey", encryptedKey));
+    assertEquals("my-secret-key", opened(encryptedKey));
     assertEquals(type, result.get(0).getType());
   }
 
@@ -167,9 +167,8 @@ class DestinationSecretsTest {
     List<SubscriptionDestination> result = DestinationSecrets.encrypt(List.of(dest));
     Map<String, Object> config = configOf(result.getFirst());
     Map<String, String> headers = headersOf(result.getFirst());
-    assertEquals(ENDPOINT, opened(result.getFirst(), "/endpoint", (String) config.get("endpoint")));
-    assertEquals(
-        TOKEN, opened(result.getFirst(), "/headers/Authorization", headers.get("Authorization")));
+    assertEquals(ENDPOINT, opened((String) config.get("endpoint")));
+    assertEquals(TOKEN, opened(headers.get("Authorization")));
     assertEquals(Map.of("team", "a"), config.get("queryParams"));
     assertNull(config.get("authType"));
     assertEquals(type, result.getFirst().getType());
@@ -187,9 +186,7 @@ class DestinationSecretsTest {
     SubscriptionDestination masked = DestinationSecrets.mask(List.of(destination)).getFirst();
     assertEquals(PASSWORD_MASK, headersOf(masked).get("Authorization"));
     DestinationSecrets.encrypt(List.of(destination));
-    assertEquals(
-        "123456789",
-        opened(destination, "/headers/Authorization", headersOf(destination).get("Authorization")));
+    assertEquals("123456789", opened(headersOf(destination).get("Authorization")));
   }
 
   @Test
@@ -224,18 +221,16 @@ class DestinationSecretsTest {
     assertEquals(ENDPOINT, WebhookConfigRules.stored(stored).getEndpoint().toString());
   }
 
+  // A value written with a key the server no longer has, or in the per-destination format a 2.1
+  // pre-release wrote, is never sent: it is entered again.
   @Test
-  void decrypted_refusesCiphertextNotWrittenForTheDestination() {
-    SubscriptionDestination encryptedElsewhere =
-        buildOAuth2Destination("client", Fernet.getInstance().encrypt("a value held elsewhere"));
-    SubscriptionDestination stored = oauth2Destination();
-    DestinationSecrets.encrypt(List.of(stored));
-    SubscriptionDestination another = oauth2Destination();
-    Map<String, Object> config = new LinkedHashMap<>(configOf(another));
-    config.put("authType", authTypeOf(stored));
-    another.withConfig(config);
+  void decrypted_refusesCiphertextNoConfiguredKeyDecrypts() {
+    SubscriptionDestination anotherKey =
+        buildOAuth2Destination("client", encryptedWithAnotherKey("a value"));
+    SubscriptionDestination preReleaseFormat =
+        buildOAuth2Destination("client", "fernet:bound:" + tokenOfAnotherKey("a value"));
 
-    for (SubscriptionDestination destination : List.of(encryptedElsewhere, another)) {
+    for (SubscriptionDestination destination : List.of(anotherKey, preReleaseFormat)) {
       BadRequestException refused =
           assertThrows(BadRequestException.class, () -> DestinationSecrets.decrypted(destination));
       assertTrue(refused.getMessage().contains("must be entered again"), refused.getMessage());
@@ -248,13 +243,12 @@ class DestinationSecretsTest {
     SubscriptionDestination stored = oauth2Destination();
     Map<String, Object> plainAuth = new LinkedHashMap<>(authTypeOf(stored));
     DestinationSecrets.encrypt(List.of(stored));
-    SubscriptionDestination notWrittenForIt =
-        buildOAuth2Destination("client", Fernet.getInstance().encrypt("a value held elsewhere"));
+    SubscriptionDestination notDecrypted =
+        buildOAuth2Destination("client", encryptedWithAnotherKey("a value"));
 
     assertEquals(plainAuth, authTypeOf(DestinationSecrets.decryptedOrAsStored(stored)));
     assertEquals(
-        authTypeOf(notWrittenForIt),
-        authTypeOf(DestinationSecrets.decryptedOrAsStored(notWrittenForIt)));
+        authTypeOf(notDecrypted), authTypeOf(DestinationSecrets.decryptedOrAsStored(notDecrypted)));
   }
 
   @Test
@@ -484,9 +478,16 @@ class DestinationSecretsTest {
     return new ChangeDescription().withFieldsUpdated(List.of(change));
   }
 
-  private static String opened(SubscriptionDestination destination, String field, String value) {
-    return BoundCiphertext.decrypt(DestinationSecrets.ownerOf(destination), field, value)
-        .orElseThrow();
+  private static String opened(String value) {
+    return Fernet.getInstance().decrypt(value);
+  }
+
+  private static String encryptedWithAnotherKey(String secret) {
+    return Fernet.FERNET_PREFIX + tokenOfAnotherKey(secret);
+  }
+
+  private static String tokenOfAnotherKey(String secret) {
+    return Token.generate(new SecureRandom(), Key.generateKey(), secret).serialise();
   }
 
   @SuppressWarnings("unchecked")

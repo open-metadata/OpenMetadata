@@ -34,6 +34,29 @@ const NATIVELY_FOCUSABLE_HTML = new Set([
   'textarea',
 ]);
 
+type TooltipVariant = 'dark' | 'light';
+
+// `light` sits on the floating surface that cards and popovers use, so it is white in light mode
+// and follows dark mode.
+const VARIANT_STYLES: Record<
+  TooltipVariant,
+  { surface: string; title: string; description: string; arrow: string }
+> = {
+  dark: {
+    surface: 'tw:bg-primary-solid tw:shadow-lg',
+    title: 'tw:text-white',
+    description: 'tw:text-tooltip-supporting-text',
+    arrow: 'tw:fill-bg-primary-solid',
+  },
+  light: {
+    surface:
+      'tw:bg-floating tw:shadow-raised tw:outline-1 tw:outline-secondary_alt',
+    title: 'tw:text-primary',
+    description: 'tw:text-tertiary',
+    arrow: 'tw:fill-bg-floating',
+  },
+};
+
 interface TooltipProps
   extends AriaTooltipTriggerComponentProps,
     Omit<AriaTooltipProps, 'children' | 'placement'> {
@@ -67,6 +90,12 @@ interface TooltipProps
    * Use this to override the default dark background, e.g. for a white tooltip.
    */
   containerClassName?: string;
+  /**
+   * `dark` is the default tooltip; `light` draws it on the floating surface, as a small card.
+   *
+   * @default 'dark'
+   */
+  variant?: TooltipVariant;
   /**
    * className forwarded to the auto-generated focusable wrapper that Tooltip
    * creates when its child is a non-focusable element (e.g. a plain span, an
@@ -143,6 +172,7 @@ export const Tooltip = ({
   onTriggerPress,
   triggerIsDisabled = false,
   excludeTriggerFromTabOrder,
+  variant = 'dark',
   ...tooltipProps
 }: TooltipProps) => {
   const resolvedDelay = delay ?? 300;
@@ -287,7 +317,10 @@ export const Tooltip = ({
             {arrow && (
               <AriaOverlayArrow>
                 <svg
-                  className="tw:block tw:size-2.5 tw:fill-bg-primary-solid tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180"
+                  className={cx(
+                    'tw:block tw:size-2.5 tw:in-placement-left:-rotate-90 tw:in-placement-right:rotate-90 tw:in-placement-top:rotate-0 tw:in-placement-bottom:rotate-180',
+                    VARIANT_STYLES[variant].arrow
+                  )}
                   viewBox="0 0 100 100">
                   <path d="M0,0 L35.858,35.858 Q50,50 64.142,35.858 L100,0 Z" />
                 </svg>
@@ -295,7 +328,8 @@ export const Tooltip = ({
             )}
             <div
               className={cx(
-                'tw:z-50 tw:flex tw:max-w-xs tw:origin-(--trigger-anchor-point) tw:flex-col tw:items-start tw:gap-1 tw:rounded-lg tw:bg-primary-solid tw:px-3 tw:shadow-lg tw:will-change-transform',
+                'tw:z-50 tw:flex tw:max-w-xs tw:origin-(--trigger-anchor-point) tw:flex-col tw:items-start tw:gap-1 tw:rounded-lg tw:px-3 tw:will-change-transform',
+                VARIANT_STYLES[variant].surface,
                 description ? 'tw:py-3' : 'tw:py-2',
                 containerClassName,
 
@@ -304,12 +338,20 @@ export const Tooltip = ({
                 isExiting &&
                   'tw:ease-in tw:animate-out tw:fade-out tw:zoom-out-95 tw:in-placement-left:slide-out-to-right-0.5 tw:in-placement-right:slide-out-to-left-0.5 tw:in-placement-top:slide-out-to-bottom-0.5 tw:in-placement-bottom:slide-out-to-top-0.5'
               )}>
-              <span className="tw:text-xs tw:font-semibold tw:text-white">
+              <span
+                className={cx(
+                  'tw:text-xs tw:font-semibold',
+                  VARIANT_STYLES[variant].title
+                )}>
                 {title}
               </span>
 
               {description && (
-                <span className="tw:text-xs tw:font-medium tw:text-tooltip-supporting-text">
+                <span
+                  className={cx(
+                    'tw:text-xs tw:font-medium',
+                    VARIANT_STYLES[variant].description
+                  )}>
                   {description}
                 </span>
               )}

@@ -434,6 +434,21 @@ export const fillRule = async (
   }
 };
 
+// A column entry carries its table's tags in `policyTags`, an access-control
+// field the advanced search never queries (ADR:2026-10-08-column-entries-carry-only-their-own-tags).
+// Another test tagging that table would otherwise leak into substring checks.
+const stringifySearchableHits = (hits: { _source?: object }[]) =>
+  JSON.stringify(
+    hits.map(({ _source, ...hit }) => {
+      const { policyTags: _policyTags, ...source } = (_source ?? {}) as Record<
+        string,
+        unknown
+      >;
+
+      return { ...hit, _source: source };
+    })
+  );
+
 // Tag-like fields (tags, tier, certification, glossary) now apply the
 // original-cased value while other fields still apply the lowercased
 // aggregation key, so URL and chip expectations must be case-insensitive.
@@ -531,7 +546,9 @@ export const checkMustNotPaths = async (
   if (!['columns.name.keyword'].includes(field.name)) {
     const json = await res.json();
 
-    expect(JSON.stringify(json.hits.hits)).not.toContain(searchCriteria);
+    expect(stringifySearchableHits(json.hits.hits)).not.toContain(
+      searchCriteria
+    );
   }
 
   // The summary renders the rule's stored value. Tag-like fields keep the
@@ -741,11 +758,12 @@ export const checkAddRuleOrGroupWithOperator = async (
     const json = await res.json();
     const hits = json.hits.hits;
 
+    const hitsString = stringifySearchableHits(hits);
+
     if (operator === 'AND') {
-      expect(JSON.stringify(hits)).toContain(searchCriteria1);
-      expect(JSON.stringify(hits)).not.toContain(searchCriteria2);
+      expect(hitsString).toContain(searchCriteria1);
+      expect(hitsString).not.toContain(searchCriteria2);
     } else {
-      const hitsString = JSON.stringify(hits);
       const containsCriteria1 = hitsString.includes(searchCriteria1);
       const containsCriteria2 = hitsString.includes(searchCriteria2);
 

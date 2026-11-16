@@ -1,7 +1,7 @@
 # The Ontology Studio UI ships only in Collate; OSS keeps the ontology APIs and shared pieces
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-15 (initial) · v2 2026-11-16 (OpenMetadata serves the read-only Ontology Explorer again)
+- **Revisions:** v1 2026-11-15 (initial) · v2 2026-11-16 (OpenMetadata serves the read-only Ontology Explorer again) · v3 2026-11-16 (the empty Ontology RDF Playwright project is removed) · v4 2026-11-16 (Studio-only code the shared explorer and task screens carried moves too)
 - **Deciders:** Product, UI team
 - **Guard:** reviewer
 - **Supersedes:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default (for OpenMetadata; the rule now governs Collate's route)
@@ -47,3 +47,28 @@ again (`pages/governance/ontology/OntologyExplorerPage`): the existing `Ontology
 `scope="global"`, with no authoring, under Govern in both modes. Collate's route, sidebar item and
 AI-mode Govern module replace it with Ontology Studio. The "View all" and linked-concept links no
 longer point at an unserved route.
+
+v3 (2026-11-16): the empty `Ontology RDF` and `ontology-rdf-setup` Playwright projects are removed,
+with the `rdf` lane's `--project="Ontology RDF"` and its `Ontology*Rdf.spec.ts` path filter. No
+OpenMetadata spec is tagged `@ontology-rdf` and `Knowledge Graph` never depended on the setup; the
+`rdf` lane runs `Knowledge Graph` alone.
+
+v4 (2026-11-16): a file stays in OpenMetadata only if an OpenMetadata surface uses it. Code that
+only the Studio uses moves to Collate even when a shared component reached it:
+
+- `OntologyExplorer` is read-only. Its authoring props (`isAuthoringMode`, `isEditMode`,
+  `surface`, `showHealth`, concept drafts, AI proposals) and the panels only they show (draft
+  inspector, term editor, tree views, health panel, delete impact) moved into Collate's
+  `OntologyStudioCanvas`, a copy of the authoring explorer. Everything the Ontology Explorer shows
+  stays here, including the concept inspector it opens read-only (`OntologyAuthoringInspector`, its
+  data assets, picker, IRI and draft-guard helpers), the graph, `OntologyRelationDetailsPanel`,
+  `OntologyNodeRelationsContent` and `useOntologyExplorer`; the canvas imports them, and their edit
+  paths run only there.
+- `OntologyReviewPanel` and the release and publication helpers behind it moved to Collate. `OntologyExplorerClassBase` now has only `getReviewPanel()`; it returns `null` in
+  OpenMetadata, where an ontology review task shows the generic task view and Approve and Reject
+  do not wait for a panel. `getAiProposalsHook()` and `getConceptLiveDataExtension()` are removed:
+  the canvas that called them lives in Collate.
+- The bulk-authoring components nothing imported are deleted.
+- `OntologyStudio.utils` and `OntologyStudio.constants` moved; the explorer keeps the term label
+  and health count in `OntologyExplorer/utils/ontologyHealth.ts`.
+- Translation keys stay in OpenMetadata's locale files, which Collate loads.

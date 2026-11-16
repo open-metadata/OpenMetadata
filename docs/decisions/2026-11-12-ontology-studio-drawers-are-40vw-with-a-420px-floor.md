@@ -1,7 +1,7 @@
 # Ontology Studio side drawers are 40% of the screen wide, never narrower than 420px
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (drawers overlay the canvas edge to edge; no canvas gap); v3 2026-11-15 (moved to Collate with the Studio UI)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (drawers overlay the canvas edge to edge; no canvas gap); v3 2026-11-15 (moved to Collate with the Studio UI); v4 2026-11-16 (drawers now dim the page behind them)
 - **Deciders:** UI team
 - **Guard:** reviewer
 - **Related:** open-metadata/OpenMetadata#37577, open-metadata/OpenMetadata#37607
@@ -38,3 +38,7 @@ and the drawer was inset from the screen edges unlike every other drawer in the 
 ## Amendment
 
 v3 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate); this rule now governs Collate's copy of that code.
+
+v4 (2026-11-16): the "no backdrop" clause is reversed. Studio drawers now dim the page behind them
+with the core `SlideoutMenu` overlay, per ADR:openmetadata-collate/2026-11-16-ontology-studio-drawers-dim-the-page-behind-them.
+Width and placement are unchanged.

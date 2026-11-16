@@ -31,6 +31,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../../../generated/entity/data/glossaryTerm';
+import { ApprovalOutcome } from '../../../../../generated/governance/workflows/approvalOutcome';
 import {
   WorkflowInstanceState,
   WorkflowStatus,
@@ -43,6 +44,10 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import {
+  getApprovalOutcomeMessage,
+  getLatestApprovalOutcome,
+} from '../../../../../utils/WorkflowApprovalOutcomeUtils';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
@@ -95,6 +100,7 @@ const WorkflowHistory = memo(
       WorkflowInstanceState[]
     >([]);
     const [workflowName, setWorkflowName] = useState('');
+    const [approvals, setApprovals] = useState<ApprovalOutcome[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     // Collapse only when status is approved
@@ -129,10 +135,12 @@ const WorkflowHistory = memo(
 
         setWorkflowName(getEntityName(latestRun?.definition));
         setWorkflowHistory(latestRun?.states ?? []);
+        setApprovals(latestRun?.approvals ?? []);
       } catch (error) {
         showErrorToast(error as string);
         setWorkflowName('');
         setWorkflowHistory([]);
+        setApprovals([]);
       } finally {
         setIsLoading(false);
       }
@@ -180,25 +188,43 @@ const WorkflowHistory = memo(
     }, []);
 
     const renderTimelineItem = useCallback(
-      (item: WorkflowInstanceState) => (
-        <div
-          className="timeline-container flex gap-2 w-full relative"
-          key={item.id}>
-          <div className="relative z-10">
-            {getStatusIcon(item.status || 'RUNNING')}
-          </div>
-          <div className="horizontal-line" />
-          <div className="d-flex flex-col w-full">
-            <div className="stage-name font-medium">
-              {item.stage?.displayName ?? item.stage?.name}
+      (item: WorkflowInstanceState) => {
+        const approvalOutcome = getLatestApprovalOutcome(
+          approvals,
+          item.stage?.name
+        );
+        const message =
+          approvalOutcome && getApprovalOutcomeMessage(approvalOutcome);
+
+        return (
+          <div
+            className="timeline-container flex gap-2 w-full relative"
+            key={item.id}>
+            <div className="relative z-10">
+              {getStatusIcon(item.status || 'RUNNING')}
             </div>
-            <div className="stage-time">
-              {getShortRelativeTime(item.timestamp)}
+            <div className="horizontal-line" />
+            <div className="d-flex flex-col w-full">
+              <div className="stage-name font-medium">
+                {item.stage?.displayName ?? item.stage?.name}
+              </div>
+              {message && (
+                <Typography
+                  as="span"
+                  color="secondary"
+                  data-testid="workflow-history-approval-outcome"
+                  size="text-xs">
+                  {t(message.key, { user: message.users })}
+                </Typography>
+              )}
+              <div className="stage-time">
+                {getShortRelativeTime(item.timestamp)}
+              </div>
             </div>
           </div>
-        </div>
-      ),
-      [getStatusIcon]
+        );
+      },
+      [approvals, getStatusIcon, t]
     );
 
     const workflowSteps = useMemo(
