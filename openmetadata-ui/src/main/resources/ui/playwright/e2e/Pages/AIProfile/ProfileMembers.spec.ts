@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { Page } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
@@ -543,11 +544,21 @@ test.describe('AI Profile Members - Users pagination', () => {
     await afterAction();
   });
 
+  // A page size saved by another spec would change how many pages 31 users
+  // span, so each test picks the smallest one itself.
+  const openUsersAtSmallestPageSize = async (page: Page) => {
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    const usersList = page.getByTestId('users-list-container');
+    await usersList.getByTestId('rows-per-page-dropdown').click();
+    await page.getByTestId('rows-per-page-option-15').click();
+    await expect(usersList.locator('button', { hasText: /^3$/ })).toBeVisible();
+  };
+
   test('Should open an unvisited page with that page’s users', async ({
     page,
   }) => {
-    await navigateToMembersPanel(page);
-    await openUsersPanel(page);
+    await openUsersAtSmallestPageSize(page);
 
     // The list is cursor-paged: reaching page 3 from page 1 fetches page 2 for
     // its cursor, then page 3 from that cursor.
@@ -583,5 +594,44 @@ test.describe('AI Profile Members - Users pagination', () => {
     await expect(
       page.getByRole('textbox', { name: 'Current page' })
     ).toHaveValue('3');
+  });
+
+  test('Should go back a page with the before cursor of the page shown', async ({
+    page,
+  }) => {
+    await openUsersAtSmallestPageSize(page);
+    const usersList = page.getByTestId('users-list-container');
+    const currentPage = page.getByRole('textbox', { name: 'Current page' });
+
+    const cursorPages: Promise<unknown>[] = [];
+    page.on('response', (response) => {
+      const url = new URL(response.url());
+      if (
+        url.pathname.endsWith('/api/v1/users') &&
+        url.searchParams.has('after')
+      ) {
+        cursorPages.push(response.json());
+      }
+    });
+    await usersList.locator('button', { hasText: /^3$/ }).click();
+    await expect.poll(() => cursorPages.length).toBe(2);
+    await expect(currentPage).toHaveValue('3');
+    const pageThree = (await cursorPages[1]) as { paging: { before: string } };
+
+    const pageTwoResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/users') &&
+        url.searchParams.get('before') === pageThree.paging.before
+      );
+    });
+    await usersList.getByTestId('previous').click();
+    const pageTwo = (await (await pageTwoResponse).json()) as {
+      data: { name: string }[];
+    };
+
+    await expect(currentPage).toHaveValue('2');
+    await expect(getRowByName(page, pageTwo.data[0].name)).toBeVisible();
   });
 });

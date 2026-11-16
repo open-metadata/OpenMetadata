@@ -24,11 +24,11 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import Loader from '../../../../components/common/Loader/Loader';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { guardBreadcrumbAction } from '../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { useUserProfile } from '../../../../hooks/discovery/personal-space/useUserProfile';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../hooks/useSettingsHash';
-import { guardBreadcrumbAction } from '../../../../hooks/useUnsavedExitGuard';
 import {
   EXTENSION_POINTS,
   PluginEntityDetailsContext,

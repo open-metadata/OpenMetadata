@@ -292,7 +292,8 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   // needing to render its own header.
   useEffect(() => {
     // Same solid header tile as every other page; an entity view shows its
-    // entity's icon in it.
+    // entity's icon in it. The mapper types its icons as React.ElementType, but
+    // every entry is an icon component that takes `className`.
     const icon =
       subView.type === 'landing'
         ? Customize

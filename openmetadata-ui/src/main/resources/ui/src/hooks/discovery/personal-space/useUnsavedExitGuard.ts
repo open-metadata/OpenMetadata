@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { usePersonalSpaceStore } from './usePersonalSpaceStore';
+import { usePersonalSpaceStore } from '../../usePersonalSpaceStore';
 
 /**
  * Holds every way out of a dirty settings editor (sidebar, Esc, close button,

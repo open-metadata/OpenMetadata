@@ -23,7 +23,7 @@ import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import type { FieldValues, UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { useUnsavedExitGuard } from '../../../../../../hooks/useUnsavedExitGuard';
+import { useUnsavedExitGuard } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 
 interface SettingsFormSectionProps {

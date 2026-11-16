@@ -59,8 +59,8 @@ const PersonaAddForm = ({ onCancel, onCreated }: PersonaAddFormProps) => {
   const form = useForm<FormValues>({
     defaultValues: { name: '', displayName: '', users: [] },
   });
-  // The description editor and the domain picker hold their values outside
-  // the form, so they count as edits too.
+  // The description editor holds its value outside the form, so it counts
+  // as an edit too.
   const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
     form.formState.isDirty || hasDescription

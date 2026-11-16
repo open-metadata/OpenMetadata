@@ -24,9 +24,9 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUnsavedExitGuard } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { useUnsavedExitGuard } from '../../../../../../hooks/useUnsavedExitGuard';
 import {
   getCustomizePageCategories,
   getCustomizePageOptions,

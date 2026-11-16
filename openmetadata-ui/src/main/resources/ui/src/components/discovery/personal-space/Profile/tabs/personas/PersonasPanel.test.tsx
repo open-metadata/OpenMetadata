@@ -20,9 +20,9 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { guardBreadcrumbAction } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { guardBreadcrumbAction } from '../../../../../../hooks/useUnsavedExitGuard';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { PersonaDetailTab, PersonaView } from './Personas.types';
 import PersonasPanel from './PersonasPanel';

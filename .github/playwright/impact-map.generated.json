@@ -2363,6 +2363,7 @@
         "playwright/e2e/Features/ServiceAgentsRefresh.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/SystemCertificationTags.spec.ts",
         "playwright/e2e/Features/TagsSuggestion.spec.ts",
@@ -3374,6 +3375,7 @@
         "openmetadata-ui/src/main/resources/ui/playwright/utils/aiProfile.ts"
       ],
       "specs": [
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileAccessToken.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileOnlineUser.spec.ts",
@@ -3764,6 +3766,7 @@
         "playwright/e2e/Features/ServiceAgentsPauseResume.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/StoredProcedureServiceBulkFetch.spec.ts",
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
@@ -10920,6 +10923,7 @@
       "specs": [
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts"
       ]
     },
@@ -11267,6 +11271,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },
@@ -12921,6 +12926,7 @@
         "playwright/e2e/Features/ServiceAgentsRefresh.spec.ts",
         "playwright/e2e/Features/ServiceAgentsStatusDegradation.spec.ts",
         "playwright/e2e/Features/SettingsNavigationPage.spec.ts",
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Features/StorageMetadataAgentForm.spec.ts",
         "playwright/e2e/Features/StoredProcedureServiceBulkFetch.spec.ts",
         "playwright/e2e/Features/SuggestionsSliderPermissions.spec.ts",
@@ -13811,6 +13817,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/ProfileGovernance.spec.ts",
+        "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
         "playwright/e2e/Pages/IntakeForm.spec.ts"
       ]
     },

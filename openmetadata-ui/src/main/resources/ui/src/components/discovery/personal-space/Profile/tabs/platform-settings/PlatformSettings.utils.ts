@@ -80,7 +80,6 @@ export const viewToSubPath = (
     : `${view.page}/${EDIT_SEGMENT}`;
 };
 
-/** Number inputs hold strings; an empty input means "unset", not zero. */
 /** Save or Cancel on an editor returns to that page's view. */
 export const isLeavingEditor = (
   current: PlatformSettingsView,
@@ -93,6 +92,7 @@ export const isLeavingEditor = (
   return current.isEditing && !next.isEditing && next.page === current.page;
 };
 
+/** Number inputs hold strings; an empty input means "unset", not zero. */
 export const toOptionalNumber = (value: string): number | undefined =>
   value.trim() === '' ? undefined : Number(value);
 

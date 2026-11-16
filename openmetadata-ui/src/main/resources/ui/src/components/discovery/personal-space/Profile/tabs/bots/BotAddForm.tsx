@@ -66,8 +66,8 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
       allowImpersonation: false,
     },
   });
-  // The description editor and the domain picker hold their values outside
-  // the form, so they count as edits too.
+  // The description editor holds its value outside the form, so it counts
+  // as an edit too.
   const [hasDescription, setHasDescription] = useState(false);
   const { runGuarded, prompt } = useUnsavedChangesPrompt(
     form.formState.isDirty || hasDescription
