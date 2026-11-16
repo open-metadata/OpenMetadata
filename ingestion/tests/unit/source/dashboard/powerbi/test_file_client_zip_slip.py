@@ -47,8 +47,10 @@ class TestExtractPbit:
             _extract_pbit(zip_ref, str(dest))
 
         assert not dest.exists() or not any(dest.rglob("*")), "no traversal member may be written, even relocated"
-        assert not (tmp_path / "escape_parent.txt").exists()
-        assert not (tmp_path / "work" / "escape_nested.txt").exists()
+        # where each member would land if it escaped dest (tmp/work/extracted/evil)
+        assert not (tmp_path / "work" / "escape_parent.txt").exists()
+        assert not (tmp_path / "work" / "extracted" / "escape_nested.txt").exists()
+        assert not Path("/escape_absolute.txt").exists()
         assert logger.warning.call_count == len(TRAVERSAL_MEMBERS)
 
     def test_extracts_legitimate_members_next_to_skipped_ones(self, tmp_path):
@@ -61,7 +63,9 @@ class TestExtractPbit:
 
         assert (dest / "DataModelSchema").read_text() == "schema"
         assert (dest / "Report" / "Layout").read_text() == "layout"
-        assert not (tmp_path.parent / "bad.txt").exists()
+        # ../../bad.txt from tmp/extracted/report would land in tmp; it must not be relocated into dest either
+        assert not (tmp_path / "bad.txt").exists()
+        assert not (dest / "bad.txt").exists()
 
 
 class TestGetDatamodelSchemaFilesFromPbit:
