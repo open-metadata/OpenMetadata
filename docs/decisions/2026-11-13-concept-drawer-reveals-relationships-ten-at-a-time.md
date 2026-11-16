@@ -1,9 +1,9 @@
 # The Ontology Studio concept drawer reveals a concept's relationships ten at a time
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-15 (the live-data Search around picker follows the same reveal) · v3 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** UI team
-- **Guard:** `OntologyConceptInspector.test.tsx` — "lists ten relationships at a time and loads the next ten on demand"
+- **Guard:** `OntologyConceptInspector.test.tsx` *(openmetadata-collate)* — "lists ten relationships at a time and loads the next ten on demand"; `OntologyConceptLiveData.test.tsx` *(openmetadata-collate)* — "lists ten search-around steps and shows the rest on Show more"
 - **Related:** open-metadata/OpenMetadata#37774, ADR:2026-10-13-ui-page-sizes-lists-15-25-50-grids-12-24-48
 
 ## Context
@@ -32,3 +32,16 @@ leaves "show more" previews out of scope, so it does not decide this list.
   within the list.
 - Revisit if relationships move to a server-paged endpoint — that list would follow the 15/25/50
   scale instead.
+
+## Amendment — v2 2026-11-15
+
+The live-data **Search around** picker in the same drawer lists a concept's hop options (one per
+relationship and direction) and had the same problem on large hierarchies: FHIR concepts list
+dozens of steps. It follows this record:
+
+- The picker lists **10 steps at a time**, on the client; **Show more** adds 10 and disappears once
+  every step is shown.
+- The count resets to 10 each time Search around is opened.
+- The value lives in `STEP_PAGE_SIZE` (`OntologyConceptLiveData.tsx`), cited to this record.
+
+v3 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

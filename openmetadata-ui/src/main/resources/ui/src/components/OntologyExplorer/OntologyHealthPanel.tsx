@@ -91,6 +91,10 @@ function getHealthPanelLayout(
   };
 }
 
+// Never 100% while a term is isolated: 2409 of 2413 rounds to 100 otherwise.
+const getShownPercent = (percent: number, hasIsolated: boolean) =>
+  hasIsolated ? Math.min(Math.floor(percent), 99) : percent;
+
 const OntologyHealthPanel = ({
   aiProposals,
   isRaised = false,
@@ -113,6 +117,10 @@ const OntologyHealthPanel = ({
   };
   const isolatedCount = isolatedTermCount ?? health.isolatedTerms.length;
   const hasIsolated = isolatedCount > 0;
+  const connectedPercent = getShownPercent(
+    health.connectedPercent,
+    hasIsolated
+  );
   const layout = getHealthPanelLayout(placement, isRaised, view);
   const { cardClass, isMinimized, isSidebar, positionClass } = layout;
   // With every term connected the summary already says so; an empty list adds nothing.
@@ -146,7 +154,7 @@ const OntologyHealthPanel = ({
           {t('label.health')}
           {connectedBar('tw:h-1.5 tw:w-11')}
           <span className="tw:font-semibold tw:text-primary">
-            {health.connectedPercent}%
+            {connectedPercent}%
           </span>
           {aiProposals ? (
             <BadgeWithIcon
@@ -317,7 +325,7 @@ const OntologyHealthPanel = ({
         {renderTitleRow()}
         <div className="tw:flex tw:items-baseline tw:gap-2">
           <Typography size={isAiMode ? 'text-lg' : 'text-md'} weight="semibold">
-            {health.connectedPercent}%
+            {connectedPercent}%
           </Typography>
           <Typography color="secondary" size="text-xs">
             {t('message.count-of-total-terms-connected', {
