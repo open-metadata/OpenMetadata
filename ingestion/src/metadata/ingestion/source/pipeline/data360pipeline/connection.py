@@ -65,18 +65,29 @@ class Data360PipelineConnection(BaseConnection[Data360PipelineConnectionConfig, 
     ) -> TestConnectionResult:
         """Validates connectivity and that the connected app can list each object
         type ingested as a pipeline. Authenticating is not enough on its own, since
-        Data 360 grants its scopes per API."""
-        client = self.client
+        Data 360 grants its scopes per API.
+
+        The client logs in to Salesforce when it is first built, so it is only
+        reached inside the steps: a wrong secret or domain then fails
+        `CheckAccess` with the Salesforce error instead of raising before any
+        step result exists."""
         service_connection = self.service_connection
 
+        def check_access() -> None:
+            # Reading `self.client` here, not when the dict is built, is what
+            # keeps the Salesforce login inside this step.
+            self.client.describe()
+
         test_fn = {
-            "CheckAccess": client.describe,
-            "GetPipelines": lambda: get_datastreams(client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning),
+            "CheckAccess": check_access,
+            "GetPipelines": lambda: get_datastreams(
+                self.client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
+            ),
             "GetCalculatedInsights": lambda: get_calculated_insights(
-                client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
+                self.client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
             ),
             "GetDataTransforms": lambda: get_datatransforms(
-                client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
+                self.client, pagination_limit=PROBE_LIMIT, log_warning=logger.warning
             ),
         }
         return test_connection_steps(

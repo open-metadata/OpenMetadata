@@ -32,7 +32,6 @@ import {
 } from '../../utils/AnnouncementsUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import RichTextEditorPreviewerV1 from '../common/RichTextEditor/RichTextEditorPreviewerV1';
 import {
   EditableAnnouncement,
@@ -189,17 +188,12 @@ const AnnouncementFeedCardBody = ({
       <Box align="center" className="tw:gap-2">
         {announcement.createdBy && (
           <>
-            <UserPopOverCard userName={announcement.createdBy}>
-              <span className="tw:flex tw:items-center tw:gap-2">
-                <ProfilePicture name={announcement.createdBy} width="16" />
-                <Typography
-                  as="span"
-                  className="tw:text-secondary"
-                  size="text-xs">
-                  {announcement.createdBy}
-                </Typography>
-              </span>
-            </UserPopOverCard>
+            <UserPopOverCard
+              showUserName
+              className="tw:text-xs tw:text-secondary"
+              profileWidth={16}
+              userName={announcement.createdBy}
+            />
             <span className="tw:text-border-secondary">|</span>
           </>
         )}

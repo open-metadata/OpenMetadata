@@ -33,7 +33,6 @@ FULL_PROJECTS = {
     "AdvancedSearch",
     "visual-regression",
     "Knowledge Graph",
-    "Ontology RDF",
 }
 PROJECT_LANES = {
     "chromium": "chromium",
@@ -64,7 +63,6 @@ PROJECT_LANES = {
     # in; rdf needs Fuseki and an RDF-enabled server seeded from scratch.
     "visual-regression": "visual",
     "Knowledge Graph": "rdf",
-    "Ontology RDF": "rdf",
 }
 GATED_LANES = {"visual", "rdf"}
 PROJECT_DEPENDENCIES = {
@@ -795,7 +793,7 @@ def main() -> None:
         if not any(selector_matches_unit(selector, unit) for unit in discovered_units)
     ]
     # An unmatched selector whose spec file exists on disk has simply had all of
-    # its tests filtered out of this lane by the tag grep (e.g. an @ontology-rdf
+    # its tests filtered out of this lane by the tag grep (e.g. a @knowledge-graph
     # spec picked up by change-detection but only runnable in the dedicated RDF
     # lane). Warn and skip it. A selector whose spec file does NOT exist is a
     # stale/typo'd path that matches nothing anywhere — keep failing on that.

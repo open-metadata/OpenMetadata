@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -93,20 +94,83 @@ export async function findOntologyInScopeMenu(
   return page.getByTestId(`ontology-scope-${ontology.id}`);
 }
 
-/**
- * The release history control: a chip with the version for readers, an icon for editors whose
- * accessible name carries the same text. Matches either by name.
- */
-export const releaseNameContaining = (text: string) =>
-  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+/** The concept panel's relationship type is a select; picks one by type id. */
+export async function chooseInspectorRelationType(
+  page: Page,
+  inspector: Locator,
+  typeId: string
+) {
+  await selectOptionWithRetry(
+    inspector.getByTestId('ontology-relationship-type').getByRole('button'),
+    page.getByTestId(`relation-type-${typeId}`)
+  );
+}
 
-/** One ontology's Import / export button opens a menu; this opens the dialog on the chosen tab. */
+/** Opens the full relationship chooser (search, glosses, new type) from the panel's select. */
+export async function openInspectorRelationChooser(
+  page: Page,
+  inspector: Locator
+) {
+  await chooseInspectorRelationType(
+    page,
+    inspector,
+    '__browse-relation-types__'
+  );
+  await expect(page.getByTestId('relationship-type-picker')).toBeVisible();
+}
+
+/**
+ * Opens release history: readers have the release chip, editors reach it under
+ * Review & publish → Releases.
+ */
+export async function openReleaseHistory(page: Page) {
+  const readerChip = page.getByTestId('ontology-release-history-trigger');
+  const publish = page.getByTestId('ontology-publication-trigger');
+  // A user has exactly one of the two, so the union never matches twice. Which one
+  // can still swap while permissions load, so the pick and click retry together.
+  await expect(readerChip.or(publish)).toBeVisible();
+  let isReader = false;
+  await expect(async () => {
+    isReader = await readerChip.isVisible();
+    await (isReader ? readerChip : publish).click({ timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
+  if (isReader) {
+    return;
+  }
+  await page.getByTestId('ontology-publication-tab-releases').click();
+  await expect(
+    page.getByTestId('ontology-publication-tab-releases')
+  ).toHaveAttribute('aria-selected', 'true');
+}
+
+/** The Import / export button opens a menu; this opens the Import or the Export dialog. */
 export async function openOntologyTransfer(
   page: Page,
-  tab: 'import' | 'export' = 'export'
+  dialog: 'import' | 'export' = 'export'
 ) {
   await page.getByTestId('ontology-import-export-trigger').click();
-  await page.getByTestId(`ontology-${tab}-menu-item`).click();
+  await page.getByTestId(`ontology-${dialog}-menu-item`).click();
+}
+
+/** The export scope, options, preview and SHACL check sit in the dialog's collapsed Advanced section. */
+export async function openExportAdvanced(page: Page) {
+  const advanced = page.getByTestId('ontology-export-advanced');
+  if ((await advanced.getAttribute('aria-expanded')) !== 'true') {
+    await advanced.click();
+  }
+  await expect(advanced).toHaveAttribute('aria-expanded', 'true');
+}
+
+/** Opens one ontology's Import dialog and points it at a new ontology instead. */
+export async function openNewOntologyImport(
+  page: Page,
+  owner: Pick<Ontology, 'id'>
+) {
+  await page.goto(`/governance/ontology?ontology=${owner.id}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await openOntologyTransfer(page, 'import');
+  await page.getByTestId('ontology-native-import-target').click();
+  await page.getByRole('option', { name: /new ontology/i }).click();
 }
 
 /** The ontology chooser is a searchable dropdown; typing the name shows the fixture's option. */
@@ -291,7 +355,8 @@ const CANVAS_OVERLAY_TEST_IDS = [
 
 export async function findEmptyCanvasPoint(
   page: Page,
-  clearance = 160
+  clearance = 160,
+  { besideDrawer = false } = {}
 ): Promise<{ x: number; y: number }> {
   // The graph re-fits when a side panel opens or closes, so measure only once
   // two reads agree.
@@ -335,8 +400,18 @@ export async function findEmptyCanvasPoint(
         y >= rect.y - 40 &&
         y <= rect.y + rect.height + 40
     );
+  // A studio drawer is 40vw with a 420px floor plus its 8px inset
+  // (ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor). A node created
+  // under it is panned into view when it opens, so it no longer sits at the click.
+  const viewportWidth = page.viewportSize()?.width ?? 0;
+  const right = besideDrawer
+    ? Math.min(
+        box.x + box.width,
+        viewportWidth - Math.max(viewportWidth * 0.4, 420) - 8
+      )
+    : box.x + box.width;
   const candidates = [];
-  for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
+  for (let x = box.x + 120; x < right - 120; x += 40) {
     for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
       if (!isUnderOverlay(x, y)) {
         candidates.push({ x, y });
