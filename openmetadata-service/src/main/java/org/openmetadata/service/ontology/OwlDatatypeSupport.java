@@ -11,6 +11,13 @@ import org.openmetadata.schema.type.OntologyLiteral;
 
 /** The OWL 2 datatype map; arbitrary XSD names are not necessarily OWL 2 DL datatypes. */
 public final class OwlDatatypeSupport {
+  /**
+   * The OWL 2 datatype map has no date-only type, so a Date property ranges over this datatype,
+   * defined as equivalent to {@code xsd:dateTime}; values are dateTimes at midnight. A defined
+   * datatype has no lexical space of its own, so literals are typed {@code xsd:dateTime}.
+   */
+  public static final URI DATE = URI.create("https://open-metadata.org/ontology/date");
+
   private static final Set<String> XSD_TYPES =
       Set.of(
           "string",
@@ -56,6 +63,7 @@ public final class OwlDatatypeSupport {
   public static boolean isSupported(final URI iri) {
     final String value = iri == null ? "" : iri.toString();
     return OTHER_TYPES.contains(value)
+        || DATE.toString().equals(value)
         || (value.startsWith(XSD.NS) && XSD_TYPES.contains(value.substring(XSD.NS.length())));
   }
 

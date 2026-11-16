@@ -703,6 +703,11 @@ final class NativeOntologyRdfReader {
   }
 
   private void references() {
+    remaining.remove(
+        model.createStatement(
+            model.createResource(OwlDatatypeSupport.DATE.toString()),
+            OWL2.equivalentClass,
+            XSD.dateTime));
     for (final Statement statement : List.copyOf(remaining)) {
       if (!statement.getPredicate().equals(RDF.type)
           || !statement.getSubject().isURIResource()
