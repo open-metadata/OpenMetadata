@@ -151,17 +151,22 @@ class IngestionPipelineMigrationEntryPointTest {
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
-      // Each destination's id owns its secrets, so ids are settled before secrets are bound.
+      // A value a 2.1 pre-release bound to its destination opens for the destination's id, so ids
+      // are settled before the secrets are encrypted.
       InOrder idsThenSecrets = inOrder(DestinationIdMigration.class, WebhookSecretsMigration.class);
       idsThenSecrets.verify(
           destinationIdMigration,
           () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, connectionType));
+          () ->
+              WebhookSecretsMigration.encryptProfileWebhookSecrets(
+                  handle, migration.getVersion(), connectionType));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, connectionType));
+          () ->
+              WebhookSecretsMigration.encryptAlertDestinationSecrets(
+                  handle, migration.getVersion(), connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->

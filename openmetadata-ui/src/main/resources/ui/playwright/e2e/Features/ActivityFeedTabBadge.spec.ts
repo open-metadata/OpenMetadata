@@ -325,4 +325,48 @@ test.describe('ActivityFeedTab — task filter badge, placeholder and mentions',
       await afterAction();
     }
   });
+
+  test('right panel drops the All selection on the Tasks and Mentions sub-tabs', async ({
+    browser,
+  }) => {
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const selectionTable = new TableClass();
+    const message = `Selected on All ${Date.now()}`;
+
+    try {
+      await selectionTable.create(apiContext);
+      await createConversationThread(apiContext, selectionTable, message);
+
+      await selectionTable.visitEntityPage(page);
+      await page.getByTestId('activity_feed').click();
+      await waitForPageLoaded(page);
+
+      const rightPanelCard = page.locator('#feed-panel, #activity-panel');
+
+      await expect(rightPanelCard).toContainText(message);
+
+      const tasksResponse = waitForTaskListResponse(page);
+      await page.getByTestId('activity-feed-left-panel-tasks').click();
+      await tasksResponse;
+
+      const centerList = page.locator('#center-container');
+
+      await expect(centerList.getByText('Great News')).toBeVisible();
+      await expect(rightPanelCard).toHaveCount(0);
+
+      const mentionsResponse = waitForMentionedConversationResponse(page);
+      await page.getByTestId('mentions-toggle').click();
+      await mentionsResponse;
+
+      await expect(
+        centerList.getByText(/no mentions in any activities just yet/)
+      ).toBeVisible();
+      await expect(rightPanelCard).toHaveCount(0);
+    } finally {
+      await selectionTable.delete(apiContext);
+      await afterAction();
+    }
+  });
 });

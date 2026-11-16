@@ -20,6 +20,13 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+# The quick search gives dossiers and Report Services documents the same type (55) and subtype
+# (14081); only viewMedia tells them apart. A dossier has bits 30 and 29 set and bits 31 and 27
+# clear, the rule MicroStrategy's own SDK (mstrio-py, ``is_dashboard``) applies.
+# ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
+DOSSIER_VIEW_MEDIA_MASK = 0xE800_0000
+DOSSIER_VIEW_MEDIA = 0x6000_0000
+
 
 class MstrModel(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -52,6 +59,12 @@ class MstrSearchResult(MstrModel):
     name: str
     description: str | None = None
     owner: MstrOwner | None = None
+    viewMedia: int | None = None  # noqa: N815
+
+    @property
+    def is_dossier(self) -> bool:
+        """A result without viewMedia is read as a dossier, as before the field was used"""
+        return self.viewMedia is None or self.viewMedia & DOSSIER_VIEW_MEDIA_MASK == DOSSIER_VIEW_MEDIA
 
 
 class MstrSearchPage(MstrModel):

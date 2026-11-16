@@ -71,6 +71,7 @@ import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRec
 import org.openmetadata.service.resources.tags.ClassificationResource;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityFieldUtils;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -183,6 +184,20 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     if (classifications == null || classifications.isEmpty()) {
       return termCountMap;
     }
+    // The bulk count cannot take the navbar filter; under a pick each count uses the list's filter,
+    // resolved once so the batch shares one domain lookup.
+    ListFilter navbar = navbarTagFilter();
+    if (navbar.getQueryParam("domainId") != null) {
+      for (Classification classification : classifications) {
+        ListFilter filter =
+            new ListFilter(Include.NON_DELETED)
+                .addQueryParam("parent", classification.getFullyQualifiedName());
+        navbar.getQueryParams().forEach(filter::addQueryParam);
+        termCountMap.put(
+            classification.getFullyQualifiedName(), daoCollection.tagDAO().listCount(filter));
+      }
+      return termCountMap;
+    }
 
     try {
       // Convert classifications to their hash representations
@@ -269,7 +284,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     ListFilter filter =
         new ListFilter(Include.NON_DELETED)
             .addQueryParam("parent", classification.getFullyQualifiedName());
+    // The count labels the tag list, which follows the navbar pick, so it is filtered the same way.
+    EntityUtil.addNavbarDomainFilter(filter, Entity.TAG, () -> null);
     return daoCollection.tagDAO().listCount(filter);
+  }
+
+  private static ListFilter navbarTagFilter() {
+    ListFilter navbar = new ListFilter();
+    EntityUtil.addNavbarDomainFilter(navbar, Entity.TAG, () -> null);
+    return navbar;
   }
 
   private Integer getUsageCount(Classification classification) {
