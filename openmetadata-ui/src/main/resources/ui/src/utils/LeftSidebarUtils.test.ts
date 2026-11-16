@@ -97,9 +97,6 @@ describe('getSidebarActiveKeys', () => {
     expect(
       getSidebarActiveKeys('/context-center/overview', SIDEBAR_NESTED_KEYS)
     ).toEqual(['/context-center/overview']);
-    expect(
-      getSidebarActiveKeys('/governance/ontology', SIDEBAR_NESTED_KEYS)
-    ).toEqual(['/governance/ontology']);
   });
 
   it('should honour an extended nested-keys map (e.g. Collate)', () => {

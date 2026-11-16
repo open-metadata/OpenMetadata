@@ -24,7 +24,6 @@ import {
   WorkflowsFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
-import { OntologyStudioIcon } from '../../../utils/IconUtils';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
 /**
@@ -41,12 +40,7 @@ export const governModule: AppModule = {
   icon: Bank02,
   activeIcon: GovernanceFilled,
   prefix: ROUTES.GLOSSARY,
-  additionalPrefixes: [
-    ROUTES.TAGS,
-    ROUTES.ONTOLOGY_EXPLORER,
-    ROUTES.METRICS,
-    ROUTES.WORKFLOWS,
-  ],
+  additionalPrefixes: [ROUTES.TAGS, ROUTES.METRICS, ROUTES.WORKFLOWS],
   defaultPath: ROUTES.GLOSSARY,
   routes: [],
   subNav: {
@@ -62,12 +56,6 @@ export const governModule: AppModule = {
             activeIcon: GlossaryFilled,
             labelKey: 'label.glossary',
             path: ROUTES.GLOSSARY,
-          },
-          {
-            key: 'ontology-explorer',
-            icon: OntologyStudioIcon,
-            labelKey: 'label.ontology-studio',
-            path: ROUTES.ONTOLOGY_EXPLORER,
           },
           {
             key: 'tags',

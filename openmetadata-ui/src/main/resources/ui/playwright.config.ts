@@ -436,6 +436,8 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     {
+      // The @ontology-rdf specs moved to Collate with Ontology Studio. The project stays
+      // until the rdf lane in playwright-e2e-reusable.yml stops listing it.
       name: 'Ontology RDF',
       // Same graph canvas as Knowledge Graph — keep the default motion path so
       // fit/centering geometry matches the assertions.
