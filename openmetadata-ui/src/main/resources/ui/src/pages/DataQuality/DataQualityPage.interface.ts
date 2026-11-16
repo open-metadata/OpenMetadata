@@ -14,12 +14,10 @@
 import { DataQualityPageTabs } from '../../enums/DataQuality.enum';
 import { TestSummary } from '../../generated/tests/testCase';
 
-export { DataQualityPageTabs } from '../../enums/DataQuality.enum';
-
-export enum DataQualitySubTabs {
-  TABLE_SUITES = 'table-suites',
-  BUNDLE_SUITES = 'bundle-suites',
-}
+export {
+  DataQualityPageTabs,
+  DataQualitySubTabs,
+} from '../../enums/DataQuality.enum';
 
 export interface DataQualityContextInterface {
   isTestCaseSummaryLoading: boolean;

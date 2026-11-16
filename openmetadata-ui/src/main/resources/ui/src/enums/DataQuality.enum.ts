@@ -39,3 +39,8 @@ export enum DataQualityPageTabs {
   TEST_CASES = 'test-cases',
   DASHBOARD = 'dashboard',
 }
+
+export enum DataQualitySubTabs {
+  TABLE_SUITES = 'table-suites',
+  BUNDLE_SUITES = 'bundle-suites',
+}
