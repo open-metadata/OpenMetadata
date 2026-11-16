@@ -248,39 +248,6 @@ class CompiledRuleTest {
   }
 
   @Test
-  void entityTypeRequestDeniesWhenACallerOnlyBranchHoldsInEitherOrder() {
-    ResourceContextInterface typeLevel = ownerlessTable(true);
-
-    for (String condition :
-        List.of(
-            "!matchTeam() || !isImpersonated()",
-            "!isImpersonated() || !matchTeam()",
-            "!(matchTeam() && isImpersonated())",
-            "!(isImpersonated() && matchTeam())")) {
-      assertThrows(
-          AuthorizationException.class,
-          () -> evaluateViewCustomFieldsDeny(conditionalDeny(condition), typeLevel),
-          condition);
-    }
-  }
-
-  @Test
-  void entityTypeRequestSkipsDenyWhoseOutcomeDependsOnTheAssetInEitherOrder() {
-    ResourceContextInterface typeLevel = ownerlessTable(true);
-
-    for (String condition :
-        List.of(
-            "isImpersonated() || !matchTeam()",
-            "!matchTeam() || isImpersonated()",
-            "!isImpersonated() && !matchTeam()",
-            "!matchTeam() && !isImpersonated()",
-            "!matchTeam() && isImpersonated()")) {
-      assertDoesNotThrow(
-          () -> evaluateViewCustomFieldsDeny(conditionalDeny(condition), typeLevel), condition);
-    }
-  }
-
-  @Test
   void entityTypeRequestSkipsDenyThatReadsTheAsset() {
     CompiledRule denyOutsideTeam = conditionalDeny("!matchTeam()");
 
@@ -292,19 +259,23 @@ class CompiledRuleTest {
   }
 
   @Test
-  void entityTypeRequestStillEvaluatesSubjectOnlyAndUnconditionalDenies() {
+  void entityTypeRequestSkipsEveryConditionalDenyButEnforcesUnconditionalOnes() {
     ResourceContextInterface typeLevel = ownerlessTable(true);
 
-    assertThrows(
-        AuthorizationException.class,
-        () -> evaluateViewCustomFieldsDeny(conditionalDeny("!isImpersonated()"), typeLevel));
-    assertThrows(
-        AuthorizationException.class,
-        () -> evaluateViewCustomFieldsDeny(conditionalDeny("!isAdminUser()"), typeLevel),
-        "isAdminUser() reads only the resource type on a table, so it decides without an asset");
+    for (String condition :
+        List.of("!isImpersonated()", "!isAdminUser()", "!matchTeam() || !isImpersonated()")) {
+      assertDoesNotThrow(
+          () -> evaluateViewCustomFieldsDeny(conditionalDeny(condition), typeLevel), condition);
+    }
     assertThrows(
         AuthorizationException.class,
         () -> evaluateViewCustomFieldsDeny(conditionalDeny(null), typeLevel));
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            evaluateViewCustomFieldsDeny(
+                conditionalDeny("!isImpersonated()"), ownerlessTable(false)),
+        "an ordinary context still enforces a conditional deny");
   }
 
   private static CompiledRule conditionalDeny(String condition) {

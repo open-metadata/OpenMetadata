@@ -190,22 +190,18 @@ public class CompiledRule extends Rule {
   }
 
   /**
-   * A request about an entity type has no asset, so a condition that reads one (owners, team,
-   * domain, tags, ...) says nothing there: {@code !matchTeam()} would turn into an unconditional
-   * deny (#37759). There the deny applies only if its condition holds whatever the asset is; it is
-   * still enforced on every asset read.
+   * A request about an entity type has no asset to evaluate a condition against, so only an
+   * unconditional deny applies there (e.g. {@code !matchTeam()} would otherwise deny everyone).
+   * Conditional denies are still enforced on every asset read.
    */
   private boolean matchesDenyCondition(
       PolicyContext policyContext,
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext) {
-    if (resourceContext == null || !resourceContext.isEntityTypeLevel()) {
-      return matchExpression(policyContext, subjectContext, resourceContext);
+    if (resourceContext != null && resourceContext.isEntityTypeLevel()) {
+      return getCondition() == null;
     }
-    Expression condition = getExpression();
-    return condition == null
-        || EntityTypeConditionEvaluator.holdsForEveryAsset(
-            condition, policyContext, subjectContext, resourceContext);
+    return matchExpression(policyContext, subjectContext, resourceContext);
   }
 
   private Access getAccess() {
@@ -344,19 +340,13 @@ public class CompiledRule extends Rule {
     if (expr == null) {
       return true;
     }
-    return Boolean.TRUE.equals(
-        expr.getValue(
-            evaluationContext(policyContext, subjectContext, resourceContext), Boolean.class));
-  }
-
-  static SimpleEvaluationContext evaluationContext(
-      PolicyContext policyContext,
-      SubjectContext subjectContext,
-      ResourceContextInterface resourceContext) {
-    return SimpleEvaluationContext.forReadOnlyDataBinding()
-        .withInstanceMethods()
-        .withRootObject(new RuleEvaluator(policyContext, subjectContext, resourceContext))
-        .build();
+    RuleEvaluator ruleEvaluator = new RuleEvaluator(policyContext, subjectContext, resourceContext);
+    SimpleEvaluationContext context =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(ruleEvaluator)
+            .build();
+    return Boolean.TRUE.equals(expr.getValue(context, Boolean.class));
   }
 
   public static boolean overrideAccess(Access newAccess, Access currentAccess) {

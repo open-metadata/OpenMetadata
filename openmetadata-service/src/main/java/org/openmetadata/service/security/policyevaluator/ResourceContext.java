@@ -64,7 +64,11 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
     this.entityRepository = (EntityRepository<T>) Entity.getEntityRepository(resource);
   }
 
-  /** A context for a request about the entity type itself, such as its custom properties. */
+  /**
+   * A context for a request about the entity type itself, such as its custom property definitions.
+   * Conditional deny rules are skipped for it, so never use it for a request that returns asset
+   * data.
+   */
   public static <T extends EntityInterface<?>> ResourceContext<T> forEntityType(
       @NonNull String resource) {
     ResourceContext<T> context = new ResourceContext<>(resource);
