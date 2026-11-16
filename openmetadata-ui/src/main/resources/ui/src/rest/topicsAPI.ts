@@ -153,20 +153,10 @@ export interface TopicSchemaFieldParams {
   sortOrder?: 'asc' | 'desc';
 }
 
-// Without a name sort, ask for ordinalPosition: topic fields have none, so every field
-// ties and the server's stable sort keeps schema order (its own default is by name).
-const SCHEMA_ORDER_SORT = 'ordinalPosition';
-
-const schemaFieldSortParams = (
-  sortOrder?: 'asc' | 'desc',
-  isSearch?: boolean
-) => {
-  if (sortOrder) {
-    return { sortBy: 'name', sortOrder };
-  }
-
-  return isSearch ? {} : { sortBy: SCHEMA_ORDER_SORT };
-};
+// 'schema' keeps fields in stored order (the endpoint's own default sorts by name).
+// See ADR:2026-11-16-topic-schema-field-search-returns-flat-rows.
+const schemaFieldSortParams = (sortOrder?: 'asc' | 'desc') =>
+  sortOrder ? { sortBy: 'name', sortOrder } : { sortBy: 'schema' };
 
 export const getTopicSchemaFieldsByFQN = async (
   fqn: string,
@@ -179,7 +169,7 @@ export const getTopicSchemaFieldsByFQN = async (
       params: {
         ...rest,
         ...(q && { q }),
-        ...schemaFieldSortParams(sortOrder, Boolean(q)),
+        ...schemaFieldSortParams(sortOrder),
         include: rest.include ?? Include.All,
       },
     }

@@ -1737,14 +1737,15 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Test
-  void schemaFieldPage_ordinalPositionSortKeepsSchemaOrder(TestNamespace ns) {
+  void schemaFieldPage_schemaSortKeepsStoredOrder(TestNamespace ns) {
     final Topic topic = createSearchableSchemaTopic(ns);
 
-    final JsonNode page =
-        schemaFieldPage(topic, "/columns?limit=1&offset=1&sortBy=ordinalPosition");
+    final JsonNode schemaOrder = schemaFieldPage(topic, "/columns?limit=2&offset=0&sortBy=schema");
+    final JsonNode defaultOrder = schemaFieldPage(topic, "/columns?limit=2&offset=0");
 
-    assertEquals(List.of("address"), fieldNames(page));
-    assertEquals(2, page.path("paging").path("total").asInt());
+    assertEquals(List.of("id", "address"), fieldNames(schemaOrder));
+    assertEquals(List.of("address", "id"), fieldNames(defaultOrder));
+    assertEquals(2, schemaOrder.path("paging").path("total").asInt());
   }
 
   @Test
