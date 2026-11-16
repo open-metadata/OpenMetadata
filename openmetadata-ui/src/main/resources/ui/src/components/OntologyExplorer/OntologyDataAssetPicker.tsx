@@ -239,8 +239,8 @@ const getOptionClassName = (isDialog: boolean, isAiMode: boolean) => {
 
   // A size container, so the label inside can be measured against the row.
   return isAiMode
-    ? 'tw:@container tw:px-3.5 tw:py-2'
-    : 'tw:@container tw:px-3 tw:py-2';
+    ? 'tw:@container tw:px-3.5 tw:py-2.5'
+    : 'tw:@container tw:px-3 tw:py-2.5';
 };
 
 // The core checkbox label sizes to its text, so a long path would never ellipsize; inline,
@@ -711,7 +711,8 @@ const OntologyDataAssetPicker = ({
             <Typography
               as="span"
               className="tw:shrink-0 tw:text-tertiary"
-              size="text-xs">
+              size="text-xs"
+              weight="regular">
               {entityUtilClassBase.getFormattedEntityType(asset.type)}
             </Typography>
           </span>
@@ -719,7 +720,8 @@ const OntologyDataAssetPicker = ({
             ellipsis
             as="span"
             className="tw:pt-0.5 tw:text-tertiary"
-            size="text-xs">
+            size="text-xs"
+            weight="regular">
             {getAssetPath(asset)}
           </Typography>
         </span>
@@ -847,7 +849,7 @@ const OntologyDataAssetPicker = ({
         className={classNames(
           'tw:m-0 tw:flex tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-x-hidden tw:p-0',
           // In the dialog the content pane scrolls, so its footer divider marks the overflow.
-          !isDialog && 'tw:max-h-80 tw:overflow-y-auto'
+          !isDialog && 'tw:max-h-120 tw:overflow-y-auto'
         )}>
         {openSuggestions.length > 0 ? (
           <li
@@ -1058,7 +1060,7 @@ const OntologyDataAssetPicker = ({
 
   return (
     <Card
-      className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3 tw:p-4"
+      className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3 tw:border-brand tw:outline-4 tw:outline-utility-brand-100 tw:p-4"
       data-testid="ontology-data-asset-picker">
       <Box align="center" justify="between">
         <Typography as="span" size="text-sm" weight="semibold">
@@ -1075,35 +1077,29 @@ const OntologyDataAssetPicker = ({
         />
       </Box>
       {renderSearch()}
-      {renderFilters()}
-      <Card className="tw:flex tw:min-w-0 tw:flex-col tw:overflow-hidden tw:p-0">
-        <Box className="tw:border-b tw:border-secondary tw:p-3">
-          <Tabs
-            className="tw:w-fit"
-            selectedKey={scope}
-            onSelectionChange={(key) => setScope(key as AssetScope)}>
-            <Tabs.List size="sm" type="button-minimal">
-              <Tabs.Item id="all" label={t('label.all')} />
-              <Tabs.Item id="tables" label={t('label.table-plural')} />
-              {!native ? (
-                <Tabs.Item id="columns" label={t('label.column-plural')} />
-              ) : null}
-            </Tabs.List>
-            <Tabs.Panel className="tw:hidden" id="all" />
-            <Tabs.Panel className="tw:hidden" id="tables" />
-            <Tabs.Panel className="tw:hidden" id="columns" />
-          </Tabs>
-        </Box>
-        <Box
-          className={classNames(
-            'tw:border-b tw:border-secondary',
-            isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:bg-secondary tw:px-3 tw:py-2.5'
-          )}>
-          {renderSelectAll()}
-        </Box>
+      <Box align="center" gap={2} wrap="wrap">
+        <Tabs
+          className="tw:w-fit"
+          selectedKey={scope}
+          onSelectionChange={(key) => setScope(key as AssetScope)}>
+          <Tabs.List size="sm" type="button-minimal">
+            <Tabs.Item id="all" label={t('label.all')} />
+            <Tabs.Item id="tables" label={t('label.table-plural')} />
+            {!native ? (
+              <Tabs.Item id="columns" label={t('label.column-plural')} />
+            ) : null}
+          </Tabs.List>
+          <Tabs.Panel className="tw:hidden" id="all" />
+          <Tabs.Panel className="tw:hidden" id="tables" />
+          <Tabs.Panel className="tw:hidden" id="columns" />
+        </Tabs>
+        {renderFilters()}
+        <Box className="tw:ml-auto">{renderSelectAll()}</Box>
+      </Box>
+      <Box className="tw:min-w-0 tw:overflow-hidden" direction="col">
         {renderList()}
         {renderListFooter()}
-      </Card>
+      </Box>
       {renderBatchStatus()}
       <Box align="center" gap={2} justify="end">
         {renderSelectedCount()}

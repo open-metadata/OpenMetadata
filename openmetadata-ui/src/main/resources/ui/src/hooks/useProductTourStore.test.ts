@@ -10,10 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import '@deuex-solutions/react-tour';
+import { act } from '@testing-library/react';
+import { useProductTourStore } from './useProductTourStore';
 
-declare module '@deuex-solutions/react-tour' {
-  interface ReactProps {
-    closeWithMask?: boolean;
-  }
-}
+describe('useProductTourStore', () => {
+  it('opens and closes the tour', () => {
+    expect(useProductTourStore.getState().isOpen).toBe(false);
+
+    act(() => useProductTourStore.getState().open());
+
+    expect(useProductTourStore.getState().isOpen).toBe(true);
+
+    act(() => useProductTourStore.getState().close());
+
+    expect(useProductTourStore.getState().isOpen).toBe(false);
+  });
+});

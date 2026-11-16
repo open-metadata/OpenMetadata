@@ -46,6 +46,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.FieldInterface;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
@@ -172,6 +174,84 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
             securityContext, fqn, limit, offset, fieldsParam, include, sortBy, sortOrder);
     TopicSchemaFieldList result = new TopicSchemaFieldList();
     result.setData(page.getData());
+    result.setPaging(page.getPaging());
+    return result;
+  }
+
+  @GET
+  @Path("/name/{fqn}/columns/search")
+  @Operation(
+      operationId = "searchTopicSchemaFieldsByFQN",
+      summary = "Search schema fields of a topic by fully qualified name",
+      description =
+          "Search schema fields, including nested ones, by name, display name or description "
+              + "with server-side pagination. Matches are returned in schema order.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Paginated matching schema fields",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = TopicSchemaFieldList.class))),
+        @ApiResponse(responseCode = "404", description = "Topic not found")
+      })
+  public TopicSchemaFieldList searchSchemaFieldsByFQN(
+      @Context SecurityContext securityContext,
+      @Parameter(
+              description = "Fully qualified name of the topic",
+              schema = @Schema(type = "string"))
+          @PathParam("fqn")
+          String fqn,
+      @Parameter(description = "Search query for field names, display names or descriptions")
+          @QueryParam("q")
+          String query,
+      @Parameter(description = "Limit the number of fields returned (1 to 1000, default = 50)")
+          @DefaultValue("50")
+          @Min(1)
+          @Max(1000)
+          @QueryParam("limit")
+          int limit,
+      @Parameter(description = "Offset for pagination (default = 0)")
+          @DefaultValue("0")
+          @Min(0)
+          @QueryParam("offset")
+          int offset,
+      @Parameter(description = "Fields requested in the returned schema fields (tags)")
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Include all, deleted, or non-deleted entities.")
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include,
+      @Parameter(
+              description = "Sort matches by. Supported value: 'name'. Omit to keep schema order.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        getResourceContextByName(fqn, include));
+    ResultList<Field> page =
+        repository.searchSchemaFieldsByFQN(
+            fqn,
+            new TopicRepository.SchemaFieldSearch(
+                query, limit, offset, fieldsParam, include, sortBy, sortOrder));
+    TopicSchemaFieldList result = new TopicSchemaFieldList();
+    result.setData(new ArrayList<>(page.getData()));
     result.setPaging(page.getPaging());
     return result;
   }

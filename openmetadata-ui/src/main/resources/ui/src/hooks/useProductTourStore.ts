@@ -10,18 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ProductTourStep } from '../../../interface/product-tour/productTour.interface';
-import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
+import { create } from 'zustand';
 
-/** A step's copy, with its feature name in bold. */
-const ProductTourStepContent = ({ i18nKey, labelKey }: ProductTourStep) => (
-  <p>
-    <Transi18next
-      i18nKey={i18nKey}
-      renderElement={<strong />}
-      values={{ text: i18n.t(labelKey) }}
-    />
-  </p>
-);
+interface ProductTourStore {
+  isOpen: boolean;
+  open: () => void;
+  close: () => void;
+}
 
-export default ProductTourStepContent;
+/** Whether the product tour's popup is open, for every place that opens it. */
+export const useProductTourStore = create<ProductTourStore>()((set) => ({
+  isOpen: false,
+  open: () => set({ isOpen: true }),
+  close: () => set({ isOpen: false }),
+}));

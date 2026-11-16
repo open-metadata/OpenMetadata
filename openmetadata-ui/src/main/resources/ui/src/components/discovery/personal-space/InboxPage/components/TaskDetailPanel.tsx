@@ -125,6 +125,8 @@ export interface TaskDetailPanelProps {
   // Fired after a comment is added/edited/deleted with the reloaded task, so the
   // list row's comment count stays in sync.
   onCommentsChanged?: (task: Task) => void;
+  // Fired with the full task once it loads, and again whenever it changes.
+  onLoaded?: (task: Task) => void;
 }
 
 // Locate the whitespace-delimited token in the title that contains the asset
@@ -157,8 +159,8 @@ const matchAssetToken = (
 
 // The title reads as plain text in the heading's font and colour; only the
 // hover underline says it links to the asset. `!` beats the legacy
-// `.prose-typography a` rule (fonts.less), which makes Typography's links 14px
-// and blue.
+// `.prose-typography a` rule (fonts.less), which gives Typography's links a
+// medium weight and blue colour; `[font:inherit]` restores the heading weight.
 const TITLE_LINK_CLASS =
   'tw:[font:inherit]! tw:text-inherit! tw:no-underline! tw:hover:underline!';
 
@@ -361,6 +363,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onResolved,
   onTaskUpdated,
   onCommentsChanged,
+  onLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
@@ -513,6 +516,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
+
+  useEffect(() => {
+    if (task && hasFullTask) {
+      onLoaded?.(task);
+    }
+  }, [task, hasFullTask, onLoaded]);
+
   const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
       return { actions: [], isResolveDenied: false };
