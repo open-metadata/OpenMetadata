@@ -1,7 +1,8 @@
 # Settings modal views push a history entry only when the user opens them
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-16 (`useSettingsHashSync` runs in the eager
+  `AppShell`, not the lazy `PersonalSpaceModal`)
 - **Deciders:** Harsh Vador
 - **Guard:** `useSettingsHash.test.tsx` (`setHash` replaces unless asked to push; closing goes
   back past the views the modal pushed; the sync hook reopens a closed modal on a view change and
@@ -29,7 +30,9 @@ again, so Back is trapped.
   settings hash. Each push records the hash it left (`{ fromHash }` in the history state), and the
   hook instance in `useSettingsHashSync` counts the pushes made since the modal opened over the
   page. Closing goes back past all of them to the page's entry, as for a settings link (see
-  ADR:2026-10-21-settings-pages-are-classic-only).
+  ADR:2026-10-21-settings-pages-are-classic-only). That hook runs in `AppShell`, which is mounted
+  before any settings push: `PersonalSpaceModal` is lazy, and a Settings click that lands before
+  its chunk loads would go uncounted and leave settings entries behind the page.
 - **The sync hook follows Back and Forward.** With the modal closed and a hash still set (the
   fullscreen persona customizer closes it silently), a change of `tab/subPath` reopens it. With
   the modal open, Back to an entry with no settings hash closes it.

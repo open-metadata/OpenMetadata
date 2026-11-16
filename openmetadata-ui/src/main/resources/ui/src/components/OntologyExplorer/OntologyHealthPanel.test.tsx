@@ -84,6 +84,17 @@ describe('OntologyHealthPanel', () => {
     );
   });
 
+  it('never reads 100% while a term is isolated', () => {
+    render(
+      <OntologyHealthPanel
+        health={{ ...health, connectedPercent: 100 }}
+        onConnect={jest.fn()}
+      />
+    );
+
+    expect(screen.getByText('99%')).toBeInTheDocument();
+  });
+
   it('celebrates when no term is isolated', () => {
     render(
       <OntologyHealthPanel

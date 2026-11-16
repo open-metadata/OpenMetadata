@@ -334,11 +334,13 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
 
     return (
       <>
-        {hasResults ? (
-          visibleGroups.map((group) =>
-            renderGroup(group, select, t('label.inverse'), isAiMode)
-          )
-        ) : (
+        {hasResults
+          ? visibleGroups.map((group) =>
+              renderGroup(group, select, t('label.inverse'), isAiMode)
+            )
+          : null}
+        {/* With a typed name the create option is the answer, so no empty message beside it. */}
+        {hasResults || (canCreateType && term) ? null : (
           <span
             className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary"
             data-testid="no-relation-types">
@@ -347,14 +349,15 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
         )}
         {canCreateType ? (
           <Button
-            className="tw:mt-1 tw:justify-start"
+            wrap
+            className="tw:mt-1"
             color="link-color"
             data-testid="relation-type-create"
             iconLeading={Plus}
             size="sm"
             onClick={() => select(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
             {term
-              ? t('label.new-relationship-type-name', { name: term })
+              ? t('label.create-relationship-type-name', { name: term })
               : t('label.new-link')}
             <span className="tw:ml-1 tw:font-normal tw:text-tertiary">
               {t('message.creates-a-property')}

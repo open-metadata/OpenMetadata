@@ -66,7 +66,9 @@ A Sigma workbook's project is its workspace, the first part of the workbook's pa
 
 ## Data Models
 
-When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it.
+When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it. A column computed by a formula shows that formula in its description when it has none; turn on **Override Metadata** to refresh it.
+
+A Sigma Data Model also gets lineage from the warehouse tables and the other Sigma Data Models its elements read. Its tables are looked up as described under **Lineage**.
 
 ## Custom Properties
 
@@ -76,4 +78,4 @@ When **Include Custom Properties** is on, each workbook's dashboard gets a `late
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
 
-Source tables are looked up in the database services listed in **Database Service Prefixes**, or in every database service when it is empty. A table is linked only when exactly one table matches across the services searched; a table that matches several, for example the same schema and table in two services, is left without lineage. Set **Database Service Prefixes** to the services Sigma reads from to resolve such tables.
+Source tables are looked up in the database services listed in **Database Service Prefixes**, or in every database service when it is empty. A table is linked only when exactly one table matches across the services searched; a table that matches several, for example the same schema and table in two services, is left without lineage. Set **Database Service Prefixes** to the services Sigma reads from to resolve such tables. When a table's Sigma path finds no single table, the connector also asks Sigma for the table's connection path (database, schema and table) and tries that. Without SQL, a calculated column gets the source columns its formula reads: `Total` from `[Cost] + [MRP]` gets the sources of `Cost` and `MRP`, and `[ORDERS/Amount] * 2` gets `AMOUNT` of the table or element named `ORDERS` that the element reads. When the workbook's formulas are read, a calculated column is never linked to a warehouse column only because it shares its name, so one whose formula cannot be traced gets no column lineage.
