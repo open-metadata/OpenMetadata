@@ -481,10 +481,12 @@ class MicrostrategySource(DashboardServiceSource):
         table_entity = self._with_columns(table_entity)
         data_import = self.client.get_dataset_subtype(project_id, dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
         targets = self._data_model_columns(dataset, datamodel_entity)
-        keys = Counter(normalized(available_object.name or "") for available_object in dataset.availableObjects or [])
+        # A dataset may list one object more than once; it is still one data model column.
+        objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
+        keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
         lineage = []
-        for available_object in dataset.availableObjects or []:
+        for available_object in objects.values():
             for target, columns in self._object_columns(
                 project_id, available_object, data_import, reads, targets, ambiguous
             ):

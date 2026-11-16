@@ -1054,8 +1054,25 @@ class TestColumnLineage:
     def test_an_unclosed_comment_is_not_sql_and_is_read_in_linear_time(self):
         started = time.monotonic()
 
-        assert read_columns("/" + "//*" * 20000, Dialect.BIGQUERY) == frozenset()
-        assert time.monotonic() - started < 1
+        assert read_columns("/*" + " /* x" * 20000, Dialect.BIGQUERY) == frozenset()
+        assert read_columns("select a.x x from `p`.`d`.`t` a\n\n/*" + "/*\n\n" * 20000, Dialect.BIGQUERY) == {
+            ("p.d.t", "x")
+        }
+        assert read_columns("\n\n/**/" * 20000 + "x", Dialect.BIGQUERY) == frozenset()
+        assert time.monotonic() - started < 2
+
+    def test_a_blank_line_inside_a_comment_or_quoted_text_does_not_split_a_pass(self):
+        sql = (
+            "select a.x x from `p`.`d`.`t` a\n\n/* analyst\n\nnote */\nselect b.y y from `p`.`d`.`u` b\n\n"
+            "select c.z z from `p`.`d`.`v` c where c.n = '\n\nselect'"
+        )
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.d.t", "x"), ("p.d.u", "y"), ("p.d.v", "z")}
+
+    def test_a_correlated_reference_reaches_the_outer_table(self):
+        sql = "select a.id id, (select a.price) price from `p`.`s`.`orders` a"
+
+        assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "id"), ("p.s.orders", "price")}
 
     def test_a_schema_attribute_form_maps_to_the_column_the_cube_reads(self, server, client):
         _model_routes(server, {SCHEMA_CUBE: 776})
@@ -1153,6 +1170,22 @@ class TestColumnLineage:
         lineage = source._column_lineage("P", dataset, reads, _table("t", columns), _data_model(source, dataset))
 
         assert _pairs(lineage) == [(cols, f"{IMPORT_CUBE}.{target}") for cols, target in expected]
+
+    def test_an_object_listed_twice_is_still_matched_on_its_name(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        source = _source(client)
+        dataset = _dataset(
+            IMPORT_CUBE,
+            [
+                {"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = frozenset({("project-x.sales.t", "order_id")})
+
+        lineage = source._column_lineage("P", dataset, reads, _table("t", ["order_id"]), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(["order_id"], f"{IMPORT_CUBE}.Order Id")]
 
     def test_a_refused_table_read_stops_modeling_calls_and_warns_once(self, server, client, caplog):
         _model_routes(server, {SCHEMA_CUBE: 776})

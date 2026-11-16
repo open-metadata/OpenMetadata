@@ -57,8 +57,11 @@ def table_name_of(table: exp.Table) -> str:
 
 
 SQL_KEYWORD = re.compile(r"(?:select|with|create|insert|drop|update|delete|merge)\b", re.IGNORECASE)
-# MicroStrategy separates the passes of a cube SQL with blank lines, not semicolons.
-BLANK_LINES = re.compile(r"\n[ \t\r\f\v]*\n")
+# The tokens a pass split must tell apart, each matched without nested repetition so the scan
+# stays linear: quoted text, a comment opening, a line comment, a blank line, and anything else.
+SQL_TOKEN = re.compile(
+    r"'(?:[^']|'')*'|\"[^\"]*\"|`[^`]*`|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[^\s'\"`/-]+|[\s\S]",
+)
 
 
 def starts_with_sql(text: str) -> bool:
@@ -83,14 +86,35 @@ def starts_with_sql(text: str) -> bool:
 
 
 def sql_passes(sql: str) -> list[str]:
-    """The passes of a cube SQL. A blank line splits only before a statement, not inside one."""
-    passes: list[list[str]] = []
-    for chunk in BLANK_LINES.split(sql):
-        if passes and not starts_with_sql(chunk):
-            passes[-1].append(chunk)
-        else:
-            passes.append([chunk])
-    return ["\n\n".join(chunks) for chunks in passes]
+    """
+    The passes of a cube SQL. MicroStrategy separates them with blank lines, not semicolons, so a
+    pass starts after a blank line whose next statement token is a SQL keyword. Blank lines inside
+    comments or quoted text never split. One scan, linear in the length of the SQL.
+    """
+    starts, pending, position = [0], None, 0
+    while match := SQL_TOKEN.search(sql, position):
+        token = match.group()
+        position = match.end()
+        if token == "/*":
+            close = sql.find("*/", position)
+            if close < 0:
+                # An unclosed comment is not SQL: it must not swallow the pass before it.
+                if pending is not None:
+                    starts.append(pending)
+                break
+            position = close + 2
+        elif token.startswith("--"):
+            continue
+        elif token.startswith("\n") and token.endswith("\n") and len(token) > 1:
+            pending = match.start() if pending is None else pending
+            # The closing newline may open the next blank line.
+            position = match.end() - 1
+        elif not token.isspace():
+            if pending is not None and SQL_KEYWORD.match(sql, match.start()):
+                starts.append(pending)
+            pending = None
+    ends = starts[1:] + [len(sql)]
+    return [sql[start:end] for start, end in zip(starts, ends, strict=True)]
 
 
 def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
@@ -118,20 +142,39 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
     return frozenset(columns)
 
 
-def _select_columns(select: exp.Select) -> set[SourceColumn]:
-    tables = {
+def _own_tables(select: exp.Select) -> dict[str, str]:
+    """The tables a SELECT itself reads, by alias"""
+    return {
         (table.alias_or_name or table.name).lower(): table_name_of(table)
         for table in select.find_all(exp.Table)
         if table.find_ancestor(exp.Select) is select
     }
+
+
+def _resolve(select: exp.Select, alias: str) -> str | None:
+    """
+    The table an alias names in a SELECT: its own, else the nearest enclosing query's, so a
+    correlated reference reaches the outer table and a reused alias stays the inner one.
+    """
+    scope: exp.Select | None = select
+    while scope is not None:
+        table = _own_tables(scope).get(alias)
+        if table:
+            return table
+        scope = scope.find_ancestor(exp.Select)
+    return None
+
+
+def _select_columns(select: exp.Select) -> set[SourceColumn]:
+    tables = _own_tables(select)
     only_table = next(iter(tables.values())) if len(set(tables.values())) == 1 else None
     columns = set()
     for projection in select.expressions:
         for column in projection.find_all(exp.Column):
-            # A nested query is read on its own, against its own aliases.
+            # A column of a nested query is read with that query, against its own aliases first.
             if column.find_ancestor(exp.Select) is not select:
                 continue
-            table = tables.get(column.table.lower()) if column.table else only_table
+            table = _resolve(select, column.table.lower()) if column.table else only_table
             if table:
                 columns.add((table, column.name.lower()))
     return columns
