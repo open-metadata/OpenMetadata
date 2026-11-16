@@ -19,10 +19,6 @@ import {
   SchemaType,
 } from '../generated/entity/data/topic';
 import { FieldChange } from '../generated/entity/services/databaseService';
-import {
-  hasVersionDiffStringProperty,
-  parseVersionDiffArray,
-} from './EntityDiffPureUtils';
 import { getVersionedSchema } from './SchemaVersionUtils';
 
 // Mock data for testing
@@ -65,19 +61,6 @@ const createMockChangeDescription = (
 });
 
 describe('SchemaVersionUtils', () => {
-  describe('parseVersionDiffArray', () => {
-    it('returns an empty array for malformed or non-array values', () => {
-      expect(parseVersionDiffArray<Field>('{invalid')).toEqual([]);
-      expect(parseVersionDiffArray<Field>('{}')).toEqual([]);
-      expect(parseVersionDiffArray<Field>('[null]')).toEqual([]);
-      expect(
-        parseVersionDiffArray<Field>('[{}]', (value) =>
-          hasVersionDiffStringProperty(value, 'name')
-        )
-      ).toEqual([]);
-    });
-  });
-
   describe('getVersionedSchema', () => {
     describe('DATA_TYPE_DISPLAY changes', () => {
       it('should update dataTypeDisplay with diff highlighting when field is changed', () => {

@@ -59,4 +59,43 @@ describe('getMlFeatureVersionData', () => {
       getMlFeatureVersionData(currentVersionData, changeDescription)
     ).toEqual(currentVersionData.mlFeatures);
   });
+
+  it('pairs old and new features by name, not by position', () => {
+    const currentVersionData = {
+      mlFeatures: [
+        { name: 'A', description: 'anew', tags: [] },
+        { name: 'B', description: 'bnew', tags: [] },
+      ],
+    } as unknown as Mlmodel;
+    const changeDescription: ChangeDescription = {
+      fieldsUpdated: [
+        {
+          name: EntityField.ML_FEATURES,
+          // A's tags are malformed, so A is filtered out of the old diffs.
+          oldValue: JSON.stringify([
+            { name: 'A', description: 'aold', tags: [null] },
+            {
+              name: 'B',
+              description: 'bold',
+              tags: [{ tagFQN: 'PII.Sensitive' }],
+            },
+          ]),
+          newValue: JSON.stringify([
+            { name: 'A', description: 'anew', tags: [] },
+            { name: 'B', description: 'bnew', tags: [] },
+          ]),
+        },
+      ],
+    };
+
+    const [featureA, featureB] =
+      getMlFeatureVersionData(currentVersionData, changeDescription) ?? [];
+
+    expect(featureA.tags).toEqual([]);
+    expect(featureA.description).not.toContain('bold');
+    expect(featureB.tags).toEqual([
+      expect.objectContaining({ tagFQN: 'PII.Sensitive' }),
+    ]);
+    expect(featureB.description).toContain('bold');
+  });
 });

@@ -27,24 +27,14 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-  hasVersionDiffArrayProperty,
-  hasVersionDiffStringProperty,
   isEndsWithField,
+  isNamedEntityWithTagsDiff,
+  isTagLabelDiff,
   parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { getTagsDiff } from './EntityVersionUtilsPure';
-
-const isSearchIndexFieldDiff = (value: unknown) => {
-  if (!hasVersionDiffStringProperty(value, 'name')) {
-    return false;
-  }
-
-  return hasVersionDiffArrayProperty(value, 'tags', (tag) =>
-    hasVersionDiffStringProperty(tag, 'tagFQN')
-  );
-};
 
 const handleFieldDescriptionChangeDiff = (
   fieldsDiff: EntityDiffProps,
@@ -74,11 +64,11 @@ const handleFieldTagChangeDiff = (
 ) => {
   const oldTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityOldValue(fieldsDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
   const newTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityNewValue(fieldsDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
 
   fieldList?.forEach((i) => {
@@ -122,7 +112,7 @@ const handleFieldDiffAdded = (
 ) => {
   const newField = parseVersionDiffArray<
     NonNullable<SearchIndex['fields']>[number]
-  >(fieldsDiff.added?.newValue, isSearchIndexFieldDiff);
+  >(fieldsDiff.added?.newValue, isNamedEntityWithTagsDiff);
   newField?.forEach((field) => {
     formatAddedFieldData(fieldList, field);
   });
@@ -133,7 +123,7 @@ const handleFieldDiffAdded = (
 const getDeletedFields = (fieldsDiff: EntityDiffProps) => {
   const newField = parseVersionDiffArray<
     NonNullable<SearchIndex['fields']>[number]
-  >(fieldsDiff.deleted?.oldValue, isSearchIndexFieldDiff);
+  >(fieldsDiff.deleted?.oldValue, isNamedEntityWithTagsDiff);
 
   return newField?.map((field) => ({
     ...field,

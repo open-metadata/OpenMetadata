@@ -27,24 +27,14 @@ import {
   getChangedEntityNewValue,
   getChangedEntityOldValue,
   getDiffByFieldName,
-  hasVersionDiffArrayProperty,
-  hasVersionDiffStringProperty,
   isEndsWithField,
+  isNamedEntityWithTagsDiff,
+  isTagLabelDiff,
   parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
 import type { TagLabelWithStatus } from './EntityVersionUtils.interface';
 import { getTagsDiff } from './EntityVersionUtilsPure';
-
-const isPipelineTaskDiff = (value: unknown) => {
-  if (!hasVersionDiffStringProperty(value, 'name')) {
-    return false;
-  }
-
-  return hasVersionDiffArrayProperty(value, 'tags', (tag) =>
-    hasVersionDiffStringProperty(tag, 'tagFQN')
-  );
-};
 
 const handleTaskDescriptionChangeDiff = (
   tasksDiff: EntityDiffProps,
@@ -74,11 +64,11 @@ const handleTaskTagChangeDiff = (
 ) => {
   const oldTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityOldValue(tasksDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
   const newTags = parseVersionDiffArray<TagLabel>(
     getChangedEntityNewValue(tasksDiff),
-    (value) => hasVersionDiffStringProperty(value, 'tagFQN')
+    isTagLabelDiff
   );
 
   taskList?.forEach((i) => {
@@ -122,7 +112,7 @@ const handleTaskDiffAdded = (
 ) => {
   const newTask = parseVersionDiffArray<NonNullable<Pipeline['tasks']>[number]>(
     tasksDiff.added?.newValue,
-    isPipelineTaskDiff
+    isNamedEntityWithTagsDiff
   );
   newTask?.forEach((task) => {
     formatAddedTaskData(taskList, task);
@@ -134,7 +124,7 @@ const handleTaskDiffAdded = (
 const getDeletedTasks = (tasksDiff: EntityDiffProps) => {
   const newTask = parseVersionDiffArray<NonNullable<Pipeline['tasks']>[number]>(
     tasksDiff.deleted?.oldValue,
-    isPipelineTaskDiff
+    isNamedEntityWithTagsDiff
   );
 
   return newTask?.map((task) => ({

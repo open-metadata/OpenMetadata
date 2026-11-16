@@ -28,9 +28,8 @@ import {
   getChangeColumnNameFromDiffValue,
   getChangedEntityName,
   getDiffByFieldName,
-  hasVersionDiffArrayProperty,
-  hasVersionDiffStringProperty,
   isEndsWithField,
+  isNamedEntityWithTagsDiff,
   parseVersionDiffArray,
 } from './EntityDiffPureUtils';
 import { getTextDiff } from './EntityDiffUtils';
@@ -41,19 +40,16 @@ import {
 } from './EntityVersionUtilsPure';
 
 const isSchemaFieldDiff = (value: unknown): boolean => {
-  if (!hasVersionDiffStringProperty(value, 'name')) {
+  if (!isNamedEntityWithTagsDiff(value)) {
     return false;
   }
 
-  const field = value as { children?: unknown };
-  const validTags = hasVersionDiffArrayProperty(value, 'tags', (tag) =>
-    hasVersionDiffStringProperty(tag, 'tagFQN')
-  );
-  const validChildren =
-    field.children === undefined ||
-    (Array.isArray(field.children) && field.children.every(isSchemaFieldDiff));
+  const { children } = value as { children?: unknown };
 
-  return validTags && validChildren;
+  return (
+    children === undefined ||
+    (Array.isArray(children) && children.every(isSchemaFieldDiff))
+  );
 };
 
 export function getNewFieldFromSchemaFieldDiff(

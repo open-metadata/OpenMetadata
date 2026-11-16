@@ -52,6 +52,13 @@ export const hasVersionDiffArrayProperty = (
   (value[property] === undefined ||
     (Array.isArray(value[property]) && value[property].every(isValidItem)));
 
+export const isTagLabelDiff = (value: unknown) =>
+  hasVersionDiffStringProperty(value, 'tagFQN');
+
+export const isNamedEntityWithTagsDiff = (value: unknown) =>
+  hasVersionDiffStringProperty(value, 'name') &&
+  hasVersionDiffArrayProperty(value, 'tags', isTagLabelDiff);
+
 export const parseVersionDiffArray = <T>(
   value?: string,
   isValid: (item: unknown) => boolean = isRecord

@@ -63,6 +63,30 @@ describe('getEntityVersionTags', () => {
     expect(summaryFormatter({ name: 'owner', newValue: '[]' })).toBe('owner');
   });
 
+  it('falls back to oldValue when newValue is empty', () => {
+    expect(
+      summaryFormatter({
+        name: EntityField.COLUMNS,
+        newValue: '',
+        oldValue: '[{"name":"c1"}]',
+      })
+    ).toBe('label.column-lowercase-plural c1');
+    expect(
+      summaryFormatter({
+        name: EntityField.TAGS,
+        newValue: '',
+        oldValue: '[{"tagFQN":"PII.Sensitive"}]',
+      })
+    ).toBe('label.tag-lowercase-plural PII.Sensitive');
+    expect(
+      summaryFormatter({
+        name: 'owner',
+        newValue: '',
+        oldValue: '{"name":"alice"}',
+      })
+    ).toBe('owner alice');
+  });
+
   it('handles a tag diff when the current field has no tags', () => {
     const fields = [{ name: 'field' }] as unknown as Field[];
 
