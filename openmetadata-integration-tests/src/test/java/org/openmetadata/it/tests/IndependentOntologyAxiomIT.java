@@ -34,11 +34,8 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
-import org.openmetadata.schema.type.OntologyChangeOperationResult;
-import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeOperationState;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
-import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
@@ -121,11 +118,13 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
     assertEquals(1, page.getData().size());
   }
 
-  // Each operation of an apply is its own write, so the second rule fails and the first rolls back.
+  // A native change set is validated once, after every operation, so the duplicate refuses the
+  // whole apply and the transaction rolls both rules back.
   @Test
   void aChangeSetWithTwoIdenticalRulesAppliesNeither(TestNamespace ns) {
     Ontology ontology = createModel(ns, "reviewedOntology");
     OpenMetadataClient client = SdkClients.adminClient();
+    long revision = state(ontology).getWorkingRevision();
     OntologyChangeSet draft =
         ns.trackRoot(
             Entity.ONTOLOGY_CHANGE_SET,
@@ -137,26 +136,23 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
                         .withDisplayName("Duplicate rules")
                         .withDescription("Two identical rules")
                         .withOntology(ontology.getFullyQualifiedName())
-                        .withBaseWorkingRevision(state(ontology).getWorkingRevision())
+                        .withBaseWorkingRevision(revision)
                         .withOperations(
                             List.of(
                                 ruleOperation(ontology, "CustomerIsParty"),
                                 ruleOperation(ontology, "CustomerIsPartyAgain")))
                         .withUndoCursor(2)));
 
-    OntologyChangeSet failed =
-        OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "ruleEditor");
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                OntologyChangeSetTestSupport.applyOntologyChangeSet(
+                    client, draft, ns, "ruleEditor"));
 
-    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
-    List<OntologyChangeOperationResult> results = failed.getApplicationResult().getResults();
-    assertEquals(
-        List.of(
-            OntologyChangeOperationResultStatus.ROLLED_BACK,
-            OntologyChangeOperationResultStatus.FAILED),
-        results.stream().map(OntologyChangeOperationResult::getStatus).toList());
-    assertTrue(
-        results.getLast().getMessage().contains("already states this"),
-        results.getLast().getMessage());
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("already states this"), refused.getMessage());
+    assertEquals(revision, state(ontology).getWorkingRevision());
     var page =
         client
             .ontologyAxioms()
