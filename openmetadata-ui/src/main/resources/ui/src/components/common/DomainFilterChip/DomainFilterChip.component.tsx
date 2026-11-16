@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { BadgeWithButton, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  BadgeWithButton,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { DEFAULT_DOMAIN_VALUE } from '../../../constants/constants';
@@ -21,13 +25,21 @@ import { getDomainDisplayName } from '../../../utils/EntityNameUtils';
 /** Marks a list as narrowed by the navbar domain; its × clears the selection. */
 export const DomainFilterChip = ({ className }: { className?: string }) => {
   const { t } = useTranslation();
-  const { activeDomain, activeDomainEntityRef } = useDomainStore();
+  const {
+    activeDomain,
+    activeDomainEntityRef,
+    isDomainRestricted,
+    userDomains,
+  } = useDomainStore();
   const switchActiveDomain = useSwitchActiveDomain();
 
   if (activeDomain === DEFAULT_DOMAIN_VALUE) {
     return null;
   }
   const domainName = getDomainDisplayName(activeDomainEntityRef, activeDomain);
+  // A user locked to one domain cannot clear it (e.g. a domain-only role with
+  // a single domain gets it re-applied), so the chip offers no ×.
+  const isLocked = isDomainRestricted && userDomains.length === 1;
 
   return (
     <div
@@ -39,15 +51,21 @@ export const DomainFilterChip = ({ className }: { className?: string }) => {
       <Typography className="tw:text-tertiary" size="text-xs">
         {t('label.filtered-by-domain')}
       </Typography>
-      <BadgeWithButton
-        buttonLabel={t('label.clear-entity', { entity: t('label.domain') })}
-        buttonTestId="domain-filter-chip-clear"
-        color="brand"
-        size="sm"
-        type="pill-color"
-        onButtonClick={() => switchActiveDomain(undefined)}>
-        {domainName}
-      </BadgeWithButton>
+      {isLocked ? (
+        <Badge color="brand" size="sm" type="pill-color">
+          {domainName}
+        </Badge>
+      ) : (
+        <BadgeWithButton
+          buttonLabel={t('label.clear-entity', { entity: t('label.domain') })}
+          buttonTestId="domain-filter-chip-clear"
+          color="brand"
+          size="sm"
+          type="pill-color"
+          onButtonClick={() => switchActiveDomain(undefined)}>
+          {domainName}
+        </BadgeWithButton>
+      )}
     </div>
   );
 };

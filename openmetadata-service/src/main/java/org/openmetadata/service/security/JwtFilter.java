@@ -417,22 +417,13 @@ public class JwtFilter implements ContainerRequestFilter {
       Map<String, Claim> claims = authenticated.claims();
       boolean isBotUser = authenticated.isBot();
       ResolvedIdentity resolvedIdentity = authenticated.identity();
-      String userName = resolvedIdentity.userName();
-      String email = resolvedIdentity.email();
 
       String impersonateUser = requestContext.getHeaderString(IMPERSONATE_USER_HEADER);
       String activePersona = requestContext.getHeaderString(ACTIVE_PERSONA_HEADER);
-      String impersonatedBy = null;
-
-      if (impersonateUser != null && !impersonateUser.isEmpty()) {
-        if (!isBotUser) {
-          throw new ImpersonationDeniedException("Only bot users can impersonate other users");
-        }
-        impersonatedBy = userName;
-        User impersonatedUser = resolveImpersonationTarget(impersonatedBy, impersonateUser);
-        userName = impersonatedUser.getName();
-        email = impersonatedUser.getEmail();
-      }
+      ActingIdentity acting = actingIdentity(authenticated, impersonateUser);
+      String userName = acting.userName();
+      String email = acting.email();
+      String impersonatedBy = acting.impersonatedBy();
 
       checkValidationsForToken(
           claims,
@@ -498,6 +489,27 @@ public class JwtFilter implements ContainerRequestFilter {
     }
     ImpersonationAuthorizer.authorize(botName, target);
     return target;
+  }
+
+  /** Who a request acts as: the token's own identity, or the target it impersonates. */
+  private record ActingIdentity(String userName, String email, String impersonatedBy) {}
+
+  /**
+   * The {@code X-Impersonate-User} swap, shared by REST ({@link #filter}) and MCP ({@link
+   * #getCatalogSecurityContext(String, String, String)}) so both refuse and accept the same calls:
+   * only a bot may ask, and the target must exist and be granted to it.
+   */
+  private ActingIdentity actingIdentity(AuthenticatedToken authenticated, String impersonateUser) {
+    ResolvedIdentity own = authenticated.identity();
+    ActingIdentity acting = new ActingIdentity(own.userName(), own.email(), null);
+    if (!nullOrEmpty(impersonateUser)) {
+      if (!authenticated.isBot()) {
+        throw new ImpersonationDeniedException("Only bot users can impersonate other users");
+      }
+      User target = resolveImpersonationTarget(own.userName(), impersonateUser);
+      acting = new ActingIdentity(target.getName(), target.getEmail(), own.userName());
+    }
+    return acting;
   }
 
   /**
@@ -1020,6 +1032,15 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token, String activePersona) {
+    return getCatalogSecurityContext(token, activePersona, null);
+  }
+
+  /**
+   * The context an MCP call runs under, with {@code X-Impersonate-User} applied as a REST request
+   * applies it. ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges
+   */
+  public CatalogSecurityContext getCatalogSecurityContext(
+      String token, String activePersona, String impersonateUser) {
     AuthenticatedToken authenticated = authenticate(token);
     Map<String, Claim> claims = authenticated.claims();
     boolean isBotUser = authenticated.isBot();
@@ -1033,18 +1054,17 @@ public class JwtFilter implements ContainerRequestFilter {
           allowedDomains,
           enforcePrincipalDomain);
     }
-    CatalogPrincipal catalogPrincipal =
-        new CatalogPrincipal(resolvedIdentity.userName(), resolvedIdentity.email());
+    ActingIdentity acting = actingIdentity(authenticated, impersonateUser);
+    CatalogPrincipal catalogPrincipal = new CatalogPrincipal(acting.userName(), acting.email());
     return new CatalogSecurityContext(
         catalogPrincipal,
         "https",
         SecurityContext.DIGEST_AUTH,
         getUserRolesFromClaims(claims, isBotUser, tokenKeyId),
         isBotUser,
-        null,
+        acting.impersonatedBy(),
         activePersona,
-        ActiveDomainContext.resolve(
-            resolvedIdentity.userName(), isBotUser || isPersonalAccessToken(claims)));
+        ActiveDomainContext.resolve(acting.userName(), isBotUser || isPersonalAccessToken(claims)));
   }
 
   private Algorithm createAlgorithmFromJwk(

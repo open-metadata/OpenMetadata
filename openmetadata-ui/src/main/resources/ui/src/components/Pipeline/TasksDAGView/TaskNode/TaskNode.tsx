@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { CSSProperties, Fragment } from 'react';
 import { Handle, HandleType, NodeProps, Position } from 'reactflow';
 import { EntityLineageNodeType } from '../../../../enums/entity.enum';
-import './task-node.style.less';
+import { TASK_STATUS_DOT_CLASS } from './TaskNode.constants';
 
 const handleStyles = {
   opacity: 0,
@@ -67,7 +67,7 @@ const TaskNode = (props: NodeProps) => {
 
   return (
     <div
-      className="task-node relative nowheel border rounded-6 p-x-sm"
+      className="task-node relative nowheel border rounded-6 p-x-sm tw:bg-surface tw:text-primary"
       data-testid="task-node-container">
       {getHandle(type, isConnectable)}
       {/* Node label could be simple text or reactNode */}
@@ -80,8 +80,8 @@ const TaskNode = (props: NodeProps) => {
         itemClassName="layout-space-item">
         <div
           className={classNames(
-            'custom-node-label',
-            taskStatus ? taskStatus : 'bg-primary'
+            'tw:size-2.5 tw:rounded-full',
+            taskStatus ? TASK_STATUS_DOT_CLASS[taskStatus] : 'bg-primary'
           )}
           data-testid="node-label-status"
         />
