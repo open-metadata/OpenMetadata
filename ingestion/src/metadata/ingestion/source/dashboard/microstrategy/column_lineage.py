@@ -57,11 +57,40 @@ def table_name_of(table: exp.Table) -> str:
 
 
 SQL_KEYWORD = re.compile(r"(?:select|with|create|insert|drop|update|delete|merge)\b", re.IGNORECASE)
-# The tokens a pass split must tell apart, each matched without nested repetition so the scan
-# stays linear: quoted text, a comment opening, a line comment, a blank line, and anything else.
-SQL_TOKEN = re.compile(
-    r"'(?:[^']|'')*'|\"[^\"]*\"|`[^`]*`|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[^\s'\"`/-]+|[\s\S]",
-)
+
+
+# The tokens a pass split must tell apart, each without nested repetition so the scan stays
+# linear: a quote opening, a comment opening, a line comment, a blank line, and anything else.
+SQL_TOKEN = re.compile(r"['\"`]|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[^\s'\"`/-]+|[\s\S]")
+QUOTE_STOPS = {
+    (quote, escapes): re.compile("[" + re.escape(quote) + ("\\\\" if escapes else "") + "]")
+    for quote in ("'", '"', "`")
+    for escapes in (False, True)
+}
+
+
+def _quote_end(sql: str, start: int, quote: str, escapes: bool) -> int | None:
+    """
+    Where the quoted text opened at ``start`` ends, or None when it is never closed. A doubled
+    quote is part of the text, and so is a quote after a backslash in dialects that escape with one.
+    """
+    stops = QUOTE_STOPS[(quote, escapes and quote != "`")]
+    position = start + 1
+    while stop := stops.search(sql, position):
+        index = stop.start()
+        if sql[index] == "\\" or sql.startswith(quote * 2, index):
+            position = index + 2
+            continue
+        return index + 1
+    return None
+
+
+def backslash_escapes(dialect: Dialect) -> bool:
+    """Whether the dialect's strings escape a quote with a backslash, as sqlglot reads them"""
+    try:
+        return "\\" in sqlglot.Dialect.get_or_raise(_sqlglot_dialect(dialect)).tokenizer_class.STRING_ESCAPES
+    except Exception:
+        return False
 
 
 def starts_with_sql(text: str) -> bool:
@@ -85,7 +114,7 @@ def starts_with_sql(text: str) -> bool:
             return bool(SQL_KEYWORD.match(text, position))
 
 
-def sql_passes(sql: str) -> list[str]:
+def sql_passes(sql: str, escapes: bool = False) -> list[str]:
     """
     The passes of a cube SQL. MicroStrategy separates them with blank lines, not semicolons, so a
     pass starts after a blank line whose next statement token is a SQL keyword. Blank lines inside
@@ -95,7 +124,14 @@ def sql_passes(sql: str) -> list[str]:
     while match := SQL_TOKEN.search(sql, position):
         token = match.group()
         position = match.end()
-        if token == "/*":
+        if token in ("'", '"', "`"):
+            end = _quote_end(sql, match.start(), token, escapes)
+            if end is None:
+                # Unclosed quoted text runs to the end: no pass starts inside it.
+                break
+            position = end
+            pending = None
+        elif token == "/*":
             close = sql.find("*/", position)
             if close < 0:
                 # An unclosed comment is not SQL: it must not swallow the pass before it.
@@ -124,7 +160,7 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
     column lineage and leaves table lineage to the lineage parser.
     """
     columns: set[SourceColumn] = set()
-    for sql_pass in sql_passes(sql):
+    for sql_pass in sql_passes(sql, backslash_escapes(dialect)):
         # A cube built from a file answers with a note, not SQL.
         if not starts_with_sql(sql_pass):
             continue
@@ -142,32 +178,40 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
     return frozenset(columns)
 
 
-def _own_tables(select: exp.Select) -> dict[str, str]:
-    """The tables a SELECT itself reads, by alias"""
-    return {
-        (table.alias_or_name or table.name).lower(): table_name_of(table)
-        for table in select.find_all(exp.Table)
-        if table.find_ancestor(exp.Select) is select
-    }
+def _own_sources(select: exp.Select) -> dict[str, str | None]:
+    """
+    The sources a SELECT itself reads, by alias: a table's name, or None for a derived table,
+    whose columns are not warehouse columns.
+    """
+    sources: dict[str, str | None] = {}
+    for source in select.find_all(exp.Table, exp.Subquery):
+        if source.find_ancestor(exp.Select) is not select:
+            continue
+        if isinstance(source, exp.Table):
+            sources[(source.alias_or_name or source.name).lower()] = table_name_of(source)
+        elif source.alias:
+            sources[source.alias.lower()] = None
+    return sources
 
 
 def _resolve(select: exp.Select, alias: str) -> str | None:
     """
-    The table an alias names in a SELECT: its own, else the nearest enclosing query's, so a
-    correlated reference reaches the outer table and a reused alias stays the inner one.
+    The table an alias names in a SELECT: its own source, else the nearest enclosing query's, so a
+    correlated reference reaches the outer table. The walk stops at the first query that defines
+    the alias, even as a derived table, so an inner alias never resolves to an outer table.
     """
     scope: exp.Select | None = select
     while scope is not None:
-        table = _own_tables(scope).get(alias)
-        if table:
-            return table
+        sources = _own_sources(scope)
+        if alias in sources:
+            return sources[alias]
         scope = scope.find_ancestor(exp.Select)
     return None
 
 
 def _select_columns(select: exp.Select) -> set[SourceColumn]:
-    tables = _own_tables(select)
-    only_table = next(iter(tables.values())) if len(set(tables.values())) == 1 else None
+    sources = set(_own_sources(select).values())
+    only_table = next(iter(sources)) if len(sources) == 1 else None
     columns = set()
     for projection in select.expressions:
         for column in projection.find_all(exp.Column):

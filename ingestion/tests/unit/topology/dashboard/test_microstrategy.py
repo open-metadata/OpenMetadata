@@ -1074,6 +1074,29 @@ class TestColumnLineage:
 
         assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "id"), ("p.s.orders", "price")}
 
+    @pytest.mark.parametrize(
+        "sql",
+        [
+            # An alias the inner query defines as a derived table hides the outer table.
+            "select a.id id, (select a.price from (select r.cost price from `p`.`s`.`refunds` r) a) price "
+            "from `p`.`s`.`orders` a",
+            "select b.id id, (select b.x from (select 1 x) b) x from `p`.`s`.`orders` b",
+        ],
+    )
+    def test_a_derived_table_alias_never_resolves_to_an_outer_table(self, sql):
+        reads = read_columns(sql, Dialect.BIGQUERY)
+
+        assert not {column for table, column in reads if table == "p.s.orders"} - {"id"}
+
+    @pytest.mark.parametrize(
+        ("dialect", "literal"),
+        [(Dialect.BIGQUERY, r"'O\'Reilly'"), (Dialect.MYSQL, r"'O\'Reilly'"), (Dialect.POSTGRES, r"'C:\'")],
+    )
+    def test_quoted_text_follows_the_dialect_escapes_when_splitting_passes(self, dialect, literal):
+        sql = f"select a.x x from p.d.t a where a.n = {literal}\n\nselect b.y y from p.d.u b where b.n = 'foo'"
+
+        assert read_columns(sql, dialect) == {("p.d.t", "x"), ("p.d.u", "y")}
+
     def test_a_schema_attribute_form_maps_to_the_column_the_cube_reads(self, server, client):
         _model_routes(server, {SCHEMA_CUBE: 776})
         source = _source(client)
