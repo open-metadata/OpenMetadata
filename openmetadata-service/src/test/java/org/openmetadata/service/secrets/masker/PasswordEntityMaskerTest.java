@@ -233,6 +233,34 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
   }
 
+  /**
+   * A masked value means "keep the stored secret". Renaming a server while sending its key back
+   * masked leaves nothing stored under the new name, so it must be refused rather than storing the
+   * mask as the key.
+   */
+  @Test
+  void testMaskedSecretWithNoStoredValueIsRejected() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(List.of(new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY)));
+    McpConnection renamed =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig()
+                        .withName("alpha-renamed")
+                        .withApiKey(getMaskedPassword())));
+
+    EntityMaskException thrown =
+        Assertions.assertThrows(
+            EntityMaskException.class,
+            () ->
+                EntityMaskerFactory.createEntityMasker()
+                    .unmaskServiceConnectionConfig(renamed, original, "Mcp", ServiceType.MCP));
+
+    assertEquals(400, thrown.getResponse().getStatus());
+  }
+
   @Test
   void testSftpPasswordIsMaskedAndRestored() {
     SftpConnection original =
