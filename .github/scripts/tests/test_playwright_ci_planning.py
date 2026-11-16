@@ -2586,9 +2586,11 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     assert (
         "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
     )
-    assert (
-        "playwright/e2e/Features/Ontology*Rdf.spec.ts"
-        in impact_map["delegatedSpecs"]
+    # The Ontology RDF specs moved to Collate; a leftover glob would route a
+    # matching OpenMetadata spec away from every lane.
+    assert not any(
+        "Ontology" in pattern and "Rdf" in pattern
+        for pattern in impact_map["delegatedSpecs"]
     )
 
 
@@ -3656,47 +3658,6 @@ def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
     )
 
 
-def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(
-    tmp_path, monkeypatch
-):
-    # Editing an OntologyExplorer source file fans out via the source->spec
-    # mapping glob (OntologyStudio*.spec.ts), which matches both the regular
-    # postgres specs and the delegated @ontology-rdf spec. The regular ones must
-    # be selected; the delegated RDF spec must be dropped so the postgres plan
-    # does not get a shard with zero runnable tests.
-    selector = load_script("select_playwright_tests")
-    changed = tmp_path / "changed.txt"
-    output = tmp_path / "selection.json"
-    changed.write_text(
-        f"{selector.UI_ROOT}"
-        "src/components/OntologyExplorer/OntologyExplorer.constants.ts\n"
-    )
-    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "select_playwright_tests.py",
-            "--event-name",
-            "pull_request_target",
-            "--changed-files",
-            str(changed),
-            "--impact-map",
-            str(Path(".github/playwright/impact-map.json")),
-            "--output",
-            str(output),
-        ],
-    )
-
-    selector.main()
-
-    selection = json.loads(output.read_text())
-    selected_specs = {entry["spec"] for entry in selection["selectors"]}
-    # The delegated RDF spec is excluded from the postgres selection...
-    assert "playwright/e2e/Features/OntologyStudioRdf.spec.ts" not in selected_specs
-    # ...while the non-delegated Ontology Studio specs from the same glob remain,
-    # proving the mapping fired and only the delegated spec was dropped.
-    assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
 
 
 def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatch):
