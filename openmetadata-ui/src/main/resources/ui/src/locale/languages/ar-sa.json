@@ -4248,7 +4248,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "سيتم حظر الوصول لـ مللي ثانية بعد الوصول إلى الحد الأقصى لمحاولات تسجيل الدخول الفاشلة.",
+    "access-block-time-message": "سيتم حظر الوصول لعدد من الثواني بعد الوصول إلى الحد الأقصى لمحاولات تسجيل الدخول الفاشلة.",
     "access-control-description": "قم بالمواءمة مع التسلسل الهرمي التنظيمي وصول الفريق من خلال الأدوار والسياسات.",
     "access-to-collaborate": "السماح بالوصول المفتوح لأي شخص للانضمام إلى الفريق، وعرض البيانات، والتعاون.",
     "access-token-description": "Token you have generated that can be used to access the Collate API.",

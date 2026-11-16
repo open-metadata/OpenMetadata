@@ -4248,7 +4248,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "הגישה תחוסם למשך מילישניות לאחר שנעשו מספר ניסיונות התחברות כושלים.",
+    "access-block-time-message": "הגישה תחוסם למשך שניות לאחר שנעשו מספר ניסיונות התחברות כושלים.",
     "access-control-description": "התאם להיררכיה הארגונית שלך וגישת הצוות עם תפקידים ומדיניות.",
     "access-to-collaborate": "אפשר גישה פתוחה לכל אחד להצטרף לצוות, לראות נתונים ולשתף פעולה.",
     "access-token-description": "אסימון שיצרת וניתן להשתמש בו כדי לגשת ל-API של Collate.",
