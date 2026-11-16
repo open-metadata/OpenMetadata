@@ -104,6 +104,65 @@ def test_common_assignment_stays_within_the_execution_ceiling():
     )
 
 
+@pytest.mark.parametrize("mode", ["full", "targeted"])
+def test_visual_assignment_splits_without_losing_cases_or_raising_the_budget(mode):
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "visual-regression",
+            f"VisualRegression/area-{index}.spec.ts",
+            f"area {index}",
+            weight_ms=600_000,
+            test_ids={f"visual-case-{index}"},
+        )
+        for index in range(8)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "visual", mode)
+
+    assert len(shards) == 2
+    assert all(
+        planner.predicted_execution_ms(shard, 3, "visual") <= planner.TARGET_MS
+        for shard in shards
+    )
+    assigned = [
+        test_id for shard in shards for unit in shard for test_id in unit.test_ids
+    ]
+    assert sorted(assigned) == [f"visual-case-{index}" for index in range(8)]
+
+
+def test_visual_planning_reserves_measured_browser_overhead():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "visual-regression",
+            f"VisualRegression/area-{index}.spec.ts",
+            f"area {index}",
+            weight_ms=600_000,
+        )
+        for index in range(9)
+    ]
+
+    shards = planner.assign_lane_within_budget(units, "visual", "targeted")
+
+    # Two shards put fifty worker-minutes on one runner. The observed Linux
+    # visual throughput cannot finish that work within the twenty-minute cap.
+    assert len(shards) == 3
+
+
+def test_visual_assignment_preserves_the_bounded_side_lane_ceiling():
+    planner = load_script("build_playwright_shards")
+    units = [
+        planner.Unit(
+            "visual-regression", f"{index}.spec.ts", str(index), weight_ms=600_000
+        )
+        for index in range(43)
+    ]
+
+    with pytest.raises(SystemExit, match=r"Lane visual needs more than 8 shards"):
+        planner.assign_lane_within_budget(units, "visual", "full")
+
+
 def test_full_mode_chromium_converges_above_the_old_24_shard_ceiling():
     # Regression guard for BOTH historical outages on this lane:
     # 1. Under budget=19m × cap=24, content past ~1163 worker-minutes
@@ -2527,9 +2586,11 @@ def test_dedicated_rdf_specs_are_not_selected_by_the_main_workflow():
     assert (
         "playwright/e2e/Features/KnowledgeGraph.spec.ts" in impact_map["delegatedSpecs"]
     )
-    assert (
-        "playwright/e2e/Features/Ontology*Rdf.spec.ts"
-        in impact_map["delegatedSpecs"]
+    # The Ontology RDF specs moved to Collate; a leftover glob would route a
+    # matching OpenMetadata spec away from every lane.
+    assert not any(
+        "Ontology" in pattern and "Rdf" in pattern
+        for pattern in impact_map["delegatedSpecs"]
     )
 
 
@@ -3597,47 +3658,6 @@ def test_main_skips_tag_filtered_spec_but_fails_on_a_nonexistent_one(tmp_path):
     )
 
 
-def test_ontology_source_change_selects_non_rdf_specs_but_excludes_the_delegated_rdf_one(
-    tmp_path, monkeypatch
-):
-    # Editing an OntologyExplorer source file fans out via the source->spec
-    # mapping glob (OntologyStudio*.spec.ts), which matches both the regular
-    # postgres specs and the delegated @ontology-rdf spec. The regular ones must
-    # be selected; the delegated RDF spec must be dropped so the postgres plan
-    # does not get a shard with zero runnable tests.
-    selector = load_script("select_playwright_tests")
-    changed = tmp_path / "changed.txt"
-    output = tmp_path / "selection.json"
-    changed.write_text(
-        f"{selector.UI_ROOT}"
-        "src/components/OntologyExplorer/OntologyExplorer.constants.ts\n"
-    )
-    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
-    monkeypatch.setattr(
-        sys,
-        "argv",
-        [
-            "select_playwright_tests.py",
-            "--event-name",
-            "pull_request_target",
-            "--changed-files",
-            str(changed),
-            "--impact-map",
-            str(Path(".github/playwright/impact-map.json")),
-            "--output",
-            str(output),
-        ],
-    )
-
-    selector.main()
-
-    selection = json.loads(output.read_text())
-    selected_specs = {entry["spec"] for entry in selection["selectors"]}
-    # The delegated RDF spec is excluded from the postgres selection...
-    assert "playwright/e2e/Features/OntologyStudioRdf.spec.ts" not in selected_specs
-    # ...while the non-delegated Ontology Studio specs from the same glob remain,
-    # proving the mapping fired and only the delegated spec was dropped.
-    assert "playwright/e2e/Features/OntologyStudio.spec.ts" in selected_specs
 
 
 def test_generated_impact_map_extends_hand_authored_routing(tmp_path, monkeypatch):
@@ -4017,8 +4037,8 @@ def test_generator_drops_testids_owned_by_too_many_files(tmp_path):
 
 def test_generator_skips_specs_delegated_by_the_hand_authored_map(tmp_path):
     """
-    Specs delegated to a dedicated workflow (Auth → SSO-login-nightly,
-    KnowledgeGraph + Ontology*Rdf → knowledge-graph-postgresql-e2e, …) must
+    Specs routed outside spec-impact selection (Auth → SSO-login-nightly,
+    KnowledgeGraph + Ontology*Rdf → the path-gated `rdf` lane, …) must
     not appear in the generated map. `select_playwright_tests` already
     strips them via `remove_delegated_specs`, but keeping them out at
     generation time is what makes the committed file a truthful
@@ -4264,3 +4284,94 @@ def test_is_code_path_covers_every_root_the_e2e_filter_matches():
         ".github/CODEOWNERS",  # tooling metadata, not the workflow itself
     ):
         assert not selector.is_code_path(path), path
+
+
+def _plan_with_gated_lanes(tmp_path, mode, enabled_lanes, selectors=()):
+    import subprocess
+
+    def suite(file, project, count):
+        return {
+            "file": file,
+            "suites": [
+                {
+                    "title": file,
+                    "specs": [
+                        {
+                            "id": f"{file}-{index}",
+                            "title": f"case {index}",
+                            "tests": [{"projectName": project}],
+                        }
+                        for index in range(count)
+                    ],
+                }
+            ],
+        }
+
+    tmp_path.mkdir(parents=True, exist_ok=True)
+    test_list = tmp_path / "test-list.json"
+    selection = tmp_path / "selection.json"
+    history = tmp_path / "history.json"
+    output_dir = tmp_path / "plans"
+    test_list.write_text(
+        json.dumps(
+            {
+                "suites": [
+                    suite("Pages/Glossary.spec.ts", "chromium", 2),
+                    suite("VisualRegression/Glossary.spec.ts", "visual-regression", 2),
+                    suite("Features/KnowledgeGraph.spec.ts", "Knowledge Graph", 2),
+                ]
+            }
+        )
+    )
+    selection.write_text(json.dumps({"mode": mode, "selectors": list(selectors)}))
+    history.write_text(json.dumps({"mode": "full", "tests": []}))
+    lane_args = [arg for lane in enabled_lanes for arg in ("--enable-lane", lane)]
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "build_playwright_shards.py"),
+            "--test-list", str(test_list),
+            "--selection", str(selection),
+            "--history", str(history),
+            "--output-dir", str(output_dir),
+            *lane_args,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    matrix = json.loads((output_dir / "matrix.json").read_text())["include"]
+    plans = {
+        entry["lane"]: json.loads((output_dir / entry["plan"]).read_text())
+        for entry in matrix
+    }
+    return matrix, plans
+
+
+def test_visual_and_rdf_lanes_run_only_when_their_path_filters_enable_them(tmp_path):
+    # A full plan (merge queue, nightly) still leaves them out: they are
+    # switched on by their own path filters, not by spec impact.
+    matrix, _ = _plan_with_gated_lanes(tmp_path / "off", "full", [])
+    assert {entry["lane"] for entry in matrix} == {"chromium"}
+
+    matrix, plans = _plan_with_gated_lanes(tmp_path / "on", "full", ["visual", "rdf"])
+    assert {entry["shardId"] for entry in matrix} >= {"visual-01", "rdf-01"}
+    assert plans["visual"]["projects"] == ["visual-regression"]
+    assert plans["rdf"]["projects"] == ["Knowledge Graph"]
+    assert not plans["rdf"]["requiresAirflow"]
+
+
+def test_enabled_gated_lane_runs_in_full_on_a_targeted_plan_without_timing_history(
+    tmp_path,
+):
+    # Targeted planning fails on specs with no timing history, but a gated lane
+    # is a single shard, so it is planned whole and exempt from that gate.
+    matrix, plans = _plan_with_gated_lanes(
+        tmp_path,
+        "targeted",
+        ["rdf"],
+        selectors=[{"spec": "playwright/e2e/Pages/Glossary.spec.ts", "projects": ["auto"]}],
+    )
+    assert "rdf-01" in {entry["shardId"] for entry in matrix}
+    assert "visual" not in plans
+    assert plans["rdf"]["testCount"] == 2

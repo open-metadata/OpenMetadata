@@ -190,6 +190,17 @@ class RegistrationHandlerTest {
   }
 
   @Test
+  void testLoopbackIpv6Http_accepted() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(List.of(URI.create("http://[::1]:8080/callback")));
+
+    OAuthClientInformation result = handler.handle(metadata).join();
+
+    assertThat(result.getClientId()).isNotNull();
+    verify(clientRepository).register(any());
+  }
+
+  @Test
   void testPrivateUseScheme_accepted() {
     OAuthClientMetadata metadata = validMetadata();
     metadata.setRedirectUris(List.of(URI.create("cursor://callback")));
@@ -317,6 +328,20 @@ class RegistrationHandlerTest {
     assertThatThrownBy(() -> handler.handle(metadata).join())
         .isInstanceOf(CompletionException.class)
         .hasRootCauseInstanceOf(RegistrationException.class);
+
+    verify(clientRepository, never()).register(any());
+  }
+
+  @Test
+  void testRedirectUriTooLong_throwsRegistrationException() {
+    OAuthClientMetadata metadata = validMetadata();
+    metadata.setRedirectUris(
+        List.of(URI.create("https://example.com/callback?pad=" + "x".repeat(2048))));
+
+    assertThatThrownBy(() -> handler.handle(metadata).join())
+        .isInstanceOf(CompletionException.class)
+        .hasRootCauseInstanceOf(RegistrationException.class)
+        .hasRootCauseMessage("redirect_uri exceeds maximum length of 2048");
 
     verify(clientRepository, never()).register(any());
   }

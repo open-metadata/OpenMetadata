@@ -24,17 +24,16 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Bell01, FilterLines } from '@openmetadata/ui-core-components/icons';
+import {
+  Bell01,
+  FilterLines,
+  NoFilterFunnel,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterOffIcon } from '../../../../../../assets/svg/ic-filter-off.svg';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { AlertRecentEventFilters } from '../../../../../../enums/Alerts.enum';
 import { CSMode } from '../../../../../../enums/codemirror.enum';
 import {
@@ -44,7 +43,10 @@ import {
 } from '../../../../../../generated/events/api/typedEvent';
 import { EventSubscription } from '../../../../../../generated/events/eventSubscription';
 import { Paging } from '../../../../../../generated/type/paging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { getAlertEventsFromId } from '../../../../../../rest/alertsAPI';
 import { getAlertStatusIcon } from '../../../../../../utils/Alerts/AlertsUtil';
 import {
@@ -54,6 +56,7 @@ import {
 } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import searchClassBase from '../../../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../../../AppRouter/withSuspenseFallback';
@@ -87,9 +90,12 @@ function NotificationRecentEvents({
   const [filter, setFilter] = useState<AlertRecentEventFilters | Status>(
     AlertRecentEventFilters.ALL
   );
-  const { state: hashState, updateParams } = useSettingsHash();
-  const initialPage = Number(hashState.params.page) || 1;
-  const initialPageSize = Number(hashState.params.pageSize) || PAGE_SIZE_BASE;
+  const { updateParams } = useSettingsHash();
+  const {
+    page: initialPage,
+    resolvedPageSize: initialPageSize,
+    savePageSize,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
 
   const [currentPage, setCurrentPage] = useState(initialPage);
   const [pageSize, setPageSize] = useState(initialPageSize);
@@ -155,19 +161,14 @@ function NotificationRecentEvents({
     (size: number) => {
       setCurrentPage(1);
       setPageSize(size);
+      savePageSize(size);
       updateParams({ page: '1', pageSize: String(size) });
       getAlertRecentEvents(0, size);
     },
-    [updateParams, getAlertRecentEvents]
+    [savePageSize, updateParams, getAlertRecentEvents]
   );
 
-  const showPagination = useMemo(
-    () =>
-      Boolean(paging.before || paging.after) ||
-      paging.total > pageSize ||
-      pageSize !== PAGE_SIZE_BASE,
-    [paging, pageSize]
-  );
+  const showPagination = shouldShowPager(alertRecentEvents);
 
   const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
 
@@ -210,7 +211,7 @@ function NotificationRecentEvents({
           )}
           icon={
             isFiltered ? (
-              <FilterOffIcon />
+              <NoFilterFunnel />
             ) : (
               <Bell01 className="tw:text-fg-brand-primary" />
             )
@@ -247,7 +248,7 @@ function NotificationRecentEvents({
               const eventKey = `${changeEventData.id}-${changeEventData.timestamp}`;
 
               return (
-                <AccordionItem id={eventKey} key={eventKey}>
+                <AccordionItem id={eventKey} key={eventKey} variant="muted">
                   <AccordionHeader>
                     <Box
                       align="center"
@@ -327,7 +328,7 @@ function NotificationRecentEvents({
                             })}:`}
                           </Typography>
                           <SchemaEditor
-                            className="border"
+                            className="border tw:dark:[&_.cm-editor]:bg-primary_alt!"
                             mode={{ name: CSMode.JAVASCRIPT }}
                             options={{ readOnly: true }}
                             showCopyButton={false}
@@ -348,11 +349,7 @@ function NotificationRecentEvents({
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}

@@ -1,8 +1,6 @@
 package org.openmetadata.service.alerting.content.template;
 
-import com.github.jknack.handlebars.Handlebars;
 import com.github.jknack.handlebars.HandlebarsException;
-import com.github.jknack.handlebars.Template;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -10,21 +8,24 @@ import org.openmetadata.schema.api.events.NotificationTemplateValidationRequest;
 import org.openmetadata.schema.api.events.NotificationTemplateValidationResponse;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateRefusedException;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbox;
 
 @Slf4j
 public class HandlebarsNotificationTemplateProcessor implements NotificationTemplateProcessor {
 
-  private final Handlebars handlebars;
+  private final TemplateSandbox sandbox;
 
   public HandlebarsNotificationTemplateProcessor() {
-    this.handlebars = HandlebarsProvider.getInstance();
+    this.sandbox = HandlebarsProvider.getInstance();
   }
 
   @Override
   public String process(String templateString, Map<String, Object> context) {
     try {
-      Template template = handlebars.compileInline(templateString);
-      return template.apply(context);
+      return sandbox.render(templateString, context);
+    } catch (TemplateRefusedException e) {
+      throw e;
     } catch (Exception e) {
       throw new RuntimeException("Failed to process template: " + e.getMessage(), e);
     }
@@ -56,8 +57,10 @@ public class HandlebarsNotificationTemplateProcessor implements NotificationTemp
 
   private String validateTemplateString(String templateString) {
     try {
-      handlebars.compileInline(templateString);
+      sandbox.check(templateString);
       return null;
+    } catch (TemplateRefusedException e) {
+      return String.format("Template validation failed: %s", e.getMessage());
     } catch (HandlebarsException e) {
       return formatHandlebarsError(e);
     } catch (Exception e) {

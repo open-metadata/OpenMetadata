@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   Dialog,
   Divider,
@@ -34,6 +35,7 @@ import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import {
   ConfigurationCheckState,
+  SsoTestLoginContentProps,
   SsoTestLoginModalProps,
 } from './SsoTestLogin.interface';
 import {
@@ -173,16 +175,15 @@ const ResolvedIdentity = ({ result }: { result: TestLoginResult }) => {
   );
 };
 
-const SsoTestLoginModal = ({
-  open,
+/** The Test Login progress and outcome, shown in the modal or as a page of its own. */
+export const SsoTestLoginContent = ({
   isTesting,
   isAwaitingCredentials,
   configurationCheck,
   result,
   error,
   onSubmitCredentials,
-  onClose,
-}: Readonly<SsoTestLoginModalProps>) => {
+}: Readonly<SsoTestLoginContentProps>) => {
   const { t } = useTranslation();
 
   const outcome = useMemo(() => {
@@ -216,67 +217,79 @@ const SsoTestLoginModal = ({
     configurationCheck?.status === StageStatus.Running;
 
   return (
+    <Box data-testid="sso-test-login-content" direction="col" gap={4}>
+      <Typography as="h2" size="text-md" weight="semibold">
+        {t('label.test-login')}
+      </Typography>
+      <Typography as="p" className="tw:text-tertiary" size="text-sm">
+        {t('message.sso-test-login-description')}
+      </Typography>
+      <Box aria-live="polite" direction="col" gap={4}>
+        {error && (
+          <InlineAlert
+            alertClassName="sso-test-login-error"
+            description={error}
+            heading={t('label.failed')}
+            type="error"
+          />
+        )}
+        {outcome}
+        {isWaiting && (
+          <Box align="center" data-testid="sso-test-login-loading" gap={3}>
+            <Loader size="small" />
+            <Typography as="span" size="text-sm">
+              {isCheckingConfiguration
+                ? t('message.sso-test-login-checking-configuration')
+                : t('message.sso-test-login-waiting')}
+            </Typography>
+          </Box>
+        )}
+        {isAwaitingCredentials && (
+          <SsoTestLoginCredentialsForm
+            isSubmitting={isTesting}
+            onSubmit={onSubmitCredentials}
+          />
+        )}
+        {(result || configurationCheck) && (
+          <StageTimeline
+            configurationCheck={configurationCheck}
+            result={result}
+          />
+        )}
+        {isTestLoginSettled(result) && result && (
+          <ResolvedIdentity result={result} />
+        )}
+      </Box>
+    </Box>
+  );
+};
+
+const SsoTestLoginModal = ({
+  open,
+  onClose,
+  ...contentProps
+}: Readonly<SsoTestLoginModalProps>) => {
+  const { t } = useTranslation();
+
+  return (
     <ModalOverlay isOpen={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <Modal>
         <Dialog
           aria-label={t('label.test-login')}
           data-testid="sso-test-login-modal"
           width={560}>
-          <div className="tw:flex tw:flex-col tw:gap-4 tw:px-5 tw:py-4">
-            <Typography as="h2" size="text-md" weight="semibold">
-              {t('label.test-login')}
-            </Typography>
-            <Typography as="p" className="tw:text-tertiary" size="text-sm">
-              {t('message.sso-test-login-description')}
-            </Typography>
-            <div aria-live="polite" className="tw:flex tw:flex-col tw:gap-4">
-              {error && (
-                <InlineAlert
-                  alertClassName="sso-test-login-error"
-                  description={error}
-                  heading={t('label.failed')}
-                  type="error"
-                />
-              )}
-              {outcome}
-              {isWaiting && (
-                <div
-                  className="tw:flex tw:items-center tw:gap-3"
-                  data-testid="sso-test-login-loading">
-                  <Loader size="small" />
-                  <Typography as="span" size="text-sm">
-                    {isCheckingConfiguration
-                      ? t('message.sso-test-login-checking-configuration')
-                      : t('message.sso-test-login-waiting')}
-                  </Typography>
-                </div>
-              )}
-              {isAwaitingCredentials && (
-                <SsoTestLoginCredentialsForm
-                  isSubmitting={isTesting}
-                  onSubmit={onSubmitCredentials}
-                />
-              )}
-              {(result || configurationCheck) && (
-                <StageTimeline
-                  configurationCheck={configurationCheck}
-                  result={result}
-                />
-              )}
-              {isTestLoginSettled(result) && result && (
-                <ResolvedIdentity result={result} />
-              )}
-            </div>
-          </div>
+          <Box className="tw:px-5 tw:py-4">
+            <SsoTestLoginContent {...contentProps} />
+          </Box>
           <Divider />
-          <div className="tw:flex tw:justify-end tw:px-5 tw:py-3">
+          <Box className="tw:px-5 tw:py-3" justify="end">
             <Button
               color="secondary"
               data-testid="sso-test-login-close"
               onClick={onClose}>
               {t('label.close')}
             </Button>
-          </div>
+          </Box>
         </Dialog>
       </Modal>
     </ModalOverlay>

@@ -13,8 +13,8 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
-import { useDataInsightProvider } from '../../../pages/DataInsightPage/DataInsightProvider';
 import DailyActiveUsersChart from '../DailyActiveUsersChart';
+import { useDataInsightProvider } from '../DataInsightProvider/DataInsightProvider';
 import PageViewsByEntitiesChart from '../PageViewsByEntitiesChart';
 import TopActiveUsers from '../TopActiveUsers';
 import TopViewEntities from '../TopViewEntities';

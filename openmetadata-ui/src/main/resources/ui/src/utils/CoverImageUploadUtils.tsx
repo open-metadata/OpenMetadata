@@ -17,8 +17,15 @@ import { omit } from 'lodash';
 import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClassBase';
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
+import { queryClient } from '../queryClient';
+import { invalidateDomainStyles } from '../rest/queries/domainStyleQuery';
 import { getIsErrorMatch } from './APIUtils';
 import { showErrorToast } from './ToastUtils';
+
+const STYLED_CHIP_ENTITY_TYPES: ReadonlySet<EntityType> = new Set([
+  EntityType.DOMAIN,
+  EntityType.DATA_PRODUCT,
+]);
 
 /**
  * Position offset for cover image using CSS percentage values
@@ -254,6 +261,12 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
       );
     } else {
       toast.success(t('server.create-entity-success', { entity: entityLabel }));
+    }
+
+    // A new styled domain or data product must be in the chip style list
+    // before its chips render. ADR:2026-11-02-domain-chips-resolve-their-style-by-domain-id
+    if (STYLED_CHIP_ENTITY_TYPES.has(entityType)) {
+      void invalidateDomainStyles(queryClient);
     }
 
     // Step 6: Call success callback

@@ -123,14 +123,18 @@ const GROUPING: Record<
 const ActivityEmptyState = ({
   error,
   isFiltered,
+  hasActivity,
   userFirstName,
   onRetry,
+  onClearTypes,
 }: {
   error: unknown;
   isFiltered: boolean;
+  hasActivity: boolean;
   // Set when the feed is another user's, so the empty state names them.
   userFirstName?: string;
   onRetry: () => void;
+  onClearTypes?: () => void;
 }) => {
   const { t } = useTranslation();
 
@@ -148,6 +152,15 @@ const ActivityEmptyState = ({
           entity: t('label.activity'),
         })}
         onReload={onRetry}
+      />
+    );
+  }
+
+  if (onClearTypes && hasActivity) {
+    return (
+      <NoFilteredResultsPlaceholder
+        data-testid="inbox-activity-no-results"
+        onClearFilters={onClearTypes}
       />
     );
   }
@@ -188,6 +201,8 @@ export interface ActivityTabProps {
   // Show this user's feeds instead of the viewer's. Likes and replies still
   // act as the viewer.
   user?: User;
+  /** The sub-tab the feed opens on; defaults to All. */
+  initialFilter?: ActivityFilter;
 }
 
 const getDefaultDateRange = (): InboxDateRange => ({
@@ -306,11 +321,16 @@ const ActivityGroupList = ({
   );
 };
 
-const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
+const ActivityTab: React.FC<ActivityTabProps> = ({
+  user,
+  initialFilter = ActivityFilter.All,
+  ...windowProps
+}) => {
   const { t } = useTranslation();
-  const [filter, setFilter] = useState(ActivityFilter.All);
+  const [filter, setFilter] = useState(initialFilter);
   const [grouping, setGrouping] = useState(ActivityGrouping.Day);
   const [typeKeys, setTypeKeys] = useState<string[]>([]);
+  const clearTypeKeys = useCallback(() => setTypeKeys([]), []);
   // The Inbox centres a reading column; a user's profile tab spans its panel.
   const feedColumnClass = classNames(
     'tw:mx-auto tw:w-full',
@@ -325,20 +345,23 @@ const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
   const isOtherUser = Boolean(userFirstName);
   const userId = user?.id;
 
-  // Looking at the list is what clears the sidebar's unread badge; feeds have no
-  // server-side read state to update. Another user's feed is not the inbox.
-  useEffect(() => {
-    if (!isOtherUser) {
-      markInboxActivitySeen();
-    }
-  }, [isOtherUser, markInboxActivitySeen]);
-
   // Shared with the badge (one fetch); merge semantics documented on the hook.
   const { items, isLoading, error, refetch } = useInboxActivity(
     filter,
     dateRange,
     userId
   );
+
+  // Looking at the list is what clears the sidebar's unread badge; feeds have no
+  // server-side read state to update. Another user's feed is not the inbox.
+  // Only a successfully loaded view of the viewer's own feed is "looking at
+  // the list" — a loading skeleton or an error screen is not, so the mark is
+  // not stamped until the feed resolves without error.
+  useEffect(() => {
+    if (!isOtherUser && !isLoading && !error) {
+      markInboxActivitySeen();
+    }
+  }, [isOtherUser, isLoading, error, markInboxActivitySeen]);
   const counts = useInboxActivityCounts(dateRange, userId);
   // The Mentions feed (already read for its count) marks the cards that name
   // the feed's user, whichever tab they appear under.
@@ -402,8 +425,10 @@ const ActivityTab: React.FC<ActivityTabProps> = ({ user, ...windowProps }) => {
     activityContent = (
       <ActivityEmptyState
         error={error}
-        isFiltered={Boolean(isFiltered || typeKeys.length)}
+        hasActivity={items.length > 0}
+        isFiltered={isFiltered}
         userFirstName={userFirstName}
+        onClearTypes={typeKeys.length ? clearTypeKeys : undefined}
         onRetry={refetch}
       />
     );

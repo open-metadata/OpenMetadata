@@ -20,6 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   ArrowCircleBrokenUp,
+  Article,
   ChevronDown,
   Plus,
   Stars01,
@@ -31,7 +32,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
@@ -55,11 +55,13 @@ import {
   ARTICLE_SORT_OPTIONS,
   DEFAULT_ARTICLE_SORT_OPTION,
 } from '../../../constants/ContextCenter.constants';
-import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
+import {
+  getKnowledgePageFields,
+  isKnowledgePageFullWidthTab,
+} from '../../../constants/KnowledgeCenter.constant';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityTabs } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import LimitWrapper from '../../../hoc/LimitWrapper';
@@ -85,6 +87,7 @@ import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { createArticleKnowledgePage } from '../../../utils/ContextCenterPureUtils';
 import { CONTEXT_CENTER_ARTICLES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
 import { getQuickFilterQuery } from '../../../utils/ExplorePureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -405,10 +408,10 @@ const ContextCenterArticlesPage = () => {
     );
   };
 
-  const isActivityFeedTab =
-    Boolean(fqn) && page.activeTab === EntityTabs.ACTIVITY_FEED;
+  const isFullWidthTab =
+    Boolean(fqn) && isKnowledgePageFullWidthTab(page.activeTab);
 
-  const leftSidebar = isActivityFeedTab ? null : (
+  const leftSidebar = isFullWidthTab ? null : (
     <KnowledgePagesHierarchy
       activeKey={fqn}
       activePage={page.data}
@@ -421,7 +424,7 @@ const ContextCenterArticlesPage = () => {
   );
 
   const rightSidebar = useMemo(() => {
-    if (isActivityFeedTab || version) {
+    if (isFullWidthTab || version) {
       return null;
     }
 
@@ -430,7 +433,7 @@ const ContextCenterArticlesPage = () => {
     }
 
     return null;
-  }, [isActivityFeedTab, version, isRightPanelOpen, page.rightPanel]);
+  }, [isFullWidthTab, version, isRightPanelOpen, page.rightPanel]);
 
   const centerContent = useMemo(() => {
     if (version) {
@@ -510,7 +513,7 @@ const ContextCenterArticlesPage = () => {
         features={[
           {
             key: 'create',
-            icon: <FileIcon className="tw:text-fg-brand-primary" />,
+            icon: <Article className="tw:text-fg-brand-primary" />,
             title: t('label.create-an-article'),
             description: t(
               'message.context-center-articles-empty-feature-create'
@@ -552,7 +555,7 @@ const ContextCenterArticlesPage = () => {
           <Card.Content
             className={classNames(
               'tw:flex-1 tw:min-h-0 tw:overflow-auto',
-              isActivityFeedTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
+              isFullWidthTab && !version ? 'tw:p-0' : 'tw:p-6 tw:pl-8'
             )}>
             {centerContent}
           </Card.Content>
@@ -653,7 +656,7 @@ const ContextCenterArticlesPage = () => {
             'tw:relative tw:flex tw:flex-col tw:min-h-0 tw:overflow-hidden tw:rounded-xl',
             pageLayoutClassNames.content
           )}
-          dir={i18n.dir()}
+          dir={getLanguageDirection(i18n)}
           id="knowledge-center-layout-container">
           <DocumentTitle title={page.title || t(ARTICLE_PLURAL_LABEL)} />
           {showArticlesEmptyState && renderArticlesEmptyState()}

@@ -62,6 +62,9 @@ public interface RdfInfraDAOs {
   OntologyReferenceDAO ontologyReferenceDAO();
 
   @CreateSqlObject
+  OntologyConceptBindingDAO ontologyConceptBindingDAO();
+
+  @CreateSqlObject
   OntologyReleaseDAO ontologyReleaseDAO();
 
   @CreateSqlObject
@@ -114,6 +117,17 @@ public interface RdfInfraDAOs {
       long expiresAt) {}
 
   interface OntologyEntityDAO extends EntityDAO<Ontology> {
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND id > :afterId AND JSON_LENGTH(json, '$.installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT json FROM ontology_entity WHERE deleted = FALSE AND id > :afterId AND jsonb_typeof(json -> 'installedPacks') = 'array' AND jsonb_array_length(json -> 'installedPacks') > 0 ORDER BY id LIMIT :limit",
+        connectionType = POSTGRES)
+    List<String> listJsonWithInstalledPacks(
+        @Bind("limit") int limit, @Bind("afterId") String afterId);
+
     @Override
     default String getTableName() {
       return "ontology_entity";
@@ -641,6 +655,12 @@ public interface RdfInfraDAOs {
     @SqlUpdate("DELETE FROM rdf_reindex_lock WHERE expiresAt < :now")
     int deleteExpiredLocks(@Bind("now") long now);
 
+    @SqlUpdate(
+        "DELETE FROM rdf_reindex_lock WHERE lockKey = :lockKey AND jobId = :jobId "
+            + "AND expiresAt < :now")
+    int deleteExpired(
+        @Bind("lockKey") String lockKey, @Bind("jobId") String jobId, @Bind("now") long now);
+
     default boolean tryAcquireLock(
         String lockKey, String jobId, String serverId, long acquiredAt, long expiresAt) {
       deleteExpiredLocks(System.currentTimeMillis());
@@ -651,7 +671,9 @@ public interface RdfInfraDAOs {
 
       RdfReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        delete(lockKey);
+        // Delete only the expired holder we read: another server may have replaced it since, and
+        // deleting by key alone would let two servers each believe they hold the lock.
+        deleteExpired(lockKey, existing.jobId(), System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }

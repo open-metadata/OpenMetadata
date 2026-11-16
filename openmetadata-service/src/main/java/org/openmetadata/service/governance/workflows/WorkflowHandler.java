@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
@@ -42,6 +43,7 @@ import org.flowable.common.engine.api.FlowableException;
 import org.flowable.common.engine.api.FlowableObjectNotFoundException;
 import org.flowable.common.engine.api.FlowableWrongDbException;
 import org.flowable.common.engine.impl.el.DefaultExpressionManager;
+import org.flowable.common.engine.impl.interceptor.CommandContext;
 import org.flowable.engine.HistoryService;
 import org.flowable.engine.ManagementService;
 import org.flowable.engine.ProcessEngine;
@@ -52,11 +54,15 @@ import org.flowable.engine.RuntimeService;
 import org.flowable.engine.TaskService;
 import org.flowable.engine.history.HistoricProcessInstance;
 import org.flowable.engine.impl.cfg.StandaloneProcessEngineConfiguration;
+import org.flowable.engine.impl.cmd.SuspendProcessDefinitionCmd;
+import org.flowable.engine.impl.persistence.entity.DeploymentEntity;
+import org.flowable.engine.impl.persistence.entity.ProcessDefinitionEntity;
+import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
+import org.flowable.engine.runtime.NativeProcessInstanceQuery;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -66,6 +72,8 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowTriggerInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskReviewVote;
+import org.openmetadata.schema.type.TaskReviewVoteDecision;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -87,6 +95,7 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceStateRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineMapper;
+import org.openmetadata.service.tasks.TaskReviewVotes;
 import org.openmetadata.service.util.FreshReadScope;
 
 @Slf4j
@@ -127,9 +136,8 @@ public class WorkflowHandler {
   // lets the loop stop cleanly the moment the backlog for THIS key is fully drained.
   private static final int CLEANUP_BATCH_SIZE = 100;
 
-  // Max entity ids per Flowable OR-chained query when cancelling running instances during a
-  // bulk hard-delete. Keeps the generated statement inside driver parameter limits (Postgres
-  // caps at 32767 bind params; MySQL is lower under some JDBC configs).
+  // Max entity ids per native lookup when cancelling running instances during a bulk hard-delete.
+  // Keeps the IN list inside driver parameter limits (Postgres caps at 32767 bind params).
   private static final int CANCEL_BATCH_SIZE = 100;
 
   /**
@@ -461,10 +469,34 @@ public class WorkflowHandler {
     }
   }
 
+  /** The main and trigger BPMN documents of a workflow, built before anything is undeployed. */
+  public record WorkflowBpmn(byte[] main, byte[] trigger) {}
+
+  public static WorkflowBpmn toBpmn(Workflow workflow) {
+    BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
+    return new WorkflowBpmn(
+        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel()),
+        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel()));
+  }
+
   public void deploy(Workflow workflow) {
+    deploy(workflow, toBpmn(workflow));
+  }
+
+  /**
+   * Removes every deployment and running instance of the workflow, then deploys it again. The BPMN is
+   * built first, so a definition that cannot be built leaves the current deployment in place.
+   */
+  public void redeploy(WorkflowDefinition workflowDefinition) {
+    Workflow workflow = new Workflow(workflowDefinition);
+    WorkflowBpmn bpmn = toBpmn(workflow);
+    deleteWorkflowDefinition(workflowDefinition);
+    deploy(workflow, bpmn);
+  }
+
+  private void deploy(Workflow workflow, WorkflowBpmn bpmn) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
     ManagementService managementService = processEngine.getManagementService();
-    BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
 
     // Before deploying, check if this is an update and handle timer jobs
     String triggerWorkflowKey = workflow.getTriggerWorkflow().getWorkflowName();
@@ -512,6 +544,43 @@ public class WorkflowHandler {
       }
     }
 
+    // The new versions are deployed before the old ones are drained. Deploying a version replaces
+    // the trigger's start-signal subscription with one on the new version; draining first deleted
+    // the version that held the subscription before its replacement existed, so an entity event
+    // handled in between started no workflow at all
+    // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
+    // Deploy Main Workflow
+    byte[] bpmnMainWorkflowBytes = bpmn.main();
+    Deployment mainDeployment =
+        repositoryService
+            .createDeployment()
+            .addBytes(
+                String.format(
+                    "%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
+                bpmnMainWorkflowBytes)
+            .name(workflow.getMainWorkflow().getWorkflowName())
+            .deploy();
+
+    // Deploy Trigger Workflow
+    byte[] bpmnTriggerWorkflowBytes = bpmn.trigger();
+    Deployment triggerDeployment =
+        managementService.executeCommand(
+            commandContext -> {
+              DeploymentEntity deployed =
+                  (DeploymentEntity)
+                      repositoryService
+                          .createDeployment()
+                          .addBytes(
+                              String.format(
+                                  "%s-workflow.bpmn20.xml",
+                                  workflow.getTriggerWorkflow().getWorkflowName()),
+                              bpmnTriggerWorkflowBytes)
+                          .name(workflow.getTriggerWorkflow().getWorkflowName())
+                          .deploy();
+              keepSuspended(workflow.getWorkflowDefinition(), deployed, commandContext);
+              return deployed;
+            });
+
     // Cleanup path is skipped in migration context. `redeployGovernanceWorkflows` in v1131 calls
     // deploy() for every workflow_definition in a tight loop; combined with a large ACT_RE_PROCDEF
     // backlog (customers with long-running approval instances accumulate tens of thousands of
@@ -519,48 +588,55 @@ public class WorkflowHandler {
     // user-CRUD deploys still trigger the drain below, so the backlog is not orphaned — it is
     // just deferred out of the migration critical path.
     if (!isMigrationContext) {
+      // Spared by version, not by deployment: a deploy of the same workflow that overlaps this one
+      // may already have deployed a newer version, which this drain must not delete
+      // (ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains).
+      Map<String, Integer> deployedVersions =
+          deployedVersionsByKey(
+              repositoryService, Set.of(mainDeployment.getId(), triggerDeployment.getId()));
       try {
-        drainOldDeploymentsForKey(repositoryService, managementService, triggerWorkflowKey, true);
-        drainOldDeploymentsForKey(repositoryService, managementService, workflowName, false);
+        drainOldDeploymentsForKey(
+            repositoryService, managementService, triggerWorkflowKey, true, deployedVersions);
+        drainOldDeploymentsForKey(
+            repositoryService, managementService, workflowName, false, deployedVersions);
       } catch (Exception e) {
         LOG.warn(
             "Error draining old deployments for workflow {}: {}", workflowName, e.getMessage());
       }
     }
+  }
 
-    // Deploy Main Workflow
-    byte[] bpmnMainWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format("%s-workflow.bpmn20.xml", workflow.getMainWorkflow().getWorkflowName()),
-            bpmnMainWorkflowBytes)
-        .name(workflow.getMainWorkflow().getWorkflowName())
-        .deploy();
-
-    // Deploy Trigger Workflow
-    byte[] bpmnTriggerWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
-    repositoryService
-        .createDeployment()
-        .addBytes(
-            String.format(
-                "%s-workflow.bpmn20.xml", workflow.getTriggerWorkflow().getWorkflowName()),
-            bpmnTriggerWorkflowBytes)
-        .name(workflow.getTriggerWorkflow().getWorkflowName())
-        .deploy();
-
-    keepSuspended(workflow.getWorkflowDefinition());
+  private static Map<String, Integer> deployedVersionsByKey(
+      RepositoryService repositoryService, Set<String> deploymentIds) {
+    Map<String, Integer> versions = new HashMap<>();
+    for (String deploymentId : deploymentIds) {
+      for (ProcessDefinition pd :
+          repositoryService.createProcessDefinitionQuery().deploymentId(deploymentId).list()) {
+        versions.put(pd.getKey(), pd.getVersion());
+      }
+    }
+    return versions;
   }
 
   /**
    * Flowable deploys every new process-definition version active. A workflow stored as suspended
-   * has its new trigger versions suspended too, so neither their timers nor a trigger start it.
+   * has its new trigger versions suspended in the transaction that deploys them, so no signal sees
+   * them active, and neither their timers nor a trigger start it. They are suspended by entity, as
+   * Flowable's own deploy-with-activation-date does: the new rows are not flushed yet, so a query
+   * in this transaction would not find them.
+   * ADR:2026-10-29-a-workflow-redeploy-deploys-before-it-drains
    */
-  private void keepSuspended(WorkflowDefinition workflowDefinition) {
-    if (Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
-      suspendWorkflow(workflowDefinition.getName());
+  private static void keepSuspended(
+      WorkflowDefinition workflowDefinition,
+      DeploymentEntity deployment,
+      CommandContext commandContext) {
+    if (!Boolean.TRUE.equals(workflowDefinition.getSuspended())) {
+      return;
+    }
+    for (ProcessDefinitionEntity definition :
+        deployment.getDeployedArtifacts(ProcessDefinitionEntity.class)) {
+      new SuspendProcessDefinitionCmd(definition, false, null, deployment.getTenantId())
+          .execute(commandContext);
     }
   }
 
@@ -679,7 +755,8 @@ public class WorkflowHandler {
       RepositoryService repositoryService,
       ManagementService managementService,
       String key,
-      boolean useKeyLike) {
+      boolean useKeyLike,
+      Map<String, Integer> deployedVersions) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     int offset = 0;
     while (true) {
@@ -692,7 +769,7 @@ public class WorkflowHandler {
         break;
       }
       DeploymentCleanupResult cleanupResult =
-          drainBatch(batch, repositoryService, runtimeService, managementService);
+          drainBatch(batch, repositoryService, runtimeService, managementService, deployedVersions);
       if (cleanupResult.deleted() == 0) {
         offset += batch.size();
       } else {
@@ -711,10 +788,16 @@ public class WorkflowHandler {
       List<ProcessDefinition> batch,
       RepositoryService repositoryService,
       RuntimeService runtimeService,
-      ManagementService managementService) {
+      ManagementService managementService,
+      Map<String, Integer> deployedVersions) {
     int deleted = 0;
     int preserved = 0;
     for (ProcessDefinition pd : batch) {
+      Integer deployedVersion = deployedVersions.get(pd.getKey());
+      if (deployedVersion != null && pd.getVersion() >= deployedVersion) {
+        preserved++;
+        continue;
+      }
       List<ProcessInstance> running =
           runtimeService.createProcessInstanceQuery().processDefinitionId(pd.getId()).list();
       if (running.isEmpty()) {
@@ -1136,6 +1219,7 @@ public class WorkflowHandler {
                           .executeCommand(
                               context ->
                                   handleMultiApproval(
+                                      customTaskId,
                                       task,
                                       new HashMap<>(variables),
                                       approvalThreshold,
@@ -1216,6 +1300,32 @@ public class WorkflowHandler {
         : TaskResolutionOutcome.PROCESS_FAILED;
   }
 
+  public List<TaskReviewVote> recordedReviewVotes(
+      final String processInstanceId, final UUID taskId) {
+    final var running =
+        processEngine
+            .getRuntimeService()
+            .createProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    if (running != null) {
+      return TaskReviewVotes.read(
+          running.getProcessVariables().get(TaskReviewVotes.variable(taskId)));
+    }
+    final var completed =
+        processEngine
+            .getHistoryService()
+            .createHistoricProcessInstanceQuery()
+            .processInstanceId(processInstanceId)
+            .includeProcessVariables()
+            .singleResult();
+    return completed == null
+        ? List.of()
+        : TaskReviewVotes.read(
+            completed.getProcessVariables().get(TaskReviewVotes.variable(taskId)));
+  }
+
   public Optional<OntologyWorkflowDecision> completedOntologyDecision(
       final String processInstanceId) {
     if (taskResolutionOutcome(processInstanceId) != TaskResolutionOutcome.COMPLETED) {
@@ -1229,9 +1339,15 @@ public class WorkflowHandler {
             .includeProcessVariables()
             .singleResult();
     final Object receipt = completed.getProcessVariables().get(OntologyWorkflowDecision.VARIABLE);
-    return receipt instanceof String json
-        ? Optional.of(JsonUtils.readValue(json, OntologyWorkflowDecision.class))
-        : Optional.empty();
+    if (!(receipt instanceof String json)) {
+      return Optional.empty();
+    }
+    final OntologyWorkflowDecision decision =
+        JsonUtils.readValue(json, OntologyWorkflowDecision.class);
+    return Optional.of(
+        decision.withReviewVotes(
+            TaskReviewVotes.read(
+                completed.getProcessVariables().get(TaskReviewVotes.variable(decision.taskId())))));
   }
 
   private static boolean hasWorkflowFailure(final Map<String, Object> variables) {
@@ -1377,6 +1493,7 @@ public class WorkflowHandler {
   }
 
   private boolean handleMultiApproval(
+      UUID customTaskId,
       Task task,
       Map<String, Object> variables,
       Integer approvalThreshold,
@@ -1433,6 +1550,17 @@ public class WorkflowHandler {
       rejectersList.add(currentUser);
     }
 
+    // Commit vote details with the count so a delayed task-row write cannot lose a comment.
+    final String voteVariable = TaskReviewVotes.variable(customTaskId);
+    if (variables.containsKey(voteVariable)) {
+      final String votes =
+          JsonUtils.pojoToJson(
+              TaskReviewVotes.merge(
+                  TaskReviewVotes.read(taskService.getVariable(task.getId(), voteVariable)),
+                  TaskReviewVotes.read(variables.get(voteVariable))));
+      taskService.setVariable(task.getId(), voteVariable, votes);
+      variables.put(voteVariable, votes);
+    }
     taskService.setVariable(task.getId(), "approversList", approversList);
     taskService.setVariable(task.getId(), "rejectersList", rejectersList);
     if (variables.get(OntologyWorkflowDecision.VARIABLE) instanceof String json) {
@@ -1508,19 +1636,8 @@ public class WorkflowHandler {
   }
 
   private Boolean parseApprovalDecision(Object value) {
-    if (value instanceof Boolean boolValue) {
-      return boolValue;
-    }
-
-    if (value instanceof String stringValue) {
-      return switch (stringValue.trim().toLowerCase(java.util.Locale.ROOT)) {
-        case "true", "approve", "approved" -> true;
-        case "false", "reject", "rejected" -> false;
-        default -> null;
-      };
-    }
-
-    return null;
+    final TaskReviewVoteDecision decision = TaskReviewVotes.decisionForResult(value);
+    return decision == null ? null : decision == TaskReviewVoteDecision.Approved;
   }
 
   public boolean isTaskStillOpen(UUID customTaskId) {
@@ -1677,10 +1794,13 @@ public class WorkflowHandler {
   }
 
   /**
-   * Batch variant of {@link #cancelInstancesForEntity}. Uses Flowable's OR builder in bounded
-   * sub-chunks so a large subtree hard-delete does not fan out into thousands of
-   * variableValueEquals queries. The count() gate short-circuits when the engine has zero
-   * running instances, which is the common case on tenants that don't use governance workflows.
+   * Batch variant of {@link #cancelInstancesForEntity}. The count() gate short-circuits when the
+   * engine has zero running instances, which is the common case on tenants that don't use
+   * governance workflows.
+   *
+   * <p>One native {@code IN} lookup per chunk: Flowable's {@code or().variableValueEquals(...)}
+   * emits one EXISTS per id, which Postgres plans as a hashed subplan over all of ACT_RU_VARIABLE,
+   * so at ~10k running instances a 100-id chunk took 15-18s on Postgres and MySQL alike.
    */
   public void cancelInstancesForEntities(Collection<UUID> entityIds, String reason) {
     if (entityIds == null || entityIds.isEmpty()) {
@@ -1699,11 +1819,8 @@ public class WorkflowHandler {
     }
     for (int i = 0; i < ids.size(); i += CANCEL_BATCH_SIZE) {
       List<UUID> subChunk = ids.subList(i, Math.min(i + CANCEL_BATCH_SIZE, ids.size()));
-      ProcessInstanceQuery query = runtimeService.createProcessInstanceQuery().or();
-      for (UUID id : subChunk) {
-        query = query.variableValueEquals(namespacedVar, id.toString());
-      }
-      List<ProcessInstance> instances = query.endOr().list();
+      List<ProcessInstance> instances =
+          findProcessInstancesByVariable(runtimeService, namespacedVar, subChunk);
       for (ProcessInstance pi : instances) {
         endWorkflowInstanceForBusinessKey(
             pi.getBusinessKey(), WorkflowInstance.WorkflowStatus.CANCELLED, reason);
@@ -1714,6 +1831,25 @@ public class WorkflowHandler {
         }
       }
     }
+  }
+
+  private static List<ProcessInstance> findProcessInstancesByVariable(
+      RuntimeService runtimeService, String variableName, List<UUID> values) {
+    StringJoiner placeholders = new StringJoiner(", ");
+    NativeProcessInstanceQuery query = runtimeService.createNativeProcessInstanceQuery();
+    for (int i = 0; i < values.size(); i++) {
+      placeholders.add("#{v" + i + "}");
+      query.parameter("v" + i, values.get(i).toString());
+    }
+    return query
+        .sql(
+            "SELECT RES.* FROM ACT_RU_EXECUTION RES WHERE RES.ID_ = RES.PROC_INST_ID_"
+                + " AND RES.ID_ IN (SELECT V.PROC_INST_ID_ FROM ACT_RU_VARIABLE V"
+                + " WHERE V.NAME_ = #{name} AND V.TEXT_ IN ("
+                + placeholders
+                + "))")
+        .parameter("name", variableName)
+        .list();
   }
 
   /**

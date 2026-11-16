@@ -21,9 +21,12 @@ export interface FeedCardFooterProps {
   conversationId: string;
   reply?: ConversationReply;
   isReply?: boolean;
-  isForFeedTab?: boolean;
   componentsVisibility?: {
     showThreadIcon?: boolean;
     showRepliesContainer?: boolean;
   };
+  /** Replaces opening the conversation in the thread drawer. */
+  onReplyPress?: () => void;
+  /** Names the reply count on the reply button in place of the repliers' avatars. */
+  showReplyCount?: boolean;
 }

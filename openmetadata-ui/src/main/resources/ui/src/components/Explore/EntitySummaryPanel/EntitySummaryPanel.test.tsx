@@ -19,12 +19,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { Include } from '../../../generated/type/include';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -38,6 +35,12 @@ import { mockPipelineEntityDetails } from './mocks/PipelineSummary.mock';
 import { mockTableEntityDetails } from './mocks/TableSummary.mock';
 import { mockTagEntityDetails } from './mocks/TagSummary.mock';
 import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
 
 const mockHandleClosePanel = jest.fn();
 
@@ -281,7 +284,9 @@ jest.mock('../../../rest/testAPI', () => ({
 
 const mockGetTableDetailsByFQN = jest.fn();
 
+const mockGetColumnByFQN = jest.fn();
 jest.mock('../../../rest/tableAPI', () => ({
+  getColumnByFQN: (...args: unknown[]) => mockGetColumnByFQN(...args),
   getTableDetailsByFQN: (...args: unknown[]) =>
     mockGetTableDetailsByFQN(...args),
   patchTableDetails: jest.fn(),
@@ -388,80 +393,6 @@ describe('EntitySummaryPanel component tests', () => {
     const tableSummary = screen.getByTestId('TableSummary');
 
     expect(tableSummary).toBeInTheDocument();
-  });
-
-  it('renders the tour mock table from its search data with the tour grants', async () => {
-    mockGetTableDetailsByFQN.mockClear();
-    // No grants from the hook: the panel must render on the tour's own permissions.
-    setMockPermissions({});
-
-    render(
-      <TourContext.Provider
-        value={
-          {
-            isTourPage: true,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockTableEntityDetails,
-              entityType: EntityType.TABLE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />
-      </TourContext.Provider>
-    );
-
-    expect(await screen.findByTestId('TableSummary')).toBeInTheDocument();
-    expect(mockGetTableDetailsByFQN).not.toHaveBeenCalled();
-    expect(mockUseEntityPermissions).toHaveBeenLastCalledWith(
-      expect.anything(),
-      expect.anything(),
-      { enabled: false }
-    );
-  });
-
-  it('keeps the tour mock table read-only and offline across the panel tabs', async () => {
-    mockGetLineageDataByFQN.mockClear();
-    mockGetListTestCaseBySearch.mockClear();
-    // Full grants from the hook must not leak into the tour: its grant is view-only.
-    setMockPermissions({ ViewAll: true, EditAll: true });
-
-    render(
-      <TourContext.Provider
-        value={
-          {
-            isTourPage: true,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <EntitySummaryPanel
-          entityDetails={{
-            details: {
-              ...mockTableEntityDetails,
-              entityType: EntityType.TABLE,
-            },
-          }}
-          handleClosePanel={mockHandleClosePanel}
-        />
-      </TourContext.Provider>
-    );
-
-    expect(await screen.findByTestId('TableSummary')).toBeInTheDocument();
-    expect(
-      screen.queryByTestId('edit-displayName-button')
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('lineage-tab'));
-    fireEvent.click(screen.getByTestId('data-quality-tab'));
-
-    await waitFor(() =>
-      expect(screen.getByTestId('data-quality-tab')).toBeInTheDocument()
-    );
-
-    expect(mockGetLineageDataByFQN).not.toHaveBeenCalled();
-    expect(mockGetListTestCaseBySearch).not.toHaveBeenCalled();
   });
 
   it('TopicSummary should render for topics data', async () => {
@@ -1390,6 +1321,119 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   describe('entityData sync when onEntityUpdate is provided (Lineage drawer)', () => {
+    it('shows the column extension from the API, not the stale search hit', async () => {
+      const columnHit = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      };
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        name: columnHit.name,
+        extension: { helloWorld: ['hello'] },
+      });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object; table?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify({
+              extension: props.dataAsset?.extension,
+              table: props.dataAsset?.table,
+            })}
+          </div>
+        ),
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: columnHit as unknown as never }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({
+            extension: { helloWorld: ['hello'] },
+            table: { id: 'parent-table-id' },
+          })
+        );
+      });
+
+      expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+        columnHit.fullyQualifiedName,
+        {
+          entityType: EntityType.TABLE,
+          fields: 'tags,extension',
+          include: Include.All,
+        }
+      );
+    });
+
+    it('ignores a late response for a previously selected column', async () => {
+      const columnHit = (fqn: string) => ({
+        ...mockTableEntityDetails,
+        id: fqn,
+        fullyQualifiedName: fqn,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      });
+      let resolveFirst: (value: object) => void = jest.fn();
+      mockGetColumnByFQN
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveFirst = resolve))
+        )
+        .mockResolvedValueOnce({ extension: { owner: 'second' } });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify(props.dataAsset?.extension)}
+          </div>
+        ),
+      });
+
+      const { rerender } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.first') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+      rerender(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.second') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({ owner: 'second' })
+        );
+      });
+
+      await act(async () => {
+        resolveFirst({ extension: { owner: 'first' } });
+      });
+
+      expect(screen.getByTestId('captured-column')).toHaveTextContent(
+        JSON.stringify({ owner: 'second' })
+      );
+    });
+
     it('should refresh the rendered dataAsset immediately, not just notify onEntityUpdate', async () => {
       const mockOnEntityUpdate = jest.fn();
       const tableEntity = {

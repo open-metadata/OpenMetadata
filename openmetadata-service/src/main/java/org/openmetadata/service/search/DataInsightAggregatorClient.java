@@ -8,6 +8,7 @@ import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChartResultList;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 public interface DataInsightAggregatorClient {
 
@@ -19,6 +20,16 @@ public interface DataInsightAggregatorClient {
   default DataInsightCustomChartResultList buildDIChart(
       DataInsightCustomChart diChart, long start, long end) throws IOException {
     return buildDIChart(diChart, start, end, false);
+  }
+
+  /**
+   * The chart as {@code caller} may see it: a live chart aggregates the search documents the
+   * caller's search access policies allow (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
+   */
+  default DataInsightCustomChartResultList buildDIChart(
+      DataInsightCustomChart diChart, long start, long end, boolean live, SubjectContext caller)
+      throws IOException {
+    return buildDIChart(diChart, start, end, live);
   }
 
   default List<Map<String, String>> fetchDIChartFields() {

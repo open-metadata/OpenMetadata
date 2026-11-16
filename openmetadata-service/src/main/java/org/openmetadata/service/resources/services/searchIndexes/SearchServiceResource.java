@@ -82,7 +82,7 @@ public class SearchServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public static class SearchServiceList extends ResultList<SearchService> {
@@ -450,7 +450,7 @@ public class SearchServiceResource
       @Valid CreateSearchService update) {
     SearchService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (SearchService) response.getEntity());
     return response;
   }

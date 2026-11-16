@@ -13,6 +13,7 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Typography,
@@ -20,18 +21,73 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Task } from '../../../../generated/entity/tasks/task';
+import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
+import { Task, TaskStatus } from '../../../../generated/entity/tasks/task';
 import { getOntologyReleaseVersion } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
+import {
+  releaseChangeCount,
+  releaseKindCounts,
+} from '../OntologyReleasePanel/OntologyReleasePanel.utils';
 import OntologyReviewRelease from './OntologyReviewRelease';
 
 interface OntologyReviewPanelProps {
   task: Task;
+  /** Heads the panel "Changes [n]" with change filters instead of the definition name. */
+  asChanges?: boolean;
   onReadyChange?: (ready: boolean) => void;
 }
 
+const PanelHeader = ({
+  asChanges,
+  isApproved,
+  release,
+}: {
+  asChanges?: boolean;
+  isApproved: boolean;
+  release: OntologyRelease;
+}) => {
+  const { t } = useTranslation();
+
+  return asChanges ? (
+    <Box align="center" gap={2}>
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-md"
+        weight="semibold">
+        {t('label.change-plural')}
+      </Typography>
+      <Badge color="gray" size="sm" type="pill-color">
+        {releaseChangeCount(release) ?? '—'}
+      </Badge>
+    </Box>
+  ) : (
+    <>
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-md"
+        weight="semibold">
+        {t('label.submitted-definition')}
+      </Typography>
+      {/* The release's own name (release-1) is internal; a version is what a reviewer knows. */}
+      <Typography>
+        {/* The snapshot is the submitted one, so only the task knows it was since approved. */}
+        {release.semanticVersion
+          ? 'v' + release.semanticVersion
+          : [getEntityName(release), isApproved ? null : t('label.draft')]
+              .filter(Boolean)
+              .join(' · ')}
+      </Typography>
+    </>
+  );
+};
+
 const OntologyReviewPanel = ({
   task,
+  asChanges,
   onReadyChange,
 }: OntologyReviewPanelProps) => {
   const { t } = useTranslation();
@@ -89,20 +145,20 @@ const OntologyReviewPanel = ({
   }
 
   if (isPending || !data) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader size="small" />;
   }
 
   return (
     <Box data-testid="ontology-review-panel" direction="col" gap={3}>
-      <Typography as="h3" size="text-md" weight="semibold">
-        {t('label.submitted-definition')}
-      </Typography>
-      <Typography>
-        {getEntityName(data)} ·{' '}
-        {t('label.version-number', { version: target?.entityVersion })}
-      </Typography>
+      <PanelHeader
+        asChanges={asChanges}
+        isApproved={task.status === TaskStatus.Approved}
+        release={data}
+      />
       <OntologyReviewRelease
         baseReleaseId={data.baseReleaseId}
+        counts={asChanges ? releaseKindCounts(data) : undefined}
+        filterable={asChanges}
         key={data.id}
         releaseId={data.id}
         onReadyChange={onReadyChange}

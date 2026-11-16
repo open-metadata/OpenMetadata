@@ -7,12 +7,12 @@
   "javaType": "org.openmetadata.schema.api.configuration.MCPConfiguration",
   "properties": {
     "mcpServerName": {
-      "description": "Name of the MCP server",
+      "description": "Name of the MCP server, reported to clients in initialize. Applies after a restart.",
       "type": "string",
       "default": "openmetadata-mcp-server"
     },
     "mcpServerVersion": {
-      "description": "Version of the MCP server",
+      "description": "Version of the MCP server, reported to clients in initialize. Applies after a restart.",
       "type": "string",
       "default": "1.0.0"
     },
@@ -64,6 +64,20 @@
       "type": "integer",
       "minimum": 25000,
       "default": 100000
+    },
+    "readOnly": {
+      "description": "Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every user including admins. A change applies right away to tool calls and to the next tools/list, on each server as it reloads the setting; an MCP client that already listed the tools sees the change when it lists them again.",
+      "type": "boolean",
+      "default": false
+    },
+    "disabledTools": {
+      "description": "Names of MCP tools to turn off for every user, admins included. A change applies right away to tool calls and to the next tools/list, on each server as it reloads the setting; an MCP client that already listed the tools sees the change when it lists them again. A name that matches no tool is ignored.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "default": []
     }
   },
   "additionalProperties": false

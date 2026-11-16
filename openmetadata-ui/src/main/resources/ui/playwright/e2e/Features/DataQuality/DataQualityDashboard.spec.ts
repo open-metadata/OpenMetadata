@@ -1030,68 +1030,43 @@ test.describe(
     test('Test Case Result pie chart segment click redirects to Test Cases with correct status', async ({
       page,
     }) => {
-      await test.step('Navigate to Data Quality dashboard', async () => {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      });
+      // Unfiltered, the pie counts every test case in the shared server, which
+      // parallel workers keep changing: a slice can be a sliver or move under
+      // the click. This spec's tier scopes it to 4 success, 4 failed, 4 aborted.
+      const segments = [
+        TestCaseStatus.Success,
+        TestCaseStatus.Failed,
+        TestCaseStatus.Aborted,
+      ];
 
-      await test.step('Click success segment and verify redirect', async () => {
-        await clickPieChartSegmentByIndex(
-          page,
-          TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-          0
-        );
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === '/data-quality/test-cases' &&
-            url.searchParams.get('testCaseStatus') === TestCaseStatus.Success
-        );
-      });
+      for (const [index, status] of segments.entries()) {
+        await test.step(`Open dashboard filtered by tier before clicking ${status}`, async () => {
+          await goToDataQualityDashboard(page);
+          await applyDashboardTierFilter(
+            page,
+            tier.responseData.fullyQualifiedName
+          );
+          await assertPieChartLegendCounts(
+            page,
+            'test-case-status-pie-chart-widget',
+            { success: '4', failed: '4', aborted: '4' }
+          );
+          await waitForAllLoadersToDisappear(page);
+        });
 
-      await test.step('Navigate back to Data Quality dashboard', async () => {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      });
-
-      await test.step('Click failed segment and verify redirect', async () => {
-        await clickPieChartSegmentByIndex(
-          page,
-          TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-          1
-        );
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === '/data-quality/test-cases' &&
-            url.searchParams.get('testCaseStatus') === TestCaseStatus.Failed
-        );
-      });
-
-      await test.step('Navigate back to Data Quality dashboard', async () => {
-        await goToDataQualityDashboard(page);
-        await expect(
-          page.locator(`#${TEST_CASE_STATUS_PIE_CHART_TEST_ID}`)
-        ).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
-      });
-
-      await test.step('Click aborted segment and verify redirect', async () => {
-        await clickPieChartSegmentByIndex(
-          page,
-          TEST_CASE_STATUS_PIE_CHART_TEST_ID,
-          2
-        );
-        await expect(page).toHaveURL(
-          (url) =>
-            url.pathname === '/data-quality/test-cases' &&
-            url.searchParams.get('testCaseStatus') === TestCaseStatus.Aborted
-        );
-      });
+        await test.step(`Click ${status} segment and verify redirect`, async () => {
+          await clickPieChartSegmentByIndex(
+            page,
+            TEST_CASE_STATUS_PIE_CHART_TEST_ID,
+            index
+          );
+          await expect(page).toHaveURL(
+            (url) =>
+              url.pathname === '/data-quality/test-cases' &&
+              url.searchParams.get('testCaseStatus') === status
+          );
+        });
+      }
     });
 
     test('Data Assets Coverage pie chart segment click redirects to Test Suites and Explore', async ({

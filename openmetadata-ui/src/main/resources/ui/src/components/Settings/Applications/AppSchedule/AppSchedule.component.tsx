@@ -144,6 +144,7 @@ const AppSchedule = ({
   canEdit = true,
   canTrigger = true,
   canDeploy = true,
+  runsHistoryVariant,
   onSave,
   onDemandTrigger,
   onDeployTrigger,
@@ -256,6 +257,7 @@ const AppSchedule = ({
           maxRecords={1}
           ref={appRunsHistoryRef}
           showPagination={false}
+          variant={runsHistoryVariant}
           onViewRunConfig={onViewRunConfig}
         />
       );
@@ -278,6 +280,7 @@ const AppSchedule = ({
     appRunsHistoryRef,
     jsonSchema,
     onViewRunConfig,
+    runsHistoryVariant,
     t,
   ]);
 

@@ -359,40 +359,6 @@ export function getEntityTagDiff<A extends EntityColumn>(
   return entityList ?? [];
 }
 
-export const getEntityReferenceDiffFromFieldName = (
-  fieldName: string,
-  changeDescription: ChangeDescription,
-  entity?: EntityReference
-) => {
-  const entityDiff = getDiffByFieldName(fieldName, changeDescription, true);
-
-  const oldEntity = JSON.parse(getChangedEntityOldValue(entityDiff) ?? '{}');
-  const newEntity = JSON.parse(getChangedEntityNewValue(entityDiff) ?? '{}');
-  const entityPlaceholder = getEntityName(entity);
-
-  let entityRef = entity;
-  let entityDisplayName: ReactNode = getEntityName(entity);
-
-  if (
-    !isUndefined(entityDiff.added) ||
-    !isUndefined(entityDiff.deleted) ||
-    !isUndefined(entityDiff.updated)
-  ) {
-    entityRef = isEmpty(newEntity) ? oldEntity : newEntity;
-    entityDisplayName = getDiffValue(
-      getEntityName(oldEntity),
-      getEntityName(newEntity)
-    );
-  } else if (entity) {
-    entityDisplayName = entityPlaceholder;
-  }
-
-  return {
-    entityRef,
-    entityDisplayName,
-  };
-};
-
 const getOwnerLabelName = (
   reviewer: EntityReference,
   operation: EntityChangeOperations
@@ -506,6 +472,10 @@ export const getDomainDiff = (
   };
 };
 
+// Same label the entity header shows: a custom tier's FQN segment is a slug (`pw-tier-…`).
+const getTierLabel = (tier?: Pick<TagLabel, 'tagFQN' | 'displayName'>) =>
+  tier?.displayName || (tier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '');
+
 export const getCommonExtraInfoForVersionDetails = (
   changeDescription: ChangeDescription,
   owners?: EntityReference[],
@@ -535,11 +505,11 @@ export const getCommonExtraInfoForVersionDetails = (
 
   if (!isUndefined(newTier) || !isUndefined(oldTier)) {
     tierDisplayName = getDiffValue(
-      oldTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? '',
-      newTier?.tagFQN?.split(FQN_SEPARATOR_CHAR)[1] ?? ''
+      getTierLabel(oldTier),
+      getTierLabel(newTier)
     );
   } else if (tier?.tagFQN) {
-    tierDisplayName = tier?.tagFQN.split(FQN_SEPARATOR_CHAR)[1];
+    tierDisplayName = getTierLabel(tier);
   }
 
   const extraInfo = {
@@ -745,33 +715,6 @@ export const getConstraintChanges = (
   ];
 
   return { addedConstraintDiffs, deletedConstraintDiffs };
-};
-
-export const getMutuallyExclusiveDiffLabel = (value: boolean) => {
-  if (value) {
-    return t('label.yes');
-  } else {
-    return t('label.no');
-  }
-};
-
-export const getMutuallyExclusiveDiff = (
-  changeDescription: ChangeDescription,
-  field: string,
-  fallbackText?: string
-) => {
-  const fieldDiff = getDiffByFieldName(field, changeDescription, true);
-  const oldField = getChangedEntityOldValue(fieldDiff);
-  const newField = getChangedEntityNewValue(fieldDiff);
-
-  const oldDisplayField = getMutuallyExclusiveDiffLabel(oldField);
-  const newDisplayField = getMutuallyExclusiveDiffLabel(newField);
-
-  return getTextDiff(
-    toString(oldDisplayField) ?? '',
-    toString(newDisplayField),
-    toString(fallbackText)
-  );
 };
 
 export const getBasicEntityInfoFromVersionData = (

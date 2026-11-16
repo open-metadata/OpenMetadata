@@ -1176,11 +1176,11 @@ describe('TableUtils', () => {
     getEntityFeedCount: jest.fn(),
     handleFeedCount: jest.fn(),
     isQueryCountLoading: false,
-    isTourOpen: false,
     isViewTableType: true,
     queryCount: 0,
     viewAllPermission: true,
     viewQueriesPermission: true,
+    viewQueryResourcePermission: true,
     viewSampleDataPermission: true,
     viewProfilerPermission: true,
     tablePermissions: {

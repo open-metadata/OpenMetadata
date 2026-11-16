@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 
+import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Function;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -21,12 +24,14 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
@@ -35,9 +40,13 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexLockRecord;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.search.SearchRepository;
 import org.quartz.JobDataMap;
 import org.quartz.JobDetail;
@@ -52,6 +61,9 @@ class RdfIndexAppTest {
   @Mock private SearchRepository searchRepository;
   @Mock private EntityRelationshipDAO relationshipDAO;
   @Mock private RdfReindexLockDAO reindexLockDAO;
+
+  private static final CompactionResult COMPACTED =
+      new CompactionResult(CompactionResult.Outcome.SUCCEEDED, "1", null, Duration.ZERO);
 
   private static MockedStatic<RdfRepository> rdfRepositoryMockedStatic;
   private static RdfRepository mockRdfRepository;
@@ -106,6 +118,18 @@ class RdfIndexAppTest {
     }
   }
 
+  /** What /rdf/status reports when {@code pushed} is the newest run and a completed run preceded it. */
+  private static RdfProjectionState projectionStateAfter(final AppRunRecord pushed) {
+    final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
+        .thenReturn(
+            List.of(
+                JsonUtils.pojoToJson(pushed),
+                JsonUtils.pojoToJson(
+                    new AppRunRecord().withStatus(AppRunRecord.Status.COMPLETED))));
+    return new RdfProjectionStateResolver(runStore, () -> false).resolve();
+  }
+
   @AfterEach
   void resetProjectionHealth() {
     RdfProjectionHealth.markReady();
@@ -123,8 +147,61 @@ class RdfIndexAppTest {
     lenient().when(mockRdfRepository.isEnabled()).thenReturn(true);
     lenient().when(mockRdfRepository.forRun(null, null, 0)).thenReturn(mockRdfRepository);
     lenient().when(mockRdfRepository.configuredAppendPayloadBytes()).thenReturn(16L << 20);
+    // The repository mock is shared by every test, so stub without invoking earlier answers.
+    lenient()
+        .doAnswer(
+            invocation ->
+                invocation.<Function<RdfRepository, ?>>getArgument(1).apply(mockRdfRepository))
+        .when(mockRdfRepository)
+        .withServingWritesPaused(anyString(), any());
+    lenient().doReturn(Duration.ofMinutes(5)).when(mockRdfRepository).maintenanceBudget();
+    lenient().doReturn(COMPACTED).when(mockRdfRepository).compact(any());
     clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
+  }
+
+  @Nested
+  @DisplayName("RDF not initialized tests")
+  class RdfNotInitializedTests {
+
+    @Test
+    @DisplayName("run completes with nothing indexed when RdfRepository was never initialized")
+    void runCompletesWhenRepositoryNotInitialized() throws Exception {
+      rdfRepositoryMockedStatic.when(RdfRepository::getInstanceOrNull).thenReturn(null);
+      rdfRepositoryMockedStatic
+          .when(RdfRepository::getInstance)
+          .thenThrow(new IllegalStateException("RdfRepository not initialized"));
+      try {
+        TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+        testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+        EventPublisherJob jobConfig =
+            new EventPublisherJob()
+                .withEntities(Set.of("table"))
+                .withStatus(EventPublisherJob.Status.STARTED);
+        var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+        jobDataField.setAccessible(true);
+        jobDataField.set(testApp, jobConfig);
+
+        JobExecutionContext context = mock(JobExecutionContext.class);
+        JobDetail jobDetail = mock(JobDetail.class);
+        lenient().when(context.getJobDetail()).thenReturn(jobDetail);
+        lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
+        lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+        assertDoesNotThrow(() -> testApp.execute(context));
+
+        assertEquals(EventPublisherJob.Status.COMPLETED, testApp.getJobData().getStatus());
+        assertNull(testApp.getJobData().getFailure());
+        assertTrue(testApp.pushedUpdate, "skipped run must push a final status update");
+        assertEquals(AppRunRecord.Status.COMPLETED, testApp.pushedRecord.getStatus());
+        assertNull(testApp.pushedRecord.getFailureContext());
+      } finally {
+        rdfRepositoryMockedStatic
+            .when(RdfRepository::getInstanceOrNull)
+            .thenReturn(mockRdfRepository);
+        rdfRepositoryMockedStatic.when(RdfRepository::getInstance).thenReturn(mockRdfRepository);
+      }
+    }
   }
 
   @Nested
@@ -186,6 +263,7 @@ class RdfIndexAppTest {
       assertTrue(testApp.getJobData().getFailure().getMessage().contains("deferred"));
       assertTrue(testApp.pushedUpdate, "deferred run must push a final status update");
       verify(mockRdfRepository, never()).ensureStorageReady();
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
     }
 
     @Test
@@ -298,7 +376,7 @@ class RdfIndexAppTest {
       // Order matters: an un-cleared reuse would merge the previous rebuild's triples.
       InOrder order = inOrder(mockRdfRepository, buildRepository);
       order.verify(buildRepository).clearAll();
-      order.verify(buildRepository).compactStorage();
+      order.verify(buildRepository).compact(any());
       order.verify(buildRepository).reloadOntologies();
     }
 
@@ -314,6 +392,25 @@ class RdfIndexAppTest {
 
       assertNull(buildField.get(testApp));
       verify(mockRdfRepository, never()).activateDataset(anyString(), anyString(), anyString());
+      verify(mockRdfRepository, never()).clearRetiredDataset(anyString());
+    }
+
+    @Test
+    @DisplayName(
+        "the dataset a promotion retired is emptied; a failure there does not fail the run")
+    void retiredDatasetIsEmptiedBestEffort() throws Exception {
+      TestableRdfIndexApp testApp = appWith(true, true);
+      var method = RdfIndexApp.class.getDeclaredMethod("clearRetiredDataset", String.class);
+      method.setAccessible(true);
+      doReturn(COMPACTED).when(mockRdfRepository).clearRetiredDataset("openmetadata");
+
+      method.invoke(testApp, "openmetadata");
+      verify(mockRdfRepository).clearRetiredDataset("openmetadata");
+
+      doThrow(new IllegalStateException("Fuseki unavailable"))
+          .when(mockRdfRepository)
+          .clearRetiredDataset("openmetadata");
+      assertDoesNotThrow(() -> method.invoke(testApp, "openmetadata"));
     }
   }
 
@@ -389,7 +486,7 @@ class RdfIndexAppTest {
       promote(testApp);
 
       InOrder promotion = inOrder(mockRdfRepository);
-      promotion.verify(mockRdfRepository).compactStorage();
+      promotion.verify(mockRdfRepository).compact(any());
       promotion
           .verify(mockRdfRepository)
           .activateDataset(eq("openmetadata_a"), eq("run-1"), anyString());
@@ -406,7 +503,7 @@ class RdfIndexAppTest {
                 return null;
               })
           .when(mockRdfRepository)
-          .compactStorage();
+          .compact(any());
 
       assertThrows(java.util.concurrent.CancellationException.class, () -> promote(testApp));
 
@@ -593,29 +690,12 @@ class RdfIndexAppTest {
     @Test
     @DisplayName("A run that finds another run holding the lock is skipped, not failed")
     void runFindingTheLockHeldEndsStoppedNamingTheHolder() throws Exception {
-      when(reindexLockDAO.tryAcquireLock(
-              anyString(), anyString(), anyString(), anyLong(), anyLong()))
-          .thenReturn(false);
-      when(reindexLockDAO.findByKey("RDF_REINDEX_LOCK"))
-          .thenReturn(
-              new RdfReindexLockRecord(
-                  "RDF_REINDEX_LOCK", "run-9", "server-b", 1L, 1L, Long.MAX_VALUE));
+      givenLockHeldByAnotherRun();
       final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
-      final EventPublisherJob jobConfig =
-          new EventPublisherJob()
-              .withEntities(Set.of("table"))
-              .withStatus(EventPublisherJob.Status.STARTED);
-      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      jobDataField.set(testApp, jobConfig);
-      final JobExecutionContext context = mock(JobExecutionContext.class);
-      final JobDetail jobDetail = mock(JobDetail.class);
-      lenient().when(context.getJobDetail()).thenReturn(jobDetail);
-      lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
-      lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+      final EventPublisherJob jobConfig = startedJob(testApp);
 
-      testApp.execute(context);
+      testApp.execute(jobContext());
 
       assertEquals(EventPublisherJob.Status.STOPPED, jobConfig.getStatus());
       assertEquals(AppRunRecord.Status.STOPPED, testApp.pushedRecord.getStatus());
@@ -623,6 +703,80 @@ class RdfIndexAppTest {
       assertTrue(reason.contains("server 'server-b' (run run-9)"), reason);
       verify(mockRdfRepository, never()).ensureStorageReady();
       verify(reindexLockDAO, never()).releaseLock(anyString(), anyString());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
+    }
+
+    @Test
+    @DisplayName("A run that cannot take the lock fails but leaves the projection state alone")
+    void runThatCannotTakeTheLockLeavesTheProjectionStateAlone() throws Exception {
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenThrow(new IllegalStateException("lock table unavailable"));
+      final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+      startedJob(testApp);
+
+      testApp.execute(jobContext());
+
+      assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
+    }
+
+    @Test
+    @DisplayName("A real failure after a skipped run still marks the projection degraded")
+    void realFailureAfterASkippedRunStillMarksTheProjectionDegraded() throws Exception {
+      givenLockHeldByAnotherRun();
+      final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+      startedJob(testApp);
+      testApp.execute(jobContext());
+      assertEquals(AppRunRecord.Status.STOPPED, testApp.pushedRecord.getStatus());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
+
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(true);
+      final String failure = "Fuseki unreachable";
+      doThrow(new IllegalStateException(failure)).when(mockRdfRepository).ensureStorageReady();
+      try {
+        testApp.execute(jobContext());
+      } finally {
+        doNothing().when(mockRdfRepository).ensureStorageReady();
+      }
+
+      assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
+      assertTrue(testApp.getJobData().getFailure().getMessage().contains(failure));
+      assertEquals(RdfProjectionState.DEGRADED, projectionStateAfter(testApp.pushedRecord));
+    }
+
+    private void givenLockHeldByAnotherRun() {
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(false);
+      when(reindexLockDAO.findByKey("RDF_REINDEX_LOCK"))
+          .thenReturn(
+              new RdfReindexLockRecord(
+                  "RDF_REINDEX_LOCK", "run-9", "server-b", 1L, 1L, Long.MAX_VALUE));
+    }
+
+    private EventPublisherJob startedJob(final TestableRdfIndexApp testApp) throws Exception {
+      final EventPublisherJob jobConfig =
+          new EventPublisherJob()
+              .withEntities(Set.of("table"))
+              .withStatus(EventPublisherJob.Status.STARTED);
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+      return jobConfig;
+    }
+
+    private JobExecutionContext jobContext() {
+      final JobExecutionContext context = mock(JobExecutionContext.class);
+      final JobDetail jobDetail = mock(JobDetail.class);
+      lenient().when(context.getJobDetail()).thenReturn(jobDetail);
+      lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
+      lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+      return context;
     }
 
     private RdfReindexRunLock lock() {
@@ -896,15 +1050,78 @@ class RdfIndexAppTest {
       }
 
       // TDB2 copies index pages even for append-only transactions. Reclaim both the old
-      // generation before loading and the intermediate pages produced by the new load.
+      // generation before loading and the intermediate pages produced by the new load, each with
+      // live writes paused, because Fuseki blocks writers for the whole operation.
       InOrder recreateFlow = inOrder(mockRdfRepository);
-      recreateFlow.verify(mockRdfRepository).clearAll();
-      recreateFlow.verify(mockRdfRepository).compactStorage();
+      recreateFlow.verify(mockRdfRepository).withServingWritesPaused(anyString(), any());
+      recreateFlow.verify(mockRdfRepository).clearAllAsMaintenance(Duration.ofMinutes(5));
+      recreateFlow.verify(mockRdfRepository).compact(Duration.ofMinutes(5));
       recreateFlow.verify(mockRdfRepository).reloadOntologies();
-      recreateFlow.verify(mockRdfRepository).compactStorage();
-      verify(mockRdfRepository, times(2)).compactStorage();
+      recreateFlow.verify(mockRdfRepository).withServingWritesPaused(anyString(), any());
+      recreateFlow.verify(mockRdfRepository).compact(Duration.ofMinutes(5));
+      verify(mockRdfRepository, never()).clearAll();
       assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
       assertFalse(RdfProjectionHealth.isDegraded());
+    }
+
+    @Test
+    @DisplayName("A clear that fails still compacts, then fails the run without reloading")
+    void clearThatFailsStillCompactsAndFailsTheRun() throws Exception {
+      doThrow(new IllegalStateException("Fuseki refused the update"))
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        verify(mockRdfRepository).compact(any());
+        verify(mockRdfRepository, never()).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+        assertTrue(
+            jobConfig.getFailure().getMessage().contains("Fuseki refused the update"),
+            jobConfig.getFailure().getMessage());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
+    }
+
+    @Test
+    @DisplayName("A clear the disk guard refuses compacts to make room, then clears and succeeds")
+    void clearRefusedForLowDiskCompactsThenRetries() throws Exception {
+      doThrow(new RdfStorageLowDiskException("maintenanceUpdate"))
+          .doNothing()
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        final InOrder reset = inOrder(mockRdfRepository);
+        reset.verify(mockRdfRepository).clearAllAsMaintenance(any());
+        reset.verify(mockRdfRepository).compact(any());
+        reset.verify(mockRdfRepository).clearAllAsMaintenance(any());
+        reset.verify(mockRdfRepository).compact(any());
+        reset.verify(mockRdfRepository).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
+    }
+
+    @Test
+    @DisplayName("A clear refused again after making room fails the run after a final compaction")
+    void clearRefusedTwiceFailsTheRunAfterCompacting() throws Exception {
+      doThrow(new RdfStorageLowDiskException("maintenanceUpdate"))
+          .when(mockRdfRepository)
+          .clearAllAsMaintenance(any());
+      try {
+        final EventPublisherJob jobConfig = executeInPlaceRebuild();
+
+        verify(mockRdfRepository, times(2)).clearAllAsMaintenance(any());
+        verify(mockRdfRepository, times(2)).compact(any());
+        verify(mockRdfRepository, never()).reloadOntologies();
+        assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+      } finally {
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
+      }
     }
 
     @Test
@@ -918,7 +1135,7 @@ class RdfIndexAppTest {
                 return null;
               })
           .when(mockRdfRepository)
-          .clearAll();
+          .clearAllAsMaintenance(any());
       try {
         final EventPublisherJob jobConfig = executeInPlaceRebuild();
 
@@ -926,7 +1143,7 @@ class RdfIndexAppTest {
         assertEquals(EventPublisherJob.Status.COMPLETED, jobConfig.getStatus());
         assertFalse(RdfProjectionHealth.isDegraded());
       } finally {
-        doNothing().when(mockRdfRepository).clearAll();
+        doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
       }
     }
 
@@ -981,7 +1198,7 @@ class RdfIndexAppTest {
     }
 
     @Test
-    @DisplayName("Should still call compactStorage at end of incremental run (free-space hygiene)")
+    @DisplayName("Should still compact at the end of an incremental run (free-space hygiene)")
     void testCompactStorageStillFiresOnIncrementalIndex() throws Exception {
       TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
@@ -1015,9 +1232,10 @@ class RdfIndexAppTest {
         testApp.execute(context);
       }
 
-      verify(mockRdfRepository, never()).clearAll();
+      verify(mockRdfRepository, never()).clearAllAsMaintenance(any());
       verify(mockRdfRepository, never()).reloadOntologies();
-      verify(mockRdfRepository).compactStorage();
+      verify(mockRdfRepository).withServingWritesPaused(anyString(), any());
+      verify(mockRdfRepository).compact(Duration.ofMinutes(5));
     }
 
     @Test

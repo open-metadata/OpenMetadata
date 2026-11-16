@@ -10,15 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Alert,
+  Check,
+  Clock02,
+  GridView,
+  Mail,
+  Webhook,
+} from '@openmetadata/ui-core-components/icons';
 import { render, screen } from '@testing-library/react';
-import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
-import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
-import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
-import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { AlertEventDetailsToDisplay } from '../../components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.interface';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -37,14 +39,15 @@ import {
   mockTypedEventEmptyDataSuccessful,
   mockTypedEventEmptyDataUnprocessed,
 } from '../../mocks/AlertUtil.mock';
-import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchQuery } from '../../rest/searchAPI';
+import { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
 import {
   getAlertExtraInfo,
   getAlertRecentEventsFilterOptions,
   getAlertsActionTypeIcon,
   getAlertStatusIcon,
   getFqnSearchIndexes,
+  getOptionsByFqns,
   searchEntity,
 } from './AlertsUtil';
 import {
@@ -124,7 +127,9 @@ describe('AlertsUtil tests', () => {
   it('getAlertsActionTypeIcon should return correct icon for Email', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.Email);
 
-    expect(icon).toStrictEqual(<MailIcon height={16} width={16} />);
+    expect(icon).toStrictEqual(
+      <Mail className="tw:text-utility-gray-500" size={16} />
+    );
   });
 
   it('getAlertsActionTypeIcon should return correct icon for MSTeam', () => {
@@ -136,13 +141,15 @@ describe('AlertsUtil tests', () => {
   it('getAlertsActionTypeIcon should return correct icon for ActivityFeed', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.ActivityFeed);
 
-    expect(icon).toStrictEqual(<AllActivityIcon height={16} width={16} />);
+    expect(icon).toStrictEqual(<GridView size={16} />);
   });
 
   it('getAlertsActionTypeIcon should return correct icon for generic', () => {
     const icon = getAlertsActionTypeIcon(SubscriptionType.Webhook);
 
-    expect(icon).toStrictEqual(<WebhookIcon height={16} width={16} />);
+    expect(icon).toStrictEqual(
+      <Webhook className="tw:text-utility-gray-500" size={16} />
+    );
   });
 
   it('getAlertActionTypeDisplayName should return correct text for Slack', () => {
@@ -229,23 +236,21 @@ describe('getAlertStatusIcon', () => {
     const icon = getAlertStatusIcon(Status.Successful);
 
     expect(icon).toStrictEqual(
-      <CheckIcon className="status-icon successful-icon" />
+      <Check className="status-icon successful-icon" />
     );
   });
 
   it('should return correct icon for Failed status', () => {
     const icon = getAlertStatusIcon(Status.Failed);
 
-    expect(icon).toStrictEqual(
-      <AlertIcon className="status-icon failed-icon" />
-    );
+    expect(icon).toStrictEqual(<Alert className="status-icon failed-icon" />);
   });
 
   it('should return correct icon for Unprocessed status', () => {
     const icon = getAlertStatusIcon(Status.Unprocessed);
 
     expect(icon).toStrictEqual(
-      <ClockIcon className="status-icon unprocessed-icon" />
+      <Clock02 className="status-icon unprocessed-icon" />
     );
   });
 
@@ -774,6 +779,36 @@ describe('handleAlertSave - downstream notification fields', () => {
           label: 'Test User',
           value: 'test.user',
         },
+      ]);
+    });
+
+    it('getOptionsByFqns looks the saved FQNs up by term and labels them by display name', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(mockSearchQueryResponse);
+
+      const result = await getOptionsByFqns(
+        ['test.database.table', 'test.user'],
+        [SearchIndex.TABLE, SearchIndex.USER]
+      );
+
+      const { query, queryFilter, searchIndex } = (searchQuery as jest.Mock)
+        .mock.calls[0][0];
+
+      expect(query).toBe('');
+      expect(searchIndex).toEqual([SearchIndex.TABLE, SearchIndex.USER]);
+      expect(queryFilter).toEqual({
+        query: {
+          bool: {
+            should: [
+              { term: { fullyQualifiedName: 'test.database.table' } },
+              { term: { fullyQualifiedName: 'test.user' } },
+            ],
+            minimum_should_match: 1,
+          },
+        },
+      });
+      expect(result).toEqual([
+        { label: 'Test Table', value: 'test.database.table' },
+        { label: 'Test User', value: 'test.user' },
       ]);
     });
 

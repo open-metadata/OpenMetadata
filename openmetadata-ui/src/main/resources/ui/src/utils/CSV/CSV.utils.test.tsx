@@ -280,6 +280,41 @@ describe('CSVUtils', () => {
       });
     });
 
+    it('keeps parent, experts and metric group so a bulk edit does not clear them', () => {
+      const [row] = getMetricCsvRowsFromMetrics(
+        [
+          {
+            ...metric,
+            parent: {
+              id: 'parent-id',
+              type: 'metric',
+              fullyQualifiedName: 'total_sales',
+            },
+            experts: [
+              { id: 'expert-id', type: 'user', fullyQualifiedName: 'jane.doe' },
+            ],
+            metricGroup: {
+              id: 'group-id',
+              type: 'metricGroup',
+              fullyQualifiedName: 'revenue',
+            },
+          },
+        ],
+        [
+          ...metricHeaders,
+          { name: 'parent' },
+          { name: 'experts' },
+          { name: 'metricGroup' },
+        ]
+      );
+
+      expect(row).toMatchObject({
+        parent: 'total_sales',
+        experts: 'jane.doe',
+        metricGroup: 'revenue',
+      });
+    });
+
     it('should create editable metric columns with required header keys', () => {
       const { columns, dataSource } = getMetricColumnsAndDataSourceFromMetrics(
         [metric],

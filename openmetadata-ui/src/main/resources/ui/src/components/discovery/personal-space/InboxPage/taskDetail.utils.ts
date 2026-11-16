@@ -13,7 +13,11 @@
 
 import { isEmpty } from 'lodash';
 import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
-import { TIER_CATEGORY } from '../../../../constants/constants';
+import {
+  NO_DATA_PLACEHOLDER,
+  TIER_CATEGORY,
+} from '../../../../constants/constants';
+import { EntityField } from '../../../../constants/Feeds.constants';
 import {
   EntityReference,
   Task,
@@ -34,7 +38,9 @@ import { TagUpdatePayload } from '../../../../generated/type/tagUpdatePayload';
 import { TestCaseResolutionPayload } from '../../../../generated/type/testCaseResolutionPayload';
 import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
+import { parseTaskFieldPath } from '../../../../utils/TaskFieldPathUtils';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
@@ -286,6 +292,27 @@ const textRow = (
 ): TaskDetailRow[] =>
   text ? [{ key, icon, label, value: { kind: 'text', text } }] : [];
 
+const getEntityFieldLabel = (field: string) =>
+  getFeedChangeFieldLabel(field as EntityField) || field;
+
+// A description or tag path reads as container › names › property; any other
+// suggestion path (a custom property's extension.name) as its own segments.
+export const getFieldPathLabel = (fieldPath?: string): string | undefined => {
+  if (!fieldPath) {
+    return undefined;
+  }
+  const path = parseTaskFieldPath(fieldPath);
+  const [container, ...names] = path
+    ? [path.container?.split(FQN_SEPARATOR_CHAR)[0], ...path.names]
+    : Fqn.split(fieldPath).map((name) => Fqn.unquoteName(name));
+
+  return [
+    ...(container ? [getEntityFieldLabel(container)] : []),
+    ...names,
+    ...(path ? [getEntityFieldLabel(path.property)] : []),
+  ].join(' › ');
+};
+
 const dateRow = (
   key: string,
   label: string,
@@ -493,7 +520,12 @@ const describeDescriptionUpdate = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -526,7 +558,12 @@ const describeSuggestion = (
     subtitleKey: 'message.task-requested',
     rows: [
       ...getCommonRows(task, t, 'label.requested-on'),
-      ...textRow('fieldPath', 'type', t('label.field'), payload.fieldPath),
+      ...textRow(
+        'fieldPath',
+        'type',
+        t('label.field'),
+        getFieldPathLabel(payload.fieldPath)
+      ),
       ...textRow(
         'source',
         'source',
@@ -575,7 +612,7 @@ const describeOwnershipUpdate = (
             key: 'owner',
             icon: 'owner',
             label: t('label.owner'),
-            value: { kind: 'text', text: t('label.no-owner') },
+            value: { kind: 'text', text: NO_DATA_PLACEHOLDER },
           },
       // Approving replaces the current owners with these, so the reviewer sees
       // both sides of the change before deciding.
@@ -800,13 +837,9 @@ type DescribedEntity = {
   columns?: DescribedField[];
 };
 
-const COLUMN_DESCRIPTION_PATH = /^columns\.(.+)\.description$/;
-const COLUMN_TAGS_PATH = /^columns\.(.+?)(?:\.tags)?$/;
-
-// The paths that name the entity itself; any other path names one of its
-// fields, and one this cannot resolve (a topic's schema field, a container's
-// data-model column) shows nothing rather than the entity's values.
-const ENTITY_LEVEL_PATHS = new Set(['', 'description', 'tags', 'entity']);
+// A field this cannot resolve (a topic's schema field, a container's data-model
+// column) shows nothing rather than the entity's values.
+const COLUMNS_CONTAINER = 'columns';
 
 // Follows a column path's names down through nested columns.
 const findColumnByPath = (
@@ -822,42 +855,21 @@ const findColumnByPath = (
     { level: columns }
   ).found;
 
-// A nested column named on its own, without its parents.
-const findColumnByName = (
-  columns: DescribedField[] | undefined,
-  name: string
-): DescribedField | undefined =>
-  columns?.reduce<DescribedField | undefined>(
-    (found, column) =>
-      found ??
-      (column.name === name ? column : findColumnByName(column.children, name)),
-    undefined
-  );
-
 // What a field path names on its entity: the entity itself, or a column by its
-// path (`address.city`, `"a.b"` with its quotes dropped).
+// path of names.
 const getField = (
   entity: EntityUnion | undefined,
-  fieldPath: string | undefined,
-  columnPath: RegExp
+  fieldPath: string | undefined
 ): DescribedField | DescribedEntity | undefined => {
   const typed = entity as DescribedEntity | undefined;
-  const path = fieldPath ?? '';
-  if (ENTITY_LEVEL_PATHS.has(path)) {
+  const path = parseTaskFieldPath(fieldPath);
+  if (path && !path.container) {
     return typed;
   }
-  const column = columnPath.exec(path)?.[1];
-  const names = column
-    ? Fqn.split(column).map((name) => Fqn.unquoteName(name))
-    : [];
-  const byPath = findColumnByPath(typed?.columns, names);
 
-  return (
-    byPath ??
-    (names.length === 1
-      ? findColumnByName(typed?.columns, names[0])
-      : undefined)
-  );
+  return path?.container === COLUMNS_CONTAINER
+    ? findColumnByPath(typed?.columns, path.names)
+    : undefined;
 };
 
 // The description's Existing side: the payload's snapshot when it has one,
@@ -868,11 +880,7 @@ const withExistingDescription = (
   entity?: EntityUnion
 ): ActivityChange => {
   const { fieldPath } = getPayload<DescriptionUpdatePayload>(task);
-  const existing = getField(
-    entity,
-    fieldPath,
-    COLUMN_DESCRIPTION_PATH
-  )?.description?.trim();
+  const existing = getField(entity, fieldPath)?.description?.trim();
 
   return change.before.length || !existing
     ? change
@@ -890,7 +898,7 @@ const withKeptTags = (
   // Tasks often carry an empty currentTags by default rather than a
   // snapshot, so only a non-empty one stands in for the asset.
   const current = isEmpty(payload.currentTags)
-    ? getField(entity, payload.fieldPath, COLUMN_TAGS_PATH)?.tags
+    ? getField(entity, payload.fieldPath)?.tags
     : payload.currentTags;
   const changed = new Set([...change.before, ...change.after]);
   const unchanged = tagNames(current).filter((name) => !changed.has(name));

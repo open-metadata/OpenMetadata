@@ -83,6 +83,10 @@ const SCARF_PIXEL = 'https://static.scarf.sh/**';
  *   asserts on. `AddIngestionPage` and `EditIngestionPage` also call the
  *   provider's `fetchAirflowStatus()` explicitly after a save — a refetch whose
  *   only purpose is to see a *newer* answer than the one already held.
+ * - `system/settings/lineageSettings`, `system/settings/appConfiguration`,
+ *   `system/config/customUiThemePreference` — specs write them, and a write
+ *   invalidates only the writing worker's cache. Every other worker keeps
+ *   whatever it read for the rest of its life.
  */
 const CACHEABLE_BOOT_PATHS = [
   // No writer anywhere in the suite.
@@ -92,11 +96,6 @@ const CACHEABLE_BOOT_PATHS = [
   '/api/v1/system/config/rdf',
   '/api/v1/system/search/nlq',
   '/api/v1/limits/config',
-  // No API writer; the specs that change these do it through the UI, so the
-  // browser PUT invalidates the `/api/v1/system/` family.
-  '/api/v1/system/config/customUiThemePreference',
-  '/api/v1/system/settings/lineageSettings',
-  '/api/v1/system/settings/appConfiguration',
 ];
 
 type CachedResponse = {
@@ -117,9 +116,9 @@ type CacheEntry = {
 };
 
 // One entry per (path + query). The key is the URL alone (see cacheKey), so the
-// space is the ~9 cacheable paths plus any query variants — bounded and small.
+// space is the cacheable paths plus any query variants — bounded and small.
 // The cap stays as a guard against an unforeseen query-string explosion; at its
-// ~9-entry steady state it never trips, so eviction (LRU, see serveBootConfig)
+// steady state of one entry per path it never trips, so eviction (LRU, see serveBootConfig)
 // is now belt-and-braces rather than load-bearing.
 const MAX_CACHED_RESPONSES = 64;
 const bootCache = new Map<string, CacheEntry>();

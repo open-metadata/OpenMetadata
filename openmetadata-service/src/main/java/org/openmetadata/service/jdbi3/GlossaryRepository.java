@@ -228,10 +228,15 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
   @Override
   protected void postDelete(Glossary entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeByPrefixFromCondition(
-                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    // A soft delete cascades to the child terms without removing their labels from assets, so a
+    // condition naming them still matches; rewriting it to false would switch off Deny rules that
+    // still apply. A hard delete removes the labels, after which false is exactly what it matches.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeByPrefixFromCondition(
+                  condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    }
   }
 
   @Override
@@ -266,7 +271,8 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         repository.listAllForCSV(
             repository.getFields(
                 "owners,reviewers,tags,relatedTerms,synonyms,extension,parent,domains"),
-            glossary.getFullyQualifiedName());
+            glossary.getFullyQualifiedName(),
+            user);
     terms.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return new GlossaryCsv(glossary, user).exportCsv(terms, callback);
   }
@@ -621,27 +627,18 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     ConversationRepository conversations = Entity.getConversationRepository();
     conversations.updateEntityReference(updated.getEntityReference(), oldFqn);
 
-    List<GlossaryTerm> childTerms = getAllTerms(updated);
-
-    // A glossary rename cascades the FQN to every child term, so their open approval tasks (keyed
-    // by
-    // aboutFqnHash) and workflow-instance relatedEntity must follow the rename exactly as a term
-    // move/rename does — otherwise the tasks become unfindable at the new FQN and the workflow
-    // history card goes stale.
-    Map<String, String> taskFqnHashUpdates = new HashMap<>();
-    for (GlossaryTerm child : childTerms) {
+    for (GlossaryTerm child : getAllTerms(updated)) {
       String childNewFqn = child.getFullyQualifiedName();
       if (!nullOrEmpty(childNewFqn) && childNewFqn.startsWith(newFqn)) {
         String childOldFqn = oldFqn + childNewFqn.substring(newFqn.length());
         conversations.updateEntityReference(child.getEntityReference(), childOldFqn);
-        taskFqnHashUpdates.put(
-            FullyQualifiedName.buildHash(childOldFqn), FullyQualifiedName.buildHash(childNewFqn));
       }
     }
-    // The glossary FQN is the prefix of every child term's FQN, so one subtree repoint covers them
-    // all; child approval tasks (opaque hash) are rewritten per term.
-    updateTaskAboutFqnHashes(taskFqnHashUpdates);
-    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
   }
 
   private List<GlossaryTerm> getAllTerms(Glossary glossary) {

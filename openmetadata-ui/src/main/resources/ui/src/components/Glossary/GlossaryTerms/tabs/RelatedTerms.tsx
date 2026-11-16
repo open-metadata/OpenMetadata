@@ -13,11 +13,13 @@
 
 import {
   Button,
+  ButtonUtility,
   GlossaryTag,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { groupBy, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,10 +50,6 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { VersionStatus } from '../../../../utils/EntityVersionUtils.interface';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getGlossaryPath } from '../../../../utils/RouterUtils';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../../common/WidgetActionButton/WidgetActionButton';
 import WidgetCard from '../../../common/WidgetCard/WidgetCard';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { DEFAULT_GLOSSARY_TERM_RELATION_TYPES_FALLBACK } from '../../../OntologyExplorer/OntologyExplorer.constants';
@@ -486,16 +484,18 @@ const RelatedTerms = () => {
     <>
       {canEditRelatedTerms && (
         <>
-          <WidgetEditButton
+          <ButtonUtility
             data-testid="edit-button"
-            title={t('label.edit-entity', {
+            icon={Edit01}
+            tooltip={t('label.edit-entity', {
               entity: t('label.related-term-plural'),
             })}
             onClick={handleStartEditing}
           />
-          <WidgetPlusButton
+          <ButtonUtility
             data-testid="related-term-add-button"
-            title={t('label.add-entity', {
+            icon={Plus}
+            tooltip={t('label.add-entity', {
               entity: t('label.related-term-plural'),
             })}
             onClick={handleStartAdding}

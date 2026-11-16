@@ -18,19 +18,7 @@
   min-height: 100vh;
   padding-bottom: var(--om-space-80); // Space for fixed buttons
 
-  .ant-form-item {
-    margin-bottom: @size-lg;
-
-    &:last-child {
-      margin-bottom: 0;
-    }
-  }
-
   .form-card-section .custom-select-test-type-style {
-    &.ant-form-item {
-      margin-bottom: @size-md;
-    }
-
     position: relative;
 
     .custom-test-type-container {
@@ -56,22 +44,8 @@
     }
   }
 
-  .form-switch-container {
-    .ant-form-item-control-input {
-      align-items: baseline;
-    }
-  }
-
   .form-card-section {
     margin-bottom: @size-mlg;
-
-    .ant-form-item {
-      margin-bottom: @size-lg;
-
-      &:last-child {
-        margin-bottom: 0;
-      }
-    }
 
     .card-title-container {
       .card-title-text {
@@ -109,7 +83,7 @@
       line-height: 1.4;
     }
 
-    .ant-form-item-explain-error {
+    .form-field-error {
       margin-top: @size-xs;
       color: @error-color;
       font-size: @font-size-base;
@@ -156,6 +130,8 @@
       .bar-menu-wrapper--format--button--icon {
         width: @size-mlg;
         height: @size-mlg;
+        // core icons draw edge to edge, so pad to a 16px frame inside the 20px box
+        padding: calc(var(--tw-spacing) * 0.5);
       }
     }
   }
@@ -177,7 +153,7 @@
   justify-content: flex-end;
   width: 100%;
 
-  :is(.ant-space, .layout-space) {
+  .layout-space {
     width: auto;
   }
 }

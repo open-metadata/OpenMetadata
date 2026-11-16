@@ -25,6 +25,7 @@ import {
 } from '../../../../utils/FeedUtilsPure';
 import { stripMarkdown } from '../../../../utils/RichTextStringUtils';
 import DeferredWidget from '../../../common/DeferredWidget/DeferredWidget.component';
+import { INBOX_RECESSED_SURFACE_CLASS } from '../../../discovery/personal-space/InboxPage/inbox.utils';
 import './feed-card-body-v1.less';
 import { FeedCardBodyV1Props } from './FeedCardBodyV1.interface';
 
@@ -48,6 +49,13 @@ const ActivityOwnersFeed = withSuspenseFallback(
 
 const ActivityFeedEditor = withSuspenseFallback(
   lazy(() => import('../../ActivityFeedEditor/ActivityFeedEditor'))
+);
+const CommentEditForm = withSuspenseFallback(
+  lazy(() =>
+    import('../../../common/CommentComposer/CommentComposer').then(
+      (module) => ({ default: module.CommentEditForm })
+    )
+  )
 );
 const ActivityTagsFeed = withSuspenseFallback(
   lazy(
@@ -142,7 +150,7 @@ const FeedCardBodyNew = ({
   showThread,
   isForFeedTab,
   isFeedWidget,
-  isActive,
+  isThreadPanel,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
   const [postMessage, setPostMessage] = useState<string>(message);
@@ -241,19 +249,37 @@ const FeedCardBodyNew = ({
     t,
   ]);
 
+  if (isEditPost && isThreadPanel) {
+    return (
+      <Box className="tw:mt-3 tw:min-w-0" direction="col">
+        <CommentEditForm
+          message={message}
+          testId="edit-message"
+          onCancel={() => onEditCancel?.()}
+          onSave={async (updatedMessage) => onUpdate?.(updatedMessage)}
+        />
+      </Box>
+    );
+  }
+
   return (
     <Card
       className={classNames(
         'tw:overflow-y-auto',
-        // On the selected card's dark brand tint the surface Card is a dark
-        // slab; let the tint show through. Light mode keeps the white surface.
-        isActive && 'tw:dark:bg-transparent',
         showThread
           ? [
               'tw:max-h-100',
               isFeedWidget ? 'tw:mt-2.5 tw:px-4 tw:py-3' : 'tw:mt-5 tw:p-5',
             ]
-          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide'
+          : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide',
+        // In the thread panels the card shares the drawer's surface, so the
+        // message sits recessed into it, as the Inbox's does. Elsewhere it does
+        // so in dark mode only, the selected card included; light keeps the
+        // white card.
+        // ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox
+        isThreadPanel
+          ? ['tw:border-transparent', INBOX_RECESSED_SURFACE_CLASS]
+          : 'tw:dark:border-transparent tw:dark:bg-primary'
       )}>
       {feedBodyRender}
     </Card>

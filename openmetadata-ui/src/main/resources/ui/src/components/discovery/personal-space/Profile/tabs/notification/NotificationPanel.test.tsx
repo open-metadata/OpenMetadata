@@ -423,9 +423,9 @@ describe('NotificationPanel', () => {
         mockOnHeaderChange.mock.calls.length - 1
       ][0];
 
-    expect(lastCall.title).toBe('label.notification');
+    expect(lastCall.title).toBe('label.alerts-and-notifications');
     expect(lastCall.breadcrumbs[lastCall.breadcrumbs.length - 1].label).toBe(
-      'label.notification'
+      'label.alerts-and-notifications'
     );
   });
 

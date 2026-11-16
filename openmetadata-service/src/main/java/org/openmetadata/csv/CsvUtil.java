@@ -47,6 +47,9 @@ public final class CsvUtil {
 
   public static final String INTERNAL_ARRAY_SEPARATOR = "|";
 
+  private static final String FORMULA_TRIGGERS = "=+-@\t\r";
+  private static final String FORMULA_ESCAPE = "'";
+
   private CsvUtil() {
     // Utility class hides the constructor
   }
@@ -60,10 +63,37 @@ public final class CsvUtil {
         Builder.create(CSVFormat.DEFAULT).setHeader(headers.toArray(new String[0])).build();
     try (CSVPrinter printer = new CSVPrinter(writer, csvFormat)) {
       for (List<String> csvRecord : listOrEmpty(csvFile.getRecords())) {
-        printer.printRecord(csvRecord);
+        printer.printRecord(csvRecord.stream().map(CsvUtil::neutralizeFormula).toList());
       }
     }
     return writer.toString();
+  }
+
+  /**
+   * Prefix cells a spreadsheet would evaluate as a formula with a quote (e.g. "=HYPERLINK(..)"
+   * becomes "'=HYPERLINK(..)"). A value already shaped like an escaped one (e.g. "'=x") gets one
+   * more quote, so {@link #restoreFormula} gives every value back unchanged on import.
+   */
+  public static String neutralizeFormula(String value) {
+    return isFormulaLike(value) ? FORMULA_ESCAPE + value : value;
+  }
+
+  public static String restoreFormula(String value) {
+    boolean escaped =
+        value != null && value.startsWith(FORMULA_ESCAPE) && isFormulaLike(value.substring(1));
+    return escaped ? value.substring(1) : value;
+  }
+
+  // A formula trigger, possibly behind leading quotes (e.g. "=x", "'=x", "''=x").
+  private static boolean isFormulaLike(String value) {
+    if (value == null) {
+      return false;
+    }
+    int index = 0;
+    while (index < value.length() && value.startsWith(FORMULA_ESCAPE, index)) {
+      index++;
+    }
+    return index < value.length() && FORMULA_TRIGGERS.indexOf(value.charAt(index)) >= 0;
   }
 
   /** Get headers from CsvHeaders */

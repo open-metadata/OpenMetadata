@@ -1,6 +1,7 @@
 package org.openmetadata.service.cache;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
@@ -58,5 +59,15 @@ class CachedSearchOperationTest {
             () -> {
               throw new AssertionError("Expected result cache hit");
             }));
+  }
+
+  @Test
+  void keysRequestsWithAndWithoutHighlightsSeparately() {
+    CachedSearchLayer cache =
+        new CachedSearchLayer(mock(CacheProvider.class), new CacheKeys("test"), new CacheConfig());
+    SearchRequest request = new SearchRequest().withIndex("table").withQuery("customer");
+    assertNotEquals(
+        cache.buildKey(request, "admin"),
+        cache.buildKey(request.withIncludeHighlights(false), "admin"));
   }
 }

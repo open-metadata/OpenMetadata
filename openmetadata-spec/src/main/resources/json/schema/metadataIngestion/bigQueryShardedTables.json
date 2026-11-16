@@ -1,0 +1,17 @@
+{
+  "$id": "https://open-metadata.org/schema/metadataIngestion/bigQueryShardedTables.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "BigQueryShardedTables",
+  "description": "Group native daily shard tables into stable logical families.",
+  "javaType": "org.openmetadata.schema.metadataIngestion.BigQueryShardedTables",
+  "type": "object",
+  "properties": {
+    "enabled": {
+      "title": "Group Sharded Tables",
+      "description": "Group BigQuery daily shards into a stable logical table using the newest shard for columns and execution.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

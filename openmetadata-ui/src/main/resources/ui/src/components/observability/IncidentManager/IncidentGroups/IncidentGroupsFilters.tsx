@@ -22,7 +22,6 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query';
-import { startCase } from 'lodash';
 import { ReactNode, useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WILD_CARD_CHAR } from '../../../../constants/char.constants';
@@ -38,7 +37,11 @@ import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceU
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import DateRangeFilter from '../../../common/DateRangeFilter/DateRangeFilter';
 import { UserTeamSelectableList } from '../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
-import { useIncidentFilterOptions } from '../../../IncidentManager/useIncidentFilterOptions';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
+import {
+  useIncidentAssignees,
+  useIncidentFilterOptions,
+} from '../../../IncidentManager/useIncidentFilterOptions';
 import {
   DEFAULT_INCIDENT_LIST_DATE_FIELD,
   INCIDENT_GROUP_STATUS_OPTIONS,
@@ -135,7 +138,7 @@ const IncidentGroupsFilters = ({
         label:
           severity === NO_SEVERITY_FILTER
             ? t('label.no-entity', { entity: t('label.severity') })
-            : startCase(severity),
+            : getSeverityLabel(severity, t),
         icon: (
           <Dot
             aria-hidden="true"
@@ -172,6 +175,7 @@ const IncidentGroupsFilters = ({
       enabled: isTestCasePickerOpened,
       placeholderData: keepPreviousData,
     });
+  const assignees = useIncidentAssignees();
   const { data: selectedAssignee } = useQuery({
     queryKey: assigneeQueryKey(filters.assignee),
     // Only runs with an assignee to read, as `enabled` below says.
@@ -223,6 +227,7 @@ const IncidentGroupsFilters = ({
         <UserTeamSelectableList
           hasPermission
           label={t('label.assignee')}
+          options={assignees}
           owner={filters.assignee && selectedAssignee ? [selectedAssignee] : []}
           onUpdate={handleAssigneeUpdate}>
           <TriggerButton

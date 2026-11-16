@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as IconAPI } from '../assets/svg/api.svg';
-import { ReactComponent as IconDoc } from '../assets/svg/doc.svg';
-import { ReactComponent as IconTour } from '../assets/svg/icon-tour.svg';
-import { ReactComponent as IconSlackGrey } from '../assets/svg/slack-grey.svg';
-import { ReactComponent as IconVersionBlack } from '../assets/svg/version-black.svg';
+import {
+  Api,
+  AppSlack,
+  Book,
+  Tour,
+  VersionBlack,
+} from '@openmetadata/ui-core-components/icons';
 import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
 import { ROUTES } from './constants';
@@ -42,35 +44,35 @@ export const HELP_ITEMS = [
   {
     key: HELP_ITEMS_ENUM.TOUR,
     label: 'label.tour',
-    icon: IconTour,
+    icon: Tour,
     link: ROUTES.TOUR,
     isExternal: false,
   },
   {
     key: HELP_ITEMS_ENUM.DOC,
     label: 'label.doc-plural',
-    icon: IconDoc,
+    icon: Book,
     link: documentationLinksClassBase.getDocsBaseURL(),
     isExternal: true,
   },
   {
     key: HELP_ITEMS_ENUM.API,
     label: 'label.api-uppercase',
-    icon: IconAPI,
+    icon: Api,
     link: ROUTES.SWAGGER,
     isExternal: false,
   },
   {
     key: HELP_ITEMS_ENUM.SLACK,
     label: 'label.slack-support',
-    icon: IconSlackGrey,
+    icon: AppSlack,
     link: URL_JOIN_SLACK,
     isExternal: true,
   },
   {
     key: HELP_ITEMS_ENUM.VERSION,
     label: 'label.version',
-    icon: IconVersionBlack,
+    icon: VersionBlack,
     link: URL_OM_RELEASE_UPDATES,
     isExternal: true,
   },

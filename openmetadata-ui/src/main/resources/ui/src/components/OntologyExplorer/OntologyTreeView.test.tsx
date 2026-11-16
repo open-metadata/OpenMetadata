@@ -11,10 +11,27 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { OntologyNode } from './OntologyExplorer.interface';
-import { OntologyTreeGroup, OntologyTreeMetric } from './OntologyStudio.utils';
+import {
+  buildNativeTreeIndex,
+  nativeTreePlacementKey,
+  OntologyTreeGroup,
+  OntologyTreeMetric,
+} from './OntologyStudio.utils';
 import OntologyTreeView from './OntologyTreeView';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const ROOT: OntologyNode = {
   id: 'root',
@@ -71,8 +88,8 @@ const renderTree = (
   const handlers = { onConnect: jest.fn(), onSelect: jest.fn() };
   render(
     <OntologyTreeView
-      groups={GROUPS}
       metrics={METRICS}
+      source={{ kind: 'glossary', groups: GROUPS }}
       {...handlers}
       {...props}
     />
@@ -83,7 +100,7 @@ const renderTree = (
 
 describe('OntologyTreeView', () => {
   it('shows an empty message when there is nothing to list', () => {
-    renderTree({ groups: [], metrics: [] });
+    renderTree({ source: { kind: 'glossary', groups: [] }, metrics: [] });
 
     expect(screen.getByText('message.no-glossary-terms-found')).toBeVisible();
     expect(
@@ -121,6 +138,14 @@ describe('OntologyTreeView', () => {
     expect(screen.getByText('Order')).toBeVisible();
   });
 
+  it('opens another row while a row is already selected', () => {
+    const { onSelect } = renderTree({ selectedNodeId: 'root' });
+
+    fireEvent.click(screen.getByTestId('ontology-tree-term-child'));
+
+    expect(onSelect).toHaveBeenCalledWith(CHILD);
+  });
+
   it('opens a row and connects an unconnected term', () => {
     const { onConnect, onSelect } = renderTree();
 
@@ -129,5 +154,415 @@ describe('OntologyTreeView', () => {
 
     expect(onSelect).toHaveBeenCalledWith(CHILD);
     expect(onConnect).toHaveBeenCalledWith(ORPHAN);
+  });
+
+  describe('in AI mode', () => {
+    beforeEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(true);
+    });
+
+    afterEach(() => {
+      (useIsAiMode as jest.Mock).mockReturnValue(false);
+    });
+
+    it('titles the tree with the ontology and keeps expand, collapse, select and connect', () => {
+      const { onConnect, onSelect } = renderTree();
+      const concepts = screen.getByTestId('ontology-tree-concepts');
+
+      expect(
+        within(concepts).getByRole('heading', { name: 'Commerce' })
+      ).toBeVisible();
+      expect(within(concepts).getAllByText('label.x-relations')).toHaveLength(
+        2
+      );
+      expect(screen.getByText('label.polyhierarchy')).toBeVisible();
+
+      fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+
+      expect(screen.queryByText('Order')).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('ontology-tree-expand-all'));
+      fireEvent.click(screen.getByText('Order'));
+
+      expect(onSelect).toHaveBeenCalledWith(CHILD);
+
+      fireEvent.click(screen.getByTestId('ontology-tree-connect-orphan'));
+
+      expect(onConnect).toHaveBeenCalledWith(ORPHAN);
+      expect(screen.getByTestId('ontology-tree-metrics')).toBeVisible();
+    });
+  });
+});
+
+describe('native OntologyTreeView', () => {
+  const graph = {
+    nodes: ['a', 'b', 'c', 'leaf'].map((id) => ({
+      id,
+      label: id,
+      type: 'glossaryTerm',
+      glossaryId: 'owner',
+    })),
+    edges: [
+      ['a', 'c'],
+      ['b', 'c'],
+      ['c', 'leaf'],
+    ].map(([from, to]) => ({
+      from,
+      to,
+      label: 'Parent',
+      relationType: 'parentOf',
+    })),
+  };
+  const filters = {
+    glossaryIds: [],
+    relationTypes: [],
+    searchQuery: '',
+    showCrossGlossaryOnly: false,
+    showIsolatedNodes: true,
+    viewMode: 'overview' as const,
+  };
+
+  it('shows every placement and independently collapses one branch', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    renderTree({ source: { kind: 'native', index }, metrics: [] });
+
+    expect(screen.getAllByTestId('ontology-tree-term-c')).toHaveLength(2);
+    expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(2);
+    expect(screen.getAllByText('label.ontology-also-under')).toHaveLength(2);
+
+    const firstChild = screen
+      .getAllByTestId('ontology-tree-term-c')
+      .find(
+        (row) =>
+          row.getAttribute('data-key') ===
+          nativeTreePlacementKey(index, ['a', 'c'])
+      );
+
+    expect(firstChild).toBeDefined();
+
+    if (!firstChild) {
+      throw new Error('Expected placement under a');
+    }
+    fireEvent.click(within(firstChild).getByTestId('tree-expand-btn'));
+
+    expect(screen.getAllByTestId('ontology-tree-term-c')).toHaveLength(2);
+    expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(1);
+  });
+
+  it('keeps the rows above in view when a lower root is expanded', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    renderTree({ source: { kind: 'native', index }, metrics: [] });
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+    const rootB = screen.getByTestId('ontology-tree-term-b');
+    fireEvent.click(within(rootB).getByTestId('tree-expand-btn'));
+
+    expect(screen.getByTestId('ontology-tree-term-a')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-tree-term-b')).toBeInTheDocument();
+    expect(screen.getAllByTestId('ontology-tree-term-c')).toHaveLength(1);
+    expect(
+      screen.queryByTestId('ontology-tree-previous')
+    ).not.toBeInTheDocument();
+  });
+
+  it('reveals an external concept selection after collapse and selects only one placement', async () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const { rerender } = render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+
+    expect(
+      screen.queryByTestId('ontology-tree-term-c')
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <OntologyTreeView
+        selectedNodeId="c"
+        source={{ kind: 'native', index }}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(
+      screen
+        .getAllByTestId('ontology-tree-term-c')
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+    ).toHaveLength(1);
+
+    await waitFor(() =>
+      expect(
+        screen.getByRole('row', { name: 'c', selected: true })
+      ).toHaveFocus()
+    );
+    fireEvent.click(screen.getByTestId('ontology-tree-expand-all'));
+
+    expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(2);
+  });
+
+  it('marks every conflicting row with a red dot and its messages, and still opens it', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const onSelect = jest.fn();
+    render(
+      <OntologyTreeView
+        source={{
+          kind: 'native',
+          index,
+          conflicts: new Map([
+            ['a', ['A is disjoint with B', 'A has no label']],
+            ['b', ['A is disjoint with B']],
+          ]),
+        }}
+        onSelect={onSelect}
+      />
+    );
+
+    const rowA = screen.getByTestId('ontology-tree-term-a');
+    const rowB = screen.getByTestId('ontology-tree-term-b');
+
+    expect(
+      within(rowA)
+        .getAllByTestId('ontology-tree-conflict')
+        .map((line) => line.textContent)
+    ).toEqual(['A is disjoint with B', 'A has no label']);
+    expect(
+      within(rowB).getByTestId('ontology-tree-conflict')
+    ).toHaveTextContent('A is disjoint with B');
+    expect(within(rowA).getByTestId('ontology-tree-conflict-dot')).toHaveClass(
+      'tw:bg-fg-error-primary'
+    );
+    expect(screen.getAllByTestId('ontology-tree-conflict-dot')).toHaveLength(2);
+
+    fireEvent.click(rowA);
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'a' }));
+  });
+
+  it('shows no conflict marks without conflicts', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-tree-conflict-dot')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-tree-conflict')
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens a second concept after the first one is selected', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const onSelect = jest.fn();
+    render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={onSelect}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-tree-term-a'));
+    fireEvent.click(screen.getByTestId('ontology-tree-term-b'));
+
+    expect(onSelect.mock.calls.map(([node]) => node.id)).toEqual(['a', 'b']);
+  });
+
+  it('keeps the clicked placement while the selected prop lags behind a router transition', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    const onSelect = jest.fn();
+    const { rerender } = render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onSelect={onSelect}
+      />
+    );
+    const underB = screen
+      .getAllByTestId('ontology-tree-term-c')
+      .find(
+        (row) =>
+          row.getAttribute('data-key') ===
+          nativeTreePlacementKey(index, ['b', 'c'])
+      );
+    if (!underB) {
+      throw new Error('Expected placement under b');
+    }
+    fireEvent.click(underB);
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: 'c' }));
+    expect(
+      screen
+        .getAllByTestId('ontology-tree-term-c')
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+        .map((row) => row.getAttribute('data-key'))
+    ).toEqual([nativeTreePlacementKey(index, ['b', 'c'])]);
+
+    rerender(
+      <OntologyTreeView
+        selectedNodeId="c"
+        source={{ kind: 'native', index }}
+        onSelect={onSelect}
+      />
+    );
+
+    expect(
+      screen
+        .getAllByTestId('ontology-tree-term-c')
+        .filter((row) => row.getAttribute('aria-selected') === 'true')
+        .map((row) => row.getAttribute('data-key'))
+    ).toEqual([nativeTreePlacementKey(index, ['b', 'c'])]);
+  });
+
+  it('mounts only the rows on screen once a window is large', () => {
+    const sizes = { clientHeight: 600, clientWidth: 800, scrollHeight: 600 };
+    Object.entries(sizes).forEach(([key, value]) =>
+      Object.defineProperty(HTMLElement.prototype, key, {
+        configurable: true,
+        get: () => value,
+      })
+    );
+    try {
+      const index = buildNativeTreeIndex(
+        {
+          nodes: Array.from({ length: 1000 }, (_, n) => ({
+            id: String(n),
+            label: String(n).padStart(4, '0'),
+            type: 'glossaryTerm',
+            glossaryId: 'owner',
+          })),
+          edges: [],
+        },
+        filters,
+        []
+      );
+      renderTree({ source: { kind: 'native', index } });
+
+      const mounted = screen.getAllByRole('row');
+
+      expect(screen.getByTestId('ontology-tree-term-0')).toBeInTheDocument();
+      expect(mounted.length).toBeGreaterThan(0);
+      expect(mounted.length).toBeLessThan(50);
+    } finally {
+      Object.keys(sizes).forEach((key) =>
+        Reflect.deleteProperty(HTMLElement.prototype, key)
+      );
+    }
+  });
+
+  it('replaces bounded windows and retains focus on explicit navigation controls', async () => {
+    const index = buildNativeTreeIndex(
+      {
+        nodes: Array.from({ length: 2050 }, (_, n) => ({
+          id: String(n),
+          label: String(n).padStart(4, '0'),
+          type: 'glossaryTerm',
+          glossaryId: 'owner',
+        })),
+        edges: [],
+      },
+      filters,
+      []
+    );
+    renderTree({ source: { kind: 'native', index } });
+
+    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-tree-term-2048')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-tree-next'));
+
+    expect(screen.getByTestId('ontology-tree-term-2049')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-tree-term-0')
+    ).not.toBeInTheDocument();
+    // The exhausted button is disabled, so it looks it, and focus moves to the one that can page.
+    expect(screen.getByTestId('ontology-tree-next')).toBeDisabled();
+    expect(screen.getByTestId('ontology-tree-previous')).toBeEnabled();
+    expect(screen.getByTestId('ontology-tree-previous')).toHaveFocus();
+
+    fireEvent.click(screen.getByTestId('ontology-tree-previous'));
+
+    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+    expect(screen.getByTestId('ontology-tree-previous')).toBeDisabled();
+    expect(screen.getByTestId('ontology-tree-next')).toHaveFocus();
+  });
+
+  it('keeps the rows above in view when a row is expanded after paging back', () => {
+    const index = buildNativeTreeIndex(
+      {
+        nodes: [
+          ...Array.from({ length: 2050 }, (_, n) => ({
+            id: String(n),
+            label: String(n).padStart(4, '0'),
+            type: 'glossaryTerm',
+            glossaryId: 'owner',
+          })),
+          {
+            id: 'kid',
+            label: 'kid',
+            type: 'glossaryTerm',
+            glossaryId: 'owner',
+          },
+        ],
+        edges: [
+          { from: '1', to: 'kid', label: 'Parent', relationType: 'parentOf' },
+        ],
+      },
+      filters,
+      []
+    );
+    renderTree({ source: { kind: 'native', index } });
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+    fireEvent.click(screen.getByTestId('ontology-tree-next'));
+    fireEvent.click(screen.getByTestId('ontology-tree-previous'));
+
+    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+
+    fireEvent.click(
+      within(screen.getByTestId('ontology-tree-term-1')).getByTestId(
+        'tree-expand-btn'
+      )
+    );
+
+    expect(screen.getByTestId('ontology-tree-term-0')).toBeVisible();
+    expect(screen.getByTestId('ontology-tree-term-kid')).toBeVisible();
+  });
+
+  it('connects an isolated native concept and resets disclosure for a replaced model', () => {
+    const onConnect = jest.fn();
+    const index = buildNativeTreeIndex(
+      { nodes: [ORPHAN], edges: [] },
+      filters,
+      []
+    );
+    const { rerender } = render(
+      <OntologyTreeView
+        source={{ kind: 'native', index }}
+        onConnect={onConnect}
+        onSelect={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'label.connect' }));
+
+    expect(onConnect).toHaveBeenCalledWith(ORPHAN);
+
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+    rerender(
+      <OntologyTreeView
+        source={{
+          kind: 'native',
+          index: buildNativeTreeIndex(graph, filters, []),
+        }}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(2);
   });
 });

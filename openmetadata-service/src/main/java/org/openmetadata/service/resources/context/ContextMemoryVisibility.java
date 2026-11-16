@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.context;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.google.common.cache.Cache;
@@ -21,24 +20,28 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
@@ -80,10 +83,58 @@ public final class ContextMemoryVisibility {
     boolean canView(String userName, EntityReference anchor);
   }
 
+  /** Whether a caller owns the document a memory was extracted from. */
+  @FunctionalInterface
+  interface SourceOwnership {
+    boolean owns(String userName, EntityReference source);
+  }
+
+  /** The extraction sources each of some memories is linked to, read in one batch. */
+  @FunctionalInterface
+  interface LinkedDocuments {
+    Map<UUID, List<EntityReference>> of(List<UUID> memoryIds);
+  }
+
   /** The entities among some ids that anchor a memory, with their type. */
   @FunctionalInterface
   interface AnchorFinder {
     List<EntityReference> findAnchors(List<UUID> candidateIds);
+  }
+
+  private static final int LISTING_ANCHOR_PAGE_SIZE = 100;
+
+  /** Context Center evaluates each memory anchor before the search applies its offset and limit. */
+  public static Set<String> readableListingAnchorIds(
+      String userName, Collection<String> matchingAnchorIds) {
+    ContextMemoryRepository repository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    return readableListingAnchorIds(
+        userName, matchingAnchorIds, repository::findAnchors, ContextMemoryAnchorAccess::canView);
+  }
+
+  static Set<String> readableListingAnchorIds(
+      String userName,
+      Collection<String> matchingAnchorIds,
+      AnchorFinder finder,
+      AnchorAccess access) {
+    Set<String> readable = new LinkedHashSet<>();
+    List<UUID> candidates =
+        matchingAnchorIds.stream()
+            .filter(Objects::nonNull)
+            .map(ContextMemoryVisibility::parseAnchorId)
+            .flatMap(Optional::stream)
+            .distinct()
+            .toList();
+    for (int start = 0; start < candidates.size(); start += LISTING_ANCHOR_PAGE_SIZE) {
+      List<UUID> batch =
+          candidates.subList(start, Math.min(start + LISTING_ANCHOR_PAGE_SIZE, candidates.size()));
+      for (EntityReference anchor : finder.findAnchors(batch)) {
+        if (access.canView(userName, anchor)) {
+          readable.add(anchor.getId().toString());
+        }
+      }
+    }
+    return Set.copyOf(readable);
   }
 
   private ContextMemoryVisibility() {}
@@ -251,24 +302,147 @@ public final class ContextMemoryVisibility {
 
   static List<ContextMemory> filterByVisibility(
       List<ContextMemory> memories, String userName, boolean isAdmin, AnchorAccess anchorAccess) {
-    Cache<UUID, Boolean> anchorDecisions =
-        CacheBuilder.newBuilder().maximumSize(MAX_ANCHOR_DECISIONS_PER_PAGE).build();
-    AnchorAccess cachedAccess =
-        (name, anchor) -> {
-          UUID anchorId = anchor.getId();
-          if (anchorId == null) {
-            return anchorAccess.canView(name, anchor);
-          }
-          Boolean cached = anchorDecisions.getIfPresent(anchorId);
-          if (cached == null) {
-            cached = anchorAccess.canView(name, anchor);
-            anchorDecisions.put(anchorId, cached);
-          }
-          return cached;
-        };
+    AnchorAccess cachedAccess = decidedOncePerPage(anchorAccess::canView)::test;
     return memories.stream()
         .filter(m -> isVisibleToUser(m, userName, isAdmin, cachedAccess))
         .toList();
+  }
+
+  /**
+   * The memories a listing shows the caller: those they may read, except that a memory awaiting
+   * review ({@link #isPending}) is listed to its owners and admins only, and a document's pending
+   * pill to that document's owners too. A read by id still follows the share rules alone
+   * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
+  public static List<ContextMemory> filterListed(
+      List<ContextMemory> memories, SecurityContext securityContext) {
+    return memories == null || memories.isEmpty()
+        ? memories
+        : filterListed(
+            memories,
+            callerName(securityContext),
+            isAdmin(securityContext),
+            ContextMemoryAnchorAccess::canView,
+            ContextMemoryVisibility::ownsSource,
+            ContextMemoryVisibility::findLinkedDocuments);
+  }
+
+  static List<ContextMemory> filterListed(
+      List<ContextMemory> memories,
+      String userName,
+      boolean isAdmin,
+      AnchorAccess anchorAccess,
+      SourceOwnership sourceOwnership,
+      LinkedDocuments linkedDocuments) {
+    List<ContextMemory> visible = filterByVisibility(memories, userName, isAdmin, anchorAccess);
+    return isAdmin
+        ? visible
+        : withoutOthersPending(visible, userName, sourceOwnership, linkedDocuments);
+  }
+
+  private static List<ContextMemory> withoutOthersPending(
+      List<ContextMemory> visible,
+      String userName,
+      SourceOwnership sourceOwnership,
+      LinkedDocuments linkedDocuments) {
+    Map<UUID, List<EntityReference>> documents =
+        documentsOfOthersPending(visible, userName, linkedDocuments);
+    SourceOwnership ownership = decidedOncePerPage(sourceOwnership::owns)::test;
+    return visible.stream()
+        .filter(
+            m ->
+                !isPending(m)
+                    || isOwnedBy(m, userName)
+                    || ownsAny(documents, m, userName, ownership))
+        .toList();
+  }
+
+  /** Read once for the page's pending extracted pills; an anonymous caller owns no document. */
+  private static Map<UUID, List<EntityReference>> documentsOfOthersPending(
+      List<ContextMemory> visible, String userName, LinkedDocuments linkedDocuments) {
+    List<UUID> asked =
+        visible.stream()
+            .filter(m -> userName != null && isPending(m) && isExtracted(m))
+            .filter(m -> !isOwnedBy(m, userName))
+            .map(ContextMemory::getId)
+            .distinct()
+            .toList();
+    return asked.isEmpty() ? Map.of() : linkedDocuments.of(asked);
+  }
+
+  /** Whether {@code memory} still awaits review: Unprocessed or Draft. */
+  public static boolean isPending(ContextMemory memory) {
+    ContextMemoryStatus status = memory.getEntityStatus();
+    return status != null && ContextMemorySearchVisibility.OWNER_PENDING_STATUSES.contains(status);
+  }
+
+  private static boolean isExtracted(ContextMemory memory) {
+    return ContextMemoryWriteAccess.isAutomatedSource(memory.getSourceType());
+  }
+
+  /** One memory, one review: the owners of every document it is linked to may list it. */
+  private static boolean ownsAny(
+      Map<UUID, List<EntityReference>> documents,
+      ContextMemory memory,
+      String userName,
+      SourceOwnership ownership) {
+    return isExtracted(memory)
+        && documents.getOrDefault(memory.getId(), List.of()).stream()
+            .anyMatch(document -> ownership.owns(userName, document));
+  }
+
+  /** A lookup that cannot run lists a pending pill to its owners and admins only. */
+  private static Map<UUID, List<EntityReference>> findLinkedDocuments(List<UUID> memoryIds) {
+    Map<UUID, List<EntityReference>> documents = Map.of();
+    if (Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)) {
+      try {
+        documents =
+            ((ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+                .listExtractedSources(memoryIds);
+      } catch (JdbiException e) {
+        LOG.warn("Cannot read the documents of pending memories; listing them to their owners", e);
+      }
+    }
+    return documents;
+  }
+
+  /**
+   * A document's owners as policies count them, an owning team's members included. A source or
+   * user that is gone owns nothing.
+   */
+  static boolean ownsSource(String userName, EntityReference source) {
+    boolean owns = false;
+    try {
+      EntityInterface entity = Entity.getEntity(source, Entity.FIELD_OWNERS, Include.NON_DELETED);
+      owns = SubjectContext.getSubjectContext(userName).isOwner(entity.getOwners());
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Memory source {} or user {} is gone; no ownership", source.getId(), userName, e);
+    }
+    return owns;
+  }
+
+  /** Whether a listing can hide nothing from this caller, so its database total stands. */
+  public static boolean seesEveryMemory(SecurityContext securityContext) {
+    return isAdmin(securityContext);
+  }
+
+  /** Each entity is decided once per page, however many of its memories the page holds. */
+  private static BiPredicate<String, EntityReference> decidedOncePerPage(
+      BiPredicate<String, EntityReference> decision) {
+    Cache<UUID, Boolean> decisions =
+        CacheBuilder.newBuilder().maximumSize(MAX_ANCHOR_DECISIONS_PER_PAGE).build();
+    return (name, entity) -> {
+      UUID entityId = entity.getId();
+      if (entityId == null) {
+        return decision.test(name, entity);
+      }
+      Boolean cached = decisions.getIfPresent(entityId);
+      if (cached == null) {
+        cached = decision.test(name, entity);
+        decisions.put(entityId, cached);
+      }
+      return cached;
+    };
   }
 
   public static List<ContextMemory> filterByVisibility(
@@ -277,6 +451,20 @@ public final class ContextMemoryVisibility {
       return memories;
     }
     return filterByVisibility(memories, callerName(securityContext), isAdmin(securityContext));
+  }
+
+  /**
+   * The {@code snapshots} whose memory, among {@code current}, the caller may read now. A snapshot
+   * carries the sharing it was written with, so deciding on it would keep showing what was shared
+   * before the memory was made private.
+   */
+  public static List<ContextMemory> retainVisibleNow(
+      List<ContextMemory> snapshots, List<ContextMemory> current, SecurityContext securityContext) {
+    Set<UUID> visible =
+        filterByVisibility(current, securityContext).stream()
+            .map(ContextMemory::getId)
+            .collect(Collectors.toSet());
+    return snapshots.stream().filter(snapshot -> visible.contains(snapshot.getId())).toList();
   }
 
   /**
@@ -289,7 +477,7 @@ public final class ContextMemoryVisibility {
         : securityContext.getUserPrincipal().getName();
   }
 
-  private static boolean isAdmin(SecurityContext securityContext) {
+  static boolean isAdmin(SecurityContext securityContext) {
     boolean admin = false;
     if (callerName(securityContext) != null) {
       SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
@@ -298,11 +486,16 @@ public final class ContextMemoryVisibility {
     return admin;
   }
 
+  /**
+   * Whether {@code userName} is among the owners. Only an owner of type user can be the caller: a
+   * team owner named like the caller is a different principal.
+   */
   public static boolean isOwnedBy(ContextMemory memory, String userName) {
-    if (memory.getOwners() == null || memory.getOwners().isEmpty() || userName == null) {
+    if (nullOrEmpty(memory.getOwners()) || userName == null) {
       return false;
     }
     return memory.getOwners().stream()
+        .filter(o -> Entity.USER.equals(o.getType()))
         .anyMatch(o -> userName.equals(o.getName()) || userName.equals(o.getFullyQualifiedName()));
   }
 
@@ -315,6 +508,10 @@ public final class ContextMemoryVisibility {
    * Whether {@code userName} is named by a sharing list, directly or through a team or domain they
    * belong to. Public because Context Center shares files by the same vocabulary, and one matcher
    * is what keeps the two from drifting apart.
+   *
+   * <p>Principals are matched by id, as search matches them. Users, teams and domains are named
+   * independently of each other, so a name does not say which of them was shared with: a user who
+   * signs up under a team's name is not a member of that team.
    */
   public static boolean isSharedWith(List<MemorySharedPrincipal> sharedWith, String userName) {
     if (nullOrEmpty(sharedWith)) {
@@ -325,33 +522,26 @@ public final class ContextMemoryVisibility {
         .anyMatch(
             sp ->
                 sp.getPrincipal() != null
-                    && (principalIds.contains(sp.getPrincipal().getName())
-                        || principalIds.contains(sp.getPrincipal().getFullyQualifiedName())));
+                    && sp.getPrincipal().getId() != null
+                    && principalIds.contains(sp.getPrincipal().getId().toString()));
   }
 
+  /**
+   * The ids a sharing list may name to reach {@code userName}: their own, their teams' and their
+   * domains'. A user that cannot be resolved is shared nothing.
+   */
   static Set<String> resolvePrincipalIdentifiers(String userName) {
-    Set<String> ids = new HashSet<>();
-    ids.add(userName);
-    try {
-      User user =
-          Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
-      addRefNames(ids, user.getTeams());
-      addRefNames(ids, user.getDomains());
-    } catch (Exception e) {
-      LOG.debug("Could not resolve teams/domains for user '{}'", userName, e);
+    Set<String> ids = Set.of();
+    if (!nullOrEmpty(userName)) {
+      try {
+        User user =
+            Entity.getEntityByName(Entity.USER, userName, "teams,domains", Include.NON_DELETED);
+        ids = Set.copyOf(ContextMemorySearchVisibility.sharedPrincipalIds(user));
+      } catch (RuntimeException e) {
+        LOG.debug("Could not resolve shared principal ids for user '{}'", userName, e);
+      }
     }
     return ids;
-  }
-
-  private static void addRefNames(Set<String> ids, List<EntityReference> refs) {
-    for (EntityReference ref : listOrEmpty(refs)) {
-      if (ref.getName() != null) {
-        ids.add(ref.getName());
-      }
-      if (ref.getFullyQualifiedName() != null) {
-        ids.add(ref.getFullyQualifiedName());
-      }
-    }
   }
 
   private static String getVisibilityDeniedMessage(ContextMemory memory) {

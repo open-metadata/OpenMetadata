@@ -81,6 +81,9 @@ logger = workflow_logger()
 PIPELINE_RUN_ID_PARAM = "pipelineRunId"
 SOURCE_CONFIG_OVERRIDE_PARAM = "sourceConfigOverride"
 
+# Run states that mean the workflow already reported its outcome
+RUN_FINISHED_STATES = (PipelineState.success, PipelineState.partialSuccess)
+
 ENTITY_CLASS_MAP = {
     "apiService": ApiService,
     "databaseService": DatabaseService,
@@ -407,6 +410,19 @@ def send_failed_status_callback(workflow_config: OpenMetadataWorkflowConfig, *ar
                 workflow_config.ingestionPipelineFQN,
                 str(run_id),
             )
+
+            # The workflow already reported its outcome. A late kill or failure signal
+            # (for example Airflow killing the task after the callable returned) must not
+            # overwrite it.
+            if pipeline_status is not None and pipeline_status.pipelineState in RUN_FINISHED_STATES:
+                logger.info(
+                    "Run [%s] of %s already finished as [%s]. Skipping the failed-status callback.",
+                    run_id,
+                    workflow_config.ingestionPipelineFQN,
+                    pipeline_status.pipelineState.value,
+                )
+                return
+
             pipeline_status.endDate = Timestamp(int(datetime.now().timestamp() * 1000))
             pipeline_status.pipelineState = PipelineState.failed
 

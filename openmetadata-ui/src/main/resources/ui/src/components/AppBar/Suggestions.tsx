@@ -47,7 +47,6 @@ import {
   TopicSource,
   WorksheetSource,
 } from '../../context/GlobalSearchProvider/GlobalSearchSuggestions/GlobalSearchSuggestions.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { SearchIndex } from '../../enums/search.enum';
 import { ContainerSearchSource } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
@@ -80,7 +79,6 @@ const Suggestions = ({
   onSearchTextUpdate,
 }: SuggestionProp) => {
   const { t } = useTranslation();
-  const { isTourOpen } = useTourProvider();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [options, setOptions] = useState<Array<Option>>([]);
   const [suggestions, setSuggestions] = useState<SuggestionsObject>({
@@ -393,12 +391,12 @@ const Suggestions = ({
   }, [isNLPActive, quickFilter, searchText, searchCriteria]);
 
   useEffect(() => {
-    if (searchText && !isTourOpen) {
+    if (searchText) {
       fetchSearchData();
     } else {
       setIsLoading(false);
     }
-  }, [fetchSearchData, searchText, isTourOpen]);
+  }, [fetchSearchData, searchText]);
 
   // Add a function to render AI query suggestions
   const renderAIQuerySuggestions = () => {
@@ -444,7 +442,7 @@ const Suggestions = ({
     return renderAIQuerySuggestions();
   }
 
-  if (options.length === 0 && !isTourOpen && !isEmpty(searchText)) {
+  if (options.length === 0 && !isEmpty(searchText)) {
     return (
       <Typography>
         <Transi18next

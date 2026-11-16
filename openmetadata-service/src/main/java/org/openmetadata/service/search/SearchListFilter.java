@@ -13,6 +13,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataQualityDimensionRepository;
 import org.openmetadata.service.jdbi3.Filter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.search.capability.EntityIndexCapability;
+import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.search.security.ContextMemorySearchVisibility;
 
@@ -48,6 +50,8 @@ public class SearchListFilter extends Filter<SearchListFilter> {
   private static final String FIELD_OWNERS_ID = "owners.id";
   private static final String FIELD_CREATED_BY = "createdBy";
   private static final String FIELD_DOMAINS_FQN = "domains.fullyQualifiedName";
+  public static final String NAV_DOMAIN_PARAM = "navDomain";
+  public static final String NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM = "navDomainKeepsUnassigned";
   private static final String FIELD_DATA_PRODUCTS_FQN = "dataProducts.fullyQualifiedName";
   private static final String FIELD_SERVICE_NAME = "service.name";
   private static final String FIELD_TEST_CASE_STATUS = "testCaseResult.testCaseStatus";
@@ -157,22 +161,47 @@ public class SearchListFilter extends Filter<SearchListFilter> {
       return String.format(
           "{\"term\": {\"%s\": \"%s\"}}", FIELD_DOMAINS_FQN, escapeJsonString(domain));
     }
-    return "";
+    return getNavbarDomainCondition();
   }
 
+  // The navbar pick matches the domain and its sub-domains, and optionally items with no domain.
+  private String getNavbarDomainCondition() {
+    String navDomain = getQueryParam(NAV_DOMAIN_PARAM);
+    if (nullOrEmpty(navDomain)) {
+      return "";
+    }
+    String fqn = escapeJsonString(navDomain);
+    String unassigned =
+        Boolean.parseBoolean(getQueryParam(NAV_DOMAIN_KEEPS_UNASSIGNED_PARAM))
+            ? String.format(
+                ",{\"bool\":{\"must_not\":{\"exists\":{\"field\":\"%s\"}}}}", FIELD_DOMAINS_FQN)
+            : "";
+    return String.format(
+        "{\"bool\":{\"should\":[{\"term\":{\"%s\":\"%s\"}},{\"prefix\":{\"%s\":\"%s.\"}}%s],\"minimum_should_match\":1}}",
+        FIELD_DOMAINS_FQN, fqn, FIELD_DOMAINS_FQN, fqn, unassigned);
+  }
+
+  // A document indexed before its deleted field existed counts as not deleted.
   private String getIncludeCondition(String entityType) {
-    boolean supportsDeleted = true;
-    if (entityType != null) {
-      Class<?> clazz = Entity.getEntityClassFromType(entityType);
-      if (clazz == null) clazz = Entity.getEntityTimeSeriesClassFromType(entityType);
-      supportsDeleted = (clazz != null) && Entity.getEntityFields(clazz).contains("deleted");
+    String deletedField = deletedFieldOf(entityType);
+    String condition = "";
+    if (include == Include.DELETED && deletedField != null) {
+      condition = String.format("{\"term\": {\"%s\": \"true\"}}", deletedField);
+    } else if (include != Include.ALL && deletedField != null) {
+      condition =
+          String.format(
+              "{\"bool\": {\"must_not\": [{\"term\": {\"%s\": \"true\"}}]}}", deletedField);
     }
-    String deleted = "";
-    if (include != Include.ALL && supportsDeleted) {
-      deleted =
-          String.format("{\"term\": {\"%s\": \"%s\"}}", FIELD_DELETED, include == Include.DELETED);
+    return condition;
+  }
+
+  // The field each entity's capability names: an incident takes its deletion from its test case.
+  private static String deletedFieldOf(String entityType) {
+    if (entityType == null) {
+      return FIELD_DELETED;
     }
-    return deleted;
+    EntityIndexCapability capability = EntityIndexCapabilityRegistry.get(entityType);
+    return capability == null ? null : capability.deletedField();
   }
 
   private String getOwnerCondition() {

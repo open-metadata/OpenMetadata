@@ -148,7 +148,7 @@ const SECONDARY_ASSET_TABS = new Map<ServiceCategory, SecondaryAssetTab[]>([
     [
       {
         key: EntityTabs.DATA_Model,
-        labelKey: 'label.data-model',
+        labelKey: 'label.data-model-plural',
         countAssets: async (service, include) => {
           const response = await getDataModels({ service, include, limit: 0 });
 

@@ -10,13 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import {
   BulkOperationResult,
   Status,
 } from '../../generated/type/bulkOperationResult';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -27,6 +35,10 @@ jest.mock('../../rest/glossaryAPI', () => ({
   addAssetsToGlossaryTerm: jest.fn(),
 }));
 jest.mock('../../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 const mockSearch = searchQuery as jest.MockedFunction<typeof searchQuery>;
 const mockAddAssets = addAssetsToGlossaryTerm as jest.MockedFunction<
@@ -66,17 +78,30 @@ describe('OntologyDataAssetPicker', () => {
   });
 
   it('saves native associations without glossary tagging and excludes linked assets from select all', async () => {
-    const saveAssets = jest.fn().mockResolvedValue({ failedRequest: [] });
+    const saveAssets = jest.fn().mockResolvedValue({
+      completedIds: ['t-2'],
+      remaining: [],
+      stop: 'none',
+    });
     render(
       <OntologyDataAssetPicker
-        native={{ assetTypes: ['table'], linkedIds: ['t-1'], saveAssets }}
+        native={{
+          assetTypes: ['table'],
+          linkedIds: ['t-1'],
+          isDisabled: false,
+          saveAssets,
+        }}
         onCancel={jest.fn()}
-        onPartialSave={jest.fn()}
         onSave={jest.fn()}
       />
     );
-    await screen.findByText('customers');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    await screen.findByText('orders');
+
+    expect(screen.queryByText('customers')).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
     await waitFor(() =>
       expect(saveAssets).toHaveBeenCalledWith([
@@ -85,6 +110,47 @@ describe('OntologyDataAssetPicker', () => {
     );
 
     expect(mockAddAssets).not.toHaveBeenCalled();
+  });
+
+  it('offers the service of a suggested asset even when the plain list omits it', async () => {
+    const withService = (id: string, name: string, service: string) => ({
+      _source: {
+        ...hit(id, name, 'table')._source,
+        service: { name: service },
+      },
+    });
+    mockSearch.mockImplementation(async ({ query }) => {
+      const isSuggestion = String(query).includes('*Prescription*');
+
+      return {
+        hits: {
+          hits: isSuggestion
+            ? [withService('t-rx', 'prescription_orders', 'svc-pharmacy')]
+            : [withService('t-1', 'customers', 'svc-sales')],
+          total: { value: 1 },
+        },
+      } as never;
+    });
+    render(
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: ['table'],
+          concept: { name: 'Prescription' },
+          linkedIds: [],
+          isDisabled: false,
+          saveAssets: jest.fn(),
+        }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    await screen.findByTestId('ontology-data-asset-suggested-heading');
+    fireEvent.click(screen.getByRole('button', { name: /label\.service/ }));
+
+    expect(
+      await screen.findByRole('option', { name: 'svc-pharmacy' })
+    ).toBeVisible();
+    expect(screen.getByRole('option', { name: 'svc-sales' })).toBeVisible();
   });
 
   it('searches every data asset, then narrows to columns', async () => {
@@ -133,7 +199,9 @@ describe('OntologyDataAssetPicker', () => {
 
     expect(screen.getByTestId('ontology-data-asset-save')).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -167,7 +235,9 @@ describe('OntologyDataAssetPicker', () => {
     );
     await screen.findByTestId('ontology-data-asset-option-t-1');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     expect(
@@ -346,16 +416,357 @@ describe('OntologyDataAssetPicker', () => {
       />
     );
     await screen.findByTestId('ontology-data-asset-option-t-1');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
 
     expect(
       screen.getByTestId('ontology-data-asset-selected-count')
-    ).toHaveTextContent('label.n-selected');
+    ).toHaveTextContent('label.n-selected-lowercase');
 
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     await waitFor(() =>
       expect(showErrorToast).toHaveBeenCalledWith('No edit access')
     );
+  });
+
+  it('selects, saves and cancels in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const saveAssets = jest.fn().mockResolvedValue({
+      completedIds: ['t-2'],
+      remaining: [],
+      stop: 'none',
+    });
+    const onSave = jest.fn();
+    const onCancel = jest.fn();
+    render(
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: ['table'],
+          linkedIds: ['t-1'],
+          isDisabled: false,
+          saveAssets,
+        }}
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+    await screen.findByText('orders');
+
+    expect(
+      screen.queryByTestId('ontology-data-asset-option-t-1')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
+
+    expect(
+      screen.getByTestId('ontology-data-asset-selected-count')
+    ).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
+    await waitFor(() => expect(onSave).toHaveBeenCalled());
+
+    expect(saveAssets).toHaveBeenCalledWith([
+      expect.objectContaining({ id: 't-2' }),
+    ]);
+
+    fireEvent.click(screen.getByTestId('ontology-data-asset-picker-close'));
+
+    expect(onCancel).toHaveBeenCalled();
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('lines the checkbox up with the type tile and keeps the select-all bar on the card surface in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    render(
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: ['table'],
+          linkedIds: [],
+          isDisabled: false,
+          saveAssets: jest.fn(),
+        }}
+        onCancel={jest.fn()}
+        onSave={jest.fn()}
+      />
+    );
+    const option = await screen.findByTestId('ontology-data-asset-option-t-2');
+
+    const box = Array.from(option.children).find(
+      (child) => child.tagName === 'DIV'
+    );
+    let selectAllBar = screen.getByRole('checkbox', {
+      name: 'label.select-all-lowercase',
+    }).parentElement;
+    while (selectAllBar && !selectAllBar.className.includes('tw:border-b')) {
+      selectAllBar = selectAllBar.parentElement;
+    }
+
+    expect(box).toHaveClass('tw:mt-1.5');
+    expect(selectAllBar).toHaveClass('tw:px-3.5');
+    expect(selectAllBar).not.toHaveClass('tw:bg-secondary_alt');
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  describe('linking assets to a concept', () => {
+    const renderNative = (overrides: Partial<{ linkedIds: string[] }> = {}) =>
+      render(
+        <OntologyDataAssetPicker
+          native={{
+            assetTypes: ['table', 'topic'],
+            concept: { name: 'Medication Record', synonyms: ['Rx'] },
+            isDisabled: false,
+            linkedIds: [],
+            saveAssets: jest.fn(),
+            ...overrides,
+          }}
+          onCancel={jest.fn()}
+          onSave={jest.fn()}
+        />
+      );
+
+    const withColumns = (id: string, name: string, columns: string[]) => ({
+      _source: {
+        ...hit(id, name, 'table')._source,
+        columns: columns.map((column) => ({ name: column })),
+      },
+    });
+
+    beforeEach(() => {
+      mockSearch.mockImplementation(async ({ query }) => {
+        const isSuggestion = String(query).includes(' OR ');
+        const hits = isSuggestion
+          ? [
+              withColumns('t-3', 'medication_events', ['id']),
+              withColumns('t-4', 'events', ['id', 'record_id']),
+              withColumns('t-5', 'rx_orders', []),
+            ]
+          : [
+              withColumns('t-1', 'customers', []),
+              withColumns('t-3', 'medication_events', ['id']),
+            ];
+
+        return { hits: { hits, total: { value: hits.length } } } as never;
+      });
+    });
+
+    it('puts assets that resemble the concept first, each with the reason', async () => {
+      renderNative();
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-reason-t-3')
+      ).toHaveTextContent('message.ontology-suggest-name');
+      expect(
+        screen.getByTestId('ontology-data-asset-reason-t-4')
+      ).toHaveTextContent('message.ontology-suggest-column');
+      expect(
+        screen.getByTestId('ontology-data-asset-reason-t-5')
+      ).toHaveTextContent('message.ontology-suggest-synonym');
+      expect(
+        screen.getByTestId('ontology-data-asset-suggested-heading')
+      ).toBeVisible();
+      expect(
+        screen.getAllByRole('checkbox', { name: 'medication_events' })
+      ).toHaveLength(1);
+
+      const labels = screen
+        .getAllByRole('checkbox')
+        .map((box) => box.getAttribute('aria-label'));
+
+      expect(labels.indexOf('medication_events')).toBeLessThan(
+        labels.indexOf('customers')
+      );
+    });
+
+    it('keeps an already linked asset out of Suggested', async () => {
+      renderNative({ linkedIds: ['t-3'] });
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-reason-t-4')
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-data-asset-reason-t-3')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('checkbox', { name: 'medication_events' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('shows the list once, after suggestions arrive, instead of reordering it', async () => {
+      let release: () => void = () => undefined;
+      const arrival = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      const base = mockSearch.getMockImplementation();
+      mockSearch.mockImplementation(async (request) => {
+        if (String(request.query).includes(' OR ')) {
+          await arrival;
+        }
+
+        return base?.(request) as never;
+      });
+      renderNative();
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-loading')
+      ).toBeVisible();
+      expect(
+        screen.queryByRole('checkbox', { name: 'customers' })
+      ).not.toBeInTheDocument();
+
+      await act(async () => release());
+
+      expect(
+        await screen.findByTestId('ontology-data-asset-suggested-heading')
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-data-asset-loading')
+      ).not.toBeInTheDocument();
+    });
+
+    it('stops suggesting once a search narrows the list', async () => {
+      renderNative();
+      await screen.findByTestId('ontology-data-asset-reason-t-3');
+
+      fireEvent.change(screen.getByRole('textbox'), {
+        target: { value: 'cust' },
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('ontology-data-asset-reason-t-3')
+        ).not.toBeInTheDocument()
+      );
+    });
+
+    it('narrows the search to one asset type from the filter', async () => {
+      renderNative();
+      await screen.findByText('customers');
+
+      fireEvent.click(screen.getByRole('button', { name: /label\.type/ }));
+      fireEvent.click(await screen.findByRole('option', { name: /topic/i }));
+
+      await waitFor(() =>
+        expect(mockSearch.mock.calls.at(-1)?.[0].queryFilter).toEqual({
+          query: { bool: { must: [{ terms: { entityType: ['topic'] } }] } },
+        })
+      );
+    });
+
+    it('leaves an already linked asset out of the list', async () => {
+      renderNative({ linkedIds: ['t-1'] });
+
+      expect(
+        await screen.findByRole('checkbox', { name: 'medication_events' })
+      ).toBeEnabled();
+      expect(
+        screen.queryByRole('checkbox', { name: 'customers' })
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('as the Link data dialog', () => {
+    const richHit = {
+      _source: {
+        ...hit('t-1', 'prescriptions', 'table')._source,
+        domains: [
+          { id: 'd-1', fullyQualifiedName: 'Clinical', name: 'Clinical' },
+        ],
+        owners: [{ id: 'u-1', name: 'priya', displayName: 'Priya Raman' }],
+        service: { name: 'bq_clinical', displayName: 'BigQuery' },
+        tags: [{ tagFQN: 'Tier.Tier1' }],
+      },
+    };
+    const lastFilter = () =>
+      JSON.stringify(mockSearch.mock.calls.at(-1)?.[0].queryFilter);
+    const pick = async (filter: RegExp, option: string) => {
+      fireEvent.click(screen.getByRole('button', { name: filter }));
+      fireEvent.click(await screen.findByRole('option', { name: option }));
+    };
+
+    beforeEach(() => {
+      mockSearch.mockResolvedValue({
+        hits: { hits: [richHit], total: { value: 12 } },
+      } as never);
+      render(
+        <ModalOverlay isOpen>
+          <Modal>
+            <Dialog aria-label="link" dividers="scroll" width={880}>
+              <OntologyDataAssetPicker
+                native={{
+                  assetTypes: ['table', 'topic'],
+                  concept: { name: 'Medication Record' },
+                  isDialog: true,
+                  isDisabled: false,
+                  linkedIds: [],
+                  saveAssets: jest.fn(),
+                }}
+                onCancel={jest.fn()}
+                onSave={jest.fn()}
+              />
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      );
+    });
+
+    it('names the concept, counts the catalog, and shows each row with its source, type and tier', async () => {
+      await screen.findByText('prescriptions');
+
+      expect(screen.getByText('label.link-data-to-entity')).toBeInTheDocument();
+      expect(screen.getByTestId('ontology-data-asset-total')).toHaveTextContent(
+        'label.count-asset-in-catalog'
+      );
+      expect(screen.getByText('BigQuery')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('ontology-data-asset-tier-t-1')
+      ).toHaveTextContent('Tier1');
+      expect(screen.getByTestId('ontology-data-asset-save')).toHaveTextContent(
+        'label.select-asset-plural'
+      );
+      expect(
+        screen.getByText('message.ontology-link-applies-now')
+      ).toBeInTheDocument();
+    });
+
+    it('orders the filters Service, Type, Domain, Owner', async () => {
+      await screen.findByText('prescriptions');
+
+      expect(
+        screen
+          .getAllByTestId(/^ontology-data-asset-\w+-filter$/)
+          .map((filter) => filter.dataset.testid)
+      ).toEqual([
+        'ontology-data-asset-service-filter',
+        'ontology-data-asset-type-filter',
+        'ontology-data-asset-domain-filter',
+        'ontology-data-asset-owner-filter',
+      ]);
+    });
+
+    it('narrows the search to one domain and one owner seen in the results', async () => {
+      await screen.findByText('prescriptions');
+
+      await pick(/label\.domain/, 'Clinical');
+      await waitFor(() =>
+        expect(lastFilter()).toContain(
+          '{"term":{"domains.fullyQualifiedName":"Clinical"}}'
+        )
+      );
+
+      await pick(/label\.owner/, 'Priya Raman');
+      await waitFor(() =>
+        expect(lastFilter()).toContain(
+          '{"nested":{"path":"owners","query":{"term":{"owners.id":"u-1"}},"ignore_unmapped":true}}'
+        )
+      );
+
+      expect(lastFilter()).toContain('domains.fullyQualifiedName');
+    });
   });
 });

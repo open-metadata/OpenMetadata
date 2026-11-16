@@ -16,11 +16,12 @@ import {
   Box,
   Dropdown,
   FilterSelect,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit05, Trash01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
@@ -46,12 +47,6 @@ import {
 const MAX_VISIBLE_CONFIG_VALUES = 3;
 
 const CONFIG_CHIP_CLASS = 'tw:max-w-full tw:truncate tw:font-medium';
-const ACTIONS_BUTTON_CLASS = classNames(
-  'tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-lg',
-  'tw:border tw:border-transparent tw:hover:border-secondary tw:hover:bg-primary_hover',
-  'tw:[&>svg]:size-4'
-);
-
 const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
   property,
 }) => {
@@ -70,7 +65,7 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
   }
 
   const visibleValues = summary.values.slice(0, MAX_VISIBLE_CONFIG_VALUES);
-  const hiddenCount = summary.values.length - visibleValues.length;
+  const hiddenValues = summary.values.slice(MAX_VISIBLE_CONFIG_VALUES);
 
   return (
     <Box className="tw:gap-1.5" data-testid={summary.testId} direction="col">
@@ -89,15 +84,19 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
             {value}
           </Badge>
         ))}
-        {hiddenCount > 0 && (
-          <Badge
-            className="tw:font-medium tw:text-tertiary"
-            color="gray"
-            data-testid="config-hidden-count"
-            size="sm"
-            type="color">
-            {t('label.plus-count', { count: hiddenCount })}
-          </Badge>
+        {hiddenValues.length > 0 && (
+          <Tooltip
+            title={hiddenValues.join(', ')}
+            triggerClassName="tw:inline-flex">
+            <Badge
+              className="tw:font-medium tw:text-tertiary"
+              color="gray"
+              data-testid="config-hidden-count"
+              size="sm"
+              type="color">
+              {t('label.plus-count', { count: hiddenValues.length })}
+            </Badge>
+          </Tooltip>
         )}
       </Box>
     </Box>
@@ -112,6 +111,7 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
   onDelete,
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   if (!canEdit && !canDelete) {
     return null;
@@ -120,20 +120,22 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
   return (
     <Dropdown.Root>
       <Dropdown.DotsButton
-        className={ACTIONS_BUTTON_CLASS}
         data-testid="property-actions"
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-55">
         <Dropdown.Menu
           aria-label={t('label.action-plural')}
           selectionMode="none"
           onAction={(key) =>
-            key === OPERATION.DELETE ? onDelete(property) : onEdit(property)
+            key === OPERATION.DELETE
+              ? onDelete(property, actionsButtonRef.current ?? undefined)
+              : onEdit(property)
           }>
           {canEdit && (
             <Dropdown.Item
               data-testid="edit-button"
-              icon={Edit05}
+              icon={Edit01}
               id={OPERATION.UPDATE}
               label={t('label.edit')}
             />
@@ -147,7 +149,8 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
               <Box align="center" gap={2}>
                 <Trash01
                   aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:text-fg-error-primary"
+                  className="tw:shrink-0 tw:text-fg-error-primary"
+                  size={16}
                 />
                 <Typography color="danger" size="text-sm">
                   {t('label.delete')}
@@ -168,6 +171,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
   canDelete,
   emptyText,
   containerClassName,
+  variant,
   'data-testid': dataTestId = 'entity-custom-properties-table',
   onEdit,
   onDelete,
@@ -323,6 +327,7 @@ const CustomPropertiesListTable: FC<CustomPropertiesListTableProps> = ({
         typingInterval: 300,
         onSearch: setSearchText,
       }}
+      variant={variant}
     />
   );
 };

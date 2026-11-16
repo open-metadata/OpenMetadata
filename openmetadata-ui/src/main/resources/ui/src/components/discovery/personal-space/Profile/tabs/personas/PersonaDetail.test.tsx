@@ -27,11 +27,11 @@ import React, { ReactNode, useState } from 'react';
 import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import {
   getPersonaByName,
   updatePersona,
 } from '../../../../../../rest/PersonaAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import {
   showErrorToast,
@@ -52,8 +52,12 @@ jest.mock('../../../../../../rest/PersonaAPI', () => ({
   updatePersona: jest.fn(),
 }));
 
-jest.mock('../../../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
-  hardDeleteEntity: jest.fn(),
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn(),
+}));
+
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
 }));
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
@@ -87,30 +91,6 @@ jest.mock(
   () =>
     ({ markdown }: { markdown: string }) =>
       <div data-testid="description-preview">{markdown}</div>
-);
-
-jest.mock(
-  '../../../../../common/DeleteModal/DeleteModal',
-  () =>
-    ({
-      onCancel,
-      onDelete,
-      open,
-    }: {
-      onCancel: () => void;
-      onDelete: () => void;
-      open: boolean;
-    }) =>
-      open ? (
-        <div data-testid="delete-modal">
-          <button data-testid="confirm-delete" type="button" onClick={onDelete}>
-            delete
-          </button>
-          <button data-testid="cancel-delete" type="button" onClick={onCancel}>
-            cancel
-          </button>
-        </div>
-      ) : null
 );
 
 jest.mock(
@@ -212,25 +192,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
-    ButtonUtility: ({
-      'data-testid': testId,
-      isDisabled,
-      onPress,
-      tooltip,
-    }: {
-      'data-testid'?: string;
-      isDisabled?: boolean;
-      onPress?: () => void;
-      tooltip?: string;
-    }) => (
-      <button
-        aria-label={tooltip}
-        data-testid={testId}
-        disabled={isDisabled}
-        type="button"
-        onClick={onPress}
-      />
-    ),
+    // Real trigger + popover: the delete confirmation is wired through react-aria's press context.
+    ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+      .ButtonUtility,
+    ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
+      .ConfirmPopover,
     Card: Object.assign(
       ({ children }: React.PropsWithChildren) => <div>{children}</div>,
       {
@@ -311,6 +277,16 @@ const PERSONA = {
   ],
 };
 
+const MANAGER = {
+  id: 'persona-2',
+  name: 'manager',
+  displayName: 'Manager',
+  fullyQualifiedName: 'manager',
+  description: 'Manager description',
+  default: true,
+  users: [{ id: 'u3', name: 'carol', type: 'user' }],
+};
+
 const FULL_PERMISSIONS = {
   EditAll: true,
   EditDescription: true,
@@ -334,14 +310,16 @@ const mockOnRename = jest.fn();
 // Renders PersonaDetail with the header nodes it injects via onSetHeader*.
 const Harness = ({
   activeTab = 'customize-ui',
+  fqn = 'analyst',
   subCategory,
 }: {
   activeTab?: PersonaDetailTab;
+  fqn?: string;
   subCategory?: string;
 }) => {
-  const [input, setInput] = useState<React.ReactNode>(null);
-  const [suffix, setSuffix] = useState<React.ReactNode>(null);
-  const [actions, setActions] = useState<React.ReactNode>(null);
+  const [input, setInput] = useState<ReactNode>(null);
+  const [suffix, setSuffix] = useState<ReactNode>(null);
+  const [actions, setActions] = useState<ReactNode>(null);
 
   return (
     <>
@@ -352,7 +330,7 @@ const Harness = ({
       </div>
       <PersonaDetail
         activeTab={activeTab}
-        fqn="analyst"
+        fqn={fqn}
         subCategory={subCategory}
         onDeleted={mockOnDeleted}
         onRename={mockOnRename}
@@ -367,7 +345,11 @@ const Harness = ({
 };
 
 const renderDetail = async (
-  props: { activeTab?: PersonaDetailTab; subCategory?: string } = {}
+  props: {
+    activeTab?: PersonaDetailTab;
+    fqn?: string;
+    subCategory?: string;
+  } = {}
 ) => {
   render(<Harness {...props} />);
   await screen.findByTestId('persona-detail-container');
@@ -559,42 +541,65 @@ describe('PersonaDetail', () => {
     ]);
   });
 
-  it('hard-deletes the persona from the delete modal and notifies the parent', async () => {
-    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(true);
+  it('hard-deletes the persona from the delete popover and notifies the parent', async () => {
+    (deleteEntity as jest.Mock).mockResolvedValueOnce({
+      status: 200,
+      data: {},
+    });
     await renderDetail();
 
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('delete-persona-popover')
+    ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('delete-persona-btn'));
-    fireEvent.click(screen.getByTestId('confirm-delete'));
+
+    expect(
+      await screen.findByTestId('delete-persona-popover-title')
+    ).toHaveTextContent('label.delete-entity');
+
+    fireEvent.click(screen.getByTestId('delete-persona-popover-confirm'));
 
     await waitFor(() => expect(mockOnDeleted).toHaveBeenCalled());
 
-    expect(hardDeleteEntity).toHaveBeenCalledWith(
-      'Analyst',
+    expect(deleteEntity).toHaveBeenCalledWith(
+      'personas',
       'persona-1',
-      'persona'
+      false,
+      true
     );
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-persona-popover')
+      ).not.toBeInTheDocument()
+    );
   });
 
   it('does not notify the parent when deletion fails or is cancelled', async () => {
-    (hardDeleteEntity as jest.Mock).mockResolvedValueOnce(false);
+    (deleteEntity as jest.Mock).mockRejectedValueOnce(new Error('boom'));
     await renderDetail();
 
     fireEvent.click(screen.getByTestId('delete-persona-btn'));
-    fireEvent.click(screen.getByTestId('cancel-delete'));
-
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('delete-persona-btn'));
-    fireEvent.click(screen.getByTestId('confirm-delete'));
+    fireEvent.click(await screen.findByTestId('delete-persona-popover-cancel'));
 
     await waitFor(() =>
-      expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument()
+      expect(
+        screen.queryByTestId('delete-persona-popover')
+      ).not.toBeInTheDocument()
     );
 
-    expect(hardDeleteEntity).toHaveBeenCalledTimes(1);
+    expect(deleteEntity).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('delete-persona-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-persona-popover-confirm')
+    );
+
+    await waitFor(() => expect(deleteEntity).toHaveBeenCalledTimes(1));
+
+    // A failed delete keeps the confirmation open so the user can retry.
+    expect(screen.getByTestId('delete-persona-popover')).toBeInTheDocument();
     expect(mockOnDeleted).not.toHaveBeenCalled();
   });
 
@@ -691,5 +696,115 @@ describe('PersonaDetail', () => {
       'aria-label',
       'message.link-copy-to-clipboard'
     );
+  });
+
+  describe('fqn change stale-state guards', () => {
+    it('clears the previously loaded persona and renders nothing when the refetch for a new fqn fails', async () => {
+      (getPersonaByName as jest.Mock).mockImplementation((name: string) =>
+        name === 'manager'
+          ? Promise.reject(new Error('not found'))
+          : Promise.resolve(PERSONA)
+      );
+
+      const { rerender } = render(<Harness activeTab="users" fqn="analyst" />);
+      await screen.findByTestId('persona-users-tab');
+
+      expect(screen.getByTestId('persona-users-tab')).toHaveTextContent(
+        'alice,bob'
+      );
+      expect(screen.getByTestId('delete-persona-btn')).toBeInTheDocument();
+
+      // Hash-style navigation reuses the mounted instance (no parent key here).
+      rerender(<Harness activeTab="users" fqn="manager" />);
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+      // The refetch failed: persona A's body, users and header actions must not
+      // survive under persona B's header.
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('persona-detail-container')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(screen.queryByTestId('persona-users-tab')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('description-preview')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('delete-persona-btn')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('set-default-persona-btn')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    it('discards an open rename session when the fqn changes so it cannot patch the new persona', async () => {
+      (getPersonaByName as jest.Mock).mockImplementation((name: string) =>
+        name === 'manager' ? Promise.resolve(MANAGER) : Promise.resolve(PERSONA)
+      );
+
+      const { rerender } = render(<Harness fqn="analyst" />);
+      await screen.findByTestId('persona-detail-container');
+
+      // Open the rename dialog for persona A; it seeds with A's display name.
+      fireEvent.click(screen.getByTestId('rename-persona-btn'));
+
+      expect(screen.getByTestId('persona-rename-input')).toHaveValue('Analyst');
+
+      // Navigate to persona B while the rename dialog is open.
+      rerender(<Harness fqn="manager" />);
+
+      // Persona B loads and the stale rename session for A is reset, so the
+      // input holding A's display name can never be saved against persona B.
+      await waitFor(() =>
+        expect(screen.getByTestId('description-preview')).toHaveTextContent(
+          'Manager description'
+        )
+      );
+
+      expect(
+        screen.queryByTestId('persona-rename-input')
+      ).not.toBeInTheDocument();
+      expect(mockOnRename).toHaveBeenLastCalledWith('Manager');
+      expect(updatePersona).not.toHaveBeenCalled();
+    });
+
+    it('ignores a stale persona response that resolves after a newer fetch', async () => {
+      let resolveAnalystFetch!: (value: typeof PERSONA) => void;
+      const analystFetch = new Promise<typeof PERSONA>((resolve) => {
+        resolveAnalystFetch = resolve;
+      });
+      (getPersonaByName as jest.Mock).mockImplementation((name: string) =>
+        name === 'manager' ? Promise.resolve(MANAGER) : analystFetch
+      );
+
+      const { rerender } = render(<Harness fqn="analyst" />);
+
+      // Persona A's fetch is still pending, so only the loader renders.
+      expect(await screen.findByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('persona-detail-container')
+      ).not.toBeInTheDocument();
+
+      rerender(<Harness fqn="manager" />);
+      await waitFor(() =>
+        expect(screen.getByTestId('description-preview')).toHaveTextContent(
+          'Manager description'
+        )
+      );
+
+      // Persona A's response arrives late; the request-identity guard must
+      // drop it so persona B stays loaded.
+      await act(async () => {
+        resolveAnalystFetch(PERSONA);
+      });
+
+      expect(screen.getByTestId('description-preview')).toHaveTextContent(
+        'Manager description'
+      );
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(mockOnRename).toHaveBeenLastCalledWith('Manager');
+    });
   });
 });

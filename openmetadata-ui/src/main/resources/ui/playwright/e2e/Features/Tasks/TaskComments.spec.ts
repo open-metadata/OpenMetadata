@@ -129,29 +129,21 @@ test.describe('Task Comments - Add Comment', () => {
       .filter({ hasText: message });
     await expect(card).toBeVisible();
 
-    const actions = card.getByTestId('feed-actions');
-    const deleteAction = card.getByTestId('delete-message');
-
-    // Park the pointer away from the card first, so the reveal asserted below
-    // is attributable to focus-within and not to a leftover hover.
-    await page.mouse.move(0, 0);
-
-    await expect(actions).toHaveCSS('opacity', '0');
-
-    // In normal flow at rest, so the bar occupies its space before anything
-    // reveals it. The hover half of the same invariant is asserted in
-    // 'comment author should see edit/delete options'.
-    await expect(actions).toHaveCSS('position', 'static');
+    const menuTrigger = card.getByTestId('conversation-actions');
 
     // Regression coverage for the affordance being an `<Icon onClick>` span:
     // it could not hold focus at all, so none of this was possible without a
-    // mouse. Focusing it must also bring the bar into view via focus-within.
-    await deleteAction.focus();
+    // mouse.
+    await menuTrigger.focus();
 
-    await expect(deleteAction).toBeFocused();
-    await expect(actions).toHaveCSS('opacity', '1');
+    await expect(menuTrigger).toBeFocused();
 
-    // Enter activates it, as it would any button.
+    // Enter opens the menu on its first item, as it would any menu button.
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByRole('menuitem', { name: 'Edit' })).toBeFocused();
+
+    await page.keyboard.press('ArrowDown');
     await page.keyboard.press('Enter');
 
     await expect(page.getByTestId('save-button')).toBeVisible();
@@ -408,41 +400,11 @@ test.describe('Task Comments - Edit/Delete', () => {
       .filter({ hasText: message });
     await expect(comment).toHaveCount(1);
 
-    // The bar sits in normal flow and is revealed by opacity alone, so hover
-    // must not touch any property that could reflow the comment body beneath
-    // it. Sampled as computed styles rather than boxes: a bounding-box
-    // comparison across `hover()` reads viewport coordinates, which shift when
-    // Playwright's actionability check scrolls the card into view - that is
-    // what made the previous geometry check report a 9px "reflow" that was
-    // really a 9px scroll. Longhands, not the `margin`/`padding` shorthands,
-    // so an empty computed value cannot make this pass by comparing '' to ''.
-    const actionsLayout = () =>
-      comment.getByTestId('feed-actions').evaluate((element) => {
-        const style = getComputedStyle(element);
+    // The author may both edit and delete their own comment. The menu renders
+    // in a popover outside the card.
+    await comment.getByTestId('conversation-actions').click();
 
-        return {
-          display: style.display,
-          height: style.height,
-          marginBottom: style.marginBottom,
-          marginTop: style.marginTop,
-          paddingBottom: style.paddingBottom,
-          paddingTop: style.paddingTop,
-          position: style.position,
-        };
-      });
-
-    // Park the pointer away from the card so the resting sample is unhovered.
-    await page.mouse.move(0, 0);
-
-    const layoutAtRest = await actionsLayout();
-
-    await comment.hover();
-
-    expect(await actionsLayout()).toEqual(layoutAtRest);
-
-    // The author may both edit and delete their own comment.
-    await expect(comment.getByTestId('edit-message')).toBeVisible();
-    await expect(comment.getByTestId('delete-message')).toBeVisible();
+    await expect(page.getByRole('menuitem')).toHaveText(['Edit', 'Delete']);
   });
 
   test('should be able to edit own comment', async ({ page }) => {
@@ -466,12 +428,8 @@ test.describe('Task Comments - Edit/Delete', () => {
       .filter({ hasText: original });
 
     await expect(comment).toBeVisible();
-    await comment.hover();
-
-    const editBtn = comment.getByTestId('edit-message');
-
-    await expect(editBtn).toBeVisible();
-    await editBtn.click();
+    await comment.getByTestId('conversation-actions').click();
+    await page.getByRole('menuitem', { name: 'Edit' }).click();
 
     // Scoped to the editing card, not to `comment` - that locator filters on
     // the original text, which stops matching the moment the editor is
@@ -541,8 +499,7 @@ test.describe('Task Comments - Edit/Delete', () => {
   /**
    * Deletes the comment identified by `message` from an already-open drawer,
    * waiting for the real DELETE response and asserting the comment is gone
-   * from the DOM afterwards. The hover is required, not just realistic: the
-   * shared feed actions only mount while the card is hovered.
+   * from the DOM afterwards.
    */
   const deleteCommentViaUi = async (
     page: Page,
@@ -555,8 +512,8 @@ test.describe('Task Comments - Edit/Delete', () => {
       .filter({ hasText: message });
     await expect(commentCard).toBeVisible();
 
-    await commentCard.hover();
-    await commentCard.getByTestId('delete-message').click();
+    await commentCard.getByTestId('conversation-actions').click();
+    await page.getByRole('menuitem', { name: 'Delete' }).click();
 
     // Asserted on the confirm button rather than the modal container: antd's
     // Modal does not forward `data-testid` to the rendered DOM.
@@ -642,9 +599,11 @@ test.describe('Task Comments - Edit/Delete', () => {
         .getByTestId('feed-reply-card')
         .filter({ hasText: message });
       await expect(commentCard).toBeVisible();
-      await commentCard.hover();
 
-      await expect(commentCard.getByTestId('delete-message')).not.toBeVisible();
+      // Neither Edit nor Delete is theirs, so there is no menu at all.
+      await expect(commentCard.getByTestId('conversation-actions')).toHaveCount(
+        0
+      );
     } finally {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {

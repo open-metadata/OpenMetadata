@@ -36,12 +36,14 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
@@ -99,6 +101,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.resources.dqtests.TestCaseWriteAuthRequests;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
@@ -666,9 +669,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
 
         if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-          table.getColumns().stream()
-              .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-              .findFirst()
+          Optional.ofNullable(
+                  ColumnUtil.resolveColumnByPath(
+                      table.getColumns(), entityLink.getArrayFieldName()))
               .ifPresent(column -> tags.addAll(column.getTags()));
         }
 
@@ -790,9 +793,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           table.getTags() != null ? new ArrayList<>(table.getTags()) : new ArrayList<>();
       EntityUtil.mergeTags(testCaseTags, filterMutuallyExclusiveConflicts(testCaseTags, tableTags));
       if (entityLink.getFieldName() != null && entityLink.getFieldName().equals("columns")) {
-        table.getColumns().stream()
-            .filter(column -> column.getName().equals(entityLink.getArrayFieldName()))
-            .findFirst()
+        Optional.ofNullable(
+                ColumnUtil.resolveColumnByPath(table.getColumns(), entityLink.getArrayFieldName()))
             .ifPresent(
                 column ->
                     EntityUtil.mergeTags(
@@ -1114,7 +1116,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 entityLink.getFieldName()));
       }
       if (entityLink.getArrayFieldName() != null) {
-        validateColumn(table, entityLink.getArrayFieldName(), Boolean.FALSE);
+        ColumnUtil.validateColumnPath(table.getColumns(), entityLink.getArrayFieldName());
       }
     }
   }
@@ -1122,6 +1124,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private void validateDimensionColumns(TestCase test, Table table) {
     if (test.getDimensionColumns() != null && !test.getDimensionColumns().isEmpty()) {
       for (String dimensionColumn : test.getDimensionColumns()) {
+        // Top-level only: the ingestion runner resolves dimensions against the top-level SQL
+        // columns (SQAValidatorMixin.get_column_from_list), so a nested path accepted here would
+        // be silently dropped at run time as an Aborted dimension.
         validateColumn(table, dimensionColumn, Boolean.FALSE);
       }
     }
@@ -1305,39 +1310,48 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   @Override
-  protected void deleteChildren(
-      List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
-    if (hardDelete) {
-      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-          (TestCaseResolutionStatusRepository)
-              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+  protected Runnable preparePostDeleteCleanup(List<TestCase> testCases) {
+    final List<String> ids =
+        testCases.stream().map(testCase -> testCase.getId().toString()).toList();
+    final List<UUID> childIds =
+        daoCollection
+            .relationshipDAO()
+            .findToBatchAllTypes(ids, List.of(Relationship.PARENT_OF.ordinal()), ALL)
+            .stream()
+            .filter(child -> Entity.TEST_CASE.equals(child.getFromEntity()))
+            .filter(child -> Entity.TEST_CASE_RESOLUTION_STATUS.equals(child.getToEntity()))
+            .map(child -> UUID.fromString(child.getToId()))
+            .distinct()
+            .toList();
+    final List<String> testCaseFQNs =
+        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList();
+    return () -> {
+      scheduleResolutionStatusCleanup(childIds);
+      deleteAllTestCaseResults(testCaseFQNs);
+    };
+  }
+
+  private void scheduleResolutionStatusCleanup(List<UUID> childIds) {
+    if (!nullOrEmpty(childIds)) {
       AsyncService.getInstance()
           .executeDatabaseTask(
               DatabaseOperation.TEST_CASE_CLEANUP,
-              "resolution-status:" + children.size(),
-              () -> {
-                for (CollectionDAO.EntityRelationshipRecord child : children) {
-                  try {
-                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
-                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
-                  } catch (Exception e) {
-                    LOG.error(
-                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
-                  }
-                }
-              });
+              "resolution-status:" + childIds.getFirst(),
+              () -> deleteResolutionStatusChildren(childIds));
     }
   }
 
-  @Override
-  protected void entitySpecificCleanup(TestCase entityInterface) {
-    deleteAllTestCaseResults(List.of(entityInterface.getFullyQualifiedName()));
-  }
-
-  @Override
-  protected void bulkEntitySpecificCleanup(List<TestCase> testCases, String deletedBy) {
-    deleteAllTestCaseResults(
-        testCases.stream().map(TestCase::getFullyQualifiedName).filter(Objects::nonNull).toList());
+  private void deleteResolutionStatusChildren(List<UUID> childIds) {
+    final TestCaseResolutionStatusRepository statusRepository =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    for (UUID childId : childIds) {
+      try {
+        statusRepository.deleteById(childId, true);
+      } catch (RuntimeException e) {
+        LOG.error("Error hard deleting test case resolution status {}", childId, e);
+      }
+    }
   }
 
   private void deleteAllTestCaseResults(List<String> testCaseFQNs) {
@@ -2583,6 +2597,22 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           TestCaseRepository repository =
               (TestCaseRepository) Entity.getEntityRepository(TEST_CASE);
 
+          // Compute and set FQN manually (same logic as setFullyQualifiedName)
+          EntityLink parsedLink = EntityLink.parse(entityLink);
+          String testCaseFqn =
+              FullyQualifiedName.add(
+                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
+          testCase.setFullyQualifiedName(testCaseFqn);
+          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+
+          // A row can name any table, so it is checked as the matching REST write, before anything
+          // is created for it (e.g. the table's test suite)
+          authorizeRowForAny(
+              () ->
+                  repository.findByNameOrNull(testCaseFqn, Include.ALL) == null
+                      ? TestCaseWriteAuthRequests.forCreate(testCase)
+                      : TestCaseWriteAuthRequests.forUpdate(testCase));
+
           // Get test suite if provided, otherwise get or create default test suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
             TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
@@ -2597,14 +2627,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             testCase.withTestSuite(testSuite);
             importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
           }
-
-          // Compute and set FQN manually (same logic as setFullyQualifiedName)
-          EntityLink parsedLink = EntityLink.parse(entityLink);
-          String testCaseFqn =
-              FullyQualifiedName.add(
-                  parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
-          testCase.setFullyQualifiedName(testCaseFqn);
-          testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
 
           // Set required fields for new entities - createOrUpdateForImport doesn't call
           // prepareInternal which would normally set these
@@ -2847,8 +2869,9 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       String fqn = link.getEntityFQN();
 
       if (link.getFieldName() != null && link.getFieldName().equals("columns")) {
-        // Column test case - use FQN utility to properly handle quoting
-        fqn = FullyQualifiedName.add(fqn, link.getArrayFieldName());
+        // Column test case - compose the column path segment by segment so a nested path
+        // (address.city) stays separate FQN segments and round-trips through columnPathOf
+        fqn = ColumnUtil.columnFqn(fqn, link.getArrayFieldName());
       }
 
       return fqn;
@@ -2869,15 +2892,28 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         // Not a table, try as column
         // Parse FQN to extract table FQN and column name using FQN parser
         String tableFqn = FullyQualifiedName.getTableFQN(fqn);
-        String columnName = FullyQualifiedName.getColumnName(fqn);
+        String columnPath = columnPathOf(fqn);
 
         // Validate that the table and column exist
         Table table = Entity.getEntityByName(TABLE, tableFqn, "columns", Include.NON_DELETED);
-        validateColumn(table, columnName, Boolean.FALSE);
+        ColumnUtil.validateColumnPath(table.getColumns(), columnPath);
 
         return String.format(
-            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnName);
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), columnPath);
       }
+    }
+
+    /**
+     * The dotted path of the column within its table, quoted per segment — a nested column's FQN
+     * {@code service.db.schema.tbl.address.city} yields {@code address.city}, and a literal column
+     * name containing a dot stays quoted.
+     */
+    private String columnPathOf(String columnFqn) {
+      String[] parts = FullyQualifiedName.split(columnFqn);
+      return Arrays.stream(parts)
+          .skip(4)
+          .map(FullyQualifiedName::quoteName)
+          .collect(Collectors.joining("."));
     }
 
     private String serializeParameterValues(List<TestCaseParameterValue> parameterValues) {

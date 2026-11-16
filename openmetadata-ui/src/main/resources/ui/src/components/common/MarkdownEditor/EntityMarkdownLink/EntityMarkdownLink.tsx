@@ -16,6 +16,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { ROUTES } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
+import { safeDecodeURIComponent } from '../../../../utils/SettingsHashUtils';
 import EntityPopOverCard from '../../PopOverCard/EntityPopOverCard';
 import DocumentMarkdownLink from './DocumentMarkdownLink';
 import {
@@ -30,6 +31,10 @@ import {
  * resolved before the entity-type check rather than made to pass it.
  */
 export const DOCUMENT_LINK_PREFIX = '#document/';
+
+// An external link (docs, GitHub, …) opens in a new tab so the page it sits on,
+// such as a chat conversation, stays put.
+const EXTERNAL_LINK_PATTERN = /^https?:\/\//i;
 
 const parseEntityLink = (href: string): ParsedEntityLink => {
   if (!href || !href.startsWith('#')) {
@@ -57,8 +62,8 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
       return { isEntityLink: false };
     }
     const [serviceCategory, encodedServiceFqn, ...fqnParts] = parts;
-    const serviceFqn = decodeURIComponent(encodedServiceFqn);
-    const fullyQualifiedName = decodeURIComponent(fqnParts.join('/'));
+    const serviceFqn = safeDecodeURIComponent(encodedServiceFqn);
+    const fullyQualifiedName = safeDecodeURIComponent(fqnParts.join('/'));
 
     return {
       isEntityLink: true,
@@ -75,7 +80,7 @@ const parseEntityLink = (href: string): ParsedEntityLink => {
     isEntityLink: true,
     entityInfo: {
       entityType: entityType as EntityType,
-      fullyQualifiedName: decodeURIComponent(rest),
+      fullyQualifiedName: safeDecodeURIComponent(rest),
     },
   };
 };
@@ -130,8 +135,13 @@ const ResolvedEntityLink: React.FC<EntityMarkdownLinkProps> = ({
   const parsedLink = useMemo(() => parseEntityLink(href || ''), [href]);
 
   if (!parsedLink.isEntityLink || !parsedLink.entityInfo) {
+    const isExternal = EXTERNAL_LINK_PATTERN.test(href ?? '');
+
     return (
-      <a className={className} href={href}>
+      <a
+        className={className}
+        href={href}
+        {...(isExternal && { rel: 'noopener noreferrer', target: '_blank' })}>
         {children}
       </a>
     );
@@ -152,7 +162,9 @@ const EntityMarkdownLink: React.FC<EntityMarkdownLinkProps> = ({
   if (href?.startsWith(DOCUMENT_LINK_PREFIX)) {
     return (
       <DocumentMarkdownLink
-        assetId={decodeURIComponent(href.slice(DOCUMENT_LINK_PREFIX.length))}
+        assetId={safeDecodeURIComponent(
+          href.slice(DOCUMENT_LINK_PREFIX.length)
+        )}
         className={className}
         documentsRoute={ROUTES.CONTEXT_CENTER_DOCUMENTS}>
         {children}

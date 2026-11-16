@@ -13,7 +13,10 @@
 
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { ReactNode } from 'react';
+import { DEFAULT_DOMAIN_VALUE } from '../../../../constants/constants';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
+import { useDomainStore } from '../../../../hooks/useDomainStore';
+import { postAggregateFieldOptions } from '../../../../rest/miscAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getTeamByName } from '../../../../rest/teamsAPI';
 import { getUserByName } from '../../../../rest/userAPI';
@@ -22,12 +25,18 @@ import { IncidentGroupFilters } from './IncidentGroups.types';
 import IncidentGroupsFilters from './IncidentGroupsFilters';
 
 const mockSearchQuery = searchQuery as jest.Mock;
+const mockPostAggregateFieldOptions = postAggregateFieldOptions as jest.Mock;
 const mockGetUserByName = getUserByName as jest.Mock;
 const mockGetTeamByName = getTeamByName as jest.Mock;
 const mockOnChange = jest.fn();
 
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
+}));
+
+jest.mock('../../../../rest/miscAPI', () => ({
+  getUserAndTeamSearch: jest.fn(),
+  postAggregateFieldOptions: jest.fn(),
 }));
 
 jest.mock('../../../../rest/userAPI', () => ({
@@ -44,15 +53,20 @@ jest.mock(
   '../../../common/UserTeamSelectableList/UserTeamSelectableList.component',
   () => ({
     UserTeamSelectableList: ({
+      options,
       children,
       owner,
       onUpdate,
     }: {
+      options?: { name?: string }[];
       children: ReactNode;
       owner?: { name?: string }[];
       onUpdate: (owners?: { id: string; type: string; name: string }[]) => void;
     }) => (
       <div data-testid="assignee-picker">
+        <span data-testid="assignee-picker-options">
+          {options?.map((option) => option.name).join(',') ?? 'everyone'}
+        </span>
         <span data-testid="assignee-picker-owner">
           {owner?.map((assignee) => assignee.name).join(',')}
         </span>
@@ -212,6 +226,145 @@ describe('IncidentGroupsFilters', () => {
       displayName: 'Aaron Johnson',
     });
     mockGetTeamByName.mockRejectedValue(new Error('not found'));
+    mockPostAggregateFieldOptions.mockResolvedValue({
+      data: {
+        aggregations: {
+          'sterms#testCaseResolutionStatusDetails.assignee.id': {
+            buckets: [
+              {
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              id: 'user-1',
+                              type: 'user',
+                              name: 'zoe',
+                              displayName: 'Zoe',
+                              deleted: false,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              id: 'team-1',
+                              type: 'team',
+                              name: 'analytics',
+                              displayName: 'Analytics',
+                              deleted: false,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+              {
+                'top_hits#top': {
+                  hits: {
+                    hits: [
+                      {
+                        _source: {
+                          testCaseResolutionStatusDetails: {
+                            assignee: {
+                              id: 'user-2',
+                              type: 'user',
+                              name: 'gone',
+                              displayName: 'Gone',
+                              deleted: true,
+                            },
+                          },
+                        },
+                      },
+                    ],
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    });
+  });
+
+  it('should offer only the users and teams some incident is assigned to', async () => {
+    renderFilters();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('assignee-picker-options')).toHaveTextContent(
+        // By display name; a deleted assignee is not offered.
+        /^analytics,zoe$/
+      )
+    );
+
+    expect(mockPostAggregateFieldOptions).toHaveBeenCalledWith(
+      expect.objectContaining({
+        index: 'testCaseResolutionStatus',
+        fieldName: 'testCaseResolutionStatusDetails.assignee.id',
+        size: 1000,
+        sourceFields: ['testCaseResolutionStatusDetails.assignee'],
+        topHits: { size: 1, sortField: 'timestamp', sortOrder: 'desc' },
+        deleted: null,
+        query: undefined,
+      })
+    );
+  });
+
+  it('should offer no one while the assignees load or when their read fails', async () => {
+    mockPostAggregateFieldOptions.mockRejectedValue(new Error('down'));
+    renderFilters();
+
+    expect(screen.getByTestId('assignee-picker-options')).toHaveTextContent('');
+
+    await waitFor(() =>
+      expect(mockPostAggregateFieldOptions).toHaveBeenCalled()
+    );
+
+    expect(screen.getByTestId('assignee-picker-options')).toHaveTextContent('');
+  });
+
+  it('should read the assignees of the active domain', async () => {
+    useDomainStore.setState({ activeDomain: 'Finance' });
+    renderFilters();
+
+    await waitFor(() =>
+      expect(mockPostAggregateFieldOptions).toHaveBeenCalled()
+    );
+
+    expect(
+      JSON.parse(mockPostAggregateFieldOptions.mock.lastCall[0].query)
+    ).toEqual({
+      query: {
+        bool: {
+          must: [
+            {
+              bool: {
+                should: [
+                  { term: { 'domains.fullyQualifiedName': 'Finance' } },
+                  { prefix: { 'domains.fullyQualifiedName': 'Finance.' } },
+                ],
+              },
+            },
+          ],
+        },
+      },
+    });
+
+    useDomainStore.setState({ activeDomain: DEFAULT_DOMAIN_VALUE });
   });
 
   it('should caption every filter of the design', () => {

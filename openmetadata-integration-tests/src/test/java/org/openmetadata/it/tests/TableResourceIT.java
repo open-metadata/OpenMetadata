@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTimeout;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -14,6 +15,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.io.IOException;
 import java.io.InputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -22,20 +24,24 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -112,6 +118,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.OM;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
@@ -230,6 +237,28 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     request.setColumns(columns);
 
     return request;
+  }
+
+  @Test
+  void patch_documentRoot_isRefused(TestNamespace ns) {
+    Table table = createEntity(createRequest(ns.prefix("rootpatch"), ns));
+    String rootPatch =
+        "[{\"op\":\"replace\",\"path\":\"\",\"value\":{\"name\":\"" + table.getName() + "\"}}]";
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.PATCH,
+                        "/v1/tables/" + table.getId(),
+                        rootPatch,
+                        org.openmetadata.sdk.network.RequestOptions.builder()
+                            .header("Content-Type", "application/json-patch+json")
+                            .build()));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
   }
 
   @Override
@@ -2020,6 +2049,55 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // PROFILER DATA LIFECYCLE ON DELETE (issue #27041)
   // ===================================================================
 
+  /**
+   * Resubmitting a stored system event must update that row in place, not fail the whole request
+   * with a 409 that also drops the events after it. The operation must be matched from
+   * profileData, where it is stored.
+   */
+  @Test
+  void systemProfile_repeatedEventUpdatesExistingRow(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createEntity(createRequest(ns.prefix("system_profile_upsert_table"), ns));
+    String tableFqn = table.getFullyQualifiedName();
+    long now = System.currentTimeMillis();
+    long eventTs = now - 120_000;
+    long followingEventTs = eventTs + 1000;
+
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(
+                    new TableProfile()
+                        .withRowCount(42.0)
+                        .withColumnCount(2.0)
+                        .withTimestamp(eventTs))
+                .withSystemProfile(List.of(systemEvent(eventTs, DmlOperationType.INSERT, 10))));
+
+    client
+        .tables()
+        .updateTableProfile(
+            table.getId(),
+            new CreateTableProfile()
+                .withTableProfile(
+                    new TableProfile().withRowCount(1.0).withColumnCount(2.0).withTimestamp(now))
+                .withSystemProfile(
+                    List.of(
+                        systemEvent(eventTs, DmlOperationType.INSERT, 20),
+                        systemEvent(eventTs, DmlOperationType.UPDATE, 5),
+                        systemEvent(followingEventTs, DmlOperationType.DELETE, 3))));
+
+    List<SystemProfile> profiles = listSystemProfiles(client, tableFqn);
+    assertEventRowsAffected(profiles, eventTs, DmlOperationType.INSERT, 20);
+    assertEventRowsAffected(profiles, eventTs, DmlOperationType.UPDATE, 5);
+    assertEventRowsAffected(profiles, followingEventTs, DmlOperationType.DELETE, 3);
+
+    Table latestProfile = getLatestTableProfile(client, tableFqn);
+    assertNotNull(latestProfile.getProfile(), "Latest table profile must be stored");
+    assertEquals(1.0, latestProfile.getProfile().getRowCount());
+  }
+
   @Test
   void delete_hardDeletePurgesProfilerData(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -2266,6 +2344,32 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             HttpMethod.POST,
             "/v1/entity/profiles/name/" + Entity.TABLE + "/" + encodedFqn,
             createProfile);
+  }
+
+  private static SystemProfile systemEvent(
+      long timestamp, DmlOperationType operation, int rowsAffected) {
+    return new SystemProfile()
+        .withTimestamp(timestamp)
+        .withOperation(operation)
+        .withRowsAffected(rowsAffected);
+  }
+
+  private static void assertEventRowsAffected(
+      List<SystemProfile> profiles, long timestamp, DmlOperationType operation, int expected) {
+    List<SystemProfile> matching =
+        profiles.stream()
+            .filter(
+                profile ->
+                    Objects.equals(profile.getTimestamp(), timestamp)
+                        && profile.getOperation() == operation)
+            .toList();
+    assertEquals(
+        1,
+        matching.size(),
+        operation + " system event at " + timestamp + " must be stored exactly once");
+    assertTrue(
+        matching.stream().allMatch(profile -> Objects.equals(profile.getRowsAffected(), expected)),
+        operation + " system event at " + timestamp + " must hold rowsAffected " + expected);
   }
 
   private void writeFullProfile(OpenMetadataClient client, Table table) {
@@ -6332,6 +6436,89 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         "Version should not change when referredColumns order changes but content is the same");
   }
 
+  /**
+   * A multi-column foreign key keeps each local column paired with the column it references
+   * through an update, even when the two lists do not sort in the same order: here alt_type
+   * references type, and alt_type sorts before country while type sorts after it.
+   */
+  @Test
+  void put_multiColumnForeignKeyKeepsColumnPairing(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    CreateTable parentRequest =
+        new CreateTable()
+            .withName(ns.prefix("fk_pairing_parent"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("country").withDataType(ColumnDataType.INT),
+                    new Column().withName("type").withDataType(ColumnDataType.INT)));
+    Table parent = client.tables().create(parentRequest);
+    String parentCountryFqn = parent.getColumns().get(0).getFullyQualifiedName();
+    String parentTypeFqn = parent.getColumns().get(1).getFullyQualifiedName();
+
+    CreateTable childRequest =
+        new CreateTable()
+            .withName(ns.prefix("fk_pairing_child"))
+            .withDatabaseSchema(schema.getFullyQualifiedName())
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("alt_type").withDataType(ColumnDataType.INT),
+                    new Column().withName("country").withDataType(ColumnDataType.INT)))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                        .withColumns(List.of("alt_type", "country"))
+                        .withReferredColumns(List.of(parentTypeFqn, parentCountryFqn))));
+    Table child = client.tables().create(childRequest);
+
+    Table childToUpdate =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    childToUpdate.setDescription("Forces the update to be persisted");
+    client.tables().update(child.getId().toString(), childToUpdate);
+
+    TableConstraint storedAfterUpdate =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .getFirst();
+    assertEquals(List.of("alt_type", "country"), storedAfterUpdate.getColumns());
+    assertEquals(
+        List.of(parentTypeFqn, parentCountryFqn),
+        storedAfterUpdate.getReferredColumns(),
+        "alt_type must still reference type and country must still reference country");
+
+    Table reingested =
+        client.tables().getByName(child.getFullyQualifiedName(), "tableConstraints,columns");
+    Double versionBeforeReingest = reingested.getVersion();
+    reingested.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.FOREIGN_KEY)
+                .withColumns(List.of("country", "alt_type"))
+                .withReferredColumns(List.of(parentCountryFqn, parentTypeFqn))));
+    Table afterReingest = client.tables().update(child.getId().toString(), reingested);
+
+    assertEquals(
+        versionBeforeReingest,
+        afterReingest.getVersion(),
+        "Reordering the column pairs consistently is not a change");
+    TableConstraint storedAfterReingest =
+        client
+            .tables()
+            .getByName(child.getFullyQualifiedName(), "tableConstraints")
+            .getTableConstraints()
+            .getFirst();
+    assertEquals(List.of("alt_type", "country"), storedAfterReingest.getColumns());
+    assertEquals(
+        List.of(parentTypeFqn, parentCountryFqn), storedAfterReingest.getReferredColumns());
+  }
+
   // ===================================================================
   // PHASE 3: List Operations Support
   // ===================================================================
@@ -6661,6 +6848,89 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertTrue(
         tables.stream().allMatch(t -> t.getName().contains("orders")),
         "All returned tables should contain 'orders' in name");
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testRegexListTable_caseInsensitiveSubstring(boolean useFqn, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    Database database =
+        Databases.create().name("prod_reporting").in(service.getFullyQualifiedName()).execute();
+    DatabaseSchema schema =
+        DatabaseSchemas.create().name("finance").in(database.getFullyQualifiedName()).execute();
+    DatabaseSchema otherSchema =
+        DatabaseSchemas.create()
+            .name("Finance_archive")
+            .in(database.getFullyQualifiedName())
+            .execute();
+    for (String name : List.of("revenue_summary", "daily_Summary", "orders")) {
+      client
+          .tables()
+          .create(
+              new CreateTable()
+                  .withName(name)
+                  .withDatabaseSchema(schema.getFullyQualifiedName())
+                  .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    }
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName("archive")
+                .withDatabaseSchema(otherSchema.getFullyQualifiedName())
+                .withColumns(List.of(ColumnBuilder.of("id", "INT").build())));
+    for (String mode : List.of("include", "exclude")) {
+      assertRegexTableNames(
+          client,
+          Map.of(
+              "database",
+              database.getFullyQualifiedName(),
+              "tableRegex",
+              "summary",
+              "regexMode",
+              mode,
+              "regexFilterByFqn",
+              Boolean.toString(useFqn)),
+          mode.equals("include")
+              ? Set.of("revenue_summary", "daily_Summary")
+              : Set.of("orders", "archive"));
+      assertRegexTableNames(
+          client,
+          Map.of(
+              "database",
+              database.getFullyQualifiedName(),
+              "databaseSchemaRegex",
+              "finance",
+              "regexMode",
+              mode,
+              "regexFilterByFqn",
+              Boolean.toString(useFqn)),
+          mode.equals("include")
+              ? Set.of("revenue_summary", "daily_Summary", "orders", "archive")
+              : Set.of());
+    }
+    assertRegexTableNames(
+        client,
+        Map.of(
+            "database",
+            database.getFullyQualifiedName(),
+            "tableRegex",
+            "^summary$",
+            "regexMode",
+            "include",
+            "regexFilterByFqn",
+            Boolean.toString(useFqn)),
+        Set.of());
+  }
+
+  private void assertRegexTableNames(
+      OpenMetadataClient client, Map<String, String> queryParams, Set<String> expected) {
+    ListResponse<Table> response =
+        client.tables().list(new ListParams().setQueryParams(queryParams));
+    assertEquals(
+        expected, response.getData().stream().map(Table::getName).collect(Collectors.toSet()));
+    assertEquals(expected.size(), response.getPaging().getTotal());
   }
 
   @Test
@@ -7201,9 +7471,21 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
     Database fetchedDb = client.databases().get(db.getId().toString(), "owners");
     fetchedDb.setOwners(List.of(shared.USER1_REF));
+    long patchedAt = System.currentTimeMillis();
     client.databases().update(fetchedDb.getId().toString(), fetchedDb);
 
     String tableId = table.getId().toString();
+    try {
+      awaitInheritedOwner(client, mapper, tableId, shared);
+    } catch (ConditionTimeoutException timeout) {
+      fail(
+          "%s%n%s".formatted(timeout.getMessage(), ownerPropagationDiagnostics(tableId, patchedAt)),
+          timeout);
+    }
+  }
+
+  private void awaitInheritedOwner(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, SharedEntities shared) {
     Awaitility.await("Table search index should reflect inherited owner from database")
         .atMost(Duration.ofSeconds(30))
         .pollDelay(Duration.ofMillis(500))
@@ -7232,6 +7514,60 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
                       .anyMatch(o -> shared.USER1.getId().toString().equals(o.path("id").asText())),
                   "Owner should match the user set on the database");
             });
+  }
+
+  /**
+   * The owner reaches the table through a background update-by-query whose result only the search
+   * engine keeps. On a timeout, report that result, how the child aliases it targeted resolve, and
+   * the table document, so a failure names its own cause.
+   */
+  private static String ownerPropagationDiagnostics(String tableId, long patchedAt) {
+    String clusterAlias = Entity.getSearchRepository().getClusterAlias();
+    String prefix = nullOrEmpty(clusterAlias) ? "" : clusterAlias + "_";
+    String childAliases =
+        Stream.of("databaseSchema", "table", "storedProcedure", "testSuite", "testCase")
+            .map(alias -> prefix + alias)
+            .collect(Collectors.joining(","));
+    String tasksQuery =
+        """
+        {"size":20,"query":{"bool":{"filter":[
+          {"term":{"task.action":"indices:data/write/update/byquery"}},
+          {"range":{"task.start_time_in_millis":{"gte":%d}}}]}}}"""
+            .formatted(patchedAt - 1000);
+    String report;
+    try (Rest5Client client = TestSuiteBootstrap.createSearchClient()) {
+      report =
+          """
+          update-by-query tasks since the PATCH: %s
+          child aliases: %s
+          table document: %s"""
+              .formatted(
+                  searchEngine(client, "POST", "/.tasks/_search", tasksQuery),
+                  searchEngine(
+                      client, "GET", "/_alias/" + childAliases + "?ignore_unavailable=true", null),
+                  searchEngine(
+                      client, "GET", "/" + prefix + "table_search_index/_doc/" + tableId, null));
+    } catch (IOException | RuntimeException e) {
+      report = "search engine unavailable (%s)".formatted(e.getMessage());
+    }
+    return report;
+  }
+
+  private static String searchEngine(Rest5Client client, String method, String path, String body) {
+    String response;
+    try {
+      Request request = new Request(method, path);
+      if (body != null) {
+        request.setJsonEntity(body);
+      }
+      response =
+          new String(
+              client.performRequest(request).getEntity().getContent().readAllBytes(),
+              StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      response = "unavailable (%s)".formatted(e.getMessage());
+    }
+    return response;
   }
 
   @Test
@@ -7866,6 +8202,43 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table stored =
         SdkClients.adminClient().tables().get(table.getId().toString(), "tablePartition");
     assertNull(stored.getTablePartition());
+  }
+
+  /**
+   * Regression test for #33623.
+   *
+   * <p>Table does not set {@code renameAllowed}, so a PATCH that changes {@code name} must be a
+   * no-op: the table's own name must not change AND every child column's {@code fullyQualifiedName}
+   * must still be prefixed with the <em>original</em> table FQN, not the rejected name.
+   */
+  @Test
+  void test_patchTable_rejectedRenameDoesNotCorruptColumnFQNs(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable request = createMinimalRequest(ns);
+    Table created = createEntity(request);
+
+    String originalFqn = created.getFullyQualifiedName();
+    String originalName = created.getName();
+
+    Table patch = client.tables().get(created.getId().toString());
+    patch.setName(originalName + "_rejected_rename");
+
+    Table updated = patchEntity(created.getId().toString(), patch);
+
+    assertEquals(
+        originalName, updated.getName(), "Table name must not change when rename is rejected");
+    assertEquals(originalFqn, updated.getFullyQualifiedName(), "Table FQN must not change");
+
+    for (Column col : updated.getColumns()) {
+      assertTrue(
+          col.getFullyQualifiedName().startsWith(originalFqn + "."),
+          "Column FQN '"
+              + col.getFullyQualifiedName()
+              + "' must be prefixed with the original table FQN '"
+              + originalFqn
+              + "'");
+    }
   }
 
   private Table createAsIngestionBot(

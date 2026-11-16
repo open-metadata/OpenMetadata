@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Navigate, useNavigate } from 'react-router-dom';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
+import DataInsightProvider from '../../components/DataInsight/DataInsightProvider/DataInsightProvider';
 import { ENTITIES_CHARTS } from '../../constants/DataInsight.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -34,7 +35,6 @@ import { useRequiredParams } from '../../utils/useRequiredParams';
 import './data-insight.less';
 import { default as dataInsightClassBase } from './DataInsightClassBase';
 import DataInsightHeader from './DataInsightHeader/DataInsightHeader.component';
-import DataInsightProvider from './DataInsightProvider';
 const DataInsightPage = () => {
   const { tab } = useRequiredParams<{ tab: DataInsightTabs }>();
   const { t } = useTranslation();

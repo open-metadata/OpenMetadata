@@ -22,7 +22,9 @@ import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
 import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.services.connections.api.OpenAPISchemaS3;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
@@ -198,6 +201,11 @@ public final class ClassConverterFactory {
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
           Map.entry(
+              MicroStrategyConnection.class,
+              new NestedConfigClassConverter(
+                  MicroStrategyConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
                   MongoDBConnection.class,
@@ -302,6 +310,11 @@ public final class ClassConverterFactory {
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+                Map.entry(
+                    StorageServiceMetadataPipeline.class,
+                    new StorageServiceMetadataPipelineClassConverter()),
+                Map.entry(
+                    StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),

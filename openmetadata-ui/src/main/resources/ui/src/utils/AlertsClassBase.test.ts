@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { Operation } from 'fast-json-patch';
 import { compare } from 'fast-json-patch';
 import { DEFAULT_READ_TIMEOUT } from '../constants/Alerts.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -26,17 +27,20 @@ import {
   SubscriptionType,
 } from '../generated/events/eventSubscription';
 import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import {
   getConfigHeaderArrayFromObject,
   getConfigHeaderObjectFromArray,
   getConfigQueryParamsArrayFromObject,
   getConfigQueryParamsObjectFromArray,
   getRandomizedAlertName,
 } from './Alerts/AlertsUtilPure';
-import alertsClassBase, { AlertsClassBase } from './AlertsClassBase';
+import alertsClassBase, {
+  AlertsClassBase,
+  destinationsAsAWholeListReplace,
+} from './AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from './AlertsClassBase.interface';
 import { getEntityName } from './EntityNameUtils';
 import { handleEntityCreationError } from './formUtils';
 import { showSuccessToast } from './ToastUtils';
@@ -274,6 +278,18 @@ describe('AlertsClassBase', () => {
       expect(getConfigQueryParamsObjectFromArray).toHaveBeenCalledWith(
         mockDestinationData.config?.queryParams
       );
+    });
+  });
+
+  describe('formatDestinations', () => {
+    // A test send finds a masked destination's stored secrets by its id.
+    it('should keep the destination id when not given the stored alert', () => {
+      const destinations = alertsClass.formatDestinations({
+        ...mockModifiedData,
+        destinations: [{ ...mockDestinationData, id: 'destination-id-1' }],
+      });
+
+      expect(destinations?.[0].id).toBe('destination-id-1');
     });
   });
 
@@ -681,7 +697,12 @@ describe('AlertsClassBase', () => {
         setInlineAlertDetails: mockSetInlineAlert,
       });
 
-      expect(handleEntityCreationError).toHaveBeenCalled();
+      expect(handleEntityCreationError).toHaveBeenCalledWith(
+        expect.objectContaining({
+          error: mockError,
+          defaultErrorType: 'update',
+        })
+      );
       expect(showSuccessToast).not.toHaveBeenCalled();
       expect(mockAfterSave).not.toHaveBeenCalled();
     });
@@ -701,6 +722,37 @@ describe('AlertsClassBase', () => {
       });
 
       expect(mockAfterSave).toHaveBeenCalledWith('');
+    });
+  });
+
+  describe('destinationsAsAWholeListReplace', () => {
+    it('keeps a patch with no destination operation as it is', () => {
+      const jsonPatch: Operation[] = [
+        { op: 'replace', path: '/displayName', value: 'New Name' },
+      ];
+
+      expect(
+        destinationsAsAWholeListReplace(jsonPatch, mockInitialData.destinations)
+      ).toEqual(jsonPatch);
+    });
+
+    it('replaces a changed destination list in one move', () => {
+      const jsonPatch: Operation[] = [
+        { op: 'remove', path: '/destinations/1' },
+        { op: 'replace', path: '/destinations/0/id', value: '' },
+        { op: 'replace', path: '/description', value: 'New' },
+      ];
+
+      expect(
+        destinationsAsAWholeListReplace(jsonPatch, mockInitialData.destinations)
+      ).toEqual([
+        { op: 'replace', path: '/description', value: 'New' },
+        {
+          op: 'replace',
+          path: '/destinations',
+          value: mockInitialData.destinations,
+        },
+      ]);
     });
   });
 
@@ -730,6 +782,46 @@ describe('AlertsClassBase', () => {
 
       expect(result.timeout).toBe(10);
       expect(result.readTimeout).toBe(DEFAULT_READ_TIMEOUT);
+    });
+
+    it('should not throw and should use default timeout values when destinations is an empty array', () => {
+      // The backend permits zero-destination alerts (no minItems on the
+      // createEventSubscription schema, and DestinationValidation iterates an
+      // empty list without rejecting it). A non-UI writer can persist such an
+      // alert, so the transform must tolerate `destinations: []` rather than
+      // throwing `Cannot read properties of undefined (reading 'timeout')`.
+      const dataWithNoDestinations = {
+        ...mockInitialData,
+        destinations: [],
+      } as EventSubscription;
+
+      const result = alertsClass.getModifiedAlertDataForForm(
+        dataWithNoDestinations
+      );
+
+      expect(result.timeout).toBe(10);
+      expect(result.readTimeout).toBe(DEFAULT_READ_TIMEOUT);
+      expect(result.destinations).toEqual([]);
+      expect(getConfigHeaderArrayFromObject).not.toHaveBeenCalled();
+      expect(getConfigQueryParamsArrayFromObject).not.toHaveBeenCalled();
+    });
+
+    it('should not throw and should use default timeout values when destinations is undefined', () => {
+      // Defends against a fetched alert whose `destinations` field is missing
+      // entirely (e.g. omitted by a non-UI writer). The transform must fall back
+      // to the default timeouts and an empty mapped destinations list.
+      const dataWithoutDestinations = {
+        ...mockInitialData,
+        destinations: undefined as unknown as EventSubscription['destinations'],
+      } as EventSubscription;
+
+      const result = alertsClass.getModifiedAlertDataForForm(
+        dataWithoutDestinations
+      );
+
+      expect(result.timeout).toBe(10);
+      expect(result.readTimeout).toBe(DEFAULT_READ_TIMEOUT);
+      expect(result.destinations).toEqual([]);
     });
 
     it('should convert destinations to form format', () => {

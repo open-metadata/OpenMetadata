@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -92,10 +93,15 @@ public class ClassificationRepository extends EntityRepository<Classification> {
   @Override
   protected void postDelete(Classification entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeByPrefixFromCondition(
-                condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    // A soft delete cascades to the child tags without removing their labels from assets, so a
+    // condition naming them still matches; rewriting it to false would switch off Deny rules that
+    // still apply. A hard delete removes the labels, after which false is exactly what it matches.
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeByPrefixFromCondition(
+                  condition, entity.getFullyQualifiedName(), PolicyConditionUpdater.TAG_FUNCTIONS));
+    }
   }
 
   @Override
@@ -105,6 +111,11 @@ public class ClassificationRepository extends EntityRepository<Classification> {
       Operation operation,
       ChangeSource changeSource) {
     return new ClassificationUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
   }
 
   @Override
@@ -280,7 +291,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     Classification classification = getByName(null, name, Fields.EMPTY_FIELDS);
     validateNotSystemClassification(classification);
     return new ClassificationCsv(classification, user)
-        .exportCsv(listTagsForCsv(classification), callback);
+        .exportCsv(listTagsForCsv(classification, user), callback);
   }
 
   /** Import tags into a classification from CSV */
@@ -310,12 +321,13 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     }
   }
 
-  private List<Tag> listTagsForCsv(Classification classification) {
+  private List<Tag> listTagsForCsv(Classification classification, String user) {
     TagRepository repository = (TagRepository) Entity.getEntityRepository(TAG);
     List<Tag> tags =
         repository.listAllForCSV(
             repository.getFields("owners,reviewers,parent,domains"),
-            classification.getFullyQualifiedName());
+            classification.getFullyQualifiedName(),
+            user);
     tags.sort(Comparator.comparing(EntityInterface<?>::getFullyQualifiedName));
     return tags;
   }

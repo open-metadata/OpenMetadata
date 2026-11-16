@@ -3,6 +3,7 @@ package org.openmetadata.mcp.tools;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.MetadataOperation.VIEW_ALL;
 
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +23,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -87,7 +88,8 @@ public class CompanyContextTool implements McpTool {
       result =
           errorResponse(
               "Pass either 'query' to search knowledge pills or 'fqn' to read one by name, not"
-                  + " both and not neither.");
+                  + " both and not neither.",
+              Response.Status.BAD_REQUEST);
     } else if (hasFqn) {
       result = lookupPill(fqn, securityContext);
     } else {
@@ -106,9 +108,12 @@ public class CompanyContextTool implements McpTool {
       result =
           isExposablePill(memory, securityContext)
               ? projectPill(memory)
-              : errorResponse(NOT_A_SHARED_PILL_ERROR);
+              : errorResponse(NOT_A_SHARED_PILL_ERROR, Response.Status.NOT_FOUND);
     } catch (EntityNotFoundException e) {
-      result = errorResponse("No Company Context knowledge pill found for '" + fqn + "'");
+      result =
+          errorResponse(
+              "No Company Context knowledge pill found for '" + fqn + "'",
+              Response.Status.NOT_FOUND);
     }
     return result;
   }
@@ -171,7 +176,7 @@ public class CompanyContextTool implements McpTool {
   private static Map<String, Object> runSearch(
       String query, Map<String, Object> params, CatalogSecurityContext securityContext) {
     Map<String, Object> result;
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
     if (!Entity.getSearchRepository().isVectorEmbeddingEnabled() || vectorService == null) {
       result =
           errorResponse(
@@ -184,7 +189,7 @@ public class CompanyContextTool implements McpTool {
   }
 
   private static Map<String, Object> search(
-      OpenSearchVectorService vectorService,
+      VectorIndexService vectorService,
       String query,
       Map<String, Object> params,
       CatalogSecurityContext securityContext) {
@@ -301,6 +306,13 @@ public class CompanyContextTool implements McpTool {
     result.put(RESULTS_KEY, Collections.emptyList());
     result.put(RETURNED_COUNT_KEY, 0);
     result.put(McpResponseTrim.ERROR_KEY, message);
+    return result;
+  }
+
+  /** A failure the caller caused, tagged so telemetry does not count it as a server fault. */
+  private static Map<String, Object> errorResponse(String message, Response.Status status) {
+    Map<String, Object> result = errorResponse(message);
+    result.put(McpResponseTrim.STATUS_CODE_KEY, status.getStatusCode());
     return result;
   }
 

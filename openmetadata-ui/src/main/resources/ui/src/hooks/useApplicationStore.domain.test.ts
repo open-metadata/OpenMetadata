@@ -75,6 +75,26 @@ describe('useApplicationStore domain synchronization', () => {
     expect(domainState.activeDomainEntityRef).toEqual(singleDomain);
   });
 
+  it('writes the pick once for a restricted user, so other tabs do not reload twice', () => {
+    const picks: string[] = [];
+    const unsubscribe = useDomainStore.subscribe((state, previous) => {
+      if (state.activeDomain !== previous.activeDomain) {
+        picks.push(state.activeDomain);
+      }
+    });
+
+    act(() => {
+      useDomainStore.getState().updateActiveDomain(singleDomain);
+    });
+    picks.length = 0;
+    act(() => {
+      useApplicationStore.getState().setCurrentUser(restrictedSingleDomainUser);
+    });
+    unsubscribe();
+
+    expect(picks).toEqual([]);
+  });
+
   it('does not restrict an admin user even when they hold the role', () => {
     act(() => {
       useApplicationStore.getState().setCurrentUser(adminUser);

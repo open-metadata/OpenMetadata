@@ -7,11 +7,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
+import org.openmetadata.schema.entity.events.PrefixCondition;
 
 class AlertDefinitionTest {
 
@@ -20,7 +22,7 @@ class AlertDefinitionTest {
     EventSubscription stored = alert(List.of("table"), List.of(byOwner("alice", "bob")), null);
     EventSubscription asTheUiSendsIt =
         alert(List.of("table"), List.of(byOwner("bob", "alice")), List.of());
-    asTheUiSendsIt.getInput().getFilters().getFirst().withEffect(ArgumentsInput.Effect.INCLUDE);
+    asTheUiSendsIt.getInput().getFilters().getFirst().withEffect(Effect.INCLUDE);
 
     assertFalse(AlertDefinition.isSameDefinition(stored, asTheUiSendsIt), "values are ordered");
     assertTrue(
@@ -33,9 +35,7 @@ class AlertDefinitionTest {
   void absentEffectIsIncludeAndTheJoiningWordIsNotPartOfIt() {
     ArgumentsInput plain = byOwner("alice");
     ArgumentsInput spelledOut =
-        byOwner("alice")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
-            .withPrefixCondition(ArgumentsInput.PrefixCondition.OR);
+        byOwner("alice").withEffect(Effect.INCLUDE).withPrefixCondition(PrefixCondition.OR);
 
     assertTrue(
         AlertDefinition.isSameDefinition(
@@ -56,10 +56,7 @@ class AlertDefinitionTest {
     assertFalse(
         AlertDefinition.isSameDefinition(
             stored,
-            alert(
-                List.of("table"),
-                List.of(byOwner("alice").withEffect(ArgumentsInput.Effect.EXCLUDE)),
-                null)));
+            alert(List.of("table"), List.of(byOwner("alice").withEffect(Effect.EXCLUDE)), null)));
   }
 
   // A source the catalog does not know cannot be compiled, so the alert keeps the text it has.

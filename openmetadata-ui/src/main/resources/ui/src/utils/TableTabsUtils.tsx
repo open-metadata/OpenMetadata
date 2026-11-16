@@ -12,6 +12,7 @@
  */
 
 import { Box, Divider, Typography } from '@openmetadata/ui-core-components';
+import { TableShardingWidget } from '../pages/TableDetailsPageV1/Sharding/TableSharding';
 
 import { get, isUndefined } from 'lodash';
 import { lazy, Suspense } from 'react';
@@ -138,18 +139,6 @@ const EntityLineageTab = withSuspenseFallback(
   TAB_CONTENT_FALLBACK
 );
 
-/**
- * The product tour highlights elements rendered inside these lazy tabs, and react-tour closes
- * itself when a step's selector is still missing once its fixed stepWaitTimer elapses. Loading
- * the chunks before the tour starts keeps a slow chunk download from ending the tour.
- */
-export const preloadTourTableTabs = () =>
-  Promise.allSettled([
-    importSampleDataTable(),
-    importDataObservabilityTab(),
-    importEntityLineageTab(),
-  ]);
-
 const TableConstraints = withSuspenseFallback(
   lazy(
     () =>
@@ -206,20 +195,15 @@ const isDbtTabHidden = (
   );
 
 const getSampleDataTabChildren = ({
-  isTourOpen,
   viewSampleDataPermission,
   deleted,
   tableDetails,
   tablePermissions,
 }: Pick<
   TableDetailPageTabProps,
-  | 'isTourOpen'
-  | 'viewSampleDataPermission'
-  | 'deleted'
-  | 'tableDetails'
-  | 'tablePermissions'
+  'viewSampleDataPermission' | 'deleted' | 'tableDetails' | 'tablePermissions'
 >) =>
-  !isTourOpen && !viewSampleDataPermission ? (
+  !viewSampleDataPermission ? (
     <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
       <PermissionPlaceholder
         data-testid="permission-error-placeholder"
@@ -261,7 +245,6 @@ const getTableQueriesTabChildren = ({
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
-  isTourOpen,
   tablePermissions,
   activeTab,
   deleted,
@@ -273,6 +256,7 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
+  viewQueryResourcePermission,
   editLineagePermission,
   fetchTableDetails,
   isViewTableType,
@@ -330,7 +314,6 @@ export const getTableDetailPageBaseTabs = ({
 
       key: EntityTabs.SAMPLE_DATA,
       children: getSampleDataTabChildren({
-        isTourOpen,
         viewSampleDataPermission,
         deleted,
         tableDetails,
@@ -352,6 +335,9 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
+      // Hidden rather than omitted: a persona layout listing this tab would otherwise
+      // render it with the Schema tab's content.
+      isHidden: !viewQueryResourcePermission,
       children: getTableQueriesTabChildren({
         viewQueriesPermission,
         deleted,
@@ -542,6 +528,9 @@ export const getTableDetailPageBaseTabs = ({
 export const getTableWidgetFromKey = (
   widgetConfig: WidgetConfig
 ): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SHARDING)) {
+    return <TableShardingWidget />;
+  }
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
     return <SchemaTable />;
   } else if (

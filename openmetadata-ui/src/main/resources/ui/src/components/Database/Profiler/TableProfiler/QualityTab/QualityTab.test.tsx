@@ -52,7 +52,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { act } from 'react';
 import { MOCK_TABLE } from '../../../../../mocks/TableData.mock';
@@ -248,7 +248,28 @@ jest.mock('../../../../common/EntityPageInfos/ManageButton/ManageButton', () =>
 
 jest.mock(
   '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component',
-  () => jest.fn().mockReturnValue(<div>TestSuitePipelineTab</div>)
+  () =>
+    jest.fn(
+      ({
+        onPipelinesChange,
+      }: {
+        onPipelinesChange?: (total: number) => void;
+      }) => (
+        <button
+          data-testid="mock-delete-last-pipeline"
+          onClick={() => onPipelinesChange?.(0)}>
+          TestSuitePipelineTab
+        </button>
+      )
+    )
+);
+
+jest.mock(
+  '../../../../DataQuality/AddDataQualityTest/components/TestSuitePipelineFormDrawer',
+  () =>
+    jest.fn(({ open }: { open: boolean }) => (
+      <div data-open={String(open)} data-testid="pipeline-form-drawer" />
+    ))
 );
 
 jest.mock('../../../../common/SummaryCard/SummaryCardV1', () =>
@@ -525,6 +546,123 @@ describe('QualityTab', () => {
     expect(await screen.findByTestId('pipeline-count')).toHaveTextContent('5');
   });
 
+  it('should hide the toolbar Add Pipeline button once the list reports no pipelines', async () => {
+    const { default: useCustomLocation } = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    const defaultLocation = useCustomLocation.getMockImplementation();
+    useCustomLocation.mockReturnValue({
+      pathname: '/test-path',
+      search: '?qualityTab=pipeline',
+      state: undefined,
+    });
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 1 },
+    });
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: { fullyQualifiedName: 'test.suite.name' },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(
+      await screen.findByTestId('add-pipeline-button')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('mock-delete-last-pipeline'));
+    });
+
+    expect(screen.queryByTestId('add-pipeline-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pipeline-count')).toHaveTextContent('0');
+
+    useCustomLocation.mockImplementation(defaultLocation);
+  });
+
+  it('should open the add pipeline drawer from the toolbar on the pipeline tab', async () => {
+    const { default: useCustomLocation } = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    const defaultLocation = useCustomLocation.getMockImplementation();
+    useCustomLocation.mockReturnValue({
+      pathname: '/test-path',
+      search: '?qualityTab=pipeline',
+      state: undefined,
+    });
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 1 },
+    });
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      table: {
+        ...MOCK_TABLE,
+        testSuite: { fullyQualifiedName: 'test.suite.name' },
+      },
+    });
+
+    await act(async () => {
+      render(<QualityTab />);
+    });
+
+    expect(await screen.findByTestId('quality-tab-toolbar')).toContainElement(
+      await screen.findByTestId('add-pipeline-button')
+    );
+
+    useCustomLocation.mockImplementation(defaultLocation);
+  });
+
+  it('should not offer Add Pipeline on a deleted table', async () => {
+    const { default: useCustomLocation } = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    const TestSuitePipelineTab = jest.requireMock(
+      '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component'
+    );
+    const defaultLocation = useCustomLocation.getMockImplementation();
+    useCustomLocation.mockReturnValue({
+      pathname: '/test-path',
+      search: '?qualityTab=pipeline',
+      state: undefined,
+    });
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 1 },
+    });
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      isTableDeleted: true,
+      table: {
+        ...MOCK_TABLE,
+        deleted: true,
+        testSuite: { fullyQualifiedName: 'test.suite.name' },
+      },
+    });
+
+    try {
+      await act(async () => {
+        render(<QualityTab />);
+      });
+
+      expect(await screen.findByTestId('pipeline-count')).toHaveTextContent(
+        '1'
+      );
+      expect(
+        screen.queryByTestId('add-pipeline-button')
+      ).not.toBeInTheDocument();
+      expect(TestSuitePipelineTab).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deleted: true }),
+        expect.anything()
+      );
+    } finally {
+      useCustomLocation.mockImplementation(defaultLocation);
+    }
+  });
+
   it('should show zero count when no test cases or pipelines exist', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
@@ -781,6 +919,7 @@ describe('QualityTab', () => {
   it('should pass deleted true to ManageButton when table is deleted', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
+      isTableDeleted: true,
       table: {
         ...MOCK_TABLE,
         id: 'test-table-id',

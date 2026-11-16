@@ -10,55 +10,63 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { LOGGED_IN_USER_STORAGE_KEY } from '../constants/constants';
 import { useIsRouteVisible } from '../context/RouteVisibilityProvider/RouteVisibilityProvider';
-import { useTourProvider } from '../context/TourProvider/TourProvider';
+import { updateUserDetail } from '../rest/userAPI';
+import { useProductTourStore } from './product-tour/useProductTourStore';
 import { useApplicationStore } from './useApplicationStore';
 import { useWelcomeStore } from './useWelcomeStore';
+
+// The legacy per-browser list of users who saw the welcome screen. Read so a
+// user it covers is recorded on the server instead of being shown it again,
+// including users the 2.1.0 migration had no login or activity time for.
+const isSeenInThisBrowser = (userName: string) =>
+  (localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY) ?? '')
+    .split(',')
+    .includes(userName);
 
 /**
  * Whether the home route should show the first-login welcome screen, shared by
  * the classic and AI-mode homes so both apply the same rule: once per user
- * (tracked in `localStorage`), only while `isWelcomeVisible` is on, and never
- * on the tour, where it would hide the step targets. Leaving the route dismisses
- * it: by unmount on the classic home, and by the route turning hidden where
- * KeepAliveRoutes keeps the AI-mode home mounted.
+ * (tracked on the user as `isFirstTimeUser`, so it holds across browsers),
+ * only while `isWelcomeVisible` is on, and never on the tour, where it would
+ * hide the step targets. Leaving the route dismisses it: by unmount on the
+ * classic home, and by the route turning hidden where KeepAliveRoutes keeps the
+ * AI-mode home mounted.
  */
 export const useFirstLoginWelcome = () => {
-  const { currentUser } = useApplicationStore();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
   const { isWelcomeVisible } = useWelcomeStore();
-  const { isTourPage } = useTourProvider();
+  // A tour shows the home page itself; the welcome screen would cover it.
+  const isTourRunning = useProductTourStore((state) => state.isActive);
   const isRouteVisible = useIsRouteVisible();
 
   const [showWelcome, setShowWelcome] = useState(false);
 
-  const storageData = useMemo(
-    () => localStorage.getItem(LOGGED_IN_USER_STORAGE_KEY),
-    []
-  );
-  const loggedInUserName = currentUser?.name ?? '';
-  const usernameExistsInCookie = useMemo(
-    () =>
-      storageData ? storageData.split(',').includes(loggedInUserName) : false,
-    [storageData, loggedInUserName]
-  );
-
-  const updateWelcome = (show: boolean) => {
-    if (loggedInUserName) {
-      const seen = storageData ? storageData.split(',') : [];
-      if (!seen.includes(loggedInUserName)) {
-        seen.push(loggedInUserName);
-        localStorage.setItem(LOGGED_IN_USER_STORAGE_KEY, seen.join(','));
-      }
+  const markReturningUser = async () => {
+    if (!currentUser?.isFirstTimeUser) {
+      return;
     }
-    setShowWelcome(show);
+    updateCurrentUser({ ...currentUser, isFirstTimeUser: false });
+    try {
+      await updateUserDetail(currentUser.id, [
+        { op: 'add', path: '/isFirstTimeUser', value: false },
+      ]);
+    } catch {
+      // Not worth an error toast: the worst case is the welcome screen showing
+      // once more on the user's next visit.
+    }
   };
 
   useEffect(() => {
-    updateWelcome(!usernameExistsInCookie && isWelcomeVisible && !isTourPage);
-
-    return () => updateWelcome(false);
+    if (!currentUser) {
+      return;
+    }
+    const isFirstVisit =
+      currentUser.isFirstTimeUser && !isSeenInThisBrowser(currentUser.name);
+    setShowWelcome(Boolean(isFirstVisit) && isWelcomeVisible && !isTourRunning);
+    markReturningUser();
   }, []);
 
   useEffect(() => {
@@ -67,5 +75,5 @@ export const useFirstLoginWelcome = () => {
     }
   }, [isRouteVisible, showWelcome]);
 
-  return { showWelcome, closeWelcome: () => updateWelcome(false) };
+  return { showWelcome, closeWelcome: () => setShowWelcome(false) };
 };

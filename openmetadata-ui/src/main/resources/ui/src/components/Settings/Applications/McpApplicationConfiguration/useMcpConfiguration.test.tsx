@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { RJSFSchema } from '@rjsf/utils';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { AxiosError } from 'axios';
@@ -19,7 +20,12 @@ import {
   SettingSource,
   SettingType,
 } from '../../../../generated/system/settingsSourceResponse';
-import { getMcpConfig, updateMcpConfig } from '../../../../rest/mcpConfigAPI';
+import {
+  getMcpConfig,
+  getMcpTools,
+  updateMcpConfig,
+} from '../../../../rest/mcpConfigAPI';
+import mcpSchema from '../../../../utils/ApplicationSchemas/McpApplication.json';
 import { getSettingsSource } from '../../../../rest/settingConfigAPI';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import { useMcpConfiguration } from './useMcpConfiguration';
@@ -30,6 +36,7 @@ jest.mock('react-i18next', () => ({
 
 jest.mock('../../../../rest/mcpConfigAPI', () => ({
   getMcpConfig: jest.fn(),
+  getMcpTools: jest.fn(),
   updateMcpConfig: jest.fn(),
 }));
 
@@ -44,6 +51,7 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 
 const mockGetMcpConfig = getMcpConfig as jest.Mock;
+const mockGetMcpTools = getMcpTools as jest.Mock;
 const mockUpdateMcpConfig = updateMcpConfig as jest.Mock;
 const mockGetSettingsSource = getSettingsSource as jest.Mock;
 
@@ -51,6 +59,7 @@ const storedConfig = {
   baseUrl: 'https://om.example.com',
   allowedOrigins: ['http://localhost:3000'],
   maxResponseChars: 100000,
+  readOnly: true,
   connectionTimeoutSecs: 30,
 };
 
@@ -69,13 +78,16 @@ const renderUseMcpConfiguration = () => {
     <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
   );
 
-  return renderHook(() => useMcpConfiguration(), { wrapper });
+  return renderHook(() => useMcpConfiguration(mcpSchema as RJSFSchema), {
+    wrapper,
+  });
 };
 
 describe('useMcpConfiguration', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockGetMcpConfig.mockResolvedValue(storedConfig);
+    mockGetMcpTools.mockResolvedValue(['search_metadata', 'nlq_search']);
     mockGetSettingsSource.mockResolvedValue({ settings: [] });
     mockUpdateMcpConfig.mockImplementation(async (payload) => payload);
   });
@@ -91,6 +103,7 @@ describe('useMcpConfiguration', () => {
       baseUrl: 'https://om.example.com',
       allowedOrigins: ['http://localhost:3000'],
       maxResponseChars: 100000,
+      readOnly: true,
     });
     expect(result.current.isEveryFieldManaged).toBe(false);
   });
@@ -180,12 +193,50 @@ describe('useMcpConfiguration', () => {
   it('marks the whole form managed when the deployment owns every field', async () => {
     mockGetSettingsSource.mockResolvedValue({
       settings: [
-        mcpSource(['/baseUrl', '/allowedOrigins', '/maxResponseChars']),
+        mcpSource([
+          '/baseUrl',
+          '/allowedOrigins',
+          '/maxResponseChars',
+          '/readOnly',
+          '/disabledTools',
+        ]),
       ],
     });
 
     const { result } = renderUseMcpConfiguration();
 
     await waitFor(() => expect(result.current.isEveryFieldManaged).toBe(true));
+  });
+
+  it("offers the server's tools, plus saved names it no longer has, as the tools to disable", async () => {
+    mockGetMcpConfig.mockResolvedValue({
+      ...storedConfig,
+      disabledTools: ['sparql_query'],
+    });
+
+    const { result } = renderUseMcpConfiguration();
+
+    await waitFor(() =>
+      expect(
+        (result.current.formSchema.properties?.disabledTools as RJSFSchema)
+          .items
+      ).toEqual({
+        type: 'string',
+        enum: ['search_metadata', 'nlq_search', 'sparql_query'],
+      })
+    );
+  });
+
+  it('falls back to typing tool names when the tool list fails to load', async () => {
+    const error = { response: { status: 500 } } as AxiosError;
+    mockGetMcpTools.mockRejectedValue(error);
+
+    const { result } = renderUseMcpConfiguration();
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+
+    expect(
+      result.current.formSchema.properties?.disabledTools
+    ).not.toHaveProperty('uiFieldType');
   });
 });

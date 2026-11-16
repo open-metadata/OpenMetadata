@@ -34,6 +34,7 @@ import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceho
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../../components/common/Loader/Loader';
 import { ClientErrors } from '../../../../../enums/Axios.enum';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
 import { User } from '../../../../../generated/entity/teams/user';
 import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
@@ -331,7 +332,8 @@ export interface TasksTabProps {
 interface TasksTabBodyProps {
   // Status, search and filter controls, heading the list column.
   toolbar: ReactNode;
-  // Shown in place of the detail when no task matches.
+  // Shown when no task matches: in place of the detail, or in the list while a
+  // kept selection holds the detail pane.
   emptyState?: ReactNode;
   // A failed load with nothing listed leaves nothing to filter, so the
   // placeholder takes the whole tab.
@@ -393,12 +395,33 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
     </Box>
   );
 
+  // A kept selection (e.g. a deep-linked task held past the loaded page) owns
+  // the detail pane, so the empty placeholder only shows here when no task is
+  // selected — the list column carries it otherwise.
+  let detailPane: ReactNode;
+  if (isLoading) {
+    detailPane = <TaskDetailSkeleton />;
+  } else if (selectedTaskId) {
+    detailPane = detailContent;
+  } else {
+    detailPane = emptyState;
+  }
+
   return (
     <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
-      {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
+      {detailPane}
     </Box>
   );
 };
+
+// Without a free detail pane — none in the list-only layout, or a kept
+// selection holding it — the list is where "nothing here" shows, so its
+// "Clear all", "Load more" and retry stay reachable.
+const getListEmptyState = (
+  emptyState: ReactNode,
+  onOpenTask: TasksTabBodyProps['onOpenTask'],
+  selectedTaskId: TasksTabBodyProps['selectedTaskId']
+): ReactNode => (onOpenTask || selectedTaskId ? emptyState : undefined);
 
 // The two panes: the list column (its controls over the grouped rows) and the
 // selected task's detail, each scrolling on its own.
@@ -499,8 +522,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
           <InboxTaskListSkeleton />
         ) : (
           <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
-            {/* Without a detail pane, the list is where "nothing here" shows. */}
-            {(onOpenTask && emptyState) ||
+            {getListEmptyState(emptyState, onOpenTask, selectedTaskId) ||
               (groupedList ?? tasks.map(renderRow))}
           </div>
         )}
@@ -570,6 +592,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // stays responsive while the request trails it.
   const [searchQuery, setSearchQuery] = useState('');
   const [grouping, setGrouping] = useState<InboxTaskGrouping>('type');
+  const [sortOrder, setSortOrder] = useState(SORT_ORDER.DESC);
   // Kinds as getTaskTypeKey names them, so types sharing a label filter as one.
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   // Narrows the active tab; nothing chosen shows all of it.
@@ -639,6 +662,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         limit: TASK_LIMIT,
         after,
         q: titleSearch.text || undefined,
+        sortOrder,
       };
 
       // aboutEntity = entity-page mode (all tasks about that entity); a user
@@ -652,7 +676,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
         ? fetchUserTasksPage(user, params, after)
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, user, titleSearch.text]
+    [status, aboutEntity, user, titleSearch.text, sortOrder]
   );
 
   // A short narrowed list keeps the scroll sentinel in view, which would page
@@ -699,7 +723,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setItems,
     setTotal,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text],
+    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text, sortOrder],
     fetchPage,
     canLoadMore
   );
@@ -756,8 +780,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     () => (grouping === 'type' ? groupTasksByType(visibleTasks) : undefined),
     [grouping, visibleTasks]
   );
-  // The top row as displayed; grouping reorders the server's newest-first
-  // list, so its first task can sit anywhere in the grouped view.
+  // The top row as displayed; grouping reorders the server's list, so its
+  // first task can sit anywhere in the grouped view.
   const firstTaskId = taskGroups
     ? taskGroups[0]?.items[0]?.id
     : visibleTasks[0]?.id;
@@ -910,6 +934,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
             grouping={grouping}
             inline={Boolean(onOpenTask)}
             search={search}
+            sortOrder={sortOrder}
             statusFilter={statusFilter}
             statusOptions={STATUS_OPTIONS_BY_TAB[status]}
             statusTabs={statusTabs}
@@ -917,6 +942,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
             typeFilter={typeFilter}
             onGroupingChange={setGrouping}
             onSearchChange={handleSearchChange}
+            onSortOrderChange={setSortOrder}
             onStatusFilterChange={setStatusFilter}
             onTypeFilterChange={setTypeFilter}
           />

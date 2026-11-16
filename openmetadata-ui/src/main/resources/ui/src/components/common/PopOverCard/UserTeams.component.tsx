@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { Teams } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconTeams } from '../../../assets/svg/teams-grey.svg';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNonDeletedTeams } from '../../../utils/TeamUtils';
 import { UserTeamsProps } from './UserPopOverCard.interface';
@@ -25,7 +25,7 @@ export const UserTeams = React.memo(({ user }: UserTeamsProps) => {
   return teams?.length ? (
     <div className="m-t-xs">
       <p className="d-flex items-center">
-        <IconTeams height={16} width={16} />
+        <Teams size={16} />
         <span className="m-r-xs m-l-xss align-middle font-medium">
           {t('label.team-plural')}
         </span>

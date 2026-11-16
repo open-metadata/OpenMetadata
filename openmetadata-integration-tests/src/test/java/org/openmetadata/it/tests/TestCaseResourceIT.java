@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -8,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.it.util.DataQualitySearchFixtures.RESERVED_CHARACTER_QUERIES;
 import static org.openmetadata.it.util.DataQualitySearchFixtures.SEARCH_CONVERGENCE_TIMEOUT;
 
@@ -42,6 +44,7 @@ import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
@@ -50,6 +53,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
+import org.openmetadata.schema.api.data.CreateDatabase;
+import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -57,10 +62,13 @@ import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.search.AggregationRequest;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestSuite;
@@ -68,9 +76,11 @@ import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
 import org.openmetadata.schema.tests.type.TestCaseErrorDetails;
 import org.openmetadata.schema.tests.type.TestCaseEvaluationScope;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
+import org.openmetadata.schema.tests.type.TestResultValue;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.BulkCreateConflictPolicy;
 import org.openmetadata.schema.type.BulkCreateItemResult;
@@ -82,6 +92,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TableData;
+import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -90,12 +101,14 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.fluent.DatabaseServices;
 import org.openmetadata.sdk.fluent.TestCases;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.slf4j.Logger;
@@ -699,6 +712,161 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void post_nestedColumnLevelTest_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTableWithNestedColumn(ns);
+    TagLabel nestedColumnTag = SharedEntities.get().PERSONAL_DATA_TAG_LABEL;
+    table.getColumns().getFirst().getChildren().getFirst().setTags(List.of(nestedColumnTag));
+    client.tables().update(table.getId().toString(), table);
+    String columnLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.city");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("nested_column_test"));
+    request.setEntityLink(columnLink);
+    // city is VARCHAR, so the definition must be one whose supportedDataTypes include it.
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    TestCase created = createEntity(request);
+    assertTrue(
+        created.getEntityLink().contains("::columns::address.city"),
+        "Nested column link should be preserved, got " + created.getEntityLink());
+
+    long timestamp = System.currentTimeMillis();
+    CreateTestCaseResult result =
+        new CreateTestCaseResult()
+            .withTimestamp(timestamp)
+            .withTestCaseStatus(TestCaseStatus.Success)
+            .withResult("All nested city values match the regex");
+    client.testCaseResults().create(created.getFullyQualifiedName(), result);
+
+    List<TestCaseResult> storedResults = listTestCaseResults(created.getFullyQualifiedName());
+    assertEquals(1, storedResults.size());
+    assertEquals(timestamp, storedResults.getFirst().getTimestamp());
+    assertEquals(TestCaseStatus.Success, storedResults.getFirst().getTestCaseStatus());
+    assertEquals(result.getResult(), storedResults.getFirst().getResult());
+
+    TestCase fetched = client.testCases().get(created.getId().toString(), "tags,testCaseResult");
+    assertEquals(columnLink, fetched.getEntityLink());
+    assertNotNull(fetched.getTestCaseResult());
+    assertEquals(timestamp, fetched.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, fetched.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), fetched.getTestCaseResult().getResult());
+    assertNotNull(fetched.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        fetched.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "GET must inherit the tag attached only to the nested column");
+
+    ListResponse<TestCase> listed =
+        client
+            .testCases()
+            .list(
+                new ListParams()
+                    .setFields("tags,testCaseResult")
+                    .setLimit(10)
+                    .addQueryParam("includeAllTests", "true")
+                    .addQueryParam("entityLink", tableEntityLink(table)));
+    assertEquals(List.of(created.getId()), idsOf(listed));
+    TestCase listedTestCase = listed.getData().getFirst();
+    assertEquals(columnLink, listedTestCase.getEntityLink());
+    assertNotNull(listedTestCase.getTestCaseResult());
+    assertEquals(timestamp, listedTestCase.getTestCaseResult().getTimestamp());
+    assertEquals(TestCaseStatus.Success, listedTestCase.getTestCaseResult().getTestCaseStatus());
+    assertEquals(result.getResult(), listedTestCase.getTestCaseResult().getResult());
+    assertNotNull(listedTestCase.getTags());
+    assertEquals(
+        List.of(nestedColumnTag.getTagFQN()),
+        listedTestCase.getTags().stream().map(TagLabel::getTagFQN).toList(),
+        "List responses must inherit the tag attached only to the nested column");
+  }
+
+  @Test
+  void post_testWithInvalidNestedColumn_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    String invalidNestedLink =
+        String.format(
+            "<#E::table::%s::columns::%s>", table.getFullyQualifiedName(), "address.state");
+
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("invalid_nested_column"));
+    request.setEntityLink(invalidNestedLink);
+    request.setTestDefinition("columnValuesToMatchRegex");
+    request.setParameterValues(
+        List.of(new TestCaseParameterValue().withName("regex").withValue("^[A-Za-z ]+$")));
+
+    Exception error =
+        assertThrows(
+            Exception.class, () -> createEntity(request), "Should fail with missing nested column");
+    assertTrue(
+        error.getMessage().contains("Invalid column name address.state"), error.getMessage());
+  }
+
+  @Test
+  void post_testOnUnsupportedNestedColumnType_4xx(TestNamespace ns) {
+    Table table = createTableWithNestedColumn(ns);
+    CreateTestCase request = new CreateTestCase();
+    request.setName(ns.prefix("between_on_varchar_child"));
+    // city is VARCHAR; columnValuesToBeBetween supports only numeric and temporal types.
+    request.setEntityLink(
+        "<#E::table::" + table.getFullyQualifiedName() + "::columns::address.city>");
+    request.setTestDefinition("columnValuesToBeBetween");
+    request.setParameterValues(
+        List.of(
+            new TestCaseParameterValue().withName("minValue").withValue("1"),
+            new TestCaseParameterValue().withName("maxValue").withValue("1000")));
+
+    Exception error = assertThrows(Exception.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("does not support column type"), error.getMessage());
+  }
+
+  private Table createTableWithNestedColumn(TestNamespace ns) {
+    String shortId = ns.uniqueShortId();
+
+    PostgresConnection conn =
+        DatabaseServices.postgresConnection().hostPort("localhost:5432").username("test").build();
+
+    DatabaseService service =
+        DatabaseServices.builder()
+            .name("pg_" + shortId)
+            .connection(conn)
+            .description("Test Postgres service")
+            .create();
+
+    CreateDatabase dbReq = new CreateDatabase();
+    dbReq.setName("db_" + shortId);
+    dbReq.setService(service.getFullyQualifiedName());
+    Database database = SdkClients.adminClient().databases().create(dbReq);
+
+    CreateDatabaseSchema schemaReq = new CreateDatabaseSchema();
+    schemaReq.setName("s_" + shortId);
+    schemaReq.setDatabase(database.getFullyQualifiedName());
+    DatabaseSchema schema = SdkClients.adminClient().databaseSchemas().create(schemaReq);
+
+    CreateTable tableRequest = new CreateTable();
+    tableRequest.setName("t_" + shortId);
+    tableRequest.setDatabaseSchema(schema.getFullyQualifiedName());
+    tableRequest.setColumns(List.of(nestedAddressColumn()));
+
+    return SdkClients.adminClient().tables().create(tableRequest);
+  }
+
+  private Column nestedAddressColumn() {
+    return new Column()
+        .withName("address")
+        .withDataType(ColumnDataType.STRUCT)
+        .withChildren(
+            List.of(
+                new Column()
+                    .withName("city")
+                    .withDataType(ColumnDataType.VARCHAR)
+                    .withDataLength(255)));
+  }
+
+  @Test
   void test_createMultipleTestsOnSameTable_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
@@ -788,6 +956,93 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     TestCase restored = getEntity(testCaseId);
     assertEquals(testCase.getName(), restored.getName());
+  }
+
+  @Test
+  void test_testCaseSoftDeleteAndRestoreWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_restore"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addResolutionStatusChild(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    restoreEntity(testCaseId);
+
+    // include=all returns the entity regardless of deleted state, so the deleted flag is
+    // observable on the restored entity.
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  @Test
+  void test_testCaseCreateOrUpdateOnSoftDeletedWithIncident_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateTestCase createRequest =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("soft_delete_incident_upsert"))
+            .forTable(createTable(ns))
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .build();
+    TestCase testCase = client.testCases().create(createRequest);
+    addResolutionStatusChild(client, testCase);
+
+    String testCaseId = testCase.getId().toString();
+    softDeleteTestCaseRecursively(client, testCaseId);
+    assertThrows(Exception.class, () -> getEntity(testCaseId), "Should not find deleted entity");
+    assertTrue(
+        getEntityIncludeDeleted(testCaseId).getDeleted(),
+        "Test case must be soft-deleted, not gone");
+
+    // PUT create-or-update on the soft-deleted entity funnels through restoreEntity, so it
+    // exercises the same restoreChildren PARENT_OF walk as the /restore endpoint.
+    TestCase updated = updateEntity(testCaseId, createRequest);
+    assertFalse(updated.getDeleted(), "Upsert must restore the soft-deleted test case");
+
+    TestCase restored = client.testCases().get(testCaseId, null, "all");
+    assertEquals(testCase.getName(), restored.getName());
+    assertFalse(restored.getDeleted(), "Restored test case must not be marked deleted");
+  }
+
+  /**
+   * Creates a resolution-status record so the test case has the TestCase --PARENT_OF-->
+   * testCaseResolutionStatus child the regression walks over. The record and its PARENT_OF edge
+   * are written synchronously in one transaction (persistRecord → storeRelationship), unlike the
+   * incident-task mirror records, which are written asynchronously and best-effort by the incident
+   * workflow. Asserting the edge count guards against a vacuous pass: without this child, neither
+   * restore test reaches the time-series branch that the regression is about.
+   */
+  private void addResolutionStatusChild(OpenMetadataClient client, TestCase testCase) {
+    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+    TestCaseResolutionStatus status = client.testCaseResolutionStatuses().create(newStatus);
+    assertEquals(
+        1,
+        countRelationshipsTo(status.getId()),
+        "PARENT_OF edge to the resolution-status child must exist before soft delete");
+  }
+
+  /**
+   * Soft-deletes a test case that has incident history. Its PARENT_OF child makes the entity
+   * non-empty, so DELETE without recursive=true is rejected with "testCase is not empty".
+   */
+  private void softDeleteTestCaseRecursively(OpenMetadataClient client, String testCaseId) {
+    Map<String, String> params = new HashMap<>();
+    params.put("recursive", "true");
+    client.testCases().delete(testCaseId, params);
   }
 
   @Test
@@ -2597,34 +2852,56 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);
 
-    TestCase testCase =
-        TestCaseBuilder.create(client)
-            .name(ns.prefix("tcrs_cascade_delete"))
-            .forTable(table)
-            .testDefinition("tableRowCountToEqual")
-            .parameter("value", "100")
-            .create();
+    List<UUID> testCaseIds = new ArrayList<>();
+    List<UUID> statusIds = new ArrayList<>();
+    List<UUID> stateIds = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      TestCase testCase =
+          TestCaseBuilder.create(client)
+              .name(ns.prefix("tcrs_cascade_delete_" + i))
+              .forTable(table)
+              .testDefinition("tableRowCountToEqual")
+              .parameter("value", "100")
+              .create();
+      testCaseIds.add(testCase.getId());
 
-    // Writes a TEST_CASE --PARENT_OF--> testCaseResolutionStatus row. testCaseResolutionStatus
-    // is a time-series entity (registered in ENTITY_TS_REPOSITORY_MAP, not
-    // ENTITY_REPOSITORY_MAP), so the bulk hard-delete cascade used to throw
-    // EntityRepositoryNotFound the moment it walked PARENT_OF children of a test case.
-    CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
-    newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
-    newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
-    client.testCaseResolutionStatuses().create(newStatus);
-
-    String testCaseId = testCase.getId().toString();
+      CreateTestCaseResolutionStatus newStatus = new CreateTestCaseResolutionStatus();
+      newStatus.setTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New);
+      newStatus.setTestCaseReference(testCase.getFullyQualifiedName());
+      var status = client.testCaseResolutionStatuses().create(newStatus);
+      statusIds.add(status.getId());
+      stateIds.add(status.getStateId());
+      assertEquals(
+          1, countRowsById("test_case_resolution_status_time_series", status.getId().toString()));
+      assertEquals(1, countIncidentRows(status.getStateId()));
+    }
 
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
     client.tables().delete(table.getId().toString(), params);
 
-    assertThrows(
-        Exception.class,
-        () -> getEntity(testCaseId),
-        "Test case should be deleted along with its resolution-status children");
+    for (UUID testCaseId : testCaseIds) {
+      assertEquals(0, countRowsById("test_case", testCaseId.toString()));
+    }
+    Awaitility.await("incident children reaped after ancestor deletion")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              for (UUID statusId : statusIds) {
+                assertEquals(
+                    0,
+                    countRowsById("test_case_resolution_status_time_series", statusId.toString()),
+                    "Ancestor deletion must eventually remove incident history");
+                assertEquals(0, countRelationshipsTo(statusId));
+              }
+              for (UUID stateId : stateIds) {
+                assertEquals(
+                    0,
+                    countIncidentRows(stateId),
+                    "Ancestor deletion must eventually remove the incident summary");
+              }
+            });
   }
 
   @Test
@@ -2653,14 +2930,14 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         "resolution-status time-series row should exist before delete");
     assertEquals(
         1, countRelationshipsTo(statusId), "parentOf relationship should exist before delete");
+    assertEquals(
+        1, countIncidentRows(status.getStateId()), "incident summary should exist before delete");
 
     Map<String, String> params = new HashMap<>();
     params.put("hardDelete", "true");
     params.put("recursive", "true");
     client.testCases().delete(testCase.getId().toString(), params);
 
-    // TestCaseRepository.deleteChildren fires the resolution-status cleanup on a background virtual
-    // thread (AsyncService), so poll rather than assert synchronously right after delete returns.
     Awaitility.await("resolution-status children reaped after hard delete")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
@@ -2674,7 +2951,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   0,
                   countRelationshipsTo(statusId),
                   "parentOf relationship must be cleaned up, otherwise it is left orphaned");
+              assertEquals(
+                  0,
+                  countIncidentRows(status.getStateId()),
+                  "incident summary must be deleted with the incident's last record");
             });
+  }
+
+  private int countIncidentRows(UUID stateId) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT COUNT(*) FROM test_case_incident WHERE stateId = :stateId")
+                    .bind("stateId", stateId.toString())
+                    .mapTo(Integer.class)
+                    .one());
   }
 
   private int countRowsById(String tableName, String id) {
@@ -2790,6 +3082,513 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .anyMatch(
                 tag ->
                     shared.PII_SENSITIVE_TAG_LABEL.getTagFQN().equalsIgnoreCase(tag.getTagFQN())));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"ssn, ssn", "ssn, SSN", "contact.ssn, contact.ssn", "ssn, ssn::description"})
+  void test_piiColumnLinksAreMaskedAcrossReadPaths(
+      String columnName, String linkedColumn, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User owner = UserTestFactory.createUser(ns, "pii_test_owner");
+    User reader = UserTestFactory.createUser(ns, "pii_test_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    Table table = createTable(ns);
+    table.setColumns(
+        List.of(
+            new Column()
+                .withName(columnName)
+                .withDataType(ColumnDataType.STRING)
+                .withTags(
+                    List.of(
+                        new TagLabel()
+                            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                            .withSource(TagLabel.TagSource.CLASSIFICATION)))));
+    table.setOwners(List.of(owner.getEntityReference()));
+    admin.tables().update(table.getId().toString(), table);
+    Table storedTable = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertTrue(
+        storedTable.getColumns().getFirst().getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())),
+        "The column must carry the tag used by the PII masker");
+    ns.trackRoot(Entity.DATABASE_SERVICE, table.getService().getId());
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(ns.prefix("pii_column_link"))
+                    .withDescription("Sensitive description")
+                    .withEntityLink(
+                        "<#E::table::"
+                            + table.getFullyQualifiedName()
+                            + "::columns::"
+                            + linkedColumn
+                            + ">")
+                    .withTestDefinition("columnValuesToMatchRegex")
+                    .withParameterValues(
+                        List.of(
+                            new TestCaseParameterValue().withName("regex").withValue("^078-"))));
+    ns.trackRoot(Entity.TEST_CASE, testCase);
+    TestCaseResult createdResult =
+        admin
+            .testCaseResults()
+            .create(
+                testCase.getFullyQualifiedName(),
+                new CreateTestCaseResult()
+                    .withTimestamp(System.currentTimeMillis())
+                    .withTestCaseStatus(TestCaseStatus.Failed)
+                    .withResult("Sensitive failure")
+                    .withTestResultValue(
+                        List.of(
+                            new TestResultValue()
+                                .withName("actual")
+                                .withValue("Sensitive measure"))));
+
+    assertPiiColumnTag(admin.testCases().get(testCase.getId().toString(), "tags"));
+    assertMaskedTestCase(
+        readerClient.testCases().get(testCase.getId().toString(), "testCaseResult"), testCase);
+    assertMaskedTestCase(
+        readerClient.testCases().getByName(testCase.getFullyQualifiedName(), "testCaseResult"),
+        testCase);
+    assertMaskedTestCase(
+        readerClient.testCases().getVersion(testCase.getId(), testCase.getVersion()), testCase);
+    EntityHistory history =
+        readerClient
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                getResourcePath() + testCase.getId() + "/versions",
+                null,
+                EntityHistory.class);
+    assertFalse(history.getVersions().isEmpty());
+    history
+        .getVersions()
+        .forEach(
+            version ->
+                assertMaskedTestCase(
+                    JsonUtils.readOrConvertValue(version, TestCase.class), testCase));
+    List<TestCaseResult> results =
+        JsonUtils.convertObjects(
+            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+            TestCaseResult.class);
+    assertEquals(1, results.size());
+    assertNull(results.getFirst().getResult());
+
+    Awaitility.await("all test case read paths mask PII")
+        .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+        .untilAsserted(
+            () ->
+                assertAll(
+                    () -> {
+                      TestCase complete =
+                          admin.testCases().get(testCase.getId().toString(), "incidentStatus");
+                      assertNotNull(complete.getIncidentStatus());
+                      assertTrue(
+                          complete
+                              .getIncidentStatus()
+                              .getFailureSummary()
+                              .contains("Sensitive failure"));
+                      TestCase projected =
+                          readerClient
+                              .testCases()
+                              .get(testCase.getId().toString(), "incidentStatus");
+                      assertNull(projected.getIncidentStatus());
+                      assertFalse(JsonUtils.pojoToJson(projected).contains("Sensitive failure"));
+                    },
+                    () -> {
+                      for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
+                        assertThrows(
+                            InvalidRequestException.class,
+                            () ->
+                                aggregateTestCase(
+                                    readerClient,
+                                    "test_case_search_index",
+                                    testCase.getId(),
+                                    "testCaseResult.testResultValue.value.keyword",
+                                    method));
+                        String visible =
+                            aggregateTestCase(
+                                readerClient,
+                                "test_case_search_index",
+                                testCase.getId(),
+                                "name.keyword",
+                                method);
+                        assertTrue(visible.contains(testCase.getName()));
+                        assertFalse(visible.contains("Sensitive description"));
+                      }
+                    },
+                    () ->
+                        assertFalse(
+                            searchTestHit(
+                                    readerClient,
+                                    "test_case_search_index",
+                                    testCase.getId(),
+                                    "_score",
+                                    true)
+                                .has("_explanation")),
+                    () ->
+                        assertMaskedTestCase(
+                            JsonUtils.convertValueLenient(
+                                JsonUtils.readTree(
+                                        readerClient
+                                            .getHttpClient()
+                                            .executeForString(
+                                                HttpMethod.GET,
+                                                "/v1/search/fieldQuery",
+                                                null,
+                                                RequestOptions.builder()
+                                                    .queryParam("index", "test_case_search_index")
+                                                    .queryParam("fieldName", "id.keyword")
+                                                    .queryParam(
+                                                        "fieldValue", testCase.getId().toString())
+                                                    .build()))
+                                    .path("hits")
+                                    .path("hits")
+                                    .get(0)
+                                    .path("_source"),
+                                TestCase.class),
+                            testCase),
+                    () ->
+                        assertThrows(
+                            InvalidRequestException.class,
+                            () ->
+                                searchTestHit(
+                                    readerClient,
+                                    "test_case_search_index",
+                                    testCase.getId(),
+                                    "testCaseResult.testResultValue.value.keyword")),
+                    () -> {
+                      for (String path :
+                          List.of(getResourcePath(), getResourcePath() + "search/list")) {
+                        TestCase listed = readLinkedTestCase(readerClient, path, table);
+                        assertMaskedTestCase(listed, testCase);
+                        assertPiiColumnTag(listed);
+                      }
+                    },
+                    () ->
+                        assertMaskedTestCase(
+                            JsonUtils.convertValueLenient(
+                                searchTestHit(
+                                        readerClient, "test_case_search_index", testCase.getId())
+                                    .path("_source"),
+                                TestCase.class),
+                            testCase),
+                    () ->
+                        assertFalse(
+                            searchTestHit(
+                                    readerClient,
+                                    "test_case_result_search_index",
+                                    createdResult.getId())
+                                .path("_source")
+                                .has("result")),
+                    () -> {
+                      List<TestCaseResult> searchedResults =
+                          JsonUtils.convertObjects(
+                              readerClient
+                                  .testCaseResults()
+                                  .searchList(
+                                      new ListParams()
+                                          .addFilter(
+                                              "testCaseFQN", testCase.getFullyQualifiedName()))
+                                  .getData(),
+                              TestCaseResult.class);
+                      assertEquals(1, searchedResults.size());
+                      assertNull(searchedResults.getFirst().getResult());
+                    },
+                    () -> {
+                      TestCaseResult latest =
+                          readerClient
+                              .getHttpClient()
+                              .execute(
+                                  HttpMethod.GET,
+                                  getResourcePath() + "testCaseResults/search/latest",
+                                  null,
+                                  TestCaseResult.class,
+                                  RequestOptions.builder()
+                                      .queryParam("testCaseFQN", testCase.getFullyQualifiedName())
+                                      .build());
+                      assertNotNull(latest);
+                      assertNull(latest.getResult());
+                    }));
+
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
+    for (OpenMetadataClient privileged : List.of(admin, ownerClient, SdkClients.botClient())) {
+      TestCase visible =
+          privileged.testCases().get(testCase.getId().toString(), "testCaseResult,incidentStatus");
+      assertEquals("Sensitive description", visible.getDescription());
+      assertEquals(testCase.getParameterValues(), visible.getParameterValues());
+      assertEquals("Sensitive failure", visible.getTestCaseResult().getResult());
+      assertTrue(visible.getIncidentStatus().getFailureSummary().contains("Sensitive failure"));
+      for (HttpMethod method : List.of(HttpMethod.GET, HttpMethod.POST)) {
+        assertTrue(
+            aggregateTestCase(
+                    privileged,
+                    "test_case_search_index",
+                    testCase.getId(),
+                    "testCaseResult.testResultValue.value.keyword",
+                    method)
+                .contains("Sensitive measure"));
+      }
+      assertTrue(
+          searchTestHit(privileged, "test_case_search_index", testCase.getId(), "_score", true)
+              .path("_explanation")
+              .toString()
+              .contains("description:"));
+      assertEquals(
+          "Sensitive measure",
+          searchTestHit(
+                  privileged,
+                  "test_case_search_index",
+                  testCase.getId(),
+                  "testCaseResult.testResultValue.value.keyword")
+              .path("sort")
+              .get(0)
+              .asText());
+      assertEquals(
+          "Sensitive description",
+          searchTestHit(privileged, "test_case_search_index", testCase.getId())
+              .path("_source")
+              .path("description")
+              .asText());
+      assertEquals(
+          "Sensitive failure",
+          JsonUtils.convertObjects(
+                  privileged.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+                  TestCaseResult.class)
+              .getFirst()
+              .getResult());
+    }
+  }
+
+  @Test
+  void test_piiColumnTestCaseStaysMaskedAfterColumnSchemaDrift(TestNamespace ns) {
+    // Reproduces the schema-drift exploit: a PII-tagged column carries a column test case and
+    // results; the table is then re-ingested without that column (rename/drop), which deletes
+    // the column's tags and leaves the test case with a dangling entityLink. While the table
+    // resolves, the column path no longer does — the masking decision must fail closed for the
+    // PII-restricted reader, exactly like a hard-deleted table does, while authorized callers
+    // still see the full case.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User owner = UserTestFactory.createUser(ns, "pii_orphan_owner");
+    User reader = UserTestFactory.createUser(ns, "pii_orphan_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
+
+    Table table = createTable(ns);
+    table.setColumns(
+        List.of(
+            new Column()
+                .withName("ssn")
+                .withDataType(ColumnDataType.STRING)
+                .withTags(
+                    List.of(
+                        new TagLabel()
+                            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                            .withSource(TagLabel.TagSource.CLASSIFICATION))),
+            new Column().withName("email").withDataType(ColumnDataType.STRING)));
+    table.setOwners(List.of(owner.getEntityReference()));
+    admin.tables().update(table.getId().toString(), table);
+    ns.trackRoot(Entity.DATABASE_SERVICE, table.getService().getId());
+
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(ns.prefix("pii_column_orphan"))
+                    .withDescription("Sensitive description")
+                    .withEntityLink(
+                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::ssn>")
+                    .withTestDefinition("columnValuesToMatchRegex")
+                    .withParameterValues(
+                        List.of(
+                            new TestCaseParameterValue().withName("regex").withValue("^078-"))));
+    ns.trackRoot(Entity.TEST_CASE, testCase);
+    admin
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(TestCaseStatus.Failed)
+                .withResult("Sensitive failure")
+                .withTestResultValue(
+                    List.of(
+                        new TestResultValue().withName("actual").withValue("Sensitive measure"))));
+
+    // Sanity check: while the column still exists with its PII tag, the reader projection
+    // and results are masked the same way the existing pii-column guard asserts they are.
+    assertMaskedTestCase(
+        readerClient.testCases().get(testCase.getId().toString(), "testCaseResult"), testCase);
+    List<TestCaseResult> liveResults =
+        JsonUtils.convertObjects(
+            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+            TestCaseResult.class);
+    assertEquals(1, liveResults.size());
+    assertNull(liveResults.getFirst().getResult());
+
+    // Schema drift: the table is re-ingested with the `ssn` column dropped. This deletes the
+    // column's tags via deleteTagsByTarget (see EntityRepository.ColumnEntityUpdater), but the
+    // test case and its results survive with a dangling `entityLink`.
+    Table drifted = admin.tables().get(table.getId().toString(), "columns,tags");
+    drifted.setColumns(
+        new ArrayList<>(
+            List.of(new Column().withName("email").withDataType(ColumnDataType.STRING))));
+    admin.tables().update(drifted.getId().toString(), drifted);
+    Table persistedAfterDrift = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertTrue(
+        persistedAfterDrift.getColumns().stream().noneMatch(c -> "ssn".equals(c.getName())),
+        "The `ssn` column must be gone after the schema drift");
+
+    // The PII-restricted reader still sees every read path masked — fail closed for the
+    // unresolved column path, exactly like a hard-deleted table.
+    assertMaskedTestCase(
+        readerClient.testCases().get(testCase.getId().toString(), "testCaseResult"), testCase);
+    assertMaskedTestCase(
+        readerClient.testCases().getByName(testCase.getFullyQualifiedName(), "testCaseResult"),
+        testCase);
+    List<TestCaseResult> orphanResults =
+        JsonUtils.convertObjects(
+            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+            TestCaseResult.class);
+    assertEquals(1, orphanResults.size());
+    assertNull(orphanResults.getFirst().getResult());
+
+    TestCaseResult latest =
+        readerClient
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                getResourcePath() + "testCaseResults/search/latest",
+                null,
+                TestCaseResult.class,
+                RequestOptions.builder()
+                    .queryParam("testCaseFQN", testCase.getFullyQualifiedName())
+                    .build());
+    assertNotNull(latest);
+    assertNull(latest.getResult());
+
+    TestCase listed =
+        readLinkedTestCase(
+            readerClient, getResourcePath(), admin.tables().get(table.getId().toString(), "tags"));
+    assertMaskedTestCase(listed, testCase);
+
+    // Authorized callers (admin and owner) still see the full case and results — the stricter
+    // default only applies to PII-restricted users.
+    for (OpenMetadataClient privileged : List.of(admin, ownerClient)) {
+      TestCase visible =
+          privileged.testCases().get(testCase.getId().toString(), "testCaseResult,incidentStatus");
+      assertEquals("Sensitive description", visible.getDescription());
+      assertEquals(testCase.getParameterValues(), visible.getParameterValues());
+      assertEquals(
+          "Sensitive failure",
+          JsonUtils.convertObjects(
+                  privileged.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+                  TestCaseResult.class)
+              .getFirst()
+              .getResult());
+    }
+  }
+
+  private static void assertMaskedTestCase(TestCase masked, TestCase original) {
+    assertEquals(original.getName() + " [MASKED]", masked.getName());
+    assertEquals(original.getId(), masked.getId());
+    assertNull(masked.getDescription());
+    assertTrue(nullOrEmpty(masked.getParameterValues()));
+    assertNull(masked.getTestCaseResult());
+    assertNull(masked.getIncidentStatus());
+  }
+
+  private static void assertPiiColumnTag(TestCase testCase) {
+    assertTrue(
+        testCase.getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+  }
+
+  private static TestCase readLinkedTestCase(OpenMetadataClient client, String path, Table table) {
+    String json =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                path,
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+                    .queryParam("includeAllTests", "true")
+                    .queryParam("fields", "tags,testCaseResult,incidentStatus")
+                    .build());
+    List<TestCase> tests = JsonUtils.readValue(json, TestCaseResource.TestCaseList.class).getData();
+    assertEquals(1, tests.size());
+    return tests.getFirst();
+  }
+
+  private static JsonNode searchTestHit(OpenMetadataClient client, String index, UUID id) {
+    return searchTestHit(client, index, id, "_score");
+  }
+
+  private static String aggregateTestCase(
+      OpenMetadataClient client, String index, UUID id, String field, HttpMethod method) {
+    if (method == HttpMethod.POST) {
+      return client
+          .getHttpClient()
+          .executeForString(
+              method,
+              "/v1/search/aggregate",
+              new AggregationRequest()
+                  .withIndex(index)
+                  .withQuery("id:" + id)
+                  .withFieldName(field)
+                  .withFieldValue(".*")
+                  .withSourceFields(List.of("name", "description", "entityLink")));
+    }
+    return client
+        .getHttpClient()
+        .executeForString(
+            method,
+            "/v1/search/aggregate",
+            null,
+            RequestOptions.builder()
+                .queryParam("index", index)
+                .queryParam("q", "id:" + id)
+                .queryParam("field", field)
+                .queryParam("value", ".*")
+                .queryParam("sourceFields", "name,description,entityLink")
+                .build());
+  }
+
+  private static JsonNode searchTestHit(
+      OpenMetadataClient client, String index, UUID id, String sortField) {
+    return searchTestHit(client, index, id, sortField, false);
+  }
+
+  private static JsonNode searchTestHit(
+      OpenMetadataClient client, String index, UUID id, String sortField, boolean explain) {
+    // The dedicated test case builder omits explanations; global search returns them.
+    RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("index", explain ? "all" : index)
+            .queryParam("q", "id:" + id)
+            .queryParam("sort_field", sortField);
+    if (explain) {
+      options
+          .queryParam("explain", "true")
+          .queryParam("fetch_source", "false")
+          .queryParam(
+              "query_filter",
+              "{\"query\":{\"wildcard\":{\"description\":{\"value\":\"*\",\"rewrite\":\"scoring_boolean\"}}}}");
+    }
+    String json =
+        client
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/search/query", null, options.build());
+    JsonNode hits = JsonUtils.readTree(json).path("hits").path("hits");
+    assertEquals(1, hits.size());
+    return hits.get(0);
   }
 
   @Test
@@ -3351,7 +4150,13 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .withProfileSample(10.0)
             .withProfileSampleType(ProfileSampleType.PERCENTAGE)
             .withPartitioned(true)
-            .withPartitionColumnName("event_date");
+            .withPartitionColumnName("event_date")
+            .withExecutionSource(
+                new TableExecutionSource()
+                    .withDatabaseName("demo_project")
+                    .withSchemaName("demo_dataset")
+                    .withTableName("events_20260101")
+                    .withShardDate("2026-01-01"));
 
     CreateTestCaseResult create = new CreateTestCaseResult();
     create.setTimestamp(timestamp);

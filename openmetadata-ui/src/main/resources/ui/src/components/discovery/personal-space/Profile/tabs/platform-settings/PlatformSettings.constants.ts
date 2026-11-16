@@ -12,27 +12,30 @@
  */
 
 import {
-  BookOpen01,
-  Customize,
-  Dataflow02,
+  BrandUrl,
+  DataAssetRules,
   DataQuality,
+  DefaultAppMode,
   DefaultTime,
-  FileCheck02,
   GlossaryTerm,
-  HeartRounded,
-  Link01,
+  HealthCheck,
+  LearningResources,
   Lock01,
-  Mail01,
-  RunProfiler,
-  Search,
-  SwitchHorizontal01,
+  Mail,
+  PlatformLineage,
+  ProfilerConfiguration,
+  SearchSettings,
   Table,
+  Theme,
 } from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { DefaultTimeFormat } from '../../../../../../generated/api/configuration/appConfiguration';
+// eslint-disable-next-line openmetadata-imports/no-lower-layer-page-imports -- profiler extension point lives there
+import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
 import { isLoginConfigurationApplicable } from '../../../../../../utils/AuthProvider.util';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
+import { parseFieldValueBoostItemId } from './search/SearchSettings.utils';
 
 export const PLATFORM_SETTINGS_HASH_TAB = 'platform-settings';
 
@@ -45,14 +48,14 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
   },
   {
     id: 'theme',
-    icon: Customize,
+    icon: Theme,
     titleKey: 'label.theme',
     descriptionKey: 'message.appearance-configuration-message',
     hasEditView: true,
   },
   {
     id: 'email',
-    icon: Mail01,
+    icon: Mail,
     titleKey: 'label.email',
     descriptionKey: 'message.email-configuration-message',
     hasEditView: true,
@@ -67,17 +70,22 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
   },
   {
     id: 'health-check',
-    icon: HeartRounded,
+    icon: HealthCheck,
     titleKey: 'label.health-check',
     descriptionKey: 'message.page-sub-header-for-om-health-configuration',
   },
   {
     id: 'profiler-configuration',
-    icon: RunProfiler,
+    icon: ProfilerConfiguration,
     titleKey: 'label.profiler-configuration',
     descriptionKey: 'message.page-sub-header-for-profiler-configuration',
     hasEditView: true,
     hasFieldHints: false,
+    // An item id is a downstream sub-page, titled by its owner.
+    getEditTitle: (t, itemId) =>
+      (itemId &&
+        profilerConfigurationClassBase.getSettingsItemFormTitle(t, itemId)) ||
+      t('label.edit-entity', { entity: t('label.profiler-configuration') }),
   },
   {
     id: 'data-quality',
@@ -92,37 +100,47 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
   },
   {
     id: 'lineage',
-    icon: Dataflow02,
+    icon: PlatformLineage,
     titleKey: 'label.lineage',
     descriptionKey: 'message.page-sub-header-for-lineage-config-setting',
     hasEditView: true,
   },
   {
     id: 'search',
-    icon: Search,
+    icon: SearchSettings,
     titleKey: 'label.search',
     descriptionKey: 'message.page-sub-header-for-search-setting',
     hasItemViews: true,
     getItemTitle: (_t, itemId) =>
       startCase(ENTITY_PATH[itemId as keyof typeof ENTITY_PATH] ?? itemId),
+    // The edit view is the field value boost form, global or per entity.
+    hasEditView: true,
+    hasFieldHints: false,
+    getEditTitle: (t, itemId) =>
+      t(
+        parseFieldValueBoostItemId(itemId).field
+          ? 'label.edit-entity'
+          : 'label.add-entity',
+        { entity: t('label.field-value-boost') }
+      ),
   },
   {
     id: 'brand-url',
-    icon: Link01,
+    icon: BrandUrl,
     titleKey: 'label.brand-name-url',
     descriptionKey: 'message.om-url-configuration-message',
     hasEditView: true,
   },
   {
     id: 'data-asset-rules',
-    icon: FileCheck02,
+    icon: DataAssetRules,
     titleKey: 'label.data-asset-rules',
     descriptionKey: 'message.data-asset-rules-message',
     isBeta: true,
   },
   {
     id: 'learning-resources',
-    icon: BookOpen01,
+    icon: LearningResources,
     titleKey: 'label.learning-resources',
     descriptionKey: 'message.learning-resources-management-description',
     hasEditView: true,
@@ -134,7 +152,7 @@ export const PLATFORM_SETTINGS_PAGES: PlatformSettingsPage[] = [
   },
   {
     id: 'app-mode',
-    icon: SwitchHorizontal01,
+    icon: DefaultAppMode,
     titleKey: 'label.default-app-mode',
     descriptionKey: 'message.default-app-mode-description',
     hasEditView: true,

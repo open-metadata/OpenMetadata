@@ -290,7 +290,13 @@ const ROOT_HASH_MAPPERS = new Map<string, HashMapper>([
   ],
   ['bots', ([name]) => withSub('bots', name && reencode(name))],
   ['users', mapUser],
-  ['create-user', ([kind]) => (kind === 'bot' ? 'bots/add' : undefined)],
+  [
+    'create-user',
+    ([kind]) =>
+      kind === 'bot'
+        ? 'bots/add'
+        : `members/${membersViewToSubPath({ type: 'user-create' })}`,
+  ],
   [
     'marketplace',
     ([, fqn, action]) =>

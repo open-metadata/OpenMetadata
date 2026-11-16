@@ -22,9 +22,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
-import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.system.EntityStats;
 import org.openmetadata.schema.system.EventPublisherJob;
@@ -43,9 +43,12 @@ import org.openmetadata.service.monitoring.OntologyMetrics;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
 import org.openmetadata.service.rdf.RdfExcludedEntities;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
+import org.openmetadata.service.rdf.storage.CompactionResult;
+import org.openmetadata.service.rdf.storage.RdfStorageLowDiskException;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.quartz.JobExecutionContext;
@@ -93,6 +96,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private long initialProjectionFailureVersion;
   private boolean rebuildsEntireProjection;
   private volatile boolean stopped = false;
+  private boolean projectionUnchanged;
   private volatile long lastWebSocketUpdate = 0;
 
   @Getter private EventPublisherJob jobData;
@@ -107,6 +111,21 @@ public class RdfIndexApp extends AbstractNativeApplication {
             ? null
             : new RdfBatchProcessor(collectionDAO, this.rdfRepository);
     this.admissionGuard = RdfReindexAdmissionGuard.forProduction(collectionDAO);
+  }
+
+  /**
+   * Resolves the repository without throwing. Returns null when RDF was never initialized, which
+   * is the case on servers that start with RDF disabled.
+   */
+  private RdfRepository rdfOrNull() {
+    if (rdfRepository == null) {
+      RdfRepository repository = RdfRepository.getInstanceOrNull();
+      if (repository != null) {
+        rdfRepository = repository;
+        batchProcessor = new RdfBatchProcessor(collectionDAO, repository);
+      }
+    }
+    return rdfRepository;
   }
 
   private RdfRepository rdf() {
@@ -139,6 +158,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private void executeInternal(JobExecutionContext jobExecutionContext) {
     this.jobExecutionContext = jobExecutionContext;
     stopped = false;
+    projectionUnchanged = false;
 
     if (jobData == null) {
       String appConfigJson =
@@ -153,13 +173,12 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
     }
 
-    if (!rdf().isEnabled()) {
-      LOG.error("RDF Repository is not enabled. Please enable RDF in configuration.");
-      updateJobStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(
-          new IndexingError()
-              .withErrorSource(IndexingError.ErrorSource.JOB)
-              .withMessage("RDF Repository is not enabled"));
+    RdfRepository repository = rdfOrNull();
+    if (repository == null || !repository.isEnabled()) {
+      // RDF is optional, so a server without it completes the run with nothing indexed, as
+      // RdfInferenceApp does. Set directly: no rebuild ran, so no rebuild metrics are recorded.
+      LOG.info("RDF is not configured on this server, skipping RDF indexing");
+      jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       sendUpdates(jobExecutionContext, true);
       return;
     }
@@ -263,11 +282,20 @@ public class RdfIndexApp extends AbstractNativeApplication {
         updateJobStatus(EventPublisherJob.Status.STOPPED);
         abandonBuildDataset();
       } else {
+        final String retiring = buildDataset == null ? null : rdf().activeDatasetName();
         final boolean promoted = promoteBuildDataset(indexingRepository);
         updateJobStatus(EventPublisherJob.Status.COMPLETED);
-        if (!promoted) {
-          // In-place indexing reports completion before potentially lengthy disk maintenance.
-          compactStorageBestEffort(indexingRepository);
+        if (promoted) {
+          // Reported first: returning the retired dataset's disk can take minutes.
+          sendUpdates(jobExecutionContext, true);
+          clearRetiredDataset(retiring);
+        } else {
+          // In-place indexing reports completion before potentially lengthy disk maintenance, so
+          // it records its rewrite of the serving graph first: once reported, the run is over.
+          RdfUpdater.recordUntrackedWrite();
+          writesServingGraph = false;
+          sendUpdates(jobExecutionContext, true);
+          compactServingBestEffort();
         }
       }
 
@@ -314,7 +342,9 @@ public class RdfIndexApp extends AbstractNativeApplication {
 
   /**
    * A run that finds another run holding the lock is redundant rather than broken, so it ends
-   * STOPPED with the holder named, as a deferred run does, and does not trip failure alerting.
+   * STOPPED with the holder named, as a deferred run does, and does not trip failure alerting. A
+   * run that ends here, either way, never touched the projection, so it leaves the projection state
+   * as the last indexing run left it.
    */
   private boolean acquireRunLockOrSkip(JobExecutionContext jobExecutionContext) {
     boolean acquired = false;
@@ -323,9 +353,11 @@ public class RdfIndexApp extends AbstractNativeApplication {
       acquired = true;
     } catch (RdfReindexRunLock.HeldByAnotherRun held) {
       LOG.warn(held.getMessage());
+      projectionUnchanged = true;
       endBeforeIndexing(jobExecutionContext, EventPublisherJob.Status.STOPPED, held.getMessage());
     } catch (RuntimeException lockUnavailable) {
       LOG.error("Could not take the RDF reindex lock", lockUnavailable);
+      projectionUnchanged = true;
       endBeforeIndexing(
           jobExecutionContext,
           EventPublisherJob.Status.FAILED,
@@ -400,17 +432,51 @@ public class RdfIndexApp extends AbstractNativeApplication {
                 + "to override the guard.",
             TimeUnit.MILLISECONDS.toMinutes(result.waitedMs()), result.contention());
     LOG.warn(message);
+    projectionUnchanged = true;
     updateJobStatus(EventPublisherJob.Status.STOPPED);
     jobData.setFailure(
         new IndexingError().withErrorSource(IndexingError.ErrorSource.JOB).withMessage(message));
     sendUpdates(jobExecutionContext, true);
   }
 
+  /**
+   * The dataset a promotion retired keeps a full copy of the old graph until the next build reuses
+   * it; nothing reads it, so its disk is returned now. A failure leaves it for that next build.
+   */
+  private void clearRetiredDataset(final String retired) {
+    try {
+      final CompactionResult result = rdf().clearRetiredDataset(retired);
+      LOG.info("Emptied retired RDF dataset '{}' ({})", retired, result.outcome());
+    } catch (RuntimeException exception) {
+      LOG.error(
+          "Could not empty retired RDF dataset '{}'; the next blue/green build clears it",
+          retired,
+          exception);
+    }
+  }
+
+  /**
+   * Live writes keep reaching the serving dataset while it is compacted, and Fuseki blocks them for
+   * the whole copy, so they are paused meanwhile instead of timing out.
+   */
+  private void compactServingBestEffort() {
+    try {
+      rdf()
+          .withServingWritesPaused(
+              runId.toString(), holder -> holder.compact(holder.maintenanceBudget()));
+    } catch (RuntimeException compactFailure) {
+      LOG.warn(
+          "RDF index compaction failed; disk reclamation skipped. Reason: {}",
+          compactFailure.getMessage(),
+          compactFailure);
+    }
+  }
+
   private void compactStorageBestEffort(final RdfRepository repository) {
     // TDB2 copies index pages on every write transaction, including append-only rebuilds.
     // Failure to reclaim obsolete pages does not invalidate the indexed graph.
     try {
-      repository.compactStorage();
+      repository.compact(repository.maintenanceBudget());
     } catch (RuntimeException compactFailure) {
       LOG.warn(
           "RDF index compaction failed; disk reclamation skipped. Reason: {}",
@@ -559,7 +625,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
   private void prepareBuildDataset(RdfRepository indexingRepository, String targetDataset) {
     LOG.info("Preparing blue/green build dataset '{}'", targetDataset);
     indexingRepository.clearAll();
-    indexingRepository.compactStorage();
+    indexingRepository.compact(indexingRepository.maintenanceBudget());
     indexingRepository.reloadOntologies();
     indexingRepository.rebuildOntologyGraphs();
     LOG.info("Build dataset '{}' is empty and ontology-seeded", targetDataset);
@@ -672,26 +738,55 @@ public class RdfIndexApp extends AbstractNativeApplication {
     }
   }
 
+  /**
+   * Empties the serving dataset with every other writer paused. Live writes queue meanwhile and
+   * are applied once the pause ends, so the clear never competes with them for Fuseki's writer.
+   */
   private void clearRdfData() {
     try {
-      rdf().clearAll();
-      LOG.info("Cleared all RDF data");
-      // CLEAR ALL is a logical delete on TDB2: triples are marked free but the
-      // on-disk dataset and journal keep growing across runs. Compact NOW while
-      // the dataset is essentially empty so the next re-ingest writes into a
-      // fresh, small dataset directory. Without this, every recreateIndex run
-      // accumulates ~1x the dataset size on disk and the PVC eventually fills.
-      // Must run BEFORE reloadOntologies(), otherwise the ontology graph gets
-      // copied through compaction unnecessarily.
-      rdf().compactStorage();
-      // CLEAR ALL wipes the ontology and shapes graphs as well; reload them
-      // before indexing starts so SPARQL queries that depend on the ontology
-      // (inference, federated, etc.) work after the wipe.
-      rdf().reloadOntologies();
-      rdf().rebuildOntologyGraphs();
-    } catch (Exception e) {
+      rdf()
+          .withServingWritesPaused(
+              runId.toString(),
+              holder -> {
+                resetServingDataset(holder);
+                return null;
+              });
+    } catch (RuntimeException e) {
       LOG.error("Failed to clear RDF data", e);
-      throw new RuntimeException("Failed to clear RDF data", e);
+      // The run's failure message is all CI keeps, so it names the underlying cause.
+      throw new IllegalStateException(
+          "Failed to clear RDF data: " + ExceptionUtils.getRootCauseMessage(e), e);
+    }
+  }
+
+  /**
+   * CLEAR ALL is a logical delete on TDB2: it writes new pages and frees nothing, so the dataset is
+   * compacted next, while it is empty and even when the clear failed. CLEAR ALL also wipes the
+   * ontology and shapes graphs, which are reloaded before indexing starts.
+   */
+  private static void resetServingDataset(final RdfRepository holder) {
+    try {
+      clearMakingRoom(holder);
+    } finally {
+      holder.compact(holder.maintenanceBudget());
+    }
+    LOG.info("Cleared all RDF data");
+    holder.reloadOntologies();
+    holder.rebuildOntologyGraphs();
+  }
+
+  /**
+   * A reindex is how a store is recovered, so it has to work on a full volume too: when Fuseki's
+   * disk guard refuses the clear, a compaction frees the space old pages hold and the clear runs
+   * again once. A second refusal means the live data itself fills the volume.
+   */
+  private static void clearMakingRoom(final RdfRepository holder) {
+    try {
+      holder.clearAllAsMaintenance(holder.maintenanceBudget());
+    } catch (RdfStorageLowDiskException lowDisk) {
+      LOG.warn("The RDF store refused the reindex clear for low disk; compacting, then retrying");
+      holder.compact(holder.maintenanceBudget());
+      holder.clearAllAsMaintenance(holder.maintenanceBudget());
     }
   }
 
@@ -938,7 +1033,7 @@ public class RdfIndexApp extends AbstractNativeApplication {
     appRecord.setStatus(AppRunRecord.Status.fromValue(jobData.getStatus().value()));
     if (jobData.getFailure() != null) {
       appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", jobData.getFailure()));
+          RdfProjectionStateResolver.failureContext(jobData.getFailure(), projectionUnchanged));
     }
     if (jobData.getStats() != null) {
       appRecord.setSuccessContext(

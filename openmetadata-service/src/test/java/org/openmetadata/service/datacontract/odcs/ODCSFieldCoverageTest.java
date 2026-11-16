@@ -24,6 +24,8 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueSeverity;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.util.ODCSConverter;
 
 class ODCSFieldCoverageTest {
   private static final ObjectMapper YAML = new ObjectMapper(new YAMLFactory());
@@ -79,10 +81,61 @@ class ODCSFieldCoverageTest {
       """;
 
   @Test
+  void itemLevelRulesRemainExplicitlyReportedAndPreserved() throws Exception {
+    var source =
+        YAML.readTree(
+            """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: efdd9fe9-5eda-4b1d-b78d-ff9bda1c864a
+        version: 1.0.0
+        status: active
+        schema:
+          - name: customers
+            logicalType: object
+            properties:
+              - name: orders
+                logicalType: array
+                items:
+                  logicalType: object
+                  quality:
+                    - type: library
+                      metric: nullValues
+                      mustBe: 0
+                  properties:
+                    - name: id
+                      logicalType: integer
+        """);
+    assertEquals(List.of(), ODCSPublishedSchema.validate(source));
+    ODCSImportIssues issues = new ODCSImportIssues();
+    ODCSFieldCoverage.report(source, "customers", issues);
+    ODCSImportIssue quality =
+        issues.toList().stream()
+            .filter(issue -> "schema[0].properties[0].items.quality".equals(issue.getPath()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(ODCSImportIssueSeverity.INFO, quality.getSeverity());
+    assertTrue(quality.getMessage().contains("not shown or applied"));
+    var imported =
+        ODCSConverter.fromODCS(
+            ODCSLenientReader.readOrReject(YAML, source.deepCopy()),
+            new EntityReference().withName("customers").withType("table"),
+            null,
+            ODCSImportIssues.discarding(),
+            source);
+    var exported = ODCSConverter.toODCSDocument(imported, List.of());
+    assertTrue(imported.getOdcsQualityRules() == null || imported.getOdcsQualityRules().isEmpty());
+    assertEquals(
+        source.at("/schema/0/properties/0/items/quality"),
+        exported.at("/schema/0/properties/0/items/quality"));
+    assertEquals(List.of(), ODCSPublishedSchema.validate(exported));
+  }
+
+  @Test
   void fieldsWithoutAnEquivalentAreReportedOncePerKey() throws JsonProcessingException {
     ODCSImportIssue businessName = issueFor("businessName");
 
-    assertEquals(ODCSImportIssueSeverity.WARNING, businessName.getSeverity());
+    assertEquals(ODCSImportIssueSeverity.INFO, businessName.getSeverity());
     assertEquals(ODCSImportIssueCategory.SCHEMA, businessName.getCategory());
     assertEquals(2, businessName.getOccurrences());
     assertEquals("schema[0].properties[0].businessName", businessName.getPath());

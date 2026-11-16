@@ -106,6 +106,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
     onSearchChange,
     onGroupingChange,
     onTypeFilterChange,
+    onSortOrderChange,
   }: {
     statusTabs: ReactNode;
     statusOptions: string[];
@@ -114,6 +115,7 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
     onSearchChange: (value: string) => void;
     onGroupingChange: (value: string) => void;
     onTypeFilterChange: (value: string[]) => void;
+    onSortOrderChange: (value: string) => void;
   }) => (
     <div
       data-status={statusFilter.join(',')}
@@ -144,6 +146,11 @@ jest.mock('../components/InboxTaskListToolbar', () => ({
         data-testid="toolbar-filter-tag"
         onClick={() => onTypeFilterChange(['label.tag-request'])}>
         filter tag
+      </button>
+      <button
+        data-testid="toolbar-sort-oldest"
+        onClick={() => onSortOrderChange('asc')}>
+        oldest first
       </button>
     </div>
   ),
@@ -562,6 +569,7 @@ describe('TasksTab', () => {
       fields: 'assignees,createdBy,about,comments,payload,resolution',
       limit: 25,
       after: 'cur',
+      sortOrder: 'desc',
     });
     // Never the unscoped /tasks endpoint for the personal inbox.
     expect(mockListTasks).not.toHaveBeenCalled();
@@ -578,6 +586,7 @@ describe('TasksTab', () => {
       fields: 'assignees,createdBy,about,comments,payload,resolution',
       limit: 25,
       after: 'cur',
+      sortOrder: 'desc',
     });
   });
 
@@ -639,6 +648,76 @@ describe('TasksTab', () => {
     fireEvent.click(screen.getByTestId('task-t2'));
 
     expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+  });
+
+  // The My Tasks card on the home page links to a task that may have been
+  // resolved since the card last cached it, so the default Open tab can be
+  // empty and settled when the deep link lands. The linked task's detail
+  // must render; the per-status empty state moves to the list column.
+  it('opens on the linked task even when the visible list is empty and settled', () => {
+    hookState = { items: [] as unknown as Task[], isLoading: false, total: 0 };
+
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(
+      within(screen.getByTestId('inbox-tasks-scroll')).getByTestId(
+        'inbox-tasks-open-empty'
+      )
+    ).toBeInTheDocument();
+  });
+
+  // A narrowing that empties the list must neither drop the linked task's
+  // detail nor hide why the list is empty: "no match" and its "Clear all"
+  // show in the list column.
+  it('keeps the linked task detail and says nothing matches when a narrowing empties the list', () => {
+    hookState = {
+      items: [{ id: 't1', type: 'TestCaseResolution' } as unknown as Task],
+      isLoading: false,
+      total: 1,
+    };
+
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    const list = within(screen.getByTestId('inbox-tasks-scroll'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+    expect(list.getByTestId('inbox-tasks-no-match')).toBeInTheDocument();
+
+    fireEvent.click(list.getByText('label.clear-all'));
+
+    expect(list.queryByTestId('inbox-tasks-no-match')).not.toBeInTheDocument();
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
+  // A capped scan is the only way to reach matches on later pages, so its
+  // "Load more" must stay reachable while the linked task holds the detail.
+  it('keeps "Load more" reachable on a capped scan while a linked task is open', () => {
+    const scanned = Array.from(
+      { length: 200 },
+      (_, index) =>
+        ({ id: `t${index}`, type: 'TestCaseResolution' } as unknown as Task)
+    );
+    hookState = { items: scanned, isLoading: false, total: 500, hasMore: true };
+
+    renderTab({}, '/inbox/tasks?taskId=linked');
+
+    fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+
+    const list = within(screen.getByTestId('inbox-tasks-scroll'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('linked');
+    expect(
+      list.getByTestId('inbox-tasks-no-match-scanned')
+    ).toBeInTheDocument();
+
+    fireEvent.click(list.getByText('label.load-more'));
+
+    expect(capturedCanLoadMore?.(scanned)).toBe(true);
   });
 
   it('removes a resolved task and decrements the total when it leaves the filter', () => {
@@ -735,7 +814,13 @@ describe('TasksTab', () => {
 
     renderTab();
 
-    expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+    expect(capturedQueryKey).toEqual([
+      'inbox-task-list',
+      'me',
+      'open',
+      '',
+      'desc',
+    ]);
   });
 
   it('invalidates the sidebar open-task count after a task is resolved', () => {
@@ -832,7 +917,31 @@ describe('TasksTab', () => {
 
       expect(screen.getByTestId('task-t1')).toBeInTheDocument();
       expect(screen.queryByTestId('task-t2')).not.toBeInTheDocument();
-      expect(capturedQueryKey).toEqual(['inbox-task-list', 'me', 'open', '']);
+      expect(capturedQueryKey).toEqual([
+        'inbox-task-list',
+        'me',
+        'open',
+        '',
+        'desc',
+      ]);
+    });
+
+    it('lists oldest first, under its own cache key, once asked to', () => {
+      renderTab();
+
+      fireEvent.click(screen.getByTestId('toolbar-sort-oldest'));
+      capturedFetchPage();
+
+      expect(capturedQueryKey).toEqual([
+        'inbox-task-list',
+        'me',
+        'open',
+        '',
+        'asc',
+      ]);
+      expect(mockListVisibleTasks).toHaveBeenCalledWith(
+        expect.objectContaining({ sortOrder: 'asc' })
+      );
     });
 
     it('sends the search text to the server once typing settles', () => {

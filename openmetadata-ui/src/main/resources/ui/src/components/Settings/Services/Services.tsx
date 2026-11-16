@@ -26,7 +26,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import {
+  GRID_PAGE_SIZE_OPTIONS,
   INITIAL_PAGING_VALUE,
+  LIST_PAGE_SIZE_OPTIONS,
   pagingObject,
 } from '../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../constants/HelperTextUtil';
@@ -45,6 +47,7 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Include } from '../../../generated/type/include';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useTableFilters } from '../../../hooks/useTableFilters';
 import { DatabaseServiceSearchSource } from '../../../interface/search.interface';
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
@@ -56,6 +59,7 @@ import {
   renderHighlightedText,
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
+import { shouldShowPager } from '../../../utils/PaginationUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getServiceDetailsPath } from '../../../utils/RouterUtils';
 import {
@@ -72,6 +76,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { DomainFilterChip } from '../../common/DomainFilterChip/DomainFilterChip.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { ListView } from '../../common/ListView/ListView.component';
+import { ListViewOptions } from '../../common/ListView/ListView.interface';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import RichTextEditorPreviewerNew from '../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -79,6 +84,7 @@ import ButtonSkeleton from '../../common/Skeleton/CommonSkeletons/ControlElement
 import { ColumnsType, TableProps } from '../../common/Table/Table.interface';
 import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component';
 import PageHeader from '../../PageHeader/PageHeader.component';
+import { NO_URL_FILTERS } from './Services.constants';
 
 interface ServicesProps {
   serviceName: ServiceCategory;
@@ -98,6 +104,11 @@ const Services = ({ serviceName }: ServicesProps) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [serviceTypeFilter, setServiceTypeFilter] =
     useState<Array<ServicesType['serviceType']>>();
+  const [currentView, setCurrentView] = useState(ListViewOptions.TABLE);
+  const isCardView = currentView === ListViewOptions.CARD;
+  const pageSizeOptions = isCardView
+    ? GRID_PAGE_SIZE_OPTIONS
+    : LIST_PAGE_SIZE_OPTIONS;
   const {
     paging,
     handlePagingChange,
@@ -105,9 +116,23 @@ const Services = ({ serviceName }: ServicesProps) => {
     handlePageChange,
     pageSize,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(undefined, pageSizeOptions);
+
+  const { setFilters: setPagingUrlParams } = useTableFilters(NO_URL_FILTERS);
+
+  const handleViewChange = useCallback(
+    (view: ListViewOptions) => {
+      setCurrentView(view);
+      setPagingUrlParams({
+        currentPage: null,
+        cursorType: null,
+        cursorValue: null,
+        pageSize: null,
+      });
+    },
+    [setPagingUrlParams]
+  );
   const [deleted, setDeleted] = useState<boolean>(false);
   const { permissions } = usePermissionProvider();
 
@@ -349,22 +374,24 @@ const Services = ({ serviceName }: ServicesProps) => {
 
   const customPaginationTableProps = useMemo(
     () => ({
-      showPagination,
+      showPagination: shouldShowPager(serviceDetails),
       currentPage,
       isLoading,
       isNumberBased: !isEmpty(searchTerm) || !isEmpty(serviceTypeFilter),
       pageSize,
+      pageSizeOptions,
       paging,
       pagingHandler: handleServicePageChange,
       onShowSizeChange: handlePageSizeChange,
     }),
     [
-      showPagination,
+      serviceDetails,
       currentPage,
       isLoading,
       searchTerm,
       serviceTypeFilter,
       pageSize,
+      pageSizeOptions,
       paging,
       handleServicePageChange,
       handlePageSizeChange,
@@ -566,6 +593,7 @@ const Services = ({ serviceName }: ServicesProps) => {
           align="center"
           className="layout-space layout-space-horizontal w-full justify-between m-b-lg"
           data-testid="header"
+          data-tour-step="services"
           gap={2}
           itemClassName="layout-space-item">
           <PageHeader
@@ -609,6 +637,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       <Grid.Item className="layout-column" span={24}>
         <ListView<ServicesType>
           cardRenderer={serviceCardRenderer}
+          currentView={currentView}
           customPaginationProps={customPaginationTableProps}
           deleted={deleted}
           handleDeletedSwitchChange={handleDeletedSwitchChange}
@@ -628,6 +657,7 @@ const Services = ({ serviceName }: ServicesProps) => {
             size: 'small',
             onChange: handleTableChange,
           }}
+          onViewChange={handleViewChange}
         />
       </Grid.Item>
     </Grid>

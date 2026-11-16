@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**1975 endpoints** across 75 resource packages · 1965 carry a summary.
+**2008 endpoints** across 75 resource packages · 1998 carry a summary.
 
 ## (root)
 
@@ -376,6 +376,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `POST` | `/v1/contextCenter/memories` | Create a memory |
 | `PUT` | `/v1/contextCenter/memories` | Create or update a memory |
 | `GET` | `/v1/contextCenter/memories/derivations` | List the memories entities were derived from |
+| `GET` | `/v1/contextCenter/memories/extractedApproval` | Preview approving a document's extracted memories |
+| `PUT` | `/v1/contextCenter/memories/extractedApproval` | Approve a document's extracted memories |
+| `GET` | `/v1/contextCenter/memories/extractionAvailability` | Get whether memories can be extracted |
 | `DELETE` | `/v1/contextCenter/memories/name/{fqn}` | Delete a memory by fully qualified name |
 | `GET` | `/v1/contextCenter/memories/name/{fqn}` | Get a memory by fully qualified name |
 | `PUT` | `/v1/contextCenter/memories/restore` | Restore a soft-deleted memory |
@@ -720,6 +723,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/domains/name/{fqn}/assets` | Get assets for a domain by name |
 | `DELETE` | `/v1/domains/name/{name}` | Delete a domain by name |
 | `GET` | `/v1/domains/name/{name}` | Get a domain by name |
+| `GET` | `/v1/domains/styles` | List domain and data product styles |
 | `GET` | `/v1/domains/{fqn}/tasks` | List tasks for a domain |
 | `DELETE` | `/v1/domains/{id}` | Delete a domain by Id |
 | `GET` | `/v1/domains/{id}` | Get a domain by Id |
@@ -845,6 +849,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/contextCenter/drive/files/{id}` | Get a file by ID |
 | `PATCH` | `/v1/contextCenter/drive/files/{id}` | Update a file via JSON Patch |
 | `GET` | `/v1/contextCenter/drive/files/{id}/download` | Download a file by ID |
+| `POST` | `/v1/contextCenter/drive/files/{id}/extract` | Extract or retry a file's memories |
 | `PUT` | `/v1/contextCenter/drive/files/{id}/move` | Move a drive file to a different folder |
 | `GET` | `/v1/contextCenter/drive/folders` | List folders |
 | `POST` | `/v1/contextCenter/drive/folders` | Create a folder |
@@ -983,9 +988,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 |---|---|---|
 | `GET` | `/v1/events/subscriptions` | List all available Event Subscriptions |
 | `POST` | `/v1/events/subscriptions` | Create a new Event Subscription |
+| `POST` | `/v1/events/subscriptions` | Get what a selection of sources supports |
 | `PUT` | `/v1/events/subscriptions` | Updated an existing or create a new Event Subscription |
 | `DELETE` | `/v1/events/subscriptions/async/{id}` | Asynchronously delete an Event Subscription by Id |
-| `POST` | `/v1/events/subscriptions/capabilities` | Get what a selection of sources supports |
 | `GET` | `/v1/events/subscriptions/history` |  |
 | `GET` | `/v1/events/subscriptions/id/{eventSubscriptionId}/destinations` | Get the destinations for a specific Event Subscription |
 | `GET` | `/v1/events/subscriptions/id/{id}/failedEvents` | Get failed events for a subscription by id |
@@ -1180,6 +1185,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `DELETE` | `/v1/contextCenter/pages/{id}` | Delete a Knowledge Page |
 | `GET` | `/v1/contextCenter/pages/{id}` | Get a Knowledge Page |
 | `PATCH` | `/v1/contextCenter/pages/{id}` | Update a Knowledge Page |
+| `POST` | `/v1/contextCenter/pages/{id}/extract` | Extract or retry an article's memories |
 | `PUT` | `/v1/contextCenter/pages/{id}/followers` | Add a follower |
 | `DELETE` | `/v1/contextCenter/pages/{id}/followers/{userId}` | Remove a follower |
 | `DELETE` | `/v1/contextCenter/pages/{id}/usage` | remove Knowledge Page usage |
@@ -1349,19 +1355,35 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologies` | List ontology definitions |
 | `POST` | `/v1/ontologies` | Create an ontology |
 | `PUT` | `/v1/ontologies` | Create or update an ontology |
+| `POST` | `/v1/ontologies/imports/detect` | Name the format of a local ontology file |
+| `POST` | `/v1/ontologies/imports/preview` | Count what a local RDF or native CSV file would import into a new ontology |
 | `DELETE` | `/v1/ontologies/name/{fqn}` | Delete an ontology definition by name |
 | `GET` | `/v1/ontologies/name/{fqn}` | Get an ontology by name |
 | `PUT` | `/v1/ontologies/restore` | Restore an ontology |
+| `GET` | `/v1/ontologies/reviews` | List the open release reviews the calling user is part of |
 | `DELETE` | `/v1/ontologies/{id}` | Delete an ontology |
 | `GET` | `/v1/ontologies/{id}` | Get an ontology |
 | `PATCH` | `/v1/ontologies/{id}` | Patch an ontology |
 | `PUT` | `/v1/ontologies/{id}/activation` | Activate an approved ontology release or roll back to an older release |
+| `GET` | `/v1/ontologies/{id}/dataGraph` | Get one page of bound concepts ranked by binding count, each with the assets the caller may view |
+| `POST` | `/v1/ontologies/{id}/dataGraph/pages` | Read a graph page with bounded topology over loaded concept prefixes |
+| `GET` | `/v1/ontologies/{id}/export` | Export the unpublished working content of an ontology |
+| `POST` | `/v1/ontologies/{id}/imports/preview` | Preview a local RDF or native CSV file as native ontology draft operations |
+| `GET` | `/v1/ontologies/{id}/library/jobs/{jobId}` | Get a library install job of this ontology |
+| `PUT` | `/v1/ontologies/{id}/library/jobs/{jobId}/cancel` | Cancel a library install job after its current slice |
+| `POST` | `/v1/ontologies/{id}/library/{packId}/install` | Install verified library modules into a native ontology as a background job |
+| `POST` | `/v1/ontologies/{id}/library/{packId}/preview` | Preview verified library modules as native ontology draft operations |
+| `POST` | `/v1/ontologies/{id}/library/{packId}/review` | Review verified library modules item by item before they install |
+| `POST` | `/v1/ontologies/{id}/library/{packId}/summary` | Review verified library modules without returning draft operations |
 | `GET` | `/v1/ontologies/{id}/references` | Find working definitions that reference an exact IRI in this ontology |
+| `GET` | `/v1/ontologies/{id}/releases` | List this ontology's sealed releases, newest first |
 | `POST` | `/v1/ontologies/{id}/releases` | Capture immutable ontology release content |
 | `POST` | `/v1/ontologies/{id}/sparql` | Query the active ontology release |
 | `GET` | `/v1/ontologies/{id}/state` | Get ontology working and activation revisions |
 | `GET` | `/v1/ontologies/{id}/versions` | List ontology versions |
 | `GET` | `/v1/ontologies/{id}/versions/{version}` | Get an ontology version |
+| `GET` | `/v1/ontologies/{id}/working/diff` | Preview working ontology changes against the active release |
+| `GET` | `/v1/ontologies/{id}/working/validation` | Validate every definition in the working draft |
 | `POST` | `/v1/ontology/ai/drafts` | Generate a reviewable ontology change-set Draft |
 | `POST` | `/v1/ontology/ai/mappings/suggestions` | Propose reviewable external concept mappings |
 | `POST` | `/v1/ontology/ai/relationships/suggestions` | Propose reviewable ontology relationships |
@@ -1404,12 +1426,18 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyConcepts` | List ontology concept definitions |
 | `POST` | `/v1/ontologyConcepts` | Create an ontology concept |
 | `PUT` | `/v1/ontologyConcepts` | Create or update an ontology concept |
+| `GET` | `/v1/ontologyConcepts/boundTo/{assetType}/{assetId}` | Get the concepts one catalog asset is bound to, with the columns bound to each |
 | `DELETE` | `/v1/ontologyConcepts/name/{fqn}` | Delete an ontology definition by name |
 | `GET` | `/v1/ontologyConcepts/name/{fqn}` | Get an ontology concept by name |
 | `PUT` | `/v1/ontologyConcepts/restore` | Restore an ontology concept |
 | `DELETE` | `/v1/ontologyConcepts/{id}` | Delete an ontology concept |
 | `GET` | `/v1/ontologyConcepts/{id}` | Get an ontology concept |
 | `PATCH` | `/v1/ontologyConcepts/{id}` | Patch an ontology concept |
+| `GET` | `/v1/ontologyConcepts/{id}/bindings` | Get one page of the catalog bindings of a concept the caller may view |
+| `PUT` | `/v1/ontologyConcepts/{id}/bindings` | Replace one concept catalog association |
+| `DELETE` | `/v1/ontologyConcepts/{id}/bindings/{assetType}/{assetId}` | Remove one concept catalog association |
+| `GET` | `/v1/ontologyConcepts/{id}/deleteImpact` | List the children, relationships, rules and blockers that deleting a concept touches |
+| `POST` | `/v1/ontologyConcepts/{id}/query` | Generate SQL over the concept's bound tables, joined along search-around hops |
 | `GET` | `/v1/ontologyConcepts/{id}/versions` | List ontology concept versions |
 | `GET` | `/v1/ontologyConcepts/{id}/versions/{version}` | Get an ontology concept version |
 | `POST` | `/v1/ontologyEditLocks/acquire` | Acquire an authoring lease |
@@ -1419,6 +1447,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyPacks` | List ontology library packs |
 | `GET` | `/v1/ontologyPacks/{packId}` | Get an ontology library pack |
 | `POST` | `/v1/ontologyPacks/{packId}/install` | Dry-run or install selected ontology pack modules |
+| `GET` | `/v1/ontologyPacks/{packId}/sample` | Preview selected library concepts |
 | `GET` | `/v1/ontologyProperties` | List ontology property definitions |
 | `POST` | `/v1/ontologyProperties` | Create an ontology property |
 | `PUT` | `/v1/ontologyProperties` | Create or update an ontology property |
@@ -1437,7 +1466,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/ontologyReleases/{id}/export` | Export the asserted content of a sealed ontology release |
 | `GET` | `/v1/ontologyReleases/{id}/members/{kind}` | Page through one release's immutable members |
 | `GET` | `/v1/ontologyReleases/{id}/members/{kind}/{memberId}` | Read an immutable release member |
+| `GET` | `/v1/ontologyReleases/{id}/review` | Read this release's review as the calling user sees it |
 | `GET` | `/v1/ontologyReleases/{id}/structure` | Check property declarations and axiom structure in a sealed release |
+| `GET` | `/v1/ontologyReleases/{id}/validation` | Validate a sealed ontology release |
 | `GET` | `/v1/ontologyReleases/{id}/versions/{version}` | Read the release header version submitted to an approval workflow |
 | `GET` | `/v1/relationshipTypes` | List relationship types |
 | `POST` | `/v1/relationshipTypes` | Create a relationship type |
@@ -2069,6 +2100,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/health` | Health check endpoint |
 | `GET` | `/v1/system/mcp/config` | Get MCP server configuration |
 | `PUT` | `/v1/system/mcp/config` | Update MCP server configuration |
+| `GET` | `/v1/system/mcp/tools` | List the MCP server's tools |
 | `GET` | `/v1/system/search/fitness` | Diagnose whether the search cluster is sized for current data |
 | `GET` | `/v1/system/search/nlq` | Check if Nlq is enabled in elastic search setting |
 | `GET` | `/v1/system/security/config` | Get complete security configuration |
@@ -2083,6 +2115,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/system/settings` | List all settings |
 | `PUT` | `/v1/system/settings` | Update setting |
 | `GET` | `/v1/system/settings/customLogicOps` | Get a list of custom JSON logic operations |
+| `PATCH` | `/v1/system/settings/entityRulesSettings/rules/{ruleName}` | Patch one Data Asset Rule |
 | `GET` | `/v1/system/settings/entityRulesSettings/{entityType}` | Get a setting for an entity type |
 | `GET` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes` | List glossary term relation types |
 | `POST` | `/v1/system/settings/glossaryTermRelationSettings/relationTypes` | Create a glossary term relation type |
@@ -2250,7 +2283,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/users/exportAsync` | Export users in a team in CSV format |
 | `POST` | `/v1/users/generatePasswordResetLink` | Generate Password Reset Link |
 | `GET` | `/v1/users/generateRandomPwd` | Generate a random password |
-| `POST` | `/v1/users/generateToken` | Generate JWT Token for a User |
+| `POST` | `/v1/users/generateToken` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/generateToken/{id}` | Generate JWT Token for a Bot User |
 | `PUT` | `/v1/users/import` | Import from CSV to create, and update teams. |
 | `PUT` | `/v1/users/importAsync` | Import from CSV to create, and update teams asynchronously. |
