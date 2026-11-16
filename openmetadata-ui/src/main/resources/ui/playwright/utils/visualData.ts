@@ -431,6 +431,9 @@ export const installVisualData = async (
     if (
       path === 'users/loggedInUser' ||
       path === 'users/name/admin' ||
+      // Fixture entities record `visual_admin` as their updater; user cards
+      // resolve that login, so it is served as the same administrator.
+      path === 'users/name/visual_admin' ||
       path === 'users/00000000-0000-4000-8000-000000000999'
     ) {
       // Visual rendering must not depend on live account data or user-repository
