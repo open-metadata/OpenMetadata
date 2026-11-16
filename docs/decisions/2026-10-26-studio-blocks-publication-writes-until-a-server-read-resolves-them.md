@@ -1,9 +1,9 @@
 # Studio blocks publication writes until a server read resolves an uncertain outcome
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-15 (UI guards moved to Collate)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-11-15 (UI guards moved to Collate) · v3 2026-11-16 (the utils guard moved too)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** useOntologyPublication.test.tsx *(openmetadata-collate)*, useOntologyPublication.utils.test.ts
+- **Guard:** useOntologyPublication.test.tsx *(openmetadata-collate)*, useOntologyPublication.utils.test.ts *(openmetadata-collate)*
 - **Related:** ADR:2026-10-19-ontology-releases-allocate-semantic-versions, PR #36187
 
 ## Context

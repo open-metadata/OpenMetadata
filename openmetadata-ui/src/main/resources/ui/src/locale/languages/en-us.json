@@ -5618,7 +5618,7 @@
     "native-import-skipped-more-groups": "More groups not listed: {{count}}",
     "native-import-skipped-statements": "Skipped statements: {{count}}",
     "native-import-supported-formats": "Turtle, RDF/XML, N-Triples, JSON-LD, or native CSV, up to 10 MB",
-    "native-ontology-import-help": "Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
+    "native-ontology-import-help": "Preview a local RDF or CSV file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.",
     "native-ontology-import-lease-unavailable": "The import draft is locked by another session. Retry when its edit lease is available.",
     "native-ontology-import-unavailable": "Native ontology import is not supported yet. Export uses the active immutable release.",
     "native-relation-count_one": "{{count}} relation",
