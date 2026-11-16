@@ -4191,7 +4191,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "最大回数のログイン失敗後、一定時間（ミリ秒）アクセスがブロックされます。",
+    "access-block-time-message": "最大回数のログイン失敗後、一定時間（秒）アクセスがブロックされます。",
     "access-control-description": "組織の階層とチームのアクセス権限を、ロールとポリシーで調整します。",
     "access-to-collaborate": "誰でもチームに参加し、データを閲覧・共同作業できるようにオープンアクセスを許可します。",
     "access-token-description": "Collate API へのアクセスに使用できる、生成済みのトークンです。",

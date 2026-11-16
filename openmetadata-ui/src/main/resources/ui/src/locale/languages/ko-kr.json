@@ -4191,7 +4191,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "최대 로그인 실패 시도 횟수 이후 밀리초 동안 접근이 차단됩니다.",
+    "access-block-time-message": "최대 로그인 실패 시도 횟수 이후 초 동안 접근이 차단됩니다.",
     "access-control-description": "역할과 정책을 통해 조직 계층 구조 및 팀 접근 권한을 조정합니다.",
     "access-to-collaborate": "누구나 팀에 참여하고, 데이터를 보고, 협업할 수 있도록 개방적인 접근을 허용합니다.",
     "access-token-description": "Token you have generated that can be used to access the Collate API.",

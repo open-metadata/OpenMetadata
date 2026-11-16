@@ -4191,7 +4191,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "El acceso será bloqueado durante milisegundos después de que se realicen el máximo de intentos de inicio de sesión fallidos.",
+    "access-block-time-message": "El acceso será bloqueado durante segundos después de que se realicen el máximo de intentos de inicio de sesión fallidos.",
     "access-control-description": "Alinea el acceso con la jerarquía organizativa y el acceso del equipo con roles y políticas.",
     "access-to-collaborate": "Permitir el acceso abierto para que cualquier persona se una al equipo, vea datos y colabore.",
     "access-token-description": "Token que has generado y que se puede usar para acceder a la API de Collate.",

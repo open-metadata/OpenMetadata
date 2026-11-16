@@ -4191,7 +4191,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "Åtkomsten blockeras i millisekunder efter att maxantalet misslyckade inloggningsförsök har utförts.",
+    "access-block-time-message": "Åtkomsten blockeras i sekunder efter att maxantalet misslyckade inloggningsförsök har utförts.",
     "access-control-description": "Anpassa efter din organisationshierarki och teamåtkomst med roller och policyer.",
     "access-to-collaborate": "Tillåt öppen åtkomst så att vem som helst kan gå med i teamet, visa data och samarbeta.",
     "access-token-description": "Token you have generated that can be used to access the Collate API.",

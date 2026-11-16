@@ -4191,7 +4191,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "Toegang wordt geblokkeerd voor milliseconden nadat het maximale aantal mislukte aanmeldpogingen is uitgevoerd.",
+    "access-block-time-message": "Toegang wordt geblokkeerd voor seconden nadat het maximale aantal mislukte aanmeldpogingen is uitgevoerd.",
     "access-control-description": "Stem af op je organisatiehiërarchie en teamtoegang met rollen en beleidsregels.",
     "access-to-collaborate": "Sta open toegang toe voor iedereen om lid te worden van het team, data te bekijken en samen te werken.",
     "access-token-description": "Token dat u hebt gegenereerd en kunt gebruiken voor toegang tot de Collate API.",
