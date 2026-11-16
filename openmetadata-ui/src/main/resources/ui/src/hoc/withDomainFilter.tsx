@@ -35,6 +35,13 @@ const isTaskListAboutAssets = (config: InternalAxiosRequestConfig) =>
     Boolean(config.url?.startsWith(`${TASKS_PATH}/`))) &&
   ABOUT_ASSET_TASK_PARAMS.some((param) => Boolean(config.params?.[param]));
 
+// An asset's own activity (its Activity tab) is not narrowed either; the activity feed is.
+const ASSET_ACTIVITY_PATH = '/activity/entity/';
+
+const isAboutOneAsset = (config: InternalAxiosRequestConfig) =>
+  isTaskListAboutAssets(config) ||
+  Boolean(config.url?.startsWith(ASSET_ACTIVITY_PATH));
+
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
     return { query: { bool: {} } };
@@ -211,11 +218,7 @@ export const withDomainFilter = (
     return withDomainOnReportBatch(config, activeDomain);
   }
 
-  if (
-    !activeDomain ||
-    config.method !== 'get' ||
-    isTaskListAboutAssets(config)
-  ) {
+  if (!activeDomain || config.method !== 'get' || isAboutOneAsset(config)) {
     return config;
   }
 
