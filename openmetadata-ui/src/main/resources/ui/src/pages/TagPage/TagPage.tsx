@@ -801,7 +801,13 @@ const TagPage = () => {
 
     const statusBadge =
       shouldShowStatus && entityStatus ? (
-        <EntityStatusBadge showDivider={false} status={entityStatus} />
+        <EntityStatusBadge
+          entityId={tagItem.id}
+          entityType={EntityType.TAG}
+          fqn={tagItem.fullyQualifiedName}
+          showDivider={false}
+          status={entityStatus}
+        />
       ) : null;
 
     const disabledBadge = tagItem.disabled ? (

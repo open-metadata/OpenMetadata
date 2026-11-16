@@ -7,7 +7,7 @@ This connector extracts **DataStreams**, **Calculated Insights**, and **DataTran
 ## Requirements
 
 - A Salesforce Connected App with OAuth 2.0 Client Credentials flow enabled.
-- The connected app must have the **Manage Data Cloud** and **Access Data Cloud APIs** OAuth scopes.
+- The connected app must have the Data 360 OAuth scopes `cdp_query_api` and `cdp_profile_api`.
 - For lineage: a Data 360 database service must be ingested first. Set `data360DbServiceName` to its service name.
 
 ## Connection Details
@@ -33,7 +33,7 @@ $$
 $$section
 ### Salesforce Domain $(id="salesforceDomain")
 
-The login domain for your Salesforce org. Use `login` for production or `test` for sandboxes.
+Your org's **My Domain**, without `.salesforce.com` (e.g. `mycompany.my` for `mycompany.my.salesforce.com`). The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test` with `invalid_grant: request not supported on this domain`.
 $$
 
 $$section

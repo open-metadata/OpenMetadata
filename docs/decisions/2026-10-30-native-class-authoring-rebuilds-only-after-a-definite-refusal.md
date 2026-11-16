@@ -1,9 +1,9 @@
 # Native class authoring rebuilds its plan only after a definite refusal
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `OntologyNewClassPanel.test.tsx`, `useOntologyChangeSetApply.test.tsx`, `OntologyNativeChangeSet.utils.test.ts`
+- **Guard:** `OntologyNewClassPanel.test.tsx` *(openmetadata-collate)*, `useOntologyChangeSetApply.test.tsx` *(openmetadata-collate)*, `OntologyNativeChangeSet.utils.test.ts` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-16-native-ontologies-share-studio-and-memory-review; ADR:2026-10-19-native-ontology-imports-use-working-drafts; PR #36721
 
 ## Context
@@ -23,3 +23,7 @@ After a refusal, the panel shows the error and unlocks the form and Close, and C
 ## Consequences
 
 After a refusal, nothing was applied, so a new plan is safe and uses the current working revision. A refusal at the apply stage, such as a contended lease, comes after the create, so the refused attempt's change set stays behind unapplied, in DRAFT or APPLY_FAILED, and the rebuild creates a second change set under a new name. After an unknown outcome, the apply may have committed, so a new plan with a new name could create the class twice. Re-reading the frozen change set either finds it applied or applies it once. A caller that wants rebuilds must opt in, and it must build its plan with fresh identities for each attempt. If the server ever returns a 4xx after committing, this rule would rebuild a written plan and has to change.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.
