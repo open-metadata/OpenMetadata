@@ -13,20 +13,10 @@
 
 import type { ChartStatus } from '@openmetadata/ui-core-components/charts';
 import { TestCaseStatus } from '../../../generated/entity/feed/testCaseResult';
-import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import type { CustomAreaChartData } from '../../Visualisations/Chart/Chart.interface';
 
 /** Stable fallback while an area chart has no data, so its memoized body doesn't recompute. */
 export const EMPTY_CHART_DATA: CustomAreaChartData[] = [];
-
-export const OPEN_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] = [
-  TestCaseResolutionStatusTypes.New,
-  TestCaseResolutionStatusTypes.ACK,
-  TestCaseResolutionStatusTypes.Assigned,
-];
-
-export const RESOLVED_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] =
-  [TestCaseResolutionStatusTypes.Resolved];
 
 /** Segment order for TestCaseStatusPieChartWidget: Success, Failed, Aborted */
 export const TEST_CASE_STATUS_PIE_SEGMENT_ORDER: TestCaseStatus[] = [

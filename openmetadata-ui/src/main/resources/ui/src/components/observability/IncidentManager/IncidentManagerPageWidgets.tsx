@@ -13,6 +13,10 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
+import {
+  OPEN_INCIDENT_STATUS_TYPES,
+  RESOLVED_INCIDENT_STATUS_TYPES,
+} from '../../../constants/TestSuite.constant';
 import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import {
   getCurrentMillis,
@@ -20,10 +24,6 @@ import {
   getEpochMillisForPastDays,
   getStartOfDayInMillis,
 } from '../../../utils/date-time/DateTimeUtils';
-import {
-  OPEN_INCIDENT_STATUS_TYPES,
-  RESOLVED_INCIDENT_STATUS_TYPES,
-} from '../../DataQuality/ChartWidgets/ChartWidgets.constants';
 import IncidentTimeChartWidget from '../../DataQuality/ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
 import IncidentTypeAreaChartWidget from '../../DataQuality/ChartWidgets/IncidentTypeAreaChartWidget/IncidentTypeAreaChartWidget.component';
 
@@ -44,16 +44,16 @@ const IncidentManagerPageWidgets = () => {
       <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-2 tw:xl:grid-cols-4">
         <IncidentTypeAreaChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
-          height={60}
           description={t('message.open-incident-card-description')}
+          height={60}
           incidentStatusTypes={OPEN_INCIDENT_STATUS_TYPES}
           name="open-incident"
           title={t('label.open-incident-plural')}
         />
         <IncidentTypeAreaChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
-          height={60}
           description={t('message.resolved-incident-card-description')}
+          height={60}
           incidentStatusTypes={RESOLVED_INCIDENT_STATUS_TYPES}
           name="resolved-incident"
           title={t('label.resolved-incident-plural')}
