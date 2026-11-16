@@ -20,6 +20,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.CreateBot;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreatePersona;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -38,6 +40,7 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -1040,7 +1043,92 @@ public class BotImpersonationIT {
     assertTrue(body.contains(target.getName()), "Expected the target user back: " + body);
   }
 
+  @Test
+  void test_impersonatedEdit_isVersionedApartFromTheTargetsOwnEdits(TestNamespace ns) {
+    User target = createRegularUser(ns, "versions");
+    User botUser = createBotUser(ns, "versions");
+    createBot(ns.prefix("imp_versions_bot"), botUser, true);
+    OpenMetadataClient viaBot = impersonationClient(generateBotToken(botUser), target.getName());
+    OpenMetadataClient direct =
+        SdkClients.createClient(target.getName(), target.getEmail(), new String[] {});
+    Glossary glossary = createGlossary(ns, "impversions");
+
+    // All three edits land inside one session window, where edits by the same user fold into a
+    // single version: the bot's edit must still keep a version of its own.
+    patchDescription(direct, glossary, "Written by the user");
+    patchDescription(viaBot, glossary, "Written by the bot for the user");
+    patchDescription(direct, glossary, "Written by the user again");
+
+    String user = target.getName();
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.4, user, null),
+            new VersionAuthor(0.3, user, botUser.getName()),
+            new VersionAuthor(0.2, user, null),
+            new VersionAuthor(0.1, "admin", null)),
+        versionAuthors(glossary.getId()),
+        "Each version must name who made it and the bot that made it for them");
+  }
+
+  @Test
+  void test_impersonatedEditsInOneSession_foldIntoOneVersion(TestNamespace ns) {
+    User target = createRegularUser(ns, "fold");
+    User botUser = createBotUser(ns, "fold");
+    createBot(ns.prefix("imp_fold_bot"), botUser, true);
+    OpenMetadataClient viaBot = impersonationClient(generateBotToken(botUser), target.getName());
+    Glossary glossary = createGlossary(ns, "impfold");
+
+    patchDescription(viaBot, glossary, "Written by the bot for the user");
+    patchDescription(viaBot, glossary, "Rewritten by the bot for the user");
+
+    assertEquals(
+        List.of(
+            new VersionAuthor(0.2, target.getName(), botUser.getName()),
+            new VersionAuthor(0.1, "admin", null)),
+        versionAuthors(glossary.getId()),
+        "Edits one bot makes for one user within a session must still fold into one version");
+  }
+
   private record IdentityCall(HttpMethod method, String path, Object body) {}
+
+  private record VersionAuthor(double version, String updatedBy, String impersonatedBy) {}
+
+  private static Glossary createGlossary(TestNamespace ns, String name) {
+    return ns.trackRoot(
+        Entity.GLOSSARY,
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix(name))
+                    .withDescription("Written by admin")));
+  }
+
+  private static void patchDescription(
+      OpenMetadataClient client, Glossary glossary, String description) {
+    client
+        .glossaries()
+        .patch(
+            glossary.getId().toString(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"%s\"}]"
+                    .formatted(description)));
+  }
+
+  private static List<VersionAuthor> versionAuthors(UUID glossaryId) {
+    EntityHistory history = SdkClients.adminClient().glossaries().getVersionList(glossaryId);
+    return history.getVersions().stream()
+        .map(
+            version ->
+                version instanceof String json
+                    ? JsonUtils.readValue(json, Glossary.class)
+                    : JsonUtils.convertValue(version, Glossary.class))
+        .map(
+            version ->
+                new VersionAuthor(
+                    version.getVersion(), version.getUpdatedBy(), version.getImpersonatedBy()))
+        .toList();
+  }
 
   private OpenMetadataClient grantedBotImpersonating(
       TestNamespace ns, String suffix, String targetUserName) {

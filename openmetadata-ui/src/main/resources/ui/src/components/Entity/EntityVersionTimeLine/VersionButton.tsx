@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { toString } from 'lodash';
 import { forwardRef } from 'react';
@@ -34,10 +34,19 @@ export const VersionButton = forwardRef<
   ) => {
     const { t } = useTranslation();
 
-    const { updatedBy, version: versionNumber, updatedAt } = version;
+    const {
+      updatedBy,
+      impersonatedBy,
+      version: versionNumber,
+      updatedAt,
+    } = version;
     const [, , user] = useUserProfile({
       permission: true,
       name: updatedBy,
+    });
+    const [, , impersonator] = useUserProfile({
+      permission: Boolean(impersonatedBy),
+      name: impersonatedBy ?? '',
     });
 
     const versionText = `v${parseFloat(versionNumber).toFixed(1)}`;
@@ -110,6 +119,24 @@ export const VersionButton = forwardRef<
               {formatDateTime(updatedAt)}
             </span>
           </div>
+          {impersonatedBy ? (
+            <Box
+              align="center"
+              data-testid="version-impersonated-by"
+              gap={1}
+              wrap="wrap">
+              <Typography size="text-xs">
+                {t('label.impersonated-by-with-colon')}
+              </Typography>
+              <UserPopOverCard profileWidth={16} userName={impersonatedBy}>
+                <Link
+                  className="tw:text-xs"
+                  to={getSettingsLink(getUserPath(impersonatedBy))}>
+                  {getEntityName(impersonator) || impersonatedBy}
+                </Link>
+              </UserPopOverCard>
+            </Box>
+          ) : null}
         </div>
       </div>
     );

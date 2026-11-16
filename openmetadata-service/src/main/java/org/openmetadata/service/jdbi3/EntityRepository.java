@@ -13169,13 +13169,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           && operation == Operation.PATCH
           && !Boolean.TRUE.equals(original.getDeleted()) // Entity is not soft deleted
           && !operation.isDelete() // Operation must be an update
-          && original
-              .getUpdatedBy()
-              .equals(updated.getUpdatedBy()) // Must be updated by the same user
+          && isSameActor(original, updated)
           && updated.getUpdatedAt() - original.getUpdatedAt()
               <= sessionTimeoutMillis // With in session timeout
           && diffChangeSource();
       // changes to children
+    }
+
+    /**
+     * A user's own edits and the edits a bot makes on their behalf stay separate versions, so the
+     * version history keeps naming the bot behind each change instead of only the last writer.
+     */
+    private boolean isSameActor(T original, T updated) {
+      return original.getUpdatedBy().equals(updated.getUpdatedBy())
+          && Objects.equals(original.getImpersonatedBy(), updated.getImpersonatedBy());
     }
 
     private boolean wasRenamedInSession(T original) {
