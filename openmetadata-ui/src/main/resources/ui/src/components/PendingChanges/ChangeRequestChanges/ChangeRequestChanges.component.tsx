@@ -21,10 +21,13 @@ import {
   ChangeEntry,
   ChangeKind,
   ChangeValue,
+  MAX_TEXT_LENGTH,
 } from './ChangeRequestChanges.utils';
 
 interface ChangeRequestChangesProps {
   ops?: MutationOp[];
+  /** Shows text values in full instead of a short preview, where a reviewer decides on them. */
+  fullText?: boolean;
 }
 
 const ValueChip = ({
@@ -136,9 +139,19 @@ const FieldChanges = ({
  * loses (an update shows the previous value struck through), and links tags, glossary terms and
  * entities by their fully qualified name. Column changes are listed per column.
  */
-const ChangeRequestChanges = ({ ops }: ChangeRequestChangesProps) => {
+const ChangeRequestChanges = ({
+  ops,
+  fullText = false,
+}: ChangeRequestChangesProps) => {
   const { t } = useTranslation();
-  const sections = useMemo(() => buildChangeSections(ops), [ops]);
+  const sections = useMemo(
+    () =>
+      buildChangeSections(
+        ops,
+        fullText ? Number.POSITIVE_INFINITY : MAX_TEXT_LENGTH
+      ),
+    [ops, fullText]
+  );
 
   return (
     <div

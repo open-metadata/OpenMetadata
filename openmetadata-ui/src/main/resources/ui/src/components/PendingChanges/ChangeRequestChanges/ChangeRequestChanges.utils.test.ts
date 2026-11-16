@@ -148,6 +148,27 @@ describe('buildChangeSections', () => {
     ]);
   });
 
+  it('cuts a long column description to a preview unless the full text is asked for', () => {
+    const shared = 'a'.repeat(130);
+    const ops = [
+      op(
+        MutationOpType.Set,
+        'columns',
+        [{ name: 'id', description: `${shared} new`, tags: [] }],
+        [{ name: 'id', description: `${shared} old`, tags: [] }]
+      ),
+    ];
+
+    const [preview] = buildChangeSections(ops);
+    const [full] = buildChangeSections(ops, Number.POSITIVE_INFINITY);
+
+    expect(preview.entries[0].values[0].text).toBe(
+      preview.entries[0].previous[0].text
+    );
+    expect(full.entries[0].values).toEqual([{ text: `${shared} new` }]);
+    expect(full.entries[0].previous).toEqual([{ text: `${shared} old` }]);
+  });
+
   it('reports added and removed columns, and nested columns by their path', () => {
     const before = [
       { name: 'gone', tags: [] },

@@ -1653,9 +1653,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return getRequestableStages(get(null, id, getFields("*")));
   }
 
-  // Clearing a request needs no check.
+  // Clearing a request needs no check. The stages are read from the stored entity with every field,
+  // as the requestable-stages endpoint reads them, so a stage that is offered is accepted.
   private void validateLifecycleRequest(T entity, EntityStatus requested) {
-    if (!getRequestableStages(entity).contains(requested.value())) {
+    if (!getRequestableStages(entity.getId()).contains(requested.value())) {
       throw BadRequestException.of(
           "The lifecycle of %s '%s' does not move it to %s on request"
               .formatted(entityType, entity.getFullyQualifiedName(), requested.value()));

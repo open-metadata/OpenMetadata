@@ -258,7 +258,7 @@ const TextDiff = ({ before, after }: { before: string; after: string }) => (
 const SuggestionBody = ({ suggestion }: { suggestion: Suggestion }) => {
   const [first] = suggestion.ops;
   if (isColumnsChange(suggestion)) {
-    return <ChangeRequestChanges ops={suggestion.ops} />;
+    return <ChangeRequestChanges fullText ops={suggestion.ops} />;
   }
   if (isTextChange(suggestion)) {
     return (
