@@ -22,9 +22,13 @@ import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyConceptType;
+import org.openmetadata.schema.type.OntologyExpression;
+import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
@@ -252,6 +256,37 @@ class NativeOntologyImportItemsTest {
     assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
   }
 
+  // The server refuses a second identical rule, so the preview must not plan one it would refuse.
+  @Test
+  void aRuleListedTwiceIsADuplicateAndAddsNoSecondOperation() {
+    final OntologyConcept parent = concept("https://example.org/items/B", "B");
+    final OntologyConcept child = concept("https://example.org/items/A", "A");
+    final var source =
+        new NativeOntologyRdfImporter.Source(
+            NativeOntologyImportFormat.CSV,
+            new NativeOntologyDocument(
+                null,
+                List.of(parent, child),
+                List.of(),
+                List.of(subClassOf(child, parent), subClassOf(child, parent))));
+
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    final var axiomStatuses =
+        preview.getSummary().getItems().stream()
+            .filter(item -> item.getKind() == NativeOntologyImportItemKind.RELATIONSHIP)
+            .map(NativeOntologyImportItem::getStatus)
+            .toList();
+    assertEquals(
+        List.of(NativeOntologyImportItemStatus.NEW, NativeOntologyImportItemStatus.DUPLICATE),
+        axiomStatuses);
+    assertEquals(
+        1,
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getAxiom() != null)
+            .count());
+  }
+
   @Test
   void aRelationshipToAClassNobodyDeclaresIsSkippedWithItsReason() {
     final var preview =
@@ -459,6 +494,18 @@ class NativeOntologyImportItemsTest {
         .withIri(URI.create(iri))
         .withConceptType(OntologyConceptType.OWL_CLASS)
         .withDisplayName(label);
+  }
+
+  private static OntologyAxiom subClassOf(
+      final OntologyConcept child, final OntologyConcept parent) {
+    return new OntologyAxiom()
+        .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+        .withSubjectIri(child.getIri())
+        .withExpressions(
+            List.of(
+                new OntologyExpression()
+                    .withKind(OntologyExpressionKind.NAMED_CLASS)
+                    .withClassIri(parent.getIri())));
   }
 
   private static OntologyWorkingSnapshot.Snapshot emptySnapshot(final Ontology root) {

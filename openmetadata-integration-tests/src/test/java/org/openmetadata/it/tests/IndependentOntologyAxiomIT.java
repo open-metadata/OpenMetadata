@@ -90,6 +90,23 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  void aSecondRuleStatingTheSameThingIsRefused(TestNamespace ns) {
+    Ontology ontology = createModel(ns, "reviewedOntology");
+    var service = SdkClients.adminClient().ontologyAxioms();
+    service.create(axiomRequest(ontology));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> service.create(axiomRequest(ontology).withName("CustomerIsPartyAgain")));
+
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("Customer is a Party"), refused.getMessage());
+    var page = service.list(new ListParams().addFilter("ontologyId", ontology.getId().toString()));
+    assertEquals(1, page.getData().size());
+  }
+
+  @Test
   void writesCannotGrantApprovalOrMoveAnAxiom(TestNamespace ns) {
     Ontology ontology = createModel(ns, "reviewedOntology");
     Ontology other = createModel(ns, "other");

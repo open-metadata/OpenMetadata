@@ -24,6 +24,7 @@ import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
 import org.openmetadata.service.ontology.OntologyReferences;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
@@ -71,6 +72,10 @@ final class OntologyWorkingModel {
         if (change.after() != null) {
           context.add(change.after(), true);
         }
+        if (change.after() instanceof OntologyAxiom axiom
+            && !Boolean.TRUE.equals(axiom.getDeleted())) {
+          requireDistinctRule(ontologyId, axiom);
+        }
         if (change.before() instanceof OntologyEntityInterface declaration) {
           context.dependents(Set.of(declaration.getIri().toString()));
         } else if (change.after() instanceof OntologyEntityInterface declaration) {
@@ -80,6 +85,33 @@ final class OntologyWorkingModel {
     }
     context.expand();
     OntologyStructureValidator.requireValidWorking(context.values(), context.affected);
+  }
+
+  /**
+   * A second rule that states exactly what a live one states adds nothing and lists twice in the
+   * Studio, so the save is refused. Signatures compare the normalized content, not names.
+   */
+  private void requireDistinctRule(final UUID ontologyId, final OntologyAxiom axiom) {
+    final String signature = NativeOntologyDocument.signature(axiom);
+    dao
+        .ontologyReferenceDAO()
+        .sameSubjectAxioms(
+            ontologyId,
+            axiom.getAxiomType().value(),
+            axiom.getId(),
+            DigestUtils.sha256Hex(axiom.getSubjectIri().toString()),
+            LIMIT)
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))
+        .filter(other -> NativeOntologyDocument.signature(other).equals(signature))
+        .findFirst()
+        .ifPresent(
+            other -> {
+              throw new BadRequestException(
+                  String.format(
+                      "The rule '%s' already states this; a duplicate rule adds nothing",
+                      other.getDisplayName() == null ? other.getName() : other.getDisplayName()));
+            });
   }
 
   OntologyProfileReport validate(final OntologyAxiom proposed) {
