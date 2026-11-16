@@ -21,6 +21,7 @@ import static org.openmetadata.service.governance.workflows.util.ChangePreviewUt
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -28,6 +29,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
@@ -106,35 +108,47 @@ public final class ChangeRequestVisibility {
 
   /**
    * Removes, from each task that reviews a change request the caller may not view, the request's
-   * fields from the payload and the payload from the change history. The task itself stays.
+   * fields from the payload and the payload from the change history. The task itself stays. A page
+   * of tasks reads its requests in one query and their review tasks in one batch.
    */
   public static void redactTasks(
       Authorizer authorizer, SecurityContext securityContext, List<Task> tasks) {
     String caller = securityContext.getUserPrincipal().getName();
-    if (!SubjectContext.getSubjectContext(caller).isAdmin()) {
-      Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
-      listOrEmpty(tasks).stream()
-          .filter(ChangeRequestTasks::reviewsChangeRequest)
-          .filter(task -> !mayViewRequestOf(authorizer, securityContext, task, seesAllByEntity))
+    List<Task> reviews =
+        listOrEmpty(tasks).stream().filter(ChangeRequestTasks::reviewsChangeRequest).toList();
+    if (!reviews.isEmpty() && !SubjectContext.getSubjectContext(caller).isAdmin()) {
+      Map<UUID, UUID> requestIdByTask = requestIdsOf(reviews);
+      Set<UUID> visible =
+          visibleRequestIds(
+              authorizer, securityContext, requestsById(requestIdByTask.values()).values());
+      reviews.stream()
+          .filter(task -> !visible.contains(requestIdByTask.get(task.getId())))
           .forEach(ChangeRequestVisibility::redact);
     }
   }
 
-  private static boolean mayViewRequestOf(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      Task task,
-      Map<UUID, Boolean> seesAllByEntity) {
+  // Only the requests the caller neither made nor sees as owner or reviewer need their review
+  // task loaded, and those tasks are loaded together.
+  private static Set<UUID> visibleRequestIds(
+      Authorizer authorizer, SecurityContext securityContext, Collection<ChangeRequest> requests) {
     String caller = securityContext.getUserPrincipal().getName();
-    ChangeRequest request = requestOf(task);
-    return request != null
-        && isVisible(
-            authorizer,
-            securityContext,
-            request,
-            () ->
-                seesAllByEntity.computeIfAbsent(
-                    request.getEntityId(), id -> seesAll(caller, entityContext(request))));
+    Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
+    Map<Boolean, List<ChangeRequest>> byDirectView =
+        requests.stream()
+            .collect(
+                Collectors.partitioningBy(
+                    request ->
+                        caller.equals(request.getRequestedBy())
+                            || seesAllByEntity.computeIfAbsent(
+                                request.getEntityId(),
+                                id -> seesAll(caller, entityContext(request)))));
+    Set<UUID> reviewable = reviewableTasks(authorizer, securityContext, byDirectView.get(false));
+    Set<UUID> visible = new HashSet<>();
+    byDirectView.get(true).forEach(request -> visible.add(request.getId()));
+    byDirectView.get(false).stream()
+        .filter(request -> reviewable.contains(request.getTaskId()))
+        .forEach(request -> visible.add(request.getId()));
+    return visible;
   }
 
   private static boolean isVisible(
@@ -149,18 +163,29 @@ public final class ChangeRequestVisibility {
             .contains(request.getTaskId());
   }
 
-  private static ChangeRequest requestOf(Task task) {
-    Object requestId = JsonUtils.getMap(task.getPayload()).get(CHANGE_REQUEST_ID_KEY);
-    ChangeRequest request = null;
-    try {
-      request =
-          ChangeRequestService.dao()
-              .changeRequestDAO()
-              .findById(UUID.fromString(String.valueOf(requestId)));
-    } catch (IllegalArgumentException malformed) {
-      LOG.warn("[ChangeRequest] Task {} names no valid change request", task.getId());
+  private static Map<UUID, UUID> requestIdsOf(List<Task> reviews) {
+    Map<UUID, UUID> requestIdByTask = new HashMap<>();
+    for (Task task : reviews) {
+      Object requestId = JsonUtils.getMap(task.getPayload()).get(CHANGE_REQUEST_ID_KEY);
+      try {
+        requestIdByTask.put(task.getId(), UUID.fromString(String.valueOf(requestId)));
+      } catch (IllegalArgumentException malformed) {
+        LOG.warn("[ChangeRequest] Task {} names no valid change request", task.getId());
+      }
     }
-    return request;
+    return requestIdByTask;
+  }
+
+  private static Map<UUID, ChangeRequest> requestsById(Collection<UUID> ids) {
+    Map<UUID, ChangeRequest> requests = new HashMap<>();
+    if (!ids.isEmpty()) {
+      List<String> distinct = ids.stream().distinct().map(UUID::toString).toList();
+      ChangeRequestService.dao()
+          .changeRequestDAO()
+          .findByIds(distinct)
+          .forEach(request -> requests.put(request.getId(), request));
+    }
+    return requests;
   }
 
   private static void redact(Task task) {

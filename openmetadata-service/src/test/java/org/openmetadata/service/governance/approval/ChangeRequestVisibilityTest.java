@@ -27,6 +27,9 @@ import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
@@ -94,14 +97,15 @@ class ChangeRequestVisibilityTest {
     entity
         .when(() -> Entity.getEntities(anyList(), anyString(), eq(Include.ALL)))
         .thenAnswer(invocation -> List.of(reviewTask()));
-    when(changeRequestDAO.findById(requestId))
+    when(changeRequestDAO.findByIds(List.of(requestId.toString())))
         .thenReturn(
-            new ChangeRequest()
-                .withId(requestId)
-                .withEntityType(Entity.GLOSSARY)
-                .withEntityId(entityId)
-                .withRequestedBy(REQUESTER)
-                .withTaskId(taskId));
+            List.of(
+                new ChangeRequest()
+                    .withId(requestId)
+                    .withEntityType(Entity.GLOSSARY)
+                    .withEntityId(entityId)
+                    .withRequestedBy(REQUESTER)
+                    .withTaskId(taskId)));
     SubjectContext reader = subject(false);
     SubjectContext admin = subject(true);
     subjects.when(() -> SubjectContext.getSubjectContext(anyString())).thenReturn(reader);
@@ -168,10 +172,32 @@ class ChangeRequestVisibilityTest {
 
   @Test
   void otherReaderGetsTheTaskWithoutTheRequestFieldsWhenTheRequestIsGone() {
-    when(changeRequestDAO.findById(requestId)).thenReturn(null);
+    when(changeRequestDAO.findByIds(List.of(requestId.toString()))).thenReturn(List.of());
 
     assertRedacted(
         ChangeRequestVisibility.redactTask(authorizer, callerNamed(REQUESTER), reviewTask()));
+  }
+
+  @Test
+  void aPageOfReviewTasksReadsItsRequestsAndTheirTasksOnce() {
+    List<Task> page = List.of(reviewTask(), reviewTask(), reviewTask());
+
+    ChangeRequestVisibility.redactTasks(authorizer, callerNamed(READER), page);
+
+    page.forEach(ChangeRequestVisibilityTest::assertRedacted);
+    verify(changeRequestDAO, times(1)).findByIds(anyList());
+    verify(changeRequestDAO, never()).findById(any(UUID.class));
+    entity.verify(() -> Entity.getEntities(anyList(), anyString(), eq(Include.ALL)), times(1));
+  }
+
+  @Test
+  void theRequesterReadsAPageWithoutLoadingTheReviewTasks() {
+    List<Task> page = List.of(reviewTask(), reviewTask());
+
+    ChangeRequestVisibility.redactTasks(authorizer, callerNamed(REQUESTER), page);
+
+    page.forEach(ChangeRequestVisibilityTest::assertKept);
+    entity.verify(() -> Entity.getEntities(anyList(), anyString(), eq(Include.ALL)), never());
   }
 
   private void assertRequestFieldsKept(String caller) {

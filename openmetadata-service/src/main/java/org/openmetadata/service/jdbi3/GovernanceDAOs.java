@@ -379,6 +379,10 @@ public interface GovernanceDAOs {
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findById(@BindUUID("id") UUID id);
 
+    @SqlQuery("SELECT * FROM change_request WHERE id IN (<ids>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> findByIds(@BindList("ids") List<String> ids);
+
     @SqlQuery("SELECT * FROM change_request WHERE id = :id FOR UPDATE")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findByIdForUpdate(@BindUUID("id") UUID id);
