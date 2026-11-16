@@ -58,6 +58,15 @@ export const INITIAL_TEST_SUMMARY = {
   total: 0,
 };
 
+export const OPEN_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] = [
+  TestCaseResolutionStatusTypes.New,
+  TestCaseResolutionStatusTypes.ACK,
+  TestCaseResolutionStatusTypes.Assigned,
+];
+
+export const RESOLVED_INCIDENT_STATUS_TYPES: TestCaseResolutionStatusTypes[] =
+  [TestCaseResolutionStatusTypes.Resolved];
+
 export const TEST_CASE_STATUS: Record<
   TestCaseResolutionStatusTypes,
   TestCaseResolutionStatusTypes[]

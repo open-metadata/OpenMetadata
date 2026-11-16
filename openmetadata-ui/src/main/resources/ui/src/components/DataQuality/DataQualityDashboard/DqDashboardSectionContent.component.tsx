@@ -15,16 +15,16 @@ import QueryString from 'qs';
 import { useTranslation } from 'react-i18next';
 import type { NavigateFunction } from 'react-router-dom';
 import { DATA_QUALITY_DASHBOARD_HEADER } from '../../../constants/DataQuality.constants';
+import {
+  OPEN_INCIDENT_STATUS_TYPES,
+  RESOLVED_INCIDENT_STATUS_TYPES,
+} from '../../../constants/TestSuite.constant';
 import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
 import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getTestCaseTabPath } from '../../../utils/DataQuality/DataQualityPureUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import {
-  OPEN_INCIDENT_STATUS_TYPES,
-  RESOLVED_INCIDENT_STATUS_TYPES,
-} from '../ChartWidgets/ChartWidgets.constants';
 import DataAssetsCoveragePieChartWidget from '../ChartWidgets/DataAssetsCoveragePieChartWidget/DataAssetsCoveragePieChartWidget.component';
 import EntityHealthStatusPieChartWidget from '../ChartWidgets/EntityHealthStatusPieChartWidget/EntityHealthStatusPieChartWidget.component';
 import IncidentTimeChartWidget from '../ChartWidgets/IncidentTimeChartWidget/IncidentTimeChartWidget.component';
@@ -170,8 +170,8 @@ export const DqDashboardSectionContent = ({
         <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-2 tw:xl:grid-cols-4">
           <IncidentTypeAreaChartWidget
             chartFilter={defaultFilters}
-            height={60}
             description={t('message.open-incident-card-description')}
+            height={60}
             incidentStatusTypes={OPEN_INCIDENT_STATUS_TYPES}
             name="open-incident"
             redirectPath={{
@@ -186,8 +186,8 @@ export const DqDashboardSectionContent = ({
           />
           <IncidentTypeAreaChartWidget
             chartFilter={defaultFilters}
-            height={60}
             description={t('message.resolved-incident-card-description')}
+            height={60}
             incidentStatusTypes={RESOLVED_INCIDENT_STATUS_TYPES}
             name="resolved-incident"
             redirectPath={{

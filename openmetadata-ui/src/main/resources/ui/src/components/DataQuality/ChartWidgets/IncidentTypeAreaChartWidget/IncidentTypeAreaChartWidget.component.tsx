@@ -54,6 +54,7 @@ const IncidentTypeAreaChartWidget = ({
 
   const bodyElement = useMemo(() => {
     // The headline is the latest daily bucket, not a total; the description says so.
+    // ADR:2026-11-16-incident-cards-show-the-latest-day-and-open-counts-new-ack-assigned
     const latestValue = last(chartData)?.count ?? 0;
 
     return (
