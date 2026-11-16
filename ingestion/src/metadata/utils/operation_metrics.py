@@ -44,6 +44,9 @@ from pydantic import BaseModel, Field
 
 from metadata.utils.singleton import Singleton
 
+# How long a summary read waits for the worker to record what it already took off the queue
+FLUSH_TIMEOUT_SECONDS = 1.0
+
 
 class RunningStatistics:
     """
@@ -217,31 +220,28 @@ class OperationMetricsState(metaclass=Singleton):
             try:
                 # Wait for items with timeout to allow shutdown check
                 item = self._async_queue.get(timeout=0.1)
+            except Empty:
+                continue
+            try:
                 if item is None:  # Shutdown signal
                     break
                 category, operation, duration_ms, entity_type = item
                 self._record_sync(category, operation, duration_ms, entity_type)
-                self._async_queue.task_done()
-            except Empty:
-                continue
             except Exception:
                 # Don't let worker crash on errors
                 pass
+            finally:
+                # Every item taken off the queue is marked done, or a flush waiting on
+                # `join` would never return.
+                self._async_queue.task_done()
 
     def _shutdown_worker(self) -> None:
         """Shutdown the background worker gracefully."""
         self._shutdown_flag.set()
-        # Drain the queue
-        while not self._async_queue.empty():
-            try:
-                item = self._async_queue.get_nowait()
-                if item is not None:
-                    category, operation, duration_ms, entity_type = item
-                    self._record_sync(category, operation, duration_ms, entity_type)
-            except Empty:
-                break
         if self._worker_thread and self._worker_thread.is_alive():
             self._worker_thread.join(timeout=1.0)
+        # Drain what the stopped worker left behind
+        self._drain_async_queue(record=True)
 
     def set_run_context(self, run_id: str | None = None, pipeline_fqn: str | None = None) -> None:
         """
@@ -267,11 +267,24 @@ class OperationMetricsState(metaclass=Singleton):
 
     def _clear_async_queue(self) -> None:
         """Clear the async queue without processing items."""
-        while not self._async_queue.empty():
+        self._drain_async_queue(record=False)
+
+    def _drain_async_queue(self, record: bool) -> None:
+        """Take every queued item off the queue, recording it when `record` is set."""
+        while True:
             try:
-                self._async_queue.get_nowait()
+                item = self._async_queue.get_nowait()
             except Empty:
-                break
+                return
+            try:
+                if record and item is not None:
+                    category, operation, duration_ms, entity_type = item
+                    self._record_sync(category, operation, duration_ms, entity_type)
+            finally:
+                self._async_queue.task_done()
+
+    def _worker_is_alive(self) -> bool:
+        return self._worker_thread is not None and self._worker_thread.is_alive()
 
     def get_run_context(self) -> dict[str, str | None]:
         """Get the current run context."""
@@ -296,7 +309,7 @@ class OperationMetricsState(metaclass=Singleton):
             duration_ms: Duration in milliseconds
             entity_type: Optional entity type (Table, Dashboard, etc.)
         """
-        if self._async_enabled:
+        if self._async_enabled and self._worker_is_alive():
             self._async_queue.put((category, operation, duration_ms, entity_type))
         else:
             self._record_sync(category, operation, duration_ms, entity_type)
@@ -311,13 +324,14 @@ class OperationMetricsState(metaclass=Singleton):
         """
         Record an operation metric synchronously (used by worker thread).
 
-        Uses per-thread storage to avoid lock contention.
-        Updates running statistics in O(1) time and space.
+        Updates running statistics in O(1) time and space. Holds the lock so a
+        merge cannot take this thread's metrics away while they are written.
         """
         thread_id = threading.get_ident()
         entity_key = entity_type or "_default"
 
-        self._thread_metrics[thread_id][category][operation][entity_key].add(duration_ms)
+        with self._lock:
+            self._thread_metrics[thread_id][category][operation][entity_key].add(duration_ms)
 
     def merge_thread_metrics(self, thread_id: int | None = None) -> None:
         """
@@ -330,12 +344,8 @@ class OperationMetricsState(metaclass=Singleton):
         """
         tid = thread_id if thread_id is not None else threading.get_ident()
 
-        if tid not in self._thread_metrics:
-            return
-
-        thread_data = self._thread_metrics.pop(tid, {})
-
         with self._lock:
+            thread_data = self._thread_metrics.pop(tid, {})
             for category, operations in thread_data.items():
                 for operation, entity_types in operations.items():
                     for entity_type, stats in entity_types.items():
@@ -468,15 +478,19 @@ class OperationMetricsState(metaclass=Singleton):
             return result
 
     def _flush_async_queue(self) -> None:
-        """Flush any pending items in the async queue."""
-        while not self._async_queue.empty():
-            try:
-                item = self._async_queue.get_nowait()
-                if item is not None:
-                    category, operation, duration_ms, entity_type = item
-                    self._record_sync(category, operation, duration_ms, entity_type)
-            except Empty:
-                break
+        """Record every pending item, including one the worker has taken but not yet recorded.
+
+        An empty queue is not enough: the worker may hold an item it has dequeued, and a
+        summary read before it lands would miss that operation.
+        """
+        self._drain_async_queue(record=True)
+        if not self._worker_is_alive():
+            return
+        # Bounded, unlike `Queue.join`: a status read must never stall ingestion while
+        # other threads keep recording.
+        done = self._async_queue.all_tasks_done
+        with done:
+            done.wait_for(lambda: self._async_queue.unfinished_tasks == 0, timeout=FLUSH_TIMEOUT_SECONDS)
 
     def reset(self) -> None:
         """Reset all metrics and run context"""

@@ -460,6 +460,27 @@ class TestMultiThreadedOperations:
         total_ops = summary["db_queries"]["SELECT"]["_default"]["count"]
         assert total_ops == num_threads * ops_per_thread
 
+    def test_summary_waits_for_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        assert taken.wait(timeout=5)
+        # The queue is now empty while the worker still holds the item
+        threading.Timer(0.05, release.set).start()
+
+        summary = metrics.get_summary()
+
+        assert summary["db_queries"]["SELECT"]["_default"]["count"] == 1
+
     def test_multiple_operations_per_thread(self) -> None:
         metrics = OperationMetricsState()
 
