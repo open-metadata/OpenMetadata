@@ -24,12 +24,12 @@ import {
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { DEFAULT_SORT_ORDER } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { DataQualityPageTabs } from '../../../enums/DataQuality.enum';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { ResourcePermission } from '../../../generated/entity/policies/accessControl/resourcePermission';
 import { TestCase } from '../../../generated/tests/testCase';
 import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
-import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
@@ -240,6 +240,13 @@ export const useTestCaseList = ({
     }
   };
 
+  // Filter-option and form callbacks can change without changing the query. Keep
+  // their latest values without turning those renders into extra list requests.
+  const getTestCasesRef = useRef(getTestCases);
+  useEffect(() => {
+    getTestCasesRef.current = getTestCases;
+  });
+
   const filterParamsKey = useMemo(
     () => JSON.stringify(omit(params, PAGING_URL_PARAMS)),
     [params]
@@ -250,7 +257,7 @@ export const useTestCaseList = ({
       getDerivedPermissionFlags(testCasePermission).canViewBasic &&
       tab === DataQualityPageTabs.TEST_CASES
     ) {
-      getTestCases();
+      getTestCasesRef.current();
     } else {
       setIsLoading(false);
     }

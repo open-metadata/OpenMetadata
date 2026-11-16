@@ -11,13 +11,10 @@
  *  limitations under the License.
  */
 
+import { DataQualityPageTabs } from '../../enums/DataQuality.enum';
 import { TestSummary } from '../../generated/tests/testCase';
 
-export enum DataQualityPageTabs {
-  TEST_SUITES = 'test-suites',
-  TEST_CASES = 'test-cases',
-  DASHBOARD = 'dashboard',
-}
+export { DataQualityPageTabs } from '../../enums/DataQuality.enum';
 
 export enum DataQualitySubTabs {
   TABLE_SUITES = 'table-suites',
