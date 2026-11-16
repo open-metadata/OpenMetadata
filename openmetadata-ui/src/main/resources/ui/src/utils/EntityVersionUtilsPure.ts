@@ -50,6 +50,7 @@ import {
   getDiffByFieldName,
   hasVersionDiffStringProperty,
   isEndsWithField,
+  isNestedNamedEntityWithTagsDiff,
   isTagLabelDiff,
   parseVersionDiffArray,
   parseVersionDiffObject,
@@ -590,16 +591,14 @@ function createAddedColumnsDiff<A extends TableColumn | ContainerColumn>(
   columnsDiff: EntityDiffProps,
   colList: A[] = []
 ) {
-  try {
-    const newCol: Array<A> = JSON.parse(columnsDiff.added?.newValue ?? '[]');
+  const newCol = parseVersionDiffArray<A>(
+    columnsDiff.added?.newValue,
+    isNestedNamedEntityWithTagsDiff
+  );
 
-    newCol.forEach((col) => {
-      formatAddedColumnData(colList, col);
-    });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
-  }
+  newCol.forEach((col) => {
+    formatAddedColumnData(colList, col);
+  });
 }
 
 export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
@@ -607,32 +606,30 @@ export function addDeletedColumnsDiff<A extends TableColumn | ContainerColumn>(
   colList: A[] = [],
   changedEntity = ''
 ) {
-  try {
-    const newCol: Array<A> = JSON.parse(columnsDiff.deleted?.oldValue ?? '[]');
-    const newColumns = getNewColumnFromColDiff(newCol);
+  const newCol = parseVersionDiffArray<A>(
+    columnsDiff.deleted?.oldValue,
+    isNestedNamedEntityWithTagsDiff
+  );
+  const newColumns = getNewColumnFromColDiff(newCol);
 
-    const insertNewColumn = (
-      changedEntityField: string,
-      colArray: Array<TableColumn | ContainerColumn>
-    ) => {
-      const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
-      if (isEmpty(changedEntityField)) {
-        const nonExistingColumns = newColumns.filter((newColumn) =>
-          isUndefined(colArray.find((col) => col.name === newColumn.name))
-        );
-        colArray.unshift(...nonExistingColumns);
-      } else {
-        const parentField = fieldsArray.shift();
-        const arr = colArray.find((col) => col.name === parentField)?.children;
+  const insertNewColumn = (
+    changedEntityField: string,
+    colArray: Array<TableColumn | ContainerColumn>
+  ) => {
+    const fieldsArray = changedEntityField.split(FQN_SEPARATOR_CHAR);
+    if (isEmpty(changedEntityField)) {
+      const nonExistingColumns = newColumns.filter((newColumn) =>
+        isUndefined(colArray.find((col) => col.name === newColumn.name))
+      );
+      colArray.unshift(...nonExistingColumns);
+    } else {
+      const parentField = fieldsArray.shift();
+      const arr = colArray.find((col) => col.name === parentField)?.children;
 
-        insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
-      }
-    };
-    insertNewColumn(changedEntity, colList);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error(err);
-  }
+      insertNewColumn(fieldsArray.join(FQN_SEPARATOR_CHAR), arr ?? []);
+    }
+  };
+  insertNewColumn(changedEntity, colList);
 }
 
 export function getColumnsDiff<A extends TableColumn | ContainerColumn>(

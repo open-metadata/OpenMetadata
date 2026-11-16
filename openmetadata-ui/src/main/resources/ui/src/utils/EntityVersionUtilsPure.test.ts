@@ -12,10 +12,13 @@
  */
 
 import { EntityField } from '../constants/Feeds.constants';
+import type { Column } from '../generated/entity/data/table';
 import type { Field } from '../generated/entity/data/topic';
 import type { ChangeDescription } from '../generated/entity/services/databaseService';
+import type { EntityDiffProps } from '../interface/EntityVersion.interface';
 import type { VersionEntityTypes } from './EntityVersionUtils.interface';
 import {
+  getColumnsDiff,
   getDomainDiff,
   getEntityTagDiff,
   getEntityVersionTags,
@@ -103,5 +106,38 @@ describe('getEntityVersionTags', () => {
         fields
       )
     ).toEqual(fields);
+  });
+});
+
+describe('getColumnsDiff', () => {
+  it('drops deleted columns whose nested children are malformed', () => {
+    // A non-array `children` would crash the recursive column renderer if it
+    // reached the table; it must be filtered out before insertion.
+    const columnsDiff = {
+      deleted: {
+        name: 'columns',
+        oldValue: '[{"name":"good"},{"name":"bad","children":{"x":1}}]',
+        newValue: '',
+      },
+    } as unknown as EntityDiffProps;
+
+    const result = getColumnsDiff(columnsDiff, [] as Column[], '');
+
+    expect(result).toHaveLength(1);
+    expect(JSON.stringify(result)).toContain('good');
+    expect(JSON.stringify(result)).not.toContain('bad');
+  });
+
+  it('keeps marking added columns without throwing on malformed diffs', () => {
+    const columnsDiff = {
+      added: {
+        name: 'columns',
+        oldValue: '',
+        newValue: '[{"name":"good"},{"name":"bad","children":{"x":1}}]',
+      },
+    } as unknown as EntityDiffProps;
+    const colList = [{ name: 'good' }, { name: 'bad' }] as unknown as Column[];
+
+    expect(() => getColumnsDiff(columnsDiff, colList)).not.toThrow();
   });
 });
