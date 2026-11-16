@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
   Language,
@@ -378,6 +384,34 @@ describe('MetricDefinitionCard', () => {
       expect(unitSlot).toHaveTextContent(UnitOfMeasurement.Dollars);
       expect(unitSlot).not.toHaveTextContent('Leads');
     });
+  });
+
+  it('shows the expression code diff on a version that changed it', () => {
+    render(
+      <MemoryRouter>
+        <MetricDefinitionCard
+          changeDescription={{
+            fieldsAdded: [],
+            fieldsDeleted: [],
+            fieldsUpdated: [
+              {
+                name: 'metricExpression',
+                oldValue: { code: 'SUM(revenue)', language: Language.SQL },
+                newValue: metric.metricExpression,
+              },
+            ],
+          }}
+          metric={metric}
+        />
+      </MemoryRouter>
+    );
+
+    const code = screen.getByTestId('metric-expression-code');
+
+    expect(within(code).getByTestId('diff-removed')).toHaveTextContent(
+      'revenue'
+    );
+    expect(within(code).getByTestId('diff-added')).toHaveTextContent('profit');
   });
 
   it('keeps the expression language of an ingested metric with no formula', async () => {

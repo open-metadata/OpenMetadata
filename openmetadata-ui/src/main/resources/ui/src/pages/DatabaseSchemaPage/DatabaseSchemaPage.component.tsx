@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Skeleton, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Skeleton,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare, Operation } from 'fast-json-patch';
@@ -28,7 +34,6 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -66,7 +71,6 @@ import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   addFollowers,
-  getDatabaseSchemaDetailsByFQN,
   patchDatabaseSchemaDetails,
   removeFollowers,
   restoreDatabaseSchema,
@@ -642,19 +646,12 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseSchemaVotes(id, data);
-      const response = await getDatabaseSchemaDetailsByFQN(
-        decodedDatabaseSchemaFQN,
-        {
-          fields: [
-            TabSpecificField.OWNERS,
-            ...(viewUsagePermission ? [TabSpecificField.USAGE_SUMMARY] : []),
-            TabSpecificField.TAGS,
-            TabSpecificField.VOTES,
-          ],
-          include: Include.All,
-        }
-      );
-      setDatabaseSchema(response);
+      // Server-side {@code updateVote} mutates a relationship only — the rest of the entity is
+      // unchanged. Invalidate the cache slot so the next read picks up the new vote totals
+      // (a focused refetch instead of the prior narrow GET + {@code setDatabaseSchema} that
+      // would null out domains/followers/extension/dataProducts). Background revalidation
+      // keeps the current data on screen until the new body arrives.
+      await refetchDatabaseSchema();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
@@ -678,9 +675,11 @@ const DatabaseSchemaPage: FunctionComponent = () => {
   const expandButton = useMemo(
     () =>
       isExpandViewSupported && (
-        <AlignRightIconButton
-          className={isTabExpanded ? 'rotate-180' : ''}
-          title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+        <ButtonUtility
+          data-testid="tab-expand-button"
+          icon={isTabExpanded ? Collapse : Expand}
+          size="lg"
+          tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
           onClick={toggleTabExpanded}
         />
       ),

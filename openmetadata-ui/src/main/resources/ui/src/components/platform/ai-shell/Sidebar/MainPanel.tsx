@@ -12,10 +12,10 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { CollapsePanel } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarMainFooter,
@@ -64,10 +64,9 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
         <div className="ask-main-panel__header-actions">
           <ButtonUtility
             className="ask-main-panel__collapse-btn"
-            color="tertiary"
             data-testid="ask-collapse-btn"
-            icon={CollapsePanelIcon}
-            size="sm"
+            icon={CollapsePanel}
+            size="lg"
             tooltip={t('label.collapse')}
             type="button"
             onClick={onCollapse}

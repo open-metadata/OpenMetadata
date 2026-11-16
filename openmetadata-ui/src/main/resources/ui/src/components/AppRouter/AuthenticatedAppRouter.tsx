@@ -86,9 +86,12 @@ const MyDataPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/MyDataPage/MyDataPage.component'))
 );
 
-const TestSuiteIngestionPage = withPageSuspenseFallback(
+const TestSuiteIngestionRedirect = withPageSuspenseFallback(
   React.lazy(
-    () => import('../../pages/TestSuiteIngestionPage/TestSuiteIngestionPage')
+    () =>
+      import(
+        '../../pages/TestSuiteIngestionRedirect/TestSuiteIngestionRedirect'
+      )
   )
 );
 
@@ -200,15 +203,18 @@ const ExplorePageV1 = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/ExplorePage/ExplorePageV1.component'))
 );
 
-const OntologyExplorerPage = withPageSuspenseFallback(
-  React.lazy(
-    () => import('../../pages/OntologyExplorerPage/OntologyExplorerPage')
-  )
-);
-
 const SparqlPlaygroundPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
+  )
+);
+
+const OntologyExplorerPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../../pages/governance/ontology/OntologyExplorerPage/OntologyExplorerPage'
+      )
   )
 );
 
@@ -567,23 +573,11 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
       <Route
-        element={
-          <TestSuiteIngestionPage
-            pageTitle={t('label.add-entity', {
-              entity: t('label.test-suite'),
-            })}
-          />
-        }
+        element={<TestSuiteIngestionRedirect />}
         path={ROUTES.TEST_SUITES_ADD_INGESTION}
       />
       <Route
-        element={
-          <TestSuiteIngestionPage
-            pageTitle={t('label.edit-entity', {
-              entity: t('label.ingestion'),
-            })}
-          />
-        }
+        element={<TestSuiteIngestionRedirect />}
         path={ROUTES.TEST_SUITES_EDIT_INGESTION}
       />
       <Route

@@ -13,9 +13,7 @@ import static org.mockito.Mockito.when;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +36,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -116,11 +115,10 @@ class LdapAuthServletHandlerTest {
   void handleLogin_missingProvisionedUser_returnsUnauthorizedAndDeletesRefreshToken()
       throws Exception {
     when(request.getMethod()).thenReturn("POST");
-    when(request.getReader())
+    when(request.getInputStream())
         .thenReturn(
-            new BufferedReader(
-                new StringReader(
-                    "{\"email\":\"ldap-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}")));
+            BasicAuthServletHandlerTest.bodyOf(
+                "{\"email\":\"ldap-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}"));
     JwtResponse jwtResponse = new JwtResponse();
     jwtResponse.setAccessToken("access-token");
     jwtResponse.setRefreshToken("ldap-refresh-token");
@@ -140,6 +138,22 @@ class LdapAuthServletHandlerTest {
     verify(tokenRepository).deleteToken("ldap-refresh-token");
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     verify(sessionService, never()).createActiveSession(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void handleLogin_oversizedBody_returnsBadRequestWithoutAuthenticating() throws Exception {
+    // A valid login padded past the limit: read whole, it would reach the authenticator.
+    when(request.getMethod()).thenReturn("POST");
+    when(request.getInputStream())
+        .thenReturn(
+            BasicAuthServletHandlerTest.bodyOf(
+                "{\"email\":\"ldap-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}"
+                    + " ".repeat(SecurityUtil.MAX_LOGIN_BODY_BYTES)));
+
+    handler.handleLogin(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verify(authenticator, never()).loginUser(any());
   }
 
   @Test

@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.RdfLiveWriteStore;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.testcontainers.containers.GenericContainer;
@@ -54,6 +55,10 @@ import org.testcontainers.containers.GenericContainer;
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfLiveWriteRecoveryIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
@@ -585,7 +590,7 @@ public class RdfLiveWriteRecoveryIT {
     }
 
     void apply(final String payload) {
-      JsonUtils.readValue(payload, RdfMutation.class).apply(storage);
+      JsonUtils.readValue(payload, RdfMutation.class).apply(storage, NO_RELEASES);
     }
 
     String lastError() {

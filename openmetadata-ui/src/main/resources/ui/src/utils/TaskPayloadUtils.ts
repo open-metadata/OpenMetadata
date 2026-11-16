@@ -96,7 +96,7 @@ export const getNormalizedTaskPayload = (
 ): NormalizedTaskPayload => {
   const payload = task.payload;
   const isTagTask = task.type === TaskEntityType.TagUpdate;
-  const fieldPath = payload?.fieldPath ?? payload?.field;
+  const fieldPath = payload?.fieldPath;
   const currentDescription =
     payload?.currentDescription ?? payload?.currentValue;
   const newDescription = payload?.newDescription ?? payload?.suggestedValue;

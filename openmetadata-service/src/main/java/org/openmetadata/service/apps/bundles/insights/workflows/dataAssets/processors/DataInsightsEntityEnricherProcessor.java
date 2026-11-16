@@ -215,14 +215,7 @@ public class DataInsightsEntityEnricherProcessor
     entityMap.keySet().retainAll(context.entityTypeFields());
     stripNestedColumnChildren(entityMap);
     Map<String, ChangeSummary> changeSummary = SearchIndexUtils.getChangeSummaryMap(entity);
-    return new EnrichmentTarget(
-        entity,
-        entityMap,
-        changeSummary,
-        window.windowStartTimestamp(),
-        window.windowEndTimestamp(),
-        context,
-        window.shape());
+    return new EnrichmentTarget(entity, entityMap, changeSummary, context, window.shape());
   }
 
   /**

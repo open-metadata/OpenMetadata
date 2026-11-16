@@ -13,16 +13,20 @@
 
 package org.openmetadata.service.util;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.introspect.BeanPropertyDefinition;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonString;
 import jakarta.json.JsonValue;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -30,17 +34,29 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
+/**
+ * Decides which operations a JSON Patch needs. Every location an operation touches counts: its
+ * {@code path} and, for {@code copy} and {@code move}, its {@code from}. A field name selects a
+ * narrower operation than EditAll only where it is a declared field of the entity's type, not a key
+ * of a map or of an untyped object. ADR:2026-11-03-a-patch-is-authorized-at-every-location-it-touches
+ */
 @Slf4j
 public class JsonPatchUtils {
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
   private static final String FROM_MEMBER = "from";
   private static final String PATH_MEMBER = "path";
   private static final String OP_MEMBER = "op";
   private static final String TEST_OPERATION = "test";
   private static final String ROOT_POINTER = "/";
+  private static final String TAGS_FIELD = "tags";
+  private static final int MAX_INTROSPECTED_TYPES = 1000;
+
+  // JSON field name -> declared type, per bean class; entity types and their nested types only.
+  private static final Cache<Class<?>, Map<String, JavaType>> BEAN_FIELDS =
+      Caffeine.newBuilder().maximumSize(MAX_INTROSPECTED_TYPES).build();
 
   private JsonPatchUtils() {}
 
@@ -49,42 +65,72 @@ public class JsonPatchUtils {
     Set<MetadataOperation> uniqueOperations = new HashSet<>();
     EntityInterface<?> originalEntity = resourceContextInterface.getEntity();
     String resourceType = resourceContextInterface.getResource();
+    Class<?> entityClass =
+        originalEntity != null ? originalEntity.getClass() : entityClass(resourceType);
     boolean tagsAffected = false;
 
     for (JsonValue jsonValue : jsonPatch.toJsonArray()) {
-      MetadataOperation metadataOperation = getMetadataOperation(jsonValue, resourceType);
-      if (metadataOperation.equals(MetadataOperation.EDIT_ALL)) {
-        return Collections.singleton(MetadataOperation.EDIT_ALL);
-      }
-      if (metadataOperation.equals(MetadataOperation.EDIT_TAGS)) {
-        tagsAffected = true;
-      } else {
-        uniqueOperations.add(metadataOperation);
+      for (String location : touchedLocations(jsonValue)) {
+        MetadataOperation metadataOperation =
+            getMetadataOperation(location, resourceType, entityClass);
+        if (metadataOperation.equals(MetadataOperation.EDIT_TAGS)) {
+          tagsAffected = true;
+        } else {
+          uniqueOperations.add(metadataOperation);
+        }
       }
     }
-    if (tagsAffected) {
-      JsonNode originalEntityJson = JsonUtils.pojoToJsonNode(originalEntity);
-      // Same engine as EntityRepository.patch, so the tags checked are the tags that get written.
-      JsonNode patchedEntityJson =
-          JsonUtils.readTree(JsonUtils.applyPatch(originalEntity, jsonPatch).toString());
-      Set<TagLabel> originalTags = extractTags(originalEntityJson);
-      Set<TagLabel> patchedTags = extractTags(patchedEntityJson);
-      Set<TagLabel> addedTags = new HashSet<>(patchedTags);
-      addedTags.removeAll(originalTags);
-
-      Set<TagLabel> removedTags = new HashSet<>(originalTags);
-      removedTags.removeAll(patchedTags);
-
-      for (TagLabel addedTag : addedTags) {
-        uniqueOperations.add(mapTagToOperation(addedTag));
-      }
-      for (TagLabel removedTag : removedTags) {
-        uniqueOperations.add(mapTagToOperation(removedTag));
-      }
+    if (uniqueOperations.contains(MetadataOperation.EDIT_ALL)) {
+      // EditAll stands in for the other field operations: the seeded bot policies deny
+      // EditDisplayName outright, and ingestion patches that rewrite the entity also fill in
+      // display names. The label operations below are still added, so a deny conditioned on
+      // tags applies whatever else the patch touches.
+      uniqueOperations.retainAll(Set.of(MetadataOperation.EDIT_ALL));
+    }
+    if (tagsAffected && originalEntity == null) {
+      // Without the entity there is no way to tell which labels change.
+      uniqueOperations.addAll(Set.of(MetadataOperation.EDIT_ALL, MetadataOperation.EDIT_TAGS));
+    } else if (tagsAffected) {
+      Set<MetadataOperation> tagOperations = tagOperations(originalEntity, jsonPatch);
+      // A patch that touches tags without changing a label still writes the entity.
+      uniqueOperations.addAll(
+          tagOperations.isEmpty() ? Set.of(MetadataOperation.EDIT_TAGS) : tagOperations);
       LOG.debug("Returning patch operations {}", uniqueOperations);
     }
-
+    if (uniqueOperations.isEmpty()) {
+      // An empty patch changes nothing, but its response carries the entity.
+      uniqueOperations.add(MetadataOperation.VIEW_BASIC);
+    }
     return uniqueOperations;
+  }
+
+  /**
+   * The locations a patch operation touches: its {@code path} and, when present, its {@code
+   * from}. A location that is missing or not a string is reported as the document root.
+   */
+  public static List<String> touchedLocations(JsonValue patchOperation) {
+    if (!(patchOperation instanceof JsonObject operation)) {
+      return List.of("");
+    }
+    List<String> locations = new ArrayList<>(2);
+    locations.add(location(operation, PATH_MEMBER));
+    if (operation.containsKey(FROM_MEMBER)) {
+      locations.add(location(operation, FROM_MEMBER));
+    }
+    return locations;
+  }
+
+  /** Every location the operations of {@code jsonPatch} touch; see {@link #touchedLocations}. */
+  public static List<String> touchedLocations(JsonPatch jsonPatch) {
+    List<String> locations = new ArrayList<>();
+    for (JsonValue operation : jsonPatch.toJsonArray()) {
+      locations.addAll(touchedLocations(operation));
+    }
+    return locations;
+  }
+
+  private static String location(JsonObject operation, String member) {
+    return operation.get(member) instanceof JsonString value ? value.getString() : "";
   }
 
   /**
@@ -97,6 +143,26 @@ public class JsonPatchUtils {
     return jsonPatch.toJsonArray().stream()
         .anyMatch(
             operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER));
+  }
+
+  /** Whether an operation of {@code jsonPatch} reads a value from under {@code pointerPrefix}. */
+  public static boolean readsFrom(JsonPatch jsonPatch, String pointerPrefix) {
+    return jsonPatch.toJsonArray().stream()
+        .filter(
+            operation -> operation instanceof JsonObject object && object.containsKey(FROM_MEMBER))
+        .map(operation -> location(operation.asJsonObject(), FROM_MEMBER))
+        .anyMatch(from -> isAtOrUnder(from, pointerPrefix));
+  }
+
+  /**
+   * Whether {@code location} is {@code pointer}, lies under it, or is the document root, which
+   * contains it.
+   */
+  public static boolean isAtOrUnder(String location, String pointer) {
+    return location.isEmpty()
+        || ROOT_POINTER.equals(location)
+        || location.equals(pointer)
+        || location.startsWith(pointer + ROOT_POINTER);
   }
 
   /**
@@ -119,58 +185,105 @@ public class JsonPatchUtils {
             });
   }
 
-  private static Set<TagLabel> extractTags(JsonNode entityJson) {
-    Set<TagLabel> tags = new HashSet<>();
-    traverseForTags(entityJson, tags);
+  /**
+   * The tag operations a patch needs: one per label that it adds or removes, where a label is
+   * compared together with the object that carries it, so moving a label counts as removing it
+   * from one place and adding it to another. The patched entity is built with the call {@code
+   * EntityRepository} stores through, so the labels compared are the labels written.
+   */
+  @SuppressWarnings("unchecked")
+  private static Set<MetadataOperation> tagOperations(
+      EntityInterface<?> originalEntity, JsonPatch jsonPatch) {
+    EntityInterface<?> patchedEntity =
+        JsonUtils.applyPatch(
+            originalEntity, jsonPatch, (Class<EntityInterface<?>>) originalEntity.getClass());
+    Set<LocatedTag> originalTags = locatedTags(JsonUtils.pojoToJsonNode(originalEntity));
+    Set<LocatedTag> patchedTags = locatedTags(JsonUtils.pojoToJsonNode(patchedEntity));
+    Set<MetadataOperation> operations = new HashSet<>();
+    for (LocatedTag tag : patchedTags) {
+      if (!originalTags.contains(tag)) {
+        operations.add(mapTagToOperation(tag.tag()));
+      }
+    }
+    for (LocatedTag tag : originalTags) {
+      if (!patchedTags.contains(tag)) {
+        operations.add(mapTagToOperation(tag.tag()));
+      }
+    }
+    return operations;
+  }
+
+  /** A tag label and the JSON pointer of the object whose {@code tags} carry it. */
+  private record LocatedTag(String owner, TagLabel tag) {}
+
+  private static Set<LocatedTag> locatedTags(JsonNode entityJson) {
+    Set<LocatedTag> tags = new HashSet<>();
+    collectTags(entityJson, "", tags);
     return tags;
   }
 
-  private static void traverseForTags(JsonNode node, Set<TagLabel> tags) {
+  private static void collectTags(JsonNode node, String pointer, Set<LocatedTag> tags) {
     if (node == null || node.isNull()) {
       return;
     }
-
     if (node.isObject()) {
-      if (node.has("tags") && node.get("tags").isArray()) {
-        for (JsonNode tagNode : node.get("tags")) {
-          try {
-            TagLabel tag = OBJECT_MAPPER.treeToValue(tagNode, TagLabel.class);
-            tags.add(tag);
-          } catch (JsonProcessingException e) {
-            LOG.warn("Failed to parse TagLabel from node: {}", tagNode, e);
+      JsonNode tagArray = node.get(TAGS_FIELD);
+      if (tagArray != null && tagArray.isArray()) {
+        for (JsonNode tagNode : tagArray) {
+          TagLabel tag = tagLabel(tagNode);
+          if (tag != null) {
+            tags.add(new LocatedTag(pointer, tag));
           }
         }
       }
-
       Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
       while (fields.hasNext()) {
-        Map.Entry<String, JsonNode> entry = fields.next();
-        traverseForTags(entry.getValue(), tags);
+        Map.Entry<String, JsonNode> field = fields.next();
+        collectTags(field.getValue(), pointer + ROOT_POINTER + escape(field.getKey()), tags);
       }
     } else if (node.isArray()) {
-      for (JsonNode arrayItem : node) {
-        traverseForTags(arrayItem, tags);
+      for (int i = 0; i < node.size(); i++) {
+        collectTags(node.get(i), pointer + ROOT_POINTER + i, tags);
       }
     }
   }
 
-  private static MetadataOperation mapTagToOperation(TagLabel tag) {
+  // Both entities come from typed objects, so every label of a declared tags field binds; what does
+  // not bind is a "tags" key of an untyped object, which carries no labels.
+  private static TagLabel tagLabel(JsonNode tagNode) {
+    try {
+      return JsonUtils.treeToValue(tagNode, TagLabel.class);
+    } catch (RuntimeException e) {
+      LOG.debug("Not a tag label: {}", tagNode);
+      return null;
+    }
+  }
+
+  private static String escape(String key) {
+    return key.replace("~", "~0").replace("/", "~1");
+  }
+
+  /**
+   * The operation adding or removing {@code tag} needs. A glossary term needs EditGlossaryTerms
+   * whatever its name; Tier and Certification are read from the FQN of any other label, including
+   * labels decoded from a task without their source.
+   */
+  public static MetadataOperation mapTagToOperation(TagLabel tag) {
     if (tag == null) {
       return null;
     }
-    String source = tag.getSource().value();
-    String tagFQN = tag.getTagFQN();
-    if (isTierClassification(tagFQN)) {
-      return MetadataOperation.EDIT_TIER;
-    } else if (isCertificationClassification(tagFQN)) {
-      return MetadataOperation.EDIT_CERTIFICATION;
-    } else if ("Classification".equalsIgnoreCase(source)) {
-      return MetadataOperation.EDIT_TAGS;
-    } else if ("Glossary".equalsIgnoreCase(source)) {
+    if (tag.getSource() == TagLabel.TagSource.GLOSSARY) {
       return MetadataOperation.EDIT_GLOSSARY_TERMS;
     }
-    // Default to EDIT_ALL if the tag is not recognized
-    return MetadataOperation.EDIT_ALL;
+    if (isTierClassification(tag.getTagFQN())) {
+      return MetadataOperation.EDIT_TIER;
+    }
+    if (isCertificationClassification(tag.getTagFQN())) {
+      return MetadataOperation.EDIT_CERTIFICATION;
+    }
+    return tag.getSource() == TagLabel.TagSource.CLASSIFICATION
+        ? MetadataOperation.EDIT_TAGS
+        : MetadataOperation.EDIT_ALL;
   }
 
   private static boolean isTierClassification(String tagFQN) {
@@ -181,45 +294,107 @@ public class JsonPatchUtils {
     return tagFQN != null && tagFQN.startsWith("Certification.");
   }
 
-  public static MetadataOperation getMetadataOperation(Object jsonPatchObject) {
-    return getMetadataOperation(jsonPatchObject, null);
-  }
-
-  public static MetadataOperation getMetadataOperation(
-      Object jsonPatchObject, String resourceType) {
-    String path;
-
-    // Handle jakarta JSON patch objects efficiently
-    if (jsonPatchObject instanceof JsonObject jsonPatchObj) {
-      JsonValue pathValue = jsonPatchObj.get("path");
-      if (pathValue instanceof JsonString) {
-        path = ((JsonString) pathValue).getString();
-      } else {
-        path = pathValue.toString();
-      }
-    } else {
-      // Fallback for other object types
-      Map<String, Object> jsonPatchMap = JsonUtils.getMap(jsonPatchObject);
-      path = jsonPatchMap.get("path").toString();
-    }
-
-    return getMetadataOperation(path, resourceType);
-  }
-
   public static MetadataOperation getMetadataOperation(String path) {
     return getMetadataOperation(path, null);
   }
 
+  /** The operation needed to write {@code path} of an entity of {@code resourceType}. */
   public static MetadataOperation getMetadataOperation(String path, String resourceType) {
-    String[] paths = path.contains("/") ? path.split("/") : new String[] {path};
-    for (String p : paths) {
-      MetadataOperation perEntity = ResourceRegistry.getEntityEditOperation(resourceType, p);
-      if (perEntity != null) {
-        return perEntity;
+    return getMetadataOperation(path, resourceType, entityClass(resourceType));
+  }
+
+  private static MetadataOperation getMetadataOperation(
+      String path, String resourceType, Class<?> entityClass) {
+    return entityClass == null
+        ? operationByFieldName(path, resourceType)
+        : operationByDeclaredField(path, resourceType, entityClass);
+  }
+
+  private static Class<?> entityClass(String resourceType) {
+    if (resourceType == null) {
+      return null;
+    }
+    try {
+      return Entity.getEntityClassFromType(resourceType);
+    } catch (RuntimeException e) {
+      return null;
+    }
+  }
+
+  // Without a type to walk, the first mapped field name decides.
+  private static MetadataOperation operationByFieldName(String path, String resourceType) {
+    for (String segment : path.split(ROOT_POINTER)) {
+      MetadataOperation operation = ResourceRegistry.getEntityEditOperation(resourceType, segment);
+      if (operation != null) {
+        return operation;
       }
     }
-    LOG.warn("Failed to find specific operation for patch path {}", path);
-    return MetadataOperation
-        .EDIT_ALL; // If path is not mapped to any edit field, then return edit all
+    LOG.debug("No specific operation for patch path {}", path);
+    return MetadataOperation.EDIT_ALL;
+  }
+
+  private static MetadataOperation operationByDeclaredField(
+      String path, String resourceType, Class<?> entityClass) {
+    JavaType type = JsonUtils.getObjectMapper().constructType(entityClass);
+    for (String segment : pointerSegments(path)) {
+      if (type.isCollectionLikeType() || type.isArrayType()) {
+        type = type.getContentType();
+        continue;
+      }
+      JavaType fieldType = declaredFields(type).get(segment);
+      if (fieldType == null) {
+        // A map key, a key of an untyped object, or a field the type does not declare.
+        return MetadataOperation.EDIT_ALL;
+      }
+      MetadataOperation operation = ResourceRegistry.getEntityEditOperation(resourceType, segment);
+      if (operation != null) {
+        return operation;
+      }
+      type = fieldType;
+    }
+    LOG.debug("No specific operation for patch path {}", path);
+    return MetadataOperation.EDIT_ALL;
+  }
+
+  private static List<String> pointerSegments(String path) {
+    if (path.isEmpty()) {
+      return List.of();
+    }
+    String[] parts = path.substring(path.startsWith(ROOT_POINTER) ? 1 : 0).split(ROOT_POINTER, -1);
+    List<String> segments = new ArrayList<>(parts.length);
+    for (String part : parts) {
+      segments.add(part.replace("~1", "/").replace("~0", "~"));
+    }
+    return segments;
+  }
+
+  private static Map<String, JavaType> declaredFields(JavaType type) {
+    if (!isBean(type)) {
+      return Map.of();
+    }
+    return BEAN_FIELDS.get(type.getRawClass(), raw -> introspect(type));
+  }
+
+  private static boolean isBean(JavaType type) {
+    Class<?> raw = type.getRawClass();
+    String name = raw.getName();
+    return !type.isContainerType()
+        && !type.isPrimitive()
+        && !raw.isEnum()
+        && !raw.isInterface()
+        && raw != Object.class
+        && !name.startsWith("java.")
+        && !name.startsWith("javax.")
+        && !name.startsWith("jakarta.")
+        && !name.startsWith("com.fasterxml.");
+  }
+
+  private static Map<String, JavaType> introspect(JavaType type) {
+    Map<String, JavaType> fields = new HashMap<>();
+    for (BeanPropertyDefinition property :
+        JsonUtils.getObjectMapper().getDeserializationConfig().introspect(type).findProperties()) {
+      fields.put(property.getName(), property.getPrimaryType());
+    }
+    return Map.copyOf(fields);
   }
 }

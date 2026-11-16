@@ -522,7 +522,7 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   })();
 
   return (
-    <Box className="tw:flex-1 tw:overflow-hidden" direction="col">
+    <Box className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto" direction="col">
       {view.type === 'section' ? sectionContent : content}
     </Box>
   );

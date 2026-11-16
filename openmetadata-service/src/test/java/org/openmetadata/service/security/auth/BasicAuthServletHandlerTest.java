@@ -10,13 +10,15 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +38,7 @@ import org.openmetadata.service.auth.JwtResponse;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TokenRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
@@ -77,11 +80,8 @@ class BasicAuthServletHandlerTest {
   void handleLogin_missingProvisionedUser_returnsUnauthorizedAndDeletesRefreshToken()
       throws Exception {
     when(request.getMethod()).thenReturn("POST");
-    when(request.getReader())
-        .thenReturn(
-            new BufferedReader(
-                new StringReader(
-                    "{\"email\":\"basic-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}")));
+    when(request.getInputStream())
+        .thenReturn(bodyOf("{\"email\":\"basic-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}"));
     JwtResponse jwtResponse = new JwtResponse();
     jwtResponse.setAccessToken("access-token");
     jwtResponse.setRefreshToken("basic-refresh-token");
@@ -101,6 +101,22 @@ class BasicAuthServletHandlerTest {
     verify(tokenRepository).deleteToken("basic-refresh-token");
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     verify(sessionService, never()).createActiveSession(any(), any(), any(), any(), any());
+  }
+
+  @Test
+  void handleLogin_oversizedBody_returnsBadRequestWithoutAuthenticating() throws Exception {
+    // A valid login padded past the limit: read whole, it would reach the authenticator.
+    when(request.getMethod()).thenReturn("POST");
+    when(request.getInputStream())
+        .thenReturn(
+            bodyOf(
+                "{\"email\":\"basic-user@example.com\",\"password\":\"cGFzc3dvcmQ=\"}"
+                    + " ".repeat(SecurityUtil.MAX_LOGIN_BODY_BYTES)));
+
+    handler.handleLogin(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verify(authenticator, never()).loginUser(any());
   }
 
   @Test
@@ -145,5 +161,35 @@ class BasicAuthServletHandlerTest {
 
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     verify(servletOutputStream).print(contains(SessionService.SESSION_REVOKED));
+  }
+
+  static ServletInputStream bodyOf(String content) {
+    ByteArrayInputStream bytes = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8));
+    return new ServletInputStream() {
+      @Override
+      public int read() {
+        return bytes.read();
+      }
+
+      @Override
+      public int read(byte[] buffer, int offset, int length) {
+        return bytes.read(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isFinished() {
+        return bytes.available() == 0;
+      }
+
+      @Override
+      public boolean isReady() {
+        return true;
+      }
+
+      @Override
+      public void setReadListener(ReadListener readListener) {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
 }

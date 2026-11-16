@@ -17,6 +17,36 @@ import type {
 import type { Placement } from 'react-aria';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
 
+/** The spinner a loading button draws in place of its icon. */
+export const ButtonLoadingIcon = ({ className }: { className?: string }) => (
+  <svg
+    className={className}
+    data-icon="loading"
+    fill="none"
+    viewBox="0 0 20 20">
+    {/* Background circle */}
+    <circle
+      className="tw:stroke-current tw:opacity-30"
+      cx="10"
+      cy="10"
+      fill="none"
+      r="8"
+      strokeWidth="2"
+    />
+    {/* Spinning circle */}
+    <circle
+      className="tw:origin-center tw:animate-spin tw:stroke-current"
+      cx="10"
+      cy="10"
+      fill="none"
+      r="8"
+      strokeDasharray="12.5 50"
+      strokeLinecap="round"
+      strokeWidth="2"
+    />
+  </svg>
+);
+
 export const styles = sortCx({
   common: {
     // A link button drops the button box by default; `boxed` keeps it.
@@ -40,7 +70,8 @@ export const styles = sortCx({
   },
   // Heights and icon frames follow the Figma "Icons in buttons" spec
   // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec). The
-  // visible icon→label gap is `gap-*` plus the label's `px-0.5`. Icons draw in
+  // visible icon→label gap is `gap-*` plus the label's `px-0.5`; unboxed links
+  // drop that padding, so `linkRoot` is one 2px step wider. Icons draw in
   // the middle 16 of 20 units, so the spec's fixed 2px frame padding needs
   // svg padding on smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
   sizes: {
@@ -51,7 +82,7 @@ export const styles = sortCx({
         'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
         'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px] tw:*:data-[icon=trailing]:size-4 tw:*:data-[icon=trailing]:p-[0.5px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0',
+      linkRoot: 'tw:gap-0.5',
     },
     // X-Small — 32px.
     sm: {
@@ -59,7 +90,7 @@ export const styles = sortCx({
         'tw:gap-0.5 tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-1.5',
         'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0.5',
+      linkRoot: 'tw:gap-1',
     },
     // Small — 36px.
     md: {
@@ -68,7 +99,7 @@ export const styles = sortCx({
         'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
         'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
-      linkRoot: 'tw:gap-0.5',
+      linkRoot: 'tw:gap-1',
     },
     // Medium — 40px.
     lg: {
@@ -77,12 +108,12 @@ export const styles = sortCx({
         'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
         'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
       ].join(' '),
-      linkRoot: 'tw:gap-1',
+      linkRoot: 'tw:gap-1.5',
     },
     // Large — 44px.
     xl: {
       root: 'tw:gap-1 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3 tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
-      linkRoot: 'tw:gap-1',
+      linkRoot: 'tw:gap-1.5',
     },
   },
 
@@ -145,7 +176,9 @@ export const styles = sortCx({
         // Inner text underline
         'tw:*:data-text:underline tw:*:data-text:decoration-transparent tw:*:data-text:underline-offset-2 tw:hover:*:data-text:decoration-current',
         // Icon styles
-        'tw:*:data-icon:text-fg-brand-secondary_alt tw:hover:*:data-icon:text-fg-brand-secondary_hover tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        'tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-700 tw:dark:*:data-icon:text-link tw:dark:hover:*:data-icon:text-link-hover',
+        // A link sits in running text, so its leading icon takes the 18px frame.
+        'tw:*:data-[icon=leading]:size-4.5 tw:*:data-[icon=leading]:p-[0.25px]',
       ].join(' '),
     },
     'primary-destructive': {
@@ -207,6 +240,17 @@ export const styles = sortCx({
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
+    // Neutral text on a warning outline: the action inside a warning notice, which already
+    // carries the colour, so the button only echoes it in its edge.
+    'secondary-warning-outline': {
+      root: [
+        'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic',
+        `${borderAfter} tw:after:outline-utility-warning-300`,
+        'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
+        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:*:data-icon:text-utility-gray-500',
+      ].join(' '),
+    },
     'secondary-brand': {
       root: [
         'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
@@ -245,6 +289,8 @@ export interface CommonProps {
    * beside it (antd's `type="link"`).
    */
   boxed?: boolean;
+  /** Fully rounded ends, for a button inside a pill-shaped notice or toolbar */
+  pill?: boolean;
   /** Truncates the button text with an ellipsis when it overflows */
   ellipsis?: boolean;
   /**
@@ -312,6 +358,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
       noTextPadding,
       boxed,
       ellipsis,
+      pill,
       wrap,
       iconLeading: IconLeading,
       iconTrailing: IconTrailing,
@@ -327,7 +374,13 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
     const href = 'href' in otherProps ? otherProps.href : undefined;
     const Component = href ? AriaLink : AriaButton;
 
-    const isIcon = (IconLeading || IconTrailing) && !children;
+    // A count of 0 is a label too, so test for presence rather than truthiness.
+    const hasText =
+      children !== undefined &&
+      children !== null &&
+      children !== false &&
+      children !== '';
+    const isIcon = (IconLeading || IconTrailing) && !hasText;
     const isLinkType = [
       'link-gray',
       'link-primary',
@@ -376,6 +429,7 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
+          pill && 'tw:rounded-full tw:before:rounded-full',
           wrap &&
             'tw:min-w-0 tw:justify-start tw:text-start tw:whitespace-normal',
           (loading || (href && (disabled || loading))) &&
@@ -396,43 +450,23 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
         )}
 
         {loading && (
-          <svg
+          <ButtonLoadingIcon
             className={cx(
               styles.common.icon,
               !showTextWhileLoading &&
                 'tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2'
             )}
-            data-icon="loading"
-            fill="none"
-            viewBox="0 0 20 20">
-            {/* Background circle */}
-            <circle
-              className="tw:stroke-current tw:opacity-30"
-              cx="10"
-              cy="10"
-              fill="none"
-              r="8"
-              strokeWidth="2"
-            />
-            {/* Spinning circle */}
-            <circle
-              className="tw:origin-center tw:animate-spin tw:stroke-current"
-              cx="10"
-              cy="10"
-              fill="none"
-              r="8"
-              strokeDasharray="12.5 50"
-              strokeLinecap="round"
-              strokeWidth="2"
-            />
-          </svg>
+          />
         )}
 
-        {children && (
+        {hasText && (
           <span
             data-text
             className={cx(
-              'tw:transition-inherit-all',
+              // Only the underline is the span's own colour. Transitioning the
+              // inherited `color` as well restarts every frame of the root's
+              // colour transition, so the label lags the background.
+              'tw:transition-[text-decoration-color] tw:duration-100 tw:ease-linear',
               !noTextPadding && 'tw:px-0.5',
               ellipsis && 'tw:truncate tw:min-w-0',
               wrap && 'tw:min-w-0 tw:wrap-break-word'

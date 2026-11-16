@@ -109,7 +109,8 @@ class OntologyReleaseComparisonStorageTest {
                       .withUpdatedBy("admin"));
           final var active = fixture.capture(ignored -> {}).withEntityStatus(EntityStatus.APPROVED);
           fixture.releases.getDao().update(active);
-          new OntologyReleaseActivation(fixture.ontologies, Clock.systemUTC(), ignored -> {})
+          new OntologyReleaseActivation(
+                  fixture.ontologies, fixture.releases, Clock.systemUTC(), ignored -> {})
               .activate(
                   fixture.ontology.getId(),
                   new ActivateOntologyRelease()
@@ -163,7 +164,8 @@ class OntologyReleaseComparisonStorageTest {
                       .withUpdatedBy("admin"));
           final var previous = fixture.capture(ignored -> {});
           fixture.releases.getDao().update(previous.withEntityStatus(EntityStatus.APPROVED));
-          new OntologyReleaseActivation(fixture.ontologies, Clock.systemUTC(), ignored -> {})
+          new OntologyReleaseActivation(
+                  fixture.ontologies, fixture.releases, Clock.systemUTC(), ignored -> {})
               .activate(
                   root.getId(),
                   new ActivateOntologyRelease()

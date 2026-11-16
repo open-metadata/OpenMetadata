@@ -13,7 +13,7 @@
 
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   ChevronRight,
   Copy01,
   Lightbulb03,
@@ -58,8 +58,7 @@ const RawLogSection: FC<{ stackLines: string[] }> = ({ stackLines }) => {
         onClick={toggleLog}>
         <ChevronRight
           className={`tw:transition-transform ${showLog ? 'tw:rotate-90' : ''}`}
-          height={13}
-          width={13}
+          size={16}
         />
         {showLog ? t('label.hide-raw-logs') : t('label.show-raw-logs')}
       </button>
@@ -99,7 +98,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
       <Box
         align="center"
         className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
-        <AlertTriangle className={accentIconClass} size={15} />
+        <Alert className={accentIconClass} size={15} />
         <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>
@@ -113,7 +112,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
             className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
             type="button"
             onClick={() => onCopyToClipBoard()}>
-            <Copy01 size={13} />
+            <Copy01 size={18} />
             {hasCopied ? t('label.copied') : t('label.copy')}
           </button>
         )}

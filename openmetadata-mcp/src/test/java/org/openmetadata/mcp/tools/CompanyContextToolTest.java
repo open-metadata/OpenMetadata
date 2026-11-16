@@ -46,7 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.search.SearchRepository;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -99,18 +99,33 @@ class CompanyContextToolTest {
   }
 
   @Test
+  void searchReportsSemanticSearchNotEnabledWhenNoVectorServiceWasCreated() throws Exception {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    when(searchRepository.getVectorIndexService()).thenReturn(null);
+    entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "refund policy");
+    Map<String, Object> result =
+        tool.execute(mock(Authorizer.class), mock(CatalogSecurityContext.class), params);
+
+    assertTrue(
+        result.get("error").toString().contains("Semantic search is not enabled"),
+        result.toString());
+  }
+
+  @Test
   void cursorThreadsOffsetIntoVectorSearchClosingThePagingGap() throws Exception {
     SearchRepository searchRepository = mock(SearchRepository.class);
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
 
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     VectorSearchResponse response = new VectorSearchResponse(5L, Collections.emptyList());
 
-    try (MockedStatic<OpenSearchVectorService> vectorMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
-      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+    try (MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
       authorizerMock
           .when(() -> DefaultAuthorizer.getSubjectContext(any()))
           .thenReturn(mock(SubjectContext.class));
@@ -150,13 +165,11 @@ class CompanyContextToolTest {
     hit.put("fullyQualifiedName", "refunds");
     hit.put("answer", "Within 30 days.");
     hit.put("summary", null);
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
 
-    try (MockedStatic<OpenSearchVectorService> vectorMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
-      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+    try (MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
       authorizerMock
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(mock(SubjectContext.class));
@@ -185,15 +198,13 @@ class CompanyContextToolTest {
     when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
     entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
 
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    VectorIndexService vectorService = mock(VectorIndexService.class);
+    when(searchRepository.getVectorIndexService()).thenReturn(vectorService);
     VectorSearchResponse response = new VectorSearchResponse(0L, Collections.emptyList());
     SubjectContext subjectContext = mock(SubjectContext.class);
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
 
-    try (MockedStatic<OpenSearchVectorService> vectorMock =
-            mockStatic(OpenSearchVectorService.class);
-        MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
-      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+    try (MockedStatic<DefaultAuthorizer> authorizerMock = mockStatic(DefaultAuthorizer.class)) {
       authorizerMock
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(subjectContext);

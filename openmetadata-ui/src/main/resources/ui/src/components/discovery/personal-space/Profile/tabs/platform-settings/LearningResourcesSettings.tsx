@@ -20,6 +20,7 @@ import {
   ConfirmPopover,
   Grid,
   Input,
+  Skeleton,
   Table,
   TableCard,
   Typography,
@@ -33,13 +34,15 @@ import {
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
-import { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
-import { useTranslation } from 'react-i18next';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+  CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   MAX_VISIBLE_CONTEXTS,
   MAX_VISIBLE_TAGS,
@@ -47,6 +50,8 @@ import {
 } from '../../../../../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../../../../../constants/platform/personaAppLayout.constants';
 import { PageViewMode } from '../../../../../../generated/type/personaPreferences';
+import { usePageForSize } from '../../../../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../../../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../../../../../hooks/platform/usePersonaViewMode';
 import {
   LearningResourceFilterState,
@@ -57,6 +62,7 @@ import {
   deleteLearningResource,
   LearningResource,
 } from '../../../../../../rest/learningResourceAPI';
+import { getViewPageSizeOptions } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -130,8 +136,25 @@ const LearningResourcesSettings = ({
   const [filterState, setFilterState] = useState<LearningResourceFilterState>(
     initial.filterState
   );
-  const [currentPage, setCurrentPage] = useState(initial.currentPage);
-  const [pageSize, setPageSize] = useState(initial.pageSize);
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
+  const [selectedView, setSelectedView] = useState<PageViewMode | undefined>(
+    initial.selectedView
+  );
+  const view = selectedView ?? personaView;
+  const pageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: pageSize, savePageSize } =
+    useSavedPageSize(pageSizeOptions);
+  const [currentPage, setCurrentPage] = usePageForSize(
+    pageSize,
+    initial.pageSize === pageSize ? initial.currentPage : undefined
+  );
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setSelectedView(nextView);
+      setCurrentPage(1);
+    },
+    [setCurrentPage]
+  );
 
   const { resources, paging, isLoading, refetch } = useLearningResources({
     searchText,
@@ -143,12 +166,6 @@ const LearningResourcesSettings = ({
     filterState,
     onFilterChange: setFilterState,
   });
-
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.LearningResources);
-  const [selectedView, setSelectedView] = useState<PageViewMode | undefined>(
-    initial.selectedView
-  );
-  const view = selectedView ?? personaView;
 
   const debouncedSearch = useMemo(
     () => debounce(setSearchText, SEARCH_DEBOUNCE_MS),
@@ -169,7 +186,7 @@ const LearningResourcesSettings = ({
     }
     lastQuery.current = { searchText, filterState };
     setCurrentPage(1);
-  }, [searchText, filterState]);
+  }, [searchText, filterState, setCurrentPage]);
 
   useEffect(() => {
     onSaveState?.({
@@ -312,10 +329,9 @@ const LearningResourcesSettings = ({
         return (
           <Box gap={1}>
             <ButtonUtility
-              color="tertiary"
               data-testid={`edit-${record.name}`}
               icon={Edit01}
-              size="xs"
+              size="lg"
               tooltip={t('label.edit')}
               onPress={() => openForm(record)}
             />
@@ -329,10 +345,9 @@ const LearningResourcesSettings = ({
               })}
               onConfirm={() => handleDelete(record)}>
               <ButtonUtility
-                color="tertiary"
                 data-testid={`delete-${record.name}`}
                 icon={Trash01}
-                size="xs"
+                size="lg"
                 tooltip={t('label.delete')}
               />
             </ConfirmPopover>
@@ -348,14 +363,22 @@ const LearningResourcesSettings = ({
         currentPage={currentPage}
         isLoading={isLoading}
         pageSize={pageSize}
-        pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
+        pageSizeOptions={pageSizeOptions}
         paging={{ total: paging.total }}
         pagingHandler={({ currentPage: page }) => setCurrentPage(page)}
         onShowSizeChange={(size) => {
-          setPageSize(size);
+          savePageSize(size);
           setCurrentPage(1);
         }}
       />
+    </Box>
+  );
+
+  const tableSkeleton = (
+    <Box className="tw:p-3" direction="col" gap={2}>
+      {Array.from({ length: pageSize }, (_, i) => (
+        <Skeleton height={28} key={i} variant="rounded" />
+      ))}
     </Box>
   );
 
@@ -365,6 +388,7 @@ const LearningResourcesSettings = ({
         <Box className="tw:shrink-0 tw:p-3" direction="col" gap={2}>
           <Box align="center" gap={2} wrap="wrap">
             <Input
+              autoComplete="off"
               className="tw:max-w-72"
               data-testid="search-resources"
               icon={Search}
@@ -379,7 +403,7 @@ const LearningResourcesSettings = ({
             />
             {quickFilters}
             <Box className="tw:flex-1" />
-            <ViewToggle value={view} onChange={setSelectedView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
           </Box>
           {filterSelectionDisplay}
         </Box>
@@ -418,17 +442,17 @@ const LearningResourcesSettings = ({
             </Table.Header>
             <Table.Body
               items={isLoading ? [] : resources}
-              renderEmptyState={() => (
-                <Box className="tw:justify-center tw:py-12">
-                  {isLoading ? (
-                    <SettingsSkeleton rows={3} variant="default" />
-                  ) : (
+              renderEmptyState={() =>
+                isLoading ? (
+                  tableSkeleton
+                ) : (
+                  <Box className="tw:justify-center tw:py-12">
                     <Typography className="tw:text-tertiary" size="text-sm">
                       {t('server.no-records-found')}
                     </Typography>
-                  )}
-                </Box>
-              )}>
+                  </Box>
+                )
+              }>
               {(record) => (
                 <Table.Row
                   columns={columns}

@@ -22,7 +22,8 @@
     <quartz.version>2.5.0-rc2</quartz.version>
     <pac4j.version>6.5.6</pac4j.version>
     <socket.io-client.version>2.1.1</socket.io-client.version>
-    <json-smart.version>2.5.2</json-smart.version>
+    <!-- 2.6.1 clears CVE-2026-113602 (strict-mode trailing data check). -->
+    <json-smart.version>2.6.1</json-smart.version>
     <jetty.version>12.1.14</jetty.version>
     <logback-core.version>1.5.38</logback-core.version>
     <logback-classic.version>1.5.38</logback-classic.version>
@@ -101,7 +102,7 @@
     <dependency>
       <groupId>org.glassfish.expressly</groupId>
       <artifactId>expressly</artifactId>
-      <version>5.0.0</version>
+      <version>6.0.0</version>
     </dependency>
     <!--  Upgrading due to CVE in com.nimbusds:nimbus-jose-jwt  -->
     <dependency>
@@ -124,6 +125,10 @@
       <groupId>net.minidev</groupId>
       <artifactId>json-smart</artifactId>
       <version>${json-smart.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
     </dependency>
     <!-- Google OAuth Client Library -->
     <dependency>
@@ -687,7 +692,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20240303</version>
+      <version>20260719</version>
     </dependency>
     
     <dependency>
@@ -1057,6 +1062,14 @@
       <artifactId>jena-shacl</artifactId>
       <version>${jena.version}</version>
     </dependency>
+    <!-- Tests only: the TDB2 store Fuseki runs, so graph-replacement tests exercise its indexes.
+         jena-tdb2 does not pull jena-tdb1, whose static initialisation the note above avoids. -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-tdb2</artifactId>
+      <version>${jena.version}</version>
+      <scope>test</scope>
+    </dependency>
 
     <!-- Apache Calcite for SQL parsing -->
     <dependency>
@@ -1159,17 +1172,17 @@
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-ooxml</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.apache.poi</groupId>
       <artifactId>poi-scratchpad</artifactId>
-      <version>5.4.1</version>
+      <version>6.0.0</version>
     </dependency>
   </dependencies>
 

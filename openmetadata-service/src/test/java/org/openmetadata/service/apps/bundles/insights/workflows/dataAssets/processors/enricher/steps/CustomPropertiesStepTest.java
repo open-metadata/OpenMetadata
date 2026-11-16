@@ -94,8 +94,6 @@ class CustomPropertiesStepTest {
         null,
         entityMap,
         Map.of(),
-        0L,
-        0L,
         new EnrichmentContext(entityType, List.of(), 0L, 0L),
         VersionShape.LATEST_HYDRATED);
   }

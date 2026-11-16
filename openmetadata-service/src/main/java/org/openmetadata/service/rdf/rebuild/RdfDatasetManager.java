@@ -37,6 +37,7 @@ public final class RdfDatasetManager implements AutoCloseable {
   private final Clock clock;
   private final Function<String, RdfStorageInterface> factory;
   private final Duration writerWait;
+  private final ReleaseGraphs releases;
   private final Cache<String, RdfStorageInterface> handles =
       Caffeine.newBuilder().maximumSize(HANDLE_LIMIT).build();
   private final Semaphore activePermit = new Semaphore(1, true);
@@ -47,12 +48,14 @@ public final class RdfDatasetManager implements AutoCloseable {
       final RdfRebuildStore store,
       final Clock clock,
       final Function<String, RdfStorageInterface> factory,
-      final Duration writerWait) {
+      final Duration writerWait,
+      final ReleaseGraphs releases) {
     this.names = names;
     this.store = store;
     this.clock = clock;
     this.factory = factory;
     this.writerWait = writerWait;
+    this.releases = releases;
     store.initialize(names.base());
   }
 
@@ -234,7 +237,7 @@ public final class RdfDatasetManager implements AutoCloseable {
     long replayed = cursor;
     for (RdfRebuildStore.Entry entry : entries) {
       final RdfMutation mutation = JsonUtils.readValue(entry.payload(), RdfMutation.class);
-      writeBuild(target, mutation::apply);
+      writeBuild(target, storage -> mutation.apply(storage, releases));
       replayed = entry.id();
     }
     return replayed;

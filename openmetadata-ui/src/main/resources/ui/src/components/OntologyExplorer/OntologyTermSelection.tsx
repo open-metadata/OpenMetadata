@@ -75,6 +75,7 @@ const OntologyTermSelection = ({
       </div>
       <Input
         aria-label={t('label.search')}
+        autoComplete="off"
         placeholder={t('label.search')}
         value={query}
         onChange={setQuery}

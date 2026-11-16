@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Card, Tooltip } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Card } from '@openmetadata/ui-core-components';
 
+import { LayoutLeft } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
-import { ReactComponent as SidebarCollapsedIcon } from '../../../assets/svg/ic-sidebar-collapsed.svg';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
@@ -47,7 +47,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
     <>
       {pageTitle && <DocumentTitle title={pageTitle} />}
       <ReflexContainer
-        className={classNames(className, 'resizable-panels-layout bg-grey')}
+        className={classNames(className, 'resizable-panels-layout')}
         orientation={orientation}>
         <ReflexElement
           className={classNames(firstPanel.className, 'resizable-first-panel', {
@@ -83,16 +83,15 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           )}>
           {isRightPanelCollapsed && (
             <Card className="reflex-card">
-              <Tooltip arrow placement="right" title={t('label.expand')}>
-                <ButtonUtility
-                  className="mr-2"
-                  color="tertiary"
-                  data-testid="sidebar-toggle"
-                  icon={SidebarCollapsedIcon}
-                  size="sm"
-                  onClick={handleCollapse}
-                />
-              </Tooltip>
+              <ButtonUtility
+                className="mr-2"
+                data-testid="sidebar-toggle"
+                icon={LayoutLeft}
+                size="lg"
+                tooltip={t('label.expand')}
+                tooltipPlacement="right"
+                onClick={handleCollapse}
+              />
             </Card>
           )}
           {!isRightPanelCollapsed && (

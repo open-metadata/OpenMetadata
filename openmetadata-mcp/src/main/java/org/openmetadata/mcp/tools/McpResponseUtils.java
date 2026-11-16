@@ -11,9 +11,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.data.MetricGroup;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -22,6 +24,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.secrets.masker.EntityMasker;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
@@ -55,7 +58,9 @@ public final class McpResponseUtils {
    * service's connection config, an ingestion pipeline's source config, an automations workflow's
    * request, an alert's webhook credentials, and a user's authentication mechanism. That last one
    * is dropped rather than masked: the masker does not type every authentication mechanism, and no
-   * agent task needs any user's credentials. Every other entity type is returned as is.
+   * agent task needs any user's credentials. A metric group's member list is dropped too, as REST
+   * drops it: members are listed only through {@code /v1/metricGroups/{id}/metrics}, which leaves
+   * out the metrics the caller cannot view. Every other entity type is returned as is.
    *
    * <p>The mask applies to every caller, bots included: REST hands a bot the decrypted value, and no
    * agent task needs it. REST decrypts before masking; masking the stored value gives the same
@@ -71,7 +76,10 @@ public final class McpResponseUtils {
       case McpServer server -> maskedCopy(server, McpServerMasker::mask);
       case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
       case IngestionPipeline pipeline -> maskedCopy(pipeline, masker::maskIngestionPipeline);
-      case User user -> maskedCopy(user, copy -> copy.setAuthenticationMechanism(null));
+      case User user -> maskedCopy(
+          user, copy -> ProfileWebhookSecrets.mask(copy.withAuthenticationMechanism(null)));
+      case Team team -> maskedCopy(team, ProfileWebhookSecrets::mask);
+      case MetricGroup group -> maskedCopy(group, copy -> copy.setMetrics(null));
       case Workflow workflow -> masker.maskWorkflow(JsonUtils.deepCopy(workflow, Workflow.class));
       case EventSubscription subscription -> maskWebhookSecrets(subscription);
       case ServiceEntityInterface service -> maskConnection(service, masker);

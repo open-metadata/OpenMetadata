@@ -42,6 +42,7 @@ import {
   dataProductQueryKey,
   DATA_PRODUCT_DEFAULT_FIELDS,
 } from '../../../rest/queries/dataProductQuery';
+import { invalidateDomainStyles } from '../../../rest/queries/domainStyleQuery';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDomainPath, getVersionPath } from '../../../utils/RouterUtils';
 import { getEncodedFqn } from '../../../utils/StringUtils';
@@ -121,6 +122,7 @@ const DataProductsPage = () => {
         const response = await patchDataProduct(dataProduct.id, jsonPatch);
 
         setDataProduct(response);
+        void invalidateDomainStyles(queryClient);
 
         if (dataProduct?.name !== updatedData.name) {
           navigate(

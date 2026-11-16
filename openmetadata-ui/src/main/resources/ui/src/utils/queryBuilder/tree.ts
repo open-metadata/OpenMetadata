@@ -29,6 +29,7 @@ import {
   migrateJsonLogic,
 } from '../QueryBuilderPureUtils';
 import { generateUUID } from '../StringUtils';
+import { collapseColumnTagsVar } from './jsonLogicColumnTags';
 import { fromEngineJsonLogic } from './jsonLogicNegation';
 import { routeTagsGroupToTier } from './jsonLogicTierVar';
 import type { GroupMode } from './types';
@@ -246,7 +247,7 @@ export const loadQueryBuilderTree = ({
     // field is renamed or an entity type narrows its allow-list.
     const loaded = QbUtils.loadFromJsonLogic(
       routeTagsGroupToTier(
-        fromEngineJsonLogic(migrateJsonLogic(parsed))
+        fromEngineJsonLogic(collapseColumnTagsVar(migrateJsonLogic(parsed)))
       ) as JsonLogicTree,
       config
     );

@@ -119,7 +119,7 @@ public class MetadataServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public static class MetadataServiceList extends ResultList<MetadataService> {

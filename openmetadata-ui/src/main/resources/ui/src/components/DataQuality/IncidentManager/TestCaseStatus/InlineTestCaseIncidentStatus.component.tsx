@@ -296,7 +296,9 @@ const InlineTestCaseIncidentStatus = ({
       try {
         await transitionIncident(taskId, resolveRequest);
 
-        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+          limit: 1,
+        });
         const latest = refreshed?.data?.[0];
         if (latest) {
           onSubmit(latest);
@@ -519,6 +521,7 @@ const InlineTestCaseIncidentStatus = ({
         direction="col"
         gap={2}>
         <Input
+          autoComplete="off"
           data-testid="assignee-search-input"
           placeholder={t('label.search')}
           size="sm"

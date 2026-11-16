@@ -20,14 +20,14 @@ import { FQN_SEPARATOR_CHAR } from '../../../../constants/char.constants';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../hooks/useFqn';
 import {
-  getCustomizePageCategories,
+  getCustomizePageCategoryCards,
   getCustomizePageOptions,
 } from '../../../../utils/Persona/PersonaUtils';
 import { getCustomizePagePath } from '../../../../utils/RouterUtils';
 import SettingItemCard from '../../SettingItemCard/SettingItemCard.component';
 
 export const CustomizeUI = () => {
-  const categories = useMemo(() => getCustomizePageCategories(), []);
+  const categories = useMemo(() => getCustomizePageCategoryCards(), []);
   const navigate = useNavigate();
   const location = useCustomLocation();
   const { fqn: personaFQN } = useFqn();

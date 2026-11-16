@@ -13,6 +13,7 @@
 import type { ReactProps } from '@deuex-solutions/react-tour';
 import {
   Button,
+  ButtonUtility,
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -360,11 +361,11 @@ const ProductTour = () => {
             inViewThreshold={TOUR_IN_VIEW_THRESHOLD}
             key={readyStepIndex}
             lastStepNextButton={
-              <Button
+              <ButtonUtility
                 aria-label={t('label.next')}
-                color="tertiary"
                 data-testid="last-step-button"
-                iconLeading={ArrowRight}
+                icon={ArrowRight}
+                size="lg"
                 onClick={finish}
               />
             }

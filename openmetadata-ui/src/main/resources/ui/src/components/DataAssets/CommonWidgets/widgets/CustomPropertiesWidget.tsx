@@ -42,7 +42,8 @@ export const CustomPropertiesWidget: CommonWidgetComponent = ({
   entityType,
   widgetConfig,
 }) => {
-  const { data, permissions } = useGenericContext<GenericEntity>();
+  const { data, permissions, isVersionView } =
+    useGenericContext<GenericEntity>();
   const widgetSettings = useMemo(
     () => getCustomPropertiesWidgetSettings(widgetConfig.config),
     [widgetConfig.config]
@@ -58,6 +59,7 @@ export const CustomPropertiesWidget: CommonWidgetComponent = ({
       entityType={entityType as EntityType.TABLE}
       hasEditAccess={Boolean(canEditCustomFields)}
       hasPermission={canViewCustomFields}
+      isVersionView={isVersionView}
       widgetKey={widgetConfig.i}
       widgetSettings={widgetSettings}
     />

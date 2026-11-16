@@ -642,7 +642,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-
+    authorizeTypeRead(securityContext);
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
@@ -667,6 +667,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
   @Produces(MediaType.APPLICATION_JSON)
   public Response getAllCustomPropertiesByEntityType(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizeTypeRead(securityContext);
     try {
       SchemaFieldExtractor extractor = new SchemaFieldExtractor();
       Map<String, List<SchemaFieldExtractor.FieldDefinition>> customPropertiesMap =
@@ -713,6 +714,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
+    authorizeTypeRead(securityContext);
     try {
       Fields fieldsParam = new Fields(Set.of("customProperties"));
       Type typeEntity = repository.getByName(uriInfo, entityType, fieldsParam, include, false);
@@ -724,5 +726,15 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
           .entity("Entity type '" + entityType + "' not found or has no custom properties")
           .build();
     }
+  }
+
+  // Types describe the shape of every entity, custom properties included, so reading them takes
+  // what listing types takes
+  // (ADR:2026-11-03-read-handlers-authorize-like-the-entity-reads-they-mirror).
+  private void authorizeTypeRead(SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
+        new ResourceContext<>(entityType));
   }
 }

@@ -37,10 +37,10 @@ const INSIDE_THE_PLATFORM = [
   'Users',
 ];
 
-// What the server says each selection reaches. A task has no owners, and glossary terms and users
-// have no followers, so the form never offers someone delivery cannot find.
+// What the server says each selection reaches. Glossary terms and users have no followers, so the
+// form never offers someone delivery cannot find.
 const OFFERED: Array<{ sources: string[]; recipients: string[] }> = [
-  { sources: ['task'], recipients: ['Assignees', 'Mentions'] },
+  { sources: ['task'], recipients: ['Assignees', 'Mentions', 'Owners'] },
   { sources: ['conversation'], recipients: ['Mentions', 'Owners'] },
   {
     sources: ['table'],

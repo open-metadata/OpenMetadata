@@ -55,10 +55,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showSuccessToast: jest.fn(),
 }));
 
-jest.mock('../../../assets/svg/ic-folder-new.svg', () => ({
-  ReactComponent: jest.fn(() => <span data-testid="folder-icon" />),
-}));
-
 jest.mock('../CreateFolderModal/CreateFolderModal.component', () =>
   jest.fn(
     ({

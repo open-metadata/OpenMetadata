@@ -348,10 +348,13 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
+      grep: shardGrep,
       dependencies: ['setup', 'entity-data-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        locale: 'en-US',
+        timezoneId: 'UTC',
         storageState: 'playwright/.auth/admin.json',
         // Snapshots are captured under the default motion path.
         reducedMotion: 'no-preference',
@@ -433,6 +436,8 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     {
+      // The @ontology-rdf specs moved to Collate with Ontology Studio. The project stays
+      // until the rdf lane in playwright-e2e-reusable.yml stops listing it.
       name: 'Ontology RDF',
       // Same graph canvas as Knowledge Graph — keep the default motion path so
       // fit/centering geometry matches the assertions.

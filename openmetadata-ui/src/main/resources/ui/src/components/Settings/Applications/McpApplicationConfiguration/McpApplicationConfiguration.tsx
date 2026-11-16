@@ -38,6 +38,7 @@ const McpApplicationConfiguration = ({
   const [activeField, setActiveField] = useState<string>('');
   const {
     formConfig,
+    formSchema,
     formUiSchema,
     isEveryFieldManaged,
     isFetching,
@@ -46,7 +47,7 @@ const McpApplicationConfiguration = ({
     fetchMcpConfig,
     refetchSources,
     saveMcpConfig,
-  } = useMcpConfiguration();
+  } = useMcpConfiguration(jsonSchema);
 
   const handleFieldFocus = useCallback((fieldName: string) => {
     if (isEmpty(fieldName)) {
@@ -78,7 +79,7 @@ const McpApplicationConfiguration = ({
         isLoading={isSaving}
         okText={t('label.save')}
         readonly={isEveryFieldManaged}
-        schema={jsonSchema}
+        schema={formSchema}
         uiSchema={formUiSchema}
         onFocus={handleFieldFocus}
         onSubmit={({ formData }: IChangeEvent<MCPConfiguration>) =>

@@ -149,6 +149,7 @@ const InboxTaskListToolbar: React.FC<InboxTaskListToolbarProps> = ({
   const filters = (
     <>
       <Input
+        autoComplete="off"
         // Wrapping, a basis of 0 would let the search shrink away first.
         className={inline ? 'tw:min-w-48 tw:flex-1' : 'tw:min-w-40 tw:flex-1'}
         icon={SearchInputIcon}

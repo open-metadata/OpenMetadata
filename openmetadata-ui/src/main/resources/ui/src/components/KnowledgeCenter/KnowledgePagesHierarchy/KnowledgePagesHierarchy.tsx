@@ -23,7 +23,12 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  File06 as Articles,
+  Article,
+  DotsGrid,
+  File06,
+  ListCollapse,
+  ListExpand,
+  QuickLink,
   Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -46,10 +51,6 @@ import {
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
-import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
-import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
@@ -657,16 +658,17 @@ const KnowledgePagesHierarchy = forwardRef<
           return;
         }
 
-        if (sourceKey === targetKey) {
+        // Pages have no sibling order, so only a drop onto a row moves; root moves use onItemRootDrop.
+        if (sourceKey === targetKey || dropPosition !== 'on') {
           return;
         }
 
-        const isDropOnNode = dropPosition === 'on';
-        const targetNode = isDropOnNode
-          ? findPageInTreeData(knowledgePageHierarchy, targetKey as string)
-          : undefined;
+        const targetNode = findPageInTreeData(
+          knowledgePageHierarchy,
+          targetKey as string
+        );
 
-        if (isDropOnNode && !targetNode) {
+        if (!targetNode) {
           return;
         }
 
@@ -680,9 +682,9 @@ const KnowledgePagesHierarchy = forwardRef<
           return;
         }
 
-        const isAlreadyChild =
-          targetNode &&
-          (targetNode.children ?? []).some((c) => c.id === sourceNode.id);
+        const isAlreadyChild = (targetNode.children ?? []).some(
+          (c) => c.id === sourceNode.id
+        );
 
         if (isAlreadyChild) {
           return;
@@ -728,19 +730,24 @@ const KnowledgePagesHierarchy = forwardRef<
             align="center"
             className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
             gap={2}>
+            {canEditAll && (
+              <DotsGrid
+                aria-hidden="true"
+                className="tw:size-3.5 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary tw:opacity-0 tw:group-hover/tree-item:opacity-100"
+                data-testid="drag-handle-icon"
+              />
+            )}
             {isQuickLink ? (
-              <QuickLinkIcon
+              <QuickLink
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="quick-link-icon"
-                height={14}
-                width={14}
+                size={14}
               />
             ) : (
-              <FileIcon
+              <Article
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="page-icon"
-                height={14}
-                width={14}
+                size={14}
               />
             )}
             <Typography
@@ -755,8 +762,7 @@ const KnowledgePagesHierarchy = forwardRef<
 
         const deleteButton = canDelete ? (
           <ButtonUtility
-            className="tw:opacity-0 group-hover-opacity-100 tw:shrink-0 tw:p-0"
-            color="tertiary"
+            className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
             data-testid={`${displayName}-delete-page-btn`}
             icon={Trash01}
             size="xs"
@@ -774,7 +780,11 @@ const KnowledgePagesHierarchy = forwardRef<
             id={node.fullyQualifiedName}
             key={node.fullyQualifiedName}
             textValue={displayName}>
-            <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
+            <Tree.ItemContent
+              showGuideLines
+              className="tw:gap-0.5 tw:pl-1"
+              hasChildItems={hasChildren}
+              indentPerLevel={24}>
               {() =>
                 isQuickLink && onQuickLinkClick ? (
                   <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
@@ -805,7 +815,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Tree.Item>
         );
       },
-      [activeKey, onQuickLinkClick, canDelete, handleDeletePage, t]
+      [activeKey, onQuickLinkClick, canDelete, canEditAll, handleDeletePage, t]
     );
 
     useImperativeHandle(ref, () => ({
@@ -873,9 +883,8 @@ const KnowledgePagesHierarchy = forwardRef<
     const renderExpandCollapseButton = () =>
       isUserExpandedAll ? (
         <ButtonUtility
-          color="tertiary"
-          icon={<CollapseAllIcon className="tw:size-6" />}
-          size="sm"
+          icon={ListCollapse}
+          size="lg"
           tooltip={t('label.collapse-all')}
           onClick={() => {
             setExpandedKeys([]);
@@ -884,10 +893,9 @@ const KnowledgePagesHierarchy = forwardRef<
         />
       ) : (
         <ButtonUtility
-          color="tertiary"
-          icon={<ExpandAllIcon className="tw:size-6" />}
+          icon={ListExpand}
           isDisabled={isExpandingAll}
-          size="sm"
+          size="lg"
           tooltip={t('label.expand-all')}
           onClick={handleExpandAll}
         />
@@ -911,7 +919,7 @@ const KnowledgePagesHierarchy = forwardRef<
           <div className="tw:relative tw:flex-1 tw:h-full tw:border-0 tw:px-4">
             <NoDataPlaceholder
               description={t('message.no-articles-listed')}
-              icon={<Articles />}
+              icon={<File06 />}
               title={t('label.no-entity', {
                 entity: t('label.article-plural'),
               })}
@@ -983,7 +991,7 @@ const KnowledgePagesHierarchy = forwardRef<
     return (
       <Card
         aria-label={t('label.article-plural')}
-        className="tw:h-full tw:flex tw:flex-col tw:py-5 tw:px-0"
+        className="tw:h-full tw:flex tw:flex-col tw:pt-3 tw:pb-5 tw:px-0"
         data-testid="knowledge-pages-hierarchy-container"
         role="region"
         onDragOver={(e) => e.preventDefault()}
@@ -1008,15 +1016,11 @@ const KnowledgePagesHierarchy = forwardRef<
         <Card.Content className="tw:p-0 tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:h-full">
           <Box
             align="center"
-            className="tw:pb-5 tw:shrink-0 tw:px-5"
+            className="tw:pb-5 tw:shrink-0 tw:px-3"
             justify="between">
             <Box align="center" gap={3}>
               <div className={classNames(PANEL_ICON_BOX_CLASS, 'tw:p-3')}>
-                <FileIcon
-                  className="tw:text-fg-quaternary"
-                  height={20}
-                  width={20}
-                />
+                <Article className="tw:text-fg-quaternary" size={20} />
               </div>
               <div>
                 <Typography size="text-md" weight="medium">
@@ -1033,7 +1037,7 @@ const KnowledgePagesHierarchy = forwardRef<
           </Box>
 
           <div
-            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-5"
+            className="tw:flex-1 tw:min-h-0 tw:overflow-auto tw:px-3"
             data-testid="article-list-container"
             onScroll={handleScroll}>
             {renderArticleListBody()}

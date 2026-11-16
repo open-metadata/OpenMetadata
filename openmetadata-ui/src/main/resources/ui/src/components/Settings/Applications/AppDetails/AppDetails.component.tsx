@@ -21,7 +21,10 @@ import {
 import {
   ChevronLeft,
   Clock,
+  LinkExternal01,
+  Restore,
   SlashCircle01,
+  Trash01,
   User01,
 } from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
@@ -32,9 +35,6 @@ import { isEmpty } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../../assets/svg/external-links.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { TabSpecificField } from '../../../../enums/entity.enum';
@@ -249,7 +249,7 @@ const AppDetails = () => {
                   description={t('message.restore-action-description', {
                     entityType: getEntityName(appData),
                   })}
-                  icon={IconRestore}
+                  icon={Restore}
                   id="restore-button"
                   name={t('label.restore')}
                 />
@@ -292,7 +292,7 @@ const AppDetails = () => {
                   description={t('message.uninstall-app', {
                     app: getEntityName(appData),
                   })}
-                  icon={DeleteIcon}
+                  icon={Trash01}
                   id="uninstall-button"
                   name={t('label.uninstall')}
                 />
@@ -624,7 +624,7 @@ const AppDetails = () => {
 
     return (
       <div className="flex-center gap-2">
-        <IconExternalLink className="tw:size-3.5 tw:shrink-0" />
+        <LinkExternal01 className="tw:shrink-0" size={14} />
         <Typography>
           <a
             className="text-xs"

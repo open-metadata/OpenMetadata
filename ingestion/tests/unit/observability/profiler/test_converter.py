@@ -24,9 +24,13 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
+from metadata.ingestion.source import sqa_types
+from metadata.profiler.metrics.core import add_props
+from metadata.profiler.metrics.static.column_names import ColumnNames
 from metadata.profiler.orm.converter.azuresql.converter import AzureSqlMapTypes
 from metadata.profiler.orm.converter.base import _safe_orm_attr, ometa_to_sqa_orm
 from metadata.profiler.orm.converter.common import CommonMapTypes
+from metadata.profiler.orm.converter.converter_registry import converter_registry
 from metadata.profiler.orm.converter.mssql.converter import MssqlMapTypes
 from metadata.profiler.orm.registry import NOT_COMPUTE, CustomTypes
 from metadata.profiler.orm.types import custom_xml
@@ -271,6 +275,11 @@ def test_dunder_prefixed_columns_are_mapped(mock_schema, mock_database):
 
     # Every column must appear in the underlying Table under its original name
     assert [col.name for col in orm_table.__table__.columns] == [name for name, _ in column_definition]
+    with sqlalchemy.create_engine("sqlite://").connect() as connection:
+        reported_names = connection.execute(
+            sqlalchemy.select(add_props(table=orm_table)(ColumnNames)().fn())
+        ).scalar_one()
+    assert reported_names.split(",") == [name for name, _ in column_definition]
     # The first column (dunder-prefixed) must be the primary key
     pk_cols = list(orm_table.__table__.primary_key)
     assert len(pk_cols) == 1
@@ -346,3 +355,309 @@ def test_xml_reverse_map_stays_separate_from_text():
 
     assert reverse_map[custom_xml.XML] == {DataType.XML}
     assert reverse_map[sqlalchemy.TEXT] == {DataType.TEXT, DataType.MEDIUMTEXT}
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "service_type, table_name",
+    [
+        (DatabaseServiceType.Postgres, "postgres_geometry_table"),
+        (DatabaseServiceType.Mysql, "mysql_geometry_table"),
+        (DatabaseServiceType.Mssql, "mssql_geometry_table"),
+        (DatabaseServiceType.AzureSQL, "azuresql_geometry_table"),
+    ],
+)
+def test_geometry_columns_are_mapped(mock_schema, mock_database, service_type, table_name):
+    """A geometry column had no entry in the type map, so its sample data persisted as
+    "OPENMETADATA_UNDETERMIND[<wkb hex>]" (#33157). It must map to a type that decodes
+    WKB while `NOT_COMPUTE` still skips its metrics by class name.
+    """
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=[Column(name="shape", dataType=DataType.GEOMETRY)],
+        serviceType=service_type,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    shape_type = orm_table.__table__.columns["shape"].type
+    assert isinstance(shape_type, CustomTypes.GEOMETRY.value)
+    assert not isinstance(shape_type, CustomTypes.UNDETERMINED.value)
+    assert type(shape_type).__name__ in NOT_COMPUTE
+
+
+def test_redshift_mapper_does_not_leak_geometry_into_other_dialects():
+    """The Redshift mapper used to update the shared CommonMapTypes._TYPE_MAP on init,
+    remapping geometry to a bare string for every dialect built afterwards."""
+    from sqlalchemy_redshift.dialect import GEOMETRY
+
+    from metadata.profiler.orm.converter.redshift.converter import RedshiftMapTypes
+
+    redshift_mapper = RedshiftMapTypes()
+    geometry_col = Column(name="shape", dataType=DataType.GEOMETRY)
+
+    assert CommonMapTypes().return_custom_type(geometry_col, DatabaseServiceType.Postgres) is CustomTypes.GEOMETRY.value
+    assert redshift_mapper.return_custom_type(geometry_col, DatabaseServiceType.Redshift) is GEOMETRY
+
+
+def test_geometry_reverse_map_stays_separate_from_geography():
+    reverse_map = CommonMapTypes.map_sqa_to_om_types()
+
+    assert reverse_map[CustomTypes.GEOMETRY.value] == {DataType.GEOMETRY}
+    assert reverse_map[sqa_types.SQASGeography] == {DataType.GEOGRAPHY}
+
+
+@mark.parametrize(
+    "array_data_type, expected_item_type",
+    [
+        (DataType.STRING, sqlalchemy.String),
+        (DataType.UNKNOWN, sqlalchemy.types.NullType),
+    ],
+)
+def test_map_array_types(array_data_type, expected_item_type):
+    """Array columns map to a one-dimensional array of their element type; an
+    unmapped element type is left untyped, since SQLAlchemy needs one to build an ARRAY.
+    """
+    col = Column(name="tags", dataType=DataType.ARRAY, arrayDataType=array_data_type)
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, expected_item_type)
+    assert sqa_type.impl.dimensions is None
+
+
+@mark.parametrize(
+    "data_type_display, expected_item_type, expected_dimensions",
+    [
+        ("array<array<string>>", sqlalchemy.String, 2),
+        ("Array(Array(String))", sqlalchemy.String, 2),
+        ("array<array<array<int>>>", sqlalchemy.INT, 3),
+        ("array<array<nullable<string>>>", sqlalchemy.String, 2),
+        ("array<array<lowcardinality<string>>>", sqlalchemy.String, 2),
+        ("Nullable(Array(Array(String)))", sqlalchemy.String, 2),
+        (" Array ( Array ( String ) ) ", sqlalchemy.String, 2),
+        ("array<\narray<array<int>>>\n", sqlalchemy.INT, 3),
+        ("Array(Array(Decimal(18, 2)))", sqlalchemy.DECIMAL, 2),
+        ("Array(Array(Enum8(')' = 1, '<' = 2)))", sqlalchemy.types.NullType, 2),
+        ("Array(Array(Enum8('it''s >' = 1)))", sqlalchemy.types.NullType, 2),
+        (r"Array(Array(Enum8('it\'s >' = 1)))", sqlalchemy.types.NullType, 2),
+        ("array<array<not_a_type>>", sqlalchemy.types.NullType, 2),
+        (None, sqlalchemy.types.NullType, None),
+        ("", sqlalchemy.types.NullType, None),
+        ("array", sqlalchemy.types.NullType, None),
+        ("array<string>", sqlalchemy.types.NullType, None),
+    ],
+)
+@mark.parametrize(
+    "service_type",
+    [
+        DatabaseServiceType.Clickhouse,
+        DatabaseServiceType.Trino,
+        DatabaseServiceType.Databricks,
+        DatabaseServiceType.Athena,
+    ],
+)
+def test_map_nested_array_types(data_type_display, expected_item_type, expected_dimensions, service_type):
+    """SQLAlchemy does not nest ARRAY types (e.g. ClickHouse `Array(Array(String))`), so
+    a nested array maps to ARRAY(base_type, dimensions=N), with the depth and base type
+    read from `dataTypeDisplay`. A base type that cannot be resolved is left untyped.
+    """
+    col = Column(
+        name="tags",
+        dataType=DataType.ARRAY,
+        arrayDataType=DataType.ARRAY,
+        dataTypeDisplay=data_type_display,
+    )
+
+    sqa_type = converter_registry[service_type]().map_types(col, service_type)
+
+    assert isinstance(sqa_type.impl.item_type, expected_item_type)
+    assert sqa_type.impl.dimensions == expected_dimensions
+
+
+@mark.parametrize(
+    "data_type_display",
+    [
+        "array<array<string)>",
+        "array(array(string>>",
+        "array<array<string>",
+        "array<array<string>>>",
+        "array<array<string>>,array<int>",
+        "array<array<string>,array<int>>",
+        "array<array<string,int>>",
+        "array<array<nullable<string,int>>>",
+        "array<array<>>",
+        "array<array<   >>",
+        "array<array<string>> trailing",
+        "Array(Array(Enum8('unterminated = 1)))",
+    ],
+)
+def test_map_malformed_nested_array_types_remains_untyped(data_type_display):
+    col = Column(
+        name="tags",
+        dataType=DataType.ARRAY,
+        arrayDataType=DataType.ARRAY,
+        dataTypeDisplay=data_type_display,
+    )
+
+    sqa_type = CommonMapTypes().map_types(col, DatabaseServiceType.Clickhouse)
+
+    assert isinstance(sqa_type.impl.item_type, sqlalchemy.types.NullType)
+    assert sqa_type.impl.dimensions is None
+
+
+@patch("metadata.profiler.orm.converter.base.get_orm_schema", return_value="schema")
+@patch("metadata.profiler.orm.converter.base.get_orm_database", return_value="database")
+@mark.parametrize(
+    "data_type_display, table_name",
+    [
+        ("array<array<string>>", "nested_array_repro"),
+        (None, "nested_array_missing_display"),
+        ("array<array<string)>", "nested_array_malformed_display"),
+    ],
+)
+def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database, data_type_display, table_name):
+    """A table with a nested array column must still build an ORM, so tests and
+    the profiler can run on its other columns."""
+    table = Table(
+        id=UUID("1f8c1222-09a0-11ed-871b-ca4e864bb16a"),
+        name=table_name,
+        columns=[
+            Column(name="id", dataType=DataType.BIGINT),
+            Column(
+                name="tags",
+                dataType=DataType.ARRAY,
+                arrayDataType=DataType.ARRAY,
+                dataTypeDisplay=data_type_display,
+            ),
+        ],
+        serviceType=DatabaseServiceType.Clickhouse,
+    )
+
+    orm_table = ometa_to_sqa_orm(table, None)
+
+    assert orm_table.__table__.columns.keys() == ["id", "tags"]
+
+
+@mark.parametrize("service_type", [DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL])
+@mark.parametrize("table_type", ["Regular", "View"])
+@mark.parametrize(
+    "schema_name, sql_schema",
+    [
+        ("sales.archive", "[sales.archive]"),
+        ("sales.archive.history", "[sales.archive.history]"),
+        ("sales].archive", "[sales]].archive]"),
+        ("sales[archive]", "[sales[archive]]]"),
+        ("dbo", "[dbo]"),
+    ],
+)
+def test_literal_tsql_schema_qualification(service_type, table_type, schema_name, sql_schema):
+    from sqlalchemy.dialects.mssql import dialect
+
+    from metadata.profiler.processor.runner import QueryRunner
+
+    table, metadata = _catalog_table(service_type, schema_name, table_type)
+    orm = ometa_to_sqa_orm(table, metadata, sqlalchemy.MetaData())
+    statement = sqlalchemy.select(orm.id)
+
+    assert str(statement.compile(dialect=dialect())) == f"SELECT {sql_schema}.orders.id \nFROM {sql_schema}.orders"
+    runner = QueryRunner(session=None, dataset=orm, raw_dataset=orm)
+    assert runner.schema_name == schema_name
+
+
+def _catalog_table(service_type, schema_name, table_type="Regular"):
+    from unittest.mock import MagicMock
+
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+    database = Database(id=UUID(int=1), name="catalog", service={"id": str(UUID(int=2)), "type": "databaseService"})
+    schema = DatabaseSchema(
+        id=UUID(int=3),
+        name=schema_name,
+        service=database.service,
+        database={"id": str(database.id.root), "type": "database"},
+    )
+    table = Table(
+        id=UUID(int=4),
+        name="orders",
+        columns=[Column(name="id", dataType=DataType.INT)],
+        serviceType=service_type,
+        tableType=table_type,
+        database={"id": str(database.id.root), "type": "database"},
+        databaseSchema={"id": str(schema.id.root), "type": "databaseSchema"},
+    )
+    metadata = MagicMock(spec=OpenMetadata)
+    metadata.get_by_id.side_effect = lambda *, entity, entity_id, nullable: {
+        Database: database,
+        DatabaseSchema: schema,
+    }[entity]
+    return table, metadata
+
+
+@mark.parametrize(
+    "service_type, schema_name, expected_schema",
+    [
+        (DatabaseServiceType.Postgres, "sales.archive", '"sales.archive"'),
+        (DatabaseServiceType.Trino, "catalog.sales", '"catalog.sales"'),
+        (DatabaseServiceType.Snowflake, "MixedCase", '"MixedCase"'),
+        (DatabaseServiceType.Snowflake, "UPPERCASE", '"UPPERCASE"'),
+    ],
+)
+def test_schema_quoting_preserves_other_dialect_defaults(service_type, schema_name, expected_schema):
+    from sqlalchemy.dialects.postgresql import dialect as postgres_dialect
+    from trino.sqlalchemy.dialect import TrinoDialect
+
+    dialects = {
+        DatabaseServiceType.Postgres: postgres_dialect,
+        DatabaseServiceType.Trino: TrinoDialect,
+        DatabaseServiceType.Snowflake: snowflake_dialect,
+    }
+    table, metadata = _catalog_table(service_type, schema_name)
+    orm = ometa_to_sqa_orm(table, metadata, sqlalchemy.MetaData())
+    sql = str(sqlalchemy.select(orm.id).compile(dialect=dialects[service_type]()))
+    sql_table = '"orders"' if service_type == DatabaseServiceType.Snowflake else "orders"
+    assert f"FROM {expected_schema}.{sql_table}" in sql
+    expected_quote = True if service_type == DatabaseServiceType.Snowflake and schema_name == "MixedCase" else None
+    assert orm.__table__.schema.quote is expected_quote
+    assert orm.__table__.schema == schema_name
+
+
+@mark.parametrize("service_type", [DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL])
+@mark.parametrize("table_type", ["Regular", "View"])
+def test_production_tsql_sampler_qualifies_literal_schema(service_type, table_type):
+    from sqlalchemy.dialects.mssql import dialect
+
+    from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import AzureSQLConnection
+    from metadata.generated.schema.entity.services.connections.database.mssqlConnection import MssqlConnection
+    from metadata.generated.schema.type.basic import ProfileSampleType
+    from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+    from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
+    from metadata.sampler.sqlalchemy.mssql.sampler import MssqlSampler
+
+    entity, metadata = _catalog_table(service_type, "sales.archive", table_type)
+    connection_type, sampler_type = (
+        (MssqlConnection, MssqlSampler)
+        if service_type == DatabaseServiceType.Mssql
+        else (AzureSQLConnection, AzureSQLSampler)
+    )
+    engine = sqlalchemy.create_engine("sqlite://")
+    try:
+        with patch("metadata.sampler.sqlalchemy.sampler.get_ssl_connection", return_value=engine):
+            sampler = sampler_type(
+                service_connection_config=connection_type(
+                    username="fixture", password="fixture", hostPort="localhost:1433", database="catalog"
+                ),
+                ometa_client=metadata,
+                entity=entity,
+            )
+        static = StaticSamplingConfig(profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE)
+        sql = str(sampler.get_sample_query(static).compile(dialect=dialect()))
+        assert "FROM [sales.archive].orders" in sql
+        assert ("TABLESAMPLE" in sql) == (table_type == "Regular")
+        assert sampler.raw_dataset.__table__.schema == "sales.archive"
+    finally:
+        engine.dispose()

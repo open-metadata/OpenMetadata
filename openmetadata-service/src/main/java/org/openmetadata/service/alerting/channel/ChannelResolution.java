@@ -37,22 +37,36 @@ public record ChannelResolution(String channelId, Optional<Channel> channel) {
     String named = destination.getChannel();
     String channelId = named == null ? destination.getType().value() : named;
     ChannelResolution resolution = new ChannelResolution(channelId, Channels.of(channelId));
-    logOnce(destination, resolution, named == null ? "its type" : "its channel field");
+    logResolution(destination, resolution, named == null ? "its type" : "its channel field");
     return resolution;
   }
 
-  private static void logOnce(
+  private static void logResolution(
+      SubscriptionDestination destination, ChannelResolution resolution, String resolvedBy) {
+    if (resolution.channel().isEmpty()) {
+      warnUnregistered(destination, resolution, resolvedBy);
+    } else {
+      // Resolution runs on every save and read of every destination; at INFO a large alert
+      // floods the log, so only an unregistered channel, which needs action, is worth a warning.
+      LOG.debug(
+          "Destination {} is served by channel {} (resolved by {})",
+          destination.getId(),
+          resolution.channelId(),
+          resolvedBy);
+    }
+  }
+
+  private static void warnUnregistered(
       SubscriptionDestination destination, ChannelResolution resolution, String resolvedBy) {
     if (LOGGED.size() >= REMEMBERED_DESTINATIONS) {
       LOGGED.clear();
     }
     if (LOGGED.add(destination.getId() + ":" + resolution.channelId())) {
-      LOG.info(
-          "Destination {} is served by channel {} (resolved by {}, registered: {})",
+      LOG.warn(
+          "Destination {} names channel {} (resolved by {}), which is not registered on this server",
           destination.getId(),
           resolution.channelId(),
-          resolvedBy,
-          resolution.channel().isPresent());
+          resolvedBy);
     }
   }
 }

@@ -155,7 +155,7 @@ export const formatIntervalTooltip = (ms: number, locale: string) =>
     .setLocale(locale)
     .toFormat('ccc, d LLL yyyy, HH:mm')} · ${ms}`;
 
-const EPOCH_MS_PATTERN = /^\d{13}$/;
+const EPOCH_MS_PATTERN = /^\d+$/;
 
 /** `undefined` for blank text, `null` for text that is not epoch milliseconds. */
 export const parseEpochText = (text: string): number | undefined | null => {
@@ -164,7 +164,9 @@ export const parseEpochText = (text: string): number | undefined | null => {
     return undefined;
   }
 
-  return EPOCH_MS_PATTERN.test(trimmed) ? Number(trimmed) : null;
+  const ms = Number(trimmed);
+
+  return EPOCH_MS_PATTERN.test(trimmed) && Number.isSafeInteger(ms) ? ms : null;
 };
 
 export type IntervalBoundsResult =
