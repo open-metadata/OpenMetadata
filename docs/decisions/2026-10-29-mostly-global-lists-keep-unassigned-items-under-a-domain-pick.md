@@ -1,7 +1,7 @@
 # Mostly global lists keep items with no domain under a domain pick
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset) · v4 2026-11-15 (explicit domain filters include sub-domains; classifications and tags follow the pick)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-10-30 (tasks ignore the pick; article search keeps unassigned) · v3 2026-11-15 (task lists follow the pick, except on an asset) · v4 2026-11-15 (explicit domain filters include sub-domains; classifications and tags follow the pick) · v5 2026-11-16 (an asset's own activity ignores the pick; domain-only users keep their full scope on lists the pick never narrows)
 - **Deciders:** Sonika Shah
 - **Guard:** `DomainNavFilterTest` (`apply_sharedConfigurationKeepsItemsWithNoDomain`,
   `apply_registeredExtensionTypeKeepsItemsWithNoDomain`), `SearchListFilterTest`
@@ -69,3 +69,16 @@ v4 2026-11-15:
   inherited from its classification counts as having no domain in a flat tag list. Guards:
   `DomainNavFilterTest.classificationsAndTagsFollowThePickButKeepSystemProvidedOnes`,
   `ListFilterTest.getDomainCondition_keepsSystemProvidedItemsWhenAsked`.
+
+v5 2026-11-16:
+- An asset's own activity (`/activity/entity/{type}/{id}` and `/activity/entity/{type}/name/{fqn}`:
+  its Activity tab and its count) is not narrowed by the pick, like its Tasks tab. Viewing it still
+  needs permission to view the asset. The activity feed across assets (`/activity`) follows the
+  pick. `withDomainFilter` applies the rule. Guard: `withDomainFilter.test.tsx`.
+- For a domain-only user, the role limits every list to their domains, and the pick narrows within
+  that scope, except on lists the pick never narrows (`DomainFilterExclusions`, e.g. a task list
+  about an asset). Those keep the role's full scope, so an asset in another of the user's domains
+  shows its tasks and its count matches its list. Guard:
+  `EntityUtilTest.addDomainQueryParam_restrictedUserKeepsTheFullScopeForTypesThePickNeverNarrows`.
+- A classification's tag count follows the pick like its tag list, on both the single and the batch
+  path. Guard: `UserResourceIT.test_pickNarrowsClassificationTagsAndTheirCount`.
