@@ -167,6 +167,20 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     []
   );
 
+  const [tabSubPageHeader, setTabSubPageHeader] = useState<{
+    title?: string;
+    description?: string;
+  } | null>(null);
+  const handleTabSubPageHeader = useCallback(
+    (override: ProfileHeaderOverride | null) =>
+      setTabSubPageHeader(
+        override
+          ? { title: override.title, description: override.description }
+          : null
+      ),
+    []
+  );
+
   // Identifies the detail team so switching between two teams also resets the
   // header slots.
   const teamFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
@@ -197,7 +211,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
             ? t(activeSection.descriptionKey)
             : undefined,
           icon: activeSection.icon,
-        }
+        },
+        view.type === TEAM_TAB_SUBPAGE ? tabSubPageHeader : null
       );
     const pick = (node: React.ReactNode) =>
       isTeamsOrDetailView(view) ? node : undefined;
@@ -224,6 +239,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     resolvedName,
     activeSection,
     userDetailHeader,
+    tabSubPageHeader,
   ]);
 
   const permissionPlaceholder = (
@@ -321,6 +337,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
         <TabComponent
           subPath={subPath}
           teamId={teamId}
+          onHeaderChange={handleTabSubPageHeader}
           onNavigate={(next?: string) =>
             onNavigate(
               next
