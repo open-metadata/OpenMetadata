@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.BooleanSupplier;
 import org.flowable.common.engine.api.delegate.Expression;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
@@ -96,11 +97,10 @@ public class FilterEntityImpl implements JavaDelegate {
           passesExcludedFilter(
               entityLinkStr,
               TriggeringEvent.from(varHandler),
-              new FieldFilter(
-                  includeFields,
-                  excludedFilter,
-                  EntityStatusWorkflows.takesLifecycleRequests(mainWorkflowName(execution))),
-              filterLogic);
+              excludedFilter,
+              includeFields,
+              filterLogic,
+              () -> EntityStatusWorkflows.takesLifecycleRequests(mainWorkflowName(execution)));
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -157,23 +157,13 @@ public class FilterEntityImpl implements JavaDelegate {
         : String.valueOf(key);
   }
 
-  /**
-   * The trigger's include/exclude, and whether its workflow is a lifecycle playbook that a lifecycle
-   * request is addressed to.
-   */
-  private record FieldFilter(
-      List<String> includeFields, List<String> excludedFields, boolean takesLifecycleRequests) {
-    boolean triggers(String entityType, String fieldName) {
-      return WorkflowTriggerFilters.fieldTriggers(
-          entityType, fieldName, includeFields, excludedFields, takesLifecycleRequests);
-    }
-  }
-
   private boolean passesExcludedFilter(
       String entityLinkStr,
       TriggeringEvent triggeringEvent,
-      FieldFilter fieldFilter,
-      String filterLogic) {
+      List<String> excludedFilter,
+      List<String> includeFields,
+      String filterLogic,
+      BooleanSupplier takesLifecycleRequests) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
     EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
@@ -186,8 +176,8 @@ public class FilterEntityImpl implements JavaDelegate {
       List<FieldChange> changedFields = getAllChangedFields(change);
       fieldBasedFilter =
           changedFields.isEmpty()
-              || changedFields.stream()
-                  .anyMatch(field -> fieldFilter.triggers(entityType, field.getName()));
+              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter)
+              || (carriesLifecycleRequest(changedFields) && takesLifecycleRequests.getAsBoolean());
     }
 
     return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
@@ -216,5 +206,26 @@ public class FilterEntityImpl implements JavaDelegate {
     allChanges.addAll(listOrEmpty(changeDescription.getFieldsDeleted()));
     allChanges.addAll(listOrEmpty(changeDescription.getFieldsUpdated()));
     return allChanges;
+  }
+
+  private boolean passesFieldBasedFilter(
+      String entityType,
+      List<FieldChange> changedFields,
+      List<String> includeFields,
+      List<String> excludedFilter) {
+    // A change fires the workflow when it touches one of this entity type's trigger fields,
+    // subject to include/exclude (see WorkflowTriggerFilters).
+    return changedFields.stream()
+        .anyMatch(
+            field ->
+                WorkflowTriggerFilters.fieldTriggers(
+                    entityType, field.getName(), includeFields, excludedFilter));
+  }
+
+  // A lifecycle request fires only the lifecycle playbooks that take requests, whatever their
+  // include/exclude; the playbook lookup runs only when a request is part of the change.
+  private boolean carriesLifecycleRequest(List<FieldChange> changedFields) {
+    return changedFields.stream()
+        .anyMatch(field -> WorkflowTriggerFilters.isLifecycleField(field.getName()));
   }
 }

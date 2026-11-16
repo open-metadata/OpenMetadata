@@ -45,6 +45,7 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -121,6 +122,36 @@ class FilterEntityImplTest {
     delegate.execute(execution);
 
     assertFalse(passesFilter(), "A change to only an excluded field must not fire");
+  }
+
+  @Test
+  void eventPath_lifecycleRequestOnly_doesNotFireAWorkflowThatTakesNoRequests() {
+    givenEntity(glossary().withChangeDescription(changeOf("lifecycleRequest")));
+    exclude("entityStatus");
+
+    try (MockedStatic<EntityStatusWorkflows> workflows = mockStatic(EntityStatusWorkflows.class)) {
+      workflows
+          .when(() -> EntityStatusWorkflows.takesLifecycleRequests("PendingChangeApprovalWorkflow"))
+          .thenReturn(false);
+      delegate.execute(execution);
+    }
+
+    assertFalse(passesFilter(), "A lifecycle request must reach only the lifecycle it asks");
+  }
+
+  @Test
+  void eventPath_lifecycleRequestOnly_firesAPlaybookThatTakesRequests() {
+    givenEntity(glossary().withChangeDescription(changeOf("lifecycleRequest")));
+    exclude("entityStatus");
+
+    try (MockedStatic<EntityStatusWorkflows> workflows = mockStatic(EntityStatusWorkflows.class)) {
+      workflows
+          .when(() -> EntityStatusWorkflows.takesLifecycleRequests("PendingChangeApprovalWorkflow"))
+          .thenReturn(true);
+      delegate.execute(execution);
+    }
+
+    assertTrue(passesFilter(), "A lifecycle request must reach the playbook that takes it");
   }
 
   @Test
