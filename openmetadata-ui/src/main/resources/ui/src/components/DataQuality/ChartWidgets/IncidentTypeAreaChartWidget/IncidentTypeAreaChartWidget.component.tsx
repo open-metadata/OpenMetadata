@@ -78,14 +78,15 @@ const IncidentTypeAreaChartWidget = ({
           height={height}
           name={name}
         />
-        <Typography
-          as="p"
-          className="tw:mt-4"
-          color="secondary"
-          data-testid="widget-description"
-          size="text-xs">
-          {description}
-        </Typography>
+        <div className="tw:mt-4">
+          <Typography
+            as="p"
+            color="secondary"
+            data-testid="widget-description"
+            size="text-xs">
+            {description}
+          </Typography>
+        </div>
       </>
     );
   }, [title, description, chartData, name, height]);
