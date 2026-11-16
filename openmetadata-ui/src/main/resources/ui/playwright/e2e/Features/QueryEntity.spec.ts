@@ -386,9 +386,7 @@ test('Verify query duration', async ({ page }) => {
   const response = await queryResponse;
 
   expect(response.status()).toBe(200);
-  await expect(page.getByTestId('query-run-duration')).toContainText(
-    '6.199 sec'
-  );
+  await expect(page.getByTestId('query-run-duration')).toContainText('6.2s');
 });
 
 test('Verify Query Pagination', async ({ page, browser }) => {
