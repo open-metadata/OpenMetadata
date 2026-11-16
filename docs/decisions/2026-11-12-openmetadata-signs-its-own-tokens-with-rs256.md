@@ -3,8 +3,10 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Mohit Yadav
-- **Guard:** `SsoOidcPublicBearerIT` (OP-13), `JwtFilterTest`, `JWTTokenGeneratorTest`
-- **Related:** 2.1.0 release testing, SSO row
+- **Guard:** `SsoOidcPublicBearerIT` (OP-13), `JwtFilterTest`, `JWTTokenGeneratorTest`,
+  `OAuthHttpStatelessServerTransportProviderTest`
+- **Related:** 2.1.0 release testing, SSO row; amends
+  ADR:2026-10-19-mcp-oauth-discovery-stays-inside-the-base-path (its v2)
 
 ## Context
 `authenticationConfiguration.tokenValidationAlgorithm` names the algorithm of the identity
