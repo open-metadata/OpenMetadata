@@ -127,10 +127,7 @@ export const getTextDiff = (
     return newValue;
   }
 
-  const diffArr = diffWords(
-    toDiffableText(oldValue),
-    toDiffableText(newValue)
-  );
+  const diffArr = diffWords(toDiffableText(oldValue), toDiffableText(newValue));
 
   const result = diffArr.map((diff) => {
     if (diff.added) {
