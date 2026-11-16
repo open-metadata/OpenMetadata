@@ -33,6 +33,44 @@ describe('ProductTourModal', () => {
     act(() => useProductTourStore.getState().close());
   });
 
+  describe('preloading the player', () => {
+    // jsdom has no idle callback; each test adds and removes its own.
+    const idleWindow = window as Partial<
+      Pick<Window, 'requestIdleCallback' | 'cancelIdleCallback'>
+    >;
+
+    afterEach(() => {
+      delete idleWindow.requestIdleCallback;
+      delete idleWindow.cancelIdleCallback;
+    });
+
+    it('fetches the player while idle, before the tour opens, and cancels on unmount', () => {
+      const requestIdleCallback = jest.fn().mockReturnValue(7);
+      const cancelIdleCallback = jest.fn();
+      idleWindow.requestIdleCallback = requestIdleCallback;
+      idleWindow.cancelIdleCallback = cancelIdleCallback;
+
+      const { unmount } = render(<ProductTourModal />);
+
+      expect(requestIdleCallback).toHaveBeenCalledTimes(1);
+      expect(() => requestIdleCallback.mock.calls[0][0]()).not.toThrow();
+
+      unmount();
+
+      expect(cancelIdleCallback).toHaveBeenCalledWith(7);
+    });
+
+    it('falls back to a timer where the browser has no idle callback', () => {
+      const setTimeoutSpy = jest.spyOn(window, 'setTimeout');
+
+      render(<ProductTourModal />);
+
+      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
+
+      setTimeoutSpy.mockRestore();
+    });
+  });
+
   it('renders nothing until the tour is opened', () => {
     render(<ProductTourModal />);
 
