@@ -233,7 +233,8 @@ public class Auth0ValidatorTest {
   }
 
   @Test
-  void validateClientCredentials_wrongSecret_stillFailsOnTheSecret() {
+  void validateClientCredentials_otherAccessDenied_stillFails() {
+    // Only the missing-grant reply proves the credentials; any other access_denied keeps failing.
     FieldError result =
         validateConfidentialClientAgainstTokenResponse(
             401, "{\"error\": \"access_denied\", \"error_description\": \"Unauthorized\"}");
