@@ -5331,6 +5331,7 @@
     "import-terms-into-glossary": "นำเข้าคำศัพท์ไปยัง {{glossary}}",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "ในฐานข้อมูลนี้",
+    "inbox-activity-capped": "แสดงเฉพาะการอัปเดตล่าสุดในช่วงวันที่นี้",
     "inbox-desc": "งานและกิจกรรมของคุณ รวมไว้ในที่เดียว",
     "incident-group-filtered": "แสดงเฉพาะเหตุการณ์ที่ตรงกับตัวกรองของกลุ่ม",
     "incident-group-seen-range": "พบครั้งแรก {{firstSeen}} · พบล่าสุด {{lastSeen}}",

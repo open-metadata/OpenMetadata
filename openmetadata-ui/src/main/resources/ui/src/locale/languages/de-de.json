@@ -5331,6 +5331,7 @@
     "import-terms-into-glossary": "Begriffe in {{glossary}} importieren.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "In dieser Datenbank",
+    "inbox-activity-capped": "Es werden nur die neuesten Aktualisierungen in diesem Zeitraum angezeigt.",
     "inbox-desc": "Ihre Aufgaben und Aktivitäten an einem Ort.",
     "incident-group-filtered": "Es werden nur die Vorfälle aufgeführt, die den Filtern der Gruppen entsprechen.",
     "incident-group-seen-range": "erstmals gesehen {{firstSeen}} · zuletzt gesehen {{lastSeen}}",

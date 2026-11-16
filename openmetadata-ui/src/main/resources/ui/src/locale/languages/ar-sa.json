@@ -5331,6 +5331,7 @@
     "import-terms-into-glossary": "استيراد المصطلحات إلى {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "في قاعدة البيانات هذه",
+    "inbox-activity-capped": "يتم عرض أحدث التحديثات فقط في هذا النطاق الزمني.",
     "inbox-desc": "مهامك ونشاطك، كلها في مكان واحد.",
     "incident-group-filtered": "تُعرض فقط الحوادث التي تطابق عوامل تصفية المجموعات.",
     "incident-group-seen-range": "أول ظهور {{firstSeen}} · آخر ظهور {{lastSeen}}",

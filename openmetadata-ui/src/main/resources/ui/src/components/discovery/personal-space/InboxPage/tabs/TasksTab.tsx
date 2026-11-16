@@ -27,6 +27,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -335,6 +336,9 @@ interface TasksTabBodyProps {
   // Shown when no task matches: in place of the detail, or in the list while a
   // kept selection holds the detail pane.
   emptyState?: ReactNode;
+  // The empty state is a search or filter matching nothing, so it belongs
+  // beside the controls that cause it, in the list.
+  isNoMatch?: boolean;
   // A failed load with nothing listed leaves nothing to filter, so the
   // placeholder takes the whole tab.
   isLoadFailed?: boolean;
@@ -343,6 +347,8 @@ interface TasksTabBodyProps {
   tasks: Task[];
   // Set when grouped by type; the list renders these instead of `tasks`.
   groups?: TaskTypeGroup[];
+  // Pages are still unread, so a group's count is only a floor.
+  isPartial?: boolean;
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
@@ -353,6 +359,7 @@ interface TasksTabBodyProps {
   handleCommentsChanged: (updated: Task) => void;
   handleResolved: (resolved: Task) => void;
   handleTaskUpdated: () => void;
+  handleTaskLoaded: (loaded: Task) => void;
 }
 
 type TasksDetailPaneProps = Pick<
@@ -364,6 +371,7 @@ type TasksDetailPaneProps = Pick<
   | 'handleCommentsChanged'
   | 'handleResolved'
   | 'handleTaskUpdated'
+  | 'handleTaskLoaded'
 >;
 
 // The selected task beside the list, or why there is none.
@@ -375,6 +383,7 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }) => {
   const { t } = useTranslation();
 
@@ -384,6 +393,7 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
       key={selectedTaskId}
       taskId={selectedTaskId}
       onCommentsChanged={handleCommentsChanged}
+      onLoaded={handleTaskLoaded}
       onResolved={handleResolved}
       onTaskUpdated={handleTaskUpdated}
     />
@@ -416,23 +426,28 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
 
 // Without a free detail pane — none in the list-only layout, or a kept
 // selection holding it — the list is where "nothing here" shows, so its
-// "Clear all", "Load more" and retry stay reachable.
+// "Clear all", "Load more" and retry stay reachable. A no-match shows there
+// too, under the search and filters it answers.
 const getListEmptyState = (
   emptyState: ReactNode,
   onOpenTask: TasksTabBodyProps['onOpenTask'],
-  selectedTaskId: TasksTabBodyProps['selectedTaskId']
-): ReactNode => (onOpenTask || selectedTaskId ? emptyState : undefined);
+  selectedTaskId: TasksTabBodyProps['selectedTaskId'],
+  isNoMatch: boolean
+): ReactNode =>
+  onOpenTask || selectedTaskId || isNoMatch ? emptyState : undefined;
 
 // The two panes: the list column (its controls over the grouped rows) and the
 // selected task's detail, each scrolling on its own.
 const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   toolbar,
   emptyState,
+  isNoMatch = false,
   isLoadFailed = false,
   isLoading,
   isLoadingMore,
   tasks,
   groups,
+  isPartial = false,
   selectedTaskId,
   scrollRef,
   sentinelRef,
@@ -442,6 +457,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isListScrolled, onScroll: onListScroll } =
@@ -465,7 +481,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     );
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
-  // not by type, so a later page can reopen a group that already appeared.
+  // not by type, so a grouped list reads on to its scan cap (see TasksTab).
   const groupedList = groups?.map((group) => {
     // Every task in a group reads the same, so its first one names it.
     const badge = getTaskTypeBadge(group.items[0], t);
@@ -490,7 +506,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
             {badge.label}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">
-            {group.count}
+            {isPartial ? `${group.count}+` : group.count}
           </Typography>
         </Box>
         {group.items.map(renderRow)}
@@ -522,7 +538,12 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
           <InboxTaskListSkeleton />
         ) : (
           <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
-            {getListEmptyState(emptyState, onOpenTask, selectedTaskId) ||
+            {getListEmptyState(
+              emptyState,
+              onOpenTask,
+              selectedTaskId,
+              isNoMatch
+            ) ||
               (groupedList ?? tasks.map(renderRow))}
           </div>
         )}
@@ -556,9 +577,10 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
       {listColumn}
 
       <TasksDetailPane
-        emptyState={emptyState}
+        emptyState={isNoMatch ? undefined : emptyState}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
         isLoading={isLoading}
         selectedTaskId={selectedTaskId}
@@ -606,6 +628,23 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setStatus(next);
     setStatusFilter([]);
   }, []);
+
+  // A link to a closed task lands on the Closed tab, where its row is listed.
+  // Only its first load decides: the viewer may then move to any tab.
+  const isLinkedTabSettledRef = useRef(false);
+  const handleTaskLoaded = useCallback(
+    (loaded: Task) => {
+      const isFirstLinkedLoad =
+        loaded.id === linkedTaskId && !isLinkedTabSettledRef.current;
+      if (isFirstLinkedLoad) {
+        isLinkedTabSettledRef.current = true;
+        if (status === 'open' && !isTaskOpen(loaded)) {
+          handleStatusChange('closed');
+        }
+      }
+    },
+    [linkedTaskId, status, handleStatusChange]
+  );
 
   // Per-status totals for the All / Open / Closed badges, fetched cheaply
   // (limit=1, server paging.total) and cached by React Query keyed on the active
@@ -722,6 +761,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
     sentinelRef,
     setItems,
     setTotal,
+    loadMore,
   } = useInboxInfiniteList<Task>(
     [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text, sortOrder],
     fetchPage,
@@ -732,6 +772,16 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // (say, assigned to the user after it loaded as one they created) can land
   // on two of them.
   const tasks = useMemo(() => uniqBy(loadedTasks, 'id'), [loadedTasks]);
+
+  // Type groups sort by urgency, so one built from the newest page alone hides
+  // an older incident until the list is scrolled to its end. A grouped list
+  // reads on by itself, as far as a narrowed scan would.
+  const isGroupScanDone = !hasMore || tasks.length >= MAX_NARROWED_SCAN;
+  useEffect(() => {
+    if (grouping === 'type' && !isGroupScanDone) {
+      loadMore();
+    }
+  }, [grouping, isGroupScanDone, loadMore]);
 
   useEffect(() => {
     onCountChange?.(total);
@@ -919,10 +969,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
         groups={taskGroups}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
         isLoadFailed={isWholeTabLoadFailed(error, tasks, isNarrowed)}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
+        isNoMatch={showEmptyState && isNarrowed}
+        isPartial={hasMore}
         scrollRef={scrollRef}
         selectedTaskId={selectedTaskId}
         sentinelRef={sentinelRef}
@@ -933,6 +986,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
           <InboxTaskListToolbar
             grouping={grouping}
             inline={Boolean(onOpenTask)}
+            isPartial={hasMore}
             search={search}
             sortOrder={sortOrder}
             statusFilter={statusFilter}

@@ -5331,6 +5331,7 @@
     "import-terms-into-glossary": "Termen importeren in {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "In deze database",
+    "inbox-activity-capped": "Alleen de nieuwste updates in dit datumbereik worden getoond.",
     "inbox-desc": "Je taken en activiteit, allemaal op één plek.",
     "incident-group-filtered": "Alleen de incidenten die aan de filters van de groepen voldoen, worden getoond.",
     "incident-group-seen-range": "eerst gezien {{firstSeen}} · laatst gezien {{lastSeen}}",

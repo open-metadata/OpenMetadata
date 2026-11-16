@@ -31,6 +31,7 @@ let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  isCapped?: boolean;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -52,6 +53,7 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      isCapped: activityState.isCapped ?? false,
       error: activityState.error ?? null,
       refetch: mockRefetch,
     };
@@ -490,6 +492,45 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('activity-group')).toHaveTextContent(
       'label.number-update-plural:45'
     );
+  });
+
+  // A capped feed is cut inside its oldest day: only that count is a floor,
+  // and the end of the list says older updates are not shown.
+  it('marks the cut day as a floor and says the feed is capped', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'earlier', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+    };
+
+    render(<ActivityTab />);
+
+    const [newest, oldest] = screen.getAllByTestId('activity-group');
+
+    expect(newest).toHaveTextContent('label.one-update');
+    expect(oldest).toHaveTextContent('label.number-update-plural:1+');
+    expect(
+      screen.getByText('message.inbox-activity-capped')
+    ).toBeInTheDocument();
+  });
+
+  it('says nothing about a cap when the feed is complete', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1', timestamp: 1 } }],
+      total: 1,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(
+      screen.queryByText('message.inbox-activity-capped')
+    ).not.toBeInTheDocument();
   });
 
   // A batch revealed later would grow a group above the viewport, so Asset and

@@ -37,7 +37,11 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
 }));
 
 jest.mock('../../../../constants/profiler.constant', () => ({
-  PROFILER_FILTER_RANGE: { last30days: { days: 30 } },
+  PROFILER_FILTER_RANGE: {
+    yesterday: { days: 1, title: 'label.yesterday' },
+    last30days: { days: 30 },
+    last60days: { days: 60 },
+  },
 }));
 
 jest.mock('../../../../rest/activityAPI', () => ({
@@ -66,7 +70,9 @@ import {
   getActivityEventLabel,
   getActivityKindType,
   getFeedSortTimestamp,
+  getInboxDateRange,
   getInboxTabBadge,
+  INBOX_DATE_RANGE_OPTIONS,
   isSameLocalDay,
   isTaskOpen,
   pairFieldChanges,
@@ -79,6 +85,25 @@ const mockRemoveReaction = removeActivityReaction as jest.Mock;
 const mockAddConversationReaction = addConversationReaction as jest.Mock;
 const mockRemoveConversationReaction = removeConversationReaction as jest.Mock;
 const t = ((key: string) => key) as TFunction;
+
+// The activity API takes no end time, so every preset runs up to now and a
+// one-day preset can only mean today.
+describe('INBOX_DATE_RANGE_OPTIONS', () => {
+  it('offers Today in place of Yesterday, up to 30 days', () => {
+    expect(INBOX_DATE_RANGE_OPTIONS).toEqual({
+      today: { days: 0, title: 'label.today' },
+      last30days: { days: 30 },
+    });
+  });
+
+  it('starts Today at the start of the current day', () => {
+    // DateTimeUtils is mocked to echo its input: the start of 0 days back.
+    expect(getInboxDateRange(INBOX_DATE_RANGE_OPTIONS.today.days)).toEqual({
+      startTs: 0,
+      endTs: 0,
+    });
+  });
+});
 
 describe('inbox.utils', () => {
   describe('parseActivityFilter', () => {
