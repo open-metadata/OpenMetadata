@@ -236,7 +236,6 @@
     "@types/katex": "^0.16.7",
     "@types/lodash": "^4.17.27",
     "@types/lodash-es": "^4.17.12",
-    "@types/lru-cache": "^5.1.1",
     "@types/luxon": "^3.7.6",
     "@types/node": "^22.0.0",
     "@types/pako": "^2.0.0",

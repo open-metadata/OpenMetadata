@@ -4752,11 +4752,6 @@
   resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.17.27.tgz#15fb73275b64dbfe49e2ae8376bb469b352a47a7"
   integrity sha512-VenMRv/eKNrspX9v3H4dbmjsrnCOYdYBG3kxXKk3dG6X+urBGcj2Prww3xw1U5K4FV/mE4h5GbWd0szEKf+9ew==
 
-"@types/lru-cache@^5.1.1":
-  version "5.1.1"
-  resolved "https://registry.yarnpkg.com/@types/lru-cache/-/lru-cache-5.1.1.tgz#c48c2e27b65d2a153b19bfc1a317e30872e01eef"
-  integrity sha512-ssE3Vlrys7sdIzs5LOxCzTVMsU7i9oa/IaW92wF32JFb3CVczqOkru2xspuKczHEbG3nvmPY7IFqVmGGHdNbYw==
-
 "@types/luxon@^3.7.6":
   version "3.7.6"
   resolved "https://registry.yarnpkg.com/@types/luxon/-/luxon-3.7.6.tgz#1acddd4b0e58c8e53ce505a979936aaa81f2f222"
