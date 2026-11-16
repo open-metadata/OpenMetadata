@@ -49,15 +49,14 @@ import org.openmetadata.service.search.SearchRepository;
 
 class ContextMemoryIndexTest {
   @Test
-  void aMemoryRewriteDiscardsLegacyVectorFieldsWithoutAnEmbeddingProvider() {
+  void anOrdinaryMemoryRewritePreservesExistingVectorFields() {
     Map<String, Object> doc = new HashMap<>();
-    ContextMemoryIndex.VECTOR_FIELDS.forEach(field -> doc.put(field, "private-acquisition-plan"));
+    ContextMemoryIndex.VECTOR_FIELDS.forEach(field -> doc.put(field, "current-vector-value"));
 
     new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(doc);
 
     for (String field : ContextMemoryIndex.VECTOR_FIELDS) {
-      assertTrue(doc.containsKey(field), field);
-      assertNull(doc.get(field), field);
+      assertEquals("current-vector-value", doc.get(field), field);
     }
     assertTrue(
         SearchClient.FIELDS_TO_REMOVE_WHEN_NULL.containsAll(ContextMemoryIndex.VECTOR_FIELDS));

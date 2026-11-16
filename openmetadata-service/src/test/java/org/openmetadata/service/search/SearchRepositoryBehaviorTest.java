@@ -3342,7 +3342,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void updateEntityLoadsEntityFromRepositoryAndUpdatesIndex() {
+  void aTableReferenceRefreshPreservesVectorsEvenWhenItsFingerprintChanged() throws Exception {
     SearchRepository spyRepository = spy(repository);
     EntityReference entityReference =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE);
@@ -3350,10 +3350,23 @@ class SearchRepositoryBehaviorTest {
     org.openmetadata.service.jdbi3.EntityRepository<EntityInterface<?>> entityRepository =
         mock(org.openmetadata.service.jdbi3.EntityRepository.class);
     EntityInterface<?> entity = mockEntity(Entity.TABLE, entityReference.getId(), "orders");
+    float[] embedding = new float[] {1};
+    Map<String, Object> stored = new HashMap<>(Map.of("embedding", embedding));
+    VectorIndexService vector = mock(VectorIndexService.class);
+    doAnswer(
+            call -> {
+              stored.clear();
+              return null;
+            })
+        .when(vector)
+        .clearEntityEmbedding(anyString(), anyString());
+    setPrivateField(spyRepository, "vectorEmbeddingHandler", new VectorEmbeddingHandler(vector));
 
     doNothing().when(spyRepository).updateEntityIndex(entity);
 
     try (var entityMock = mockStatic(Entity.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(spyRepository);
+      entityMock.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
       when(entityRepository.getFields("*")).thenReturn(null);
       Mockito.<EntityInterface<?>>when(
@@ -3363,7 +3376,7 @@ class SearchRepositoryBehaviorTest {
       spyRepository.updateEntity(entityReference);
     }
 
-    verify(spyRepository).updateEntityIndex(entity);
+    assertSame(embedding, stored.get("embedding"));
   }
 
   @ParameterizedTest

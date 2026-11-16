@@ -169,6 +169,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -180,6 +181,7 @@ import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
@@ -219,6 +221,14 @@ public class SearchRepository {
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
+  private static final String REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT =
+      """
+      if (!params.preserveCurrent || ctx._source.fingerprint != params.fingerprint) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field);
+        }
+      }
+      """;
   // Bounds one custom-property cleanup request; more holders are split across requests.
   private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
 
@@ -2305,8 +2315,28 @@ public class SearchRepository {
             false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
+    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())) {
+      refreshMemoryEmbedding(entity);
+    }
+  }
+
+  private void refreshMemoryEmbedding(EntityInterface<?> entity) {
     if (vectorEmbeddingHandler != null) {
       vectorEmbeddingHandler.refreshEmbedding(entity);
+    } else {
+      boolean preserveCurrent =
+          !Boolean.TRUE.equals(entity.getDeleted()) && Entity.isVectorEmbeddable(entity);
+      searchClient.updateEntity(
+          getWriteIndexName(getIndexMapping(Entity.CONTEXT_MEMORY)),
+          entity.getId().toString(),
+          Map.of(
+              "preserveCurrent",
+              preserveCurrent,
+              "fingerprint",
+              preserveCurrent ? VectorDocBuilder.computeFingerprintForEntity(entity) : "",
+              SearchClient.FIELDS_TO_REMOVE,
+              List.copyOf(ContextMemoryIndex.VECTOR_FIELDS)),
+          REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT);
     }
   }
 

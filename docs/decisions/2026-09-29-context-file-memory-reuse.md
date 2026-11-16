@@ -5,7 +5,8 @@
   v3 2026-11-09 (a ranked lookup; candidates in every stage keep their decision; the AI provider
   supplies the judge; a restricted copy is never named on a memory) ·
   v4 2026-11-10 (§4: archiving, restoring and re-sharing a document move its memories) ·
-  v5 2026-11-16 (vector source labels, copy locking and independent archive moves)
+  v5 2026-11-16 (vector source labels, copy locking and independent archive moves) ·
+  v6 2026-11-16 (preserve current vectors and scope reference refreshes to memories)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
   `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `AiProviderHolderTest`,
@@ -373,3 +374,15 @@ in vector search and under concurrent writes. This amends v4.
 
 Guarded by `ContextMemoryBodyTextContributorTest`, `ContextMemoryIndexTest`, `VectorEmbeddingHandlerTest`, `SearchRepositoryBehaviorTest`,
 `MemorySourceLifecycleTest` and `ContextMemoryExtractionIT`.
+
+v6 (2026-11-16): ordinary memory index writes preserve vector fields. This amends v5's
+unconditional removal during ordinary indexing and its refresh of other entity types.
+
+- A memory reference refresh removes stale vector text while retaining an eligible memory's
+  current fingerprint and vectors. With no initialized embedding handler, the search update checks
+  the fingerprint before removing legacy fields; it preserves current vectors without a provider
+  call. Archived or ineligible memories still lose their vector fields.
+- Reference refreshes for other entity types retain their existing indexing behavior and do not
+  invoke synchronous embedding work. Their normal lifecycle handler owns vector updates.
+
+Guarded by `ContextMemoryIndexTest`, `SearchRepositoryBehaviorTest` and `ContextMemoryExtractionIT`.

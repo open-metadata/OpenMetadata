@@ -102,8 +102,6 @@ public class ContextMemoryIndex implements TaggableIndex {
 
   @Override
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
-    // Reference refreshes must remove old text even when the embedding provider is disabled.
-    VECTOR_FIELDS.forEach(field -> doc.put(field, null));
     doc.put("title", memory.getTitle());
     doc.put("summary", memory.getSummary());
     doc.put("question", memory.getQuestion());

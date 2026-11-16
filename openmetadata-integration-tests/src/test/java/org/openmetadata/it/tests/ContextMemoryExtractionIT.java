@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -117,6 +118,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -843,28 +845,8 @@ class ContextMemoryExtractionIT {
               assertEquals(
                   "source file: " + document.getName(), source.path("textToLLMContext").asText());
             });
-    EmbeddingClient embedding =
-        new EmbeddingClient() {
-          @Override
-          protected float[] doEmbed(String text) {
-            throw new EmbeddingUnavailableException("Provider unavailable");
-          }
-
-          @Override
-          public int getDimension() {
-            return 384;
-          }
-
-          @Override
-          public String getModelId() {
-            return "unavailable-test-provider";
-          }
-        };
     VectorIndexService vector =
-        search.getSearchClient() instanceof ElasticSearchClient elastic
-            ? new ElasticSearchVectorService(elastic.getNewClient(), embedding)
-            : new OpenSearchVectorService(
-                ((OpenSearchClient) search.getSearchClient()).getNewClient(), embedding);
+        vectorService(search, testEmbeddingClient(new AtomicInteger(), new AtomicBoolean(true)));
     Field handler = SearchRepository.class.getDeclaredField("vectorEmbeddingHandler");
     handler.setAccessible(true);
     Object previous = handler.get(search);
@@ -884,6 +866,106 @@ class ContextMemoryExtractionIT {
     } finally {
       handler.set(search, previous);
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void unchangedMemoryVectorsSurviveWritesAndReferenceRefreshesWithoutAProvider(
+      boolean handlerAvailable, TestNamespace ns) throws Exception {
+    ContextFile document = file(ns, "current-vector-source", "Refund policy " + ns.shortPrefix());
+    ContextMemory memory =
+        pill(
+                "Thirty days. " + ns.shortPrefix(),
+                document.getEntityReference(),
+                ContextMemorySourceType.MANUAL)
+            .withOwners(List.of(SharedEntities.get().USER1_REF));
+    memoryRepository().create(null, memory);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    SearchRepository search = Entity.getSearchRepository();
+    String index =
+        search.getIndexMapping(Entity.CONTEXT_MEMORY).getIndexName(search.getClusterAlias());
+    Awaitility.await("the memory is indexed")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> searchMemorySource(searchMemoryAsOwner(memory), memory));
+    AtomicInteger requests = new AtomicInteger();
+    AtomicBoolean unavailable = new AtomicBoolean();
+    VectorIndexService vector = vectorService(search, testEmbeddingClient(requests, unavailable));
+    vector.updateEntityEmbeddings(memory, index);
+    String fingerprint = VectorDocBuilder.computeFingerprintForEntity(memory);
+    assertCurrentVector(memory, fingerprint, vector, index);
+    requests.set(0);
+    unavailable.set(true);
+    Field handler = SearchRepository.class.getDeclaredField("vectorEmbeddingHandler");
+    handler.setAccessible(true);
+    Object previous = handler.get(search);
+    try {
+      handler.set(search, handlerAvailable ? new VectorEmbeddingHandler(vector) : null);
+      search.updateEntityIndex(memory);
+      assertCurrentVector(memory, fingerprint, vector, index);
+      search.updateEntity(memory.getEntityReference(), Include.ALL);
+      assertCurrentVector(memory, fingerprint, vector, index);
+      assertEquals(0, requests.get(), "unchanged text must not call the unavailable provider");
+    } finally {
+      handler.set(search, previous);
+      vector.deleteEntityChunks(memory.getId().toString());
+    }
+  }
+
+  private void assertCurrentVector(
+      ContextMemory memory, String fingerprint, VectorIndexService vector, String index) {
+    String query =
+        """
+        {"query":{"bool":{"filter":[
+          {"ids":{"values":["%s"]}},
+          {"exists":{"field":"embedding"}}
+        ]}}}
+        """
+            .formatted(memory.getId());
+    Awaitility.await("the current memory vector remains searchable")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              JsonNode source = searchMemorySource(searchMemoryAsOwner(memory), memory);
+              assertEquals(fingerprint, source.path("fingerprint").asText(), source.toString());
+              JsonNode count =
+                  JsonUtils.readTree(
+                      vector.executeGenericRequest("POST", "/" + index + "/_count", query));
+              assertEquals(1, count.path("count").asInt(), count.toString());
+              assertTrue(source.path("textToEmbed").asText().contains(memory.getAnswer()));
+              assertTrue(source.path("textToLLMContext").asText().contains(memory.getAnswer()));
+            });
+  }
+
+  private EmbeddingClient testEmbeddingClient(AtomicInteger requests, AtomicBoolean unavailable) {
+    return new EmbeddingClient() {
+      @Override
+      protected float[] doEmbed(String text) {
+        requests.incrementAndGet();
+        if (unavailable.get()) {
+          throw new EmbeddingUnavailableException("Provider unavailable");
+        }
+        float[] vector = new float[384];
+        vector[0] = 1;
+        return vector;
+      }
+
+      @Override
+      public int getDimension() {
+        return 384;
+      }
+
+      @Override
+      public String getModelId() {
+        return "unavailable-test-provider";
+      }
+    };
+  }
+
+  private VectorIndexService vectorService(SearchRepository search, EmbeddingClient embedding) {
+    return search.getSearchClient() instanceof ElasticSearchClient elastic
+        ? new ElasticSearchVectorService(elastic.getNewClient(), embedding)
+        : new OpenSearchVectorService(
+            ((OpenSearchClient) search.getSearchClient()).getNewClient(), embedding);
   }
 
   @Test
