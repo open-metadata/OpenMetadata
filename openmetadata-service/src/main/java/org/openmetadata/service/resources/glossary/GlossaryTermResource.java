@@ -328,9 +328,12 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         Entity.GLOSSARY_TERM,
         () -> termListParent(parentTermParam, listGlossaryId, parentTermFQNParam));
 
-    return addHref(
+    return addPermissions(
         uriInfo,
-        readableListPage(uriInfo, securityContext, fields, filter, limitParam, before, after));
+        securityContext,
+        addHref(
+            uriInfo,
+            readableListPage(uriInfo, securityContext, fields, filter, limitParam, before, after)));
   }
 
   @GET
@@ -437,7 +440,7 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
       result = repository.searchGlossaryTermsByParentFQN(null, search);
     }
     retainReadableRows(securityContext, fields, result);
-    return addHref(uriInfo, result);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, result));
   }
 
   // An unknown provider is a bad request rather than a filter that silently matches nothing.
