@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
+import { SORT_ORDER } from '../../../enums/common.enum';
 import { TestCase } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
@@ -48,16 +50,24 @@ jest.mock('../../../rest/testAPI', () => ({
   getListTestCaseBySearch: jest.fn(),
 }));
 
+const mockDataQualityTab = jest.fn();
+
 jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
   __esModule: true,
-  default: ({ testCases }: { testCases: TestCase[] }) => (
-    <ul data-testid="linked-test-cases">
-      {testCases.map((testCase) => (
-        <li key={testCase.id}>{testCase.name}</li>
-      ))}
-    </ul>
-  ),
+  default: (props: { testCases: TestCase[] }) => {
+    mockDataQualityTab(props);
+
+    return (
+      <ul data-testid="linked-test-cases">
+        {props.testCases.map((testCase) => (
+          <li key={testCase.id}>{testCase.name}</li>
+        ))}
+      </ul>
+    );
+  },
 }));
+
+const lastTabProps = () => mockDataQualityTab.mock.calls.at(-1)[0];
 
 jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
   __esModule: true,
@@ -146,5 +156,59 @@ describe('TestDefinitionDetailsPanel', () => {
       await screen.findByText('message.something-went-wrong')
     ).toBeInTheDocument();
     expect(screen.queryByTestId('linked-test-cases')).not.toBeInTheDocument();
+  });
+
+  it('should soft delete so linked test cases can be restored', async () => {
+    renderPanel();
+
+    await screen.findByText('orders_id_not_null');
+
+    expect(lastTabProps().deletionMode).toBe(TEST_CASE_DELETION_MODE.SOFT);
+  });
+
+  it('should sort linked test cases on the server from the first page', async () => {
+    renderPanel();
+    await screen.findByText('orders_id_not_null');
+
+    await act(() =>
+      lastTabProps().pagingData.pagingHandler({ currentPage: 2 })
+    );
+    await act(() =>
+      lastTabProps().fetchTestCases({
+        sortField: 'name.keyword',
+        sortType: SORT_ORDER.DESC,
+      })
+    );
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sortField: 'name.keyword',
+          sortType: SORT_ORDER.DESC,
+          offset: 0,
+        })
+      )
+    );
+  });
+
+  it('should step back when a delete empties the last page', async () => {
+    renderPanel();
+    await screen.findByText('orders_id_not_null');
+
+    (getListTestCaseBySearch as jest.Mock).mockImplementation(
+      ({ offset }: { offset: number }) =>
+        Promise.resolve(
+          offset === 0
+            ? { data: TEST_CASES, paging: { total: TEST_CASES.length } }
+            : { data: [], paging: { total: TEST_CASES.length } }
+        )
+    );
+    await act(() =>
+      lastTabProps().pagingData.pagingHandler({ currentPage: 2 })
+    );
+
+    await waitFor(() => expect(lastTabProps().pagingData.currentPage).toBe(1));
+
+    expect(lastTabProps().testCases).toEqual(TEST_CASES);
   });
 });

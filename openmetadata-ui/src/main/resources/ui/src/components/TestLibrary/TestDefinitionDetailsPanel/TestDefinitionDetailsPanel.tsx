@@ -21,6 +21,7 @@ import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { TEST_CASE_DELETION_MODE } from '../../../constants/DataQuality.constants';
 import {
   TestCaseParameterDefinition,
   TestDefinition,
@@ -157,6 +158,7 @@ const TestDefinitionDetailsPanel = ({
     showPagination,
     pagingData,
     refetchTestCases,
+    sortTestCases,
   } = useTestDefinitionTestCases(testDefinition?.fullyQualifiedName);
 
   return (
@@ -210,7 +212,9 @@ const TestDefinitionDetailsPanel = ({
                   ) : (
                     <DataQualityTab
                       afterDeleteAction={refetchTestCases}
+                      deletionMode={TEST_CASE_DELETION_MODE.SOFT}
                       entityPermissions={entityPermissions}
+                      fetchTestCases={sortTestCases}
                       isLoading={isLoading}
                       pagingData={pagingData}
                       showPagination={showPagination}

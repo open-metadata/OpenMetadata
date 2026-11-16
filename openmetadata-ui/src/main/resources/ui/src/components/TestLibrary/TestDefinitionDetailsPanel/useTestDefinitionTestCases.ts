@@ -17,7 +17,10 @@ import {
   PAGE_SIZE_BASE,
 } from '../../../constants/constants';
 import { TEST_SUITE_TEST_CASE_FIELDS } from '../../../rest/queries/testSuiteQuery';
-import { getListTestCaseBySearch } from '../../../rest/testAPI';
+import {
+  getListTestCaseBySearch,
+  ListTestCaseParamsBySearch,
+} from '../../../rest/testAPI';
 import {
   NextPreviousProps,
   PagingHandlerParams,
@@ -26,22 +29,32 @@ import {
 /**
  * Pages through the test cases that use one test definition. Paging is local
  * state, not the URL: the panel sits on the Test Library list, whose own
- * paging already owns `?currentPage`. The query is keyed by FQN and page, so a
- * slow response for a previous definition or page cannot overwrite the current
- * one.
+ * paging already owns `?currentPage`. The query is keyed by FQN, page and
+ * sort, so a slow response for a previous definition, page or sort cannot
+ * overwrite the current one.
  */
 export const useTestDefinitionTestCases = (fqn?: string) => {
   const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [sort, setSort] =
+    useState<Pick<ListTestCaseParamsBySearch, 'sortField' | 'sortType'>>();
 
   useEffect(() => {
     setCurrentPage(INITIAL_PAGING_VALUE);
   }, [fqn]);
 
-  const { data, isError, isFetching, refetch } = useQuery({
-    queryKey: ['testDefinitionTestCases', fqn, currentPage, pageSize],
+  const { data, isError, isFetching, isPlaceholderData, refetch } = useQuery({
+    queryKey: [
+      'testDefinitionTestCases',
+      fqn,
+      currentPage,
+      pageSize,
+      sort?.sortField,
+      sort?.sortType,
+    ],
     queryFn: () =>
       getListTestCaseBySearch({
+        ...sort,
         testDefinition: fqn,
         fields: TEST_SUITE_TEST_CASE_FIELDS,
         offset: (currentPage - 1) * pageSize,
@@ -51,6 +64,32 @@ export const useTestDefinitionTestCases = (fqn?: string) => {
     enabled: Boolean(fqn),
     placeholderData: keepPreviousData,
   });
+
+  // A delete can empty the last page; step back to the new last page.
+  useEffect(() => {
+    if (
+      data &&
+      !isPlaceholderData &&
+      data.data.length === 0 &&
+      currentPage > INITIAL_PAGING_VALUE
+    ) {
+      setCurrentPage(
+        Math.max(INITIAL_PAGING_VALUE, Math.ceil(data.paging.total / pageSize))
+      );
+    }
+  }, [data, isPlaceholderData, currentPage, pageSize]);
+
+  const sortTestCases = useCallback(
+    async (params?: ListTestCaseParamsBySearch) => {
+      setSort(
+        params?.sortField
+          ? { sortField: params.sortField, sortType: params.sortType }
+          : undefined
+      );
+      setCurrentPage(INITIAL_PAGING_VALUE);
+    },
+    []
+  );
 
   const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
@@ -82,5 +121,6 @@ export const useTestDefinitionTestCases = (fqn?: string) => {
     showPagination: (data?.paging.total ?? 0) > 0,
     pagingData,
     refetchTestCases,
+    sortTestCases,
   };
 };
