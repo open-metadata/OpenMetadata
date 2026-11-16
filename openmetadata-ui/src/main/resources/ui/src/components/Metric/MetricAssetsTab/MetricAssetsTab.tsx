@@ -84,8 +84,9 @@ export const MetricAssetsTab = ({
             }
           />
         ),
+        // react-reflex applies minWidth only while dragging; tw:min-w-100 enforces it on first render.
         className:
-          'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
+          'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container tw:min-w-100',
         flex: 0.3,
         minWidth: 400,
         wrapInCard: false,

@@ -680,8 +680,9 @@ const TagPage = () => {
                 />
               ),
               ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              // react-reflex applies minWidth only while dragging; tw:min-w-100 enforces it on first render.
               className:
-                'entity-summary-resizable-right-panel-container tag-resizable-panel-container',
+                'entity-summary-resizable-right-panel-container tag-resizable-panel-container tw:min-w-100',
             }}
           />
         ),

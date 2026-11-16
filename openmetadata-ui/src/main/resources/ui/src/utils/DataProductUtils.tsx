@@ -199,8 +199,10 @@ const getDataProductPreviewSecondPanel = (
   ),
   minWidth: 400,
   flex: 0.33,
+  // react-reflex applies minWidth only while dragging; tw:min-w-100 holds the
+  // same 400px on first render so the lineage Upstream/Downstream tabs fit.
   className:
-    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
+    'entity-summary-resizable-right-panel-container domain-resizable-panel-container tw:min-w-100',
 });
 
 const getDataProductNonVersionTabs = ({
