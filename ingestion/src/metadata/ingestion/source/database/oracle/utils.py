@@ -132,12 +132,14 @@ def get_all_view_definitions(self, connection: Connection, query: str, owner: st
 def _read_bulk_view_definition(view: Row) -> tuple[tuple[str, str], str | None]:
     """Read a bulk row with either lowercase or uppercase result labels."""
     if hasattr(view, "view_def") and hasattr(view, "schema"):
-        labels = ("view_name", "schema", "view_def", "view_text_vc", "view_ddl")
+        name_label, schema_label, *optional_labels = ("view_name", "schema", "view_def", "view_text_vc", "view_ddl")
     elif hasattr(view, "VIEW_DEF") and hasattr(view, "SCHEMA"):
-        labels = ("VIEW_NAME", "SCHEMA", "VIEW_DEF", "VIEW_TEXT_VC", "VIEW_DDL")
+        name_label, schema_label, *optional_labels = ("VIEW_NAME", "SCHEMA", "VIEW_DEF", "VIEW_TEXT_VC", "VIEW_DDL")
     else:
         raise ValueError("Oracle view-definition row has no definition labels")
-    view_name, schema, raw_text, text_vc, view_ddl = (getattr(view, label, None) for label in labels)
+    view_name: str = getattr(view, name_label)
+    schema: str = getattr(view, schema_label)
+    raw_text, text_vc, view_ddl = (getattr(view, label, None) for label in optional_labels)
     if raw_text or text_vc:
         return (view_name, schema), f"CREATE OR REPLACE VIEW {view_name} AS {raw_text or text_vc}"
     if view_ddl is not None and hasattr(view_ddl, "read"):
