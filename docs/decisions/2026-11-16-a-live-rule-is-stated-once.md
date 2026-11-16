@@ -1,7 +1,7 @@
 # A live rule is stated once, and a saved query may belong to one ontology
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (the check is batched; the bound stays per subject)
+- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-16 (the check is batched; the bound stays per subject) · v3 2026-11-16 (the check's read locks)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** IndependentOntologyAxiomIT, NativeOntologyImportItemsTest, SavedSparqlQueryServiceTest, rdfAPI.test.ts
 - **Related:** #37882, #37883, open-metadata/openmetadata-collate#8596, ADR:2026-10-19-native-ontology-imports-use-working-drafts
@@ -27,8 +27,9 @@ queries saved in other, and deleted, ontologies inside a brand-new one.
 
 ## Consequences
 
-Duplicates can no longer enter through any path, and an import that repeats a rule reports a
-duplicate instead of failing at apply. Ontology Studio's "My queries" no longer shows other
+Duplicates can no longer enter through any write path, including two concurrent writers: the
+check's read takes `FOR UPDATE` locks, so on MySQL the second writer sees the first's committed
+rule. An import that repeats a rule reports a duplicate instead of failing at apply. Ontology Studio's "My queries" no longer shows other
 ontologies' queries; queries saved before this record have no `ontologyId` and appear only in the
 all-ontologies view. A client that rebuilds saved queries field by field must keep `ontologyId`, or
 a save from it unscopes every Studio query. Revisit if rules ever need intentional repeats, for
@@ -43,3 +44,11 @@ queried and re-signed the subject's rules for every changed rule, and the Brick 
 working-model bound (`OntologyWriteClosureLimits.WORKING_MODEL_CLOSURE`, 10,000) still applies per
 subject: a batch whose subjects together return more rows is halved until each part fits, and only
 a single subject with more than 10,000 live rules refuses the write.
+
+## Amendment
+
+v3, 2026-11-16: the check reads with `FOR UPDATE`, like the working model's `ancestors` and
+`disjointAxioms` reads and as ADR:2026-10-14-ontology-definitions-have-independent-entity-storage
+asks for the reference/axiom join. Under MySQL REPEATABLE READ a plain SELECT can read a snapshot
+from before a concurrent writer committed the same rule; a locking read sees the committed row.
+PostgreSQL READ COMMITTED already did.

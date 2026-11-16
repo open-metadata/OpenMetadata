@@ -60,6 +60,9 @@ final class OntologyWorkingModel {
           "literal");
   private static final int LIMIT = OntologyWriteClosureLimits.WORKING_MODEL_CLOSURE;
   private static final int SUBJECTS_PER_RULE_QUERY = 20;
+  // A current read: on MySQL REPEATABLE READ a plain SELECT could miss a rule a concurrent writer
+  // just committed. ADR:2026-10-14-ontology-definitions-have-independent-entity-storage
+  private static final String FOR_UPDATE = "FOR UPDATE";
   private final CollectionDAO dao;
 
   record Change(OntologyDefinition before, OntologyDefinition after) {}
@@ -118,7 +121,8 @@ final class OntologyWorkingModel {
   private void requireDistinctRules(
       final UUID ontologyId, final List<String> subjectHashes, final Set<UUID> changedIds) {
     final List<String> rules =
-        dao.ontologyReferenceDAO().axiomsOfSubjects(ontologyId, subjectHashes, LIMIT + 1);
+        dao.ontologyReferenceDAO()
+            .axiomsOfSubjects(ontologyId, subjectHashes, LIMIT + 1, FOR_UPDATE);
     if (rules.size() > LIMIT && subjectHashes.size() > 1) {
       final int half = subjectHashes.size() / 2;
       requireDistinctRules(ontologyId, subjectHashes.subList(0, half), changedIds);
@@ -177,7 +181,7 @@ final class OntologyWorkingModel {
     Context(final UUID ontologyId, final boolean forUpdate, final boolean withDisjointness) {
       this.ontologyId = ontologyId;
       this.withDisjointness = withDisjointness;
-      this.locking = forUpdate ? "FOR UPDATE" : "";
+      this.locking = forUpdate ? FOR_UPDATE : "";
     }
 
     List<OntologyDefinition> values() {

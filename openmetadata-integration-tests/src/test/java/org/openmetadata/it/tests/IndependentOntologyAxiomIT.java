@@ -12,23 +12,33 @@ import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.util.OntologyChangeSetTestSupport;
 import org.openmetadata.it.util.RdfAccessFixtures;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyRelease;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAxiomType;
+import org.openmetadata.schema.type.OntologyChangeOperation;
+import org.openmetadata.schema.type.OntologyChangeOperationResult;
+import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
+import org.openmetadata.schema.type.OntologyChangeOperationState;
+import org.openmetadata.schema.type.OntologyChangeOperationType;
+import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
@@ -53,6 +63,7 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
   private static final URI CUSTOMER = URI.create("https://example.org/model/Customer");
   private static final URI PARTY = URI.create("https://example.org/model/Party");
   private static final URI PROPERTY = URI.create("https://example.org/model/knows");
+  private static final URI THING = URI.create("http://www.w3.org/2002/07/owl#Thing");
 
   @Test
   void axiomsBelongToOntologiesAndHaveNoSeparateApproval(TestNamespace ns) {
@@ -98,12 +109,86 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
     OpenMetadataException refused =
         assertThrows(
             OpenMetadataException.class,
-            () -> service.create(axiomRequest(ontology).withName("CustomerIsPartyAgain")));
+            () ->
+                service.create(
+                    axiomRequest(ontology)
+                        .withName("CustomerIsPartyAgain")
+                        .withDisplayName("Customer is a Party again")));
 
     assertEquals(400, refused.getStatusCode());
-    assertTrue(refused.getMessage().contains("Customer is a Party"), refused.getMessage());
+    assertTrue(refused.getMessage().contains("'Customer is a Party'"), refused.getMessage());
     var page = service.list(new ListParams().addFilter("ontologyId", ontology.getId().toString()));
     assertEquals(1, page.getData().size());
+  }
+
+  // Each operation of an apply is its own write, so the second rule fails and the first rolls back.
+  @Test
+  void aChangeSetWithTwoIdenticalRulesAppliesNeither(TestNamespace ns) {
+    Ontology ontology = createModel(ns, "reviewedOntology");
+    OpenMetadataClient client = SdkClients.adminClient();
+    OntologyChangeSet draft =
+        ns.trackRoot(
+            Entity.ONTOLOGY_CHANGE_SET,
+            client
+                .ontologyChangeSets()
+                .create(
+                    new CreateOntologyChangeSet()
+                        .withName(ns.prefix("duplicateRules"))
+                        .withDisplayName("Duplicate rules")
+                        .withDescription("Two identical rules")
+                        .withOntology(ontology.getFullyQualifiedName())
+                        .withBaseWorkingRevision(state(ontology).getWorkingRevision())
+                        .withOperations(
+                            List.of(
+                                ruleOperation(ontology, "CustomerIsParty"),
+                                ruleOperation(ontology, "CustomerIsPartyAgain")))
+                        .withUndoCursor(2)));
+
+    OntologyChangeSet failed =
+        OntologyChangeSetTestSupport.applyOntologyChangeSet(client, draft, ns, "ruleEditor");
+
+    assertEquals(OntologyChangeSetState.APPLY_FAILED, failed.getState());
+    List<OntologyChangeOperationResult> results = failed.getApplicationResult().getResults();
+    assertEquals(
+        List.of(
+            OntologyChangeOperationResultStatus.ROLLED_BACK,
+            OntologyChangeOperationResultStatus.FAILED),
+        results.stream().map(OntologyChangeOperationResult::getStatus).toList());
+    assertTrue(
+        results.getLast().getMessage().contains("already states this"),
+        results.getLast().getMessage());
+    var page =
+        client
+            .ontologyAxioms()
+            .list(new ListParams().addFilter("ontologyId", ontology.getId().toString()));
+    assertTrue(page.getData().isEmpty());
+  }
+
+  @Test
+  void editingARuleIntoAnotherLiveRuleIsRefused(TestNamespace ns) {
+    Ontology ontology = createModel(ns, "reviewedOntology");
+    var service = SdkClients.adminClient().ontologyAxioms();
+    service.create(axiomRequest(ontology));
+    OntologyAxiom other =
+        service.create(
+            axiomRequest(ontology)
+                .withName("CustomerIsThing")
+                .withDisplayName("Customer is a Thing")
+                .withExpressions(List.of(namedClass(THING))));
+    var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch
+        .addObject()
+        .put("op", "replace")
+        .put("path", "/expressions")
+        .set("value", JsonUtils.getObjectMapper().valueToTree(List.of(namedClass(PARTY))));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> service.patch(other.getId(), patch));
+
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("'Customer is a Party'"), refused.getMessage());
+    assertEquals(
+        THING, service.get(other.getId().toString()).getExpressions().getFirst().getClassIri());
   }
 
   @Test
@@ -513,6 +598,26 @@ public class IndependentOntologyAxiomIT extends BaseOntologyApprovalIT {
          {"op":"add","path":"/characteristics","value":["TRANSITIVE"]}]
         """
             .formatted(inverse));
+  }
+
+  private static OntologyChangeOperation ruleOperation(Ontology ontology, String name) {
+    return new OntologyChangeOperation()
+        .withId(UUID.randomUUID())
+        .withOperationType(OntologyChangeOperationType.UPSERT_AXIOM)
+        .withState(OntologyChangeOperationState.ACTIVE)
+        .withAxiom(
+            new OntologyAxiom()
+                .withId(UUID.randomUUID())
+                .withName(name)
+                .withFullyQualifiedName(ontology.getFullyQualifiedName() + "." + name)
+                .withDisplayName(name)
+                .withDescription("Every customer is a party")
+                .withOntology(ontology.getEntityReference())
+                .withAxiomType(OntologyAxiomType.SUBCLASS_OF)
+                .withSubjectIri(CUSTOMER)
+                .withProvenance(RelationProvenance.MANUAL)
+                .withExpressions(List.of(namedClass(PARTY)))
+                .withVersion(0.1));
   }
 
   private static OntologyExpression namedClass(URI iri) {

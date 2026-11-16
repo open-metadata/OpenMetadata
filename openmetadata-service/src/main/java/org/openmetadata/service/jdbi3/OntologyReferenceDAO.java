@@ -134,11 +134,12 @@ public interface OntologyReferenceDAO {
           + "ON r.sourceId = a.id AND r.ontologyId = a.ontologyId "
           + "WHERE a.ontologyId = :ontologyId AND a.deleted = FALSE "
           + "AND r.sourceType = 'ontologyAxiom' AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>) "
-          + "ORDER BY a.name, a.id LIMIT :limit")
+          + "ORDER BY a.name, a.id LIMIT :limit <locking>")
   List<String> axiomsOfSubjects(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
-      @Bind("limit") int limit);
+      @Bind("limit") int limit,
+      @Define("locking") String locking);
 
   @SqlQuery(
       "SELECT p.json FROM ontology_property_entity p JOIN ontology_reference r "

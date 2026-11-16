@@ -287,6 +287,37 @@ class NativeOntologyImportItemsTest {
             .count());
   }
 
+  // The old count-based matching planned the second copy as NEW, which applying then refused.
+  @Test
+  void aStoredRuleListedTwiceAlreadyExistsThenIsADuplicate() {
+    final OntologyConcept parent = concept("https://example.org/items/B", "B");
+    final OntologyConcept child = concept("https://example.org/items/A", "A");
+    final Ontology target = root();
+    final var stored =
+        applied(target, csv(List.of(parent, child), List.of(subClassOf(child, parent))));
+
+    final var preview =
+        importer.preview(
+            csv(
+                List.of(parent, child),
+                List.of(subClassOf(child, parent), subClassOf(child, parent))),
+            stored);
+
+    assertEquals(
+        List.of(
+            NativeOntologyImportItemStatus.ALREADY_EXISTS,
+            NativeOntologyImportItemStatus.DUPLICATE),
+        preview.getSummary().getItems().stream()
+            .filter(item -> item.getKind() == NativeOntologyImportItemKind.RELATIONSHIP)
+            .map(NativeOntologyImportItem::getStatus)
+            .toList());
+    assertEquals(
+        0,
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getAxiom() != null)
+            .count());
+  }
+
   @Test
   void aRelationshipToAClassNobodyDeclaresIsSkippedWithItsReason() {
     final var preview =
@@ -508,6 +539,13 @@ class NativeOntologyImportItemsTest {
                     .withClassIri(parent.getIri())));
   }
 
+  private static NativeOntologyRdfImporter.Source csv(
+      final List<OntologyConcept> concepts, final List<OntologyAxiom> axioms) {
+    return new NativeOntologyRdfImporter.Source(
+        NativeOntologyImportFormat.CSV,
+        new NativeOntologyDocument(null, concepts, List.of(), axioms));
+  }
+
   private static OntologyWorkingSnapshot.Snapshot emptySnapshot(final Ontology root) {
     return new OntologyWorkingSnapshot.Snapshot(
         state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
@@ -515,7 +553,13 @@ class NativeOntologyImportItemsTest {
 
   /** The snapshot a target holds after the planned import of {@code turtle} has been applied. */
   private OntologyWorkingSnapshot.Snapshot imported(final Ontology root, final String turtle) {
-    final var plan = importer.preview(read(turtle), emptySnapshot(root));
+    return applied(root, read(turtle));
+  }
+
+  /** The snapshot a target holds after the planned import of {@code source} has been applied. */
+  private OntologyWorkingSnapshot.Snapshot applied(
+      final Ontology root, final NativeOntologyRdfImporter.Source source) {
+    final var plan = importer.preview(source, emptySnapshot(root));
     final var entries = new ArrayList<OntologyWorkingSnapshot.Entry>();
     entries.add(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root));
     for (final OntologyChangeOperation operation : plan.getChangeSet().getOperations()) {
