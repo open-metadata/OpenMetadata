@@ -20,7 +20,10 @@ count to reach zero. After the timeout they report what has been recorded so far
 drain call `task_done` for every item they take, whatever happens to it, so the wait always ends.
 
 ## Consequences
-A read normally returns as soon as the worker finishes the one item it holds, which takes
-microseconds. A read never blocks longer than one second, at the cost of possibly missing items still
-being recorded when the worker is far behind. Revisit if summaries must be exact under sustained
-load, which would call for counting items at enqueue time instead.
+Summaries are read once the steps have finished (`BaseWorkflow.execute`'s `finally`, and
+`_print_summary`), when nothing else is recording, so a read returns as soon as the worker finishes
+the item it holds. The wait counts every unfinished item, including ones enqueued after the drain,
+so a read made while other threads keep recording can take the full second. A read never blocks
+longer than that, at the cost of possibly missing items still being recorded. Revisit if summaries
+are read mid-run and must be both prompt and exact, which would call for waiting only on the items
+taken before the read started.
