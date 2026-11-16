@@ -147,13 +147,7 @@ const TasksDAGView = ({ tasks, selectedExec }: Props) => {
       }}
       onNodesChange={onNodesChange}>
       <Background gap={12} size={1} />
-      <Controls
-        // React Flow exposes no per-button prop; `!` beats its unlayered stylesheet.
-        // `\_\_` keeps Tailwind from reading the BEM underscores as spaces.
-        className="tw:[&_.react-flow\_\_controls-button]:size-6!"
-        position="bottom-right"
-        showInteractive={false}
-      />
+      <Controls position="bottom-right" showInteractive={false} />
     </ReactFlow>
   ) : (
     <Fragment />
