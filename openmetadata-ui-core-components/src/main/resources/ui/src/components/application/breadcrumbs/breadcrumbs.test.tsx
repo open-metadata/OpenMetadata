@@ -33,6 +33,25 @@ describe('Breadcrumbs', () => {
     );
   });
 
+  it('renders a disabled item as plain text even with onAction', () => {
+    const onAction = vi.fn();
+    render(
+      <Breadcrumbs
+        items={[
+          { id: 'root', label: 'Workspace', isDisabled: true },
+          { id: 'personas', label: 'Personas' },
+          { id: 'detail', label: 'Detail' },
+        ]}
+        onAction={onAction}
+      />
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Workspace' })
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Personas' })).toBeInTheDocument();
+  });
+
   it('titles capped labels so a truncated name stays readable', () => {
     render(<Breadcrumbs items={items} maxItemWidth={80} />);
 

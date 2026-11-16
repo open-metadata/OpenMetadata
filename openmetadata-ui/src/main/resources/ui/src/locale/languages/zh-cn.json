@@ -4248,7 +4248,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "在最多尝试登录失败后, 访问将被阻止(毫秒)",
+    "access-block-time-message": "在最多尝试登录失败后, 访问将被阻止(秒)",
     "access-control-description": "根据角色和策略调整组织层级和团队访问权限",
     "access-to-collaborate": "允许任何人加入团队, 查看数据并协作",
     "access-token-description": "您生成的令牌，可用于访问 Collate API。",

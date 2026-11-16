@@ -4248,7 +4248,7 @@
   },
   "message": {
     "accepts-file-up-to-size": "Accepts {{fileType}} up to {{size}}",
-    "access-block-time-message": "Erişim, maksimum başarısız giriş denemesinden sonra milisaniye boyunca engellenecektir.",
+    "access-block-time-message": "Erişim, maksimum başarısız giriş denemesinden sonra saniye boyunca engellenecektir.",
     "access-control-description": "Roller ve politikalarla kurumsal hiyerarşinize ve ekip erişiminize uyum sağlayın.",
     "access-to-collaborate": "Herkesin takıma katılmasına, verileri görüntülemesine ve işbirliği yapmasına olanak tanımak için açık erişime izin verin.",
     "access-token-description": "Token you have generated that can be used to access the Collate API.",
