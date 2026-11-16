@@ -90,18 +90,20 @@ final class OntologyWorkingModel {
   /**
    * A second rule that states exactly what a live one states adds nothing and lists twice in the
    * Studio, so the save is refused. Signatures compare the normalized content, not names.
+   * ADR:2026-11-16-a-live-rule-is-stated-once
    */
   private void requireDistinctRule(final UUID ontologyId, final OntologyAxiom axiom) {
     final String signature = NativeOntologyDocument.signature(axiom);
-    dao
-        .ontologyReferenceDAO()
-        .sameSubjectAxioms(
-            ontologyId,
-            axiom.getAxiomType().value(),
-            axiom.getId(),
-            DigestUtils.sha256Hex(axiom.getSubjectIri().toString()),
-            LIMIT)
-        .stream()
+    final List<String> siblings =
+        dao.ontologyReferenceDAO()
+            .sameSubjectAxioms(
+                ontologyId,
+                axiom.getAxiomType().value(),
+                axiom.getId(),
+                DigestUtils.sha256Hex(axiom.getSubjectIri().toString()),
+                LIMIT + 1);
+    requireBound(siblings.size());
+    siblings.stream()
         .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))
         .filter(other -> NativeOntologyDocument.signature(other).equals(signature))
         .findFirst()

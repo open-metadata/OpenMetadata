@@ -465,7 +465,7 @@ public final class NativeOntologyRdfImporter {
 
   /**
    * Axioms match by signature. A signature the file repeats is a duplicate, because applying
-   * refuses a second identical rule (OntologyWorkingModel).
+   * refuses a second identical rule. ADR:2026-11-16-a-live-rule-is-stated-once
    */
   private static List<Outcome<OntologyAxiom>> classifyAxioms(
       final List<OntologyAxiom> parsed, final Map<String, List<OntologyAxiom>> stored) {
