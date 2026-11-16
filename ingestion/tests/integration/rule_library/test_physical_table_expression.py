@@ -41,7 +41,7 @@ def source_engines(request):
     kind = request.param
     containers = {
         "postgres": lambda: PostgresContainer("postgres:16", dbname="col7374_target"),
-        "mysql": lambda: MySqlContainer("mysql:8.4.5", dialect="pymysql", username="root", dbname="col7374_target"),
+        "mysql": lambda: MySqlContainer("mysql:8.4.5", username="root", dbname="col7374_target"),
         "clickhouse": lambda: ClickHouseContainer("clickhouse/clickhouse-server:24.8", dbname="col7374_target"),
     }
     with containers[kind]() as container:
