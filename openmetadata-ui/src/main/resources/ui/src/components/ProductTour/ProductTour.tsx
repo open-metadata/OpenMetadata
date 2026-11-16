@@ -10,12 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import productTourPagesClassBase from './ProductTourPagesClassBase';
+import { lazy } from 'react';
+import { useProductTourStore } from '../../hooks/useProductTourStore';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
 
-describe('ProductTourPagesClassBase', () => {
-  it('loads every page the Classic tour visits', async () => {
-    await expect(
-      productTourPagesClassBase.preloadPages('default')
-    ).resolves.toBeUndefined();
-  });
-});
+const ProductTourModal = withSuspenseFallback(
+  lazy(() => import('./ProductTourModal')),
+  null
+);
+
+/**
+ * Mounted in the app shell: renders the product tour while it is open, and
+ * loads its modal only then.
+ */
+const ProductTour = () => {
+  const isOpen = useProductTourStore((state) => state.isOpen);
+
+  return isOpen ? <ProductTourModal /> : null;
+};
+
+export default ProductTour;
