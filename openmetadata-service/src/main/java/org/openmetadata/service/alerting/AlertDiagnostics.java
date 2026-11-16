@@ -31,7 +31,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.matching.AlertMatching;
 import org.openmetadata.service.events.consumer.AlertRows;
-import org.openmetadata.service.events.consumer.ledger.AlertLedger;
 import org.openmetadata.service.events.consumer.ledger.AlertProgress;
 import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 import org.openmetadata.service.events.consumer.ledger.PendingCount;
@@ -99,7 +98,7 @@ public final class AlertDiagnostics {
     EventSubscription alert = AlertRows.read(alertId);
     return Boolean.FALSE.equals(alert.getEnabled())
         ? new SubscriptionStatus().withStatus(SubscriptionStatus.Status.DISABLED)
-        : destinationsWithHealth(alert).stream()
+        : withStatus(alert).stream()
             .filter(destination -> destination.getId().equals(destinationId))
             .findFirst()
             .map(destination -> convertToSubscriptionStatus(destination.getStatusDetails()))
@@ -108,14 +107,29 @@ public final class AlertDiagnostics {
 
   public static List<SubscriptionDestination> listDestinations(UUID alertId) {
     EventSubscription alert = AlertRows.read(alertId);
-    return Boolean.FALSE.equals(alert.getEnabled())
-        ? Collections.emptyList()
-        : destinationsWithHealth(alert);
+    return Boolean.FALSE.equals(alert.getEnabled()) ? Collections.emptyList() : withStatus(alert);
+  }
+
+  /**
+   * Sets, in place, the current status of every destination of every alert: one read of the health
+   * of all of them, whatever their number. Health lives in a row of its own, so registering,
+   * editing and restarting never reset it.
+   */
+  public static void setDestinationStatuses(List<EventSubscription> alerts) {
+    Map<UUID, Map<String, DestinationHealth>> health =
+        AlertRecord.healthOf(alerts.stream().map(EventSubscription::getId).toList());
+    long now = System.currentTimeMillis();
+    alerts.forEach(alert -> setStatuses(alert, health.getOrDefault(alert.getId(), Map.of()), now));
   }
 
   /** Every destination of the alert with its current status: one read, whatever their number. */
   public static List<SubscriptionDestination> destinationsWithStatus(EventSubscription alert) {
-    return destinationsWithHealth(alert);
+    return withStatus(alert);
+  }
+
+  private static List<SubscriptionDestination> withStatus(EventSubscription alert) {
+    setDestinationStatuses(List.of(alert));
+    return listOrEmpty(alert.getDestinations());
   }
 
   // The alert's own rules, from when it started alerting: what it still has to send.
@@ -126,16 +140,12 @@ public final class AlertDiagnostics {
             event, alert.getFilteringRules(), since, AlertMatching.LOG_EVALUATION_ERROR);
   }
 
-  // Health lives in a row of its own, so registering, editing and restarting never reset it.
-  private static List<SubscriptionDestination> destinationsWithHealth(EventSubscription alert) {
-    Map<String, DestinationHealth> health =
-        AlertRecord.open(alert).map(AlertLedger::health).orElse(Map.of());
-    long now = System.currentTimeMillis();
+  private static void setStatuses(
+      EventSubscription alert, Map<String, DestinationHealth> health, long now) {
     for (SubscriptionDestination destination : listOrEmpty(alert.getDestinations())) {
       destination.setStatusDetails(
           statusToShow(alert, destination, health.get(destination.getId().toString()), now));
     }
-    return listOrEmpty(alert.getDestinations());
   }
 
   // Disabled is decided when read, from the alert and the destination as they are now, and never

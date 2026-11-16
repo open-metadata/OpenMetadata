@@ -1,9 +1,9 @@
 # Ontology live data is generated SQL in OpenMetadata and executed by a Collate extension
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial)
+- **Revisions:** v1 2026-10-21 (initial) · v2 2026-11-15 (UI guards moved to Collate) · v3 2026-11-16 (the class-base slot is removed)
 - **Deciders:** Harsha
-- **Guard:** `OntologyConceptSqlGeneratorTest`, `OntologyConceptQueryServiceTest`, `OntologyConceptQueryIT`, `OntologyConceptLiveData.test.tsx` ("renders the preview only when the class base returns an extension"), reviewer
+- **Guard:** `OntologyConceptSqlGeneratorTest`, `OntologyConceptQueryServiceTest`, `OntologyConceptQueryIT`, reviewer
 - **Related:** ADR:2026-10-16-ontology-ai-proposal-review-is-a-collate-extension, ADR:2026-10-19-native-concept-bindings-remain-operational-metadata, Collate `OntologyExplorerClassCollate`
 
 ## Context
@@ -102,3 +102,12 @@ the Collate override that depends on it. A concept bound to more than ten tables
 ten its reader may view among its first 100, in asset-id order, so two readers may get different
 tables. A service type outside the list gets no SQL until its dialect is verified and added. Running queries in OpenMetadata itself would need source credentials on the
 server and is a separate program.
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.
+
+v3 (2026-11-16): `OntologyExplorerClassBase.getConceptLiveDataExtension()` is removed. Nothing
+returned an extension, and the concept inspector that asked for it now lives in Collate
+(ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate v4), which renders the executor directly
+once it exists. SQL generation stays in OpenMetadata.

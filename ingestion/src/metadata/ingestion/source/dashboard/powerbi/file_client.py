@@ -131,6 +131,22 @@ def download_pbit_files(
             reader.download(path=blob, local_file_path=local_file_path, **kwargs)
 
 
+def _extract_pbit(zip_ref: zipfile.ZipFile, extract_dir: str) -> None:
+    """Extract a .pbit archive, skipping any member whose path escapes ``extract_dir``.
+
+    A .pbit is a ZIP whose member names are attacker-controlled when the file comes
+    from a shared bucket or folder. ``extractall`` happens to rewrite ``..`` and
+    absolute names today, but validating each member keeps the guarantee explicit
+    and reports the crafted entry instead of silently relocating it.
+    """
+    base = Path(extract_dir).resolve()
+    for member in zip_ref.infolist():
+        if not (base / member.filename).resolve().is_relative_to(base):
+            logger.warning("Skipping .pbit entry that escapes the extract directory: %r", member.filename)
+            continue
+        zip_ref.extract(member, base)
+
+
 def _get_datamodel_schema_list(path: str) -> list[DataModelSchema] | None:
     """
     Method maps the json to datamodel schema model
@@ -167,12 +183,17 @@ def get_datamodel_schema_files_from_pbit(path: str) -> list[DataModelSchema] | N
         reader = LocalReader(path)
         file_paths = reader.get_local_files(search_key=".pbit")
 
-        # Iterate over the file paths
         for file_path in file_paths:
-            # Open each pbit file
-            with zipfile.ZipFile(file_path, "r") as zip_ref:
-                # Extract all files in the specified folder
-                zip_ref.extractall(f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
+            # One unreadable .pbit must not drop the schemas of the others. Damaged
+            # archives fail during extraction with many types (BadZipFile, zlib.error,
+            # EOFError, RuntimeError for encrypted entries, NotImplementedError for
+            # unsupported compression), so any failure skips only this file.
+            try:
+                with zipfile.ZipFile(file_path, "r") as zip_ref:
+                    _extract_pbit(zip_ref, f"{path}/extracted/{file_path.split('/')[-1].split('.')[0]}")
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Skipping .pbit file %s: %s", file_path, exc)
 
         return _get_datamodel_schema_list(path)
 

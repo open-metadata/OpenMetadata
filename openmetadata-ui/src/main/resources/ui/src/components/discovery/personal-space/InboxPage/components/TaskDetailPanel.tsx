@@ -52,6 +52,7 @@ import {
   EXTENSION_POINTS,
   InboxTaskPanelContribution,
 } from '../../../../../utils/ExtensionPointTypes';
+import ontologyExplorerClassBase from '../../../../../utils/OntologyExplorerClassBase';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
 import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
 import {
@@ -59,12 +60,14 @@ import {
   hasVotedInCurrentStage,
   isAllowedDecider,
 } from '../../../../../utils/TaskNavigationUtils';
-import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
+import {
+  isAwaitingReviewPanel,
+  isOntologyReviewTask,
+} from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import TaskReviewVotes from '../../../../Entity/Task/TaskReviewVotes/TaskReviewVotes';
-import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';
 import {
@@ -122,6 +125,8 @@ export interface TaskDetailPanelProps {
   // Fired after a comment is added/edited/deleted with the reloaded task, so the
   // list row's comment count stays in sync.
   onCommentsChanged?: (task: Task) => void;
+  // Fired with the full task once it loads, and again whenever it changes.
+  onLoaded?: (task: Task) => void;
 }
 
 // Locate the whitespace-delimited token in the title that contains the asset
@@ -358,6 +363,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   onResolved,
   onTaskUpdated,
   onCommentsChanged,
+  onLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isBodyScrolled, onScroll: onBodyScroll } =
@@ -366,6 +372,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const currentUserId = useApplicationStore().currentUser?.id;
   const currentUserIds = useCurrentUserIds();
   const { extensionRegistry } = useApplicationsProvider();
+  const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<AxiosError>();
@@ -509,6 +516,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // Actions wait for the full task: from the list row alone a workflow task
   // would offer the legacy resolve path.
   const hasFullTask = loadedTaskId === taskId;
+
+  useEffect(() => {
+    if (task && hasFullTask) {
+      onLoaded?.(task);
+    }
+  }, [task, hasFullTask, onLoaded]);
+
   const { actions, isResolveDenied } = useMemo(() => {
     if (!task || !hasFullTask || isSyncingTransitions) {
       return { actions: [], isResolveDenied: false };
@@ -559,12 +573,11 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     }
 
     return {
-      actions:
-        isOntologyReviewTask(task) && readyReviewTask !== task.id
-          ? effective.filter(
-              (action) => action.kind !== 'approve' && action.kind !== 'reject'
-            )
-          : effective,
+      actions: isAwaitingReviewPanel(task, readyReviewTask)
+        ? effective.filter(
+            (action) => action.kind !== 'approve' && action.kind !== 'reject'
+          )
+        : effective,
       isResolveDenied: false,
     };
   }, [
@@ -795,10 +808,8 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   ) : null;
   const LegacyPanel = contribution?.component;
   const renderDetails = () => {
-    if (isOntologyReviewTask(task)) {
-      return (
-        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
-      );
+    if (isOntologyReviewTask(task) && ReviewPanel) {
+      return <ReviewPanel task={task} onReadyChange={handleReviewReady} />;
     }
 
     return (
