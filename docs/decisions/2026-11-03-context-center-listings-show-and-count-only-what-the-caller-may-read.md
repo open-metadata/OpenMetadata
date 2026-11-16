@@ -80,5 +80,7 @@ and its total agree; it does not refill, and its cursors are sealed when rows ar
 
 A folder's contents (`/folders/{id}/contents`) list the subfolders and files the folder and file
 listings would return to the caller, with the same row checks, and each subfolder's
-`childrenCount` is counted as above. The folder search document carries no `childrenCount`, since
+`childrenCount` is counted as above. A folder's `children`, on this and every other read, names
+only the subfolders the caller may view
+(ADR:2026-11-03-a-reference-list-names-only-entities-the-caller-may-view). The folder search document carries no `childrenCount`, since
 no single value is right for every reader.

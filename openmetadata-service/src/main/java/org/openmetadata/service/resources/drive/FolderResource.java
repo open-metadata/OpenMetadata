@@ -84,6 +84,11 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
   }
 
   @Override
+  protected List<ReferenceListField<Folder>> viewFilteredReferenceFields() {
+    return List.of(new ReferenceListField<>("children", Folder::getChildren, Folder::setChildren));
+  }
+
+  @Override
   public Folder addHref(UriInfo uriInfo, Folder folder) {
     super.addHref(uriInfo, folder);
     Entity.withHref(uriInfo, folder.getParent());

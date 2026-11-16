@@ -200,6 +200,33 @@ public class ListRowAuthorizationIT {
     JsonNode contents = list(restricted, contentsPath(parent));
     assertEquals(List.of(visible.getName()), names(contents.path("folders")));
     assertEquals(1, contents.path("childrenFolderCount").asInt(), contents.toString());
+    assertEquals(List.of(visible.getName()), names(contents.path("folder").path("children")));
+    JsonNode got = list(restricted, folderPath(parent) + "?fields=children");
+    assertEquals(List.of(visible.getName()), names(got.path("children")));
+    JsonNode listed = listedFolder(restricted, parent);
+    assertEquals(List.of(visible.getName()), names(listed.path("children")));
+  }
+
+  private static String folderPath(Folder folder) {
+    return "/v1/contextCenter/drive/folders/" + folder.getId();
+  }
+
+  /** {@code folder} as the folder listing returns it, paging until it appears. */
+  private static JsonNode listedFolder(OpenMetadataClient client, Folder folder) throws Exception {
+    String after = null;
+    do {
+      String query =
+          "?fields=children&limit=100"
+              + (after == null ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8));
+      JsonNode page = list(client, "/v1/contextCenter/drive/folders" + query);
+      for (JsonNode row : page.path("data")) {
+        if (folder.getId().toString().equals(row.path("id").asText())) {
+          return row;
+        }
+      }
+      after = page.path("paging").path("after").asText(null);
+    } while (after != null);
+    throw new AssertionError("folder " + folder.getName() + " is not listed");
   }
 
   private static String contentsPath(Folder folder) {
