@@ -37,6 +37,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Tests for RDF Property Mapper - verifies that structured properties are properly converted to RDF
@@ -651,14 +652,23 @@ class RdfPropertyMapperTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"PRIMARY_KEY, 1", "PRIMARY_KEY, 2", "UNIQUE, 1", "UNIQUE, 2"})
-    void testKeyUniquenessAppliesToTheWholeConstraint(String type, int columnCount)
-        throws Exception {
+    @CsvSource({
+      "PRIMARY_KEY, 1, tenant_id",
+      "PRIMARY_KEY, 2, tenant_id",
+      "UNIQUE, 1, tenant_id",
+      "UNIQUE, 2, tenant_id",
+      "PRIMARY_KEY, 1, a.b",
+      "PRIMARY_KEY, 2, a.b",
+      "UNIQUE, 1, a.b",
+      "UNIQUE, 2, a.b"
+    })
+    void testKeyUniquenessAppliesToTheWholeConstraint(
+        String type, int columnCount, String firstColumn) throws Exception {
       ArrayNode constraints = objectMapper.createArrayNode();
       ObjectNode pk = objectMapper.createObjectNode();
       pk.put("constraintType", type);
       ArrayNode cols = objectMapper.createArrayNode();
-      cols.add("tenant_id");
+      cols.add(firstColumn);
       if (columnCount == 2) {
         cols.add("user_id");
       }
@@ -684,7 +694,8 @@ class RdfPropertyMapperTest {
       for (JsonNode name : cols) {
         Resource column =
             model.createResource(
-                RdfUtils.columnUri(BASE_URI, "service.db.s.users." + name.asText()));
+                RdfUtils.columnUri(
+                    BASE_URI, FullyQualifiedName.add("service.db.s.users", name.asText())));
         assertTrue(model.contains(constraint, membership, column));
         assertEquals(
             columnCount == 1,

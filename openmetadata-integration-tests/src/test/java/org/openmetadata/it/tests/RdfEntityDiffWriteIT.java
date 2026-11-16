@@ -37,6 +37,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -57,6 +59,7 @@ import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.testcontainers.containers.GenericContainer;
 
 /**
@@ -252,22 +255,23 @@ public class RdfEntityDiffWriteIT {
     assertCurrentProjection(translator.toRdf(table));
   }
 
-  @Test
-  void constraintChangesReplaceMembersAndColumnUniqueness() {
+  @ParameterizedTest
+  @ValueSource(strings = {"id", "a.b", "a\"b"})
+  void constraintChangesReplaceMembersAndColumnUniqueness(String firstColumn) {
     final TableConstraint primaryKey =
         new TableConstraint()
             .withConstraintType(ConstraintType.PRIMARY_KEY)
-            .withColumns(List.of("id", "tenant_id"));
+            .withColumns(List.of(firstColumn, "tenant_id"));
     final Table table =
         wideTable()
-            .withColumns(List.of(column("id"), column("tenant_id")))
+            .withColumns(List.of(column(firstColumn), column("tenant_id")))
             .withTags(List.of())
             .withTableConstraints(
                 List.of(
                     primaryKey,
                     new TableConstraint()
                         .withConstraintType(ConstraintType.UNIQUE)
-                        .withColumns(List.of("id"))));
+                        .withColumns(List.of(firstColumn))));
     writeBoth(TABLE, table);
     assertSameGraph();
     final Model composite = graph(diff);
@@ -510,7 +514,7 @@ public class RdfEntityDiffWriteIT {
     return new Column()
         .withName(name)
         .withDataType(ColumnDataType.INT)
-        .withFullyQualifiedName(TABLE_FQN + "." + name);
+        .withFullyQualifiedName(FullyQualifiedName.add(TABLE_FQN, name));
   }
 
   private static Column child(final String parentPath, final String name) {

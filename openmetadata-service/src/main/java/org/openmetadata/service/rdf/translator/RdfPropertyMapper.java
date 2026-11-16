@@ -1416,7 +1416,7 @@ public class RdfPropertyMapper {
       if (!name.isTextual()) {
         continue;
       }
-      String columnFqn = tableFqn + "." + name.asText();
+      String columnFqn = FullyQualifiedName.add(tableFqn, name.asText());
       Resource columnResource = ensureColumnResource(columnFqn, model);
       if (columnResource != null) {
         resolved.add(columnResource);

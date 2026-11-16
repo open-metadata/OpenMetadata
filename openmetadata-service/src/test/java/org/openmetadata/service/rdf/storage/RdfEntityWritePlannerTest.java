@@ -43,6 +43,8 @@ import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
@@ -60,6 +62,7 @@ import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Runs the planned updates against an in-memory dataset with Jena's own SPARQL engine. Every
@@ -337,16 +340,18 @@ class RdfEntityWritePlannerTest {
     assertTrue(diff.graph().isIsomorphicWith(translator.toRdf(table)));
   }
 
-  @Test
-  void changingAndRemovingConstraintsLeavesOnlyCurrentMembersAndReferences() {
+  @ParameterizedTest
+  @ValueSource(strings = {"id", "a.b", "a\"b"})
+  void changingAndRemovingConstraintsLeavesOnlyCurrentMembersAndReferences(String firstColumn) {
     final TableConstraint constraint =
         new TableConstraint()
             .withConstraintType(ConstraintType.FOREIGN_KEY)
-            .withColumns(List.of("id", "tenant_id"))
+            .withColumns(List.of(firstColumn, "tenant_id"))
             .withReferredColumns(
                 List.of("service.db.schema.customers.id", "service.db.schema.customers.tenant_id"));
     final Table table =
-        table(List.of(column("id"), column("tenant_id"))).withTableConstraints(List.of(constraint));
+        table(List.of(column(firstColumn), column("tenant_id")))
+            .withTableConstraints(List.of(constraint));
     writeBoth(TABLE_URI, table);
     final Model shared = ModelFactory.createDefaultModel();
     for (String fqn : constraint.getReferredColumns()) {
@@ -361,7 +366,7 @@ class RdfEntityWritePlannerTest {
     diff.graph().add(shared);
     replace.graph().add(shared);
 
-    constraint.setColumns(List.of("id"));
+    constraint.setColumns(List.of(firstColumn));
     constraint.setReferredColumns(List.of("service.db.schema.customers.id"));
     writeBoth(TABLE_URI, table);
     assertSameGraph();
@@ -542,7 +547,7 @@ class RdfEntityWritePlannerTest {
     return new Column()
         .withName(name)
         .withDataType(ColumnDataType.INT)
-        .withFullyQualifiedName(TABLE_FQN + "." + name);
+        .withFullyQualifiedName(FullyQualifiedName.add(TABLE_FQN, name));
   }
 
   private static Column child(final String parentPath, final String name) {
