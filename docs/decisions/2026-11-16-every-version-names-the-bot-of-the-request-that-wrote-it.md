@@ -46,11 +46,11 @@ For every entity type whose schema declares `impersonatedBy`:
 - The change event of a write names the request that made it. The response filter takes the user
   and the bot from the request's security context. A write that records its event itself for the
   request's user takes the bot from `ImpersonationContext`: `ChangeEventHandler.entityChangeEvent`
-  (column edits, Assets-tab batch edits, approved tasks), the MCP tool events and asset changes.
-  An event a repository records for a version it stores itself, or for another request's change,
-  names that version's writer pair: `getChangeEvent` without a user and
-  `createAndInsertChangeEvent` take both from the entity. A hard delete stamps its deleter and its
-  time on the entity its response and async event carry.
+  (column edits, Assets-tab batch edits, approved tasks), the MCP tool events, lineage edges and
+  asset changes. An event a repository records for a version it stores itself, or for another
+  request's change, names that version's writer pair: `getChangeEvent` without a user and
+  `createAndInsertChangeEvent` take both from the entity. A hard delete stamps its deleter on the
+  entity its response and async event carry.
 
 ## Consequences
 

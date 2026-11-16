@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -145,7 +146,7 @@ class McpChangeEventUtilTest {
     }
   }
 
-  /** The event names the tool call's bot, whatever bot the entity names. */
+  /** The event names the tool call's bot, not the bot of the entity's earlier writer. */
   @Test
   void publishChangeEvent_namesTheBotOfTheToolCall() {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
@@ -158,7 +159,15 @@ class McpChangeEventUtilTest {
       entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
 
       McpChangeEventUtil.publishChangeEvent(
-          GetEntityToolTest.gitSinkWorkflow("botWorkflow"), EventType.ENTITY_UPDATED, "alice");
+          new Glossary()
+              .withId(UUID.randomUUID())
+              .withName("botGlossary")
+              .withFullyQualifiedName("botGlossary")
+              .withVersion(0.2)
+              .withUpdatedBy("alice")
+              .withImpersonatedBy("earlier-bot"),
+          EventType.ENTITY_UPDATED,
+          "alice");
     } finally {
       ImpersonationContext.clear();
     }

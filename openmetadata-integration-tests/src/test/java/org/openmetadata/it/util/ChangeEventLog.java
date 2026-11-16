@@ -16,12 +16,17 @@ import org.awaitility.Awaitility;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.network.HttpMethod;
 
-/** The change events the server recorded, read as an admin: only admins and bots may list them. */
+/**
+ * The change events the server recorded, and the audit rows written from them, read as an admin:
+ * only admins and bots may list events.
+ */
 public final class ChangeEventLog {
   private static final String EVENTS_WINDOW = "/v1/events?%s=%s&limit=1000&timestamp=%d&endTs=%d";
   private static final String UPDATED = "entityUpdated";
   private static final String DELETED = "entityDeleted";
   private static final String HARD_DELETED_EVENT = "entityDeleted";
+  // No entityType: with one, the audit API authorizes against that entity, and an edge is not one.
+  private static final String AUDIT_WINDOW = "/v1/audit/logs?entityFQN=%s&eventType=%s&limit=1";
 
   private ChangeEventLog() {}
 
@@ -73,6 +78,31 @@ public final class ChangeEventLog {
             event ->
                 new EventAuthor(textOrNull(event, "userName"), textOrNull(event, "impersonatedBy")))
         .toList();
+  }
+
+  /**
+   * The author of the newest audit row for {@code eventType} on what {@code entityFqn} names,
+   * waiting until the audit log consumer has written it. Audit rows are written from the change
+   * events, so they name whom the event names; the events API does not list lineage events, the
+   * audit log does.
+   */
+  public static EventAuthor awaitAuditAuthor(String entityFqn, String eventType) {
+    String path =
+        AUDIT_WINDOW.formatted(
+            URLEncoder.encode(entityFqn, UTF_8), URLEncoder.encode(eventType, UTF_8));
+    JsonNode row =
+        Awaitility.await("the " + eventType + " audit row of " + entityFqn)
+            .atMost(Duration.ofSeconds(60))
+            .pollInterval(Duration.ofMillis(500))
+            .until(
+                () ->
+                    SdkClients.adminClient()
+                        .getHttpClient()
+                        .execute(HttpMethod.GET, path, null, ObjectNode.class)
+                        .path("data")
+                        .path(0),
+                found -> !found.isMissingNode());
+    return new EventAuthor(textOrNull(row, "userName"), textOrNull(row, "impersonatedBy"));
   }
 
   // The entityDeleted filter returns soft deletes too.

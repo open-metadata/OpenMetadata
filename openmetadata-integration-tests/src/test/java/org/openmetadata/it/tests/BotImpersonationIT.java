@@ -42,6 +42,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.domains.CreateDataProduct;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.lineage.AddLineage;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.tasks.CreateTask;
 import org.openmetadata.schema.api.tasks.ResolveTask;
@@ -69,7 +70,9 @@ import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.DescriptionUpdatePayload;
+import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -1593,8 +1596,9 @@ public class BotImpersonationIT {
     User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
     Impersonation impersonation = impersonating(ns, "harddel", admin);
     Glossary glossary = createGlossary(ns, "impharddel");
-    patchDescription(SdkClients.adminClient(), glossary, "Written by admin directly");
+    // A hard delete's event is dated at the entity's last update, which is this edit.
     long since = System.currentTimeMillis();
+    patchDescription(SdkClients.adminClient(), glossary, "Written by admin directly");
 
     JsonNode deleted =
         JsonUtils.readTree(
@@ -1623,8 +1627,9 @@ public class BotImpersonationIT {
     User target = createRegularUser(ns, "asyncharddel");
     Impersonation impersonation = impersonating(ns, "asyncharddel", target);
     Glossary glossary = createGlossary(ns, "impasyncharddel");
-    patchDescription(impersonation.viaBot(), glossary, "Written by the bot for the user");
+    // A hard delete's event is dated at the entity's last update, which is this edit.
     long since = System.currentTimeMillis();
+    patchDescription(impersonation.viaBot(), glossary, "Written by the bot for the user");
 
     SdkClients.adminClient()
         .getHttpClient()
@@ -1730,6 +1735,35 @@ public class BotImpersonationIT {
   }
 
   @Test
+  void test_impersonatedLineageAdd_namesTheBotOnTheAuditRow(TestNamespace ns) {
+    User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
+    Impersonation impersonation = impersonating(ns, "lineage", admin);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    Table upstream = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "up"));
+    Table downstream = SdkClients.adminClient().tables().create(tableRequest(ns, schema, "down"));
+
+    impersonation
+        .viaBot()
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(upstream.getEntityReference())
+                        .withToEntity(downstream.getEntityReference())));
+
+    assertEquals(
+        new EventAuthor(ADMIN_USER_NAME, impersonation.bot()),
+        ChangeEventLog.awaitAuditAuthor(
+            upstream.getFullyQualifiedName()
+                + LINEAGE_EDGE_DELIMITER
+                + downstream.getFullyQualifiedName(),
+            EventType.ENTITY_LINEAGE_ADDED.value()),
+        "The audit row of a lineage edge the bot adds must name the bot");
+  }
+
+  @Test
   void test_impersonatedColumnCsvImportAsync_namesTheBot(TestNamespace ns) {
     User admin = SdkClients.adminClient().users().getByName(ADMIN_USER_NAME);
     Impersonation impersonation = impersonating(ns, "colcsv", admin);
@@ -1787,6 +1821,9 @@ public class BotImpersonationIT {
             Entity.DATA_PRODUCT, dataProduct.getId(), Entity.FIELD_DOMAINS, since),
         "The change event of the detach must name the bot");
   }
+
+  // How LineageRepository names an edge in its change event's FQN.
+  private static final String LINEAGE_EDGE_DELIMITER = "--upstream-->";
 
   private record IdentityCall(HttpMethod method, String path, Object body) {}
 

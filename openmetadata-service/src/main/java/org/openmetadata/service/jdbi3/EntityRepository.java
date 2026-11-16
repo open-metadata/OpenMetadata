@@ -5943,11 +5943,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
         EventType changeType;
         T updated = loadForDelete(original.getId());
-        // A hard delete stores nothing, but its response and async change event carry the entity,
-        // writer and time included.
+        // A hard delete stores nothing, but its response and async change event carry the entity.
+        // Its time stays the stored one: ontology deletes check it against the locked row.
         EntityUtil.recordWriter(updated, deletedBy);
-        updated.setUpdatedAt(System.currentTimeMillis());
         if (supportsSoftDelete && !hardDelete) {
+          updated.setUpdatedAt(System.currentTimeMillis());
           updated.setDeleted(true);
           EntityUpdater updater = getUpdater(original, updated, Operation.SOFT_DELETE, null);
           updater.update();
