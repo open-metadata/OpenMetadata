@@ -146,7 +146,7 @@ const createLifecycleWithoutExits = async (
     await apiContext.post('/api/v1/governance/workflowDefinitions', {
       data: {
         name,
-        description: 'Owns one domain\'s stage and takes no requests.',
+        description: "Owns one domain's stage and takes no requests.",
         config: {
           storeStageStatus: true,
           lifecycle: { version: 1, entityType: 'domain', gates: [] },
@@ -230,7 +230,9 @@ const approveOpenRequest = async (
   await expect
     .poll(
       async () =>
-        (await openRequestTasks(apiContext, domain, lifecycleId)).length,
+        (
+          await openRequestTasks(apiContext, domain, lifecycleId)
+        ).length,
       { timeout: 60_000 }
     )
     .toBe(1);
@@ -310,9 +312,9 @@ test.describe('Lifecycle request', () => {
 
     expect((await requestResponse).status()).toBe(200);
     await expect(page.getByTestId('lifecycle-request-badge')).toBeVisible();
-    await expect(
-      page.getByTestId('entity-status-request-trigger')
-    ).toHaveCount(0);
+    await expect(page.getByTestId('entity-status-request-trigger')).toHaveCount(
+      0
+    );
 
     const { apiContext, afterAction } = await getApiContext(dataStewardPage);
     await approveOpenRequest(apiContext, offered, lifecycleId);
@@ -329,9 +331,9 @@ test.describe('Lifecycle request', () => {
       )
       .toBe(0);
     await expect(page.getByText('Deprecated', { exact: true })).toBeVisible();
-    await expect(
-      page.getByTestId('entity-status-request-trigger')
-    ).toHaveCount(0);
+    await expect(page.getByTestId('entity-status-request-trigger')).toHaveCount(
+      0
+    );
   });
 
   test('a domain its lifecycle does not offer Deprecate to shows no request entry', async ({
@@ -348,9 +350,9 @@ test.describe('Lifecycle request', () => {
     await openDomain(page, notOffered);
 
     expect(await (await offer).json()).toEqual([]);
-    await expect(
-      page.getByTestId('entity-status-request-trigger')
-    ).toHaveCount(0);
+    await expect(page.getByTestId('entity-status-request-trigger')).toHaveCount(
+      0
+    );
     await expect(page.getByTestId('lifecycle-request-badge')).toHaveCount(0);
   });
 });

@@ -22,9 +22,12 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { stageKey } from '../../../utils/governance/lifecycle/LifecycleRequest.utils';
-import { STAGE_ACTION, STAGE_TRIGGER_CLASS } from './EntityStageBadge.constants';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
+import {
+  STAGE_ACTION,
+  STAGE_TRIGGER_CLASS,
+} from './EntityStageBadge.constants';
 
 // The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
 const EntityStatusDecisionTitle = withSuspenseFallback(
