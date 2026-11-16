@@ -14,7 +14,7 @@
 // The interactive Storylane demo Help > Tour and the Welcome screen open.
 // ADR:2026-11-13-the-product-tour-is-a-storylane-demo
 export const PRODUCT_TOUR_URL =
-  'https://collate.storylane.io/demo/wbl3aevcc3ct';
+  'https://collate.storylane.io/demo/6dgboeceyjwe';
 
 /**
  * The product tour: a Storylane demo, shown in the learning resource player.
