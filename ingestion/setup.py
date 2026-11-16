@@ -60,7 +60,7 @@ VERSIONS = {
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
     "numpy": "numpy>=2,<3",
-    "opentelemetry-exporter-otlp": "opentelemetry-exporter-otlp==1.45.1",
+    "opentelemetry-exporter-otlp": "opentelemetry-exporter-otlp==1.45.2",  # CVE-2026-126360 (opentelemetry-api 1.45.2)
     "scikit-learn": "scikit-learn>=1.4.2,<2",
     "packaging": "packaging",
     "azure-storage-blob": "azure-storage-blob~=12.14",
@@ -232,6 +232,10 @@ base_requirements = {
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",
     "urllib3>=2.8.0",  # CVE-2026-97687/97688/97689: proxy TLS configuration and streaming DoS
+    "oauthlib>=4.0.1",  # GHSA-3jp2-3mrg-2vxc: device-code grant issues a token for any device_code
+    # The fixes below need Python 3.11, so the Python 3.10 fork keeps the vulnerable releases.
+    'dnspython>=2.9.2; python_version >= "3.11"',  # GHSA-45c3-73f7-pv4m: name decompression CPU DoS; CVE-2026-128089
+    'filelock>=4.2.1; python_version >= "3.11"',  # GHSA-v4x8-3wr5-3wq8: ReadWriteLock follows planted symlinks
 }
 
 plugins: Dict[str, Set[str]] = {  # noqa: UP006
@@ -246,6 +250,8 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
         VERSIONS["elasticsearch"],
         "tornado>=6.5.9",  # CVE-2026-49853/49854/49855, GHSA-pw6j-qg29-8w7f; CVE-2026-103261/103262/103263 query/curl DoS and symlink traversal
+        # GHSA-pcg2-g6cj-q92c / GHSA-r4j5-9xpp-3985 / GHSA-pw9p-v7r6-gx4p: 6.6 needs Python 3.11, no 6.5.x backport
+        'tornado>=6.6.1; python_version >= "3.11"',  # CVE-2026-126347
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
         "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
