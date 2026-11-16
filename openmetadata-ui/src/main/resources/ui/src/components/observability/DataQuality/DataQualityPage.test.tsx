@@ -68,22 +68,6 @@ jest.mock('../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer', () => ({
   default: () => <div>BundleSuiteFormDrawer</div>,
 }));
 
-jest.mock('../ObservabilityPageShell/ObservabilityPageShell', () => ({
-  __esModule: true,
-  default: ({
-    children,
-    header,
-  }: {
-    children: ReactNode;
-    header: ReactNode;
-  }) => (
-    <div>
-      {header}
-      {children}
-    </div>
-  ),
-}));
-
 jest.mock('../../Learning/LearningIcon/LearningIcon.component', () => ({
   __esModule: true,
   LearningIcon: () => <div>LearningIcon</div>,
