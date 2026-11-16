@@ -60,12 +60,12 @@ SQL_KEYWORD = re.compile(r"(?:select|with|create|insert|drop|update|delete|merge
 
 
 # The tokens a pass split must tell apart, each without nested repetition so the scan stays
-# linear: a quote opening, a comment opening, a line comment, a blank line, a parenthesis, and
-# anything else.
-SQL_TOKEN = re.compile(r"['\"`]|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[()]|[^\s'\"`/()-]+|[\s\S]")
+# linear: a quote opening, a comment opening, a line comment, a blank line, a parenthesis, a
+# bracket, and anything else.
+SQL_TOKEN = re.compile(r"['\"`]|/\*|--[^\n]*|\n[ \t\r\f\v]*\n|[()\[]|[^\s'\"`/()\[-]+|[\s\S]")
 QUOTE_STOPS = {
     (quote, escapes): re.compile("[" + re.escape(quote) + ("\\\\" if escapes else "") + "]")
-    for quote in ("'", '"', "`")
+    for quote in ("'", '"', "`", "]")
     for escapes in (False, True)
 }
 
@@ -94,6 +94,15 @@ def backslash_escapes(dialect: Dialect) -> bool:
         return False
 
 
+def bracket_quotes(dialect: Dialect) -> bool:
+    """Whether the dialect quotes a name with brackets (``[Amount (USD)]``), as sqlglot reads them"""
+    try:
+        tokenizer = sqlglot.Dialect.get_or_raise(_sqlglot_dialect(dialect)).tokenizer_class
+        return "[" in getattr(tokenizer, "_IDENTIFIERS", {})
+    except Exception:
+        return False
+
+
 def starts_with_sql(text: str) -> bool:
     """
     Whether the text opens with a SQL keyword once leading comments are skipped. A loop, not a
@@ -115,12 +124,13 @@ def starts_with_sql(text: str) -> bool:
             return bool(SQL_KEYWORD.match(text, position))
 
 
-def sql_passes(sql: str, escapes: bool = False) -> list[str]:
+def sql_passes(sql: str, escapes: bool = False, brackets: bool = False) -> list[str]:
     """
     The passes of a cube SQL. MicroStrategy separates them with blank lines, not semicolons, so a
     pass starts after a blank line whose next statement token is a SQL keyword, outside any
-    parentheses. Blank lines inside comments, quoted text, a CTE or a subquery never split. One
-    scan, linear in the length of the SQL.
+    parentheses. Blank lines inside comments, quoted text, a CTE or a subquery never split, and a
+    parenthesis inside quoted text or a bracket-quoted name is not counted. One scan, linear in the
+    length of the SQL.
     """
     starts, pending, position, depth = [0], None, 0, 0
     while match := SQL_TOKEN.search(sql, position):
@@ -130,6 +140,13 @@ def sql_passes(sql: str, escapes: bool = False) -> list[str]:
             end = _quote_end(sql, match.start(), token, escapes)
             if end is None:
                 # Unclosed quoted text runs to the end: no pass starts inside it.
+                break
+            position = end
+            pending = None
+        elif token == "[" and brackets:
+            # A bracket-quoted name ends at the first ``]`` not doubled.
+            end = _quote_end(sql, match.start(), "]", False)
+            if end is None:
                 break
             position = end
             pending = None
@@ -166,7 +183,7 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
     column lineage and leaves table lineage to the lineage parser.
     """
     columns: set[SourceColumn] = set()
-    for sql_pass in sql_passes(sql, backslash_escapes(dialect)):
+    for sql_pass in sql_passes(sql, backslash_escapes(dialect), bracket_quotes(dialect)):
         # A cube built from a file answers with a note, not SQL.
         if not starts_with_sql(sql_pass):
             continue

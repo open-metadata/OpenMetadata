@@ -1078,6 +1078,11 @@ class TestColumnLineage:
 
         assert read_columns(sql, Dialect.BIGQUERY) == {("p.s.orders", "order_id"), ("p.s.items", "n")}
 
+    def test_a_parenthesis_inside_a_bracket_quoted_name_does_not_join_passes(self):
+        sql = "select a.[Amount (USD] from sales.orders a\n\nselect b.id from sales.items b"
+
+        assert read_columns(sql, Dialect.TSQL) == {("sales.orders", "amount (usd"), ("sales.items", "id")}
+
     def test_a_correlated_reference_reaches_the_outer_table(self):
         sql = "select a.id id, (select a.price) price from `p`.`s`.`orders` a"
 
