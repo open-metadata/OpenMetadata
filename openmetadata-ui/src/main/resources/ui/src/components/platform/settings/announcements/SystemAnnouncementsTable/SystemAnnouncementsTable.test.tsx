@@ -32,10 +32,11 @@ jest.mock('../../../../../rest/announcementsAPI', () => ({
   deleteAnnouncement: jest.fn().mockResolvedValue({}),
 }));
 
-jest.mock('../../../../common/ProfilePicture/ProfilePicture', () => ({
-  __esModule: true,
-  default: () => <span data-testid="profile-picture" />,
-}));
+jest.mock('../../../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn(({ userName }) => (
+    <span data-testid="user-popover-card">{userName}</span>
+  ))
+);
 
 jest.mock('../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -113,6 +114,7 @@ describe('SystemAnnouncementsTable', () => {
 
     expect(screen.getByText('Title live')).toBeInTheDocument();
     expect(screen.getByText('label.critical')).toBeInTheDocument();
+    expect(screen.getAllByTestId('user-popover-card')).toHaveLength(3);
     expect(screen.getAllByText('admin')).toHaveLength(3);
     expect(
       within(
