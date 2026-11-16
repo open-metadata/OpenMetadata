@@ -354,7 +354,7 @@ export const getDomainDetailTabs = ({
                   ),
                   minWidth: 400,
                   flex: 0.33,
-                  // react-reflex applies minWidth only while dragging; tw:min-w-100 enforces it on first render.
+                  // Both minWidths can exceed the container, so reflex splits it by ratio; tw:min-w-100 keeps 400px.
                   className:
                     'entity-summary-resizable-right-panel-container domain-resizable-panel-container tw:min-w-100',
                 }}

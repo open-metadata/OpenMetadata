@@ -213,7 +213,7 @@ export const getGlossaryTermDetailPageTabs = (
               panelPath="glossary-term-assets-tab"
             />
           ),
-          // react-reflex applies minWidth only while dragging; tw:min-w-100 enforces it on first render.
+          // Both minWidths can exceed the container, so reflex splits it by ratio; tw:min-w-100 keeps 400px.
           className:
             'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container tw:min-w-100',
           flex: 0.3,
