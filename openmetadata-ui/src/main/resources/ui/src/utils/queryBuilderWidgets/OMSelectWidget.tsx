@@ -100,7 +100,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     if (isAsync) {
       loadAsync('');
     }
-  }, [fieldKey, isAsync]);
+  }, [fieldKey, isAsync, loadAsync]);
 
   // The label React Aria puts in the input while a value is selected.
   const selectedKey =

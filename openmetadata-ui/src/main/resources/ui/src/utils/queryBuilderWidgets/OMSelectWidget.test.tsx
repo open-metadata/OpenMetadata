@@ -229,6 +229,67 @@ describe('OMSelectWidget', () => {
     expect(asyncFetch).toHaveBeenCalledTimes(callsBeforeReopen);
   });
 
+  it('reloads options when the async fetcher changes for the same field', async () => {
+    const firstFetch = jest.fn().mockResolvedValue({
+      values: [{ value: 'old', title: 'Old option' }],
+    });
+    const nextFetch = jest.fn().mockResolvedValue({
+      values: [{ value: 'new', title: 'New option' }],
+    });
+    const { rerender } = render(
+      <OMSelectWidget {...baseProps} useAsyncSearch asyncFetch={firstFetch} />
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('Old option')
+    );
+
+    rerender(
+      <OMSelectWidget {...baseProps} useAsyncSearch asyncFetch={nextFetch} />
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('New option')
+    );
+
+    expect(screen.getByTestId('options')).not.toHaveTextContent('Old option');
+  });
+
+  it('preserves searched options on rerender when the fetcher is unchanged', async () => {
+    const asyncFetch = jest.fn().mockImplementation((search: string) =>
+      Promise.resolve({
+        values: search
+          ? [{ value: 'match', title: 'Matching option' }]
+          : [{ value: 'default', title: 'Default option' }],
+      })
+    );
+    const { rerender } = render(
+      <OMSelectWidget {...baseProps} useAsyncSearch asyncFetch={asyncFetch} />
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('Default option')
+    );
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'match' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('Matching option')
+    );
+
+    rerender(
+      <OMSelectWidget
+        {...baseProps}
+        useAsyncSearch
+        asyncFetch={asyncFetch}
+        placeholder="Updated placeholder"
+      />
+    );
+
+    expect(screen.getByTestId('options')).toHaveTextContent('Matching option');
+    expect(screen.getByTestId('options')).not.toHaveTextContent(
+      'Default option'
+    );
+    expect(asyncFetch).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps the async select controlled when its value is cleared', async () => {
     const asyncProps = {
       ...baseProps,
