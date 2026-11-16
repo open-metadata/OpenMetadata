@@ -11,8 +11,12 @@
 """MicroStrategy source module"""
 
 import traceback
+from collections import OrderedDict
 from collections.abc import Iterable
+from functools import partial
+from typing import cast
 
+from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -25,6 +29,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
+from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
@@ -53,12 +58,16 @@ from metadata.generated.schema.type.entityReferenceList import EntityReferenceLi
 from metadata.ingestion.api.delete import DeleteEntity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
+from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.microstrategy.client import MicroStrategyApiError, MicroStrategyClient
+from metadata.ingestion.source.dashboard.microstrategy.client import (
+    MicroStrategyApiError,
+    MicroStrategyClient,
+    cached,
+)
 from metadata.ingestion.source.dashboard.microstrategy.helpers import (
     MicroStrategyColumnParser,
 )
@@ -81,6 +90,25 @@ from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# The column name limit that truncate_column_name applies
+COLUMN_NAME_LENGTH = 256
+
+
+def unique_column_name(name: str, taken: set[str]) -> str:
+    """
+    The server rejects a data model that repeats a column name, and MicroStrategy lets two
+    objects of a dataset share one (an attribute and a metric, or two metrics).
+    """
+    candidate = truncate_column_name(name)
+    suffix = 2
+    while candidate in taken:
+        # The suffix goes after the truncation, or a name at the length limit would lose it.
+        tag = f" ({suffix})"
+        candidate = truncate_column_name(name)[: COLUMN_NAME_LENGTH - len(tag)] + tag
+        suffix += 1
+    taken.add(candidate)
+    return candidate
 
 
 def chart_name(dossier_id: str, page_key: str, visualization_key: str) -> str:
@@ -107,6 +135,9 @@ class MicrostrategySource(DashboardServiceSource):
         self.definition_failed = False
         # A dossier whose existing charts could not be read from OpenMetadata produced no charts.
         self.charts_unknown = False
+        self._dialects: dict[str, Dialect | None] = {}
+        self._service_databases: dict[str, frozenset[str]] = {}
+        self._source_tables: OrderedDict[tuple[str, Dialect], tuple[str, ...] | None] = OrderedDict()
 
     @property
     def _service(self) -> str:
@@ -145,9 +176,16 @@ class MicrostrategySource(DashboardServiceSource):
             if filter_by_project(self.source_config.projectFilterPattern, project.name):
                 self.status.filter(project.name, "Project Filtered Out")
                 continue
+            documents = 0
             try:
                 for result in self.client.iter_search_results(project.id):
                     self.dashboard_listing.count_listed()
+                    if not result.is_dossier:
+                        # The dossier definition API answers HTTP 500 for a document.
+                        documents += 1
+                        self.dashboard_listing.count_filtered()
+                        self.status.filter(result.name, "Not a dossier: Report Services documents are not ingested")
+                        continue
                     # Filtered here as well as in the base, so the listing can count it.
                     if filter_by_dashboard(self.source_config.dashboardFilterPattern, result.name):
                         self.dashboard_listing.count_filtered()
@@ -158,6 +196,11 @@ class MicrostrategySource(DashboardServiceSource):
                     )
             except Exception as exc:
                 self._fail_listing(f"the dossiers of project {project.name}", exc)
+            if documents:
+                self.status.warning(
+                    project.name,
+                    f"Skipped {documents} Report Services documents, templates or themes: only dossiers are ingested",
+                )
         if self.client.skipped_objects:
             self._fail_listing(
                 "every object", MicroStrategyApiError(f"{self.client.skipped_objects} objects did not parse")
@@ -286,23 +329,22 @@ class MicrostrategySource(DashboardServiceSource):
         if not db_service_prefix or not dashboard_details.datasets:
             return
 
-        (
-            prefix_db_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = self.parse_db_service_prefix(db_service_prefix)
-
-        database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=prefix_db_service_name)
-        if not database_service:
-            logger.warning("Database service [%s] from dbServicePrefixes was not found", prefix_db_service_name)
+        service_name, database_name, schema_name, table_name = self.parse_db_service_prefix(db_service_prefix)
+        if not service_name:
             return
-        dialect = ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value)
+        dialect = self._dialect_of(service_name)
+        if not dialect:
+            return
 
         for dataset in dashboard_details.datasets:
             try:
-                cube_sql = self.client.get_cube_sql_details(dashboard_details.projectId, dataset.id)
-                if not cube_sql:
+                source_tables = cached(
+                    self._source_tables,
+                    (dataset.id, dialect),
+                    partial(self._parse_source_tables, dashboard_details.projectId, dataset.id, dialect),
+                    f"the tables of cube {dataset.id}",
+                )
+                if not source_tables:
                     continue
                 datamodel_entity = self.metadata.get_by_name(
                     entity=DashboardDataModel,
@@ -311,35 +353,19 @@ class MicrostrategySource(DashboardServiceSource):
                 if not datamodel_entity:
                     logger.debug("Data model [%s] not found, skipping its lineage", dataset.id)
                     continue
-                lineage_parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
-                for table in lineage_parser.source_tables:
-                    table_entities = get_table_entities_from_query(
-                        metadata=self.metadata,
-                        service_names=prefix_db_service_name,
-                        database_name="*",
-                        database_schema="*",
-                        table_name=str(table),
+                for table_entity in self._source_table_entities(
+                    source_tables, service_name, database_name, schema_name, table_name
+                ):
+                    yield Either(
+                        left=None,
+                        right=AddLineageRequest(
+                            edge=EntitiesEdge(
+                                fromEntity=EntityReference(id=Uuid(table_entity.id.root), type="table"),
+                                toEntity=EntityReference(id=Uuid(datamodel_entity.id.root), type="dashboardDataModel"),
+                                lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
+                            )
+                        ),
                     )
-                    if not table_entities:
-                        logger.debug("[%s] Table not found in metadata: %s", lineage_parser.query_hash, table)
-                        continue
-                    for table_entity in table_entities:
-                        if not self._matches_prefix(
-                            table_entity, prefix_database_name, prefix_schema_name, prefix_table_name
-                        ):
-                            continue
-                        yield Either(
-                            left=None,
-                            right=AddLineageRequest(
-                                edge=EntitiesEdge(
-                                    fromEntity=EntityReference(id=Uuid(table_entity.id.root), type="table"),
-                                    toEntity=EntityReference(
-                                        id=Uuid(datamodel_entity.id.root), type="dashboardDataModel"
-                                    ),
-                                    lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
-                                )
-                            ),
-                        )
             except Exception as exc:
                 yield Either(
                     right=None,
@@ -349,6 +375,98 @@ class MicrostrategySource(DashboardServiceSource):
                         stackTrace=traceback.format_exc(),
                     ),
                 )
+
+    def _dialect_of(self, service_name: str) -> Dialect | None:
+        """
+        The dialect of a dbServicePrefixes service. A service that exists or is confirmed missing
+        is remembered; a failed lookup is not, so it is tried again for the next dossier.
+        """
+        if service_name in self._dialects:
+            return self._dialects[service_name]
+        try:
+            database_service = self.metadata.get_by_name(entity=DatabaseService, fqn=service_name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read database service [%s] from dbServicePrefixes: %s", service_name, exc)
+            return None
+        if not database_service:
+            logger.warning("Database service [%s] from dbServicePrefixes was not found", service_name)
+        dialect = (
+            ConnectionTypeDialectMapper.dialect_of(database_service.serviceType.value) if database_service else None
+        )
+        # One entry per dbServicePrefixes service, so the configuration bounds it.
+        self._dialects[service_name] = dialect
+        return dialect
+
+    def _parse_source_tables(self, project_id: str, cube_id: str, dialect: Dialect) -> tuple[str, ...]:
+        """
+        The tables a cube's SQL reads. Parsed once per cube and dialect: the base class asks
+        for lineage once per dbServicePrefixes entry, and a cube is shared by many dossiers.
+        """
+        cube_sql = self.client.get_cube_sql_details(project_id, cube_id)
+        if not cube_sql:
+            return ()
+        parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
+        # The third-party cached_property is not read as a descriptor by type checkers.
+        return tuple(str(table) for table in cast("list", parser.source_tables))
+
+    def _source_table_entities(
+        self,
+        source_tables: tuple[str, ...],
+        service_name: str,
+        database_name: str | None,
+        schema_name: str | None,
+        table_name: str | None,
+    ) -> Iterable[Table]:
+        for source_table in source_tables:
+            if not self._may_hold(source_table, service_name, database_name):
+                continue
+            table_entities = get_table_entities_from_query(
+                metadata=self.metadata,
+                service_names=service_name,
+                database_name="*",
+                database_schema="*",
+                table_name=source_table,
+            )
+            if not table_entities:
+                logger.debug("Table [%s] not found in database service [%s]", source_table, service_name)
+                continue
+            yield from (
+                table_entity
+                for table_entity in table_entities
+                if self._matches_prefix(table_entity, database_name, schema_name, table_name)
+            )
+
+    def _may_hold(self, source_table: str, service_name: str, database_name: str | None) -> bool:
+        """
+        Whether a prefix can hold a table the SQL names in a database (a BigQuery project): it
+        must name that database, or the service must have it. Such a table is not searched for in
+        the other services, which would only log that it is not there.
+        """
+        queried = get_table_fqn_from_query_name(source_table)[0]
+        if not queried:
+            return True
+        if database_name:
+            return database_name.lower() == queried.lower()
+        databases = self._databases_of(service_name)
+        return databases is None or queried.lower() in databases
+
+    def _databases_of(self, service_name: str) -> frozenset[str] | None:
+        """
+        The database names of a dbServicePrefixes service, lowercased. A failed read is not
+        remembered, and every database is then assumed possible.
+        """
+        if service_name not in self._service_databases:
+            try:
+                databases = self.metadata.list_all_entities(entity=Database, params={"service": service_name})
+                names = frozenset(str(database.name.root).lower() for database in databases)
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not list the databases of service [%s]: %s", service_name, exc)
+                return None
+            # One entry per dbServicePrefixes service, so the configuration bounds it.
+            self._service_databases[service_name] = names
+        return self._service_databases[service_name]
 
     @staticmethod
     def _matches_prefix(
@@ -425,12 +543,25 @@ class MicrostrategySource(DashboardServiceSource):
     def _get_column_info(self, dataset: MstrDataset) -> list[Column]:
         """Attributes become columns with their forms as children; metrics are leaf columns"""
         datasource_columns = []
-        for available_object in dataset.availableObjects or []:
+        objects = dataset.availableObjects or []
+        # Suffixes go out in id order, so an object keeps its column name, and what users added
+        # to the column, when MicroStrategy lists the objects in another order.
+        taken: set[str] = set()
+        column_names: dict[str, str] = {}
+        for available_object in sorted(objects, key=lambda obj: (obj.name, obj.id)):
+            if available_object.id not in column_names:
+                column_names[available_object.id] = unique_column_name(available_object.name, taken)
+        seen_ids: set[str] = set()
+        for available_object in objects:
+            if available_object.id in seen_ids:
+                logger.debug("Data model [%s] lists [%s] twice; keeping one", dataset.name, available_object.name)
+                continue
+            seen_ids.add(available_object.id)
             try:
                 children = [MicroStrategyColumnParser.parse(form) for form in available_object.forms or []]
                 datasource_columns.append(
                     Column(
-                        name=ColumnName(truncate_column_name(available_object.name)),
+                        name=ColumnName(column_names[available_object.id]),
                         displayName=available_object.name,
                         dataTypeDisplay=available_object.type.title(),
                         dataType=DataType.UNKNOWN,

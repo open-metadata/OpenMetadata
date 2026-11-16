@@ -1,7 +1,8 @@
 # Search admits an anchored memory when the query pins its anchor and the caller can read it
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (resolve vector anchors once per request)
+- **Status:** Accepted for general and vector search; Context Center listings superseded by ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging
+- **Revisions:** v1 2026-10-09 (initial); v2 2026-10-10 (resolve vector anchors once per request);
+  v3 2026-11-12 (Context Center listings evaluate matching anchors)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemorySearchVisibilityTest`, `VectorSearchQueryBuilderTest`,
   `ContextMemoryAnchorPinsTest`, `ContextMemoryVisibilityTest` (the pinned-anchor cases), and the
@@ -80,3 +81,10 @@ adds cost without changing the subject or anchors. Vector services now evaluate 
 the loop and pass the same ids to every pure query rendering. Hybrid callers pass evaluated ids too.
 The PostgreSQL partial index remains justified by its restriction to memory edges; the pre-existing
 `fromId, relation` index is not restricted by `toEntity`.
+
+## Amendment — 2026-11-12: Context Center listings evaluate matching anchors
+
+ADR:2026-11-12-context-center-authorizes-memory-anchors-before-paging supersedes the pinned-anchor
+requirement and 20-anchor total cap for Context Center listings and their text search only. Listings
+page through anchors of matching non-pending Entity/Public memories before counting and paginating
+visible results. General, hybrid and vector search retain this record's pinned-anchor rule and cap.

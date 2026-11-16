@@ -5,7 +5,6 @@
     "playwright/e2e/nightly/**",
     "playwright/e2e/Http2/**",
     "playwright/e2e/Features/KnowledgeGraph.spec.ts",
-    "playwright/e2e/Features/Ontology*Rdf.spec.ts",
     "playwright/e2e/VisualRegression/**"
   ],
   "smoke": [
@@ -89,6 +88,17 @@
     "openmetadata-ui/src/main/resources/ui/vite/**"
   ],
   "mappings": [
+    {
+      "_comment": "MCP administrator controls and client revocation.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/platform/settings/mcp/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Settings/Applications/McpApplicationConfiguration/**",
+        "openmetadata-ui/src/main/resources/ui/src/rest/mcpConfigAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/ApplicationSchemas/McpApplication.json"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/McpAdministration.spec.ts"]
+    },
     {
       "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
       "sources": [
@@ -564,6 +574,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/AppRouter/ContextCenterRouter/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/styles/knowledge-center.less",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
@@ -594,6 +605,8 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextFileIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryVisibilityTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/security/ContextMemorySearchVisibilityTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/MemoryExtractionAccessTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/llm/LLMClientHolder.java",
         "openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/EntityCreationSpec.java",
@@ -626,6 +639,7 @@
         "playwright/e2e/Features/ContextCenterDashboard.spec.ts",
         "playwright/e2e/Features/ContextCenterPermission.spec.ts",
         "playwright/e2e/Features/ContextCenterArchive.spec.ts",
+        "playwright/e2e/Features/ContextCenterEntityArticleLinking.spec.ts",
         "playwright/e2e/Features/ArticleReviewerWorkflow.spec.ts"
       ]
     },
@@ -667,7 +681,7 @@
         "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/context/OntologyDraft/**",
         "openmetadata-ui/src/main/resources/ui/src/hooks/governance/ontology/**",
-        "openmetadata-ui/src/main/resources/ui/src/pages/OntologyExplorerPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/pages/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/governance/ontology/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.interface.ts",
@@ -1448,7 +1462,6 @@
         "openmetadata-ui/src/main/resources/ui/src/components/ExploreV1/ExploreV1.component.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/Settings/Services/Services.tsx",
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/GlossaryLeftPanel/GlossaryLeftPanel.component.tsx",
-        "openmetadata-ui/src/main/resources/ui/src/components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/DataQualityDashboard/DataQualityDashboard.component.tsx",
         "openmetadata-ui/src/main/resources/ui/src/components/DataMarketplace/MarketplaceDataProductsWidget/MarketplaceDataProductsWidget.component.tsx",
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/ContextCenterDashboardPage/ContextCenterDashboardPage.tsx",
@@ -1674,6 +1687,14 @@
         "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
         "playwright/e2e/VersionPages/MetricVersionPage.spec.ts"
       ]
+    },
+    {
+      "_comment": "TopicClassBase supplies the Topic page's customizable widget list.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/TopicClassBase.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/CustomizeDetailPage.spec.ts"]
     }
   ]
 }

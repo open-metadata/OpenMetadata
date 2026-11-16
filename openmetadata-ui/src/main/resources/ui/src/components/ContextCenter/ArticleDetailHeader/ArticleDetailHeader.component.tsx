@@ -290,8 +290,20 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       return null;
     }
 
-    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
-  }, [knowledgePage?.entityStatus]);
+    return (
+      <EntityStatusBadge
+        entityId={knowledgePage?.id}
+        entityType={EntityType.KNOWLEDGE_PAGE}
+        fqn={knowledgePage?.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
+    );
+  }, [
+    knowledgePage?.entityStatus,
+    knowledgePage?.fullyQualifiedName,
+    knowledgePage?.id,
+  ]);
 
   const contentChangeIcon = useMemo(() => {
     if (contentChangeState === ContentChangeState.SAVED) {

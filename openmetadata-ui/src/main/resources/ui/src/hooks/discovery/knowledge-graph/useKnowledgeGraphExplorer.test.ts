@@ -138,7 +138,9 @@ const withClient = () => {
   return { client, wrapper };
 };
 
-const renderExplorer = () => {
+const renderExplorer = (
+  overrides: Partial<Parameters<typeof useKnowledgeGraphExplorer>[0]> = {}
+) => {
   const { wrapper } = withClient();
 
   return renderHook(
@@ -152,6 +154,7 @@ const renderExplorer = () => {
         refresh: 0,
         presentation: 'balanced',
         expanded: [],
+        ...overrides,
       }),
     { wrapper }
   );
@@ -164,6 +167,22 @@ describe('useKnowledgeGraphExplorer', () => {
       .mockReset()
       .mockResolvedValue({ data: [], paging: { total: 0 } });
     fetchTerms.mockReset().mockResolvedValue([]);
+  });
+
+  it('keeps an empty ontology result stable across renders so the canvas does not re-render forever', async () => {
+    // No glossary term in the asset graph, so ontology mode has no concept.
+    fetchGraph.mockResolvedValue({ nodes: graph.nodes.slice(0, 1), edges: [] });
+    const { result, rerender } = renderExplorer({
+      mode: 'ontology',
+      selectedLevel: 3,
+    });
+    await waitFor(() => expect(result.current.result.loading).toBe(false));
+    const { data, unfiltered } = result.current.result;
+    rerender();
+
+    expect(data).toEqual({ nodes: [], edges: [] });
+    expect(result.current.result.data).toBe(data);
+    expect(result.current.result.unfiltered).toBe(unfiltered);
   });
 
   it('draws one edge per repeated predicate and keeps every returned statement', async () => {
@@ -186,16 +205,16 @@ describe('useKnowledgeGraphExplorer', () => {
         .sort()
     ).toEqual(
       [
-        ['Contains', 1, 'dbt_jaffle'],
-        ['Downstream', 3, 'dashboardDataModel'],
-        ['Has glossary term', 5, 'glossaryTerm'],
-        ['Has owner', 4, 'user'],
-        ['Has tag', 1, 'Tier4'],
-        ['Has tag', 2, 'tag'],
-        ['Has tag', 5, 'glossaryTerm'],
-        ['Has tier', 1, 'Tier4'],
-        ['Owns', 2, 'team'],
-        ['Upstream', 3, 'table'],
+        ['label.contains', 1, 'dbt_jaffle'],
+        ['label.downstream', 3, 'dashboardDataModel'],
+        ['label.has-glossary-term', 5, 'glossaryTerm'],
+        ['label.has-owner', 4, 'user'],
+        ['label.has-tag', 1, 'Tier4'],
+        ['label.has-tag', 2, 'tag'],
+        ['label.has-tag', 5, 'glossaryTerm'],
+        ['label.has-tier', 1, 'Tier4'],
+        ['label.owns', 2, 'team'],
+        ['label.upstream', 3, 'table'],
       ].sort()
     );
     expect(
