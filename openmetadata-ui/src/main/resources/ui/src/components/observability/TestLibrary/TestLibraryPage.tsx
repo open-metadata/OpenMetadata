@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { Button, PageLayout } from '@openmetadata/ui-core-components';
+import { OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
@@ -23,7 +25,6 @@ import TestDefinitionForm from '../../TestLibrary/TestDefinitionForm/TestDefinit
 import TestDefinitionTable from '../../TestLibrary/TestDefinitionList/TestDefinitionTable.component';
 import { useTestDefinitionListPage } from '../../TestLibrary/TestDefinitionList/useTestDefinitionListPage';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import TestDefinitionFilterBar from './TestDefinitionFilterBar';
 
 /**
@@ -82,78 +83,78 @@ const TestLibraryPage = () => {
 
   return (
     <>
-      <ObservabilityPageShell
-        header={
-          <PageLayout.PageHeader
-            actions={
-              createPermission ? (
-                <Button
-                  color="primary"
-                  data-testid="add-test-definition-button"
-                  iconLeading={Plus}
-                  size="md"
-                  onPress={openCreateForm}>
-                  {t('label.add-entity', {
-                    entity: t('label.test-definition'),
-                  })}
-                </Button>
-              ) : undefined
-            }
-            badge={
-              <LearningIcon
-                pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
-                title={t('label.test-library')}
+      <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS}>
+        <DocumentTitle title={t('label.test-library')} />
+        <PageLayout.PageHeader
+          actions={
+            createPermission ? (
+              <Button
+                color="primary"
+                data-testid="add-test-definition-button"
+                iconLeading={Plus}
+                size="md"
+                onPress={openCreateForm}>
+                {t('label.add-entity', {
+                  entity: t('label.test-definition'),
+                })}
+              </Button>
+            ) : undefined
+          }
+          badge={
+            <LearningIcon
+              pageId={LEARNING_PAGE_IDS.TEST_LIBRARY}
+              title={t('label.test-library')}
+            />
+          }
+          breadcrumb={
+            <HeaderBreadcrumb
+              noMargin
+              className="tw:text-xs"
+              items={[
+                getObservabilityRootBreadcrumb(t),
+                {
+                  label: t('label.test-library'),
+                  ariaLabel: t('label.test-library'),
+                },
+              ]}
+              showHome={false}
+            />
+          }
+          subtitle={t('message.page-sub-header-for-test-definitions')}
+          title={t('label.test-library')}
+          variant="gradient"
+        />
+        <PageLayout.Content>
+          <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
+            <div className="tw:p-4">
+              <TestDefinitionFilterBar
+                filterValues={urlFilters}
+                hasActiveFilters={hasActiveFilters}
+                searchQuery={searchQuery}
+                onClearAll={clearAllFilters}
+                onFilterChange={setSingleFilter}
+                onSearchChange={handleSearchChange}
               />
-            }
-            breadcrumb={
-              <HeaderBreadcrumb
-                noMargin
-                className="tw:text-xs"
-                items={[
-                  getObservabilityRootBreadcrumb(t),
-                  {
-                    label: t('label.test-library'),
-                    ariaLabel: t('label.test-library'),
-                  },
-                ]}
-                showHome={false}
-              />
-            }
-            subtitle={t('message.page-sub-header-for-test-definitions')}
-            title={t('label.test-library')}
-            variant="gradient"
-          />
-        }
-        pageTitle={t('label.test-library')}>
-        <div className="tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary tw:bg-surface">
-          <div className="tw:p-4">
-            <TestDefinitionFilterBar
-              filterValues={urlFilters}
+            </div>
+            <TestDefinitionTable
               hasActiveFilters={hasActiveFilters}
-              searchQuery={searchQuery}
-              onClearAll={clearAllFilters}
-              onFilterChange={setSingleFilter}
-              onSearchChange={handleSearchChange}
+              isInitialLoading={isInitialLoading}
+              isLoading={isLoading}
+              pagingData={pagingData}
+              permissionLoading={permissionLoading}
+              showPagination={showPagination}
+              sortDescriptor={sortDescriptor}
+              testDefinitionPermissions={testDefinitionPermissions}
+              testDefinitions={testDefinitions}
+              onClearFilters={clearAllFilters}
+              onDelete={handleDeleteClick}
+              onEdit={handleEdit}
+              onEnableToggle={handleEnableToggle}
+              onSortChange={handleSortChange}
             />
           </div>
-          <TestDefinitionTable
-            hasActiveFilters={hasActiveFilters}
-            isInitialLoading={isInitialLoading}
-            isLoading={isLoading}
-            pagingData={pagingData}
-            permissionLoading={permissionLoading}
-            showPagination={showPagination}
-            sortDescriptor={sortDescriptor}
-            testDefinitionPermissions={testDefinitionPermissions}
-            testDefinitions={testDefinitions}
-            onClearFilters={clearAllFilters}
-            onDelete={handleDeleteClick}
-            onEdit={handleEdit}
-            onEnableToggle={handleEnableToggle}
-            onSortChange={handleSortChange}
-          />
-        </div>
-      </ObservabilityPageShell>
+        </PageLayout.Content>
+      </PageLayout>
 
       <TestDefinitionForm
         initialValues={selectedDefinition}
