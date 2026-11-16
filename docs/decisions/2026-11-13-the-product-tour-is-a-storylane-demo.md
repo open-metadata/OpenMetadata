@@ -1,4 +1,4 @@
-# The product tour is a Storylane demo in its own full-screen modal
+# The product tour is a Storylane demo in its own modal, opened full screen
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-13 (initial)
@@ -25,8 +25,9 @@ tour: a designer updates it without a release, and it shows populated pages on a
   opens over the page the user is on, and signing out closes it.
 - The tour is its own modal, `ProductTourModal`, not the Learning Center's resource player: a
   full-screen modal (`presentation="fullscreen"`) titled after the tour, with a close button, that
-  shows the demo in the Learning Center's `StorylaneTour` frame. It fills the window rather than
-  asking the browser for full screen, so it never depends on the opening click's permission.
+  shows the demo in the Learning Center's `StorylaneTour` frame. It opens filling the window rather
+  than asking the browser for full screen, so it never depends on the opening click's permission. A
+  header button switches it to a popup the size of the Learning Center player and back.
 - The app shell mounts only `ProductTour`, which loads `ProductTourModal` when the tour opens.
 - `ProductTourClassBase.getTourUrl()` returns the demo's URL, one for both app modes. A distribution
   overrides it to show its own demo. The URL is a Storylane demo link, which keeps pointing at the

@@ -43,9 +43,32 @@ describe('ProductTourModal', () => {
   it('closes the tour from its close button', () => {
     render(<ProductTourModal />);
 
-    fireEvent.click(screen.getByRole('button', { name: /close/i }));
+    fireEvent.click(screen.getByTestId('close-product-tour'));
 
     expect(useProductTourStore.getState().isOpen).toBe(false);
+  });
+
+  it('opens full screen and switches to a popup and back', () => {
+    render(<ProductTourModal />);
+    const frame = () =>
+      screen
+        .getByTitle('label.product-tour')
+        .closest('.storylane-tour-wrapper');
+
+    expect(frame()).toHaveClass('storylane-tour-wrapper--fill');
+
+    fireEvent.click(screen.getByTestId('minimize-button'));
+
+    expect(frame()).not.toHaveClass('storylane-tour-wrapper--fill');
+    expect(screen.getByTestId('maximize-button')).toHaveAttribute(
+      'aria-label',
+      'label.fullscreen'
+    );
+
+    fireEvent.click(screen.getByTestId('maximize-button'));
+
+    expect(frame()).toHaveClass('storylane-tour-wrapper--fill');
+    expect(useProductTourStore.getState().isOpen).toBe(true);
   });
 
   it('closes the tour on Escape', () => {
