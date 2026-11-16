@@ -18,7 +18,6 @@ export const STAGE_ACTION: Partial<Record<EntityStatus, string>> = {
   [EntityStatus.Archived]: 'label.archive',
 };
 
-
 // The badge itself is the trigger, as the incident status chip is: no padding or fill of its own.
 export const STAGE_TRIGGER_CLASS =
   'tw:h-auto tw:min-h-0 tw:gap-0.5 tw:p-0 tw:shadow-none tw:after:outline-0 tw:bg-transparent';
