@@ -26,7 +26,7 @@ const meta = {
       table: {
         type: {
           summary:
-            '"default" | "elevated" | "outlined" | "ghost" | "muted" | "tile" | "stat"',
+            '"default" | "elevated" | "outlined" | "ghost" | "muted" | "tile" | "stat" | "inset" | "active"',
         },
       },
     },
@@ -159,6 +159,8 @@ export const Variants: StoryObj = {
           'muted',
           'tile',
           'stat',
+          'inset',
+          'active',
         ] as const
       ).map((variant) => (
         <div key={variant} style={{ width: 200 }}>
@@ -493,6 +495,36 @@ export const HeaderDivider: StoryObj = {
           </div>
         </div>
       </div>
+    </div>
+  ),
+};
+
+// Inset is the recessed well and active the inline form, each placed on a default card the way
+// the inspector uses them; compare both themes.
+export const InsetAndActiveOnSurface: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+      {(['tw:bg-page', 'dark-mode tw:bg-page'] as const).map((theme) => (
+        <div
+          className={`${theme} tw:rounded-xl tw:p-6`}
+          key={theme}
+          style={{ width: 320 }}>
+          <Card>
+            <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+              <Card variant="inset">
+                <Card.Content>
+                  <p className="tw:text-sm tw:text-secondary">inset</p>
+                </Card.Content>
+              </Card>
+              <Card size="sm" variant="active">
+                <Card.Content>
+                  <p className="tw:text-sm tw:text-secondary">active</p>
+                </Card.Content>
+              </Card>
+            </Card.Content>
+          </Card>
+        </div>
+      ))}
     </div>
   ),
 };

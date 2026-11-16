@@ -249,6 +249,26 @@ describe('Button — icon size and color', () => {
     expect(button.querySelector('[data-icon="trailing"]')).toBeInTheDocument();
   });
 
+  it.each([
+    'secondary',
+    'secondary-destructive',
+    'secondary-success',
+    'secondary-warning',
+    'secondary-brand',
+  ] as const)(
+    'fills the %s button with bg-primary so it recesses on a dark surface card',
+    (color) => {
+      render(<Button color={color}>Action</Button>);
+
+      expect(screen.getByRole('button', { name: 'Action' })).toHaveClass(
+        'tw:bg-primary'
+      );
+      expect(screen.getByRole('button', { name: 'Action' })).not.toHaveClass(
+        'tw:bg-surface'
+      );
+    }
+  );
+
   it('uses gray-500 icons with a gray-600 hover on neutral buttons', () => {
     render(
       <Button color="secondary" iconLeading={Edit01}>

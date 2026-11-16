@@ -15,6 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Card,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
@@ -99,11 +100,11 @@ export const InspectorList = ({
 }: {
   readonly children: ReactNode;
 }) => (
-  <Box
-    className="tw:divide-y tw:divide-secondary tw:overflow-hidden tw:rounded-lg tw:border tw:border-secondary tw:bg-surface"
-    direction="col">
+  <Card
+    className="tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+    variant="inset">
     {children}
-  </Box>
+  </Card>
 );
 
 interface InspectorRowProps {
@@ -169,11 +170,10 @@ export const InspectorForm = ({
   const { t } = useTranslation();
 
   return (
-    <Box
-      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3.5 tw:pt-3 tw:pb-3.5"
+    <Card
+      className="tw:flex tw:flex-col tw:gap-3 tw:px-3.5 tw:pt-3 tw:pb-3.5"
       data-testid={testId}
-      direction="col"
-      gap={3}>
+      variant="active">
       <Box align="center" gap={2}>
         <Typography
           className="tw:flex-1 tw:text-secondary"
@@ -204,6 +204,6 @@ export const InspectorForm = ({
           {submitLabel}
         </Button>
       </Box>
-    </Box>
+    </Card>
   );
 };
