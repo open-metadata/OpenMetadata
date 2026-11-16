@@ -49,8 +49,9 @@ services:
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
       - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m
+    # Loopback only: OpenMetadata reaches Fuseki over app_net, and the default password is admin.
     ports:
-      - "3030:3030"
+      - "127.0.0.1:3030:3030"
     volumes:
       - fuseki-store:/fuseki
     networks:
