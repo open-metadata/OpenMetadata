@@ -10,18 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useProductTourStore } from '../../hooks/useProductTourStore';
-import { ResourcePlayerModal } from '../Learning/ResourcePlayer/ResourcePlayerModal.component';
 import ProductTourModal from './ProductTourModal';
-
-jest.mock('../Learning/ResourcePlayer/ResourcePlayerModal.component', () => ({
-  ResourcePlayerModal: jest.fn().mockImplementation(({ onClose }) => (
-    <button data-testid="tour-player" onClick={onClose}>
-      tour
-    </button>
-  )),
-}));
 
 jest.mock('../../utils/ProductTourClassBase', () => ({
   __esModule: true,
@@ -29,83 +20,41 @@ jest.mock('../../utils/ProductTourClassBase', () => ({
 }));
 
 describe('ProductTourModal', () => {
+  beforeEach(() => {
+    act(() => useProductTourStore.getState().open());
+  });
+
   afterEach(() => {
     act(() => useProductTourStore.getState().close());
   });
 
-  describe('preloading the player', () => {
-    // jsdom has no idle callback; each test adds and removes its own.
-    const idleWindow = window as Partial<
-      Pick<Window, 'requestIdleCallback' | 'cancelIdleCallback'>
-    >;
-
-    afterEach(() => {
-      delete idleWindow.requestIdleCallback;
-      delete idleWindow.cancelIdleCallback;
-    });
-
-    it('fetches the player while idle, before the tour opens, and cancels on unmount', () => {
-      const requestIdleCallback = jest.fn().mockReturnValue(7);
-      const cancelIdleCallback = jest.fn();
-      idleWindow.requestIdleCallback = requestIdleCallback;
-      idleWindow.cancelIdleCallback = cancelIdleCallback;
-
-      const { unmount } = render(<ProductTourModal />);
-
-      expect(requestIdleCallback).toHaveBeenCalledTimes(1);
-      expect(() => requestIdleCallback.mock.calls[0][0]()).not.toThrow();
-
-      unmount();
-
-      expect(cancelIdleCallback).toHaveBeenCalledWith(7);
-    });
-
-    it('falls back to a timer where the browser has no idle callback', () => {
-      const setTimeoutSpy = jest.spyOn(window, 'setTimeout');
-
-      render(<ProductTourModal />);
-
-      expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 2000);
-
-      setTimeoutSpy.mockRestore();
-    });
-  });
-
-  it('renders nothing until the tour is opened', () => {
+  it("shows the distribution's demo in a dialog titled after the tour", () => {
     render(<ProductTourModal />);
 
-    expect(screen.queryByTestId('tour-player')).not.toBeInTheDocument();
-  });
+    const dialog = screen.getByTestId('product-tour-dialog');
 
-  it("opens the distribution's demo full screen, without fetching it", async () => {
-    act(() => useProductTourStore.getState().open());
-    render(<ProductTourModal />);
-
-    // The player is loaded when the tour opens.
-    expect(await screen.findByTestId('tour-player')).toBeInTheDocument();
-    expect(ResourcePlayerModal).toHaveBeenCalledWith(
-      expect.objectContaining({
-        open: true,
-        isFullScreenByDefault: true,
-        isStored: false,
-        resource: expect.objectContaining({
-          displayName: 'label.product-tour',
-          resourceType: 'Storylane',
-          source: { url: 'https://example.storylane.io/demo/tour' },
-        }),
-      }),
-      {}
+    expect(dialog).toHaveAttribute('aria-label', 'label.product-tour');
+    expect(screen.getByTitle('label.product-tour')).toHaveAttribute(
+      'src',
+      'https://example.storylane.io/demo/tour'
     );
   });
 
-  it('closes the tour when the player closes', async () => {
-    act(() => useProductTourStore.getState().open());
+  it('closes the tour from its close button', () => {
     render(<ProductTourModal />);
 
-    const player = await screen.findByTestId('tour-player');
-    act(() => player.click());
+    fireEvent.click(screen.getByRole('button', { name: /close/i }));
 
     expect(useProductTourStore.getState().isOpen).toBe(false);
-    expect(screen.queryByTestId('tour-player')).not.toBeInTheDocument();
+  });
+
+  it('closes the tour on Escape', () => {
+    render(<ProductTourModal />);
+
+    fireEvent.keyDown(screen.getByTestId('product-tour-dialog'), {
+      key: 'Escape',
+    });
+
+    expect(useProductTourStore.getState().isOpen).toBe(false);
   });
 });

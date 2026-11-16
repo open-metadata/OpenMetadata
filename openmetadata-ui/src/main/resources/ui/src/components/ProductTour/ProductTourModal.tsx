@@ -10,84 +10,53 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { lazy, useEffect, useMemo } from 'react';
+import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
-import { ResourceType } from '../../constants/Learning.constants';
 import { useProductTourStore } from '../../hooks/useProductTourStore';
-import type { LearningResource } from '../../rest/learningResourceAPI';
 import productTourClassBase from '../../utils/ProductTourClassBase';
-import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+import { StorylaneTour } from '../Learning/ResourcePlayer/StorylaneTour.component';
 
-// Its own chunk: this component is mounted in the app shell, and a static
-// import would pull the whole learning player into the shell chunk.
-const loadPlayer = () =>
-  import('../Learning/ResourcePlayer/ResourcePlayerModal.component').then(
-    (m) => ({ default: m.ResourcePlayerModal })
-  );
-
-const ResourcePlayerModal = withSuspenseFallback(lazy(loadPlayer), null);
-
-const PRODUCT_TOUR_RESOURCE_NAME = 'product-tour';
-
-// Where the browser has no idle callback (Safari), preload after this delay.
-const PRELOAD_FALLBACK_DELAY_MS = 2000;
+// The frame fills the screen instead of the Learning Center player's 16:9 box.
+const FILL_CLASS = [
+  'tw:min-h-0 tw:flex-1 tw:p-0!',
+  'tw:[&>*]:size-full! tw:[&>*]:max-h-none! tw:[&>*]:max-w-none! tw:[&>*]:aspect-auto! tw:[&>*]:rounded-none!',
+].join(' ');
 
 /**
- * Fetches the player while the app is idle, so a click opens it from cache:
- * the browser grants full screen only shortly after the click that asks for
- * it, and a player still downloading would miss that window.
- */
-const usePreloadPlayer = () => {
-  useEffect(() => {
-    const preload = () => {
-      loadPlayer().catch(() => undefined);
-    };
-    if (window.requestIdleCallback) {
-      const id = window.requestIdleCallback(preload);
-
-      return () => window.cancelIdleCallback(id);
-    }
-    const timer = window.setTimeout(preload, PRELOAD_FALLBACK_DELAY_MS);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-};
-
-/**
- * The product tour: its Storylane demo in the learning resource player,
- * opened full screen. Help > Tour and the Welcome screen open it through
- * `useProductTourStore`.
+ * The product tour: the distribution's Storylane demo in a full-screen modal
+ * over the page the user is on. Escape or the close button ends it.
+ * ADR:2026-11-13-the-product-tour-is-a-storylane-demo
  */
 const ProductTourModal = () => {
   const { t } = useTranslation();
-  const { isOpen, close } = useProductTourStore();
-  usePreloadPlayer();
-
-  const resource = useMemo<LearningResource>(
-    () => ({
-      id: PRODUCT_TOUR_RESOURCE_NAME,
-      name: PRODUCT_TOUR_RESOURCE_NAME,
-      displayName: t('label.product-tour'),
-      resourceType: ResourceType.Storylane,
-      source: { url: productTourClassBase.getTourUrl() },
-      categories: [],
-      contexts: [],
-    }),
-    [t]
-  );
-
-  if (!isOpen) {
-    return null;
-  }
+  const close = useProductTourStore((state) => state.close);
+  const title = t('label.product-tour');
 
   return (
-    <ResourcePlayerModal
-      isFullScreenByDefault
-      open
-      isStored={false}
-      resource={resource}
-      onClose={close}
-    />
+    <ModalOverlay
+      isDismissable
+      isOpen
+      presentation="fullscreen"
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          close();
+        }
+      }}>
+      <Modal>
+        <Dialog
+          showCloseButton
+          aria-label={title}
+          data-testid="product-tour-dialog"
+          title={title}
+          onClose={close}>
+          <StorylaneTour
+            className={FILL_CLASS}
+            title={title}
+            url={productTourClassBase.getTourUrl()}
+          />
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
   );
 };
 

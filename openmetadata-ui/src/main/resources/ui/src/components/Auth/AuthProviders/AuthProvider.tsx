@@ -74,6 +74,7 @@ import {
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
@@ -433,6 +434,9 @@ export const AuthProvider = ({
       useExploreCache.getState().clearCache();
       clearEtagCache();
       queryClient.clear();
+
+      // A tour this user left open must not reopen for whoever signs in next.
+      useProductTourStore.getState().close();
 
       // Drop the tab-scoped app-mode session so the next user boots into
       // their own persona/preference-resolved mode rather than inheriting

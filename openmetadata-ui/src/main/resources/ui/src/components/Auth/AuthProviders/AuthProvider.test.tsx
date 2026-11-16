@@ -27,6 +27,7 @@ import {
 } from '../../../generated/configuration/authenticationConfiguration';
 import { Document } from '../../../generated/entity/docStore/document';
 import { useAppModeStore } from '../../../hooks/useAppMode';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
 import { fetchAuthenticationConfig } from '../../../rest/miscAPI';
@@ -544,6 +545,19 @@ describe('Test AuthCoordinator wiring (auth-coordinator-refactor Task 12)', () =
 
     return () => logout?.();
   };
+
+  it('closes an open product tour on sign-out, so it does not reopen at the next sign-in', async () => {
+    useProductTourStore.getState().open();
+    const logout = await renderForLogout();
+
+    await act(async () => {
+      logout();
+    });
+
+    await waitFor(() =>
+      expect(useProductTourStore.getState().isOpen).toBe(false)
+    );
+  });
 
   describe('refresh failure → one silent re-authentication, then sign-out', () => {
     let onFailed: ((payload?: RefreshFailedPayload) => void) | undefined;

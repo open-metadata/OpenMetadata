@@ -34,9 +34,7 @@ const getHelpDropdownLabelContentRenderer = (
     : undefined;
 
   return (
-    <Grid
-      className="layout-row layout-grid cursor-pointer"
-      onClick={item.handleSupportItemClick}>
+    <Grid className="layout-row layout-grid cursor-pointer">
       <Grid.Item className="layout-column" span={4}>
         <item.icon className="tw:align-middle tw:size-[18px] tw:shrink-0" />
       </Grid.Item>
@@ -93,4 +91,6 @@ export const getHelpDropdownItems = (version?: string) =>
   navbarUtilClassBase.getHelpItems().map((item) => ({
     label: getHelpDropdownLabel(item, version),
     key: item.key,
+    // On the menu item rather than its content, so Enter and Space run it too.
+    onAction: item.handleSupportItemClick,
   }));

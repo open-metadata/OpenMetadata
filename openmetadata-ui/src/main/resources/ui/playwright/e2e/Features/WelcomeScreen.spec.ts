@@ -153,7 +153,7 @@ test.describe(
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-tour-btn'));
 
-      const tour = page.getByTestId('resource-player-dialog');
+      const tour = page.getByTestId('product-tour-dialog');
 
       await expect(tour.locator('iframe')).toHaveAttribute(
         'src',

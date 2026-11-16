@@ -30,7 +30,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { DateTime } from 'luxon';
-import React, { FC, useEffect, useRef, useState } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_IDS, ResourceType } from '../../../constants/Learning.constants';
 import type { LearningResource } from '../../../rest/learningResourceAPI';
@@ -237,15 +237,12 @@ const ResourceHeader: FC<ResourceHeaderProps> = ({
 );
 
 interface ResourcePlayerProps {
-  /** Shown while the full resource loads, or alone when there is no id. */
+  /** Shown while the full resource loads; the player fetches it by id. */
   resource?: LearningResource;
-  /** The stored resource to fetch; without one the player shows `resource`. */
-  resourceId?: string;
+  resourceId: string;
   /** Renders a close button in the header when set. */
   onClose?: () => void;
   className?: string;
-  /** Enters full screen as the player opens. */
-  isFullScreenByDefault?: boolean;
 }
 
 /** Header (title, badges, meta) plus the player for one learning resource. */
@@ -254,7 +251,6 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
   resourceId,
   onClose,
   className,
-  isFullScreenByDefault = false,
 }) => {
   const { t } = useTranslation();
   const [isFullScreen, setIsFullScreen] = useState(false);
@@ -267,9 +263,6 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
   // Only the current id's response may land, and a failure matters only when
   // there is no list row to fall back on (the settings sub-page).
   useEffect(() => {
-    if (!resourceId) {
-      return;
-    }
     let isCurrent = true;
     setFetchedResource(null);
     setHasFetchFailed(false);
@@ -306,22 +299,6 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
       }
     };
   }, []);
-
-  // Opened from a click, the browser grants full screen; when it does not,
-  // the player stays at the dialog's size. Asked once: the click's
-  // permission is spent on the first request, so a second (as StrictMode's
-  // re-run of effects makes) is always refused.
-  const hasRequestedFullScreen = useRef(false);
-  useEffect(() => {
-    if (!isFullScreenByDefault || hasRequestedFullScreen.current) {
-      return;
-    }
-    hasRequestedFullScreen.current = true;
-    document
-      .getElementById(FULLSCREEN_CONTAINER_ID)
-      ?.requestFullscreen?.()
-      .catch(() => undefined);
-  }, [isFullScreenByDefault]);
 
   const displayResource = fetchedResource ?? resource;
 
@@ -363,7 +340,12 @@ export const ResourcePlayer: FC<ResourcePlayerProps> = ({
       case ResourceType.Video:
         return <VideoPlayer resource={displayResource} />;
       case ResourceType.Storylane:
-        return <StorylaneTour resource={displayResource} />;
+        return (
+          <StorylaneTour
+            title={displayResource.displayName || displayResource.name}
+            url={displayResource.source.url}
+          />
+        );
       case ResourceType.Article:
         return <ArticleViewer resource={displayResource} />;
       case ResourceType.PDF:
@@ -410,8 +392,6 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
   open,
   resource,
   onClose,
-  isFullScreenByDefault = false,
-  isStored = true,
 }) => (
   <ModalOverlay
     isDismissable
@@ -422,15 +402,11 @@ export const ResourcePlayerModal: React.FC<ResourcePlayerModalProps> = ({
       }
     }}>
     <Modal>
-      <Dialog
-        aria-label={resource.displayName || resource.name}
-        data-testid="resource-player-dialog"
-        width={1143}>
+      <Dialog data-testid="resource-player-dialog" width={1143}>
         <ResourcePlayer
           className="tw:max-h-[90vh] tw:overflow-auto"
-          isFullScreenByDefault={isFullScreenByDefault}
           resource={resource}
-          resourceId={isStored ? resource.id : undefined}
+          resourceId={resource.id}
           onClose={onClose}
         />
       </Dialog>

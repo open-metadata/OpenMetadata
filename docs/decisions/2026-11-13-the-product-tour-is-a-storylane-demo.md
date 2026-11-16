@@ -1,9 +1,10 @@
-# The product tour is a Storylane demo, opened full screen in the learning resource player
+# The product tour is a Storylane demo in its own full-screen modal
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-13 (initial)
 - **Deciders:** UI team, product
 - **Guard:** `openmetadata-ui/src/main/resources/ui/src/components/ProductTour/ProductTourModal.test.tsx`,
+  `openmetadata-ui/src/main/resources/ui/src/components/ProductTour/ProductTour.test.tsx`,
   `openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/WelcomeScreen.spec.ts` (the Welcome
   screen's tour button opens the demo)
 - **Related:** supersedes ADR:2026-10-23-the-product-tour-serves-its-pages-from-recorded-fixtures
@@ -20,16 +21,18 @@ tour: a designer updates it without a release, and it shows populated pages on a
 ## Decision
 
 - Help > Tour (in both the classic navbar and the AI-mode user menu) and the Welcome screen's tour
-  button open the product tour: the Learning Center's resource player popup, showing the Storylane
-  demo. There is no `/tour` route; the popup opens over the page the user is on.
-- The popup asks the browser for full screen as it opens, from the click that opened it. When the
-  browser refuses, it stays at the popup's size. The user leaves full screen and closes it as they
-  would a learning resource.
-- `ProductTourClassBase.getTourUrl()` returns the demo's URL. A distribution overrides it to show its
-  own demo. The URL is a Storylane demo link, which keeps pointing at the latest published version of
-  the demo, so updating the demo's content needs no code change.
-- The tour is not a stored learning resource: the player shows it as given and does not fetch it, and
-  it appears in no Learning Center list.
+  button open the product tour through `useProductTourStore`. There is no `/tour` route: the tour
+  opens over the page the user is on, and signing out closes it.
+- The tour is its own modal, `ProductTourModal`, not the Learning Center's resource player: a
+  full-screen modal (`presentation="fullscreen"`) titled after the tour, with a close button, that
+  shows the demo in the Learning Center's `StorylaneTour` frame. It fills the window rather than
+  asking the browser for full screen, so it never depends on the opening click's permission.
+- The app shell mounts only `ProductTour`, which loads `ProductTourModal` when the tour opens.
+- `ProductTourClassBase.getTourUrl()` returns the demo's URL, one for both app modes. A distribution
+  overrides it to show its own demo. The URL is a Storylane demo link, which keeps pointing at the
+  latest published version of the demo, so updating the demo's content needs no code change.
+- Until an OpenMetadata demo is published, OpenMetadata's URL is a placeholder: Collate's demo. When
+  it is, replacing `PRODUCT_TOUR_URL` is the whole change.
 - Tests that open the tour answer the Storylane request themselves rather than reach the network.
 
 ## Consequences

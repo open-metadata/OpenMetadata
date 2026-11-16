@@ -139,14 +139,14 @@ describe('NavbarUtils test', () => {
       expect(apiItem?.label.props.className).toBe('no-underline');
     });
 
-    it('should render the tour item as a row that opens the product tour', () => {
+    it('should give the tour item an action that opens the product tour', () => {
       const tourItem = getHelpDropdownItems().find(
         (item) => item.key === HELP_ITEMS_ENUM.TOUR
       );
 
       expect(tourItem?.label.type).not.toBe(Link);
 
-      tourItem?.label.props.onClick();
+      tourItem?.onAction?.();
 
       expect(useProductTourStore.getState().isOpen).toBe(true);
 
