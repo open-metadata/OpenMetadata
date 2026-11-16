@@ -63,12 +63,6 @@ import { clickUntilVisible, waitForResponseWithStatus } from './waitHelpers';
  * Counting instead of `locator.waitFor()` keeps it non-strict, so several
  * loaders mounted at once (e.g. the lineage section and a picker) never throw.
  */
-// Inline row edits on these entities save through PUT /columns/name/{fqn}
-// instead of patching the parent entity.
-const COLUMNS_API_ENDPOINTS = ['tables', 'dashboard/datamodels', 'topics'];
-const savesChildrenViaColumnsApi = (entityEndpoint: string) =>
-  COLUMNS_API_ENDPOINTS.includes(entityEndpoint);
-
 export const waitForAllLoadersToDisappear = async (
   scope: Page | Locator,
   dataTestId = 'loader',
@@ -923,7 +917,7 @@ export const updateDescriptionForChildren = async (
   // Wait for API response — use a function predicate so we only match the
   // write request (PUT/PATCH) and never accidentally resolve on a concurrent
   const updateRequest =
-    savesChildrenViaColumnsApi(entityEndpoint)
+    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/columns/name/') &&
@@ -1119,7 +1113,7 @@ export const assignTagToChildren = async ({
   await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
   const patchRequest =
-    savesChildrenViaColumnsApi(entityEndpoint)
+    entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
       ? page.waitForResponse('/api/v1/columns/name/*')
       : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
@@ -1226,7 +1220,7 @@ export const removeTagsFromChildren = async ({
     await page.getByTestId('update-btn').waitFor({ state: 'visible' });
 
     const patchRequest =
-      savesChildrenViaColumnsApi(entityEndpoint)
+      entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
         ? page.waitForResponse('/api/v1/columns/name/*')
         : page.waitForResponse(`/api/v1/${entityEndpoint}/*`);
 
@@ -1252,7 +1246,7 @@ type GlossaryTermOption = {
 
 // Column-level tags are patched through the columns endpoint, not the entity's.
 const childPatchUrl = (entityEndpoint: string) =>
-  savesChildrenViaColumnsApi(entityEndpoint)
+  entityEndpoint === 'tables' || entityEndpoint === 'dashboard/datamodels'
     ? '/api/v1/columns/name/*'
     : `/api/v1/${entityEndpoint}/*`;
 

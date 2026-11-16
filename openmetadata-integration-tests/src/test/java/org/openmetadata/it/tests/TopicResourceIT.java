@@ -1726,6 +1726,17 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
   }
 
   @Test
+  void schemaFieldSearch_sortsByNameBeforePaging(TestNamespace ns) {
+    final Topic topic = createSearchableSchemaTopic(ns);
+
+    final JsonNode page =
+        schemaFieldPage(topic, "/columns/search?sortBy=name&sortOrder=desc&limit=3&offset=0");
+
+    assertEquals(List.of("zip", "street", "id"), fieldNames(page));
+    assertEquals(5, page.path("paging").path("total").asInt());
+  }
+
+  @Test
   void schemaFieldPage_ordinalPositionSortKeepsSchemaOrder(TestNamespace ns) {
     final Topic topic = createSearchableSchemaTopic(ns);
 

@@ -150,38 +150,39 @@ export interface TopicSchemaFieldParams {
   fields?: string;
   include?: Include;
   q?: string;
+  sortOrder?: 'asc' | 'desc';
 }
 
-// The API sorts by name unless told otherwise; Field has no ordinal position,
-// so this key compares every field as equal and the stable sort keeps schema order.
+// Without a name sort, ask for ordinalPosition: topic fields have none, so every field
+// ties and the server's stable sort keeps schema order (its own default is by name).
 const SCHEMA_ORDER_SORT = 'ordinalPosition';
+
+const schemaFieldSortParams = (
+  sortOrder?: 'asc' | 'desc',
+  isSearch?: boolean
+) => {
+  if (sortOrder) {
+    return { sortBy: 'name', sortOrder };
+  }
+
+  return isSearch ? {} : { sortBy: SCHEMA_ORDER_SORT };
+};
 
 export const getTopicSchemaFieldsByFQN = async (
   fqn: string,
   params?: TopicSchemaFieldParams
 ) => {
-  const { q, ...rest } = params ?? {};
+  const { q, sortOrder, ...rest } = params ?? {};
   const response = await APIClient.get<PagingResponse<Field[]>>(
     `${BASE_URL}/name/${getEncodedFqn(fqn)}/columns${q ? '/search' : ''}`,
     {
       params: {
         ...rest,
-        ...(q ? { q } : { sortBy: SCHEMA_ORDER_SORT }),
+        ...(q && { q }),
+        ...schemaFieldSortParams(sortOrder, Boolean(q)),
         include: rest.include ?? Include.All,
       },
     }
-  );
-
-  return response.data;
-};
-
-export const updateTopicSchemaField = async (
-  fqn: string,
-  field: Partial<Field>
-) => {
-  const response = await APIClient.put<Field>(
-    `/columns/name/${getEncodedFqn(fqn)}?entityType=topic`,
-    field
   );
 
   return response.data;

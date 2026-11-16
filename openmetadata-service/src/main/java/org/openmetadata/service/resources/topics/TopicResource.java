@@ -223,13 +223,33 @@ public class TopicResource extends EntityResource<Topic, TopicRepository> {
       @Parameter(description = "Include all, deleted, or non-deleted entities.")
           @QueryParam("include")
           @DefaultValue("non-deleted")
-          Include include) {
+          Include include,
+      @Parameter(
+              description = "Sort matches by. Supported value: 'name'. Omit to keep schema order.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported values: 'asc' (default), 'desc'",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          @DefaultValue("asc")
+          String sortOrder) {
     authorizer.authorize(
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
         getResourceContextByName(fqn, include));
     ResultList<Field> page =
-        repository.searchSchemaFieldsByFQN(fqn, query, limit, offset, fieldsParam, include);
+        repository.searchSchemaFieldsByFQN(
+            fqn,
+            new TopicRepository.SchemaFieldSearch(
+                query, limit, offset, fieldsParam, include, sortBy, sortOrder));
     TopicSchemaFieldList result = new TopicSchemaFieldList();
     result.setData(new ArrayList<>(page.getData()));
     result.setPaging(page.getPaging());

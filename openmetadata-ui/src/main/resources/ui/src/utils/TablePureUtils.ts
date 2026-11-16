@@ -400,20 +400,18 @@ export const findColumnByEntityLink = (
   return null;
 };
 
-export const updateColumnInNestedStructure = <
-  T extends { fullyQualifiedName?: string; children?: T[] } = Column
->(
-  columns: T[],
+export const updateColumnInNestedStructure = (
+  columns: Column[],
   targetFqn: string,
-  update: Partial<T>,
+  update: Partial<Column>,
   field?: string
-): T[] => {
-  return columns.map((column: T) => {
+): Column[] => {
+  return columns.map((column: Column) => {
     if (column.fullyQualifiedName === targetFqn) {
       const newCol = omit(column, field ?? '');
 
       return {
-        ...(newCol as T),
+        ...(newCol as Column),
         ...update,
       };
     } else if (column.children && column.children.length > 0) {

@@ -26,13 +26,9 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { Column } from '../../../generated/entity/data/container';
 import { Topic } from '../../../generated/entity/data/topic';
-import {
-  getTopicSchemaFieldsByFQN,
-  updateTopicSchemaField,
-} from '../../../rest/topicsAPI';
+import { getTopicSchemaFieldsByFQN } from '../../../rest/topicsAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { MESSAGE_SCHEMA } from '../TopicDetails/TopicDetails.mock';
-import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TopicSchema from './TopicSchema';
 import { TopicSchemaFieldsProps } from './TopicSchema.interface';
 
@@ -150,11 +146,9 @@ jest.mock('../../../utils/ToastUtils', () => ({
 
 jest.mock('../../../rest/topicsAPI', () => ({
   getTopicSchemaFieldsByFQN: jest.fn(),
-  updateTopicSchemaField: jest.fn(),
 }));
 
 const mockGetTopicSchemaFields = getTopicSchemaFieldsByFQN as jest.Mock;
-const mockUpdateTopicSchemaField = updateTopicSchemaField as jest.Mock;
 const SCHEMA_FIELDS = MESSAGE_SCHEMA.schemaFields;
 
 const mockOnUpdate = jest.fn();
@@ -214,12 +208,6 @@ describe('Topic Schema', () => {
       data: SCHEMA_FIELDS,
       paging: { total: SCHEMA_FIELDS.length },
     });
-    mockUpdateTopicSchemaField.mockImplementation((fqn, update) =>
-      Promise.resolve({
-        ...SCHEMA_FIELDS.find((field) => field.fullyQualifiedName === fqn),
-        ...update,
-      })
-    );
   });
 
   afterEach(() => {
@@ -257,47 +245,7 @@ describe('Topic Schema', () => {
     expect(screen.queryByText('first_name')).toBeNull();
   });
 
-  it('saves a field description through the schema field API', async () => {
-    render(
-      <MemoryRouter>
-        <TopicSchema {...mockProps} />
-      </MemoryRouter>
-    );
-
-    await screen.findByText('first_name');
-    const rows = screen.getAllByRole('row');
-    const firstNameRow = rows.find((row) =>
-      row.textContent?.includes('first_name')
-    );
-
-    fireEvent.click(
-      await findByTestId(firstNameRow as HTMLElement, 'edit-button')
-    );
-    const saveButton = await screen.findByTestId('save-description');
-    await act(async () => {
-      fireEvent.click(saveButton);
-    });
-
-    expect(mockUpdateTopicSchemaField).toHaveBeenCalledWith(
-      'sample_kafka.customer_events.first_name',
-      { description: 'updated description' }
-    );
-    expect(mockOnUpdate).not.toHaveBeenCalled();
-    expect(TableDescription).toHaveBeenCalledWith(
-      expect.objectContaining({
-        columnData: {
-          fqn: 'sample_kafka.customer_events.first_name',
-          field: 'updated description',
-        },
-      }),
-      expect.anything()
-    );
-    expect(screen.queryByTestId('editor-modal')).toBeNull();
-  });
-
-  it('keeps the description editor open when the save fails', async () => {
-    mockUpdateTopicSchemaField.mockRejectedValue(new Error('save failed'));
-
+  it('saves a field description through the topic update', async () => {
     render(
       <MemoryRouter>
         <TopicSchema {...mockProps} />
@@ -317,8 +265,34 @@ describe('Topic Schema', () => {
       fireEvent.click(saveButton);
     });
 
-    expect(mockUpdateTopicSchemaField).toHaveBeenCalled();
-    expect(screen.getByTestId('editor-modal')).toBeInTheDocument();
+    const updatedTopic = mockOnUpdate.mock.calls[0][0] as Topic;
+    const savedField = updatedTopic.messageSchema?.schemaFields?.find(
+      (field) =>
+        field.fullyQualifiedName === 'sample_kafka.customer_events.first_name'
+    );
+
+    expect(savedField?.description).toBe('updated description');
+    expect(screen.queryByTestId('editor-modal')).toBeNull();
+  });
+
+  it('sorts by name on the server before paging', async () => {
+    render(
+      <MemoryRouter>
+        <TopicSchema {...mockProps} />
+      </MemoryRouter>
+    );
+
+    await screen.findByText('first_name');
+    mockGetTopicSchemaFields.mockClear();
+
+    fireEvent.click(screen.getByRole('columnheader', { name: /label.name/ }));
+
+    await waitFor(() =>
+      expect(mockGetTopicSchemaFields).toHaveBeenCalledWith(
+        'sample_kafka.customer_events',
+        expect.objectContaining({ offset: 0, sortOrder: 'asc' })
+      )
+    );
   });
 
   it('shows an error toast and an empty table when the fetch fails', async () => {

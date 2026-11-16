@@ -43,6 +43,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.EntityReference;
@@ -342,18 +343,36 @@ public class TopicRepository extends EntityRepository<Topic> {
     return topic;
   }
 
+  /** One search request against a topic's schema fields; a null sortBy keeps schema order. */
+  public record SchemaFieldSearch(
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder) {}
+
   /**
    * Matches name, displayName or description at every nesting level, so a hit on a nested field
-   * comes back as its own row. Pages over the flattened match list in schema order.
+   * comes back as its own row. See ADR:2026-11-16-topic-schema-field-search-returns-flat-rows.
    */
-  public ResultList<Field> searchSchemaFieldsByFQN(
-      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+  public ResultList<Field> searchSchemaFieldsByFQN(String fqn, SchemaFieldSearch search) {
     final String requestedFields =
-        fieldsParam != null && fieldsParam.contains(FIELD_TAGS) ? FIELD_TAGS : "";
-    final Topic topic = getByName(null, fqn, getFields(requestedFields), include, false);
+        search.fieldsParam() != null && search.fieldsParam().contains(FIELD_TAGS) ? FIELD_TAGS : "";
+    final Topic topic = getByName(null, fqn, getFields(requestedFields), search.include(), false);
     final List<Field> matches =
-        filterSchemaFields(flattenSchemaFields(schemaFieldsOf(topic)), query);
-    return pageOfSchemaFields(matches, limit, offset);
+        filterSchemaFields(flattenSchemaFields(schemaFieldsOf(topic)), search.query());
+    final List<Field> ordered = sortSchemaFields(matches, search.sortBy(), search.sortOrder());
+    return pageOfSchemaFields(ordered, search.limit(), search.offset());
+  }
+
+  static List<Field> sortSchemaFields(List<Field> fields, String sortBy, String sortOrder) {
+    return ChildFieldPageReader.sortChildFields(
+            new ArrayList<FieldInterface>(fields), sortBy, sortOrder)
+        .stream()
+        .map(Field.class::cast)
+        .toList();
   }
 
   private static List<Field> schemaFieldsOf(Topic topic) {
