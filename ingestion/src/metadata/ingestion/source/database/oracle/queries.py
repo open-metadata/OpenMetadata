@@ -198,6 +198,21 @@ SELECT query FROM {prefix}_MVIEWS WHERE owner = :owner AND mview_name = :name
 """
 )
 
+# 12.1+ only, the per-view counterparts of the bulk query's linked-view handling: the complete
+# TEXT_VC of a view whose TEXT is NULL, and whether Oracle maintains the owner, in which case
+# GET_DDL refuses its objects with ORA-31603.
+ORACLE_GET_VIEW_TEXT_VC_BY_NAME = textwrap.dedent(
+    """
+SELECT text_vc FROM {prefix}_VIEWS WHERE owner = :owner AND view_name = :name AND text_length <= 4000
+"""
+)
+
+ORACLE_GET_OWNER_ORACLE_MAINTAINED = textwrap.dedent(
+    """
+SELECT oracle_maintained FROM {prefix}_USERS WHERE username = :owner
+"""
+)
+
 # Last resort when the raw text is NULL or still cannot be read. GET_DDL returns
 # a CLOB (read through a locator, immune to the LONG truncation) but needs
 # SELECT_CATALOG_ROLE for objects in other schemas.

@@ -268,6 +268,8 @@ def test_partial_bulk_failure_preserves_definitions_when_retry_has_no_sql(prefix
             return bulk
         if 'AS "object_type"' in statement:
             return names
+        if "oracle_maintained" in statement:
+            return SimpleNamespace(scalar=lambda: "N", close=lambda: None)
         if parameters["name"] == "UNREADABLE_VIEW" or retry == "denied":
             raise DatabaseError(statement, parameters, Exception("ORA-31603"))
         value = "SELECT 2" if retry == "recovered" else None
@@ -597,5 +599,75 @@ def test_pre_12c_catalog_keeps_the_single_bulk_query(catalog, prefix, preserve):
                 == "CREATE VIEW my_view AS SELECT 9"
             )
         assert len(executions) == 1
+    finally:
+        cache.clear()
+
+
+def _fail_bulk_fetch(engine):
+    @event.listens_for(engine, "before_cursor_execute")
+    def fail_bulk_fetch(connection, cursor, statement, parameters, context, executemany):
+        if 'AS "view_def"' in statement:
+            raise DatabaseError(statement, parameters, Exception("ORA-01406"))
+
+
+@pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+def test_fallback_reads_linked_views_like_the_bulk_query(catalog, prefix):
+    """Issue #37851: when the bulk fetch fails for another reason (a LONG value too large for
+    the thick-mode array fetch), the per-view fallback must also read linked views from TEXT_VC
+    and skip GET_DDL for Oracle-maintained owners."""
+    engine, _ = catalog
+    TestOracleMaintainedLinkedViews._add_views(
+        engine,
+        [
+            ("MY_OTHER_SCHEMA", "LINKED_VIEW", None, "SELECT 42", 9),
+            ("MY_OTHER_SCHEMA", "LONG_LINKED_VIEW", None, "SELECT 4", 5000),
+        ],
+    )
+    refused = TestOracleMaintainedLinkedViews._refuse_ddl_for_maintained_owner(engine)
+    _fail_bulk_fetch(engine)
+    cache = {}
+    try:
+        with engine.connect() as connection:
+            oracle = dialect(prefix)
+            assert (
+                get_view_definition(oracle, connection, "linked_view", "my_other_schema", info_cache=cache)
+                == "CREATE OR REPLACE VIEW LINKED_VIEW AS SELECT 42"
+            )
+            assert get_view_definition(oracle, connection, "my_view", "my_other_schema", info_cache=cache).endswith(
+                "AS SELECT 2"
+            )
+            assert get_view_definition(oracle, connection, "my_mview", "my_other_schema", info_cache=cache).endswith(
+                "AS SELECT 12"
+            )
+            assert not get_view_definition(oracle, connection, "long_linked_view", "my_other_schema", info_cache=cache)
+        assert refused == []
+    finally:
+        cache.clear()
+
+
+@pytest.mark.parametrize("prefix", ["ALL", "DBA"])
+def test_pre_12c_fallback_keeps_get_ddl_for_views_without_text(catalog, prefix):
+    engine, executions = catalog
+    with engine.begin() as connection:
+        for catalog_prefix in ("ALL", "DBA"):
+            connection.exec_driver_sql(f"ALTER TABLE {catalog_prefix}_VIEWS DROP COLUMN text_vc")
+            connection.exec_driver_sql(f"ALTER TABLE {catalog_prefix}_USERS DROP COLUMN oracle_maintained")
+            connection.exec_driver_sql(
+                f"INSERT INTO {catalog_prefix}_VIEWS VALUES ('MY_SCHEMA', 'NO_TEXT_VIEW', NULL, 9)"
+            )
+    _fail_bulk_fetch(engine)
+    executions.clear()
+    cache = {}
+    try:
+        with engine.connect() as connection:
+            oracle = dialect(prefix, version=(11, 2))
+            assert (
+                get_view_definition(oracle, connection, "no_text_view", "my_schema", info_cache=cache)
+                == "CREATE VIEW my_view AS SELECT 9"
+            )
+            assert get_view_definition(oracle, connection, "my_view", "my_schema", info_cache=cache).endswith(
+                "AS SELECT 1"
+            )
+        assert not any("text_vc" in sql or "oracle_maintained" in sql for sql, _ in executions)
     finally:
         cache.clear()

@@ -18,7 +18,7 @@ import traceback
 
 from sqlalchemy import sql, text, util
 from sqlalchemy.dialects.oracle.base import FLOAT, INTEGER, INTERVAL, NUMBER, TIMESTAMP
-from sqlalchemy.engine import Connection, Row, reflection
+from sqlalchemy.engine import Connection, Dialect, Row, reflection
 from sqlalchemy.exc import DatabaseError
 from sqlalchemy.sql import sqltypes
 
@@ -29,10 +29,12 @@ from metadata.ingestion.source.database.oracle.queries import (
     ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES,
     ORACLE_GET_COLUMNS,
     ORACLE_GET_MVIEW_QUERY_BY_NAME,
+    ORACLE_GET_OWNER_ORACLE_MAINTAINED,
     ORACLE_GET_TABLE_NAMES,
     ORACLE_GET_TEMPORARY_TABLE_NAMES,
     ORACLE_GET_VIEW_DEFINITION_BY_NAME,
     ORACLE_GET_VIEW_TEXT_BY_NAME,
+    ORACLE_GET_VIEW_TEXT_VC_BY_NAME,
     ORACLE_IDENTITY_TYPE,
     ORACLE_TABLE_COMMENTS,
     ORACLE_TABLE_COMMENTS_PRESERVE_CASE,
@@ -64,6 +66,11 @@ def get_table_prefix_from_connection(service_connection) -> str:
 
 def _get_table_prefix(self) -> str:
     return getattr(self, "table_prefix", "DBA")
+
+
+def _reads_linked_views(self: Dialect) -> bool:
+    """TEXT_VC and ORACLE_MAINTAINED exist from Oracle 12.1. An unknown version keeps the older queries."""
+    return (getattr(self, "server_version_info", None) or ()) >= (12,)
 
 
 @reflection.cache
@@ -109,7 +116,7 @@ def get_view_definition(
     if info_cache is not None:
         info_cache.pop(VIEW_DEFINITION_CACHE_KEY, None)
     cached = None
-    if self.server_version_info >= (12,):
+    if _reads_linked_views(self):
         query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE if preserve_case else ORACLE_VIEW_DEFINITIONS
     else:
         query = ORACLE_VIEW_DEFINITIONS_PRESERVE_CASE_PRE_12C if preserve_case else ORACLE_VIEW_DEFINITIONS_PRE_12C
@@ -158,11 +165,27 @@ def _get_view_definitions_individually(self, connection: Connection, owner: str)
     # lowercased by default, kept verbatim when preserveIdentifierCase is set.
     normalize = (lambda value: value) if getattr(self, "preserve_identifier_case", False) else str.lower
     prefix = _get_table_prefix(self)
+    linked_views = _reads_linked_views(self)
+    maintained_owner = (
+        linked_views
+        and _read_scalar(
+            connection.execute(text(ORACLE_GET_OWNER_ORACLE_MAINTAINED.format(prefix=prefix)), {"owner": owner})
+        )
+        == "Y"
+    )
     view_names = connection.execute(text(ORACLE_GET_ALL_VIEW_AND_MVIEW_NAMES.format(prefix=prefix)), {"owner": owner})
     try:
         for view_owner, name, object_type in view_names:
             try:
-                definition = _fetch_view_definition_by_name(connection, prefix, view_owner, name, object_type)
+                definition = _fetch_view_definition_by_name(
+                    connection,
+                    prefix,
+                    view_owner,
+                    name,
+                    object_type,
+                    linked_views=linked_views,
+                    maintained_owner=maintained_owner,
+                )
             except DatabaseError as exc:
                 logger.warning("Could not fetch view definition for %s.%s: %s", view_owner, name, exc)
                 logger.debug(traceback.format_exc())
@@ -182,14 +205,24 @@ def _read_scalar(result):
         result.close()
 
 
-def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type):
+def _fetch_view_definition_by_name(
+    connection: Connection,
+    prefix: str,
+    owner: str,
+    name: str,
+    object_type: str,
+    *,
+    linked_views: bool = False,
+    maintained_owner: bool = False,
+):
     """Fetch one view's definition without the bulk LONG array truncation.
 
     Reads the raw text/query with a single-row query first. A single-row fetch is
     not an array fetch, so it does not hit ORA-01406, and it needs no privileges
     beyond the bulk read (this is the same column SQLAlchemy's Oracle dialect
-    reads). Only when the text is NULL or still cannot be read does it fall back
-    to DBMS_METADATA.GET_DDL, mirroring the bulk query's text-else-GET_DDL logic.
+    reads). It then mirrors the bulk query: on 12.1+ a view whose text is NULL is
+    read from a complete TEXT_VC, and DBMS_METADATA.GET_DDL is the last resort,
+    never called for an Oracle-maintained owner since it refuses those objects.
     """
     is_mview = object_type == "MATERIALIZED_VIEW"
     text_query = ORACLE_GET_MVIEW_QUERY_BY_NAME if is_mview else ORACLE_GET_VIEW_TEXT_BY_NAME
@@ -197,10 +230,21 @@ def _fetch_view_definition_by_name(connection, prefix, owner, name, object_type)
         raw_text = _read_scalar(
             connection.execute(text(text_query.format(prefix=prefix)), {"owner": owner, "name": name})
         )
-        if raw_text:
-            return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
     except DatabaseError:
         logger.debug("Single-row text read failed for %s.%s, using GET_DDL", owner, name)
+    else:
+        if raw_text:
+            return f"CREATE OR REPLACE VIEW {name} AS {raw_text}"
+        if linked_views and not is_mview:
+            text_vc = _read_scalar(
+                connection.execute(
+                    text(ORACLE_GET_VIEW_TEXT_VC_BY_NAME.format(prefix=prefix)), {"owner": owner, "name": name}
+                )
+            )
+            if text_vc:
+                return f"CREATE OR REPLACE VIEW {name} AS {text_vc}"
+    if maintained_owner:
+        return None
     return _read_scalar(
         connection.execute(
             text(ORACLE_GET_VIEW_DEFINITION_BY_NAME),
