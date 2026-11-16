@@ -160,6 +160,8 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
             // Glossary nodes are keyed by the raw name, so a quoted one never matches.
             parentId: Fqn.unquoteName(Fqn.split(tag.tagFQN)[0]),
             data: tag,
+            // Locked in `value` too: the chips and Backspace act before the tree loads.
+            disabled: isDerivedTag(tag),
           })
         ),
     [value]

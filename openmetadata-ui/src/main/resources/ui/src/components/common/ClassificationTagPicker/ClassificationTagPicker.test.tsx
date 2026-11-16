@@ -210,6 +210,26 @@ describe('ClassificationTagPicker', () => {
     expect(onChange).toHaveBeenNthCalledWith(2, [inherited]);
   });
 
+  // The tree reads the lock off `value` for the chips and Backspace, which act before it loads.
+  it('marks derived tags disabled in the value it hands the tree', () => {
+    const own = makeClassificationTag('Personal.Email');
+    const inherited = makeClassificationTag('DataZone.Sandbox', {
+      labelType: LabelType.Derived,
+    });
+
+    render(
+      <ClassificationTagPicker value={[own, inherited]} onChange={jest.fn()} />
+    );
+
+    const selected =
+      capturedTreeSelectProps.value as TreeSelectNode<TagLabel>[];
+
+    expect(selected.map((node) => [node.id, node.disabled])).toEqual([
+      ['Personal.Email', false],
+      ['DataZone.Sandbox', true],
+    ]);
+  });
+
   it('disables the rows of derived tags so they cannot be unticked', async () => {
     const inherited = makeClassificationTag('DataZone.Sandbox', {
       labelType: LabelType.Derived,

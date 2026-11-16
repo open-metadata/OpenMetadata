@@ -137,6 +137,7 @@ describe('GlossaryTermPicker', () => {
         value: 'Finance.MRR',
         parentId: 'Finance',
         data: APPLIED_TERM,
+        disabled: false,
       },
     ]);
   });
@@ -274,6 +275,27 @@ describe('GlossaryTermPicker', () => {
     emit(null);
 
     expect(onChange).toHaveBeenCalledWith([inherited], [inherited]);
+  });
+
+  // The tree reads the lock off `value` for the chips and Backspace, which act before it loads.
+  it('marks derived terms disabled in the value it hands the tree', () => {
+    const inherited: TagLabel = {
+      tagFQN: 'Finance.ARR',
+      source: TagSource.Glossary,
+      labelType: LabelType.Derived,
+      state: State.Confirmed,
+    };
+    render(<GlossaryTermPicker value={[APPLIED_TERM, inherited]} />);
+
+    expect(
+      lastProps().value.map((node: TreeSelectNode<unknown>) => [
+        node.id,
+        node.disabled,
+      ])
+    ).toEqual([
+      ['Finance.MRR', false],
+      ['Finance.ARR', true],
+    ]);
   });
 
   it('disables the rows of derived terms, at any depth', async () => {

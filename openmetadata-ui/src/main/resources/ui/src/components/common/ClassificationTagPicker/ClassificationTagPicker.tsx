@@ -102,6 +102,8 @@ const ClassificationTagPicker: FC<ClassificationTagPickerProps> = ({
             value: tag.tagFQN,
             data: tag,
             isLeaf: true,
+            // Locked in `value` too: the chips and Backspace act before the tree loads.
+            disabled: isDerivedTag(tag),
           })
         ),
     [value]
