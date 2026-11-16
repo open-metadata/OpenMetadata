@@ -24,12 +24,15 @@ import com.unboundid.ldap.listener.InMemoryDirectoryServer;
 import com.unboundid.ldap.listener.InMemoryDirectoryServerConfig;
 import com.unboundid.ldap.listener.InMemoryListenerConfig;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Locale;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -65,6 +68,7 @@ class SsoSecurityConfigApplyIT {
   private static final String LDAP_USERS_DN = "ou=users," + LDAP_BASE_DN;
   private static final String LDAP_BIND_DN = "cn=Directory Manager";
   private static final String LDAP_BIND_PASSWORD = "bind-password";
+  private static final String NOT_APPLIED = "could not be applied";
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
@@ -146,20 +150,28 @@ class SsoSecurityConfigApplyIT {
     }
   }
 
+  /**
+   * The keystore's path, alias and password are all set, so the check made before anything is
+   * written passes; the file is not a keystore, so applying the stored save fails and it is put
+   * back.
+   */
   @Test
-  @DisplayName("CF-03 a SAML configuration that cannot be loaded is refused, and nothing is saved")
-  void samlConfigurationThatCannotBeLoadedIsNotSaved() {
+  @DisplayName("CF-03 a SAML keystore the server cannot load is refused, and nothing is saved")
+  void samlKeyStoreThatCannotBeLoadedIsNotSaved(@TempDir Path directory) throws Exception {
+    Path notAKeyStore = Files.writeString(directory.resolve("saml-sp.jks"), "not a keystore");
     SecurityConfiguration broken = securityConfig.baselineCopy();
     broken
         .getAuthenticationConfiguration()
         .getSamlConfiguration()
         .getSecurity()
         .withSendSignedAuthRequest(true)
-        .withKeyStoreFilePath("/nonexistent/om-sso-it-keystore.jks")
+        .withKeyStoreFilePath(notAKeyStore.toString())
         .withKeyStoreAlias("sp")
         .withKeyStorePassword("keystore-password");
 
-    assertRefusedAndNothingSaved(broken);
+    Answer put = assertRefusedAndNothingSaved(broken);
+
+    assertTrue(put.body().contains(NOT_APPLIED), "refused before it was stored: " + put.body());
   }
 
   @Test
@@ -194,16 +206,22 @@ class SsoSecurityConfigApplyIT {
     }
   }
 
-  /** The save is refused with a 400, and neither the database nor the server took it. */
+  /**
+   * The save is refused with a 400, neither the database nor the server took it, and the
+   * configuration an administrator reads is still the previous one.
+   */
   private static Answer assertRefusedAndNothingSaved(SecurityConfiguration refused) {
     JsonNode stored = SecurityConfigSwap.storedConfig();
     JsonNode live = SecurityConfigSwap.liveConfig();
+    JsonNode read = JsonUtils.valueToTree(SecurityConfigSwap.maskedLiveConfig());
     try {
       Answer answer = SecurityConfigSwap.attemptPut(refused);
 
       assertEquals(400, answer.status(), answer.body());
       assertEquals(stored, SecurityConfigSwap.storedConfig(), "the refused save was stored");
       assertEquals(live, SecurityConfigSwap.liveConfig(), "the server runs the refused save");
+      assertEquals(
+          read, JsonUtils.valueToTree(SecurityConfigSwap.maskedLiveConfig()), "reads changed");
       return answer;
     } finally {
       securityConfig.restoreBaseline();
