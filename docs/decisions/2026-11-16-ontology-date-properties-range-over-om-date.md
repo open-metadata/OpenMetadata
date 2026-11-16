@@ -31,8 +31,8 @@ write values at midnight and display only the date part.
 `xsd:date` stays rejected as a range.
 
 ## Consequences
-Reasoners compare and order Date values as dateTimes, and facets such as `xsd:minInclusive`
-work on them. "Date only" is a convention the client keeps by writing midnight; the server does
-not reject a non-midnight time. External ontologies whose ranges are `xsd:date` still have those
-ranges skipped on import. Revisit this if OWL adds a date datatype, or if imports must convert
-`xsd:date` ranges to `om:date`.
+Reasoners compare and order Date values as dateTimes. A defined datatype supports no facets (OWL 2
+§9.4), so a date bound is a facet restriction on `xsd:dateTime`, never on `om:date`. "Date only" is
+a convention the client keeps by writing midnight; the server does not reject a non-midnight time.
+External ontologies whose ranges are `xsd:date` still have those ranges skipped on import. Revisit
+this if OWL adds a date datatype, or if imports must convert `xsd:date` ranges to `om:date`.
