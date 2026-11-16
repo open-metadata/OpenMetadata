@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ContextFileFqnRepair;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
@@ -128,6 +129,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DataProductDomainContainmentRepair.class);
         MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
             mockStatic(EntityExtensionCollationAlignment.class);
+        MockedStatic<ContextFileFqnRepair> contextFileFqnRepair =
+            mockStatic(ContextFileFqnRepair.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -181,6 +184,8 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
                   handle, connectionType));
+      // Released versions stored misnamed Context Center files, so both engines repair them.
+      contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
     }
   }
 
