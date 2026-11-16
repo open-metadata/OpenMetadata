@@ -951,7 +951,7 @@ class OpenSearchBulkSinkBehaviorTest {
 
   @Test
   void enrichWithEmbeddingRecomputesWhenCachedDimensionMismatchesClient() throws Exception {
-    // Reuse is keyed only on entity content (fingerprint / updatedAt), which does NOT change when
+    // Reuse is keyed only on entity content (the fingerprint), which does NOT change when
     // the embedding model/dimension changes. A cached vector whose length no longer matches the
     // active client's dimension must be regenerated — otherwise an old-dimension vector would be
     // spliced into a staged index built for the new dimension and silently rejected by the knn

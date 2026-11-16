@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.resolveDomainFilterIds;
 import static org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.resolveFilterEntityId;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -254,10 +255,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
-    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
-    if (domainId != null) {
-      filter.addQueryParam("incidentListDomainId", domainId.toString());
-    }
+    filter.addQueryParam("incidentListDomainId", resolveDomainFilterIds(domain));
     UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
     if (testDefinitionId != null) {
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
@@ -422,10 +420,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("incidentSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
-    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
-    if (domainId != null) {
-      filter.addQueryParam("incidentDomainId", domainId.toString());
-    }
+    filter.addQueryParam("incidentDomainId", resolveDomainFilterIds(domain));
     filter.addQueryParam("incidentDateField", dateField.value());
     if (startTs != null) {
       filter.addQueryParam("incidentStartTs", String.valueOf(startTs));

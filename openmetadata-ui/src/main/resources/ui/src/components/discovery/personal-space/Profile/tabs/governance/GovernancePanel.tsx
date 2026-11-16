@@ -21,6 +21,7 @@ import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import DeprecatedFeatureBadge from '../../../../../common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { GovernanceView } from './Governance.types';
 import { hashSubPathToView, viewToSubPath } from './Governance.utils';
@@ -192,6 +193,12 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
       title: titleByView[view.type],
       description: descByView[view.type],
       icon: iconByView[view.type],
+      titleSuffix: view.type.startsWith('intake') ? (
+        <DeprecatedFeatureBadge
+          description={t('message.intake-form-deprecated')}
+          featureName={intakeLabel}
+        />
+      ) : undefined,
       onBreadcrumbAction,
       actions: actionsForView,
     });
