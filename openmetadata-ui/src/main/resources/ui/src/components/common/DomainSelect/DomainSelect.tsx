@@ -119,13 +119,16 @@ const DomainSelect: FC<DomainSelectProps> = ({
     [filterAllowedNodes]
   );
 
+  // A picker chooses among all domains, so its search skips the navbar domain
+  // filter (e.g. finding "Marketing" while "Finance" is picked).
   const fetchSearchHits = useCallback(
     async (searchTerm: string, signal?: AbortSignal) => {
       const results = (await searchDomains(
         buildDomainSearchQuery(searchTerm),
         1,
         undefined,
-        signal
+        signal,
+        true
       )) as unknown as Domain[];
 
       return { nodes: toNodes(results) };
@@ -304,6 +307,12 @@ const DomainSelect: FC<DomainSelectProps> = ({
         | TreeSelectNode<EntityReference>[]
         | null
     ) => {
+      // A scope switcher clears only via "All Domains"; null means the active
+      // node was re-picked (e.g. the core tree toggling it off), so keep it.
+      if (!multiple && showAllDomains && selected === null) {
+        return;
+      }
+
       const domains = treeNodesToEntityReferences(selected);
 
       // Single mode: keep the current value when a clear is not allowed.
@@ -329,7 +338,14 @@ const DomainSelect: FC<DomainSelectProps> = ({
         setIsSubmitting(false);
       }
     },
-    [multiple, isClearable, onUpdate, selectedDomainList, isSubmitting]
+    [
+      multiple,
+      showAllDomains,
+      isClearable,
+      onUpdate,
+      selectedDomainList,
+      isSubmitting,
+    ]
   );
 
   // The core toast would show a raw axios string; showErrorToast maps an API

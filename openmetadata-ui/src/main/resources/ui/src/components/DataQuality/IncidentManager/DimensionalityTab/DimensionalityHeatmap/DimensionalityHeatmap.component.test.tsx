@@ -372,7 +372,7 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       const scrollIndicator = container.querySelector(
-        '.dimensionality-heatmap__scroll-indicator--right'
+        '.dimensionality-heatmap__scroll-indicator--right button'
       );
       if (scrollIndicator) {
         fireEvent.click(scrollIndicator);
@@ -403,7 +403,7 @@ describe('DimensionalityHeatmap Component', () => {
       );
 
       const scrollIndicator = container.querySelector(
-        '.dimensionality-heatmap__scroll-indicator--left'
+        '.dimensionality-heatmap__scroll-indicator--left button'
       );
       if (scrollIndicator) {
         fireEvent.click(scrollIndicator);

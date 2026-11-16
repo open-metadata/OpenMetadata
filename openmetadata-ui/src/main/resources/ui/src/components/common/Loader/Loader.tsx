@@ -13,6 +13,7 @@
 
 import classNames from 'classnames';
 import { CSSProperties, FunctionComponent } from 'react';
+import { useTranslation } from 'react-i18next';
 import './Loader.less';
 
 type Props = {
@@ -32,6 +33,7 @@ const Loader: FunctionComponent<Props> = ({
   style,
   dataTestId = 'loader',
 }: Props): JSX.Element => {
+  const { t } = useTranslation();
   let classes = 'loader';
   switch (size) {
     case 'small':
@@ -68,8 +70,10 @@ const Loader: FunctionComponent<Props> = ({
     return (
       <div className="h-min-100 flex-center" data-testid="full-screen-loader">
         <div
+          aria-label={t('label.loading')}
           className={classNames(classes, className)}
           data-testid={dataTestId}
+          role="status"
           style={style}
         />
       </div>
@@ -77,9 +81,12 @@ const Loader: FunctionComponent<Props> = ({
   }
 
   return (
+    // A spinner has no text, so it names itself for assistive tech.
     <div
+      aria-label={t('label.loading')}
       className={classNames(classes, className)}
       data-testid={dataTestId}
+      role="status"
       style={style}
     />
   );

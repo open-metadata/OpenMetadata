@@ -361,21 +361,9 @@ public class CreateTask implements TaskListener {
     if (workflowInstanceIdObj != null) {
       return UUID.fromString(workflowInstanceIdObj.toString());
     }
-    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    String businessKey =
+        WorkflowHandler.getInstance().getProcessBusinessKey(delegateTask.getProcessInstanceId());
     return businessKey != null && !businessKey.isBlank() ? UUID.fromString(businessKey) : null;
-  }
-
-  private static String resolveProcessBusinessKey(String processInstanceId) {
-    if (processInstanceId == null || processInstanceId.isBlank()) {
-      return null;
-    }
-    org.flowable.engine.runtime.ProcessInstance processInstance =
-        WorkflowHandler.getInstance()
-            .getRuntimeService()
-            .createProcessInstanceQuery()
-            .processInstanceId(processInstanceId)
-            .singleResult();
-    return processInstance != null ? processInstance.getBusinessKey() : null;
   }
 
   private List<EntityReference> getAssignees(DelegateTask delegateTask) {
@@ -1130,7 +1118,8 @@ public class CreateTask implements TaskListener {
     if (taskId != null && !taskId.isBlank()) {
       return UUID.fromString(taskId);
     }
-    String businessKey = resolveProcessBusinessKey(delegateTask.getProcessInstanceId());
+    String businessKey =
+        WorkflowHandler.getInstance().getProcessBusinessKey(delegateTask.getProcessInstanceId());
     if (businessKey == null || businessKey.isBlank()) {
       return null;
     }
