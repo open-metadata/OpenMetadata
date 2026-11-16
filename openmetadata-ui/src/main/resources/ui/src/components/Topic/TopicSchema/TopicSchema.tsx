@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
+import { cloneDeep, groupBy, isEmpty, isUndefined, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
 import {
   FC,
@@ -34,6 +34,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import {
   SEGMENT_TOGGLE_GROUP_CLASS,
   SEGMENT_TOGGLE_ITEM_CLASS,
@@ -47,7 +48,6 @@ import {
   DEFAULT_TOPIC_VISIBLE_COLUMNS,
   TABLE_COLUMNS_KEYS,
 } from '../../../constants/TableKeys.constants';
-import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType, TabSpecificField } from '../../../enums/entity.enum';
 import {
@@ -63,10 +63,7 @@ import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
 import { useTableFilters } from '../../../hooks/useTableFilters';
 import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
-import {
-  getTopicSchemaFieldsByFQN,
-  updateTopicSchemaField,
-} from '../../../rest/topicsAPI';
+import { getTopicSchemaFieldsByFQN } from '../../../rest/topicsAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
@@ -82,7 +79,8 @@ import {
   getSchemaFieldCount,
   isLargeSchema,
   shouldCollapseSchema,
-  updateColumnInNestedStructure,
+  updateFieldDescription,
+  updateFieldTags,
 } from '../../../utils/TablePureUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
@@ -91,10 +89,14 @@ import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import { EntityDetailWidgetSkeleton } from '../../common/Skeleton/EntityDetailWidgetSkeleton/EntityDetailWidgetSkeleton.component';
-import { ColumnsType } from '../../common/Table/Table.interface';
+import {
+  ColumnsType,
+  SortOrder,
+  TableProps,
+} from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import ToggleExpandButton from '../../common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -131,6 +133,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   );
   const [paginatedFields, setPaginatedFields] = useState<Field[]>([]);
   const [fieldsLoading, setFieldsLoading] = useState(true);
+  const [nameSortOrder, setNameSortOrder] = useState<'asc' | 'desc'>();
 
   const {
     currentPage,
@@ -159,6 +162,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     data: topicDetails,
     isVersionView,
     permissions,
+    onUpdate,
     currentVersionData,
     openColumnDetailPanel,
     selectedColumn,
@@ -213,6 +217,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
             offset: (page - 1) * pageSize,
             fields: TabSpecificField.TAGS,
             q: searchQuery,
+            sortOrder: nameSortOrder,
           }
         );
         if (isStale()) {
@@ -233,7 +238,12 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         }
       }
     },
-    [topicDetails.fullyQualifiedName, pageSize, handlePagingChange]
+    [
+      topicDetails.fullyQualifiedName,
+      pageSize,
+      handlePagingChange,
+      nameSortOrder,
+    ]
   );
 
   // topicDetails.version is a dependency so a field saved from the column detail
@@ -341,41 +351,32 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [schemaFields]
   );
 
-  // Errors propagate so the description modal and tag editor stay open and toast on failure.
-  const updateSchemaField = async (
-    fieldFqn: string,
-    update: Partial<Field>,
-    key: keyof Field
-  ) => {
-    const response = await updateTopicSchemaField(fieldFqn, update);
-    const cleanResponse = isEmpty(response.children)
-      ? omit(response, 'children')
-      : response;
-    setPaginatedFields((prev) =>
-      updateColumnInNestedStructure<Field>(prev, fieldFqn, cleanResponse, key)
-    );
-  };
-
+  // Saves go through the topic PATCH so the shared topic (and the column detail panel)
+  // stays current; the version bump then reloads the page the user is on.
   const handleFieldTagsChange = async (
     selectedTags: EntityTags[],
     editColumnTag: Field
   ) => {
-    if (editColumnTag.fullyQualifiedName) {
-      await updateSchemaField(
-        editColumnTag.fullyQualifiedName,
-        { tags: selectedTags },
-        'tags'
+    if (selectedTags && editColumnTag && !isUndefined(onUpdate)) {
+      const schema = cloneDeep(topicDetails.messageSchema);
+      updateFieldTags<Field>(
+        editColumnTag.fullyQualifiedName ?? '',
+        selectedTags,
+        schema?.schemaFields
       );
+      await onUpdate({ ...topicDetails, messageSchema: schema });
     }
   };
 
   const handleFieldDescriptionChange = async (updatedDescription: string) => {
-    if (editFieldDescription?.fullyQualifiedName) {
-      await updateSchemaField(
-        editFieldDescription.fullyQualifiedName,
-        { description: updatedDescription },
-        'description'
+    if (!isUndefined(editFieldDescription) && !isUndefined(onUpdate)) {
+      const schema = cloneDeep(topicDetails.messageSchema);
+      updateFieldDescription<Field>(
+        editFieldDescription.fullyQualifiedName ?? '',
+        updatedDescription,
+        schema?.schemaFields
       );
+      await onUpdate({ ...topicDetails, messageSchema: schema });
     }
     setEditFieldDescription(undefined);
   };
@@ -431,6 +432,26 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     filteredData: filteredSchemaFields,
     handleTableChange,
   } = useTreeTagFilter<Field>(schemaFields);
+
+  const handleSchemaTableChange = useCallback<
+    NonNullable<TableProps<Field>['onChange']>
+  >(
+    (pagination, filters, sorter, extra) => {
+      if (extra.action !== 'sort') {
+        handleTableChange(pagination, filters);
+
+        return;
+      }
+      const { order } = Array.isArray(sorter) ? sorter[0] : sorter;
+      const descendingOrder = order === 'descend' ? 'desc' : undefined;
+      setNameSortOrder(order === 'ascend' ? 'asc' : descendingOrder);
+      handlePageChange(INITIAL_PAGING_VALUE, {
+        cursorType: null,
+        cursorValue: undefined,
+      });
+    },
+    [handleTableChange, handlePageChange]
+  );
 
   const renderSchemaName = useCallback(
     (_: unknown, record: Field) => (
@@ -537,6 +558,10 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
     [topicFqn, handleFieldTagsChange, hasGlossaryTermEditAccess, isReadOnly]
   );
 
+  const descendingNameSort = nameSortOrder === 'desc' ? 'descend' : null;
+  const nameColumnSortOrder: SortOrder =
+    nameSortOrder === 'asc' ? 'ascend' : descendingNameSort;
+
   const columns: ColumnsType<Field> = useMemo(
     () => [
       {
@@ -545,7 +570,9 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         key: TABLE_COLUMNS_KEYS.NAME,
         fixed: 'left',
         width: 220,
-        sorter: getColumnSorter<Field, 'name'>('name'),
+        // The live view sorts on the server before paging; the version view sorts the full stored schema.
+        sorter: isVersionView ? getColumnSorter<Field, 'name'>('name') : true,
+        ...(!isVersionView && { sortOrder: nameColumnSortOrder }),
         render: renderSchemaName,
         className: 'cursor-pointer hover:text-link-color',
         onCell: (record: Field) => ({
@@ -600,6 +627,8 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
       renderGlossaryTags,
       tagFilter,
       tagFilterState,
+      isVersionView,
+      nameColumnSortOrder,
     ]
   );
 
@@ -716,7 +745,7 @@ const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
         searchProps={isVersionView ? undefined : searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-        onChange={handleTableChange}
+        onChange={handleSchemaTableChange}
       />
     );
   };

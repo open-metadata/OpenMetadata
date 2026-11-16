@@ -166,23 +166,24 @@ test.describe('Topic schema fields server-side pagination', () => {
   const fieldName = (index: number) =>
     `paged_field_${String(index).padStart(2, '0')}`;
 
-  test.beforeAll('Create a topic with more fields than one page', async ({
-    browser,
-  }) => {
-    const { afterAction, apiContext } = await createNewPage(browser);
+  test.beforeAll(
+    'Create a topic with more fields than one page',
+    async ({ browser }) => {
+      const { afterAction, apiContext } = await createNewPage(browser);
 
-    pagedTopic.entity.messageSchema.schemaFields = Array.from(
-      { length: 20 },
-      (_, index) => ({
-        name: fieldName(index + 1),
-        dataType: DataTypeTopic.String,
-        tags: [],
-      })
-    );
-    await pagedTopic.create(apiContext);
+      pagedTopic.entity.messageSchema.schemaFields = Array.from(
+        { length: 20 },
+        (_, index) => ({
+          name: fieldName(index + 1),
+          dataType: DataTypeTopic.String,
+          tags: [],
+        })
+      );
+      await pagedTopic.create(apiContext);
 
-    await afterAction();
-  });
+      await afterAction();
+    }
+  );
 
   test.afterAll('Clean up', async ({ browser }) => {
     const { afterAction, apiContext } = await createNewPage(browser);
