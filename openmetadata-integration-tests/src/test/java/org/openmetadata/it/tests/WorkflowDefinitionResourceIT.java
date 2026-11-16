@@ -201,6 +201,7 @@ import org.openmetadata.service.governance.workflows.elements.nodes.automatedTas
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProvider;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkProviderRegistry;
 import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.sink.SinkResult;
+import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
@@ -817,6 +818,15 @@ public class WorkflowDefinitionResourceIT {
         .getId();
   }
 
+  /** A definition ID that still embeds its key would no longer reproduce #36148. */
+  private static void assertFlowableGeneratedId(String processDefinitionKey) {
+    String processDefinitionId = latestProcessDefinitionId(processDefinitionKey);
+    assertFalse(
+        processDefinitionId.startsWith(processDefinitionKey + ":"),
+        "'%s' was deployed as '%s', so this fixture no longer exercises #36148"
+            .formatted(processDefinitionKey, processDefinitionId));
+  }
+
   /** Rewrites the stored Git token as plaintext, as a definition stored without a Fernet key. */
   private void storeGitTokenUnencrypted(JsonNode workflow, String token) {
     JsonNode stored = JsonUtils.readTree(storedDefinitionJson(workflow.get("id").asText()));
@@ -1411,6 +1421,18 @@ public class WorkflowDefinitionResourceIT {
   }
 
   /**
+   * An {@link #EVENT_TAG_WORKFLOW} filter only {@code tag} passes. The trigger filter excludes the
+   * entities it is true for, so every other tag is excluded and no tag update of another test
+   * starts the workflow.
+   */
+  private static String filterAdmittingOnly(Tag tag) throws JsonProcessingException {
+    return MAPPER.writeValueAsString(
+        MAPPER.writeValueAsString(
+            Map.of(
+                "!=", List.of(Map.of("var", "fullyQualifiedName"), tag.getFullyQualifiedName()))));
+  }
+
+  /**
    * Creates an event-based workflow that only {@code tag} starts, updates the tag and returns the
    * instance the update started once it has ended. The workflow is deleted before the caller's
    * sink provider is unregistered, so it never runs without one.
@@ -1418,14 +1440,6 @@ public class WorkflowDefinitionResourceIT {
   private JsonNode endedInstanceOfRunOnTagUpdate(
       OpenMetadataClient client, Tag tag, String workflowName, String nodesAndEdges)
       throws Exception {
-    // The trigger filter excludes the entities it is true for, so every tag but this one is
-    // excluded and no tag update of another test starts this workflow.
-    String onlyThisTag =
-        MAPPER.writeValueAsString(
-            MAPPER.writeValueAsString(
-                Map.of(
-                    "!=",
-                    List.of(Map.of("var", "fullyQualifiedName"), tag.getFullyQualifiedName()))));
     JsonNode created =
         MAPPER.readTree(
             executeWorkflowRequest(
@@ -1433,7 +1447,8 @@ public class WorkflowDefinitionResourceIT {
                 HttpMethod.POST,
                 BASE_PATH,
                 MAPPER.readValue(
-                    EVENT_TAG_WORKFLOW.formatted(workflowName, onlyThisTag, nodesAndEdges),
+                    EVENT_TAG_WORKFLOW.formatted(
+                        workflowName, filterAdmittingOnly(tag), nodesAndEdges),
                     CreateWorkflowDefinition.class)));
     trackWorkflowFromJson(created);
     try {
@@ -3672,12 +3687,7 @@ public class WorkflowDefinitionResourceIT {
     return request;
   }
 
-  /**
-   * A unique workflow name short enough for Flowable to keep the process key in the trigger's
-   * process definition id. Past 64 characters ({@code <name>Trigger-tag:<version>:<id>}) Flowable
-   * drops the key from the id, the key the id is parsed back into no longer names the workflow, and
-   * the trigger records no WorkflowInstance, so there is nothing to terminate.
-   */
+  /** A unique workflow name: the stem and the first eight characters of a random UUID. */
   private static String periodicWorkflowName(String stem) {
     return "%s_%s".formatted(stem, UUID.randomUUID().toString().substring(0, 8));
   }
@@ -6393,8 +6403,8 @@ public class WorkflowDefinitionResourceIT {
             .withReviewers(List.of(shared.USER2_REF));
     Tag tag = client.tags().create(createTag);
 
-    Task task =
-        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), shared.USER1.getId());
+    UUID workflowId = UUID.fromString(created.get("id").asText());
+    Task task = awaitOpenApprovalTaskOfWorkflow(client, tag.getFullyQualifiedName(), workflowId);
     Set<UUID> assignees = assigneeIds(task);
     assertTrue(
         assignees.contains(shared.USER1.getId()),
@@ -6430,6 +6440,96 @@ public class WorkflowDefinitionResourceIT {
         "Reviewers must not leak into an owners-only task, assignees=" + afterAssignees);
 
     LOG.info("test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask completed successfully");
+  }
+
+  /**
+   * #36148: Flowable gives a definition whose "key:version:id" exceeds 64 characters a bare
+   * generated ID, so a key split from that ID named no workflow. The run got no WorkflowInstance,
+   * its approval task was adopted by the default lifecycle, and approving it never finished the run.
+   */
+  @Test
+  @Order(224)
+  void test_longWorkflowNameKeepsItsApprovalTaskAndCompletesItsRun() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ensureWorkflowEventConsumerIsActive(client);
+    Tag tag = createClassificationWithTags(client, "longEvent", 1).getFirst();
+    String workflowName = "ownerAssignedTagApproval_" + UUID.randomUUID();
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(
+                    EVENT_TAG_WORKFLOW.formatted(
+                        workflowName,
+                        filterAdmittingOnly(tag),
+                        TAG_APPROVAL_NODES_AND_EDGES.formatted("ApproveTag")),
+                    CreateWorkflowDefinition.class)));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    ensureWorkflowEventConsumerIsActive(client);
+    assertFlowableGeneratedId(workflowName);
+    assertFlowableGeneratedId(TriggerFactory.getTriggerWorkflowId(workflowName));
+
+    client
+        .tags()
+        .patch(
+            tag.getId(),
+            MAPPER.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"updated to start the long-named workflow\"}]"));
+    UUID workflowId = UUID.fromString(created.get("id").asText());
+    Task task = awaitOpenApprovalTaskOfWorkflow(client, tag.getFullyQualifiedName(), workflowId);
+    String taskId = task.getId().toString();
+    UUID workflowInstanceId = client.tasks().get(taskId).getWorkflowInstanceId();
+    assertNotNull(workflowInstanceId, "The approval task must carry the run it belongs to");
+    assertDoesNotThrow(
+        () -> workflowInstance(client, workflowName, workflowInstanceId.toString()),
+        "The run must be recorded as a WorkflowInstance of " + workflowName);
+
+    SdkClients.user1Client()
+        .tasks()
+        .resolve(taskId, new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("long-named workflow run to finish once its approval task is approved")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              assertEquals(
+                  WorkflowInstance.WorkflowStatus.FINISHED.value(),
+                  workflowInstanceStatus(client, workflowName, workflowInstanceId.toString()));
+              assertEquals(TaskEntityStatus.Approved, client.tasks().get(taskId).getStatus());
+            });
+  }
+
+  /**
+   * #36148 on the periodic trigger path: the per-entity-type trigger process {@code
+   * <name>Trigger-tag} gets a bare generated ID, so the run its approval task points at was never
+   * recorded as a WorkflowInstance, and the task carried no workflow UUID.
+   */
+  @Test
+  void test_longPeriodicWorkflowNameRecordsItsRunAndBindsItsTask() throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Tag tag = createClassificationWithTags(client, "longPeriodic", 1).getFirst();
+    String workflowName = "longNamedPeriodicTagApproval_" + UUID.randomUUID();
+    createPeriodicTagWorkflow(
+        client,
+        workflowName,
+        tag.getClassification().getId(),
+        TAG_APPROVAL_NODES_AND_EDGES.formatted("ApproveTag"));
+    assertFlowableGeneratedId(
+        PeriodicBatchEntityTrigger.getTriggerProcessKey(
+            TriggerFactory.getTriggerWorkflowId(workflowName), Entity.TAG));
+
+    client.workflowDefinitions().trigger(workflowName);
+    UUID workflowId = client.workflowDefinitions().getByName(workflowName).getId();
+    Task task = awaitOpenApprovalTaskOfWorkflow(client, tag.getFullyQualifiedName(), workflowId);
+
+    assertEquals(
+        onlyWorkflowInstance(client, workflowName).path("id").asText(),
+        String.valueOf(client.tasks().get(task.getId().toString()).getWorkflowInstanceId()));
   }
 
   @RetryingTest(2)
@@ -9507,14 +9607,35 @@ public class WorkflowDefinitionResourceIT {
     return openApprovalTaskAssignedTo(client, entityFqn, assigneeId);
   }
 
+  // A task adopted by the default lifecycle carries that lifecycle's definition UUID, so selecting
+  // by the workflow under test proves the task is still bound to it (#36148).
+  private Task awaitOpenApprovalTaskOfWorkflow(
+      OpenMetadataClient client, String entityFqn, UUID workflowDefinitionId) {
+    return await("open approval task of workflow " + workflowDefinitionId + " on " + entityFqn)
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                openApprovalTasksOfWorkflow(client, entityFqn, workflowDefinitionId)
+                    .findFirst()
+                    .orElse(null),
+            Objects::nonNull);
+  }
+
   private Task openApprovalTaskOfWorkflow(
       OpenMetadataClient client, String entityFqn, UUID assigneeId, UUID workflowDefinitionId)
       throws Exception {
-    return listOpenApprovalTasks(client, entityFqn).getData().stream()
-        .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()))
+    return openApprovalTasksOfWorkflow(client, entityFqn, workflowDefinitionId)
         .filter(task -> assigneeIds(task).contains(assigneeId))
         .findFirst()
         .orElse(null);
+  }
+
+  private Stream<Task> openApprovalTasksOfWorkflow(
+      OpenMetadataClient client, String entityFqn, UUID workflowDefinitionId) throws Exception {
+    return listOpenApprovalTasks(client, entityFqn).getData().stream()
+        .filter(task -> workflowDefinitionId.equals(task.getWorkflowDefinitionId()));
   }
 
   private Task openApprovalTaskAssignedTo(

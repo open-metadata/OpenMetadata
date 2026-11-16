@@ -15,7 +15,6 @@ import static org.openmetadata.service.governance.workflows.elements.TriggerFact
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -34,6 +33,7 @@ import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.ibatis.exceptions.PersistenceException;
 import org.flowable.bpmn.converter.BpmnXMLConverter;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.FlowElement;
@@ -525,8 +525,7 @@ public class WorkflowHandler {
           // Get the process definition ID and extract the key
           String processDefId = timerJob.getProcessDefinitionId();
           if (processDefId != null) {
-            // Process definition ID format: key:version:id
-            String jobKey = processDefId.split(":")[0];
+            String jobKey = deployedProcessDefinitionKey(repositoryService, processDefId);
             if (jobKey.startsWith(triggerWorkflowKey + "-")) {
               LOG.info(
                   "Cancelling old entity-specific timer job {} for workflow {}",
@@ -1918,8 +1917,43 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * The key of a deployed process definition. Flowable embeds the key in the ID only while
+   * "key:version:generatedId" fits its 64-character ID column, so the key is read from the deployed
+   * definition (ADR:2026-11-16-a-process-definition-key-is-read-from-its-deployed-definition).
+   *
+   * <p>When the engine is not running or the definition cannot be read, it falls back to the part
+   * of the ID before the first ':', which is the whole bare generated ID when the ID embeds no key.
+   * It returns null for a null ID and never throws: most callers use it while logging an error.
+   */
   public static String getProcessDefinitionKeyFromId(String processDefinitionId) {
-    return Arrays.stream(processDefinitionId.split(":")).toList().get(0);
+    ProcessEngine engine = runningProcessEngine();
+    return engine != null && processDefinitionId != null
+        ? deployedProcessDefinitionKey(engine.getRepositoryService(), processDefinitionId)
+        : keyEmbeddedIn(processDefinitionId);
+  }
+
+  static String deployedProcessDefinitionKey(
+      RepositoryService repositoryService, String processDefinitionId) {
+    try {
+      return repositoryService.getProcessDefinition(processDefinitionId).getKey();
+    } catch (FlowableException | PersistenceException e) {
+      // Callers log from catch blocks; a lookup failure must not replace the error they report.
+      // Outside a Flowable command a database error escapes as MyBatis' own exception, unwrapped.
+      LOG.debug(
+          "Process definition '{}' could not be read: {}", processDefinitionId, e.getMessage());
+      return keyEmbeddedIn(processDefinitionId);
+    }
+  }
+
+  /** Null before the engine starts, and between closing one engine and starting the next. */
+  private static ProcessEngine runningProcessEngine() {
+    WorkflowHandler handler = initialized ? instance : null;
+    return handler == null ? null : handler.processEngine;
+  }
+
+  private static String keyEmbeddedIn(String processDefinitionId) {
+    return processDefinitionId == null ? null : processDefinitionId.split(":")[0];
   }
 
   /**
