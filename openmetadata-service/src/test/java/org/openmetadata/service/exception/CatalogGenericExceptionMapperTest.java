@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.sdk.PipelineServiceClientInterface.DEPLOYMENT_ERROR;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import io.dropwizard.jersey.errors.ErrorMessage;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.openmetadata.schema.api.rdf.AgentSparqlError;
 import org.openmetadata.schema.api.rdf.AgentSparqlErrorCode;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.OntologyProfileViolation;
 import org.openmetadata.schema.type.OntologyProfileViolationCode;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
@@ -99,6 +101,24 @@ class CatalogGenericExceptionMapperTest {
         response.getEntity() instanceof ErrorMessage, "Neighboring endpoints keep ErrorMessage");
   }
 
+  /** Clients branch on the error type of a typed rejection, not on its wording. */
+  @Test
+  void aTypedRejectionKeepsItsErrorTypeInTheBody() {
+    Response response =
+        new CatalogGenericExceptionMapper()
+            .toResponse(
+                new SettingsManagedByEnvironmentException(
+                    SettingsType.EMAIL_CONFIGURATION,
+                    "EMAIL_CONFIG_SOURCE",
+                    List.of("/senderMail")));
+
+    JsonNode body = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(409, response.getStatus());
+    assertEquals(409, body.path("code").asInt());
+    assertEquals("SETTINGS_MANAGED_BY_ENVIRONMENT", body.path("errorType").asText());
+    assertTrue(body.path("message").asText().contains("EMAIL_CONFIG_SOURCE=ENV"));
+  }
+
   @Test
   void aFailedRunIsSentWithTheStatusItWasRaisedWith() {
     // Airflow unreachable, Airflow answering 500, and the cluster rejecting the job.
@@ -124,9 +144,9 @@ class CatalogGenericExceptionMapperTest {
     Response response = new CatalogGenericExceptionMapper().toResponse(exception);
 
     assertEquals(status, response.getStatus());
-    ErrorMessage error = (ErrorMessage) response.getEntity();
-    assertEquals(status, error.getCode());
-    assertEquals(exception.getMessage(), error.getMessage());
+    JsonNode error = JsonUtils.valueToTree(response.getEntity());
+    assertEquals(status, error.path("code").asInt());
+    assertEquals(exception.getMessage(), error.path("message").asText());
   }
 
   private static CatalogGenericExceptionMapper mapperForAgentPath() {

@@ -77,6 +77,13 @@ def test_service_spec_uses_the_base_connection():
     assert issubclass(TableauPipelineConnection, BaseConnection)
 
 
+def test_get_pipelines_is_the_connection_gate():
+    """A failed gate step skips the steps after it, so a wrong token signs in once."""
+    steps = json.loads(TEST_CONNECTION_DEFINITION.read_text())["steps"]
+    assert steps[0]["name"] == "GetPipelines"
+    assert steps[0]["category"] == "ConnectionGate"
+
+
 def test_every_definition_step_has_a_check():
     """A step without a check is silently Skipped, so the JSON definition and the
     provider must name the same steps."""

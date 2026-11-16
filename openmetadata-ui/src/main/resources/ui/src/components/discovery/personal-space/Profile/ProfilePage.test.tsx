@@ -12,7 +12,7 @@
  */
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
   tab: null,
@@ -154,10 +154,19 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     <div data-testid="empty-placeholder">{title}</div>
   ),
   FeaturedIcon: () => <span data-testid="featured-icon" />,
-  Breadcrumbs: ({ items }: { items?: { id: string; label: ReactNode }[] }) => (
+  Breadcrumbs: ({
+    items,
+  }: {
+    items?: { id: string; label: ReactNode; isDisabled?: boolean }[];
+  }) => (
     <nav>
       {items?.map((i) => (
-        <span key={i.id}>{i.label}</span>
+        <span
+          data-disabled={String(Boolean(i.isDisabled))}
+          data-testid={`crumb-${i.id}`}
+          key={i.id}>
+          {i.label}
+        </span>
       ))}
     </nav>
   ),
@@ -259,6 +268,47 @@ describe('ProfilePage', () => {
 
     expect(mockGetLoggedInUser).toHaveBeenCalledTimes(1);
     expect(mockGetUserByName).not.toHaveBeenCalled();
+  });
+
+  it('roots a panel breadcrumb at its sidebar group, not navigable', async () => {
+    const WorkspacePanel = ({
+      onHeaderChange,
+    }: {
+      onHeaderChange: (override: object) => void;
+    }) => {
+      useEffect(() => {
+        onHeaderChange({
+          breadcrumbs: [
+            { id: 'settings', label: 'label.setting-plural' },
+            { id: 'my-connections', label: 'label.my-connection-plural' },
+          ],
+        });
+      }, [onHeaderChange]);
+
+      return <div data-testid="content-my-connections" />;
+    };
+    mockGetContributions.mockReturnValue([
+      {
+        ...myConnectionsContribution,
+        group: 'workspace',
+        component: WorkspacePanel,
+      },
+    ]);
+    mockHashState = { tab: 'my-connections', subPath: '', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('crumb-root')).toHaveTextContent(
+      'label.workspace'
+    );
+    expect(screen.getByTestId('crumb-root')).toHaveAttribute(
+      'data-disabled',
+      'true'
+    );
+    expect(screen.queryByTestId('crumb-settings')).not.toBeInTheDocument();
+    expect(screen.getByTestId('crumb-my-connections')).toBeInTheDocument();
   });
 
   it('passes the username and logged-in flag to contributed tabs', async () => {

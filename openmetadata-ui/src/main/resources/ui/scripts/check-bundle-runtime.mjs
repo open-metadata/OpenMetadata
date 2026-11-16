@@ -27,7 +27,15 @@ import { fileURLToPath } from 'node:url';
 
 // Exports that are `undefined` in a healthy build, per chunk (name without
 // hash).
-const ALLOWED_UNDEFINED_EXPORTS = {};
+// - app-shell: lodash-es `sortBy` and `mergeWith`. CommonJS packages
+//   `require()` them (json-schema-merge-allof and json-schema-compare
+//   `lodash/sortBy`; lodash-es `defaultsDeep`, which json-schema-merge-allof
+//   requires, `mergeWith`), so Rolldown wraps them in a lazy initialiser. Every
+//   chunk that uses one (AdvancedSearchClassBase, TableProfilerUtils, ...)
+//   imports and runs that initialiser first; a route that uses neither sees
+//   them undefined. Until the product tour was removed, its CommonJS react-tour
+//   required all of lodash from the shell at startup, which initialised them.
+const ALLOWED_UNDEFINED_EXPORTS = { 'app-shell': 2 };
 const CONCURRENCY = 8;
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
