@@ -238,6 +238,9 @@ export const WIDGET_COMPONENTS = {
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: () => (
     <SynonymBadge synonym="synonym" />
   ),
+  [GlossaryTermDetailPageWidgetKeys.PROPERTIES]: () => (
+    <SynonymBadge synonym="property" />
+  ),
   [DetailPageWidgetKeys.DOMAIN_TYPE]: () =>
     domainClassBase.getDummyData().domainType,
   [DetailPageWidgetKeys.DOMAIN]: () => (

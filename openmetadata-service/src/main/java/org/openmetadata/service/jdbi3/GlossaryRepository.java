@@ -363,6 +363,16 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
 
       if (processRecord) {
+        try {
+          repository.keepStoredPropertiesForImport(glossaryTerm);
+        } catch (Exception ex) {
+          importFailure(printer, ex.getMessage(), csvRecord);
+          processRecord = false;
+          return;
+        }
+      }
+
+      if (processRecord) {
         createEntity(printer, csvRecord, glossaryTerm, GLOSSARY_TERM);
       }
     }

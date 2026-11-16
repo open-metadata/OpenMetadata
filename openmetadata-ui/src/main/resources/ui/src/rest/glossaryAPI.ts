@@ -20,6 +20,7 @@ import { SearchIndex } from '../enums/search.enum';
 import { AddGlossaryToAssetsRequest } from '../generated/api/addGlossaryToAssetsRequest';
 import { CreateGlossary } from '../generated/api/data/createGlossary';
 import { CreateGlossaryTerm } from '../generated/api/data/createGlossaryTerm';
+import { GlossaryTermPropertyImpact } from '../generated/api/data/glossaryTermPropertyImpact';
 import { GlossaryTermRelationGraph } from '../generated/api/data/glossaryTermRelationGraph';
 import { OntologyDataGraph } from '../generated/api/data/ontologyDataGraph';
 import { OntologySummary } from '../generated/api/data/ontologySummary';
@@ -187,6 +188,19 @@ export const patchGlossaryTerm = async (id: string, patch: Operation[]) => {
     Operation[],
     AxiosResponse<GlossaryTerm>
   >(`/glossaryTerms/${id}`, patch);
+
+  return response.data;
+};
+
+export const getGlossaryTermPropertyImpact = async (
+  termId: string,
+  propertyName: string
+) => {
+  const response = await APIClient.get<GlossaryTermPropertyImpact>(
+    `/glossaryTerms/${termId}/propertyDefinitions/${encodeURIComponent(
+      propertyName
+    )}/impact`
+  );
 
   return response.data;
 };
@@ -442,6 +456,7 @@ export const getFirstLevelGlossaryTermsPaginated = async (
         TabSpecificField.CHILDREN_COUNT,
         TabSpecificField.OWNERS,
         TabSpecificField.REVIEWERS,
+        TabSpecificField.EFFECTIVE_PROPERTIES,
       ],
       limit: pageSize,
       after: after,
@@ -471,6 +486,7 @@ export const getGlossaryTermChildrenLazy = async (
         TabSpecificField.CHILDREN_COUNT,
         TabSpecificField.OWNERS,
         TabSpecificField.REVIEWERS,
+        TabSpecificField.EFFECTIVE_PROPERTIES,
       ],
       limit,
       after,

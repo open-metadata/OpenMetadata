@@ -64,6 +64,23 @@
         "$ref": "../../type/conceptMapping.json"
       }
     },
+    "propertyDefinitions": {
+      "description": "Typed properties this term declares. Inheritable ones apply to every term below it.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/glossaryTermProperty.json"
+      },
+      "maxItems": 50,
+      "default": null
+    },
+    "propertyValues": {
+      "description": "Values this term sets, keyed by property name. An empty list means the term deliberately has no value, and the terms below it inherit that absence.",
+      "type": "object",
+      "existingJavaType": "java.util.Map<java.lang.String, java.util.List<java.lang.String>>",
+      "additionalProperties": {
+        "$ref": "../../type/glossaryTermProperty.json#/definitions/glossaryTermPropertyValues"
+      }
+    },
     "reviewers": {
       "description": "User or Team references of the reviewers for this glossary.",
       "$ref": "../../type/entityReferenceList.json"

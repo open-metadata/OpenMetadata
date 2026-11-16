@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**2008 endpoints** across 75 resource packages · 1998 carry a summary.
+**2009 endpoints** across 75 resource packages · 1999 carry a summary.
 
 ## (root)
 
@@ -1111,6 +1111,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `PUT` | `/v1/glossaryTerms/{id}/assets/add` | Bulk Add Glossary Term to Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/assets/remove` | Bulk Remove Glossary Term from Assets |
 | `PUT` | `/v1/glossaryTerms/{id}/moveAsync` | Move a glossary term to a new parent or glossary |
+| `GET` | `/v1/glossaryTerms/{id}/propertyDefinitions/{name}/impact` | Preview the effect of removing a term property |
 | `POST` | `/v1/glossaryTerms/{id}/relations` | Add a typed relation to another glossary term |
 | `DELETE` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Remove one glossary-term relationship by its stable ID |
 | `PUT` | `/v1/glossaryTerms/{id}/relations/id/{relationshipId}` | Update one glossary-term relationship by its stable ID |

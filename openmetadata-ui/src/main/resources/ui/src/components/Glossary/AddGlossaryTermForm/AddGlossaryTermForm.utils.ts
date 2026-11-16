@@ -18,6 +18,8 @@ import {
   EntityReference,
 } from '../../../generated/entity/type';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { InheritedPropertyEntry } from '../../../utils/governance/glossary/GlossaryTermProperties.types';
+import { buildCreatePropertyFields } from '../../../utils/governance/glossary/GlossaryTermProperties.utils';
 import { serializeIntakeFormExtension } from '../../../utils/IntakeFormExtensionUtils';
 import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import {
@@ -44,6 +46,8 @@ export const GLOSSARY_TERM_FORM_DEFAULTS: GlossaryTermFormValues = {
   owners: [],
   reviewers: [],
   extensionFormValues: {},
+  propertyRows: [],
+  inheritedPropertyValues: {},
 };
 
 export const getGlossaryTermFqn = (
@@ -129,6 +133,7 @@ interface BuildGlossaryTermSavePayloadParams {
   glossaryTerm?: GlossaryTerm;
   currentUserId?: string;
   customProperties?: CustomProperty[];
+  inheritedProperties?: InheritedPropertyEntry[];
 }
 
 const buildStyle = ({
@@ -149,6 +154,7 @@ export const buildGlossaryTermSavePayload = ({
   glossaryTerm,
   currentUserId,
   customProperties = [],
+  inheritedProperties = [],
 }: BuildGlossaryTermSavePayloadParams): GlossaryTermForm => {
   const {
     name,
@@ -183,5 +189,13 @@ export const buildGlossaryTermSavePayload = ({
         ),
     style: buildStyle(values),
     ...(Object.keys(extension).length > 0 ? { extension } : {}),
+    // Existing terms change properties from their own page, not from this form.
+    ...(editMode
+      ? {}
+      : buildCreatePropertyFields(
+          values.propertyRows ?? [],
+          values.inheritedPropertyValues,
+          inheritedProperties
+        )),
   };
 };

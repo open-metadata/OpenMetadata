@@ -382,8 +382,17 @@ export interface CreateGlossaryTermRequest {
     /**
      * Fully qualified name of  the parent glossary term.
      */
-    parent?:   string;
-    provider?: ProviderType;
+    parent?: string;
+    /**
+     * Typed properties this term declares. Inheritable ones apply to every term below it.
+     */
+    propertyDefinitions?: GlossaryTermProperty[];
+    /**
+     * Values this term sets, keyed by property name. An empty list means the term deliberately
+     * has no value, and the terms below it inherit that absence.
+     */
+    propertyValues?: { [key: string]: string[] };
+    provider?:       ProviderType;
     /**
      * Link to a reference from an external glossary.
      */
@@ -441,6 +450,63 @@ export enum ConceptMappingType {
     NarrowMatch = "NARROW_MATCH",
     RelatedMatch = "RELATED_MATCH",
     SameAs = "SAME_AS",
+}
+
+/**
+ * A typed property that a glossary term declares for itself and, when inheritable, for
+ * every term below it. See
+ * ADR:2026-11-12-glossary-terms-declare-their-own-properties-and-values.
+ */
+export interface GlossaryTermProperty {
+    /**
+     * Datatype of the property's values. It never changes after the property is declared.
+     */
+    datatype: GlossaryTermPropertyDatatype;
+    /**
+     * What the property captures.
+     */
+    description?: string;
+    /**
+     * Label shown for the property. It can change at any time.
+     */
+    displayName?: string;
+    /**
+     * Allowed values of an `enum` property. Required for `enum` and rejected otherwise.
+     */
+    enumValues?: string[];
+    /**
+     * When true every term below the declaring term gets the property and can inherit its value.
+     */
+    inheritable?: boolean;
+    /**
+     * When true the property holds up to 100 values. Allowed for `string` and `enum` only.
+     */
+    multiValued?: boolean;
+    /**
+     * Name of the property. Values are keyed by it, so it never changes.
+     */
+    name: string;
+    /**
+     * Display unit for the values. Nothing converts between units.
+     */
+    unit?: string;
+}
+
+/**
+ * Datatype of the property's values. It never changes after the property is declared.
+ *
+ * Datatype of a glossary term property. Values are stored as lexical strings and checked
+ * against the matching XSD datatype.
+ */
+export enum GlossaryTermPropertyDatatype {
+    Boolean = "boolean",
+    Date = "date",
+    DateTime = "dateTime",
+    Decimal = "decimal",
+    Enum = "enum",
+    Integer = "integer",
+    String = "string",
+    URL = "url",
 }
 
 export interface TermReference {

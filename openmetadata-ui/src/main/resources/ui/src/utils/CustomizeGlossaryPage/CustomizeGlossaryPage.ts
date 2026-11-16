@@ -32,6 +32,7 @@ class CustomizeGlossaryPageClassBase {
       CUSTOM_PROPERTIES: 4,
       TABS: 8,
       SYNONYMS: 2,
+      PROPERTIES: 3,
       RELATED_TERMS: 2,
       REFERENCES: 2,
       OWNER: 2,

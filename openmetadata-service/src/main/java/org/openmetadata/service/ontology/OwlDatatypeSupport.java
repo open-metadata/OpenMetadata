@@ -67,12 +67,16 @@ public final class OwlDatatypeSupport {
       return true;
     }
     final String iri = literal.getDatatypeIri().toString();
-    final var datatype = TypeMapper.getInstance().getTypeByName(iri);
     // The literal schema has no language tag, so it cannot encode language-tagged RDF literals.
     return isSupported(literal.getDatatypeIri())
         && !RDF.langString.getURI().equals(iri)
         && !RDF.PlainLiteral.getURI().equals(iri)
-        && datatype != null
-        && datatype.isValid(literal.getValue());
+        && isValidXsdLexicalForm(iri, literal.getValue());
+  }
+
+  /** Whether {@code lexicalForm} is a valid value of the XSD datatype {@code datatypeIri}. */
+  public static boolean isValidXsdLexicalForm(final String datatypeIri, final String lexicalForm) {
+    final var datatype = TypeMapper.getInstance().getTypeByName(datatypeIri);
+    return datatype != null && lexicalForm != null && datatype.isValid(lexicalForm);
   }
 }

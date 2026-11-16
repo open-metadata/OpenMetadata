@@ -73,6 +73,7 @@ export enum GlossaryTermDetailPageWidgetKeys {
   DESCRIPTION = 'KnowledgePanel.Description',
   TAGS = 'KnowledgePanel.Tags',
   SYNONYMS = 'KnowledgePanel.Synonyms',
+  PROPERTIES = 'KnowledgePanel.Properties',
   RELATED_TERMS = 'KnowledgePanel.RelatedTerms',
   REFERENCES = 'KnowledgePanel.References',
   OWNER = 'KnowledgePanel.Owner',

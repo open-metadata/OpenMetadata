@@ -303,7 +303,9 @@
       "relatedTerms",
       "references",
       "conceptMappings",
-      "mutuallyExclusive"
+      "mutuallyExclusive",
+      "propertyDefinitions",
+      "propertyValues"
     ],
     "classification": [
       "disabled",

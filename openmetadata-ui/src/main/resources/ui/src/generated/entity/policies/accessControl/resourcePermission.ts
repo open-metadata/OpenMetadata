@@ -93,6 +93,7 @@ export enum Operation {
     EditDisplayName = "EditDisplayName",
     EditDomains = "EditDomains",
     EditEntityRelationship = "EditEntityRelationship",
+    EditGlossaryTermProperties = "EditGlossaryTermProperties",
     EditGlossaryTerms = "EditGlossaryTerms",
     EditIngestionPipelineStatus = "EditIngestionPipelineStatus",
     EditKnowledgePanel = "EditKnowledgePanel",

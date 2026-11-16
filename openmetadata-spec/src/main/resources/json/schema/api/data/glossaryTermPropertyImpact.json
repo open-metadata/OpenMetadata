@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/glossaryTermPropertyImpact.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "GlossaryTermPropertyImpact",
+  "description": "How many terms below a declaring glossary term store a value for one of its properties. The UI shows it before deleting the property, turning off its inheritance or changing its allowed values.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.GlossaryTermPropertyImpact",
+  "properties": {
+    "termsWithEntries": {
+      "description": "Number of terms below the declaring term that store an entry for the property, soft-deleted terms included.",
+      "type": "integer"
+    },
+    "sample": {
+      "description": "Up to 20 of those terms.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      },
+      "maxItems": 20
+    }
+  },
+  "required": ["termsWithEntries", "sample"],
+  "additionalProperties": false
+}

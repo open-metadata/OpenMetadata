@@ -13,12 +13,17 @@
 
 import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { UseFormReturn } from 'react-hook-form';
+import { CreateGlossaryTerm } from '../../../generated/api/data/createGlossaryTerm';
 import {
   GlossaryTerm,
   TagLabel,
   TermReference,
 } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/type/entityLineage';
+import {
+  GlossaryTermPropertyRow,
+  InheritedPropertyEntry,
+} from '../../../utils/governance/glossary/GlossaryTermProperties.types';
 import { GlossaryPickerValue } from '../../common/GlossaryTermPicker/GlossaryTagSuggestionUtils';
 import { EntityReferenceOption } from '../AddGlossary/AddGlossary.interface';
 import { GlossaryTermIntakeFormState } from '../hooks/useGlossaryTermIntakeForm';
@@ -39,12 +44,19 @@ export interface GlossaryTermFormValues {
   reviewers: EntityReferenceOption[];
   // Intake-form custom properties, keyed by `getExtensionFormKey`.
   extensionFormValues?: Record<string, unknown>;
+  // Properties the new term declares; only collected on create.
+  propertyRows: GlossaryTermPropertyRow[];
+  // Values this term overrides on inherited properties, by property name; only collected on create.
+  inheritedPropertyValues: Record<string, string>;
 }
 
 export interface AddGlossaryTermFormProps {
   editMode: boolean;
   form: UseFormReturn<GlossaryTermFormValues>;
   glossaryTerm?: GlossaryTerm;
+  // What a new term inherits from its parent, shown above the properties it declares.
+  inheritedProperties?: InheritedPropertyEntry[];
+  parentName?: string;
   intake: GlossaryTermIntakeFormState;
   onSubmit: (values: GlossaryTermFormValues) => Promise<void> | void;
 }
@@ -62,4 +74,6 @@ export interface GlossaryTermForm {
   tags: TagLabel[];
   owners: EntityReference[];
   style: GlossaryTerm['style'];
+  propertyDefinitions?: CreateGlossaryTerm['propertyDefinitions'];
+  propertyValues?: CreateGlossaryTerm['propertyValues'];
 }

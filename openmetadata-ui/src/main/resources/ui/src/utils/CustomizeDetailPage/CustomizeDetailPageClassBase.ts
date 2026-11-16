@@ -61,6 +61,7 @@ const GLOSSARY_WIDGET_IMAGE_MAP: Record<string, string> = {
   [GlossaryTermDetailPageWidgetKeys.REFERENCES]: ReferencesImg,
   [GlossaryTermDetailPageWidgetKeys.RELATED_TERMS]: RelatedTermsImg,
   [GlossaryTermDetailPageWidgetKeys.REVIEWER]: ReviewersImg,
+  [GlossaryTermDetailPageWidgetKeys.PROPERTIES]: CustomPropertyImg,
   [GlossaryTermDetailPageWidgetKeys.SYNONYMS]: SynonymsImg,
   [GlossaryTermDetailPageWidgetKeys.TERMS_TABLE]: TermsImg,
   [GlossaryTermDetailPageWidgetKeys.TAGS]: TagsImg,

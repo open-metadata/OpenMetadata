@@ -43,6 +43,7 @@ import static org.openmetadata.service.util.EntityUtil.termReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.Json;
 import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
@@ -58,6 +59,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -79,6 +81,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.data.ConceptMapping;
+import org.openmetadata.schema.api.data.GlossaryTermPropertyImpact;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraphEdge;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraphNode;
@@ -101,6 +104,7 @@ import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.GlossaryTermProperty;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ProviderType;
@@ -122,6 +126,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.glossary.GlossaryTermPropertyGuard;
 import org.openmetadata.service.governance.approval.ApprovalGate;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.OntologyRelationshipRow;
@@ -158,10 +163,11 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String ES_MISSING_DATA =
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
+  private static final String PROPERTY_FIELDS = "propertyDefinitions,propertyValues";
   private static final String UPDATE_FIELDS =
-      "conceptMappings,references,relatedTerms,synonyms,style";
+      "conceptMappings,references,relatedTerms,synonyms,style," + PROPERTY_FIELDS;
   private static final String PATCH_FIELDS =
-      "conceptMappings,references,relatedTerms,synonyms,style";
+      "conceptMappings,references,relatedTerms,synonyms,style," + PROPERTY_FIELDS;
   private static final String PARENT_OF_RELATION_TYPE = "parentOf";
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
@@ -173,6 +179,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private final TermRelationMetadataCodec termRelationMetadataCodec =
       new TermRelationMetadataCodec();
   private final RelationshipTypeResolver relationshipTypeResolver;
+  private final GlossaryTermPropertyGuard propertyGuard;
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public GlossaryTermRepository() {
@@ -191,6 +198,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         registerEntity);
     relationshipTypeResolver =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    propertyGuard = new GlossaryTermPropertyGuard(Entity.getCollectionDAO().glossaryTermDAO());
     supportsSearch = true;
     renameAllowed = true;
     approvalTaskReviewsEntityStatus = true;
@@ -198,6 +206,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     fieldFetchers.put("relatedTerms", this::fetchAndSetRelatedTerms);
     fieldFetchers.put("usageCount", this::fetchAndSetUsageCount);
     fieldFetchers.put("childrenCount", this::fetchAndSetChildrenCount);
+    fieldFetchers.put("effectiveProperties", this::fetchAndSetEffectiveProperties);
 
     // Initialize inherited field search
     if (searchRepository != null) {
@@ -644,6 +653,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         fields.contains("usageCount") ? getUsageCount(entity) : entity.getUsageCount());
     entity.withChildrenCount(
         fields.contains("childrenCount") ? getChildrenCount(entity) : entity.getChildrenCount());
+    fetchAndSetEffectiveProperties(List.of(entity), fields);
   }
 
   @Override
@@ -758,6 +768,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setRelatedTerms(fields.contains("relatedTerms") ? entity.getRelatedTerms() : null);
     entity.withUsageCount(fields.contains("usageCount") ? entity.getUsageCount() : null);
     entity.withChildrenCount(fields.contains("childrenCount") ? entity.getChildrenCount() : null);
+    entity.setPropertyDefinitions(
+        fields.contains("propertyDefinitions") ? entity.getPropertyDefinitions() : null);
+    entity.setPropertyValues(fields.contains("propertyValues") ? entity.getPropertyValues() : null);
+    entity.setEffectiveProperties(
+        fields.contains("effectiveProperties") ? entity.getEffectiveProperties() : null);
   }
 
   @Override
@@ -932,6 +947,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     entity.setGlossary(glossary.getEntityReference());
     requireParentInGlossary(entity, parentTerm, update);
     validateHierarchy(entity);
+    propertyGuard.checkOnPrepare(entity, update);
     // Validate related terms
     populateTermRelations(
         entity.getId(), listOrEmpty(entity.getRelatedTerms()), entity.getUpdatedBy());
@@ -1152,6 +1168,90 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return List.of("glossary", "parent", "reviewers", "relatedTerms");
   }
 
+  private static final Set<String> PROPERTY_AFFECTING_FIELDS =
+      Set.of("propertyDefinitions", "propertyValues", "parent", "glossary");
+
+  /** Runs the property rules when the patch touches them, so an invalid edit fails at once. */
+  @Override
+  protected void validatePatch(GlossaryTerm original, GlossaryTerm updated, JsonPatch patch) {
+    if (!Collections.disjoint(JsonUtils.extractPatchedFields(patch), PROPERTY_AFFECTING_FIELDS)) {
+      propertyGuard.checkEdit(original, JsonUtils.deepCopy(updated, GlossaryTerm.class));
+    }
+  }
+
+  /** The stored row has no computed field and no empty property container. */
+  @Override
+  protected ObjectNode storageJsonNode(GlossaryTerm entity) {
+    ObjectNode node = super.storageJsonNode(entity);
+    node.remove("effectiveProperties");
+    removeIfEmpty(node, "propertyDefinitions");
+    removeIfEmpty(node, "propertyValues");
+    return node;
+  }
+
+  private static void removeIfEmpty(ObjectNode node, String field) {
+    if (node.has(field) && node.get(field).isEmpty()) {
+      node.remove(field);
+    }
+  }
+
+  @Override
+  protected GlossaryTerm prepareForVersionHistory(GlossaryTerm entity) {
+    boolean carriesEmptyOrComputed =
+        entity.getEffectiveProperties() != null
+            || (entity.getPropertyDefinitions() != null
+                && entity.getPropertyDefinitions().isEmpty())
+            || (entity.getPropertyValues() != null && entity.getPropertyValues().isEmpty());
+    if (!carriesEmptyOrComputed) {
+      return entity;
+    }
+    GlossaryTerm copy = JsonUtils.deepCopy(entity, GlossaryTerm.class);
+    copy.setEffectiveProperties(null);
+    copy.setPropertyDefinitions(
+        nullOrEmpty(copy.getPropertyDefinitions()) ? null : copy.getPropertyDefinitions());
+    copy.setPropertyValues(nullOrEmpty(copy.getPropertyValues()) ? null : copy.getPropertyValues());
+    return copy;
+  }
+
+  /** A CSV row has no property columns, so an existing term keeps what it stores. */
+  public void keepStoredPropertiesForImport(GlossaryTerm row) {
+    GlossaryTerm stored = storedTermForImport(row);
+    if (stored != null) {
+      row.setPropertyDefinitions(stored.getPropertyDefinitions());
+      row.setPropertyValues(stored.getPropertyValues());
+      if (!Objects.equals(parentFqn(stored), parentFqn(row))) {
+        propertyGuard.checkMove(stored, stored.getFullyQualifiedName(), row.getParent());
+      }
+    }
+  }
+
+  private GlossaryTerm storedTermForImport(GlossaryTerm row) {
+    List<GlossaryTerm> byFqn =
+        daoCollection
+            .glossaryTermDAO()
+            .findEntityByNames(List.of(row.getFullyQualifiedName()), Include.ALL);
+    if (!byFqn.isEmpty()) {
+      return byFqn.getFirst();
+    }
+    String json =
+        daoCollection
+            .glossaryTermDAO()
+            .getGlossaryTermByNameAndGlossaryIgnoreCase(
+                row.getGlossary().getFullyQualifiedName(), row.getName());
+    return nullOrEmpty(json) ? null : JsonUtils.readValue(json, GlossaryTerm.class);
+  }
+
+  private static String parentFqn(GlossaryTerm term) {
+    return term.getParent() != null
+        ? term.getParent().getFullyQualifiedName()
+        : FullyQualifiedName.getParentFQN(term.getFullyQualifiedName());
+  }
+
+  public GlossaryTermPropertyImpact getPropertyImpact(UUID termId, String propertyName) {
+    GlossaryTerm term = Entity.getEntity(GLOSSARY_TERM, termId, "propertyDefinitions", Include.ALL);
+    return propertyGuard.impact(term, propertyName);
+  }
+
   @Override
   public Set<String> getRelationsReplacedByPut() {
     return withField(super.getRelationsReplacedByPut(), Entity.FIELD_RELATED_TERMS);
@@ -1162,6 +1262,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   public Set<String> getFieldsKeptByPut() {
     Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
     kept.add("mutuallyExclusive");
+    kept.addAll(List.of("propertyDefinitions", "propertyValues"));
     return Set.copyOf(kept);
   }
 
@@ -2386,6 +2487,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
+  private static void normalizeEmptyProperties(GlossaryTerm term) {
+    if (nullOrEmpty(term.getPropertyDefinitions())) {
+      term.setPropertyDefinitions(null);
+    }
+    if (nullOrEmpty(term.getPropertyValues())) {
+      term.setPropertyValues(null);
+    }
+  }
+
+  private void fetchAndSetEffectiveProperties(List<GlossaryTerm> entities, Fields fields) {
+    if (fields.contains("effectiveProperties") && !entities.isEmpty()) {
+      propertyGuard.setEffectiveProperties(entities);
+    }
+  }
+
   private void fetchAndSetChildrenCount(List<GlossaryTerm> entities, Fields fields) {
     if (!fields.contains("childrenCount") || entities.isEmpty()) {
       return;
@@ -2466,6 +2582,12 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             updateConceptMappings(original, updated);
           });
       compareAndUpdate("relatedTerms", () -> updateRelatedTerms(original, updated));
+      compareAndUpdateAny(
+          this::updateTermProperties,
+          "propertyDefinitions",
+          "propertyValues",
+          "parent",
+          "glossary");
       compareAndUpdateAny(() -> updateNameAndParent(updated), "name", "parent", "glossary");
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
@@ -2574,6 +2696,70 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       List<String> added = new ArrayList<>();
       List<String> deleted = new ArrayList<>();
       recordListChange("synonyms", origSynonyms, updatedSynonyms, added, deleted, stringMatch);
+    }
+
+    private void updateTermProperties() {
+      applyPutProtocolToProperties();
+      propertyGuard.checkEdit(original, updated);
+      updated.setEffectiveProperties(null);
+      normalizeEmptyProperties(updated);
+      recordPropertyDefinitionChanges();
+      recordPropertyValueChanges();
+      propertyGuard.purgeEntriesBelow(original, updated);
+    }
+
+    // The protocol of extension and style: a PUT that omits a field keeps the stored one, a PUT
+    // that sends one replaces it, and a bot PUT only adds to what is stored.
+    private void applyPutProtocolToProperties() {
+      if (!operation.isPut()) {
+        return;
+      }
+      List<GlossaryTermProperty> storedDefinitions = listOrEmpty(original.getPropertyDefinitions());
+      Map<String, List<String>> storedValues = valuesOrEmpty(original);
+      if (updated.getPropertyDefinitions() == null) {
+        updated.setPropertyDefinitions(new ArrayList<>(storedDefinitions));
+      } else if (updatedByBot()) {
+        updated.setPropertyDefinitions(mergeDefinitions(storedDefinitions, updated));
+      }
+      if (updated.getPropertyValues() == null) {
+        updated.setPropertyValues(new LinkedHashMap<>(storedValues));
+      } else if (updatedByBot()) {
+        Map<String, List<String>> merged = new LinkedHashMap<>(storedValues);
+        merged.putAll(updated.getPropertyValues());
+        updated.setPropertyValues(merged);
+      }
+    }
+
+    private List<GlossaryTermProperty> mergeDefinitions(
+        List<GlossaryTermProperty> stored, GlossaryTerm incoming) {
+      Map<String, GlossaryTermProperty> merged = new LinkedHashMap<>();
+      stored.forEach(definition -> merged.put(definition.getName(), definition));
+      incoming.getPropertyDefinitions().forEach(sent -> merged.put(sent.getName(), sent));
+      return new ArrayList<>(merged.values());
+    }
+
+    private void recordPropertyDefinitionChanges() {
+      recordListChange(
+          "propertyDefinitions",
+          listOrEmpty(original.getPropertyDefinitions()),
+          listOrEmpty(updated.getPropertyDefinitions()),
+          new ArrayList<>(),
+          new ArrayList<>(),
+          Objects::equals);
+    }
+
+    private void recordPropertyValueChanges() {
+      Map<String, List<String>> before = valuesOrEmpty(original);
+      Map<String, List<String>> after = valuesOrEmpty(updated);
+      Set<String> keys = new TreeSet<>(before.keySet());
+      keys.addAll(after.keySet());
+      for (String key : keys) {
+        recordChange("propertyValues." + key, before.get(key), after.get(key), true);
+      }
+    }
+
+    private Map<String, List<String>> valuesOrEmpty(GlossaryTerm term) {
+      return term.getPropertyValues() == null ? Map.of() : term.getPropertyValues();
     }
 
     private void updateReferences(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -3105,6 +3291,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     } else {
       throw new IllegalArgumentException("Invalid parent type: " + parent.getType());
     }
+    GlossaryTerm stored = Entity.getEntity(GLOSSARY_TERM, termId, PROPERTY_FIELDS, Include.ALL);
+    propertyGuard.checkMove(stored, term.getFullyQualifiedName(), parent);
   }
 
   /**
@@ -3118,7 +3306,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         Entity.getEntity(
             GLOSSARY_TERM,
             id,
-            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,entityStatus",
+            "id,name,fullyQualifiedName,parent,glossary,tags,reviewers,entityStatus,"
+                + PROPERTY_FIELDS,
             Include.ALL);
     GlossaryTerm updated = JsonUtils.deepCopy(original, GlossaryTerm.class);
     placeUnder(updated, moveRequest.getParent());

@@ -77,6 +77,15 @@ const GlossaryTermSynonyms = withSuspenseFallback(
   )
 );
 
+const GlossaryTermProperties = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../components/governance/glossary/GlossaryTermProperties/GlossaryTermProperties'
+      )
+  )
+);
+
 const RelatedTerms = withSuspenseFallback(
   lazy(
     () => import('../../components/Glossary/GlossaryTerms/tabs/RelatedTerms')
@@ -186,6 +195,10 @@ export const getGlossaryTermWidgetFromKey = (widgetConfig: WidgetConfig) => {
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.SYNONYMS)
   ) {
     return <GlossaryTermSynonyms />;
+  } else if (
+    widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.PROPERTIES)
+  ) {
+    return <GlossaryTermProperties />;
   } else if (
     widgetConfig.i.startsWith(GlossaryTermDetailPageWidgetKeys.REFERENCES)
   ) {

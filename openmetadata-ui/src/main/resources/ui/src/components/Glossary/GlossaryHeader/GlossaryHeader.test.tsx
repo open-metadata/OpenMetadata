@@ -575,6 +575,45 @@ describe('GlossaryHeader component', () => {
     });
   });
 
+  it.each([
+    [false, true],
+    [true, false],
+  ])(
+    'offers Add > Property on a term only when it is not deleted (deleted: %s)',
+    async (deleted, offered) => {
+      const originalData = mockContext.data;
+      mockContext.type = EntityType.GLOSSARY_TERM;
+      mockContext.permissions = {
+        ...DEFAULT_ENTITY_PERMISSION,
+        Create: true,
+        [Operation.EditGlossaryTermProperties]: true,
+      };
+      mockContext.data = {
+        ...originalData,
+        deleted,
+        entityStatus: EntityStatus.Approved,
+      } as GlossaryTerm;
+
+      render(
+        <GlossaryHeader
+          updateVote={mockOnUpdateVote}
+          onAddGlossaryTerm={mockOnDelete}
+          onDelete={mockOnDelete}
+        />
+      );
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('glossary-term-add-button-menu'));
+      });
+
+      expect(screen.queryByText('label.property') !== null).toBe(offered);
+
+      mockContext.data = originalData;
+      mockContext.permissions = DEFAULT_ENTITY_PERMISSION;
+      mockContext.type = EntityType.GLOSSARY;
+    }
+  );
+
   describe('AI-generated drafts', () => {
     const aiDraft = {
       id: 'term-id',

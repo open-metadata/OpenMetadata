@@ -283,6 +283,7 @@ export const glossaryTermTableColumnsWidth = () => {
     descriptionMax: 480,
     reviewers: 200,
     synonyms: 200,
+    properties: 160,
     owners: 220,
     status: 150,
   };

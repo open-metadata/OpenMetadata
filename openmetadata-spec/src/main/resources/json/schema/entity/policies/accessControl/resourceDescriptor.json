@@ -45,6 +45,7 @@
         "EditStatus",
         "EditTags",
         "EditGlossaryTerms",
+        "EditGlossaryTermProperties",
         "EditTeams",
         "EditTier",
         "EditCertification",
