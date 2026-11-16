@@ -411,6 +411,98 @@ df.write.format("snowflake").option("dbtable", f"CONTRACT_{mkt}").save()
         assert targets == [SnowflakeRef(table=expected_table)]
 
 
+class TestResolvedOptionsHonorRequestedOptions:
+    @pytest.mark.parametrize(
+        ("resolve_call", "table_expr", "expected_targets"),
+        [
+            pytest.param(
+                'getResolvedOptions(sys.argv, ["KNOWN"])',
+                'args.get("MARKET", "US")',
+                [SnowflakeRef(table="CONTRACT_US")],
+                id="unrequested_get_returns_default",
+            ),
+            pytest.param(
+                'getResolvedOptions(sys.argv, ["KNOWN"])', 'args["MARKET"]', [], id="unrequested_subscript_unresolved"
+            ),
+            pytest.param(
+                'getResolvedOptions(sys.argv, ["REGION"])',
+                'args.get("REGION", "EU")',
+                [],
+                id="requested_option_missing_from_context_unresolved",
+            ),
+            pytest.param(
+                "getResolvedOptions(sys.argv, some_unknown_name)",
+                'args.get("MARKET", "US")',
+                [],
+                id="non_literal_options_list_unresolved",
+            ),
+            pytest.param(
+                'getResolvedOptions(["prog", "--MARKET", "XX"], ["MARKET"])',
+                'args.get("MARKET", "US")',
+                [],
+                id="argv_other_than_sys_argv_unresolved",
+            ),
+            pytest.param(
+                'getResolvedOptions(sys.argv, ["env-name"])',
+                'args["env-name"]',
+                [],
+                id="dashed_option_exposed_only_under_dest_name",
+            ),
+            pytest.param(
+                'getResolvedOptions(sys.argv, ["KNOWN"])',
+                'args.get("TempDir", "TMP")',
+                [],
+                id="absent_builtin_option_unresolved",
+            ),
+        ],
+    )
+    def test_only_requested_and_builtin_options_are_exposed(
+        self, resolve_call: str, table_expr: str, expected_targets: list[SnowflakeRef]
+    ):
+        script = f"""
+import sys
+from awsglue.utils import getResolvedOptions
+
+args = {resolve_call}
+table = {table_expr}
+df.write.format("snowflake").option("dbtable", f"CONTRACT_{{table}}").save()
+"""
+        ctx = ParameterContext.from_mappings(job_args={"--KNOWN": "x", "--MARKET": "DE", "--env-name": "prod"})
+        _, targets = parse_snowflake_refs(script, context=ctx)
+
+        assert targets == expected_targets
+
+    @pytest.mark.parametrize(
+        ("argv_statement", "expected_targets"),
+        [
+            pytest.param('sys.argv.extend(["--MARKET", "US"])', [], id="extended"),
+            pytest.param('sys.argv += ["--MARKET", "US"]', [], id="augmented"),
+            pytest.param('sys.argv = ["prog", "--MARKET", "US"]', [], id="rebound"),
+            pytest.param('sys.argv[1:] = ["--MARKET", "US"]', [], id="slice_assigned"),
+            pytest.param(
+                'has_market = "--MARKET" in sys.argv',
+                [SnowflakeRef(table="CONTRACT_DE")],
+                id="read_only_still_resolves",
+            ),
+        ],
+    )
+    def test_script_that_changes_sys_argv_leaves_options_unresolved(
+        self, argv_statement: str, expected_targets: list[SnowflakeRef]
+    ):
+        script = f"""
+import sys
+from awsglue.utils import getResolvedOptions
+
+{argv_statement}
+args = getResolvedOptions(sys.argv, ["MARKET"])
+df.write.format("snowflake").option("dbtable", f"CONTRACT_{{args['MARKET']}}").save()
+"""
+        ctx = ParameterContext.from_mappings(job_args={"--MARKET": "DE"})
+        _, targets = parse_snowflake_refs(script, context=ctx)
+
+        assert targets == expected_targets
+
+
 class TestStringExpressionsDictsAndLoops:
     def test_fstring_with_qualified_name_and_string_methods(self):
         script = """
@@ -782,6 +874,109 @@ df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema",
         assert any("AccessDeniedException" in msg or "workflow runs" in msg.lower() for msg in debug_msgs)
 
 
+class TestNonOverridableArgumentsPrecedence:
+    @pytest.mark.parametrize(
+        ("workflow_nodes", "workflow_runs", "job_runs_call"),
+        [
+            pytest.param(
+                [],
+                [
+                    {
+                        "WorkflowRunId": "wr_1",
+                        "Graph": {
+                            "Nodes": [
+                                {
+                                    "Type": "JOB",
+                                    "Name": "market_job",
+                                    "JobDetails": {"JobRuns": [{"Id": "jr_1", "Arguments": {"--MARKET": "FR"}}]},
+                                }
+                            ]
+                        },
+                    }
+                ],
+                {"return_value": {"JobRuns": []}},
+                id="job_run_linked_to_workflow_run",
+            ),
+            pytest.param(
+                [
+                    {
+                        "Type": "TRIGGER",
+                        "Name": "start_trigger",
+                        "TriggerDetails": {
+                            "Trigger": {
+                                "Name": "start_trigger",
+                                "Actions": [{"JobName": "market_job", "Arguments": {"--MARKET": "ES"}}],
+                            }
+                        },
+                    }
+                ],
+                [{"WorkflowRunId": "wr_1", "WorkflowRunProperties": {}}],
+                {"return_value": {"JobRuns": []}},
+                id="workflow_run_without_job_run_uses_trigger_args",
+            ),
+            pytest.param(
+                [],
+                [],
+                {"return_value": {"JobRuns": [{"Id": "jr_1", "Arguments": {"--MARKET": "FR"}}]}},
+                id="job_run_not_linked_to_workflow_run",
+            ),
+            pytest.param([], [], {"return_value": {"JobRuns": []}}, id="no_runs_fallback"),
+            pytest.param(
+                [],
+                [],
+                {
+                    "side_effect": ClientError(
+                        {"Error": {"Code": "AccessDeniedException", "Message": "Access denied"}}, "GetJobRuns"
+                    )
+                },
+                id="job_runs_denied_fallback",
+            ),
+        ],
+    )
+    def test_non_overridable_arguments_win_in_every_context_path(
+        self,
+        glue_source: Any,
+        workflow_nodes: list[dict[str, Any]],
+        workflow_runs: list[dict[str, Any]],
+        job_runs_call: dict[str, Any],
+    ):
+        script = """
+import sys
+from awsglue.utils import getResolvedOptions
+
+args = getResolvedOptions(sys.argv, ["MARKET"])
+df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema", "CURATED").option(
+    "dbtable", f"CONTRACT_{args['MARKET']}"
+).save()
+"""
+        table_refs = {f"CONTRACT_{m}": _make_table_ref(f"CONTRACT_{m}") for m in ("DE", "ES", "FR", "IT")}
+        workflow_details = {
+            "Name": "market_workflow",
+            "DefaultRunProperties": {},
+            "Graph": {
+                "Nodes": [*workflow_nodes, {"Type": "JOB", "Name": "market_job", "UniqueId": "j1"}],
+                "Edges": [],
+            },
+        }
+        glue_source.job_name_list = {"market_job"}
+        glue_source.glue.get_job.return_value = {
+            "Job": {
+                "Command": {"ScriptLocation": "s3://glue-scripts/market_job.py"},
+                "DefaultArguments": {"--MARKET": "DE"},
+                "NonOverridableArguments": {"--MARKET": "IT"},
+            }
+        }
+        glue_source.glue.get_workflow_runs.return_value = {"Runs": workflow_runs}
+        glue_source.glue.get_job_runs.configure_mock(**job_runs_call)
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(script)
+
+        with _wire_table_catalog(glue_source, table_refs):
+            results = list(glue_source.yield_pipeline_lineage_details(workflow_details))
+
+        id_to_name = {model_str(ref.id): name for name, ref in table_refs.items()}
+        assert [id_to_name[model_str(r.right.edge.toEntity.id)] for r in results] == ["CONTRACT_IT"]
+
+
 class TestSafetyAndBoundedResources:
     def test_partial_unknown_in_templates_emits_zero_refs(self):
         script = """
@@ -910,7 +1105,7 @@ for part in args["markets_csv"].split(",", 1):
 for word in args["spaced"].split():
     df.write.format("snowflake").option("dbtable", f"WORD_{word}").save()
 """
-        ctx = ParameterContext.from_mappings(job_args={"--markets-csv": "ES,IT,PT", "--spaced": "NORTH SOUTH"})
+        ctx = ParameterContext.from_mappings(job_args={"--markets_csv": "ES,IT,PT", "--spaced": "NORTH SOUTH"})
         slices = parse_glue_script_slices(script, context=ctx)
         combined = parse_glue_script(script, context=ctx)
 

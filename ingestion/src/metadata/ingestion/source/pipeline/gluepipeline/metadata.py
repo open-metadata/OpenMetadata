@@ -275,13 +275,12 @@ class GluepipelineSource(PipelineServiceSource):
         self._job_runs_cache[job_name] = runs
         return runs
 
-    def _get_job_runs_for_lineage(self, job_name: str) -> tuple[list[dict], bool]:
-        """Inspected job runs plus whether the fetch succeeded (False marks contexts opaque)."""
+    def _get_job_runs_for_lineage(self, job_name: str) -> list[dict]:
         try:
-            return self._get_job_runs(job_name)[:MAX_INSPECTED_RUNS], True
+            return self._get_job_runs(job_name)[:MAX_INSPECTED_RUNS]
         except Exception as exc:
             logger.debug("Could not fetch Glue job runs for %s: %s", job_name, exc)
-            return [], False
+            return []
 
     def _get_workflow_runs_for_lineage(self, workflow_details: dict | None) -> tuple[list[dict], bool]:
         """Inspected workflow runs plus whether `get_workflow_runs` succeeded (False marks run props opaque)."""
@@ -397,6 +396,7 @@ class GluepipelineSource(PipelineServiceSource):
         workflow_details: dict | None,
     ) -> list[ParameterContext]:
         default_job_args = _clean_str_dict(job_details.default_arguments)
+        non_overridable_args = _clean_str_dict(job_details.non_overridable_arguments)
         trigger_args_by_name, trigger_arg_sets = self._extract_trigger_arguments(job_name, workflow_details)
 
         default_run_props = (
@@ -405,7 +405,7 @@ class GluepipelineSource(PipelineServiceSource):
         workflow_name = workflow_details.get(NAME) if isinstance(workflow_details, dict) else None
 
         wf_runs, wf_runs_fetch_ok = self._get_workflow_runs_for_lineage(workflow_details)
-        job_runs, job_runs_fetch_ok = self._get_job_runs_for_lineage(job_name)
+        job_runs = self._get_job_runs_for_lineage(job_name)
 
         job_runs_by_id = {jr["Id"]: jr for jr in job_runs if isinstance(jr.get("Id"), str)}
         job_runs_by_wf_run: dict[str, list[dict]] = {}
@@ -419,19 +419,13 @@ class GluepipelineSource(PipelineServiceSource):
         seen: set[ParameterContext] = set()
         matched_jr_ids: set[str] = set()
 
-        def add_ctx(
-            j_args: dict[str, str],
-            r_props: dict[str, str],
-            *,
-            job_args_opaque: bool = False,
-            run_props_opaque: bool = False,
-        ) -> None:
+        def add_ctx(j_args: dict[str, str], r_props: dict[str, str], *, run_props_opaque: bool = False) -> None:
             if len(contexts) >= MAX_INSPECTED_RUNS:
                 return
+            # every context path ends here, so NonOverridableArguments win over run arguments in all of them
             ctx = ParameterContext.from_mappings(
-                job_args=j_args,
+                job_args={**j_args, **non_overridable_args},
                 run_props=r_props,
-                job_args_opaque=job_args_opaque,
                 run_props_opaque=run_props_opaque,
             )
             if ctx not in seen:
@@ -469,7 +463,6 @@ class GluepipelineSource(PipelineServiceSource):
                     add_ctx(
                         effective_args,
                         wf_props,
-                        job_args_opaque=not job_runs_fetch_ok and not isinstance(jr.get("Arguments"), dict),
                         run_props_opaque=wf_run_props_opaque,
                     )
             else:
@@ -478,7 +471,6 @@ class GluepipelineSource(PipelineServiceSource):
                     add_ctx(
                         effective_args,
                         wf_props,
-                        job_args_opaque=not job_runs_fetch_ok,
                         run_props_opaque=wf_run_props_opaque,
                     )
 
@@ -498,7 +490,6 @@ class GluepipelineSource(PipelineServiceSource):
                 add_ctx(
                     {**default_job_args, **trig_args},
                     default_run_props,
-                    job_args_opaque=not job_runs_fetch_ok,
                     run_props_opaque=not wf_runs_fetch_ok,
                 )
 

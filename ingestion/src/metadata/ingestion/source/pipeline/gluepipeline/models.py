@@ -108,6 +108,7 @@ class JobNodes(BaseModel):
     command: JobCommand | None = Field(default=None, alias="Command")
     connections: JobConnections | None = Field(default=None, alias="Connections")
     default_arguments: dict | None = Field(default=None, alias="DefaultArguments")
+    non_overridable_arguments: dict | None = Field(default=None, alias="NonOverridableArguments")
 
 
 class JobNodeResponse(BaseModel):

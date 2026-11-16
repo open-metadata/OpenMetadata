@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-13 (initial)
 - **Deciders:** GluePipeline connector maintainers (#37597)
-- **Guard:** `test_glue_parameterized_lineage.py` (`TestIssue37597WorkflowRunProperties`, `TestCrossRunCorrelationAndOneSidedEdges`, `TestSafetyAndBoundedResources`)
+- **Guard:** `test_glue_parameterized_lineage.py` (`TestIssue37597WorkflowRunProperties`, `TestCrossRunCorrelationAndOneSidedEdges`, `TestSafetyAndBoundedResources`, `TestResolvedOptionsHonorRequestedOptions`, `TestNonOverridableArgumentsPrecedence`)
 - **Related:** #37597, ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
 
 ## Context
@@ -27,17 +27,25 @@ Two failure modes must be avoided when resolving runtime parameters statically:
 
 - `GluepipelineSource` builds up to `MAX_INSPECTED_RUNS = 10` `ParameterContext` instances per job,
   merging job arguments in precedence order `Job.DefaultArguments` < workflow trigger
-  `Actions[].Arguments` < `JobRun.Arguments` (with Glue CLI `--flag-name` normalized to both
-  `flag-name` and `flag_name`) and workflow run properties in order `Workflow.DefaultRunProperties`
-  < `WorkflowRun.WorkflowRunProperties`. When `get_workflow_runs(..., IncludeGraph=True)` includes
-  per-node `JobDetails.JobRuns`, each workflow run's properties pair only with job runs started in
-  that workflow run; when `glue:GetWorkflowRuns` fails with `ClientError`, ingestion logs at
-  `DEBUG` and falls back to `Workflow.LastRun` and defaults.
+  `Actions[].Arguments` < `JobRun.Arguments` < `Job.NonOverridableArguments` (merged last in
+  every context, fallbacks included, as Glue gives them the highest precedence) and workflow run
+  properties in order `Workflow.DefaultRunProperties` < `WorkflowRun.WorkflowRunProperties`.
+  When `get_workflow_runs(..., IncludeGraph=True)` includes per-node `JobDetails.JobRuns`, each
+  workflow run's properties pair only with job runs started in that workflow run; when
+  `glue:GetWorkflowRuns` fails with `ClientError`, ingestion logs at `DEBUG` and falls back to
+  `Workflow.LastRun` and defaults.
 - The AST evaluator in `snowflake_parser.py` and `script_parser.py` evaluates each
   `ParameterContext` — and each unrolled iteration of a constant-iterable `for` loop (capped at
   `MAX_LOOP_UNROLLS = 32` total slices, `MAX_EXPR_DEPTH = 32`, `MAX_STRING_LENGTH = 4096`) — as an
   isolated execution slice, emitting `(sources, targets)` per slice so lineage pairs only within the
   same run and iteration.
+- `getResolvedOptions(sys.argv, [...])` evaluates as `awsglue.utils` does: the result holds only the
+  requested options and Glue's built-in options, keyed by argparse dest (`--flag-name` is
+  `flag_name`, matched exactly since `allow_abbrev=False`), so `args.get("NOT_REQUESTED", "x")`
+  is `"x"`. A requested option the context lacks is `UNKNOWN`, not the script default: Glue either
+  passed an argument the context cannot see or failed the run. When the requested options cannot
+  be read statically (they do not evaluate to a list of strings, the first argument is not
+  `sys.argv`, or the script rebinds or edits `sys.argv`), every value is `UNKNOWN`.
 - Any unknown sub-expression inside a string template or concatenation poisons the entire string to
   `UNKNOWN` (emitting no ref rather than a partial name), while unknown Snowflake database/schema
   options with a known table continue to follow
@@ -49,9 +57,10 @@ Two failure modes must be avoided when resolving runtime parameters statically:
   `LineageSource.PipelineLineage`, matching the connector's one-sided pipeline lineage convention.
   A slice that declares both sides but resolves only one (unknown or ambiguous ref) is skipped
   instead of degraded to a one-sided edge, and one-sided edges are suppressed for tables already
-  linked by a two-sided slice. When fetching job runs or workflow runs fails (e.g. access denied),
-  the affected job arguments or run properties are marked opaque, so script-side fallback values
-  are not fabricated into lineage; explicitly configured defaults still resolve.
+  linked by a two-sided slice. When fetching workflow runs fails (e.g. access denied), the affected
+  run properties are marked opaque, so script-side fallback values are not fabricated into
+  lineage; explicitly configured defaults still resolve. Job arguments need no such flag: a
+  requested option missing from the context is already `UNKNOWN`.
 
 ## Consequences
 

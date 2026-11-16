@@ -39,6 +39,7 @@ import re
 import string
 from collections.abc import Iterable, Iterator, Mapping
 from dataclasses import dataclass, replace
+from functools import cached_property
 
 from cachetools import LRUCache
 
@@ -106,7 +107,6 @@ class ParameterContext:
 
     job_args: tuple[tuple[str, str], ...] = ()
     run_props: tuple[tuple[str, str], ...] = ()
-    job_args_opaque: bool = False
     run_props_opaque: bool = False
 
     @classmethod
@@ -114,13 +114,11 @@ class ParameterContext:
         cls,
         job_args: Mapping[str, str] | None = None,
         run_props: Mapping[str, str] | None = None,
-        job_args_opaque: bool = False,
         run_props_opaque: bool = False,
     ) -> "ParameterContext":
         return cls(
             job_args=tuple(sorted((str(k), str(v)) for k, v in (job_args or {}).items() if v is not None)),
             run_props=tuple(sorted((str(k), str(v)) for k, v in (run_props or {}).items() if v is not None)),
-            job_args_opaque=job_args_opaque,
             run_props_opaque=run_props_opaque,
         )
 
@@ -156,6 +154,20 @@ MAX_STRING_LENGTH = 4096
 MAX_LOOP_UNROLLS = 32
 # names whose resolved value is kept per script
 MEMO_SIZE = 1024
+LIST_MUTATING_METHODS = {"append", "extend", "insert", "pop", "remove", "clear", "sort", "reverse", "__setitem__"}
+# options awsglue.utils.getResolvedOptions returns besides the requested ones
+RESOLVED_OPTIONS_BUILTINS = (
+    "job-bookmark-option",
+    "job-bookmark-from",
+    "job-bookmark-to",
+    "JOB_ID",
+    "JOB_RUN_ID",
+    "SECURITY_CONFIGURATION",
+    "encryption-type",
+    "enable-data-lineage",
+    "TempDir",
+    "RedshiftTempDir",
+)
 
 
 def _digits_exceed_max_string_length(digits: str) -> bool:
@@ -520,6 +532,35 @@ def _callee_name(func: ast.expr) -> str | None:
     return None
 
 
+def _is_sys_argv(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Attribute)
+        and node.attr == "argv"
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "sys"
+    )
+
+
+def _changes_sys_argv(tree: ast.Module) -> bool:
+    """True when the script rebinds, aliases or edits sys.argv, so getResolvedOptions no longer parses the job's arguments."""
+    # ponytail: syntactic; sys.argv handed to a helper that edits it, or `from sys import argv`, is not seen
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AugAssign, ast.AnnAssign, ast.Delete)):
+            targets = node.targets if isinstance(node, (ast.Assign, ast.Delete)) else [node.target]
+            if any(_is_sys_argv(sub) for target in targets for sub in ast.walk(target)):
+                return True
+            if isinstance(node, ast.Assign) and _is_sys_argv(node.value):
+                return True
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr in LIST_MUTATING_METHODS
+            and _is_sys_argv(node.func.value)
+        ):
+            return True
+    return False
+
+
 def _apply_dict_changes(base: _DictValue, changes: list[tuple]) -> _DictValue:
     entries = dict(base.entries)
     opaque = base.opaque
@@ -617,6 +658,10 @@ class _ScriptReader:
         self._settings: LRUCache[ast.Name, list[tuple]] = LRUCache(maxsize=MEMO_SIZE)
         self._resolving: set[ast.Name] = set()
         self._depth = 0
+
+    @cached_property
+    def _sys_argv_changed(self) -> bool:
+        return _changes_sys_argv(self._tree)
 
     @property
     def _names(self) -> _Bindings:
@@ -1015,7 +1060,7 @@ class _ScriptReader:
             return self._eval_dict_call(node)
         callee = _callee_name(node.func)
         if callee == "getResolvedOptions":
-            return self._eval_resolved_options()
+            return self._eval_resolved_options(node)
         if callee == "get_workflow_run_properties":
             return self._eval_workflow_run_properties()
         if isinstance(node.func, ast.Attribute):
@@ -1041,17 +1086,31 @@ class _ScriptReader:
                     return self._eval_str_method(recv, attr, node)
         return UNKNOWN
 
-    def _eval_resolved_options(self) -> _DictValue:
-        if self._context is None:
+    def _eval_resolved_options(self, node: ast.Call) -> _DictValue:
+        """
+        Mirror awsglue.utils.getResolvedOptions: the result holds only the requested options
+        and the built-ins, keyed by argparse dest. A requested option this context lacks is
+        UNKNOWN rather than absent, so a script default never stands in for it: Glue either
+        passed an argument the context cannot see or failed the run.
+        """
+        requested = self._requested_options(node)
+        if self._context is None or requested is None:
             return _DictValue(entries={}, opaque=True)
-        entries: dict[str, object] = {}
-        for raw_key, val in self._context.job_args:
-            stripped = raw_key.lstrip("-")
-            normalized = stripped.replace("-", "_")
-            for candidate_key in (raw_key, stripped, normalized):
-                if candidate_key:
-                    entries[candidate_key] = val
-        return _DictValue(entries=entries, opaque=self._context.job_args_opaque)
+        argv = dict(self._context.job_args)
+        entries: dict[str, object] = {
+            option.replace("-", "_"): argv.get(f"--{option}", UNKNOWN)
+            for option in (*requested, *RESOLVED_OPTIONS_BUILTINS)
+        }
+        return _DictValue(entries=entries)
+
+    def _requested_options(self, node: ast.Call) -> tuple[str, ...] | None:
+        """The option names of `getResolvedOptions(sys.argv, [...])`, or None when they cannot be known."""
+        if node.keywords or len(node.args) != 2 or not _is_sys_argv(node.args[0]) or self._sys_argv_changed:
+            return None
+        options = self._eval(node.args[1])
+        if isinstance(options, tuple) and all(isinstance(option, str) for option in options):
+            return options
+        return None
 
     def _eval_workflow_run_properties(self) -> _DictValue:
         if self._context is None:
