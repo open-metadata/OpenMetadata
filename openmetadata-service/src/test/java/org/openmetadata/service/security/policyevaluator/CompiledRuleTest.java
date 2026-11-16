@@ -5,15 +5,12 @@ import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.service.Entity.ALL_RESOURCES;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.Function;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -251,23 +248,20 @@ class CompiledRuleTest {
   }
 
   @Test
-  void everyConditionFunctionIsClassifiedAsResourceDependentOrSubjectOnly() {
-    Set<String> subjectOnly = Set.of("inAnyTeam", "hasAnyRole", "isImpersonated", "impersonatedBy");
-    Set<String> declared =
-        Arrays.stream(RuleEvaluator.class.getMethods())
-            .filter(method -> method.isAnnotationPresent(Function.class))
-            .map(method -> method.getAnnotation(Function.class).name())
-            .collect(Collectors.toSet());
-    Set<String> unclassified =
-        declared.stream()
-            .filter(name -> !CompiledRule.RESOURCE_DEPENDENT_FUNCTIONS.contains(name))
-            .filter(name -> !subjectOnly.contains(name))
-            .collect(Collectors.toSet());
+  void entityTypeRequestSkipsDenyOnlyWhenItsOutcomeReadTheAsset() {
+    ResourceContextInterface typeLevel = ownerlessTable(true);
 
-    assertTrue(
-        unclassified.isEmpty(),
-        "Classify new condition functions in CompiledRule.RESOURCE_DEPENDENT_FUNCTIONS or here: "
-            + unclassified);
+    assertThrows(
+        AuthorizationException.class,
+        () ->
+            evaluateViewCustomFieldsDeny(
+                conditionalDeny("!isImpersonated() || !matchTeam()"), typeLevel),
+        "decided by the subject before the asset is read");
+    assertDoesNotThrow(
+        () ->
+            evaluateViewCustomFieldsDeny(
+                conditionalDeny("isImpersonated() || !matchTeam()"), typeLevel),
+        "needed the asset's owners to decide");
   }
 
   @Test
@@ -288,6 +282,10 @@ class CompiledRuleTest {
     assertThrows(
         AuthorizationException.class,
         () -> evaluateViewCustomFieldsDeny(conditionalDeny("!isImpersonated()"), typeLevel));
+    assertThrows(
+        AuthorizationException.class,
+        () -> evaluateViewCustomFieldsDeny(conditionalDeny("!isAdminUser()"), typeLevel),
+        "isAdminUser() reads only the resource type on a table, so it decides without an asset");
     assertThrows(
         AuthorizationException.class,
         () -> evaluateViewCustomFieldsDeny(conditionalDeny(null), typeLevel));

@@ -43,30 +43,6 @@ public class CompiledRule extends Rule {
   private static final Set<MetadataOperation> EXPLICIT_ALLOW_OPERATIONS =
       Set.of(MetadataOperation.EXECUTE_SPARQL_QUERY);
 
-  // Functions that read the asset (owners, domains, tags, service, task, target user). A request
-  // about the
-  // entity type has no asset, so their result there says nothing about any asset.
-  static final Set<String> RESOURCE_DEPENDENT_FUNCTIONS =
-      Set.of(
-          "noOwner",
-          "isOwner",
-          "isReviewer",
-          "isTaskFiler",
-          "isTaskAssignee",
-          "isTaskReviewer",
-          "hasDomain",
-          "noDomain",
-          "matchAllTags",
-          "matchAnyTag",
-          "matchAnyServiceTag",
-          "matchAnyServiceType",
-          "matchAnyServiceEnvironment",
-          "matchAnyServiceName",
-          "matchAnyCertification",
-          "matchTeam",
-          "isAdminUser",
-          "isBotUser");
-
   @JsonIgnore private Expression expression;
 
   /**
@@ -187,9 +163,7 @@ public class CompiledRule extends Rule {
       SubjectContext subjectContext,
       ResourceContextInterface resourceContext,
       PolicyContext policyContext) {
-    if (getEffect() != Effect.DENY
-        || !matchResource(operationContext.getResource())
-        || isUndecidableWithoutAsset(resourceContext)) {
+    if (getEffect() != Effect.DENY || !matchResource(operationContext.getResource())) {
       return;
     }
 
@@ -202,7 +176,7 @@ public class CompiledRule extends Rule {
             policyContext.getRoleName(),
             policyContext.getPolicyName(),
             getName());
-        if (matchExpression(policyContext, subjectContext, resourceContext)) {
+        if (matchesDenyCondition(policyContext, subjectContext, resourceContext)) {
           throw new PolicyDeniedException(
               permissionDenied(
                   subjectContext.user().getName(),
@@ -216,31 +190,21 @@ public class CompiledRule extends Rule {
   }
 
   /**
-   * A deny whose condition reads the asset can't be decided on an entity-type request, and
-   * evaluating it there turns {@code !matchTeam()} into an unconditional deny (#37759). It is
-   * skipped here and still enforced on every asset read. Subject-only conditions are evaluated.
+   * A request about an entity type has no asset, so a condition that reads one (owners, team,
+   * domain, tags, ...) says nothing there: {@code !matchTeam()} would turn into an unconditional
+   * deny (#37759). Such a deny is skipped on the type and still enforced on every asset read. A
+   * condition decided without reading the asset, or a deny with no condition, still applies.
    */
-  private boolean isUndecidableWithoutAsset(ResourceContextInterface resourceContext) {
-    return resourceContext != null
-        && resourceContext.isEntityTypeLevel()
-        && conditionReadsResource();
-  }
-
-  boolean conditionReadsResource() {
-    return getExpression() instanceof SpelExpression spelExpression
-        && collectFunctionNames(spelExpression.getAST()).stream()
-            .anyMatch(RESOURCE_DEPENDENT_FUNCTIONS::contains);
-  }
-
-  private static List<String> collectFunctionNames(SpelNode node) {
-    List<String> names = new ArrayList<>();
-    if (node instanceof MethodReference methodReference) {
-      names.add(methodReference.getName());
+  private boolean matchesDenyCondition(
+      PolicyContext policyContext,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext) {
+    if (resourceContext == null || !resourceContext.isEntityTypeLevel()) {
+      return matchExpression(policyContext, subjectContext, resourceContext);
     }
-    for (int i = 0; i < node.getChildCount(); i++) {
-      names.addAll(collectFunctionNames(node.getChild(i)));
-    }
-    return names;
+    AssetReadRecorder recorder = new AssetReadRecorder(resourceContext);
+    boolean matched = matchExpression(policyContext, subjectContext, recorder.context());
+    return matched && !recorder.hasReadAsset();
   }
 
   private Access getAccess() {

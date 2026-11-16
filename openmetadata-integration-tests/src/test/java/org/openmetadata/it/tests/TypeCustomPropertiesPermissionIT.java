@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.List;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,13 +16,21 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.domains.CreateDataProduct;
+import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.domains.CreateDomain.DomainType;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -31,7 +40,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 /**
  * GET /metadata/types/name/{entityType}?fields=customProperties authorizes ViewCustomFields on the
  * entity type, where no asset exists. A deny whose condition reads the asset (matchTeam(),
- * isOwner(), ...) must not refuse it (#37759); unconditional and subject-only denies still must.
+ * isOwner(), ...) must not refuse it (#37759), while it keeps guarding the assets themselves;
+ * unconditional and subject-only denies still refuse it.
  * ADR:2026-11-16-entity-type-reads-skip-deny-rules-whose-condition-reads-the-asset
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -54,20 +64,56 @@ class TypeCustomPropertiesPermissionIT {
     }
   }
 
+  /**
+   * The reported setup: the !matchTeam() deny sits on the user's team (matchTeam() is only ever
+   * true for a team policy) and the team owns the data product.
+   */
   @Test
-  void conditionalTeamDeny_doesNotBlockTypeCustomProperties(TestNamespace ns) throws Exception {
+  void teamScopedMatchTeamDeny_allowsTypeCustomProperties_andStillGuardsOtherTeamsAssets(
+      TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String p = ns.shortPrefix();
     Rule deny =
         new Rule()
-            .withName(ns.shortPrefix() + "cpTeamDeny")
+            .withName(p + "cpTeamDeny")
             .withResources(List.of(DATA_PRODUCT))
             .withOperations(List.of(MetadataOperation.VIEW_ALL))
             .withEffect(Rule.Effect.DENY)
             .withCondition("!matchTeam()");
-    OpenMetadataClient client = clientForPrincipalWithRules(ns, "cpteam", List.of(deny));
+    Policy policy = createPolicy(p + "cpteam_pol", List.of(deny));
+    Team ownTeam = createTeam(p + "cpteam_own", List.of(policy.getId()));
+    Team otherTeam = createTeam(p + "cpteam_other", List.of());
+    String email = p + "cpteam_u@test.openmetadata.org";
+    User user =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(p + "cpteam_u")
+                    .withEmail(email)
+                    .withTeams(List.of(ownTeam.getId())));
+    fixtureCleanups.push(() -> admin.users().delete(user.getId()));
+    Domain domain =
+        admin
+            .domains()
+            .create(
+                new CreateDomain()
+                    .withName(p + "cpteam_dom")
+                    .withDomainType(DomainType.AGGREGATE)
+                    .withDescription("Custom property permission"));
+    fixtureCleanups.push(() -> admin.domains().delete(domain.getId()));
+    DataProduct ownProduct = createDataProduct(p + "cpteam_own_dp", domain, ownTeam);
+    DataProduct otherProduct = createDataProduct(p + "cpteam_other_dp", domain, otherTeam);
+    OpenMetadataClient client = SdkClients.createClient(email, email, new String[] {});
 
-    Type type = getTypeWithCustomProperties(client);
-
-    assertEquals(DATA_PRODUCT, type.getName());
+    assertEquals(DATA_PRODUCT, getTypeWithCustomProperties(client).getName());
+    assertEquals(
+        ownProduct.getId(),
+        client.dataProducts().get(ownProduct.getId().toString(), "extension").getId());
+    assertThrows(
+        ForbiddenException.class,
+        () -> client.dataProducts().get(otherProduct.getId().toString(), "extension"),
+        "the deny still applies to a data product owned by another team");
   }
 
   @Test
@@ -108,14 +154,48 @@ class TypeCustomPropertiesPermissionIT {
     return OBJECT_MAPPER.readValue(response, Type.class);
   }
 
+  private Policy createPolicy(String name, List<Rule> rules) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy = admin.policies().create(new CreatePolicy().withName(name).withRules(rules));
+    fixtureCleanups.push(() -> admin.policies().delete(policy.getId()));
+    return policy;
+  }
+
+  private Team createTeam(String name, List<UUID> policyIds) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Team team =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(name)
+                    .withTeamType(TeamType.GROUP)
+                    .withPolicies(policyIds));
+    fixtureCleanups.push(() -> admin.teams().delete(team.getId()));
+    return team;
+  }
+
+  private DataProduct createDataProduct(String name, Domain domain, Team owner) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DataProduct dataProduct =
+        admin
+            .dataProducts()
+            .create(
+                new CreateDataProduct()
+                    .withName(name)
+                    .withDescription("Custom property permission")
+                    .withDomains(List.of(domain.getFullyQualifiedName()))
+                    .withOwners(List.of(owner.getEntityReference())));
+    fixtureCleanups.push(() -> admin.dataProducts().delete(dataProduct.getId()));
+    return dataProduct;
+  }
+
   private OpenMetadataClient clientForPrincipalWithRules(
       TestNamespace ns, String label, List<Rule> rules) {
     OpenMetadataClient admin = SdkClients.adminClient();
     String p = ns.shortPrefix() + label;
 
-    Policy policy =
-        admin.policies().create(new CreatePolicy().withName(p + "_pol").withRules(rules));
-    fixtureCleanups.push(() -> admin.policies().delete(policy.getId()));
+    Policy policy = createPolicy(p + "_pol", rules);
 
     Role role =
         admin
