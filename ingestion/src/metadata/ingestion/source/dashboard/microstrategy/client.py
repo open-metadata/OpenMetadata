@@ -17,7 +17,6 @@ failure means, and an empty list read as "nothing exists" would drive stale dele
 
 from __future__ import annotations
 
-import re
 import traceback
 from collections import OrderedDict
 from collections.abc import Hashable
@@ -61,7 +60,7 @@ CACHE_SIZE = 512
 LOGIN_TIMEOUT = (10, 60)
 # The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
 # fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
-ENGINE_STEPS_TRAILER = re.compile(r"^\[Analytical engine calculation steps:.*", re.MULTILINE | re.DOTALL)
+ENGINE_STEPS_TRAILER = "[Analytical engine calculation steps:"
 # The sqlView endpoint's answer for a dataset that is a report rather than an Intelligent Cube
 NOT_A_CUBE = "Only cube is supported to get SQL view"
 
@@ -71,7 +70,7 @@ K = TypeVar("K", bound=Hashable)
 
 def strip_engine_steps(sql: str | None) -> str | None:
     """The cube SQL without the Analytical engine calculation steps that follow the statement"""
-    return ENGINE_STEPS_TRAILER.sub("", sql).rstrip() if sql else sql
+    return sql.split(ENGINE_STEPS_TRAILER, 1)[0].rstrip() if sql else sql
 
 
 def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None], what: str) -> T | None:

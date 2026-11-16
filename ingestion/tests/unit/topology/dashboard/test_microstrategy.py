@@ -464,6 +464,7 @@ class TestClient:
         [
             (CUBE_SQL, CUBE_STATEMENT),
             (CUBE_STATEMENT + "\n\n[Analytical engine calculation steps:\n]", CUBE_STATEMENT),
+            (CUBE_STATEMENT + " [Analytical engine calculation steps:\n]", CUBE_STATEMENT),
             (CUBE_STATEMENT, CUBE_STATEMENT),
             (None, None),
             ("", ""),
@@ -1098,10 +1099,32 @@ class TestColumnLineage:
             ),
             ("with my_table as (select id from my_table) select id from my_table", {("my_table", "id")}),
             ("with recursive my_table as (select id from my_table) select id from my_table", set()),
+            ("with w as (select t.y from s.t t), t as (select 1 as y) select y from w", {("s.t", "y")}),
+            ("with w as (select y from t), t as (select 1 as y) select y from t", {("t", "y")}),
         ],
     )
     def test_a_cte_is_never_read_as_the_table_it_is_named_after(self, sql, expected):
         assert read_columns(sql, Dialect.ANSI) == expected
+
+    @pytest.mark.parametrize(
+        ("sql", "dialect", "expected"),
+        [
+            (
+                "select o.id, el from p.d.orders o cross join unnest(o.arr) as el",
+                Dialect.BIGQUERY,
+                {("p.d.orders", "id")},
+            ),
+            (
+                "select el.id from p.d.items el where el.id in (select el.id from p.d.orders o, unnest(o.arr) el)",
+                Dialect.BIGQUERY,
+                {("p.d.items", "id")},
+            ),
+            ("select x from p.d.orders cross join Orders u", Dialect.BIGQUERY, set()),
+            ("select x from p.d.orders cross join (values (1, 2)) as v(id, x)", Dialect.ANSI, set()),
+        ],
+    )
+    def test_an_unnest_or_values_source_is_never_read_as_a_table(self, sql, dialect, expected):
+        assert read_columns(sql, dialect) == expected
 
     @pytest.mark.parametrize(
         ("sql", "expected"),

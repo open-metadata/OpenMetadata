@@ -182,7 +182,7 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
 def _cte_names(node: exp.Expression) -> set[str]:
     """
     The CTE names a query or table reference can mean: those of its own WITH and of every enclosing
-    query's, except, outside a recursive WITH, the CTE whose own body the reference sits in.
+    query's. Inside a CTE's own body, a non-recursive WITH offers only the CTEs defined before it.
     """
     names: set[str] = set()
     inside_cte, parent = None, node
@@ -191,9 +191,11 @@ def _cte_names(node: exp.Expression) -> set[str]:
             inside_cte = parent
         with_ = parent.args.get("with_")
         if isinstance(with_, exp.With):
-            for cte in with_.expressions:
-                if cte is not inside_cte or with_.args.get("recursive"):
-                    names.add(cte.alias.lower())
+            ctes = list(with_.expressions)
+            position = next((index for index, cte in enumerate(ctes) if cte is inside_cte), None)
+            if position is not None and not with_.args.get("recursive"):
+                ctes = ctes[:position]
+            names.update(cte.alias.lower() for cte in ctes)
         parent = parent.parent
     return names
 
@@ -213,18 +215,30 @@ def _source_keys(table: exp.Table) -> list[str]:
 Scopes = dict[int, dict[str, "str | None"]]
 
 
+def _alias_names(source: exp.Expression) -> list[str]:
+    """
+    The names a non-table source answers to: its alias, and the column names of the alias, which
+    is where BigQuery puts an UNNEST's name (``CROSS JOIN UNNEST(items) item``).
+    """
+    alias = source.args.get("alias")
+    if not isinstance(alias, exp.TableAlias):
+        return []
+    names = [alias.name, *(column.name for column in alias.columns)]
+    return [name.lower() for name in names if name]
+
+
 def _own_sources(select: exp.Select, scopes: Scopes) -> dict[str, str | None]:
     """
     The sources a SELECT itself reads, by the names a column can qualify them by: a table's name,
-    or None for a derived table or a CTE, whose columns are not warehouse columns. A name that two
-    different tables answer to is None too, since it cannot tell them apart.
+    or None for a CTE, derived table, UNNEST, VALUES or LATERAL, whose columns are not warehouse
+    columns. A name that two different tables answer to is None too, since it cannot tell them apart.
     """
     if id(select) in scopes:
         return scopes[id(select)]
     sources: dict[str, str | None] = {}
     # No CTE sits between a SELECT and its own sources, so they all see the CTEs the SELECT sees.
     ctes = _cte_names(select)
-    for source in select.find_all(exp.Table, exp.Subquery):
+    for source in select.find_all(exp.Table, exp.Subquery, exp.Unnest, exp.Values, exp.Lateral):
         if source.find_ancestor(exp.Select) is not select:
             continue
         if isinstance(source, exp.Table):
@@ -232,8 +246,11 @@ def _own_sources(select: exp.Select, scopes: Scopes) -> dict[str, str | None]:
             name = None if is_cte else table_name_of(source)
             for key in _source_keys(source):
                 sources[key] = name if key not in sources or sources[key] == name else None
-        elif source.alias:
-            sources[source.alias.lower()] = None
+        elif isinstance(source.find_ancestor(exp.From, exp.Join, exp.Select), (exp.From, exp.Join)):
+            # A derived table, UNNEST, VALUES or LATERAL reads no warehouse column. Unnamed, it
+            # still counts as a source, so an unqualified column is not given to the only table.
+            for key in _alias_names(source) or [f"#{id(source)}"]:
+                sources[key] = None
     scopes[id(select)] = sources
     return sources
 
