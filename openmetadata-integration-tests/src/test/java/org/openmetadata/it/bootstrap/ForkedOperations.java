@@ -17,6 +17,7 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import io.dropwizard.testing.ResourceHelpers;
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -55,8 +56,17 @@ public final class ForkedOperations {
    * point {@code jwtTokenConfiguration} at another key pair.
    */
   public static int run(Consumer<ObjectNode> adjustConfig, String... command) {
+    return runCapturing(adjustConfig, command).exitCode();
+  }
+
+  /** The exit code of one CLI run and what that run, and only that run, wrote to its log. */
+  public record Outcome(int exitCode, String output) {}
+
+  /** As {@link #run(Consumer, String...)}, and also returns the run's output. */
+  public static Outcome runCapturing(Consumer<ObjectNode> adjustConfig, String... command) {
     int number = SEQUENCE.incrementAndGet();
     Path log = ForkedJvm.logFile("forked-ops-" + number + ".log");
+    long logSizeBefore = sizeOf(log);
     List<String> args = new ArrayList<>(List.of("-c", writeYaml(number, adjustConfig).toString()));
     args.addAll(List.of(command));
     Process process = ForkedJvm.launch(MAIN_CLASS, args, Map.of("user.timezone", "UTC"), log);
@@ -70,7 +80,25 @@ public final class ForkedOperations {
       Thread.currentThread().interrupt();
       throw new IllegalStateException("Interrupted while running the ops command", interrupted);
     }
-    return process.exitValue();
+    return new Outcome(process.exitValue(), outputSince(log, logSizeBefore));
+  }
+
+  private static long sizeOf(Path log) {
+    try {
+      return Files.exists(log) ? Files.size(log) : 0;
+    } catch (IOException failure) {
+      throw new UncheckedIOException(failure);
+    }
+  }
+
+  // The log is appended to, so an earlier JVM's run of the same number is not part of this one.
+  private static String outputSince(Path log, long offset) {
+    try {
+      byte[] all = Files.readAllBytes(log);
+      return new String(all, (int) offset, all.length - (int) offset, StandardCharsets.UTF_8);
+    } catch (IOException failure) {
+      throw new UncheckedIOException(failure);
+    }
   }
 
   private static Path writeYaml(int number, Consumer<ObjectNode> adjustConfig) {

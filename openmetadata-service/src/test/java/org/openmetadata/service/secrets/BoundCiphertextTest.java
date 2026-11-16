@@ -26,6 +26,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.fernet.KeyRing;
+import org.openmetadata.service.fernet.Opening;
 
 class BoundCiphertextTest {
   private static final String KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
@@ -118,5 +120,43 @@ class BoundCiphertextTest {
 
     assertEquals(Optional.of("the secret"), BoundCiphertext.decrypt(OWNER, FIELD, ciphertext));
     assertEquals(Optional.empty(), BoundCiphertext.decryptWithPrimaryKey(OWNER, FIELD, ciphertext));
+  }
+
+  @Test
+  void openReportsTheKeyIndexAndNoKeyForAnotherOwnerOrField() {
+    Fernet.getInstance().setFernetKey(OLDER_KEY);
+    String ciphertext = BoundCiphertext.encrypt(OWNER, FIELD, "s3cret");
+    KeyRing both = KeyRing.parse(KEY + "," + OLDER_KEY);
+    SecretOwner another = SecretOwner.builder("alertdestination").id(UUID.randomUUID()).build();
+
+    assertEquals(
+        new Opening.Older(1, "s3cret"), BoundCiphertext.open(both, OWNER, FIELD, ciphertext));
+    assertEquals(new Opening.NoKey(), BoundCiphertext.open(both, another, FIELD, ciphertext));
+    assertEquals(
+        new Opening.NoKey(), BoundCiphertext.open(both, OWNER, "/authType/secretKey", ciphertext));
+    assertEquals(new Opening.NoKey(), BoundCiphertext.open(KeyRing.NONE, OWNER, FIELD, ciphertext));
+    assertEquals(new Opening.NoKey(), BoundCiphertext.open(both, OWNER, FIELD, "plain text"));
+  }
+
+  @Test
+  void sealOpensAsPrimaryAndWithTheExistingDecryptPaths() {
+    KeyRing both = KeyRing.parse(KEY + "," + OLDER_KEY);
+
+    String sealed = BoundCiphertext.seal(both, OWNER, FIELD, "s3cret");
+
+    assertEquals(new Opening.Primary("s3cret"), BoundCiphertext.open(both, OWNER, FIELD, sealed));
+    assertEquals(Optional.of("s3cret"), BoundCiphertext.decrypt(OWNER, FIELD, sealed));
+    assertEquals(
+        Optional.of("s3cret"), BoundCiphertext.decryptWithPrimaryKey(OWNER, FIELD, sealed));
+    assertThrows(
+        IllegalStateException.class, () -> BoundCiphertext.seal(KeyRing.NONE, OWNER, FIELD, "x"));
+  }
+
+  @Test
+  void withoutAKeyEncryptAndDecryptRefuse() {
+    Fernet.getInstance().setFernetKey((String) null);
+
+    assertThrows(IllegalStateException.class, () -> BoundCiphertext.encrypt(OWNER, FIELD, "x"));
+    assertThrows(IllegalStateException.class, () -> BoundCiphertext.decrypt(OWNER, FIELD, "x"));
   }
 }

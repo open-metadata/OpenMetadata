@@ -107,9 +107,39 @@ class ForkedServerConfigTest {
     assertEquals(Duration.seconds(9), forked.getCredentialVerification().maxStaleness());
   }
 
+  @Test
+  void aNodeFernetKeyListReplacesTheSuitesKeyAndLeavesTheRestAlone(@TempDir Path dir)
+      throws Exception {
+    OpenMetadataApplicationConfig forked =
+        render(dir, Map.of(), "primaryKeyForTheNode0123456789ab,olderKeyForTheNode0123456789abcd");
+
+    assertEquals(
+        "primaryKeyForTheNode0123456789ab,olderKeyForTheNode0123456789abcd",
+        forked.getFernetConfiguration().getFernetKey());
+    assertEquals("suite-key-id", forked.getJwtTokenConfiguration().getKeyId());
+    assertEquals("suite-secret", forked.getDataSourceFactory().getPassword());
+  }
+
+  @Test
+  void aNodesSettingsKeepTheirFernetKeysWhenAnotherOverrideIsAdded() {
+    ForkedServerNode.Settings settings =
+        ForkedServerNode.Settings.DEFAULT
+            .withFernetKey("first,second")
+            .withCredentialVerification("sweepInterval", "1s");
+
+    assertEquals("first,second", settings.fernetKey());
+    assertEquals(Map.of("sweepInterval", "1s"), settings.credentialVerification());
+    assertEquals(null, ForkedServerNode.Settings.DEFAULT.fernetKey());
+  }
+
   private static OpenMetadataApplicationConfig render(Path dir, Map<String, String> overrides)
       throws Exception {
-    String yaml = ForkedServerConfig.render(Path.of(BASE), suite, PORTS, overrides);
+    return render(dir, overrides, null);
+  }
+
+  private static OpenMetadataApplicationConfig render(
+      Path dir, Map<String, String> overrides, String fernetKey) throws Exception {
+    String yaml = ForkedServerConfig.render(Path.of(BASE), suite, PORTS, overrides, fernetKey);
     return load(Files.writeString(dir.resolve("forked.yaml"), yaml));
   }
 

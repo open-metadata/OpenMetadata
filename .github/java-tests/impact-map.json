@@ -626,6 +626,7 @@
       ],
       "tests": [
         "*Secret*IT",
+        "*Fernet*IT",
         "*ServiceResourceIT",
         "*IngestionPipeline*IT",
         "*Bot*IT",

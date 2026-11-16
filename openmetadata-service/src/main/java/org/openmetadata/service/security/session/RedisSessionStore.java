@@ -90,7 +90,12 @@ public class RedisSessionStore implements SessionStore {
 
   public RedisSessionStore(RedisCommands<String, String> commands, String keyspace) {
     this.commands = commands;
-    this.keyspace = keyspace == null || keyspace.isBlank() ? "om" : keyspace;
+    this.keyspace = effectiveKeyspace(keyspace);
+  }
+
+  /** The keyspace the session keys start with: a blank configured one means {@code om}. */
+  public static String effectiveKeyspace(String configured) {
+    return configured == null || configured.isBlank() ? "om" : configured;
   }
 
   private String sessionKey(String id) {

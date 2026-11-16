@@ -8,6 +8,8 @@
 
   <logger name="org.openmetadata.it" level="INFO" />
   <logger name="org.openmetadata.service" level="WARN" />
+  <!-- The report table of the ops commands is logged, and the ITs read it back. -->
+  <logger name="org.openmetadata.service.util.OpenMetadataOperations" level="INFO" />
   <logger name="org.testcontainers" level="INFO" />
   <logger name="org.elasticsearch" level="WARN" />
   <logger name="org.opensearch" level="WARN" />
