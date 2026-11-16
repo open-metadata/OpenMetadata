@@ -132,14 +132,12 @@ public interface OntologyReferenceDAO {
   @SqlQuery(
       "SELECT a.json FROM ontology_axiom_entity a JOIN ontology_reference r "
           + "ON r.sourceId = a.id AND r.ontologyId = a.ontologyId "
-          + "WHERE a.ontologyId = :ontologyId AND a.deleted = FALSE AND a.axiomType = :axiomType "
-          + "AND a.id <> :axiomId AND r.sourceType = 'ontologyAxiom' AND r.role = 'AXIOM_SUBJECT' "
-          + "AND r.iriHash = :iriHash ORDER BY a.name, a.id LIMIT :limit")
-  List<String> sameSubjectAxioms(
+          + "WHERE a.ontologyId = :ontologyId AND a.deleted = FALSE "
+          + "AND r.sourceType = 'ontologyAxiom' AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>) "
+          + "ORDER BY a.name, a.id LIMIT :limit")
+  List<String> axiomsOfSubjects(
       @BindUUID("ontologyId") UUID ontologyId,
-      @Bind("axiomType") String axiomType,
-      @BindUUID("axiomId") UUID axiomId,
-      @Bind("iriHash") String iriHash,
+      @BindList("iriHashes") List<String> iriHashes,
       @Bind("limit") int limit);
 
   @SqlQuery(
