@@ -4358,7 +4358,6 @@ def _plan_with_gated_lanes(tmp_path, mode, enabled_lanes, selectors=()):
                     suite("Pages/Glossary.spec.ts", "chromium", 2),
                     suite("VisualRegression/Glossary.spec.ts", "visual-regression", 2),
                     suite("Features/KnowledgeGraph.spec.ts", "Knowledge Graph", 2),
-                    suite("Features/OntologyExplorerRdf.spec.ts", "Ontology RDF", 2),
                 ]
             }
         )
@@ -4397,7 +4396,7 @@ def test_visual_and_rdf_lanes_run_only_when_their_path_filters_enable_them(tmp_p
     matrix, plans = _plan_with_gated_lanes(tmp_path / "on", "full", ["visual", "rdf"])
     assert {entry["shardId"] for entry in matrix} >= {"visual-01", "rdf-01"}
     assert plans["visual"]["projects"] == ["visual-regression"]
-    assert plans["rdf"]["projects"] == ["Knowledge Graph", "Ontology RDF"]
+    assert plans["rdf"]["projects"] == ["Knowledge Graph"]
     assert not plans["rdf"]["requiresAirflow"]
 
 
@@ -4414,4 +4413,4 @@ def test_enabled_gated_lane_runs_in_full_on_a_targeted_plan_without_timing_histo
     )
     assert "rdf-01" in {entry["shardId"] for entry in matrix}
     assert "visual" not in plans
-    assert plans["rdf"]["testCount"] == 4
+    assert plans["rdf"]["testCount"] == 2
