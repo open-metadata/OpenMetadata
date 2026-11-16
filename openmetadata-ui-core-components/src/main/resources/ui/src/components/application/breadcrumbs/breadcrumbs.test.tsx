@@ -52,6 +52,34 @@ describe('Breadcrumbs', () => {
     expect(screen.getByRole('link', { name: 'Personas' })).toBeInTheDocument();
   });
 
+  it('keeps a disabled item inert after it collapses into the menu', async () => {
+    const onAction = vi.fn();
+    render(
+      <Breadcrumbs
+        items={[
+          { id: 'root', label: 'Root' },
+          { id: 'section', label: 'Section', isDisabled: true },
+          { id: 'page', label: 'Page' },
+          { id: 'detail', label: 'Detail' },
+        ]}
+        maxItems={2}
+        onAction={onAction}
+      />
+    );
+
+    act(() =>
+      screen.getByRole('button', { name: 'Show hidden breadcrumbs' }).click()
+    );
+    const section = await screen.findByText('Section');
+    act(() => section.click());
+
+    expect(section.closest('[role^="menuitem"]')).toHaveAttribute(
+      'aria-disabled',
+      'true'
+    );
+    expect(onAction).not.toHaveBeenCalledWith('section');
+  });
+
   it('titles capped labels so a truncated name stays readable', () => {
     render(<Breadcrumbs items={items} maxItemWidth={80} />);
 
