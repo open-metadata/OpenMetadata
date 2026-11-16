@@ -22,7 +22,6 @@ import pytest
 from metadata.readers.archive import (
     _ZIP64_SENTINEL,
     MAX_ARCHIVE_SIZE_BYTES,
-    ADLSBlobAdapter,
     ArchiveEntry,
     GCSBlobAdapter,
     S3BlobAdapter,
@@ -187,46 +186,6 @@ class TestIsSafeArchivePath:
 
     def test_windows_backslash_traversal(self):
         assert _is_safe_archive_path("folder\\..\\evil.csv") is False
-
-
-# ---------------------------------------------------------------------------
-# TestADLSBlobAdapter
-# ---------------------------------------------------------------------------
-
-
-class TestADLSBlobAdapter:
-    def test_get_size_returns_properties_size(self):
-        client = MagicMock()
-        client.get_blob_properties.return_value.size = 500
-        adapter = ADLSBlobAdapter(client)
-        assert adapter.get_size() == 500
-
-    def test_get_size_returns_zero_when_none(self):
-        client = MagicMock()
-        client.get_blob_properties.return_value.size = None
-        adapter = ADLSBlobAdapter(client)
-        assert adapter.get_size() == 0
-
-    def test_read_range_calls_download_blob(self):
-        client = MagicMock()
-        adapter = ADLSBlobAdapter(client)
-        adapter.read_range(10, 20)
-        client.download_blob.assert_called_once_with(offset=10, length=20)
-
-    def test_read_range_returns_bytes(self):
-        client = MagicMock()
-        client.download_blob.return_value.readall.return_value = b"hello"
-        adapter = ADLSBlobAdapter(client)
-        result = adapter.read_range(0, 5)
-        assert result == b"hello"
-
-    def test_read_all_calls_download_blob_no_kwargs(self):
-        client = MagicMock()
-        client.download_blob.return_value.readall.return_value = b"all data"
-        adapter = ADLSBlobAdapter(client)
-        result = adapter.read_all()
-        client.download_blob.assert_called_once_with()
-        assert result == b"all data"
 
 
 # ---------------------------------------------------------------------------

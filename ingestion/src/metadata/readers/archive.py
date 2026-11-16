@@ -73,22 +73,6 @@ class RangeReadableBlob(Protocol):
     def read_all(self) -> bytes: ...
 
 
-class ADLSBlobAdapter:
-    """Adapts an azure-storage-blob BlobClient to RangeReadableBlob."""
-
-    def __init__(self, blob_client) -> None:
-        self._client = blob_client
-
-    def get_size(self) -> int:
-        return self._client.get_blob_properties().size or 0
-
-    def read_range(self, offset: int, length: int) -> bytes:
-        return self._client.download_blob(offset=offset, length=length).readall()
-
-    def read_all(self) -> bytes:
-        return self._client.download_blob().readall()
-
-
 class S3BlobAdapter:
     """Adapts a boto3 S3 client + coordinates to RangeReadableBlob."""
 
