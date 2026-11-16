@@ -11,6 +11,41 @@ MCP Server app installs an embedded Model Context Protocol(MCP) server within Op
     - This endpoint can be used by client if Streamable-Http transport is used.
 
 $$section
+### Enable MCP Server $(id="enabled")
+
+Allow MCP clients to connect. Disabling stops new MCP requests and sign-ins without deleting registered clients or their grants. Already-running requests may finish.
+
+$$
+
+$$section
+### Allow Dynamic Client Registration $(id="dynamicClientRegistrationEnabled")
+
+Allow new clients to register without administrator pre-registration. Disabling this does not revoke existing clients.
+
+$$
+
+$$section
+### Allowed Redirect Hosts $(id="allowedRedirectHosts")
+
+Exact HTTPS callback host names, without a scheme, path or wildcard. An empty list allows any HTTPS host. Applies to new authorizations; revoke a client to end existing access.
+
+$$
+
+$$section
+### Allow Loopback Redirects $(id="allowLoopbackRedirects")
+
+Allow callbacks to localhost and loopback IP addresses. Desktop clients may require these.
+
+$$
+
+$$section
+### Allow Native App Redirects $(id="allowNativeRedirects")
+
+Allow private-use callback schemes used by native applications. Disabling may prevent those clients from connecting.
+
+$$
+
+$$section
 ### Base URL $(id="baseUrl")
 
 External-facing base URL advertised in the MCP OAuth metadata (issuer and endpoint URLs). Leave empty to fall back to the OpenMetadata base URL from system settings. Set this explicitly for clustered deployments where the service is reached through a load balancer or ingress.

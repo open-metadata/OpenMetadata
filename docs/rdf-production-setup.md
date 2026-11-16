@@ -400,6 +400,27 @@ thrashes the database. Two mechanisms keep them apart:
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
 
+**Turning RDF on.** Changes made while RDF is off never reach the graph. So every server with RDF
+off records it in `rdf_projection_health` when it starts, when its stop begins and again at the end
+of its stop: each write raises `failureVersion`. Once RDF is on, `/v1/rdf/status` reports
+`DEGRADED` (or `REBUILDING` when the graph was never built), and the agent SPARQL path refuses,
+until a full Recreate that started after the last of those writes completes. A run on a server with
+RDF off indexes nothing and does not count.
+
+Nothing queues that rebuild. After enabling RDF, run `RdfIndexApp` with Recreate once: from the
+application page or through the API (`POST /v1/apps/trigger/RdfIndexApp` with
+`recreateIndex: true`); otherwise the weekly run does it. `openmetadata-ops.sh reindex-rdf` cannot
+do it today: it stops before it queues a run. This is the way search reindexing is handled too. A
+server start queues one `RdfIndexApp` run only when no run record exists at all: a new install, or
+an upgrade from 2.0.x that starts with RDF on, whose 2.1.0 migration deletes the old records.
+
+When RDF is turned on with a rolling restart, a server with RDF off is still running while the new
+server starts, and can take writes the graph never receives. Until that server stops, the state
+can read `READY` although its changes are not in the graph. Its stop is recorded after that, so
+from then on the state is `DEGRADED`. Run the rebuild once every server has restarted. A server
+that is killed without a stop signal records nothing. See
+ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+
 ## Blue/green rebuilds
 
 By default a `recreateIndex` run clears the served dataset before it starts repopulating it, so
