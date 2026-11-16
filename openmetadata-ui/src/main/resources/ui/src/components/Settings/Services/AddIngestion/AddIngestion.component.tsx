@@ -357,8 +357,7 @@ const AddIngestion = forwardRef<AddIngestionHandle, AddIngestionProps>(
           airflowConfig: {
             ...data.airflowConfig,
             scheduleInterval: extraData.cron,
-            pipelineTimezone:
-              extraData.timezone ?? data.airflowConfig.pipelineTimezone,
+            pipelineTimezone: extraData.timezone ?? 'UTC',
             retries: extraData.retries,
           },
           raiseOnError: extraData.raiseOnError ?? true,
