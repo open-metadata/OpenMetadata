@@ -170,9 +170,15 @@ export const getStatusChange = async (
     changedAt: version?.updatedAt,
   };
 
-  return change.changedAt
-    ? { ...change, ...(await findRunAt(entityLink, change.changedAt)) }
-    : change;
+  let run = {};
+  try {
+    run = change.changedAt ? await findRunAt(entityLink, change.changedAt) : {};
+  } catch {
+    // Workflow runs need their own permission; without it, the version history still says who
+    // set the status and when.
+  }
+
+  return { ...change, ...run };
 };
 
 const AUTOMATIC_REASONS: Record<AutomaticReason, string> = {

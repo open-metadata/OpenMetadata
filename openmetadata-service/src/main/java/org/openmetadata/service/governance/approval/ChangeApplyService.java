@@ -216,9 +216,10 @@ public final class ChangeApplyService {
         !selection(request, revision).closed().rejected().isEmpty());
   }
 
+  // A reviewer who approved some changes and rejected others is on both sides.
   private static List<String> decidersOf(List<ApprovalDecision> decisions, DecisionType type) {
     return decisions.stream()
-        .filter(decision -> decision.getDecision() == type)
+        .filter(decision -> ChangeSelection.givesAny(decision, type))
         .map(ApprovalDecision::getDecidedBy)
         .distinct()
         .toList();

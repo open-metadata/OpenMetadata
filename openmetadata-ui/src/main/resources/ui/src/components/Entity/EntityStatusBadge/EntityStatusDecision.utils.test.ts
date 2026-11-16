@@ -205,6 +205,19 @@ describe('getStatusChange', () => {
     expect(getWorkflowDefinitionById).not.toHaveBeenCalled();
   });
 
+  it('still names who set the status when the workflow runs cannot be read', async () => {
+    givenVersions(version('Deprecated', 'ana', 900_000));
+    (getWorkflowInstancesForApplication as jest.Mock).mockRejectedValue(
+      new Error('403')
+    );
+
+    expect(await getStatusChange('dataProduct', 'id', LINK)).toEqual({
+      status: 'Deprecated',
+      changedBy: 'ana',
+      changedAt: 900_000,
+    });
+  });
+
   it('falls back to the version that created the entity when no version changed the status', async () => {
     givenVersions(version('Draft', 'ana', 5_000, false));
     givenRuns();

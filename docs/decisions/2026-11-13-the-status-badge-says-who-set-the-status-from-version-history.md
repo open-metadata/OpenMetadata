@@ -44,3 +44,10 @@ recorded has no run record to read at all.
   version's author instead of the workflow.
 - An entity with a very long version history pays for reading all of it on hover; revisit with a
   server-side "last status change" if that becomes slow.
+- A later edit by the same user within their 10-minute session is folded into the version that
+  changed the status and moves its time, and version history keeps no time of its own for the
+  status (`changeSummary` does not track `entityStatus`). If no status-setting run is active at the
+  later time, the hover names that user instead of the workflow. Tracking `entityStatus` in
+  `changeSummary` would fix it, at the cost of a change to every entity update.
+- A user who cannot read workflow runs (`VIEW_ALL` on workflow definitions) still sees who set the
+  status and when, without the workflow.
