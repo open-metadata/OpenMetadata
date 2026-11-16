@@ -242,6 +242,7 @@ const EllipsisMenu = ({
             <Dropdown.Item
               href={onAction ? undefined : item.href}
               icon={item.icon}
+              isDisabled={item.isDisabled}
               key={item.id}
               label={toText(item.label, `Item ${index + 1}`)}
               onAction={() => onAction?.(item.id)}
