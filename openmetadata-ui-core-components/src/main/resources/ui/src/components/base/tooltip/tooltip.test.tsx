@@ -351,3 +351,32 @@ describe('Tooltip — disabled trigger', () => {
     expect(screen.getByTestId('e').parentElement?.tagName).not.toBe('SPAN');
   });
 });
+
+describe('Tooltip — variant', () => {
+  it('draws the light variant on the floating surface with primary text', () => {
+    render(
+      <Tooltip isOpen description="Details" title="Light title" variant="light">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('Light title').parentElement).toHaveClass(
+      'tw:bg-floating'
+    );
+    expect(screen.getByText('Light title')).toHaveClass('tw:text-primary');
+    expect(screen.getByText('Details')).toHaveClass('tw:text-tertiary');
+  });
+
+  it('keeps the dark tooltip by default', () => {
+    render(
+      <Tooltip isOpen title="Dark title">
+        <span>trigger</span>
+      </Tooltip>
+    );
+
+    expect(screen.getByText('Dark title').parentElement).toHaveClass(
+      'tw:bg-primary-solid'
+    );
+    expect(screen.getByText('Dark title')).toHaveClass('tw:text-white');
+  });
+});

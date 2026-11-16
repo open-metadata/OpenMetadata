@@ -743,8 +743,16 @@ const GlossaryHeader = ({
   const statusBadge = useMemo(() => {
     const entityStatus = selectedData.entityStatus ?? EntityStatus.Approved;
 
-    return <EntityStatusBadge showDivider={false} status={entityStatus} />;
-  }, [selectedData]);
+    return (
+      <EntityStatusBadge
+        entityId={selectedData.id}
+        entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
+        fqn={selectedData.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
+    );
+  }, [selectedData, isGlossary]);
 
   const createButtons = useMemo(() => {
     if (permissions.Create || createGlossaryTermPermission) {
