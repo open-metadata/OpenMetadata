@@ -217,13 +217,14 @@ Scopes = dict[int, dict[str, "str | None"]]
 
 def _alias_names(source: exp.Expression) -> list[str]:
     """
-    The names a non-table source answers to: its alias, and the column names of the alias, which
-    is where BigQuery puts an UNNEST's name (``CROSS JOIN UNNEST(items) item``).
+    The name a non-table source answers to: its alias. Only an alias without a name lends its
+    column its place, which is how sqlglot reads a BigQuery UNNEST (``CROSS JOIN UNNEST(items)
+    item``); a column alias of a named source (``VALUES (1) AS v(o)``) names a column, not a source.
     """
     alias = source.args.get("alias")
     if not isinstance(alias, exp.TableAlias):
         return []
-    names = [alias.name, *(column.name for column in alias.columns)]
+    names = [alias.name] if alias.name else [column.name for column in alias.columns]
     return [name.lower() for name in names if name]
 
 
@@ -246,7 +247,10 @@ def _own_sources(select: exp.Select, scopes: Scopes) -> dict[str, str | None]:
             name = None if is_cte else table_name_of(source)
             for key in _source_keys(source):
                 sources[key] = name if key not in sources or sources[key] == name else None
-        elif isinstance(source.find_ancestor(exp.From, exp.Join, exp.Select), (exp.From, exp.Join)):
+        elif source.arg_key == "laterals" or isinstance(
+            source.find_ancestor(exp.From, exp.Join, exp.Select), (exp.From, exp.Join)
+        ):
+            # A Hive or Spark LATERAL VIEW sits in the SELECT's laterals, not under a FROM or JOIN.
             # A derived table, UNNEST, VALUES or LATERAL reads no warehouse column. Unnamed, it
             # still counts as a source, so an unqualified column is not given to the only table.
             for key in _alias_names(source) or [f"#{id(source)}"]:

@@ -1101,6 +1101,10 @@ class TestColumnLineage:
             ("with recursive my_table as (select id from my_table) select id from my_table", set()),
             ("with w as (select t.y from s.t t), t as (select 1 as y) select y from w", {("s.t", "y")}),
             ("with w as (select y from t), t as (select 1 as y) select y from t", {("t", "y")}),
+            (
+                "with first_pass as (select id from orders), orders as (select 1 as id) select id from first_pass",
+                {("orders", "id")},
+            ),
         ],
     )
     def test_a_cte_is_never_read_as_the_table_it_is_named_after(self, sql, expected):
@@ -1121,6 +1125,9 @@ class TestColumnLineage:
             ),
             ("select x from p.d.orders cross join Orders u", Dialect.BIGQUERY, set()),
             ("select x from p.d.orders cross join (values (1, 2)) as v(id, x)", Dialect.ANSI, set()),
+            ("select o.id from p.d.orders o cross join (values (1)) as v(o)", Dialect.POSTGRES, {("p.d.orders", "id")}),
+            ("select c from db.tbl lateral view explode(arr) t as c", Dialect.HIVE, set()),
+            ("select tbl.x, c from db.tbl lateral view explode(arr) t as c", Dialect.SPARKSQL, {("db.tbl", "x")}),
         ],
     )
     def test_an_unnest_or_values_source_is_never_read_as_a_table(self, sql, dialect, expected):
