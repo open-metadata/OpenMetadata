@@ -20,8 +20,8 @@ chat timer (`165m, 36.0s`), the scoring-job run (`190m 05s`) and MCP latency (`1
 
 ## Decision
 
-`AgentRun.durationMs` is the run's `endDate − startDate` in milliseconds, or `0` when the run has
-no end date.
+`AgentRun.durationMs` is the run's `endDate − startDate` in milliseconds, or `undefined` when either
+date is missing. The run history drawer omits the duration when it is `undefined`.
 
 Only a display that showed a large count of minutes, seconds or milliseconds is converted. A display
 that already showed hours, days or years keeps its format, including application runs
