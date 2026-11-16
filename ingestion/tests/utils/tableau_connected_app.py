@@ -26,7 +26,8 @@ CONNECTED_APP = {
     "secretValue": "connected-app-secret-value-of-44-characters!",
     "username": "api-user@example.com",
 }
-# Every scope a call of the dashboard or pipeline connector needs, measured on Tableau Cloud.
+# Every scope a call of the dashboard or pipeline connector or of Collate's reverse metadata needs,
+# measured on Tableau Cloud.
 CONNECTED_APP_SCOPES = [
     "tableau:content:read",
     "tableau:users:read",
@@ -35,6 +36,11 @@ CONNECTED_APP_SCOPES = [
     "tableau:flow_runs:read",
     "tableau:jobs:read",
     "tableau:tasks:read",
+    "tableau:workbooks:update",
+    "tableau:workbook_tags:update",
+    "tableau:workbook_tags:delete",
+    "tableau:view_tags:update",
+    "tableau:view_tags:delete",
 ]
 
 # Tableau answers a call outside the JWT's scopes with the same 401002 as bad credentials.

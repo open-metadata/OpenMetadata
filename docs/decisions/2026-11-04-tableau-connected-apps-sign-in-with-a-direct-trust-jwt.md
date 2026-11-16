@@ -1,7 +1,7 @@
 # Tableau connected apps sign in with a direct trust HS256 JWT that carries a fixed scope set and lives five minutes
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-04 (initial)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-16 (the scope set adds the five write scopes of Collate's reverse metadata)
 - **Deciders:** Akash Verma
 - **Guard:** `ingestion/tests/unit/source/dashboard/tableau/test_connection.py`, `ingestion/tests/unit/topology/pipeline/test_tableaupipeline_connection.py`, the `connected_app` runs of `ingestion/tests/integration/tableau/` and `ingestion/tests/integration/tableaupipeline/`
 - **Related:** [#33371](https://github.com/open-metadata/OpenMetadata/issues/33371)
@@ -20,6 +20,13 @@ credentials that sign in as a chosen user without that user's password. On Table
   `tableau:tasks:read`. With only `tableau:content:read`, the owner, flow, flow run, job and task
   calls fail with `401002 "Invalid authentication credentials were provided."`, the same answer as
   bad credentials.
+- Collate's reverse metadata reuses this connection to write workbook descriptions and owners
+  (Update Workbook, `tableau:workbooks:update`), workbook tags (`tableau:workbook_tags:update`,
+  `tableau:workbook_tags:delete`) and view tags (`tableau:view_tags:update`,
+  `tableau:view_tags:delete`). On 2026-11-16 (Tableau Cloud, REST API 3.30), each write failed with
+  `401002` when the token carried only the seven read scopes, and succeeded with the five added. A
+  token with no `scp` claim was accepted for reads and writes alike, but Tableau documents a missing
+  `scp` as error `10099 SCOPES_MISSING_IN_JWT`, so the claim stays.
 - Each client signs in once, and the session it gets outlives the token. The pipeline client's
   transport retries a sign-in that Tableau answers with 429 or 5xx, re-sending the same token, which
   Tableau accepts only until it expires.
@@ -29,7 +36,7 @@ credentials that sign in as a chosen user without that user's password. On Table
   is shared by `tableauConnection.json` and `tableauPipelineConnection.json`.
 - `build_server_config` signs an HS256 JWT with the secret value: header `kid` = secret ID and
   `iss` = client ID; claims `iss` = client ID, `sub` = username, `aud` = `tableau`, a new `jti` per
-  sign-in, `scp` = the seven scopes above, and `exp` five minutes after signing. It passes the token
+  sign-in, `scp` = the twelve scopes above, and `exp` five minutes after signing. It passes the token
   as `TSC.JWTAuth(jwt=..., site_id=...)`. `site_id` is a keyword because the second positional
   parameter is `isUat`.
 - The scope set and the five-minute lifetime are module constants
@@ -45,9 +52,10 @@ credentials that sign in as a chosen user without that user's password. On Table
 ## Consequences
 An administrator can give OpenMetadata a credential that is not a person's password or PAT, but the
 calls still run as `username`, with that user's permissions. On Tableau Cloud that is the user's
-email address; on Tableau Server, the user name. The host clock must be correct, because Tableau
-rejects a token outside its validity window, and Tableau Cloud caps that window at ten minutes.
-OAuth 2.0 trust, unified access tokens, impersonation, per-site scopes and token refresh are not
-supported. Revisit the fixed scope set if a connector starts calling an endpoint outside it, or if a
-site must issue tokens with fewer scopes. Revisit the lifetime if a client ever signs in again
-during a run.
+email address; on Tableau Server, the user name. Every connected-app token carries the write scopes,
+read-only ingestion included; the user's site role and permissions still bound what it can change,
+as they do for a PAT. The host clock must be correct, because Tableau rejects a token outside its
+validity window, and Tableau Cloud caps that window at ten minutes. OAuth 2.0 trust, unified access
+tokens, impersonation, per-site scopes and token refresh are not supported. Revisit the fixed scope
+set if a connector starts calling an endpoint outside it, or if a site must issue tokens with fewer
+scopes. Revisit the lifetime if a client ever signs in again during a run.

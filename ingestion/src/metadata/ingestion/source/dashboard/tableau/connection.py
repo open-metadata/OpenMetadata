@@ -81,7 +81,8 @@ METADATA_API_DOC = (
     "#enable-the-tableau-metadata-api-for-tableau-server"
 )
 
-# The calls the dashboard and pipeline connectors make need exactly these, measured on Tableau Cloud
+# The calls the dashboard and pipeline connectors make, and the workbook description, owner and tag
+# and view tag writes of Collate's reverse metadata, need exactly these, measured on Tableau Cloud
 # (ADR:2026-11-04-tableau-connected-apps-sign-in-with-a-direct-trust-jwt).
 # ponytail: fixed scope set; a site that must grant fewer needs a config field.
 CONNECTED_APP_SCOPES = [
@@ -92,6 +93,11 @@ CONNECTED_APP_SCOPES = [
     "tableau:flow_runs:read",
     "tableau:jobs:read",
     "tableau:tasks:read",
+    "tableau:workbooks:update",
+    "tableau:workbook_tags:update",
+    "tableau:workbook_tags:delete",
+    "tableau:view_tags:update",
+    "tableau:view_tags:delete",
 ]
 # The JWT only has to last until sign-in; the session it buys outlives it. Tableau Cloud allows 10 minutes.
 CONNECTED_APP_JWT_LIFETIME = timedelta(minutes=5)

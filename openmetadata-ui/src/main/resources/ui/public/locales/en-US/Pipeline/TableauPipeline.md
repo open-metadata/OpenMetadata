@@ -60,7 +60,7 @@ To set it up, a site administrator:
 2. Enables the app. Tableau's documentation states that a new connected app on Tableau Server starts disabled.
 3. Generates a secret and copies the Client ID, the Secret ID and the Secret Value.
 
-OpenMetadata requests these scopes: `tableau:content:read`, `tableau:users:read`, `tableau:server:read`, `tableau:flows:read`, `tableau:flow_runs:read`, `tableau:jobs:read`, `tableau:tasks:read`. The token is valid for 5 minutes, so the clock of the host running the ingestion must be correct.
+OpenMetadata requests these scopes: `tableau:content:read`, `tableau:users:read`, `tableau:server:read`, `tableau:flows:read`, `tableau:flow_runs:read`, `tableau:jobs:read`, `tableau:tasks:read`, and, so that Collate's reverse metadata can write workbook descriptions, owners and tags and view tags, `tableau:workbooks:update`, `tableau:workbook_tags:update`, `tableau:workbook_tags:delete`, `tableau:view_tags:update`, `tableau:view_tags:delete`. The token is valid for 5 minutes, so the clock of the host running the ingestion must be correct.
 
 Tableau Server needs 2025.3 or later, where Tableau added the connected app scopes for flows and flow runs. On older versions, use a Personal Access Token.
 
