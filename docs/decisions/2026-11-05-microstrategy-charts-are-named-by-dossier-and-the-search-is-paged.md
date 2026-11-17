@@ -1,9 +1,9 @@
 # MicroStrategy charts are named by dossier, and the dossier search is paged and project-scoped
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration) · v4 2026-11-13 (2.0 backport renames charts in 2.0.9)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration) · v4 2026-11-13 (2.0 backport renames charts in 2.0.9) · v5 2026-11-13 (documents told apart by viewMedia; cube SQL parsed once) · v6 2026-11-14 (column-level lineage)
 - **Deciders:** OpenMetadata ingestion maintainers
-- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
+- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`, `test_documents_are_skipped_without_reading_their_definition`, `test_cube_sql_is_parsed_once_for_every_prefix_and_dossier`, `test_projections_are_matched_on_the_columns_they_read_not_their_aliases`, `test_a_schema_attribute_form_maps_to_the_column_the_cube_reads`, `test_every_form_of_an_attribute_maps_to_one_attribute_column`, `test_a_cte_is_never_read_as_the_table_it_is_named_after`, `test_same_named_tables_are_told_apart_by_their_qualifiers`, `test_an_unnest_or_values_source_is_never_read_as_a_table`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing
 
 ## Context
@@ -86,3 +86,64 @@ path segment is a Library app would misread servers mounted under a path of thei
 v3 said a 2.0 backport would register the chart rename in 2.0.8. 2.0.8 was released before the
 rename merged, so the backport adds it as a new 2.0.9 migration; on 2.1 it stays in 2.1.0. The
 Decision section says so.
+
+## Amendment: v5 2026-11-13, documents are told apart by viewMedia; cube SQL is parsed once
+The quick search returns Report Services documents, document templates and themes with the same
+type (55) and subtype (14081) as dossiers. The connector read each one's definition from the dossier
+API, which answers HTTP 500 for a document; on 2.0 the client then failed with `KeyError: 'message'`
+on the error body. On the demo server, 640 of the 1312 type-55 objects are not dossiers.
+
+- A search result is a dossier when `viewMedia & 0xE8000000 == 0x60000000`: bits 30 and 29 set,
+  bits 31 and 27 clear. This is the rule MicroStrategy's own SDK applies (`mstrio-py`,
+  `is_dashboard`); no other field of the search result tells them apart. A result without
+  `viewMedia` is read as a dossier, as before.
+- Anything else is skipped before its definition is read, recorded as filtered, and counted as
+  listed and filtered, so a project holding only documents still confirms its listing. One warning
+  per project gives the count.
+- A document the dossier API happened to render was ingested before and is now soft-deleted as
+  stale on the next run. Ingesting documents through `/api/documents/{id}/definition`, whose datasets
+  have the dossier's shape but whose visualizations sit in layouts and panel stacks, is left for a
+  later change.
+- A cube's tables are parsed once per cube and dialect (`CACHE_SIZE` LRU, failures included). The
+  base class asks for lineage once per `dbServicePrefixes` entry, so a cube was parsed once per
+  prefix and per dossier using it.
+- A table the cube SQL qualifies with a database (a BigQuery project) is searched for only under a
+  prefix that names that database or, for a bare service name, whose service holds it. A service's
+  database names are listed once per run; a failed listing assumes every database is possible.
+- A data model whose objects repeat a column name, which the server rejects, keeps one column per
+  object id and suffixes ` (2)`, ` (3)` to a different object with a taken name; `displayName`
+  keeps the MicroStrategy name.
+
+## Amendment: v6 2026-11-14, column-level lineage
+Each table → data model edge now carries the column pairs the cube's SQL supports.
+
+- A data model column is matched on the **warehouse columns a projection reads**, never on the
+  projection's alias. MicroStrategy generates aliases (`WJXBFS1`, `CATEGORY0`) that name nothing.
+  The SQL is read pass by pass (passes are separated by blank lines, not semicolons; a blank line
+  inside parentheses, a comment or quoted text never splits one); a pass that is not SQL, or does not parse, contributes no columns and leaves table lineage as it was.
+- **Schema cube attribute:** its form's expression, read through the modeling API
+  (`/model/attributes`, logical → physical table through `/model/tables`), gives the (table, column)
+  pairs the form can read. The physical table is named as the SQL names it: its table prefix when
+  one is set, else its namespace. A pair the SQL also reads links that column to the attribute's
+  own column (`Order`), not to the form's child (`Order.ID`): the lineage view draws no edge to a
+  nested data model column. Every form of an attribute maps to that one column. Needs the service account to read schema objects; on HTTP 403, one warning,
+  no further modeling calls in the run, and table lineage only.
+- **Tables are compared on every qualifier both sides name** (table, schema, database or project).
+  Two tables that share a name in different schemas or projects are never linked to each other's
+  columns.
+- **Data Import cube** (report subtype 779 or 780), which the modeling API refuses: an object is
+  matched on its name, which the import derives from the column (`Order Id` ↔ `order_id`): the
+  column of the same name, else the only column whose name matches once case, spaces and punctuation
+  are dropped (letters of every script are kept). No column edge when that is not one column, when
+  two objects of the cube match alike, or when the object was renamed.
+- **Columns resolve within their own SELECT**: a nested query's aliases never resolve an outer
+  column, and a pass that opens with comments is still read. A CTE, derived table, UNNEST or VALUES
+  source is never read as a warehouse table (a CTE only where it is visible: in a non-recursive WITH,
+  a CTE's body sees only the CTEs before it), and a column qualified as `schema.table.column`
+  resolves on every qualifier it gives, so same-named tables in one query stay apart.
+- **Schema cube metric:** no column edge. A metric built in Workstation refers to an embedded
+  aggregation the API does not serve, so the fact column it aggregates is unknown, and mapping
+  `WJXBFSn` aliases to metrics by position would be a guess.
+- A failure while building column lineage drops the column pairs, never the table edge.
+- Attribute, logical-table and dataset-type reads are cached per id (`CACHE_SIZE` LRU): each is read
+  at most once while it stays cached.

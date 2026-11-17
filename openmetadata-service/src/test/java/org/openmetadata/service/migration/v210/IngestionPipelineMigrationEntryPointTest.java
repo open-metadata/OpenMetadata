@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ContextFileFqnRepair;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
@@ -128,6 +129,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DataProductDomainContainmentRepair.class);
         MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
             mockStatic(EntityExtensionCollationAlignment.class);
+        MockedStatic<ContextFileFqnRepair> contextFileFqnRepair =
+            mockStatic(ContextFileFqnRepair.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -151,17 +154,22 @@ class IngestionPipelineMigrationEntryPointTest {
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
-      // Each destination's id owns its secrets, so ids are settled before secrets are bound.
+      // A value a 2.1 pre-release bound to its destination opens for the destination's id, so ids
+      // are settled before the secrets are encrypted.
       InOrder idsThenSecrets = inOrder(DestinationIdMigration.class, WebhookSecretsMigration.class);
       idsThenSecrets.verify(
           destinationIdMigration,
           () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, connectionType));
+          () ->
+              WebhookSecretsMigration.encryptProfileWebhookSecrets(
+                  handle, migration.getVersion(), connectionType));
       idsThenSecrets.verify(
           webhookSecretsMigration,
-          () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, connectionType));
+          () ->
+              WebhookSecretsMigration.encryptAlertDestinationSecrets(
+                  handle, migration.getVersion(), connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->
@@ -181,6 +189,8 @@ class IngestionPipelineMigrationEntryPointTest {
           () ->
               LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
                   handle, connectionType));
+      // Released versions stored misnamed Context Center files, so both engines repair them.
+      contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
     }
   }
 

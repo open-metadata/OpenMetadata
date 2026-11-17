@@ -13,6 +13,8 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { OwnerType } from '../../../enums/user.enum';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import UserPopOverCard from './UserPopOverCard';
 
 jest.mock('react-router-dom', () => ({
@@ -111,5 +113,49 @@ describe('UserPopOverCard Component', () => {
     fireEvent.click(screen.getByTestId('testUser'));
 
     expect(onTitleClick).toHaveBeenCalledTimes(1);
+  });
+
+  it('should show the fetched display name when none is passed', () => {
+    useApplicationStore.setState({
+      userProfilePics: {
+        testUser: {
+          id: 'u1',
+          name: 'testUser',
+          displayName: 'Test User',
+          email: 'test@example.com',
+        } as User,
+      },
+    });
+
+    render(<UserPopOverCard showUserName userName="testUser" />);
+
+    expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
+
+    useApplicationStore.setState({ userProfilePics: {} });
+  });
+
+  it('should fall back to the login when the fetched display name is empty', () => {
+    useApplicationStore.setState({
+      userProfilePics: {
+        blankUser: {
+          id: 'u2',
+          name: 'blankUser',
+          displayName: '',
+          email: 'blank@example.com',
+        } as User,
+      },
+    });
+
+    render(<UserPopOverCard showUserName userName="blankUser" />);
+
+    expect(screen.getByTestId('blankUser')).toHaveTextContent('blankUser');
+
+    useApplicationStore.setState({ userProfilePics: {} });
+  });
+
+  it('should fall back to the login when the user is not fetched', () => {
+    render(<UserPopOverCard showUserName userName="otherUser" />);
+
+    expect(screen.getByTestId('otherUser')).toHaveTextContent('otherUser');
   });
 });

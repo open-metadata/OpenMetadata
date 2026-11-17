@@ -659,7 +659,10 @@ const NavBar = () => {
                   items={getHelpDropdownItems(version)}
                   selectionMode="none">
                   {(item) => (
-                    <Dropdown.Item id={item.key} textValue={item.key}>
+                    <Dropdown.Item
+                      id={item.key}
+                      textValue={item.key}
+                      onAction={item.onAction}>
                       {item.label}
                     </Dropdown.Item>
                   )}

@@ -99,6 +99,10 @@ const LandingPageEditor = ({
     () =>
       persistLayout(
         currentPage ?? ({ pageType: PageType.LandingPage } as Page)
+      ).then(
+        () => true,
+        // persistLayout has shown the error toast.
+        () => false
       ),
     [currentPage, persistLayout]
   );

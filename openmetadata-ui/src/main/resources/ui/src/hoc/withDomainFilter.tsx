@@ -17,7 +17,6 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
-import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
@@ -25,15 +24,33 @@ import {
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
 
-// A user's tasks and approvals are their work queue: the pick never hides them, so these lists
-// only carry a domain their caller asked for (e.g. a domain page's tasks).
-const UNSCOPED_LIST_PATHS = ['/tasks'];
+// Tasks follow the pick like any other list, except a list about given assets (e.g. an asset's
+// Tasks tab): an opened asset shows all its tasks, as the rest of its page does.
+const TASKS_PATH = '/tasks';
+const ABOUT_ASSET_TASK_PARAMS = ['aboutEntity', 'aboutEntityIds', 'dataset'];
 
-const isUnscopedList = (url?: string) =>
-  UNSCOPED_LIST_PATHS.some(
-    (path) =>
-      url === path || url?.startsWith(`${path}/`) || url?.startsWith(`${path}?`)
-  );
+const isTaskListAboutAssets = (config: InternalAxiosRequestConfig) =>
+  (config.url === TASKS_PATH ||
+    Boolean(config.url?.startsWith(`${TASKS_PATH}/`))) &&
+  ABOUT_ASSET_TASK_PARAMS.some((param) => Boolean(config.params?.[param]));
+
+// An asset's own activity (its Activity tab) is not narrowed either; the activity feed is.
+const ASSET_ACTIVITY_PATH = '/activity/entity/';
+
+const isAboutOneAsset = (config: InternalAxiosRequestConfig) =>
+  config.method === 'get' &&
+  (isTaskListAboutAssets(config) ||
+    Boolean(config.url?.startsWith(ASSET_ACTIVITY_PATH)));
+
+// A request about one asset never carries the pick, even when its caller passed one.
+const withoutDomain = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const { domain: _domain, ...params } = config.params ?? {};
+  config.params = params;
+
+  return config;
+};
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
@@ -102,19 +119,14 @@ const keepsUnassignedSearch = (index?: string | string[]) =>
 
 /**
  * The navbar domain a request should be scoped to, or `undefined` when none is
- * selected or scoping is off (product tour, domain pages, auth calls).
+ * selected or scoping is off (domain pages, auth calls).
  */
 const getRequestDomain = (): string | undefined => {
   const { activeDomain } = useDomainStore.getState();
   const currentPath = getPathNameFromWindowLocation();
-  // A product tour shows every user the same recorded pages, whatever domain
-  // they have selected. Off while the tour is recorded too, so the recorded
-  // requests are the ones the tour sends.
-  const isUnscopedPage =
-    isProductTourRunning() ||
-    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
-      currentPath.startsWith(path)
-    );
+  const isUnscopedPage = ['/domain', '/auth/logout', '/auth/refresh'].some(
+    (path) => currentPath.startsWith(path)
+  );
 
   return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
     ? undefined
@@ -211,7 +223,11 @@ export const withDomainFilter = (
     return withDomainOnReportBatch(config, activeDomain);
   }
 
-  if (!activeDomain || config.method !== 'get' || isUnscopedList(config.url)) {
+  if (isAboutOneAsset(config)) {
+    return withoutDomain(config);
+  }
+
+  if (!activeDomain || config.method !== 'get') {
     return config;
   }
 

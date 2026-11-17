@@ -16,10 +16,7 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../hooks/usePersonalSpaceStore';
-import {
-  useSettingsHash,
-  useSettingsHashSync,
-} from '../../../../hooks/useSettingsHash';
+import { useSettingsHash } from '../../../../hooks/useSettingsHash';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import PersonalSpaceGate from '../PersonalSpaceGate/PersonalSpaceGate';
 import ProfilePage from '../Profile/ProfilePage';
@@ -45,10 +42,6 @@ const DIALOG_CLASS = 'ai-personal-space__dialog';
 const PersonalSpaceModal: React.FC = () => {
   const { t } = useTranslation();
   const activePanel = usePersonalSpaceStore((state) => state.activePanel);
-  const suppressHashClear = usePersonalSpaceStore(
-    (state) => state.suppressHashClear
-  );
-  const open = usePersonalSpaceStore((state) => state.open);
   const close = usePersonalSpaceStore((state) => state.close);
   const exitGuard = usePersonalSpaceStore((state) => state.exitGuard);
   const requestClose = useCallback(() => {
@@ -56,24 +49,11 @@ const PersonalSpaceModal: React.FC = () => {
       close();
     }
   }, [close, exitGuard]);
-  const clearSuppressHashClear = usePersonalSpaceStore(
-    (state) => state.clearSuppressHashClear
-  );
   const { pathname } = useLocation();
 
   const isOpen = activePanel !== null;
 
-  const openProfile = useCallback((panel: 'profile') => open(panel), [open]);
-
   const { state: hashState } = useSettingsHash();
-
-  useSettingsHashSync(
-    openProfile,
-    isOpen,
-    suppressHashClear,
-    clearSuppressHashClear,
-    close
-  );
 
   // A pathname change while the modal is open means a link inside it navigated
   // away — close the overlay so it doesn't linger over the new page.

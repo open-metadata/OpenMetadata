@@ -1,9 +1,9 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped) · v14 2026-11-10 (a deadlocked install slice is retried)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped) · v14 2026-11-10 (a deadlocked install slice is retried) · v15 2026-11-16 (a rule the file repeats is a duplicate, not a second rule)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
+- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest, NativeOntologyImportItemsTest
 - **Related:** Ontology Studio publication and release contracts
 
 ## Context
@@ -167,3 +167,11 @@ transaction, so the rollback undoes every operation in it. Creating the slice's 
 separate, earlier commit, so each attempt creates its own stamped `pack-install-<job>-<index>-<random>`
 change set, and an earlier attempt's change set stays behind as APPLY_FAILED, or as a draft when
 the rollback happened outside an operation.
+
+## Amendment
+
+v15, 2026-11-16: import no longer consumes duplicate equivalent axioms by count. A rule (axiom)
+whose signature the file already stated is a `DUPLICATE` item and plans no operation; a rule whose
+signature a stored rule already has is `ALREADY_EXISTS`. Applying refuses a second live rule with
+the same subject, type and signature (ADR:2026-11-16-a-live-rule-is-stated-once), so planning one
+would pass preview and then fail at apply. `NativeOntologyImportItemsTest` guards this behavior.

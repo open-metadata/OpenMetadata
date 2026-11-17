@@ -41,6 +41,7 @@ import {
   useMemo,
   useRef,
   useState,
+  WheelEvent,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -48,6 +49,7 @@ import ReactFlow, {
   applyNodeChanges,
   Background,
   Edge,
+  getViewportForBounds,
   MiniMap,
   Node,
   NodeChange,
@@ -92,6 +94,7 @@ import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../../../interface/queryFilter.interface';
+import type { ExploreQuickFilterField } from '../../../interface/quickFilter.interface';
 import type { LineageSceneFocus } from '../../../rest/lineageAPI';
 import {
   getLineageEdgeDetails,
@@ -122,12 +125,14 @@ import {
   getConnectedLineagePathHighlight,
   getDrillBand,
   getDrilledRootBreadcrumb,
+  getLensChangeRequest,
   getLensRootLabelKey,
   getLineageMapEmptyState,
   getParentSceneRequest,
   getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
+  getSceneCountLabel,
   getSceneFocus,
   getSceneLandingViewport,
   getSceneLevelLabelKey,
@@ -138,6 +143,7 @@ import {
   getSceneSearch,
   getSemanticZoomDirection,
   isContainerSceneNode,
+  isSceneEmpty,
   isSceneNodeDrillable,
   isSceneNodeDrillableWithChildren,
   LineageMapEmptyState,
@@ -159,6 +165,8 @@ type ZoomGestureEvent = MouseEvent | TouchEvent;
 
 const LINEAGE_MAP_ONBOARDING_COOKIE = 'lineageMapsOnboardingSeen';
 const SEMANTIC_ZOOM_COOLDOWN = 450;
+// d3-zoom can stop a hair above the minimum after an animated zoom-out.
+const MIN_ZOOM_TOLERANCE = 0.001;
 // A drill waits for the zoom gesture to settle, so overshooting a pinch while
 // zooming in to read a card does not open the next level.
 // ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
@@ -171,6 +179,10 @@ const SCENE_MUTATION_MAX_ATTEMPTS = 5;
 const SCENE_MUTATION_RETRY_DELAY_MS = 500;
 const MAX_SCENE_DEPTH = 3;
 const CONTROL_INSET_PADDING = 0.2;
+// Off-screen cards are not mounted, so they cannot take keyboard focus; only
+// scenes large enough to need it skip rendering them
+// (ADR:2026-11-13-lineage-scene-edges-weigh-the-asset-edges-they-stand-for).
+const VIRTUALIZE_NODE_THRESHOLD = 200;
 // The lowest zoom a scene still reads at; a scene that would fit only below it
 // opens there on its focus node instead (getSceneLandingViewport).
 const SCENE_LAYER_FIT_VIEW_MIN_ZOOM = MIN_ZOOM_VALUE;
@@ -415,6 +427,35 @@ const getPreviousZoomBand = (band: LineageBand) => {
   }
 };
 
+// React also delivers wheel events from portalled overlays (the onboarding
+// dialog, the layers menu) and from the map's panels and controls. d3-zoom
+// listens on the renderer only, so only a wheel over it counts.
+const isCanvasWheel = (event: WheelEvent<HTMLDivElement>) => {
+  const target = event.target as Element;
+
+  return (
+    event.currentTarget.contains(target) &&
+    target.closest('.react-flow__renderer') !== null &&
+    target.closest('.nowheel') === null
+  );
+};
+
+// Leaving an entity Lineage tab resets its quick filters in an unmount cleanup.
+// React runs that cleanup after this map's first render, which still read the
+// tab's filters, but before this map's effects; so an effect compares the
+// filters its render saw with the store's current ones and skips a request
+// built from filters that are already gone. The reset re-renders the map.
+const hasStaleQuickFilters = (renderedFilters: ExploreQuickFilterField[]) =>
+  useLineageStore.getState().selectedQuickFilters !== renderedFilters;
+
+const isAtMinZoom = (zoom?: number) =>
+  zoom !== undefined && zoom <= MIN_ZOOM_VALUE + MIN_ZOOM_TOLERANCE;
+
+const hasLevelAbove = (scene?: LineageScene): scene is LineageScene =>
+  scene !== undefined &&
+  (getParentSceneRequest(scene) !== undefined ||
+    getPreviousZoomBand(scene.band) !== scene.band);
+
 const isDeeperBand = (currentBand: LineageBand, nextBand: LineageBand) =>
   BAND_DEPTH[nextBand] > BAND_DEPTH[currentBand];
 
@@ -455,19 +496,27 @@ const prefetchSceneBands = (
   }
 };
 
+// React Flow's fitBounds caps at the canvas maxZoom and ignores the option's,
+// so a lone small card would fill the canvas at 250%; fit with the scene cap.
 const fitSceneBounds = (
   instance: ReactFlowInstance,
   bounds: SceneNodeBounds,
+  canvas: { width: number; height: number },
   landing?: Viewport
 ) => {
   window.requestAnimationFrame(() => {
     window.requestAnimationFrame(() => {
-      if (landing) {
-        instance.setViewport(landing);
-
-        return;
-      }
-      instance.fitBounds(bounds, getSceneFitViewOptions());
+      instance.setViewport(
+        landing ??
+          getViewportForBounds(
+            bounds,
+            canvas.width,
+            canvas.height,
+            MIN_ZOOM_VALUE,
+            SCENE_FIT_VIEW_MAX_ZOOM,
+            CONTROL_INSET_PADDING
+          )
+      );
     });
   });
 };
@@ -686,17 +735,21 @@ const layoutNodes = async (
     (layoutedGraph.children ?? []).map((node) => [node.id, node])
   );
 
-  return nodes.map((node) => {
-    const layoutedNode = layoutedMap.get(node.id);
+  // React Flow tabs through nodes in array order, so they are ordered the way
+  // they read on screen: column by column, top to bottom.
+  return nodes
+    .map((node) => {
+      const layoutedNode = layoutedMap.get(node.id);
 
-    return {
-      ...node,
-      position: {
-        x: layoutedNode?.x ?? 0,
-        y: layoutedNode?.y ?? 0,
-      },
-    };
-  });
+      return {
+        ...node,
+        position: {
+          x: layoutedNode?.x ?? 0,
+          y: layoutedNode?.y ?? 0,
+        },
+      };
+    })
+    .sort((a, b) => a.position.x - b.position.x || a.position.y - b.position.y);
 };
 
 const LineageMapOnboardingDialog = ({
@@ -723,7 +776,7 @@ const LineageMapOnboardingDialog = ({
           data-testid="lineage-map-onboarding-dialog"
           width={560}
           onClose={onClose}>
-          <Dialog.Content className="lineage-map-onboarding-content tw:gap-0! tw:p-0!">
+          <Dialog.Content className="lineage-map-onboarding-content tw:max-h-none tw:gap-0! tw:p-0!">
             <div className="lineage-map-onboarding-header tw:bg-linear-to-br tw:from-bg-brand-section tw:to-bg-brand-solid tw:px-8 tw:pt-7 tw:pb-6 tw:text-primary_on-brand">
               <span className="lineage-map-onboarding-eyebrow tw:mb-2 tw:block tw:text-xs tw:font-bold tw:leading-normal tw:tracking-widest tw:text-secondary_on-brand tw:uppercase">
                 {t('label.lineage-map-onboarding-eyebrow')}
@@ -768,7 +821,7 @@ const LineageMapOnboardingDialog = ({
                 {t('message.lineage-map-onboarding-hint')}
               </span>
               <Button
-                className="lineage-map-onboarding-action tw:min-w-[112px] tw:font-bold"
+                className="lineage-map-onboarding-action tw:min-w-[112px] tw:shrink-0 tw:font-bold"
                 color="primary"
                 onClick={onClose}>
                 {t('label.explore')}
@@ -948,6 +1001,46 @@ const LineageMapEmptyPlaceholder = ({
   );
 };
 
+const LineageMapEmptyView = ({
+  scene,
+  loading,
+  hasError,
+  showOnboarding,
+  onBack,
+  onOnboardingClose,
+  onReload,
+}: {
+  scene?: LineageScene;
+  loading: boolean;
+  hasError: boolean;
+  showOnboarding: boolean;
+  onBack: (breadcrumb: LineageSceneBreadcrumb) => void;
+  onOnboardingClose: () => void;
+  onReload: () => void;
+}) => {
+  const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
+    loading: <LineageSkeleton />,
+    error: <SomethingWentWrongPlaceholder onReload={onReload} />,
+    empty: <LineageMapEmptyPlaceholder scene={scene} onBack={onBack} />,
+  };
+
+  // The placeholders fill their nearest positioned ancestor; this wrapper
+  // keeps them to the canvas rather than the card that also holds the toolbar.
+  // A first visit can land on an entity without lineage, so a loaded empty
+  // scene still opens the map's introduction.
+  return (
+    <div className="tw:relative tw:h-full tw:w-full">
+      {emptyStates[getLineageMapEmptyState({ scene, loading, hasError })]}
+      {scene && (
+        <LineageMapOnboardingDialog
+          open={showOnboarding}
+          onClose={onOnboardingClose}
+        />
+      )}
+    </div>
+  );
+};
+
 const LineageMapStatusPanel = ({
   scene,
   error,
@@ -956,17 +1049,20 @@ const LineageMapStatusPanel = ({
   error?: AxiosError;
 }) => {
   const { t } = useTranslation();
-  const { hiddenNodeCount = 0, sampled, nodes } = scene;
+  const { hiddenNodeCount = 0, nodes } = scene;
+  // A sampled scene with nothing hidden would read "Showing 69 of 69"; nodes a
+  // user cannot see are never in the total, so the notice adds nothing there.
   const hasHiddenNodes = hiddenNodeCount > 0;
-  if (!hasHiddenNodes && !sampled && !error) {
+  if (!hasHiddenNodes && !error) {
     return null;
   }
+  const total = nodes.length + hiddenNodeCount;
 
   return (
     <Panel
       className="lineage-map-status-panel tw:z-10 tw:flex tw:flex-col tw:items-end tw:gap-2"
       position="top-right">
-      {(sampled || hasHiddenNodes) && (
+      {hasHiddenNodes && (
         <Box
           align="center"
           className="tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:shadow-xs"
@@ -977,9 +1073,10 @@ const LineageMapStatusPanel = ({
             className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
           />
           <Typography as="span" className="tw:text-secondary" size="text-sm">
-            {t('label.showing-count-of-total-assets', {
+            {t('label.showing-count-of-total-entity', {
               count: nodes.length,
-              total: nodes.length + hiddenNodeCount,
+              total,
+              entity: getSceneCountLabel(t, scene, total),
             })}
           </Typography>
         </Box>
@@ -1183,6 +1280,9 @@ const LineageMapCanvas = ({
   const updateRequest = useCallback(
     (nextRequest: SceneRequest) => {
       suppressSemanticZoom();
+      // A selection belongs to the scene it was made in; carried over, its
+      // drawer reopens on the next click in an unrelated scene.
+      onPaneClick();
       navigate(
         {
           search: getSceneSearch(location.search, nextRequest),
@@ -1275,7 +1375,14 @@ const LineageMapCanvas = ({
         if (sceneRequestIdRef.current === requestId) {
           pendingFetchRef.current = false;
           setSceneError(error as AxiosError);
-          showErrorToast(error as AxiosError);
+          if (options.preserveViewport) {
+            // A refetch after an edit keeps the scene the user is working in.
+            showErrorToast(error as AxiosError);
+          } else {
+            // Showing the previous scene under the new request would mislabel
+            // it; the error placeholder offers Reload instead.
+            setScene(undefined);
+          }
           // Error — no layout will run; clear the loader immediately.
           setLoading(false);
         }
@@ -1321,20 +1428,23 @@ const LineageMapCanvas = ({
   );
 
   useEffect(() => {
+    if (hasStaleQuickFilters(selectedQuickFilters)) {
+      return;
+    }
     fetchScene(request);
 
     return () => {
       sceneRequestIdRef.current++;
     };
-  }, [fetchScene, request]);
+  }, [fetchScene, request, selectedQuickFilters]);
 
   useEffect(() => {
-    if (scene) {
+    if (scene && !hasStaleQuickFilters(selectedQuickFilters)) {
       prefetchAdjacentBands(scene);
     }
 
     return () => prefetchAdjacentBands.cancel();
-  }, [prefetchAdjacentBands, scene]);
+  }, [prefetchAdjacentBands, scene, selectedQuickFilters]);
 
   useEffect(() => {
     if (previousMutationTickRef.current === lineageMutationTick) {
@@ -1399,15 +1509,17 @@ const LineageMapCanvas = ({
         return;
       }
       suppressSemanticZoom();
+      const canvas = {
+        width: wrapperRef.current?.clientWidth ?? 0,
+        height: wrapperRef.current?.clientHeight ?? 0,
+      };
       fitSceneBounds(
         reactFlowInstance,
         nodeBounds,
+        canvas,
         getSceneLandingViewport(
           getSceneLayoutBoxes(nodes, nodeIds),
-          {
-            width: wrapperRef.current?.clientWidth ?? 0,
-            height: wrapperRef.current?.clientHeight ?? 0,
-          },
+          canvas,
           getSceneFitViewMinZoom(scene?.band),
           CONTROL_INSET_PADDING
         )
@@ -1755,6 +1867,54 @@ const LineageMapCanvas = ({
     [pickZoomTargetNode]
   );
 
+  const goUpOneLevel = useCallback(
+    (currentScene: LineageScene) => {
+      lastSemanticZoomAtRef.current = Date.now();
+      const parentRequest = getParentSceneRequest(currentScene);
+      if (parentRequest) {
+        updateRequest(parentRequest);
+
+        return;
+      }
+      handleBandChange(getPreviousZoomBand(currentScene.band));
+    },
+    [handleBandChange, updateRequest]
+  );
+
+  // At the minimum zoom a zoom-out no longer changes the viewport, so no move
+  // arrives to judge; the gesture itself goes up a level, mirroring the drill
+  // a zoom-in makes at the maximum zoom.
+  const goUpFromMinZoom = useCallback(() => {
+    const isSemanticZoomReady =
+      !semanticZoomSuppressedRef.current &&
+      Date.now() - lastSemanticZoomAtRef.current >= SEMANTIC_ZOOM_COOLDOWN;
+    const canGoUp =
+      isPlatformLineage &&
+      isSemanticZoomReady &&
+      isAtMinZoom(reactFlowInstance?.getZoom()) &&
+      hasLevelAbove(scene);
+    if (canGoUp && scene) {
+      goUpOneLevel(scene);
+    }
+
+    return canGoUp;
+  }, [goUpOneLevel, isPlatformLineage, reactFlowInstance, scene]);
+
+  const handleWheelCapture = useCallback(
+    (event: WheelEvent<HTMLDivElement>) => {
+      if (event.deltaY > 0 && isCanvasWheel(event)) {
+        goUpFromMinZoom();
+      }
+    },
+    [goUpFromMinZoom]
+  );
+
+  const handleZoomOut = useCallback(() => {
+    if (!goUpFromMinZoom()) {
+      reactFlowInstance?.zoomOut();
+    }
+  }, [goUpFromMinZoom, reactFlowInstance]);
+
   const handleMove = useCallback(
     (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
       // Any further move, a pan included, restarts the settle window.
@@ -1769,14 +1929,7 @@ const LineageMapCanvas = ({
       }
       const nextBand = getRequestedBand(scene, event, viewport.zoom);
       if (nextBand !== scene.band && !isDeeperBand(scene.band, nextBand)) {
-        lastSemanticZoomAtRef.current = now;
-        const parentRequest = getParentSceneRequest(scene);
-        if (parentRequest) {
-          updateRequest(parentRequest);
-
-          return;
-        }
-        handleBandChange(nextBand);
+        goUpOneLevel(scene);
 
         return;
       }
@@ -1796,11 +1949,10 @@ const LineageMapCanvas = ({
     },
     [
       getRequestedBand,
-      handleBandChange,
+      goUpOneLevel,
       handleSemanticZoomIn,
       isPlatformLineage,
       scene,
-      updateRequest,
     ]
   );
 
@@ -1821,11 +1973,7 @@ const LineageMapCanvas = ({
 
   const handleLensChange = useCallback(
     (lens: LineageLens, band = request.band) => {
-      updateRequest({
-        ...request,
-        lens,
-        band,
-      });
+      updateRequest(getLensChangeRequest(request, lens, band));
     },
     [request, updateRequest]
   );
@@ -2011,36 +2159,17 @@ const LineageMapCanvas = ({
     []
   );
 
-  if (!scene || scene.nodes.length === 0) {
-    const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
-      loading: <LineageSkeleton />,
-      error: (
-        <SomethingWentWrongPlaceholder
-          onReload={() => fetchScene(request, { bypassCache: true })}
-        />
-      ),
-      empty: (
-        <LineageMapEmptyPlaceholder
-          scene={scene}
-          onBack={handleBreadcrumbFocus}
-        />
-      ),
-    };
-
-    // The placeholders fill their nearest positioned ancestor; this wrapper
-    // keeps them to the canvas rather than the card that also holds the toolbar.
+  if (!scene || isSceneEmpty(scene)) {
     return (
-      <div className="tw:relative tw:h-full tw:w-full">
-        {
-          emptyStates[
-            getLineageMapEmptyState({
-              scene,
-              loading,
-              hasError: Boolean(sceneError),
-            })
-          ]
-        }
-      </div>
+      <LineageMapEmptyView
+        hasError={Boolean(sceneError)}
+        loading={loading}
+        scene={scene}
+        showOnboarding={showOnboarding}
+        onBack={handleBreadcrumbFocus}
+        onOnboardingClose={handleOnboardingClose}
+        onReload={() => fetchScene(request, { bypassCache: true })}
+      />
     );
   }
 
@@ -2065,7 +2194,9 @@ const LineageMapCanvas = ({
         nodeTypes={nodeTypes}
         nodes={flow.nodes}
         nodesConnectable={false}
-        onlyRenderVisibleElements={!renderAllNodes}
+        onlyRenderVisibleElements={
+          !renderAllNodes && flow.nodes.length > VIRTUALIZE_NODE_THRESHOLD
+        }
         ref={wrapperRef}
         selectNodesOnDrag={false}
         onFocus={handleCanvasFocus}
@@ -2075,7 +2206,8 @@ const LineageMapCanvas = ({
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onNodesChange={flow.onNodesChange}
-        onPaneClick={handlePaneClick}>
+        onPaneClick={handlePaneClick}
+        onWheelCapture={handleWheelCapture}>
         {loading && (
           <div
             className="lineage-map-loading tw:absolute tw:inset-0 tw:z-30 tw:grid tw:place-items-center tw:bg-primary/80"
@@ -2128,6 +2260,7 @@ const LineageMapCanvas = ({
             reactFlowInstance={reactFlowInstance}
             onFitView={handleFitView}
             onToggleMiniMap={() => setMiniMapVisible((visible) => !visible)}
+            onZoomOut={handleZoomOut}
           />
         </Panel>
         <Panel className="lineage-layers-panel" position="bottom-left">

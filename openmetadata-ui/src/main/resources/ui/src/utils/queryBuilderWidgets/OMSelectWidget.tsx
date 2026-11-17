@@ -49,9 +49,15 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   listValues,
   asyncFetch,
   useAsyncSearch,
+  showSearch,
   field,
 }) => {
   const staticItems = toSelectItems(listValues);
+  const isAsync = Boolean(useAsyncSearch && asyncFetch);
+  const [searchText, setSearchText] = useState('');
+  const filteredItems = staticItems.filter((item) =>
+    item.label.toLocaleLowerCase().includes(searchText.toLocaleLowerCase())
+  );
   // Seed with the current value as a placeholder so the widget shows something while the async fetch is in-flight.
   const [items, setItems] = useState<SelectItemType[]>(() => {
     if (staticItems.length > 0) {
@@ -91,18 +97,21 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   );
 
   useEffect(() => {
-    if (useAsyncSearch && asyncFetch) {
+    if (isAsync) {
       loadAsync('');
     }
-  }, [fieldKey, useAsyncSearch]);
+  }, [fieldKey, isAsync, loadAsync]);
 
   // The label React Aria puts in the input while a value is selected.
+  const selectedKey =
+    value === null || value === undefined ? null : String(value);
+  const labelItems = isAsync ? items : staticItems;
   const selectedLabel =
-    value === null || value === undefined
+    selectedKey === null
       ? undefined
-      : items.find((item) => item.id === String(value))?.label;
+      : labelItems.find((item) => item.id === selectedKey)?.label;
 
-  if (useAsyncSearch && asyncFetch) {
+  if (isAsync || showSearch) {
     return (
       <div
         className={VALUE_TEST_ID_WRAPPER}
@@ -113,12 +122,12 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
           // arrive.
           allowsEmptyCollection
           isDisabled={readonly}
-          items={items}
+          items={isAsync ? items : filteredItems}
           placeholder={placeholder}
           popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
-          selectedKey={
-            value !== null && value !== undefined ? String(value) : undefined
-          }
+          // `null`, not `undefined`: `undefined` hands the selection to React Aria, and clearing the input then loops
+          // between its internal state and this prop until React throws "Maximum update depth exceeded".
+          selectedKey={selectedKey}
           shortcut={false}
           showSearchIcon={false}
           size="sm"
@@ -127,17 +136,30 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
             if (v === selectedLabel) {
               return;
             }
-            loadAsync(v);
+            if (isAsync) {
+              loadAsync(v);
+            } else {
+              setSearchText(v);
+            }
           }}
-          onOpenChange={(isOpen) => {
-            if (isOpen && defaultOptionsRef.current.length > 0) {
+          onOpenChange={(isOpen, trigger) => {
+            if (isOpen && !isAsync && trigger !== 'input') {
+              setSearchText('');
+            } else if (
+              isOpen &&
+              isAsync &&
+              defaultOptionsRef.current.length > 0
+            ) {
               // Restore cached defaults immediately so the popup is not empty while the user types.
               setItems(defaultOptionsRef.current);
             }
           }}
-          onSelectionChange={(key) =>
-            setValue(key !== null ? String(key) : null)
-          }>
+          onSelectionChange={(key) => {
+            if (!isAsync && key !== null) {
+              setSearchText('');
+            }
+            setValue(key !== null ? String(key) : null);
+          }}>
           {(item) => (
             <Select.Item id={item.id} key={item.id}>
               {item.label}
@@ -157,9 +179,7 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
         items={items}
         placeholder={placeholder}
         popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
-        selectedKey={
-          value !== null && value !== undefined ? String(value) : null
-        }
+        selectedKey={selectedKey}
         size="sm"
         onSelectionChange={(key) =>
           setValue(key !== null ? String(key) : null)

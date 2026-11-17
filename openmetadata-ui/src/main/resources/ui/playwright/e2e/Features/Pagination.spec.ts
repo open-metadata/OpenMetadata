@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { DataTypeTopic } from '../../../src/generated/entity/data/topic';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
@@ -24,6 +25,7 @@ import { DashboardServiceClass } from '../../support/entity/service/DashboardSer
 import { DatabaseServiceClass } from '../../support/entity/service/DatabaseServiceClass';
 import { DriveServiceClass } from '../../support/entity/service/DriveServiceClass';
 import { TableClass } from '../../support/entity/TableClass';
+import { TopicClass } from '../../support/entity/TopicClass';
 import { expect, test } from '../../support/fixtures/base';
 import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
@@ -212,6 +214,67 @@ test.describe('Pagination Tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
         searchTestTerm: 'pw',
         searchParamName: 'columnSearch',
         waitForLoadSelector: '[data-testid="entity-table"]',
+      });
+    });
+  });
+
+  test.describe('Topic schema fields page pagination', () => {
+    let topic: TopicClass;
+    let topicFqn: string;
+
+    test.beforeAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+
+      topic = new TopicClass();
+      topic.entity.messageSchema.schemaFields = Array.from(
+        { length: 60 },
+        (_, index) => ({
+          name: `pw_test_field_${index + 1}`,
+          dataType: DataTypeTopic.String,
+          description: `Test field ${index + 1} for pagination testing`,
+          tags: [],
+        })
+      );
+
+      await topic.create(apiContext);
+      topicFqn = topic.entityResponseData.fullyQualifiedName ?? '';
+
+      if (!topicFqn) {
+        throw new Error('Failed to create topic: topicFqn is undefined');
+      }
+
+      await afterAction();
+    });
+
+    test.afterAll(async ({ browser }) => {
+      const { apiContext, afterAction } = await createNewPage(browser);
+      await topic.delete(apiContext);
+      await afterAction();
+    });
+
+    test('should test pagination on Topic schema fields', async ({ page }) => {
+      await page.goto(`/topic/${topicFqn}?pageSize=15`);
+      await testPaginationNavigation(
+        page,
+        '/columns',
+        '[data-testid="topic-schema-fields-table"]',
+        false
+      );
+    });
+
+    test('should test Topic schema fields complete flow with search', async ({
+      page,
+    }) => {
+      test.slow(true);
+
+      await testCompletePaginationWithSearch({
+        page,
+        baseUrl: `/topic/${topicFqn}?pageSize=15`,
+        normalApiPattern: '/columns',
+        searchApiPattern: '/columns/search',
+        searchTestTerm: 'pw',
+        searchParamName: 'columnSearch',
+        waitForLoadSelector: '[data-testid="topic-schema-fields-table"]',
       });
     });
   });
