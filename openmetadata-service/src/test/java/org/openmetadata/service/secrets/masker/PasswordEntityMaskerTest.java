@@ -1,6 +1,8 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
@@ -19,6 +21,7 @@ import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -26,6 +29,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String ALPHA_KEY = "alpha-api-key";
   private static final String BETA_KEY = "beta-api-key";
   private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
+  private static final String NESTED_SECRET = "openmetadata-nested-secret";
 
   public PasswordEntityMaskerTest() {
     CONFIG.setMaskPasswordsAPI(true);
@@ -175,6 +179,103 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     DatabricksOAuth auth = (DatabricksOAuth) masked.getAuthType();
     assertEquals(getMaskedPassword(), auth.getClientSecret());
     assertEquals("client-id", auth.getClientId());
+  }
+
+  @Test
+  void testPowerBiGcsPrivateKeyFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "PowerBI",
+            "clientId",
+            "client-id",
+            "clientSecret",
+            "client-secret",
+            "tenantId",
+            "tenant-id",
+            "pbitFilesSource",
+            Map.of(
+                "pbitFileConfigType",
+                "gcs",
+                "securityConfig",
+                Map.of("gcpConfig", gcpServiceAccount()),
+                "prefixConfig",
+                Map.of("bucketName", "bucket")));
+
+    assertNestedSecretMasked(serialized, "PowerBI", ServiceType.DASHBOARD);
+  }
+
+  @Test
+  void testSupersetApiSslConfigFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "Superset",
+            "hostPort",
+            "http://superset:8088",
+            "connection",
+            Map.of(
+                "provider",
+                "db",
+                "username",
+                "admin",
+                "password",
+                "admin-password",
+                "verifySSL",
+                "validate",
+                "sslConfig",
+                Map.of("caCertificate", NESTED_SECRET)));
+
+    assertNestedSecretMasked(serialized, "Superset", ServiceType.DASHBOARD);
+  }
+
+  @Test
+  void testMysqlCloudSqlAuthFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "Mysql",
+            "hostPort",
+            "mysql:3306",
+            "username",
+            "openmetadata",
+            "authType",
+            Map.of(
+                "password",
+                NESTED_SECRET,
+                "enableIamAuth",
+                false,
+                "gcpConfig",
+                Map.of("gcpConfig", gcpServiceAccount())));
+
+    assertNestedSecretMasked(serialized, "Mysql", ServiceType.DATABASE);
+  }
+
+  private void assertNestedSecretMasked(
+      Map<String, Object> serialized, String connectionType, ServiceType serviceType) {
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(serialized, connectionType, serviceType);
+
+    String json = JsonUtils.pojoToJson(masked);
+    assertFalse(json.contains(NESTED_SECRET), json);
+    assertTrue(json.contains(getMaskedPassword()), json);
+  }
+
+  private static Map<String, Object> gcpServiceAccount() {
+    return Map.of(
+        "type",
+        "service_account",
+        "projectId",
+        "project",
+        "privateKeyId",
+        "key-id",
+        "privateKey",
+        NESTED_SECRET,
+        "clientEmail",
+        "sa@project.iam.gserviceaccount.com",
+        "clientId",
+        "1234");
   }
 
   private SftpBasicAuth sftpAuth(SftpConnection connection) {

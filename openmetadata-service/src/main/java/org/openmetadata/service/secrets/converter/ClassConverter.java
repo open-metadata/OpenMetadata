@@ -73,10 +73,13 @@ public abstract class ClassConverter {
    * Reads {@code property} off {@code target}, converts it against {@code candidates} and writes it
    * back.
    *
-   * <p>Only for {@code Object}-typed properties, i.e. the ones jsonschema2pojo emits for a JSON
+   * <p>Mostly for {@code Object}-typed properties, i.e. the ones jsonschema2pojo emits for a JSON
    * Schema {@code oneOf}. Jackson leaves a {@code LinkedHashMap} in such a field, and neither the
    * password masker nor the secrets manager descends into a non-{@code org.openmetadata} value, so
    * every {@code format: password} leaf below it stays in the clear until it is typed again here.
+   *
+   * <p>A typed property works too: it is run through its own registered converter, which is how a
+   * {@code oneOf} nested inside it (e.g. {@code GCPCredentials.gcpConfig}) gets typed.
    */
   protected void convertProperty(Object target, String property, List<Class<?>> candidates) {
     String accessorSuffix = Character.toUpperCase(property.charAt(0)) + property.substring(1);
@@ -88,7 +91,7 @@ public abstract class ClassConverter {
                 try {
                   target
                       .getClass()
-                      .getMethod("set" + accessorSuffix, Object.class)
+                      .getMethod("set" + accessorSuffix, getter.getReturnType())
                       .invoke(target, value);
                 } catch (ReflectiveOperationException e) {
                   throw new ReflectionException(
