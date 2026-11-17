@@ -245,6 +245,18 @@ class OntologyAiServiceTest {
   }
 
   @Test
+  void fitsALongDomainConceptRationaleWithinAChangeOperation() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical", "Clinical", "Clinical concepts", null, 0.9D, "x".repeat(2001)));
+
+    final var operation = service.generateDomainDraft(domainRequest()).getDraft().getOperations();
+
+    assertEquals(2000, operation.getFirst().getRationale().length());
+  }
+
+  @Test
   void rejectsDomainConceptWithoutRationale() {
     gateway.domainCompletion =
         completion(

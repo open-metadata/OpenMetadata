@@ -40,6 +40,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 final class OntologyAiDomainDraftFactory {
   private static final double INITIAL_VERSION = 0.1D;
+  // A change operation's rationale is limited to 2000 characters (ontologyChangeOperation.json).
+  private static final int MAX_RATIONALE_LENGTH = 2000;
 
   CreateOntologyChangeSet create(
       final OntologyDomainDraftRequest request,
@@ -96,7 +98,10 @@ final class OntologyAiDomainDraftFactory {
         .withOperationType(OntologyChangeOperationType.CREATE_TERM)
         .withTerm(term)
         .withConfidence(candidate.confidence())
-        .withRationale(candidate.rationale())
+        .withRationale(
+            candidate
+                .rationale()
+                .substring(0, Math.min(candidate.rationale().length(), MAX_RATIONALE_LENGTH)))
         .withState(OntologyChangeOperationState.ACTIVE);
   }
 
