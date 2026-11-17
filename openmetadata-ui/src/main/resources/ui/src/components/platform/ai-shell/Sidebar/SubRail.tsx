@@ -67,15 +67,12 @@ const SubRail: React.FC<SubRailProps> = ({ items, onExpand }) => {
                   <Icon height={20} width={20} />
                 </AriaLink>
               ) : (
-                <TooltipTrigger>
-                  <button
-                    aria-label={item.label}
-                    className={itemClassName}
-                    data-testid={`ask-sub-rail-item-${item.key}`}
-                    type="button"
-                    onClick={item.onClick}>
-                    <Icon height={20} width={20} />
-                  </button>
+                <TooltipTrigger
+                  aria-label={item.label}
+                  className={itemClassName}
+                  data-testid={`ask-sub-rail-item-${item.key}`}
+                  onPress={item.onClick}>
+                  <Icon height={20} width={20} />
                 </TooltipTrigger>
               )}
             </Tooltip>

@@ -37,6 +37,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -44,14 +46,20 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TableConstraint.ConstraintType;
+import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.topic.CleanupPolicy;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
 import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
+import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
 import org.openmetadata.service.rdf.translator.ReferenceScope;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.testcontainers.containers.GenericContainer;
 
 /**
@@ -209,10 +217,119 @@ public class RdfEntityDiffWriteIT {
     assertSameGraph();
   }
 
+  @Test
+  void profileCorrectionsAndRemovalsLeaveOnlyTheCurrentProjection() {
+    final Column nested =
+        child("customer", "id")
+            .withProfile(new ColumnProfile().withTimestamp(1000L).withNullCount(12.0));
+    final Table table =
+        wideTable()
+            .withColumns(List.of(column("customer").withChildren(List.of(nested))))
+            .withTags(List.of())
+            .withProfile(new TableProfile().withTimestamp(1000L).withRowCount(100.0));
+    writeBoth(TABLE, table);
+
+    table.getProfile().setRowCount(101.0);
+    nested.getProfile().setNullCount(0.0);
+    assertEquals(RdfEntityWriteResult.Outcome.CHANGED_TRIPLES, writeBoth(TABLE, table).outcome());
+    assertSameGraph();
+    assertCurrentProjection(translator.toRdf(table));
+    assertEquals(
+        RdfEntityWriteResult.UNCHANGED, diff.storeEntity(TABLE, TABLE_ID, translator.toRdf(table)));
+
+    table.getProfile().setTimestamp(2000L);
+    nested.getProfile().setTimestamp(2000L);
+    writeBoth(TABLE, table);
+    assertSameGraph();
+    assertCurrentProjection(translator.toRdf(table));
+
+    table.setProfile(null);
+    nested.setProfile(null);
+    writeBoth(TABLE, table);
+    assertSameGraph();
+    assertCurrentProjection(translator.toRdf(table));
+
+    table.setColumns(List.of());
+    writeBoth(TABLE, table);
+    assertSameGraph();
+    assertCurrentProjection(translator.toRdf(table));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"id", "a.b", "a\"b"})
+  void constraintChangesReplaceMembersAndColumnUniqueness(String firstColumn) {
+    final TableConstraint primaryKey =
+        new TableConstraint()
+            .withConstraintType(ConstraintType.PRIMARY_KEY)
+            .withColumns(List.of(firstColumn, "tenant_id"));
+    final Table table =
+        wideTable()
+            .withColumns(List.of(column(firstColumn), column("tenant_id")))
+            .withTags(List.of())
+            .withTableConstraints(
+                List.of(
+                    primaryKey,
+                    new TableConstraint()
+                        .withConstraintType(ConstraintType.UNIQUE)
+                        .withColumns(List.of(firstColumn))));
+    writeBoth(TABLE, table);
+    assertSameGraph();
+    final Model composite = graph(diff);
+    assertEquals(
+        1,
+        composite.listObjectsOfProperty(composite.createProperty(OM + "isUnique")).toList().size());
+    assertCurrentProjection(translator.toRdf(table));
+
+    primaryKey.setColumns(List.of("tenant_id"));
+    table.setTableConstraints(List.of(primaryKey));
+    writeBoth(TABLE, table);
+    assertSameGraph();
+    assertCurrentProjection(translator.toRdf(table));
+
+    table.setTableConstraints(List.of());
+    writeBoth(TABLE, table);
+    assertSameGraph();
+    assertCurrentProjection(translator.toRdf(table));
+  }
+
+  @Test
+  void bulkReindexAndDeletionRemoveOwnedProfilesAndConstraints() {
+    final Table table =
+        wideTable()
+            .withColumns(List.of(column("id").withProfile(new ColumnProfile().withNullCount(2.0))))
+            .withTags(List.of())
+            .withProfile(new TableProfile().withRowCount(100.0))
+            .withTableConstraints(
+                List.of(
+                    new TableConstraint()
+                        .withConstraintType(ConstraintType.UNIQUE)
+                        .withColumns(List.of("id"))));
+    final Model original = translator.toRdf(table);
+    diff.storeEntity(TABLE, TABLE_ID, original);
+
+    table.setProfile(null);
+    table.getColumns().getFirst().setProfile(null);
+    table.setTableConstraints(null);
+    final Model current = translator.toRdf(table);
+    diff.bulkStoreEntities(List.of(new EntityWriteRequest(TABLE, TABLE_ID, current)));
+    assertCurrentProjection(current);
+
+    diff.storeEntity(TABLE, TABLE_ID, original);
+    diff.deleteEntity(TABLE, TABLE_ID);
+    assertTrue(graph(diff).isEmpty());
+  }
+
   private RdfEntityWriteResult writeBoth(final String type, final EntityInterface<?> entity) {
     replace.storeEntity(
         type, entity.getId(), translator.toRdf(entity), RdfEntityWriteStrategy.REPLACE);
     return diff.storeEntity(type, entity.getId(), translator.toRdf(entity));
+  }
+
+  private static void assertCurrentProjection(final Model projection) {
+    // TDB2 canonicalizes typed literals, so read the expected projection from a cleared dataset.
+    replace.clearGraph(GRAPH);
+    replace.storeEntity(TABLE, TABLE_ID, projection, RdfEntityWriteStrategy.REPLACE);
+    assertSameGraph();
   }
 
   private static void assertSameGraph() {
@@ -397,7 +514,7 @@ public class RdfEntityDiffWriteIT {
     return new Column()
         .withName(name)
         .withDataType(ColumnDataType.INT)
-        .withFullyQualifiedName(TABLE_FQN + "." + name);
+        .withFullyQualifiedName(FullyQualifiedName.add(TABLE_FQN, name));
   }
 
   private static Column child(final String parentPath, final String name) {

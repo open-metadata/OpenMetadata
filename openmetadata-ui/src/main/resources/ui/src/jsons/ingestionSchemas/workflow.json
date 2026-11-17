@@ -6737,6 +6737,42 @@
                                 "personalAccessTokenSecret"
                               ],
                               "additionalProperties": false
+                            },
+                            {
+                              "title": "TableauConnectedAppAuth",
+                              "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Client ID of the Tableau connected app.",
+                                  "type": "string"
+                                },
+                                "secretId": {
+                                  "title": "Secret ID",
+                                  "description": "ID of the connected app secret.",
+                                  "type": "string"
+                                },
+                                "secretValue": {
+                                  "title": "Secret Value",
+                                  "description": "Value of the connected app secret.",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "secretId",
+                                "secretValue",
+                                "username"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -7364,9 +7400,15 @@
                         "hostPort": {
                           "expose": true,
                           "title": "Host and Port",
-                          "description": "Host and Port of the MicroStrategy instance.",
+                          "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                           "type": "string",
                           "format": "uri"
+                        },
+                        "libraryPath": {
+                          "title": "Library Path",
+                          "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                          "type": "string",
+                          "default": "MicroStrategyLibrary"
                         },
                         "projectName": {
                           "title": "Project Name",
@@ -7375,9 +7417,16 @@
                         },
                         "loginMode": {
                           "title": "Login Mode",
-                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                          "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                           "type": "string",
                           "default": "1"
+                        },
+                        "verifySSL": {
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/verifySSL",
+                          "default": "no-ssl"
+                        },
+                        "sslConfig": {
+                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -7406,9 +7455,7 @@
                       },
                       "additionalProperties": false,
                       "required": [
-                        "hostPort",
-                        "username",
-                        "password"
+                        "hostPort"
                       ]
                     },
                     {
@@ -7545,6 +7592,12 @@
                           "description": "Sigma API version.",
                           "type": "string",
                           "default": "v2"
+                        },
+                        "listAllAssets": {
+                          "title": "List All Assets",
+                          "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "dashboardFilterPattern": {
                           "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -7901,6 +7954,26 @@
                           "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                           "type": "boolean",
                           "default": true
+                        },
+                        "dashboardFilterPattern": {
+                          "description": "Regex to exclude or include dashboards that matches the pattern.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "title": "Default Dashboard Filter Pattern"
+                        },
+                        "chartFilterPattern": {
+                          "description": "Regex exclude or include charts that matches the pattern.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "title": "Default Chart Filter Pattern"
+                        },
+                        "dataModelFilterPattern": {
+                          "description": "Regex exclude or include data models that matches the pattern.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "title": "Default Data Model Filter Pattern"
+                        },
+                        "projectFilterPattern": {
+                          "description": "Regex to exclude or include projects that matches the pattern.",
+                          "$ref": "#/definitions/workflowConfig/properties/openMetadataServerConfig/properties/tableFilterPattern",
+                          "title": "Default Project Filter Pattern"
                         },
                         "supportsMetadataExtraction": {
                           "title": "Supports Metadata Extraction",
@@ -15773,9 +15846,8 @@
                         },
                         "salesforceDomain": {
                           "title": "Salesforce Domain",
-                          "description": "Domain of Salesforce instance",
-                          "type": "string",
-                          "default": "login"
+                          "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                          "type": "string"
                         },
                         "paginationLimit": {
                           "title": "Pagination Limit",
@@ -15793,7 +15865,8 @@
                       "additionalProperties": false,
                       "required": [
                         "consumerKey",
-                        "consumerSecret"
+                        "consumerSecret",
+                        "salesforceDomain"
                       ]
                     },
                     {
@@ -19562,9 +19635,8 @@
                         },
                         "salesforceDomain": {
                           "title": "Salesforce Domain",
-                          "description": "Domain of Salesforce instance",
-                          "type": "string",
-                          "default": "login"
+                          "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                          "type": "string"
                         },
                         "data360DbServiceName": {
                           "title": "Data 360 Database Service Name",
@@ -19597,17 +19669,23 @@
                         },
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
-                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                          "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
+                          "description": "Supports Lineage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "supportsUsageExtraction": {
                           "title": "Supports Operational data Extraction",
-                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                          "description": "Supports Usage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "additionalProperties": false,
                       "required": [
                         "consumerKey",
-                        "consumerSecret"
+                        "consumerSecret",
+                        "salesforceDomain"
                       ]
                     },
                     {
@@ -19711,6 +19789,9 @@
                             },
                             {
                               "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/1"
+                            },
+                            {
+                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/2"
                             }
                           ]
                         },

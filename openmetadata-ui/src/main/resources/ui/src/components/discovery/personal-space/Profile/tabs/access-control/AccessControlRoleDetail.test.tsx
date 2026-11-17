@@ -251,7 +251,10 @@ describe('AccessControlRoleDetail', () => {
     fireEvent.click(screen.getByTestId('delete-role-popover-confirm'));
 
     await waitFor(() =>
-      expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'roles' })
+      expect(mockOnNavigate).toHaveBeenCalledWith(
+        { type: 'roles' },
+        { replace: true }
+      )
     );
 
     expect(deleteEntity).toHaveBeenCalledWith('roles', 'role-1', false, true);

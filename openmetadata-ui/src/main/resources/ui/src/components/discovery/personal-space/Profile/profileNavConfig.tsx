@@ -87,6 +87,11 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
  * All fields are optional — panels provide only what they need to override.
  */
 export interface ProfileHeaderOverride {
+  /**
+   * Full trail, root first. ProfilePage replaces the first crumb with the
+   * sidebar group label, rendered non-navigable
+   * (ADR:2026-11-16-settings-breadcrumb-root-is-the-sidebar-group).
+   */
   breadcrumbs?: BreadcrumbItemType[];
   title?: string;
   description?: string;

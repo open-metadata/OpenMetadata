@@ -4,8 +4,6 @@ import java.net.URI;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import lombok.extern.slf4j.Slf4j;
@@ -13,21 +11,14 @@ import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
-import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.service.security.McpClientPolicy;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Handler for OAuth 2.0 Dynamic Client Registration (RFC 7591).
  *
  * <p>Processes client registration requests and generates client credentials.
  *
- * <p>TODO: The registration endpoint is currently open (unauthenticated) per RFC 7591 §3 SHOULD
- * and MCP spec requirements. Future improvements:
- * <ul>
- *   <li>Add configurable registration policy (open vs admin-only) via MCPConfiguration
- *   <li>Add client expiry and automated cleanup of orphaned registrations
- *   <li>Consider static client initialization during server configuration
- *   <li>Add admin API for listing and pruning registered clients
- * </ul>
  */
 @Slf4j
 public class RegistrationHandler {
@@ -38,12 +29,6 @@ public class RegistrationHandler {
   private static final String AUTH_METHOD_NONE = "none";
   private static final String AUTH_METHOD_CLIENT_SECRET_POST = "client_secret_post";
   private static final String AUTH_METHOD_CLIENT_SECRET_BASIC = "client_secret_basic";
-  // Block dangerous schemes; allow http, https, and private-use URI schemes
-  // per RFC 8252 Section 7.1 (e.g. cursor://, vscode://, claude-desktop://)
-  private static final Set<String> BLOCKED_REDIRECT_SCHEMES =
-      Set.of("javascript", "data", "file", "blob", "vbscript");
-  private static final String SCHEME_HTTP = "http";
-
   private final OAuthClientRepository clientRepository;
 
   public RegistrationHandler(OAuthClientRepository clientRepository) {
@@ -223,18 +208,10 @@ public class RegistrationHandler {
 
   private void validateRedirectUri(URI uri) throws RegistrationException {
     validateUriFieldLength(uri, "redirect_uri");
-    String scheme = uri.getScheme();
-    if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
-      throw new RegistrationException(
-          "invalid_redirect_uri", "redirect_uri uses a disallowed scheme: " + uri);
-    }
-    if (uri.getFragment() != null) {
-      throw new RegistrationException(
-          "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
-    }
-    if (SCHEME_HTTP.equalsIgnoreCase(scheme) && !UriUtils.isLoopback(uri)) {
-      throw new RegistrationException(
-          "invalid_redirect_uri", "http redirect_uri must use localhost/loopback address: " + uri);
+    try {
+      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig()).validateRedirect(uri);
+    } catch (IllegalArgumentException ex) {
+      throw new RegistrationException("invalid_redirect_uri", ex.getMessage());
     }
   }
 

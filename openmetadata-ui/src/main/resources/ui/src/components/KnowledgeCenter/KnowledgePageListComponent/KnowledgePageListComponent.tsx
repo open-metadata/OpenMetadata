@@ -159,17 +159,11 @@ const KnowledgePageAccessDenied = () => {
   return (
     <div className="tw:relative tw:flex-1 tw:min-h-0">
       <PermissionPlaceholder
-        description={
-          <Transi18next
-            i18nKey="message.no-access-placeholder"
-            renderElement={<b />}
-            values={{
-              entity: t('label.view-entity', {
-                entity: t('label.article-plural'),
-              }),
-            }}
-          />
-        }
+        description={t('message.no-access-placeholder', {
+          entity: t('label.view-entity', {
+            entity: t('label.article-plural'),
+          }),
+        })}
         icon={<Lock01 />}
         title={t('label.access-denied')}
       />

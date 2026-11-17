@@ -25,7 +25,6 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
-import org.openmetadata.schema.security.credentials.AccessTokenAuth;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -38,6 +37,7 @@ import org.openmetadata.schema.services.connections.api.OpenAPISchemaS3;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
@@ -200,6 +200,11 @@ public final class ClassConverterFactory {
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
           Map.entry(
+              MicroStrategyConnection.class,
+              new NestedConfigClassConverter(
+                  MicroStrategyConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
                   MongoDBConnection.class,
@@ -287,8 +292,10 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   TableauPipelineConnection.class,
                   Map.of(
-                      "authType", List.of(BasicAuth.class, AccessTokenAuth.class),
-                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                      "authType",
+                      TableauConnectionClassConverter.CONNECTION_CLASSES,
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))));
 
   static {
     Map<Class<?>, ClassConverter> converters =

@@ -15,13 +15,16 @@ package org.openmetadata.service.rdf;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryExecution;
 import org.apache.jena.query.QueryFactory;
@@ -33,10 +36,17 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
 import org.apache.jena.sparql.exec.http.Service;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
+import org.openmetadata.service.rdf.SparqlQueryLimits.BoundedOutputStream;
+import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededException;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 /** Executes read-only SPARQL against one database-primary ontology model. */
 public final class OntologySparqlQueryService {
+  static final String SERVED_GRAPH_INFERENCE_MESSAGE =
+      "RDFS and OWL inference run in memory, and this ontology is too large for the in-memory"
+          + " query budget; query it without inference";
+
   private final OntologyModelProvider modelProvider;
   private final OntologySparqlQueryValidator queryValidator;
 
@@ -64,6 +74,62 @@ public final class OntologySparqlQueryService {
         ontology.close();
       }
     }
+  }
+
+  /**
+   * Answers over a named graph the triplestore serves, for an ontology too large for the worker.
+   * The query's dataset is that graph alone; inference stays local, so it is refused here. The
+   * read gets what is left of the request's timeout, counted from {@code startedNanos}.
+   */
+  public QueryResult queryServedGraph(
+      final SparqlQuery request, final ServedGraph served, final long startedNanos) {
+    final ValidatedQuery validated = validate(request);
+    if (validated.inference() != Inference.NONE) {
+      throw new QueryLimitExceededException(SERVED_GRAPH_INFERENCE_MESSAGE);
+    }
+    final Query scoped = scopedTo(validated.query(), served.graphUri());
+    final ByteArrayOutputStream body = new ByteArrayOutputStream();
+    served.read(
+        scoped,
+        remainingMillis(request, startedNanos),
+        execution -> writeBounded(execution, scoped, validated.format(), body));
+    return new QueryResult(
+        body.toString(StandardCharsets.UTF_8),
+        validated.format().externalName(),
+        validated.format().mediaType());
+  }
+
+  /** What a request that started at {@code startedNanos} has left of its timeout. */
+  public static long remainingMillis(final SparqlQuery request, final long startedNanos) {
+    final int timeout = timeoutMillis(request.getTimeout());
+    final long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNanos);
+    if (elapsed >= timeout) {
+      throw new QueryTimeoutException(timeout, null);
+    }
+    return timeout - elapsed;
+  }
+
+  /**
+   * Names the graph as both FROM and FROM NAMED: the store's default graph is the union of the
+   * dataset's named graphs, so FROM alone would leave the query an empty dataset
+   * (ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph).
+   */
+  public static Query scopedTo(final Query query, final String graphUri) {
+    final Query scoped = SparqlQueryLimits.applyResultLimit(query.cloneQuery());
+    scoped.addGraphURI(graphUri);
+    scoped.addNamedGraphURI(graphUri);
+    return scoped;
+  }
+
+  private static void writeBounded(
+      final QueryExecution execution,
+      final Query query,
+      final ResultFormat format,
+      final OutputStream body) {
+    final OutputStream bounded =
+        new BoundedOutputStream(
+            body, SparqlQueryLimits.MAX_OUTPUT_BYTES, OntologySparqlWorker.OUTPUT_LIMIT_MESSAGE);
+    executeByType(execution, query, format, bounded);
   }
 
   private ValidatedQuery validate(final SparqlQuery request) {
@@ -258,6 +324,13 @@ public final class OntologySparqlQueryService {
         model.close();
       }
     }
+  }
+
+  /** A named graph the triplestore serves, read through a streaming query execution. */
+  public interface ServedGraph {
+    String graphUri();
+
+    void read(Query query, long timeoutMillis, Consumer<QueryExecution> reader);
   }
 
   @FunctionalInterface
