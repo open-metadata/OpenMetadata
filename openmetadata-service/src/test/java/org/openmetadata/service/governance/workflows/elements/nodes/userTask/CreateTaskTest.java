@@ -42,6 +42,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.governance.changeRequest.ReviewPolicy;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
@@ -71,8 +72,39 @@ class CreateTaskTest {
     assertEquals(3, CreateTask.resolveApprovalThreshold("allAssignees", 1, users(3)));
     assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, List.of(team())));
     assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, List.of(team())));
-    assertEquals(2, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
     assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 1, null));
+  }
+
+  @Test
+  void approvalThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.resolveApprovalThreshold(null, 2, users(1)));
+    assertEquals(1, CreateTask.resolveApprovalThreshold("allAssignees", 2, users(1)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 3, users(2)));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.resolveApprovalThreshold(null, 2, List.of()));
+  }
+
+  @Test
+  void rejectionThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, users(1)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, users(2)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of()));
+    assertEquals(1, CreateTask.reviewPolicy(2, 2, true, users(1)).getRejectionThreshold());
+  }
+
+  @Test
+  void changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote() {
+    ReviewPolicy oneReviewerLeft = CreateTask.reviewPolicy(2, 1, true, users(1));
+    assertEquals(1, oneReviewerLeft.getApprovalThreshold());
+    assertEquals(1, oneReviewerLeft.getRejectionThreshold());
+    assertTrue(oneReviewerLeft.getPartialDecisions());
+
+    assertEquals(2, CreateTask.reviewPolicy(2, 1, true, users(3)).getApprovalThreshold());
+    assertEquals(
+        2,
+        CreateTask.reviewPolicy(2, 1, false, List.of(users(1).get(0), team()))
+            .getApprovalThreshold());
   }
 
   private static List<EntityReference> users(int count) {

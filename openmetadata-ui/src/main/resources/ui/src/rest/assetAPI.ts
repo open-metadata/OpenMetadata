@@ -13,7 +13,10 @@
 import axios, { AxiosError, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
-import { FOLDER_PAGE_SIZE } from '../constants/ContextCenter.constants';
+import {
+  CONTEXT_FILE_FIELDS,
+  FOLDER_PAGE_SIZE,
+} from '../constants/ContextCenter.constants';
 import { Asset, AssetType } from '../generated/attachments/asset';
 import { ContextFile } from '../generated/entity/data/contextFile';
 import { Folder } from '../generated/entity/data/folder';
@@ -121,7 +124,7 @@ export const listContextFiles = async (params: ListContextFilesParams = {}) => {
     '/contextCenter/drive/files',
     {
       params: {
-        fields: 'folder,memoryCount',
+        fields: CONTEXT_FILE_FIELDS,
         limit: 100,
         orderBy: 'DESC',
         ...params,
@@ -138,7 +141,16 @@ export const getContextFileById = async (
 ): Promise<ContextFile> => {
   const response = await APIClient.get<ContextFile>(
     `/contextCenter/drive/files/${id}`,
-    { params: { fields: 'folder,memoryCount', include } }
+    { params: { fields: CONTEXT_FILE_FIELDS, include } }
+  );
+
+  return response.data;
+};
+
+/** Extracts or retries a file's memories; the file it returns is what the Documents list reads. */
+export const extractFileMemories = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.post<ContextFile>(
+    `/contextCenter/drive/files/${id}/extract`
   );
 
   return response.data;

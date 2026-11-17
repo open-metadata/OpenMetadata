@@ -129,10 +129,6 @@ export default defineConfig(async ({ mode }) => {
         process: 'process/browser',
         Quill: path.resolve(__dirname, 'node_modules/quill'),
         '@': path.resolve(__dirname, 'src'),
-        '@deuex-solutions/react-tour': path.resolve(
-          __dirname,
-          'node_modules/@deuex-solutions/react-tour/dist/reacttour.min.js'
-        ),
         // Luxon ships both an ESM (build/es6/luxon.mjs) and a CJS (build/node/luxon.js)
         // entry. Without this alias, transitive deps that `require('luxon')` (via the
         // CJS path) and our own ESM `import { DateTime } from 'luxon'` end up pulling
@@ -380,7 +376,6 @@ export default defineConfig(async ({ mode }) => {
         'antlr4',
         '@azure/msal-browser',
         '@azure/msal-react',
-        '@deuex-solutions/react-tour',
         // Force-prebundle react-hook-form so it shares the single optimized
         // React instance. Through a symlinked node_modules (worktree/linked
         // dev setups) Vite otherwise serves it raw via `@fs`, pulling a second

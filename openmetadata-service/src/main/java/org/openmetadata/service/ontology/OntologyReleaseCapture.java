@@ -244,12 +244,10 @@ public final class OntologyReleaseCapture {
       throw new PreconditionFailedException("Ontology release allocation changed");
     }
     dao.ontologyReleaseDAO().insert(release, release.getFullyQualifiedName());
-    for (final OntologyReleaseMember member : members.values) {
-      if (dao.ontologyReleaseDAO().insertMember(member) != 1) {
-        throw new PreconditionFailedException("Ontology release was sealed during capture");
-      }
-      members.requireTimeRemaining();
+    if (dao.ontologyReleaseDAO().insertMembers(members.values) != members.values.size()) {
+      throw new PreconditionFailedException("Ontology release was sealed during capture");
     }
+    members.requireTimeRemaining();
     sealHeader(release, digest, members);
   }
 
@@ -282,7 +280,8 @@ public final class OntologyReleaseCapture {
     private void add(final MemberKind kind, final OntologyDefinition entity) {
       requireTimeRemaining();
       if (values.size() >= OntologyReleaseManifest.MAX_MEMBERS) {
-        throw new BadRequestException("An ontology release exceeds the 10000 member limit");
+        throw new BadRequestException(
+            OntologyReleaseManifest.memberLimitMessage("An ontology release"));
       }
       final OntologyReleaseMember member =
           OntologyReleaseManifest.member(
@@ -290,14 +289,18 @@ public final class OntologyReleaseCapture {
               .withSourceVersion(entity.getVersion());
       bytes += member.getPayloadBytes();
       if (bytes > OntologyReleaseManifest.MAX_RELEASE_BYTES) {
-        throw new BadRequestException("Ontology release content exceeds the 64 MiB limit");
+        throw new BadRequestException(
+            OntologyReleaseManifest.byteLimitMessage("Ontology release content"));
       }
       values.add(member);
     }
 
     private void requireTimeRemaining() {
       if (System.nanoTime() >= deadline) {
-        throw new BadRequestException("Ontology capture exceeded its 30 second transaction budget");
+        throw new BadRequestException(
+            "Ontology capture exceeded its "
+                + CAPTURE_TIMEOUT.toSeconds()
+                + " second transaction budget");
       }
     }
   }

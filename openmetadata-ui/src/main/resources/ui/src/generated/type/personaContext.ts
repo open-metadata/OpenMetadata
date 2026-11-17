@@ -31,8 +31,9 @@ export interface PersonaContext {
     searchScope?:     SearchScope;
     sharedKnowledge?: SharedKnowledge;
     /**
-     * Whether at least one selected entity was compacted or omitted, or required knowledge
-     * exceeded the configured budget.
+     * Whether selection stopped before all caller-visible matches were counted, at least one
+     * selected entity was compacted or omitted, or required knowledge exceeded the configured
+     * budget.
      */
     truncated?: boolean;
 }
@@ -112,9 +113,13 @@ export interface EntityReference {
  * Materialization result for one persona context rule.
  */
 export interface RuleResult {
-    entities?:        AIContext[];
-    entityType?:      string;
-    manifestOnly?:    number;
+    entities?:     AIContext[];
+    entityType?:   string;
+    manifestOnly?: number;
+    /**
+     * Total matches visible to the caller. Absent when selection stopped at maxAssets before
+     * all candidates were checked; the document is then truncated.
+     */
     matched?:         number;
     renderedCompact?: number;
     renderedFull?:    number;
@@ -303,6 +308,15 @@ export interface ConceptContext {
     definition?: string;
     evidence?:   ConceptEvidence[];
     /**
+     * Metrics only: the SQL conditions the metric is defined under, each to be applied with the
+     * definition. The number is wrong without them.
+     */
+    filters?: string[];
+    /**
+     * Metrics only: the time grain the metric is reported at (DAY, MONTH, ...).
+     */
+    granularity?: string;
+    /**
      * Applied or related metrics with their expressions, sharing the envelope's knowledge
      * budget.
      */
@@ -324,6 +338,11 @@ export interface ConceptContext {
      * the 500-candidate scan cap stopped counting early.
      */
     truncated?: boolean;
+    /**
+     * Metrics only: the unit the value is measured in. The custom unit when unitOfMeasurement
+     * is OTHER, otherwise the unitOfMeasurement value.
+     */
+    unit?: string;
 }
 
 /**

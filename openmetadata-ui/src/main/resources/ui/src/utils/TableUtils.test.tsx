@@ -1180,6 +1180,7 @@ describe('TableUtils', () => {
     queryCount: 0,
     viewAllPermission: true,
     viewQueriesPermission: true,
+    viewQueryResourcePermission: true,
     viewSampleDataPermission: true,
     viewProfilerPermission: true,
     tablePermissions: {

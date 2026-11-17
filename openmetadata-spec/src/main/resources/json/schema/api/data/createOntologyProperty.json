@@ -58,6 +58,9 @@
     "disjointWith": {
       "$ref": "../../entity/data/ontologyProperty.json#/properties/disjointWith"
     },
+    "superProperties": {
+      "$ref": "../../entity/data/ontologyProperty.json#/properties/superProperties"
+    },
     "deprecated": {
       "$ref": "../../entity/data/ontologyProperty.json#/properties/deprecated"
     },

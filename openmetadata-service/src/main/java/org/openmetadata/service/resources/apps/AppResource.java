@@ -75,8 +75,10 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppException;
+import org.openmetadata.service.apps.AppTrigger;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.NativeApplication;
 import org.openmetadata.service.apps.bundles.rdf.RdfInitialIndexRun;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
@@ -95,6 +97,7 @@ import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -1352,27 +1355,14 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
-  // Keys supplied at trigger time that target or parameterise the run rather than change the app's
-  // stored configuration. Setting one of these is part of a normal Trigger; changing anything else
-  // is
-  // a configuration override that needs EditAll - including a key the stored config omits and
-  // leaves
-  // at its schema default (recreateIndex drops and rebuilds every index; a retention period of 1
-  // wipes history), which comparing only against present values would let a Trigger-only user set.
-  private static final Set<String> RUNTIME_TRIGGER_PARAMETERS = Set.of("entityLink");
-
-  /**
-   * Whether the trigger payload changes a value the configuration holds or sets one it leaves to its
-   * schema default. A value for a declared runtime parameter ({@link #RUNTIME_TRIGGER_PARAMETERS},
-   * e.g. AutoPilot's {@code entityLink}) is part of a normal Trigger, not a configuration override.
-   */
-  static boolean overridesConfiguredValue(App app, Map<String, Object> configPayload) {
+  static boolean overridesConfiguredValue(
+      App app, Map<String, Object> configPayload, Set<String> runtimeParameters) {
     if (configPayload == null || configPayload.isEmpty()) {
       return false;
     }
     Map<String, Object> configured = JsonUtils.getMap(app.getAppConfiguration());
     return configPayload.entrySet().stream()
-        .filter(entry -> !RUNTIME_TRIGGER_PARAMETERS.contains(entry.getKey()))
+        .filter(entry -> !runtimeParameters.contains(entry.getKey()))
         .anyMatch(entry -> !Objects.equals(configured.get(entry.getKey()), entry.getValue()));
   }
 
@@ -1407,24 +1397,27 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     authorizeAppOperation(securityContext, name, MetadataOperation.TRIGGER);
-    // Overriding a configured setting changes the configuration the run uses — a DataRetention run
-    // with auditLogRetentionPeriod:1 would wipe the audit log — so that needs EditAll. Supplying a
-    // value for a runtime parameter the configuration leaves unset (AutoPilot's entityLink) is part
-    // of a normal Trigger, so it must not demand EditAll.
-    if (overridesConfiguredValue(app, configPayload)) {
-      authorizeAppOperation(securityContext, name, MetadataOperation.EDIT_ALL);
-    }
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");
     }
     String triggeredBy = securityContext.getUserPrincipal().getName();
     if (app.getAppType().equals(AppType.Internal)) {
-      ApplicationHandler.getInstance()
-          .triggerApplicationOnDemand(
-              app, Entity.getCollectionDAO(), searchRepository, configPayload, triggeredBy);
+      NativeApplication application =
+          ApplicationHandler.getInstance()
+              .initializeApplicationForTrigger(
+                  app, Entity.getCollectionDAO(), searchRepository, triggeredBy);
+      authorizeConfigurationOverride(
+          securityContext, app, configPayload, application.getRuntimeTriggerParameters());
+      AppTrigger trigger = application.prepareTrigger(configPayload);
+      if (!trigger.authRequests().isEmpty()) {
+        authorizer.authorizeRequests(
+            securityContext, trigger.authRequests(), AuthorizationLogic.ALL);
+      }
+      trigger.run();
       return Response.status(Response.Status.OK).build();
     } else {
+      authorizeConfigurationOverride(securityContext, app, configPayload, Set.of());
       if (!app.getPipelines().isEmpty()) {
         IngestionPipeline ingestionPipeline = getIngestionPipeline(uriInfo, securityContext, app);
         ServiceEntityInterface service =
@@ -1698,6 +1691,16 @@ public class AppResource extends EntityResource<App, AppRepository> {
         securityContext,
         new OperationContext(entityType, operation),
         getResourceContextByName(name));
+  }
+
+  private void authorizeConfigurationOverride(
+      SecurityContext securityContext,
+      App app,
+      Map<String, Object> configPayload,
+      Set<String> runtimeParameters) {
+    if (overridesConfiguredValue(app, configPayload, runtimeParameters)) {
+      authorizeAppOperation(securityContext, app.getName(), MetadataOperation.EDIT_ALL);
+    }
   }
 
   private void authorizeAppOperation(

@@ -95,6 +95,10 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
  */
 @Slf4j
 public class ElasticSearchEntityManager implements EntityManagementClient {
+  private static final String MATCHING_INDICES = "matchingIndices";
+  // A full page may be cut short, so the rewrite then targets the whole alias
+  // (ADR:2026-11-11-a-global-alias-rewrite-targets-only-the-indices-holding-a-match).
+  static final int MAX_MATCHING_INDICES = 1000;
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final ElasticsearchAsyncClient asyncClient;
@@ -1160,6 +1164,34 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
         failures);
   }
 
+  // Each shard an update-by-query reaches opens a scroll context, matching or not. Across the
+  // global alias that is one per shard of every index, so a busy node exhausts its open scroll
+  // contexts and the engine retries for about a minute before failing with 429 (#37466). A size-0
+  // search opens none, so it picks the indices to rewrite.
+  private List<String> indicesHoldingMatches(String indexOrAlias, Query query) throws IOException {
+    SearchResponse<JsonData> response =
+        client.search(
+            s ->
+                s.index(indexOrAlias)
+                    .size(0)
+                    .query(query)
+                    .aggregations(
+                        MATCHING_INDICES,
+                        a -> a.terms(t -> t.field("_index").size(MAX_MATCHING_INDICES))),
+            JsonData.class);
+    // A shard the search could not reach may hold a match, so the rename goes to the retry queue.
+    if (response.shards().failed().intValue() > 0) {
+      throw new IOException(
+          "Search for the indices tagged in '%s' failed on %s shards"
+              .formatted(indexOrAlias, response.shards().failed()));
+    }
+    final List<String> indices =
+        response.aggregations().get(MATCHING_INDICES).sterms().buckets().array().stream()
+            .map(bucket -> bucket.key().stringValue())
+            .toList();
+    return indices.size() < MAX_MATCHING_INDICES ? indices : List.of(indexOrAlias);
+  }
+
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
@@ -1173,6 +1205,14 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       Query prefixQuery =
           Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
 
+      List<String> indices =
+          indicesHoldingMatches(
+              Entity.getSearchRepository().getIndexOrAliasName(indexName), prefixQuery);
+      if (indices.isEmpty()) {
+        LOG.info("No search documents are tagged under {}; nothing to rewrite", oldFqnPrefix);
+        return;
+      }
+
       Map<String, JsonData> params =
           Map.of(
               "oldParentFQN", JsonData.of(oldFqnPrefix),
@@ -1181,7 +1221,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       UpdateByQueryRequest request =
           UpdateByQueryRequest.of(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                  req.index(indices)
                       .query(prefixQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(

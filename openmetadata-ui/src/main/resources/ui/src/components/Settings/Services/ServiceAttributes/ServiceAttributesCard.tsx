@@ -136,7 +136,7 @@ const ServiceAttributesCard = ({
           <Select
             data-testid="service-environment-select"
             label={t('label.environment')}
-            value={draft.environment}
+            value={draft.environment ?? null}
             onChange={(key) =>
               setDraft((previous) => ({
                 ...previous,
