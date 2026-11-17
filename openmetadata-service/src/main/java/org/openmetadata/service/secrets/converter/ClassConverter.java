@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.converter;
 
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -80,27 +81,33 @@ public abstract class ClassConverter {
    *
    * <p>A typed property works too: it is run through its own registered converter, which is how a
    * {@code oneOf} nested inside it (e.g. {@code GCPCredentials.gcpConfig}) gets typed.
+   *
+   * <p>An empty map is left as it is: choosing "None" for an optional {@code oneOf} submits {@code
+   * {}}, and since Jackson does not enforce JSON Schema {@code required} it would convert to the
+   * first candidate, filled with schema defaults. An empty map holds no secret to mask.
    */
   protected void convertProperty(Object target, String property, List<Class<?>> candidates) {
     String accessorSuffix = Character.toUpperCase(property.charAt(0)) + property.substring(1);
     try {
       Method getter = target.getClass().getMethod("get" + accessorSuffix);
-      tryToConvert(getter.invoke(target), candidates)
-          .ifPresent(
-              value -> {
-                try {
-                  target
-                      .getClass()
-                      .getMethod("set" + accessorSuffix, getter.getReturnType())
-                      .invoke(target, value);
-                } catch (ReflectiveOperationException e) {
-                  throw new ReflectionException(
-                      String.format(
-                          "Failed to set property [%s] on [%s]: %s",
-                          property, target.getClass().getSimpleName(), e.getMessage()),
-                      e);
-                }
-              });
+      Object value = getter.invoke(target);
+      Optional<Object> converted =
+          isEmptyMap(value) ? Optional.empty() : tryToConvert(value, candidates);
+      converted.ifPresent(
+          typed -> {
+            try {
+              target
+                  .getClass()
+                  .getMethod("set" + accessorSuffix, getter.getReturnType())
+                  .invoke(target, typed);
+            } catch (ReflectiveOperationException e) {
+              throw new ReflectionException(
+                  String.format(
+                      "Failed to set property [%s] on [%s]: %s",
+                      property, target.getClass().getSimpleName(), e.getMessage()),
+                  e);
+            }
+          });
     } catch (ReflectiveOperationException e) {
       throw new ReflectionException(
           String.format(
@@ -108,6 +115,10 @@ public abstract class ClassConverter {
               property, target.getClass().getSimpleName(), e.getMessage()),
           e);
     }
+  }
+
+  private static boolean isEmptyMap(Object value) {
+    return value instanceof Map<?, ?> map && map.isEmpty();
   }
 
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
