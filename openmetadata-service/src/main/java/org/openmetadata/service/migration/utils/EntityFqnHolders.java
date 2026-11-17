@@ -42,7 +42,7 @@ public final class EntityFqnHolders {
   private static final Set<String> MISSING_TABLE_STATES = Set.of("42S02", "42P01");
   private final Handle handle;
   private final List<EntityTable> tables;
-  private final Set<String> reportedMissing = new HashSet<>();
+  private final Set<String> missingTables = new HashSet<>();
 
   /** The table an entity type is stored in, and its name hash column. */
   public record EntityTable(String entityType, String tableName, String nameHashColumn) {}
@@ -96,7 +96,9 @@ public final class EntityFqnHolders {
     String nameHash = FullyQualifiedName.buildHash(fqn);
     List<Holder> holders = new ArrayList<>();
     for (EntityTable table : tables) {
-      holders.addAll(holdingIn(table, nameHash));
+      if (!missingTables.contains(table.tableName())) {
+        holders.addAll(holdingIn(table, nameHash));
+      }
     }
     return holders;
   }
@@ -121,11 +123,11 @@ public final class EntityFqnHolders {
     }
   }
 
+  /** A table cannot appear during the run, so it is not looked up again. */
   private List<Holder> notCreatedYet(final EntityTable table) {
-    if (reportedMissing.add(table.tableName())) {
-      LOG.info(
-          "Table {} does not exist yet, so it holds no {}", table.tableName(), table.entityType());
-    }
+    missingTables.add(table.tableName());
+    LOG.info(
+        "Table {} does not exist yet, so it holds no {}", table.tableName(), table.entityType());
     return List.of();
   }
 
