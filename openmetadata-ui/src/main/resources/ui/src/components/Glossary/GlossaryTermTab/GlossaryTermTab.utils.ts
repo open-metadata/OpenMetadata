@@ -31,20 +31,7 @@ const getLoadedChildCount = (term?: ModifiedGlossaryTerm): number =>
 const hasRicherChildState = (
   candidate: ModifiedGlossaryTerm,
   existing?: ModifiedGlossaryTerm
-): boolean => {
-  const candidateLen = getLoadedChildCount(candidate);
-  const existingLen = getLoadedChildCount(existing);
-
-  if (candidateLen !== existingLen) {
-    return candidateLen > existingLen;
-  }
-
-  return (
-    existing === undefined &&
-    (candidate.hasMoreChildren !== undefined ||
-      candidate.childrenPagingAfter !== undefined)
-  );
-};
+): boolean => getLoadedChildCount(candidate) > getLoadedChildCount(existing);
 
 const collectRicherNodesByFqn = (
   terms: ModifiedGlossaryTerm[]
@@ -89,8 +76,8 @@ const mergeCachedChildState = (
   return {
     ...node,
     children: richer.children,
-    hasMoreChildren: node.hasMoreChildren ?? richer.hasMoreChildren,
-    childrenPagingAfter: node.childrenPagingAfter ?? richer.childrenPagingAfter,
+    hasMoreChildren: richer.hasMoreChildren,
+    childrenPagingAfter: richer.childrenPagingAfter,
   };
 };
 
@@ -257,38 +244,45 @@ export const mergeChildTermsIntoHierarchy = (
   newChildren: GlossaryTermWithChildren[],
   pagingAfter?: string,
   append = false
-): ModifiedGlossary[] =>
-  terms.map((term) => {
-    if (term.fullyQualifiedName === parentFQN) {
-      const existingChildren = append ? term.children ?? [] : [];
-      const mergedChildren = uniqBy(
-        [...existingChildren, ...newChildren],
-        (child) => child.fullyQualifiedName ?? child.id
-      );
+): ModifiedGlossary[] => {
+  const seededExistingChildren = append
+    ? (collectRicherNodesByFqn(terms as ModifiedGlossaryTerm[]).get(parentFQN)
+        ?.children as GlossaryTermWithChildren[] | undefined)
+    : undefined;
 
-      return {
-        ...term,
-        children: mergedChildren,
-        hasMoreChildren: Boolean(pagingAfter),
-        childrenPagingAfter: pagingAfter,
-      };
-    }
+  const updateTerms = (nodes: ModifiedGlossary[]): ModifiedGlossary[] =>
+    nodes.map((term) => {
+      if (term.fullyQualifiedName === parentFQN) {
+        const existingChildren = append
+          ? seededExistingChildren ?? term.children ?? []
+          : [];
+        const mergedChildren = uniqBy(
+          [...existingChildren, ...newChildren],
+          (child) => child.fullyQualifiedName ?? child.id
+        );
 
-    if (term.children?.length) {
-      return {
-        ...term,
-        children: mergeChildTermsIntoHierarchy(
-          term.children as ModifiedGlossary[],
-          parentFQN,
-          newChildren,
-          pagingAfter,
-          append
-        ) as GlossaryTermWithChildren[],
-      };
-    }
+        return {
+          ...term,
+          children: mergedChildren,
+          hasMoreChildren: Boolean(pagingAfter),
+          childrenPagingAfter: pagingAfter,
+        };
+      }
 
-    return term;
-  });
+      if (term.children?.length) {
+        return {
+          ...term,
+          children: updateTerms(
+            term.children as ModifiedGlossary[]
+          ) as GlossaryTermWithChildren[],
+        };
+      }
+
+      return term;
+    });
+
+  return updateTerms(terms);
+};
 
 // A fetch response is stale when it no longer matches the search/status
 // context the user is currently looking at (they typed/filtered again while

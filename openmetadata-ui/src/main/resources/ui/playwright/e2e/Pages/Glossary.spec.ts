@@ -2969,15 +2969,16 @@ test.describe('Glossary tests', () => {
         await expect(childRow).toHaveAttribute('data-level', '0');
       });
     } finally {
-      if (siblingTerm) {
-        await siblingTerm.delete(apiContext);
+      try {
+        await Promise.allSettled([
+          ...(siblingTerm ? [siblingTerm.delete(apiContext)] : []),
+          ...(childTerm ? [childTerm.delete(apiContext)] : []),
+        ]);
+        await Promise.allSettled([parentTerm.delete(apiContext)]);
+        await Promise.allSettled([glossary.delete(apiContext)]);
+      } finally {
+        await afterAction();
       }
-      if (childTerm) {
-        await childTerm.delete(apiContext);
-      }
-      await parentTerm.delete(apiContext);
-      await glossary.delete(apiContext);
-      await afterAction();
     }
   });
 

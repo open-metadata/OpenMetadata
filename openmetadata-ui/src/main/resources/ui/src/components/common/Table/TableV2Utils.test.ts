@@ -31,38 +31,59 @@ const buildColumn = (partial: Partial<ColumnType<Row>>): ColumnType<Row> =>
 describe('flattenTreeRows', () => {
   const getKey = (row: TreeNode) => row.key;
 
-  it('deduplicates when an expanded child also appears later at root', () => {
-    const child: TreeNode = { key: 'G.Parent.Child' };
-    const sibling: TreeNode = { key: 'G.Parent.Sibling' };
-    const parent: TreeNode = {
-      key: 'G.Parent',
-      children: [child, sibling],
-    };
-    const duplicateRootChild: TreeNode = { key: 'G.Parent.Child' };
+  it('emits all sibling and cross-branch rows even when non-ancestor rowKeys repeat', () => {
+    // External app runs (AppRunsHistory) can share identical rowKeys at the same level
+    const flatDuplicates: TreeNode[] = [
+      { key: 'app-undefined-undefined' },
+      { key: 'app-undefined-undefined' },
+      { key: 'app-undefined-undefined' },
+    ];
 
-    const collapsed = flattenTreeRows(
-      [parent, duplicateRootChild],
+    const flattenedRuns = flattenTreeRows(
+      flatDuplicates,
       getKey,
       new Set(),
       undefined
     );
 
-    expect(collapsed.map((r) => ({ key: r.rowKey, depth: r.depth }))).toEqual([
-      { key: 'G.Parent', depth: 0 },
-      { key: 'G.Parent.Child', depth: 0 },
+    expect(
+      flattenedRuns.map((r) => ({ key: r.rowKey, idx: r.actualIndex }))
+    ).toEqual([
+      { key: 'app-undefined-undefined', idx: 0 },
+      { key: 'app-undefined-undefined', idx: 1 },
+      { key: 'app-undefined-undefined', idx: 2 },
     ]);
 
-    const expanded = flattenTreeRows(
-      [parent, duplicateRootChild],
+    // Separate parent branches with relative child keys (e.g. user.id and order.id)
+    const userBranch: TreeNode = {
+      key: 'user',
+      children: [{ key: 'id' }, { key: 'name' }],
+    };
+    const orderBranch: TreeNode = {
+      key: 'order',
+      children: [{ key: 'id' }, { key: 'total' }],
+    };
+
+    const flattenedBranches = flattenTreeRows(
+      [userBranch, orderBranch],
       getKey,
-      new Set(['G.Parent']),
+      new Set(['user', 'order']),
       undefined
     );
 
-    expect(expanded.map((r) => ({ key: r.rowKey, depth: r.depth }))).toEqual([
-      { key: 'G.Parent', depth: 0 },
-      { key: 'G.Parent.Child', depth: 1 },
-      { key: 'G.Parent.Sibling', depth: 1 },
+    expect(
+      flattenedBranches.map((r) => ({
+        key: r.rowKey,
+        depth: r.depth,
+        idx: r.actualIndex,
+      }))
+    ).toEqual([
+      { key: 'user', depth: 0, idx: 0 },
+      { key: 'id', depth: 1, idx: 1 },
+      { key: 'name', depth: 1, idx: 2 },
+      { key: 'order', depth: 0, idx: 3 },
+      { key: 'id', depth: 1, idx: 4 },
+      { key: 'total', depth: 1, idx: 5 },
     ]);
   });
 
@@ -93,26 +114,40 @@ describe('flattenTreeRows', () => {
     ]);
   });
 
-  it('terminates cleanly without stack overflow on cyclic children', () => {
+  it('terminates cleanly on ancestor-descendant cycles and keeps actualIndex contiguous', () => {
     const selfCycle: TreeNode = { key: 'G.Self' };
-    selfCycle.children = [selfCycle];
+    const validSibling: TreeNode = { key: '' };
+    selfCycle.children = [selfCycle, { key: 'G.Self' }, validSibling];
 
     const mutualA: TreeNode = { key: 'G.A' };
     const mutualB: TreeNode = { key: 'G.B' };
     mutualA.children = [mutualB];
     mutualB.children = [mutualA];
 
+    const trailingRoot: TreeNode = { key: '' };
+
+    const getKeyOrFallbackIndex = (row: TreeNode, index: number) =>
+      row.key || String(index);
+
     const flattened = flattenTreeRows(
-      [selfCycle, mutualA],
-      getKey,
+      [selfCycle, mutualA, trailingRoot],
+      getKeyOrFallbackIndex,
       new Set(['G.Self', 'G.A', 'G.B']),
       undefined
     );
 
-    expect(flattened.map((r) => ({ key: r.rowKey, depth: r.depth }))).toEqual([
-      { key: 'G.Self', depth: 0 },
-      { key: 'G.A', depth: 0 },
-      { key: 'G.B', depth: 1 },
+    expect(
+      flattened.map((r) => ({
+        key: r.rowKey,
+        depth: r.depth,
+        idx: r.actualIndex,
+      }))
+    ).toEqual([
+      { key: 'G.Self', depth: 0, idx: 0 },
+      { key: '1', depth: 1, idx: 1 },
+      { key: 'G.A', depth: 0, idx: 2 },
+      { key: 'G.B', depth: 1, idx: 3 },
+      { key: '4', depth: 0, idx: 4 },
     ]);
   });
 });

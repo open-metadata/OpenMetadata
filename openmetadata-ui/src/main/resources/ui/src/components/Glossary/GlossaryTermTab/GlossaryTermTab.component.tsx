@@ -570,6 +570,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
   const fetchRequestSeqRef = useRef(0);
+  const childFetchSeqRef = useRef<Record<string, number>>({});
   const {
     activeGlossary,
     glossaryChildTerms,
@@ -615,7 +616,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
   // The evidence behind the AI drafts among the loaded rows, for their status badges.
   const aiDraftIds = useMemo(
-    () => collectAiDraftIds(glossaryTerms),
+    () => Array.from(new Set(collectAiDraftIds(glossaryTerms))),
     [glossaryTerms]
   );
   const derivations = useTermDerivations(aiDraftIds);
@@ -719,6 +720,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const fetchChildTerms = async (parentFQN: string, after?: string) => {
+    const childReqSeq = (childFetchSeqRef.current[parentFQN] ?? 0) + 1;
+    childFetchSeqRef.current[parentFQN] = childReqSeq;
     const fetchGlossaryFqn = activeGlossary?.fullyQualifiedName;
     const fetchSearch = searchTermRef.current;
     const fetchPageSeq = fetchRequestSeqRef.current;
@@ -727,6 +730,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       const { currentGlossaryFqn } = getLiveGlossaryState();
 
       return (
+        childFetchSeqRef.current[parentFQN] !== childReqSeq ||
         fetchPageSeq !== fetchRequestSeqRef.current ||
         fetchGlossaryFqn !== currentGlossaryFqn ||
         fetchSearch !== searchTermRef.current
@@ -756,7 +760,9 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         showErrorToast(error as AxiosError);
       }
     } finally {
-      setLoadingChildren((prev) => ({ ...prev, [parentFQN]: false }));
+      if (childFetchSeqRef.current[parentFQN] === childReqSeq) {
+        setLoadingChildren((prev) => ({ ...prev, [parentFQN]: false }));
+      }
     }
   };
 
@@ -1038,9 +1044,10 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     searchTerm,
   ]);
 
-  // Clear terms when component unmounts
+  // Clear terms and invalidate in-flight page/child requests when component unmounts
   useEffect(() => {
     return () => {
+      fetchRequestSeqRef.current += 1;
       setGlossaryChildTerms([]);
     };
   }, []);

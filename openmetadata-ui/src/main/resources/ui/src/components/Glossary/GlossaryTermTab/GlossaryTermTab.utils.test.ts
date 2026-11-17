@@ -290,26 +290,41 @@ describe('GlossaryTermTab.utils', () => {
       ).toEqual([]);
     });
 
-    it('carries over paging metadata when a node has paging flags without loaded children', () => {
-      const rootWithPagingOnly = makeTerm('G.Parent.Child', {
-        hasMoreChildren: true,
-        childrenPagingAfter: 'cursor-only',
+    it('adopts richer node exhausted paging state without retaining stale cursor from 1-page copy', () => {
+      const sixtyChildren = Array.from({ length: 60 }, (_, idx) =>
+        makeTerm(`G.Parent.Child.GC_${idx + 1}`)
+      );
+      const fiftyChildren = sixtyChildren.slice(0, 50);
+
+      const twoPageRicherRootCopy = makeTerm('G.Parent.Child', {
+        childrenCount: 60,
+        children: sixtyChildren,
+        hasMoreChildren: false,
+        childrenPagingAfter: undefined,
       });
-      const childInParent = makeTerm('G.Parent.Child', {
-        children: [makeTerm('G.Parent.Child.GC1')],
+      const onePageStaleNestedCopy = makeTerm('G.Parent.Child', {
+        childrenCount: 60,
+        children: fiftyChildren,
+        hasMoreChildren: true,
+        childrenPagingAfter: 'cursor-50',
       });
       const parent = makeTerm('G.Parent', {
         childrenCount: 1,
-        children: [childInParent],
+        children: [onePageStaleNestedCopy],
       });
 
       const result = reconcileGlossaryTermHierarchy(
-        [rootWithPagingOnly, parent],
-        ['G.Parent']
+        [parent, twoPageRicherRootCopy],
+        ['G.Parent', 'G.Parent.Child']
       );
 
       expect(result.map((t) => t.fullyQualifiedName)).toEqual(['G.Parent']);
-      expect(result[0].children?.[0].children).toHaveLength(1);
+
+      const hydratedChild = result[0].children?.[0];
+
+      expect(hydratedChild?.children).toHaveLength(60);
+      expect(hydratedChild?.hasMoreChildren).toBe(false);
+      expect(hydratedChild?.childrenPagingAfter).toBeUndefined();
     });
   });
 
@@ -361,6 +376,49 @@ describe('GlossaryTermTab.utils', () => {
       expect(
         (nestedUpdated[0].children?.[0] as ModifiedGlossaryTerm).hasMoreChildren
       ).toBe(false);
+    });
+
+    it('seeds append=true from richer duplicate in hierarchy when expanded parent copy had undefined children', () => {
+      const pageOneGrandchild = makeTerm('G.Parent.Child.GC1');
+      const pageTwoGrandchild = makeTerm('G.Parent.Child.GC2');
+      const childUnderParent = makeTerm('G.Parent.Child', {
+        childrenCount: 2,
+        children: undefined,
+      });
+      const rootChildWithPageOne = makeTerm('G.Parent.Child', {
+        childrenCount: 2,
+        children: [pageOneGrandchild],
+        hasMoreChildren: true,
+        childrenPagingAfter: 'cursor-1',
+      });
+      const parent = makeTerm('G.Parent', {
+        childrenCount: 1,
+        children: [childUnderParent],
+      });
+
+      const merged = mergeChildTermsIntoHierarchy(
+        [parent, rootChildWithPageOne] as never,
+        'G.Parent.Child',
+        [pageTwoGrandchild] as never,
+        undefined,
+        true
+      );
+
+      const updatedNestedChild = merged[0]
+        .children?.[0] as ModifiedGlossaryTerm;
+      const updatedRootChild = merged[1] as unknown as ModifiedGlossaryTerm;
+
+      expect(
+        updatedNestedChild.children?.map((c) => c.fullyQualifiedName)
+      ).toEqual(['G.Parent.Child.GC1', 'G.Parent.Child.GC2']);
+      expect(updatedNestedChild.hasMoreChildren).toBe(false);
+      expect(updatedNestedChild.childrenPagingAfter).toBeUndefined();
+
+      expect(
+        updatedRootChild.children?.map((c) => c.fullyQualifiedName)
+      ).toEqual(['G.Parent.Child.GC1', 'G.Parent.Child.GC2']);
+      expect(updatedRootChild.hasMoreChildren).toBe(false);
+      expect(updatedRootChild.childrenPagingAfter).toBeUndefined();
     });
   });
 
