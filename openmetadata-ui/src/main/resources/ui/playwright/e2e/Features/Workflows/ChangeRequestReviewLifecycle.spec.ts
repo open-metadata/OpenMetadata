@@ -241,8 +241,12 @@ const editDescription = async (
   description: string,
   status: 200 | 202
 ) => {
-  const current = await publishedDescription(page, glossary);
   await visitGlossary(page, glossary);
+  // Rendered text, not the API value: a UI-saved description is stored as HTML.
+  const current = await page
+    .getByTestId('asset-description-container')
+    .getByRole('paragraph')
+    .innerText();
   await page.getByTestId('edit-description').click();
   const editor = await resolveDescriptionBox(page);
   // The editor loads the current text on a timer after it mounts; filling before
