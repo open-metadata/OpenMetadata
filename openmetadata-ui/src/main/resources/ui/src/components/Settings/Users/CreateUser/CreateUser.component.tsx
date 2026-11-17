@@ -442,6 +442,7 @@ const CreateUser = ({
                     onClick={generateRandomPassword}
                   />
                   <CopyButton
+                    className="tw:mr-1"
                     color="tertiary"
                     isDisabled={!generatedPassword}
                     size="sm"

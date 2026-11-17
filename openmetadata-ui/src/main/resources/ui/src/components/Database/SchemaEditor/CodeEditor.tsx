@@ -94,6 +94,7 @@ const CodeEditor = ({
               className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
               <CopyButton
+                size="sm"
                 testId="query-copy-button"
                 tooltip={t('message.copy-to-clipboard')}
                 value={internalValue}
