@@ -91,6 +91,7 @@ type GraphEmptyStateKind =
   | 'filtered-active-empty'
   | 'onboarding-empty'
   | 'no-terms-empty'
+  | 'data-empty'
   | 'null-state'
   | 'no-matching-relation'
   | 'content';
@@ -246,6 +247,22 @@ function FilteredActiveGraphEmptyState() {
       description={t('message.no-data-available-for-selected-filter')}
       testId="ontology-graph-empty"
     />
+  );
+}
+
+function DataLayerGraphEmptyState() {
+  const { t } = useTranslation();
+
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:flex tw:items-center tw:justify-center tw:bg-primary"
+      data-testid="ontology-data-empty">
+      <NoDataPlaceholder
+        description={t('message.ontology-data-empty-hint')}
+        icon={<Cube02 className="tw:text-fg-brand-primary" />}
+        title={t('label.no-assets-linked-yet')}
+      />
+    </div>
   );
 }
 
@@ -468,6 +485,9 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       if (hasActiveFilter) {
         return 'filtered-active-empty';
       }
+      if (explorationMode === 'data') {
+        return 'data-empty';
+      }
 
       return scope === 'global' ? 'onboarding-empty' : 'no-terms-empty';
     };
@@ -536,6 +556,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       'filtered-active-empty': FilteredActiveGraphEmptyState,
       'onboarding-empty': OntologyOnboardingEmptyState,
       'no-terms-empty': NoTermsGraphEmptyState,
+      'data-empty': DataLayerGraphEmptyState,
       'no-matching-relation': NoRelationsForFilterGraphEmptyState,
     };
 
@@ -690,7 +711,10 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   // the toolbar + graph; isolated as an IIFE so its && chains don't add to the
   // component's own complexity.
   const showOnboardingEmptyState = (() => {
+    // An empty data layer only means no term has linked assets yet; it must
+    // keep the toolbar, or the layer switch back to the model goes with it.
     const hasEmptyConceptGraph =
+      explorationMode === 'model' &&
       !loading &&
       graphDataToShow !== null &&
       graphDataToShow.nodes.length === 0;
