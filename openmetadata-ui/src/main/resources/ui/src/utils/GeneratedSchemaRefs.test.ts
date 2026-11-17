@@ -45,21 +45,49 @@ const collectLocalRefs = (node: unknown, refs: string[] = []): string[] => {
   return refs;
 };
 
+// The lookup RJSF's findSchemaDefinition does: URI-decode the fragment, then walk
+// it as an RFC 6901 JSON Pointer, where an empty token is a real (empty) key.
 const resolves = (document: unknown, ref: string): boolean => {
+  const pointer = decodeURIComponent(ref.slice(1));
   let current = document;
 
-  return ref
-    .slice(1)
-    .split('/')
-    .filter(Boolean)
-    .every((token) => {
-      const key = token.replace(/~1/g, '/').replace(/~0/g, '~');
-      const found = isObject(current) && key in current;
-      current = found ? (current as Record<string, unknown>)[key] : undefined;
+  return (
+    (pointer === '' || pointer.startsWith('/')) &&
+    pointer
+      .split('/')
+      .slice(1)
+      .every((token) => {
+        const key = token.replace(/~1/g, '/').replace(/~0/g, '~');
+        const found =
+          isObject(current) &&
+          Object.prototype.hasOwnProperty.call(current, key);
+        current = found ? (current as Record<string, unknown>)[key] : undefined;
 
-      return found;
-    });
+        return found;
+      })
+  );
 };
+
+describe('resolves', () => {
+  const document = {
+    definitions: { x: {}, '': { y: {} }, 'a/b': {}, 'a~b': {}, 'a b': {} },
+  };
+
+  it.each([
+    ['#', true],
+    ['#/definitions/x', true],
+    ['#/definitions//y', true],
+    ['#/definitions//x', false],
+    ['#/definitions/a~1b', true],
+    ['#/definitions/a~0b', true],
+    ['#/definitions/a%20b', true],
+    ['#/definitions/missing', false],
+    ['#/definitions/x/constructor', false],
+    ['#definitions/x', false],
+  ])('%s → %s', (ref, expected) => {
+    expect(resolves(document, ref)).toBe(expected);
+  });
+});
 
 describe('Generated JSON schemas', () => {
   const files = GENERATED_DIRS.flatMap(listJsonFiles);
