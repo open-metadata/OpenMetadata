@@ -234,6 +234,76 @@ class SearchMetadataToolTest {
   }
 
   @Test
+  void contextMemoryKeywordRequestPreservesGuidanceAndCallerScope() throws Exception {
+    final String memoryFqn = "customer-discovery";
+    final Map<String, Object> memory =
+        Map.of(
+            "name",
+            memoryFqn,
+            "fullyQualifiedName",
+            memoryFqn,
+            "entityType",
+            Entity.CONTEXT_MEMORY,
+            "entityStatus",
+            "Approved",
+            "sourceType",
+            "Manual",
+            "question",
+            "How should customers be discovered?",
+            "answer",
+            "Find customer tables tagged with the Customer glossary term.",
+            "primaryEntity",
+            Map.of("type", Entity.GLOSSARY_TERM, "fullyQualifiedName", "Business.Customer"),
+            "relatedEntities",
+            List.of(
+                Map.of("type", Entity.TABLE, "fullyQualifiedName", "sales.db.public.customers")));
+    final Map<String, Object> response =
+        Map.of(
+            "hits",
+            Map.of("total", Map.of("value", 1), "hits", List.of(Map.of("_source", memory))));
+    when(searchRepository.getIndexMapping(Entity.CONTEXT_MEMORY))
+        .thenReturn(mock(IndexMapping.class));
+    when(searchRepository.getIndexOrAliasName(Entity.CONTEXT_MEMORY))
+        .thenReturn("context_memory_search_index");
+    when(searchRepository.search(any(), any(SubjectContext.class)))
+        .thenAnswer(
+            invocation -> {
+              final SearchRequest request = invocation.getArgument(0);
+              final SubjectContext subject = invocation.getArgument(1);
+              assertEquals("context_memory_search_index", request.getIndex());
+              assertEquals("customer", request.getQuery());
+              assertFalse(request.getDeleted());
+              assertEquals(mockUser.getId(), subject.user().getId());
+              assertFalse(subject.isAdmin());
+              return Response.ok(JsonUtils.pojoToJson(response)).build();
+            });
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      final JsonNode result =
+          JsonUtils.valueToTree(
+              searchMetadataTool.execute(
+                  authorizer,
+                  securityContext,
+                  Map.of(
+                      "query",
+                      "customer",
+                      "entityType",
+                      Entity.CONTEXT_MEMORY,
+                      "fields",
+                      "question,answer,entityStatus,primaryEntity,relatedEntities")));
+
+      assertEquals(1, result.path("returnedCount").asInt());
+      assertEquals(memoryFqn, result.at("/results/0/fullyQualifiedName").asText());
+      assertEquals(memory.get("question"), result.at("/results/0/question").asText());
+      assertEquals(memory.get("answer"), result.at("/results/0/answer").asText());
+      assertEquals("Approved", result.at("/results/0/entityStatus").asText());
+      assertTrue(result.at("/results/0/primaryEntity").toString().contains("Business.Customer"));
+      assertTrue(
+          result.at("/results/0/relatedEntities").toString().contains("sales.db.public.customers"));
+    }
+  }
+
+  @Test
   void testRegisteredEntityTypeResolvesToOwnIndex() {
     // Regression for #27796: databaseService is absent from the legacy switch and not part of the
     // dataAsset alias, so it must resolve to its own index rather than falling back to dataAsset.

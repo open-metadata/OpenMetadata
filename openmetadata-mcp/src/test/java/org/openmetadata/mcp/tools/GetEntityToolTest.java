@@ -84,6 +84,27 @@ class GetEntityToolTest {
   static final String SIGNING_KEY = "rawPgpPrivateKeyMaterial";
   static final String SIGNING_PASSPHRASE = "rawSigningPassphrase";
 
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "Approved",
+        "Draft",
+        "Archived",
+        "Superseded",
+        "Invalidated",
+        "Unprocessed",
+        "Deprecated",
+        "Rejected"
+      })
+  void memoryDetailsPreserveLifecycleAndDeletionMarkers(final String status) {
+    final Map<String, Object> details =
+        GetEntityTool.cleanEntityResponse(
+            Map.of("entityType", Entity.CONTEXT_MEMORY, "entityStatus", status, "deleted", true));
+
+    assertEquals(status, details.get("entityStatus"));
+    assertEquals(true, details.get("deleted"));
+  }
+
   @Test
   void contentOnlyPreservesViewBasicAuthorization() throws Exception {
     String fqn = "Knowledge.Article";
