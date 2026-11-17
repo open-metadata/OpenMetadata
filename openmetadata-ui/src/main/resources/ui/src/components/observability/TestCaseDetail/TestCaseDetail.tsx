@@ -123,7 +123,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     handleDisplayNameChange,
     handleRestore,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
   const incidentHeaderData = useTestCaseIncidentHeader({
     fetchTaskCount: getEntityFeedCount,
@@ -495,7 +495,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           open={isDimensionEdit}
           testCase={testCase}
           onClose={handleCancelDimension}
-          onUpdate={setTestCase}
+          onUpdate={mergeTestCase}
         />
       )}
     </>
