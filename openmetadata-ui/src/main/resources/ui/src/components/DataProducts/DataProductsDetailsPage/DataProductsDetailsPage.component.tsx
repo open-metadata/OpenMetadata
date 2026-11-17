@@ -976,14 +976,17 @@ const DataProductsDetailsPage = ({
         ? dataProduct.entityStatus
         : EntityStatus.Unprocessed;
 
+    // ml-2 restores the 12px gap after the copy/learning group's 4px.
     return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge
-        entityId={dataProduct.id}
-        entityType={EntityType.DATA_PRODUCT}
-        fqn={dataProduct.fullyQualifiedName}
-        showDivider={false}
-        status={entityStatus}
-      />
+      <Box className="tw:ml-2">
+        <EntityStatusBadge
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+          fqn={dataProduct.fullyQualifiedName}
+          showDivider={false}
+          status={entityStatus}
+        />
+      </Box>
     ) : null;
   }, [dataProduct]);
 
@@ -1032,9 +1035,7 @@ const DataProductsDetailsPage = ({
                 suffix={
                   <>
                     <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
-                    {statusBadge && (
-                      <Box className="tw:ml-2">{statusBadge}</Box>
-                    )}
+                    {statusBadge}
                   </>
                 }
                 titleColor={dataProduct.style?.color}
