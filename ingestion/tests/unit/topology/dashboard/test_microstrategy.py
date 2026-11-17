@@ -1247,6 +1247,8 @@ class TestColumnLineage:
             (["ab", "A B"], ["ab", "a_b"], [(["ab"], "ab")]),
             # One object, two columns that normalize to its name: neither is a safe guess.
             (["A B"], ["ab", "a_b"], []),
+            # Two objects of the same name: which one reads the column cannot be told.
+            (["id", "id", "name"], ["id", "name"], [(["name"], "name")]),
         ],
     )
     def test_a_data_import_object_is_linked_only_to_the_one_column_it_is_named_after(
