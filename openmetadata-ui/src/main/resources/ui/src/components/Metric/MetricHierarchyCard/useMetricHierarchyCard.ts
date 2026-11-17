@@ -58,7 +58,8 @@ export const useMetricHierarchyCard = (metric?: Metric) => {
         siblingLimit: METRIC_HIERARCHY_PEER_LIMIT,
         siblingOffset: 0,
       }),
-    enabled: Boolean(metric?.id),
+    // The hierarchy endpoint only resolves live metrics, so a soft-deleted one would 404.
+    enabled: Boolean(metric?.id) && !metric?.deleted,
   });
 
   const initialChildren = useMemo(

@@ -272,14 +272,15 @@ test.describe(
         // reviewers list and must inherit the one added to the glossary server-side.
         term = new GlossaryTerm(glossary);
         await term.create(apiContext);
+        const termId = term.responseData.id;
 
         await test.step('Term exposes the inherited reviewer and reaches In Review', async () => {
-          expect(
-            await waitForSettledStatus(apiContext, term.responseData.id)
-          ).toBe('In Review');
+          expect(await waitForSettledStatus(apiContext, termId)).toBe(
+            'In Review'
+          );
           await waitForInheritedReviewer(
             apiContext,
-            term.responseData.id,
+            termId,
             reviewer.responseData.id
           );
         });

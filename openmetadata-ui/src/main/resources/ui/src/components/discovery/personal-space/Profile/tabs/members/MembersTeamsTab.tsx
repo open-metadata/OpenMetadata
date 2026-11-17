@@ -14,21 +14,23 @@
 import {
   Box,
   Button,
-  Dialog,
-  FeaturedIcon,
-  Modal,
-  ModalOverlay,
+  ConfirmPopover,
+  PaginationCardWithControls,
   Toggle,
-  Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowRight } from '@openmetadata/ui-core-components/icons';
-import { FC } from 'react';
+import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { FC, useMemo, useRef } from 'react';
 import { DropZone } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
+import {
+  TEAMS_PAGE_SIZE_OPTIONS,
+  TEAMS_TABLE_SCROLL,
+} from './Members.constants';
 import type { MembersTeamsTabProps } from './MembersTeamDetail.types';
 import { TEAM_DRAG_TYPE } from './MembersTeamDetail.utils';
 
@@ -45,13 +47,35 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
   searchTerm,
   canCreateTeam,
   movedTeam,
+  teamsPage,
+  teamsPageSize,
+  teamsTotal,
   onShowDeletedTeamChange,
   onSearchTermChange,
   onNavigate,
   onSetMovedTeam,
   onMoveConfirm,
+  onTeamsPageChange,
+  onTeamsPageSizeChange,
 }) => {
   const { t } = useTranslation();
+  const tableRef = useRef<HTMLDivElement>(null);
+
+  // Anchor the confirmation to the row the team was dropped on (or the dragged
+  // row for a root move). Anchored to the whole table, a list taller than the
+  // viewport pushes the popover off-screen, so the drop looks like a no-op.
+  const moveAnchorRef = useMemo(() => {
+    const rowKey =
+      movedTeam?.to?.fullyQualifiedName ?? movedTeam?.from.fullyQualifiedName;
+    const row = Array.from(
+      tableRef.current?.querySelectorAll<HTMLElement>('[data-row-key]') ?? []
+    ).find((el) => el.dataset.rowKey === rowKey);
+
+    return { current: row ?? tableRef.current };
+  }, [movedTeam]);
+
+  const teamsTotalPages = Math.max(1, Math.ceil(teamsTotal / teamsPageSize));
+  const showTeamsPagination = teamsTotal > 0;
 
   return (
     <>
@@ -63,6 +87,7 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
         getDropOperation={(types) =>
           types.has(TEAM_DRAG_TYPE) ? 'move' : 'cancel'
         }
+        ref={tableRef}
         onDrop={() => {
           if (draggedTeamRef.current) {
             onSetMovedTeam({
@@ -113,12 +138,16 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
                 align="center"
                 className="tw:min-h-32 tw:relative"
                 justify="center">
-                <NoDataPlaceholder title={t('label.no-data-found')} />
+                <NoDataPlaceholder
+                  icon={<Users01 />}
+                  title={t('label.no-data-found')}
+                />
               </Box>
             ),
           }}
           pagination={false}
           rowKey="fullyQualifiedName"
+          scroll={TEAMS_TABLE_SCROLL}
           searchProps={{
             containerClassName: 'tw:w-80!',
             placeholder: t('label.search-entity', {
@@ -129,80 +158,52 @@ const MembersTeamsTab: FC<MembersTeamsTabProps> = ({
             typingInterval: 500,
           }}
           size="small"
+          variant="muted"
         />
       </DropZone>
-
-      {movedTeam && (
-        <ModalOverlay
-          isDismissable
-          isOpen
-          data-testid="move-team-modal"
-          style={{ zIndex: 999 }}
-          onOpenChange={(isOpen) => !isOpen && onSetMovedTeam(undefined)}>
-          <Modal>
-            <Dialog width={400} onClose={() => onSetMovedTeam(undefined)}>
-              <Dialog.Header className="tw:flex-col">
-                <FeaturedIcon
-                  color="brand"
-                  icon={ArrowRight}
-                  size="lg"
-                  theme="light"
-                />
-                <Box
-                  className="tw:gap-0.5 tw:mt-4 tw:min-w-0 tw:w-full"
-                  data-testid="modal-header"
-                  direction="col">
-                  <Typography size="text-md" weight="semibold">
-                    {t('label.move-the-entity', {
-                      entity: t('label.team'),
-                    })}
-                  </Typography>
-                  <Typography
-                    as="p"
-                    className="tw:text-tertiary tw:break-words">
-                    {movedTeam.to ? (
-                      <Transi18next
-                        i18nKey="message.entity-transfer-message"
-                        renderElement={<strong />}
-                        values={{
-                          from: getEntityName(movedTeam.from),
-                          to: getEntityName(movedTeam.to),
-                          entity: t('label.team-lowercase'),
-                        }}
-                      />
-                    ) : (
-                      t('message.move-entity-to-root', {
-                        entity: getEntityName(movedTeam.from),
-                      })
-                    )}
-                  </Typography>
-                </Box>
-              </Dialog.Header>
-              <Box
-                className="tw:p-4 tw:pt-6 tw:sm:px-6 tw:sm:pt-8 tw:sm:pb-6"
-                direction="row"
-                gap={3}>
-                <Button
-                  className="tw:w-full"
-                  color="secondary"
-                  data-testid="cancel-button"
-                  size="lg"
-                  onPress={() => onSetMovedTeam(undefined)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  className="tw:w-full"
-                  color="primary"
-                  data-testid="confirm-button"
-                  size="lg"
-                  onPress={onMoveConfirm}>
-                  {t('label.confirm')}
-                </Button>
-              </Box>
-            </Dialog>
-          </Modal>
-        </ModalOverlay>
+      {showTeamsPagination && (
+        <PaginationCardWithControls
+          // Browsing steps page by page on `/teams` cursors; a search pages by
+          // number, so its page numbers can be jumped to.
+          minimal={!searchTerm}
+          page={teamsPage}
+          pageSize={teamsPageSize}
+          pageSizeOptions={TEAMS_PAGE_SIZE_OPTIONS}
+          total={teamsTotalPages}
+          onPageChange={onTeamsPageChange}
+          onPageSizeChange={onTeamsPageSizeChange}
+        />
       )}
+
+      <ConfirmPopover
+        confirmText={t('label.confirm')}
+        data-testid="move-team-popover"
+        description={
+          movedTeam &&
+          (movedTeam.to ? (
+            <Transi18next
+              i18nKey="message.entity-transfer-message"
+              renderElement={<strong />}
+              values={{
+                from: getEntityName(movedTeam.from),
+                to: getEntityName(movedTeam.to),
+                entity: t('label.team-lowercase'),
+              }}
+            />
+          ) : (
+            t('message.move-entity-to-root', {
+              entity: getEntityName(movedTeam.from),
+            })
+          ))
+        }
+        isOpen={Boolean(movedTeam)}
+        placement="top"
+        title={t('label.move-the-entity', { entity: t('label.team') })}
+        triggerRef={moveAnchorRef}
+        variant="primary"
+        onConfirm={onMoveConfirm}
+        onOpenChange={(isOpen) => !isOpen && onSetMovedTeam(undefined)}
+      />
     </>
   );
 };

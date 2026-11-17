@@ -128,6 +128,7 @@ export const useWorkflowActions = ({
       );
     } catch {
       // testWorkflow / buildWorkflowForSave already show a toast on validation failure
+      return undefined;
     }
   }, [nodes, edges, workflowDefinition, workflowMetadata]);
 
@@ -266,7 +267,6 @@ export const useWorkflowActions = ({
     handleEdgeClick: edgeManagement.handleEdgeClick,
     handleEdgeDelete: edgeManagement.handleEdgeDelete,
     handleWorkflowMetadataUpdate,
-    fixMissingEdgeLabels: edgeManagement.fixMissingEdgeLabels,
     fixInvalidEdgeConditions: edgeManagement.fixInvalidEdgeConditions,
   };
 };

@@ -18,7 +18,16 @@ import {
   Divider,
   Dropdown,
 } from '@openmetadata/ui-core-components';
-import { FilterLines } from '@openmetadata/ui-core-components/icons';
+import {
+  All,
+  CheckCircle02,
+  FilterLines,
+  ListConversation,
+  SuccessfulTests,
+  Task as TaskIcon,
+  TotalOccurrences,
+  UserSquare,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
@@ -33,20 +42,10 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as AllActivityIcon } from '../../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as TaskCloseIcon } from '../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as TaskCloseIconBlue } from '../../../assets/svg/ic-close-task.svg';
-import { ReactComponent as MentionIcon } from '../../../assets/svg/ic-mention.svg';
-import { ReactComponent as TaskOpenIcon } from '../../../assets/svg/ic-open-task.svg';
-import { ReactComponent as TaskIcon } from '../../../assets/svg/ic-task-new.svg';
-import { ReactComponent as NoConversationsIcon } from '../../../assets/svg/no-conversations.svg';
-import { ReactComponent as TaskListIcon } from '../../../assets/svg/task-ic.svg';
-import { ReactComponent as MyTaskIcon } from '../../../assets/svg/task.svg';
 import {
   COMMON_ICON_STYLES,
   DEFAULT_DOMAIN_VALUE,
   ICON_DIMENSION,
-  ICON_DIMENSION_USER_PAGE,
 } from '../../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
@@ -112,26 +111,25 @@ const componentsVisibility = {
 /**
  * The three task-count scopes: my own profile counts every task visible to me,
  * another user's profile counts what is assigned to them, and an entity page
- * counts what is about that entity.
+ * counts what is about that entity. The withDomainFilter interceptor applies the pick to the
+ * user scopes only, so each count matches the list it labels.
  */
 const getTaskCountParams = ({
   isUserEntity,
   isCurrentUserProfile,
   fqn,
-  domain,
 }: {
   isUserEntity: boolean;
   isCurrentUserProfile: boolean;
   fqn: string;
-  domain?: string;
 }) => {
   if (!isUserEntity) {
-    return { aboutEntity: fqn, view: 'entity' as const, domain };
+    return { aboutEntity: fqn, view: 'entity' as const };
   }
 
   return isCurrentUserProfile
-    ? { view: 'visible' as const, domain }
-    : { assignee: fqn, domain };
+    ? { view: 'visible' as const }
+    : { assignee: fqn };
 };
 
 /**
@@ -200,7 +198,7 @@ const ActivityFeedTabLeftPanel = ({
   const items = [
     {
       key: ActivityFeedTabs.ALL,
-      icon: AllActivityIcon,
+      icon: All,
       label: t('label.all'),
       countTestId: 'left-panel-all-count',
       count: isUserEntity
@@ -215,7 +213,7 @@ const ActivityFeedTabLeftPanel = ({
     },
     {
       key: ActivityFeedTabs.TASKS,
-      icon: TaskListIcon,
+      icon: TaskIcon,
       label: t('label.task-plural'),
       countTestId: 'left-panel-task-count',
       count: getCountBadge(
@@ -465,7 +463,12 @@ const ActivityFeedTabRightPanel = ({
                   <NoDataPlaceholder
                     data-testid="no-data-placeholder"
                     description={placeholderDescription}
-                    icon={<NoConversationsIcon />}
+                    icon={
+                      <ListConversation
+                        className="tw:text-utility-gray-500"
+                        size={140}
+                      />
+                    }
                     title={placeholder}
                   />
                 </div>
@@ -539,6 +542,7 @@ export const ActivityFeedTab = ({
     userId,
     selectedActivity,
     setActiveActivity,
+    refreshActivityFeed,
   } = useActivityFeedProvider();
 
   const isUserEntity = useMemo(
@@ -573,6 +577,9 @@ export const ActivityFeedTab = ({
 
   const handleTabChange = useCallback(
     (subTab: string) => {
+      if (subTab === activeTab) {
+        return;
+      }
       setIsFirstLoad(true);
       navigate(
         entityUtilClassBase.getEntityLink(
@@ -583,11 +590,22 @@ export const ActivityFeedTab = ({
         ),
         { replace: true }
       );
+      refreshActivityFeed([]);
       setActiveThread();
       setActiveTask();
+      setActiveActivity(undefined);
       setIsFullWidth(false);
     },
-    [entityType, fqn, navigate, setActiveThread, setActiveTask]
+    [
+      activeTab,
+      entityType,
+      fqn,
+      navigate,
+      refreshActivityFeed,
+      setActiveThread,
+      setActiveTask,
+      setActiveActivity,
+    ]
   );
 
   const placeholderText = useMemo(() => {
@@ -597,7 +615,7 @@ export const ActivityFeedTab = ({
         description: t('message.no-activity-feed-description'),
       };
     } else if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return { title: t('message.no-mentions') };
+      return { description: t('message.no-mentions') };
     } else if (taskFilter === TaskStatusGroup.Closed) {
       return {
         title: t('message.no-closed-tasks-title'),
@@ -632,7 +650,6 @@ export const ActivityFeedTab = ({
         isUserEntity,
         isCurrentUserProfile,
         fqn,
-        domain,
       });
       const countRequests = startFeedCountRequests({
         isUserEntity,
@@ -885,12 +902,12 @@ export const ActivityFeedTab = ({
             data-testid="open-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === TaskStatusGroup.Open ? (
-                <TaskOpenIcon
-                  className="m-r-xs"
-                  {...ICON_DIMENSION_USER_PAGE}
+                <TotalOccurrences
+                  className="m-r-xs tw:text-utility-success-600"
+                  size={16}
                 />
               ) : (
-                <TaskIcon className="m-r-xs" {...ICON_DIMENSION_USER_PAGE} />
+                <TotalOccurrences className="m-r-xs" size={16} />
               )}
               <span
                 className={classNames('task-tab-filter-item', {
@@ -926,15 +943,12 @@ export const ActivityFeedTab = ({
             data-testid="closed-tasks">
             <div className="flex items-center space-x-2">
               {taskFilter === TaskStatusGroup.Closed ? (
-                <TaskCloseIconBlue
-                  className="m-r-xs"
-                  {...ICON_DIMENSION_USER_PAGE}
+                <SuccessfulTests
+                  className="m-r-xs tw:text-utility-blue-700"
+                  size={16}
                 />
               ) : (
-                <TaskCloseIcon
-                  className="m-r-xs"
-                  {...ICON_DIMENSION_USER_PAGE}
-                />
+                <CheckCircle02 className="m-r-xs" size={16} />
               )}
               <span
                 className={classNames('task-tab-filter-item', {
@@ -976,14 +990,24 @@ export const ActivityFeedTab = ({
         }}>
         <ButtonGroupItem
           data-testid="my-tasks-toggle"
-          iconLeading={<MyTaskIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />}
+          iconLeading={
+            <TaskIcon
+              aria-hidden
+              className="tw:text-utility-gray-500"
+              size={16}
+            />
+          }
           id={ActivityFeedTabs.TASKS}>
           {t('label.my-task-plural')}
         </ButtonGroupItem>
         <ButtonGroupItem
           data-testid="mentions-toggle"
           iconLeading={
-            <MentionIcon aria-hidden {...ICON_DIMENSION_USER_PAGE} />
+            <UserSquare
+              aria-hidden
+              className="tw:text-utility-gray-500"
+              size={16}
+            />
           }
           id={ActivityFeedTabs.MENTIONS}>
           {t('label.mention-plural')}
@@ -1082,7 +1106,7 @@ export const ActivityFeedTab = ({
 
   const getRightPanelPlaceholder = useMemo(() => {
     if (activeTab === ActivityFeedTabs.MENTIONS) {
-      return { title: t('message.no-mentions') };
+      return { description: t('message.no-mentions') };
     }
 
     return {

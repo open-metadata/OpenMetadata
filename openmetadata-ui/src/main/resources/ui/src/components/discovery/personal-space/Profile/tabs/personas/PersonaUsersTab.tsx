@@ -15,9 +15,7 @@ import {
   Box,
   Button,
   ButtonUtility,
-  Card,
-  FormFields,
-  HookForm,
+  ConfirmPopover,
   Skeleton,
   Table,
   TableCard,
@@ -25,32 +23,30 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { uniqBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import {
-  getPersonaUserRefs,
-  PersonaUserOption,
-  usePersonaUsersField,
-} from '../../../../../../hooks/usePersonaUsersField';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
+import { UserTeamSelectableList } from '../../../../../common/UserTeamSelectableList/UserTeamSelectableList.component';
 
-type UserColumnId = 'name' | 'teams' | 'roles' | 'actions';
+type UserColumnId = 'name' | 'email' | 'teams' | 'roles' | 'actions';
 type UserColumn = { id: UserColumnId; label: string; className?: string };
 
 interface PersonaUsersTabProps {
+  personaName: string;
   users: EntityReference[];
   canEdit: boolean;
-  onUsersChange: (users: EntityReference[]) => void;
+  /** Resolves `false` when the update failed, keeping the confirm popover open. */
+  onUsersChange: (users: EntityReference[]) => Promise<boolean>;
 }
 
 const renderRefList = (refs: EntityReference[] | undefined) => {
@@ -66,6 +62,7 @@ const renderRefList = (refs: EntityReference[] | undefined) => {
 };
 
 const PersonaUsersTab = ({
+  personaName,
   users,
   canEdit,
   onUsersChange,
@@ -73,38 +70,23 @@ const PersonaUsersTab = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<User[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
-  const usersField = usePersonaUsersField('add-persona-users-select');
-  const addUsersForm = useForm<{ users: PersonaUserOption[] }>({
-    defaultValues: { users: [] },
-  });
-  const selectedOptions = useWatch({
-    control: addUsersForm.control,
-    name: 'users',
-  });
-  const pendingUsers = useMemo(
-    () => getPersonaUserRefs(selectedOptions),
-    [selectedOptions]
-  );
 
   const handleRemove = useCallback(
     (id: string) => onUsersChange(users.filter((u) => u.id !== id)),
     [onUsersChange, users]
   );
 
-  const handleCancelAdd = useCallback(() => {
-    setIsAdding(false);
-    addUsersForm.reset();
-  }, [addUsersForm]);
-
-  const handleConfirmAdd = useCallback(() => {
-    onUsersChange(uniqBy([...users, ...pendingUsers], 'id'));
-    handleCancelAdd();
-  }, [onUsersChange, users, pendingUsers, handleCancelAdd]);
+  const handleUpdate = useCallback(
+    async (selected?: EntityReference[]) => {
+      await onUsersChange(selected ?? []);
+    },
+    [onUsersChange]
+  );
 
   const columns = useMemo<UserColumn[]>(
     () => [
       { id: 'name', label: t('label.name'), className: 'tw:w-72' },
+      { id: 'email', label: t('label.email') },
       { id: 'teams', label: t('label.team-plural') },
       { id: 'roles', label: t('label.role-plural') },
       { id: 'actions', label: t('label.action-plural'), className: 'tw:w-20' },
@@ -134,9 +116,9 @@ const PersonaUsersTab = ({
           : undefined;
 
         if (active) {
-          setUserDetails(
-            response?.hits.hits.map((hit) => hit._source as User) ?? []
-          );
+          const fetched =
+            response?.hits.hits.map((hit) => hit._source as User) ?? [];
+          setUserDetails(fetched);
         }
       } catch (error) {
         if (active) {
@@ -161,13 +143,20 @@ const PersonaUsersTab = ({
     switch (colId) {
       case 'name':
         return (
-          <Typography
-            className="tw:truncate tw:block"
-            data-testid="persona-user-name"
-            size="text-sm"
-            tooltip={getEntityName(user)}
-            weight="medium">
-            {getEntityName(user)}
+          <span className="tw:block tw:min-w-0" data-testid="persona-user-name">
+            <UserPopOverCard
+              showUserName
+              className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-medium"
+              displayName={getEntityName(user)}
+              profileWidth={16}
+              userName={user.name}
+            />
+          </span>
+        );
+      case 'email':
+        return (
+          <Typography className="tw:truncate tw:block" size="text-sm">
+            {getUserIdentifier(user)}
           </Typography>
         );
       case 'teams':
@@ -175,20 +164,32 @@ const PersonaUsersTab = ({
       case 'roles':
         return renderRefList(user.roles);
       case 'actions':
-        return (
+        return canEdit ? (
+          <ConfirmPopover
+            confirmText={t('label.remove')}
+            data-testid="remove-persona-user-popover"
+            description={t(
+              'message.are-you-sure-you-want-to-remove-child-from-parent',
+              { child: getEntityName(user), parent: personaName }
+            )}
+            title={t('label.remove-entity', { entity: getEntityName(user) })}
+            onConfirm={() => handleRemove(user.id)}>
+            <ButtonUtility
+              data-testid={`remove-user-${getEntityName(user)}`}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove-entity', { entity: t('label.user') })}
+              tooltipPlacement="left"
+            />
+          </ConfirmPopover>
+        ) : (
           <ButtonUtility
-            color="tertiary"
+            isDisabled
             data-testid={`remove-user-${getEntityName(user)}`}
             icon={Trash01}
-            isDisabled={!canEdit}
-            size="xs"
-            tooltip={
-              canEdit
-                ? t('label.remove-entity', { entity: t('label.user') })
-                : t(NO_PERMISSION_FOR_ACTION)
-            }
+            size="lg"
+            tooltip={t(NO_PERMISSION_FOR_ACTION)}
             tooltipPlacement="left"
-            onPress={() => handleRemove(user.id)}
           />
         );
       default:
@@ -223,48 +224,27 @@ const PersonaUsersTab = ({
 
   return (
     <Box data-testid="persona-users-tab" direction="col" gap={4}>
-      {isAdding && (
-        <Card variant="muted">
-          <Card.Content className="tw:flex tw:flex-col tw:gap-4">
-            <Typography
-              className="tw:text-primary"
-              size="text-sm"
-              weight="semibold">
-              {t('label.add-entity', { entity: t('label.user-plural') })}
-            </Typography>
-            <HookForm form={addUsersForm}>
-              <FormFields fields={[usersField]} />
-            </HookForm>
-            <Box direction="row" gap={3} justify="end">
-              <Button color="tertiary" size="sm" onPress={handleCancelAdd}>
-                {t('label.cancel')}
-              </Button>
-              <Button
-                color="primary"
-                data-testid="save-persona-users"
-                isDisabled={pendingUsers.length === 0}
-                size="sm"
-                onPress={handleConfirmAdd}>
-                {t('label.save')}
-              </Button>
-            </Box>
-          </Card.Content>
-        </Card>
-      )}
       <TableCard.Root
-        className="tw:flex tw:flex-col tw:rounded-xl tw:border tw:border-secondary tw:shadow-none"
-        size="compact">
-        {canEdit && !isAdding && (
+        className="tw:flex tw:flex-col tw:rounded-xl tw:shadow-none"
+        size="compact"
+        variant="muted">
+        {canEdit && (
           <TableCard.Header
             className="tw:py-3"
             contentTrailing={
-              <Button
-                color="primary"
-                data-testid="add-persona-user"
-                size="xs"
-                onPress={() => setIsAdding(true)}>
-                {t('label.add-entity', { entity: t('label.user') })}
-              </Button>
+              <UserTeamSelectableList
+                hasPermission
+                multiple={{ user: true, team: false }}
+                owner={users}
+                showTeamsTab={false}
+                onUpdate={handleUpdate}>
+                <Button
+                  color="primary"
+                  data-testid="add-persona-user"
+                  size="xs">
+                  {t('label.add-entity', { entity: t('label.user') })}
+                </Button>
+              </UserTeamSelectableList>
             }
             title=""
           />

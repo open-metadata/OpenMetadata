@@ -115,6 +115,20 @@ describe('activityAPI', () => {
     });
   });
 
+  it("passes userId to read another user's personal feeds", async () => {
+    await Promise.all([
+      getMyActivityFeed({ userId: 'u2' }),
+      getFollowingActivityFeed({ userId: 'u2' }),
+      getMentionsActivityFeed({ userId: 'u2' }),
+    ]);
+
+    ['my-feed', 'following', 'mentions'].forEach((scope) =>
+      expect(APIClient.get).toHaveBeenCalledWith(`/activity/${scope}`, {
+        params: { userId: 'u2' },
+      })
+    );
+  });
+
   it('lists activity by entity link and gets the count', async () => {
     const entityLink = '<#E::table::service.table>';
 

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 /* eslint-disable */
-const $RefParser = require('@apidevtools/json-schema-ref-parser');
+const { $RefParser } = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
 const fse = require('fs-extra');

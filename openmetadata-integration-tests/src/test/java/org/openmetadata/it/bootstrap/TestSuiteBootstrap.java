@@ -67,6 +67,7 @@ import org.openmetadata.service.OpenMetadataApplication;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
@@ -85,6 +86,9 @@ import org.openmetadata.service.resources.services.ingestionpipelines.IngestionP
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchRepositoryFactory;
+import org.quartz.Scheduler;
+import org.quartz.SchedulerException;
+import org.quartz.TriggerKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.GenericContainer;
@@ -94,7 +98,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.elasticsearch.ElasticsearchContainer;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.k3s.K3sContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -138,13 +141,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       "docker.elastic.co/elasticsearch/elasticsearch:9.3.0";
   private static final String DEFAULT_OPENSEARCH_IMAGE = "opensearchproject/opensearch:3.4.0";
 
-  private static final String RDF_CONTAINER_IMAGE_PROPERTY = "rdfContainerImage";
   private static final String RDF_CONTAINER_TMPFS_SIZE_PROPERTY = "rdfContainerTmpfsSize";
   // Three TDB2 datasets and compaction generations exceed the old single-dataset 256 MiB cap.
   private static final String DEFAULT_FUSEKI_TMPFS_SIZE = "8g";
-  private static final int FUSEKI_PORT = 3030;
+  private static final int FUSEKI_PORT = FusekiTestImage.PORT;
   private static final String FUSEKI_DATASET = "openmetadata";
-  private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
+  private static final String FUSEKI_ADMIN_PASSWORD = FusekiTestImage.ADMIN_PASSWORD;
 
   // K3s (Kubernetes) configuration for pipeline scheduler tests (on-demand)
   private static final String K3S_IMAGE = "rancher/k3s:v1.27.4-k3s1";
@@ -162,6 +164,12 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   private static GenericContainer<?> REDIS_CONTAINER;
   private static K3sContainer K3S_CONTAINER;
   private static GenericContainer<?> OBJECT_STORAGE_CONTAINER;
+  private static final String SEARCH_INDEXING_APP = "SearchIndexingApplication";
+  // One single-node engine serves the whole parallel suite: concurrent namespace-cleanup
+  // delete-by-query calls and inherited-field update-by-query tasks each hold a scroll context per
+  // shard, and at the default limit of 500 the engine refuses new ones. A refused background
+  // propagation fails silently and its test waits for a value that never arrives.
+  private static final String MAX_OPEN_SCROLL_CONTEXTS = "5000";
   private static DropwizardAppExtension<OpenMetadataApplicationConfig> APP;
   private static final List<DropwizardAppExtension<OpenMetadataApplicationConfig>> ADDITIONAL_APPS =
       java.util.Collections.synchronizedList(new ArrayList<>());
@@ -454,6 +462,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       opensearch.withEnv("discovery.type", "single-node");
       opensearch.withEnv("DISABLE_SECURITY_PLUGIN", "true");
       opensearch.withEnv("DISABLE_INSTALL_DEMO_CONFIG", "true");
+      opensearch.withEnv("search.max_open_scroll_context", MAX_OPEN_SCROLL_CONTEXTS);
       // The search-it suite reindexes the full shared catalog on every test (beforeEach recreate),
       // and heavy-seed tests (ReindexStopUnderLoadIT seeds 10k tables) leave thousands of entities
       // in the DB that every later recreate re-indexes. With only 1g heap / 1g tmpfs the
@@ -487,6 +496,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       elasticsearch.withPassword(ELASTIC_PASSWORD);
       elasticsearch.withEnv("discovery.type", "single-node");
       elasticsearch.withEnv("xpack.security.enabled", "false");
+      elasticsearch.withEnv("search.max_open_scroll_context", MAX_OPEN_SCROLL_CONTEXTS);
       elasticsearch.withEnv("ES_JAVA_OPTS", "-Xms1g -Xmx1g");
       elasticsearch.withStartupAttempts(3);
       elasticsearch.withTmpFs(java.util.Map.of("/usr/share/elasticsearch/data", "rw,size=1g"));
@@ -538,6 +548,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     return "redis".equalsIgnoreCase(cacheProvider);
   }
 
+  /** The Redis container of the Redis lane; null when the suite runs without Redis. */
+  public static GenericContainer<?> getRedisContainer() {
+    return REDIS_CONTAINER;
+  }
+
   public static String getRedisUrl() {
     return redisUrl;
   }
@@ -580,19 +595,11 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     LOG.info("Fuseki started: {}", fusekiEndpoint);
   }
 
-  /** Creates an isolated Fuseki instance with the server's assembler and write extension. */
+  /** Creates an isolated Fuseki instance configured as OpenMetadata deployments run it. */
   public static GenericContainer<?> createFusekiContainer() {
     final GenericContainer<?> container =
-        fusekiContainer()
-            .withExposedPorts(FUSEKI_PORT)
-            .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("FUSEKI_ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-            .withEnv("JVM_ARGS", System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
-            .waitingFor(
-                Wait.forHttp("/$/ping")
-                    .forPort(FUSEKI_PORT)
-                    .forStatusCode(200)
-                    .withStartupTimeout(Duration.ofMinutes(2)))
+        FusekiTestImage.forOpenMetadata(
+                System.getProperty("rdfContainerJvmArgs", "-Xms512m -Xmx512m"))
             // Increase file descriptor limits for parallel test execution
             .withCreateContainerCmdModifier(
                 cmd ->
@@ -604,9 +611,7 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (Boolean.parseBoolean(System.getProperty("rdfContainerTmpfs", "true"))) {
       // Scale runs opt out so disk and page-cache measurements describe persistent TDB2 storage.
       container.withTmpFs(
-          Map.of(
-              "/fuseki/databases", "rw,size=" + fusekiTmpfsSize() + ",mode=1777",
-              "/fuseki-data", "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
+          Map.of(FusekiTestImage.DATABASES_PATH, "rw,size=" + fusekiTmpfsSize() + ",mode=1777"));
     }
     if (Boolean.getBoolean("rdfContainerStablePort")) {
       // Docker can allocate a different ephemeral host port on restart.
@@ -634,16 +639,6 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
   /** The isolated metadata database, for scale resource sampling. */
   public static GenericContainer<?> getDatabaseContainer() {
     return DATABASE_CONTAINER;
-  }
-
-  private static GenericContainer<?> fusekiContainer() {
-    final String image = System.getProperty(RDF_CONTAINER_IMAGE_PROPERTY);
-    if (image != null && !image.isBlank()) {
-      return new GenericContainer<>(DockerImageName.parse(image));
-    }
-    return new GenericContainer<>(
-        new ImageFromDockerfile()
-            .withFileFromPath(".", Paths.get(getProjectRoot(), "docker", "rdf-store")));
   }
 
   private void startK3s() {
@@ -735,8 +730,28 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     }
 
     registerMcpServerIfAvailable();
+    pauseScheduledReindex();
 
     LOG.info("OpenMetadata application started on port {}", APP.getLocalPort());
+  }
+
+  /**
+   * The seeded search indexing app runs on a wall-clock cron, every Sunday at 00:30 UTC, as a full
+   * recreate reindex: it rebuilds every index from a database snapshot and swaps the aliases,
+   * dropping every search write the suite made meanwhile. A merge-queue run that spanned it failed
+   * 31 search tests at once. Tests that need a reindex run the app on demand, through a trigger of
+   * its own that this leaves alone.
+   */
+  private static void pauseScheduledReindex() {
+    try {
+      Scheduler scheduler = AppScheduler.getInstance().getScheduler();
+      TriggerKey trigger = new TriggerKey(SEARCH_INDEXING_APP, AppScheduler.APPS_TRIGGER_GROUP);
+      scheduler.pauseTrigger(trigger);
+      LOG.info(
+          "Scheduled trigger of {} is {}", SEARCH_INDEXING_APP, scheduler.getTriggerState(trigger));
+    } catch (SchedulerException e) {
+      LOG.warn("Could not pause the scheduled {}: {}", SEARCH_INDEXING_APP, e.getMessage());
+    }
   }
 
   private void registerMcpServerIfAvailable() {
@@ -918,6 +933,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
     if (appendPayloadBytes != null) {
       rdfConfig.setMaxAppendPayloadBytes(appendPayloadBytes);
     }
+    // Small enough that an ontology of a few hundred definitions takes the staged, chunked path
+    // that a production ontology takes above 16 MiB.
+    rdfConfig.setGraphReplaceChunkBytes(Integer.getInteger("rdfGraphReplaceChunkBytes", 65_536));
     final Integer appendEntityBatchSize = Integer.getInteger("rdfAppendEntityBatchSize");
     if (appendEntityBatchSize != null) {
       rdfConfig.setBulkAppendEntityBatchSize(appendEntityBatchSize);

@@ -33,6 +33,7 @@ import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.SystemSettingsException;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.AuthorizationException;
@@ -92,6 +93,31 @@ class SystemResourceSettingsAuthorizationTest {
     assertThrows(
         AuthorizationException.class,
         () -> systemResource.createOrUpdateSetting(null, securityContext, stored));
+  }
+
+  @Test
+  void aSettingIsReadByItsNameInAnyCase() {
+    Settings stored = new Settings().withConfigType(SettingsType.GLOSSARY_SETTINGS);
+    when(systemRepository.getConfigWithKey(SettingsType.GLOSSARY_SETTINGS.value()))
+        .thenReturn(stored);
+
+    assertSame(stored, systemResource.getSettingByName(null, securityContext, "GlossarySettings"));
+  }
+
+  /**
+   * MySQL's collation ignores accents, so the lookup can answer for an accented name with the
+   * authentication configuration this endpoint refuses to serve.
+   */
+  @Test
+  void aRowOfAnotherNameThanTheOneRequestedIsNotServed() {
+    String accented = "authenticatiónConfiguration";
+    when(systemRepository.getConfigWithKey(accented))
+        .thenReturn(new Settings().withConfigType(SettingsType.AUTHENTICATION_CONFIGURATION));
+    SystemResource asAdmin = new SystemResource(mock(Authorizer.class));
+
+    assertThrows(
+        SystemSettingsException.class,
+        () -> asAdmin.getSettingByName(null, securityContext, accented));
   }
 
   @Test

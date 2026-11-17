@@ -134,8 +134,10 @@ def test_cleanup_preserves_bounded_startup_logs_only_on_failure(tmp_path, failed
         "PW_AUTOPILOT_MYSQL_CONTAINER": "",
         "PW_SERVER_PID_FILE": "",
         "PW_SERVER_CAPTURE_PID_FILE": "",
-        "PW_POSTGRES_DATA_DIR": "",
-        "PW_OPENSEARCH_DATA_DIR": "",
+        "PW_COMPOSE_FILE": "",
+        "PW_FAST_COMPOSE_FILE": "",
+        "PW_DATABASE_DATA_DIR": "",
+        "PW_SEARCH_DATA_DIR": "",
     }
     result = subprocess.run(
         ["bash", str(SCRIPTS / "stop_playwright_fast_environment.sh")],

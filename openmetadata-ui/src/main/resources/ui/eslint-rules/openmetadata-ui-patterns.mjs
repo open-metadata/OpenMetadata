@@ -328,10 +328,131 @@ const noNestedEllipsisTooltipTrigger = {
   },
 };
 
+// No autofix: the semantic replacement depends on the styled property and theme.
+const omTokenUsage = {
+  meta: {
+    messages: {
+      deprecatedOmToken:
+        'Legacy token "{{token}}" is deprecated. Use tw: utilities or --tw-* theme variables. Migrate existing references when editing them; do not add new references.',
+    },
+    schema: [],
+    type: 'suggestion',
+  },
+  create(context) {
+    const checkString = (node, value) => {
+      if (typeof value !== 'string') {
+        return;
+      }
+      // Match the prefix too: computed names must not bypass the migration gate.
+      for (const [token] of value.matchAll(/--om-[\w-]*/g)) {
+        context.report({
+          node,
+          messageId: 'deprecatedOmToken',
+          data: { token },
+        });
+      }
+    };
+
+    return {
+      Literal: (node) => checkString(node, node.value),
+      TemplateElement: (node) =>
+        checkString(node, node.value.cooked ?? node.value.raw),
+    };
+  },
+};
+
+/**
+ * Rule: no-undefined-controlled-prop
+ * A React Aria component is controlled while a prop like `selectedKey` holds a value and uncontrolled while it is
+ * `undefined`. Falling back to `undefined` to mean "nothing selected" flips it to uncontrolled mid-life, and its
+ * internal state then fights the parent's until React throws "Maximum update depth exceeded" (#37771). The empty
+ * controlled value is `null` (or `[]` / `''` / `false` for the props below).
+ * ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined
+ *
+ * Flags a JSX prop in CONTROLLED_PROPS on a component (capitalised or member-expression name) whose expression ends
+ * in a literal `undefined` / `void 0`: a ternary branch, or the right side of `??` / `||`. A variable typed
+ * `T | undefined` needs type information and is out of reach; the record says to review those by hand.
+ */
+const CONTROLLED_PROPS = new Set([
+  'selectedKey',
+  'selectedKeys',
+  'inputValue',
+  'isOpen',
+  'isSelected',
+  'expandedKeys',
+]);
+
+const isUndefinedLiteral = (node) =>
+  (node?.type === 'Identifier' && node.name === 'undefined') ||
+  (node?.type === 'UnaryExpression' && node.operator === 'void');
+
+const fallsBackToUndefined = (node) => {
+  if (node?.type === 'ConditionalExpression') {
+    return (
+      isUndefinedLiteral(node.consequent) ||
+      isUndefinedLiteral(node.alternate) ||
+      fallsBackToUndefined(node.consequent) ||
+      fallsBackToUndefined(node.alternate)
+    );
+  }
+  if (
+    node?.type === 'LogicalExpression' &&
+    ['??', '||'].includes(node.operator)
+  ) {
+    return isUndefinedLiteral(node.right);
+  }
+
+  return false;
+};
+
+const noUndefinedControlledProp = {
+  meta: {
+    messages: {
+      undefinedControlledProp:
+        '"{{prop}}" falls back to undefined, which makes the component uncontrolled. Clear it with null instead ' +
+        '(ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined).',
+    },
+    schema: [],
+    type: 'problem',
+  },
+  create(context) {
+    return {
+      JSXAttribute(node) {
+        const prop = node.name?.name;
+        const opening = node.parent;
+        const isComponent =
+          opening?.type === 'JSXOpeningElement' &&
+          (opening.name.type === 'JSXMemberExpression' ||
+            (opening.name.type === 'JSXIdentifier' &&
+              /^[A-Z]/.test(opening.name.name)));
+        const expression =
+          node.value?.type === 'JSXExpressionContainer'
+            ? node.value.expression
+            : null;
+
+        if (
+          isComponent &&
+          CONTROLLED_PROPS.has(prop) &&
+          fallsBackToUndefined(expression)
+        ) {
+          context.report({
+            data: { prop },
+            messageId: 'undefinedControlledProp',
+            node,
+          });
+        }
+      },
+    };
+  },
+};
+
 export default {
   rules: {
+    'deprecated-om-tokens': omTokenUsage,
+    'no-new-om-tokens': omTokenUsage,
     'no-raw-title-attribute': noRawTitleAttribute,
     'no-non-adaptive-palette': noNonAdaptivePalette,
     'no-nested-ellipsis-tooltip-trigger': noNestedEllipsisTooltipTrigger,
+    'no-undefined-controlled-prop': noUndefinedControlledProp,
   },
 };

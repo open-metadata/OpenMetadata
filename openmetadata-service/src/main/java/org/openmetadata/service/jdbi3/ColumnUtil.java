@@ -18,7 +18,107 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class ColumnUtil {
+  private static final String ALL_COLUMNS = "all";
+
   private ColumnUtil() {}
+
+  /**
+   * Resolves a column by a dotted path relative to the table, walking nested children. Segments
+   * are quoted-aware (a column literally named {@code a.b} arrives as {@code "a.b"} in an
+   * entityLink) and matched case-exactly first, then case-insensitively.
+   */
+  public static Column resolveColumnByPath(List<Column> columns, String columnPath) {
+    List<Column> chain = resolveColumnChainByPath(columns, columnPath);
+    return chain.isEmpty() ? null : chain.getLast();
+  }
+
+  /**
+   * The chain of columns a dotted path walks through — each ancestor first, the resolved column
+   * last — or empty when the path matches no column. Same quoted/case rules as {@link
+   * #resolveColumnByPath}.
+   */
+  public static List<Column> resolveColumnChainByPath(List<Column> columns, String columnPath) {
+    if (nullOrEmpty(columnPath)) {
+      return List.of();
+    }
+    List<Column> chain = new ArrayList<>();
+    // Only paths the Fqn grammar accepts split into segments; anything else (raw names carrying a
+    // quote at an edge, empty segments) must fall through to the whole-name match, not 500.
+    if (FullyQualifiedName.isValid(columnPath)
+        && matchPathChain(columns, List.of(FullyQualifiedName.split(columnPath)), chain)) {
+      return chain;
+    }
+    // Legacy entityLinks carry a dotted column name unquoted; when the walk fails, the whole
+    // path may be one literal column name.
+    Column wholeName = findColumnByName(columns, FullyQualifiedName.unquoteName(columnPath));
+    return wholeName == null ? List.of() : List.of(wholeName);
+  }
+
+  private static boolean matchPathChain(
+      List<Column> columns, List<String> segments, List<Column> chain) {
+    String head = segments.getFirst();
+    Column matchedColumn = findColumnByName(columns, FullyQualifiedName.unquoteName(head));
+    if (matchedColumn == null) {
+      return false;
+    }
+    chain.add(matchedColumn);
+    if (segments.size() == 1) {
+      return true;
+    }
+    return matchPathChain(
+        listOrEmpty(matchedColumn.getChildren()), segments.subList(1, segments.size()), chain);
+  }
+
+  /**
+   * Same contract as {@link org.openmetadata.service.jdbi3.EntityRepository#validateColumn(Table,
+   * String, Boolean)} but resolves nested paths; {@code all} is accepted as "every column".
+   */
+  public static void validateColumnPath(List<Column> columns, String columnPath) {
+    if (columnPath.equalsIgnoreCase(ALL_COLUMNS)
+        || resolveColumnByPath(columns, columnPath) != null) {
+      return;
+    }
+    throw new IllegalArgumentException("Invalid column name " + columnPath);
+  }
+
+  /**
+   * Appends a column path to a table FQN, adding each segment separately: {@code address.city}
+   * stays two FQN segments, while a column literally named {@code a.b} stays one quoted segment.
+   * {@code FullyQualifiedName.add} would quote the whole dotted path as a single segment, so an
+   * entityFQN built with it can never be parsed back into the nested path. Paths the Fqn grammar
+   * cannot split are quoted whole, matching the whole-name fallback of {@link
+   * #resolveColumnByPath}.
+   */
+  public static String columnFqn(String tableFqn, String columnPath) {
+    if (nullOrEmpty(tableFqn)) {
+      return tableFqn;
+    }
+    if (nullOrEmpty(columnPath)) {
+      return tableFqn;
+    }
+    if (!FullyQualifiedName.isValid(columnPath)) {
+      return FullyQualifiedName.add(tableFqn, columnPath);
+    }
+    String fqn = tableFqn;
+    for (String segment : FullyQualifiedName.split(columnPath)) {
+      fqn = FullyQualifiedName.add(fqn, segment);
+    }
+    return fqn;
+  }
+
+  private static Column findColumnByName(List<Column> columns, String name) {
+    for (Column column : columns) {
+      if (column.getName().equals(name)) {
+        return column;
+      }
+    }
+    for (Column column : columns) {
+      if (column.getName().equalsIgnoreCase(name)) {
+        return column;
+      }
+    }
+    return null;
+  }
 
   public static List<Column> cloneWithoutTags(List<Column> columns) {
     if (nullOrEmpty(columns)) {

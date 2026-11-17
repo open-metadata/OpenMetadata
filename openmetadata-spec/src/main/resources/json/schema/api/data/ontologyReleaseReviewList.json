@@ -1,0 +1,23 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyReleaseReviewList.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseReviewList",
+  "description": "One page of ontology release reviews for the calling user.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyReleaseReviewList",
+  "properties": {
+    "data": {
+      "type": "array",
+      "items": {
+        "$ref": "ontologyReleaseReview.json"
+      }
+    },
+    "paging": {
+      "$ref": "../../type/paging.json"
+    }
+  },
+  "required": [
+    "data"
+  ],
+  "additionalProperties": false
+}

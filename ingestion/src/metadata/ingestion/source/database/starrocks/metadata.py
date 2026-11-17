@@ -37,6 +37,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.column_helpers import (
+    column_from_parsed,
+    parse_complex_column_type,
+)
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
@@ -48,7 +52,6 @@ from metadata.ingestion.source.database.starrocks.queries import (
     STARROCKS_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
-from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 RELKIND_MAP = {
     "TABLE": TableType.Regular,
@@ -173,15 +176,14 @@ def _get_column(ordinal, field, _type, null, default, comment):
     arr_data_type = None
     children = None
     if system_data_type == "ARRAY":
-        arr_data_type = _parse_type(extract_child(_type) or "string")
-    if system_data_type == "STRUCT":
-        children = []
-        child_str = extract_child(_type)
-        for key_, child in enumerate(child_str.split(",")) if child_str else []:
-            name_type = [item.strip() for item in child.split(":")]
-            if len(name_type) != 2:
-                continue
-            children.append(_get_column(key_, name_type[0], name_type[1], "YES", None, None))
+        element_type = extract_child(_type) or "string"
+        arr_data_type = _parse_type(element_type)
+        if arr_data_type == "STRUCT":
+            element_parsed = parse_complex_column_type(element_type)
+            children = element_parsed.get("children") if element_parsed else None
+    elif system_data_type == "STRUCT":
+        struct_parsed = parse_complex_column_type(_type)
+        children = struct_parsed.get("children") if struct_parsed else None
 
     return {
         "name": field,
@@ -203,14 +205,6 @@ class StarRocksSource(CommonDbSourceService):
     Implements the necessary methods to extract
     Database metadata from StarRocks Source
     """
-
-    def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
-        self.ssl_manager = None
-        service_connection = config.serviceConnection.root.config
-        self.ssl_manager: SSLManager = check_ssl_and_init(service_connection)
-        if self.ssl_manager:
-            service_connection = self.ssl_manager.setup_ssl(service_connection)
-        super().__init__(config, metadata)
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -360,17 +354,7 @@ class StarRocksSource(CommonDbSourceService):
                 child_columns = None
                 if column.get("children"):
                     child_columns = [
-                        Column(
-                            name=child["name"] or "unknown_column",
-                            description=child.get("comment"),
-                            dataType=child["system_data_type"],
-                            dataTypeDisplay=child["display_type"],
-                            dataLength=self._check_col_length(child["system_data_type"], child["data_type"]),
-                            ordinalPosition=child.get("ordinalPosition"),
-                            children=child.get("children"),
-                            arrayDataType=child.get("arr_data_type"),
-                        )
-                        for child in column["children"]
+                        column_from_parsed(ordinal, child) for ordinal, child in enumerate(column["children"])
                     ]
 
                 # Get column constraints (primary key/non-null, etc.)

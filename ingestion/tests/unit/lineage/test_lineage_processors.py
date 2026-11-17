@@ -481,6 +481,8 @@ class TestViewLineageProcessorArgs(unittest.TestCase):
         source = MagicMock()
         extension = Mock(name="view_lineage_extension")
         source.get_view_lineage_extension.return_value = extension
+        parser_factory = Mock(name="view_lineage_parser_factory")
+        source.get_view_lineage_parser_factory.return_value = parser_factory
         source.generate_lineage_with_processes.return_value = []
 
         list(LineageSourceBase.yield_view_lineage(source))
@@ -492,9 +494,11 @@ class TestViewLineageProcessorArgs(unittest.TestCase):
         # the framework calls processor_fn(chunk, queue, *args)
         bound = inspect.signature(view_lineage_processor).bind([], None, *args)
         self.assertIs(bound.arguments["extension"], extension)
+        assert bound.arguments["parser_factory"] is parser_factory
 
     def test_sources_without_an_extension_pass_none(self):
         self.assertIsNone(LineageSourceBase.get_view_lineage_extension(object()))
+        assert LineageSourceBase.get_view_lineage_parser_factory(object()) is None
 
 
 class TestViewLineageOverrideScope(unittest.TestCase):

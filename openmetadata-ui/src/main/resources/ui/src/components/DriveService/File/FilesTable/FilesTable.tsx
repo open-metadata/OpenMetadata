@@ -27,9 +27,9 @@ import {
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { File } from '../../../../generated/entity/data/file';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -115,15 +115,15 @@ function FilesTable({
     [paging]
   );
 
-  const tableColumn: ColumnsType<ServicePageData> = useMemo(
+  const tableColumn: ColumnsType<File> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
-        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
-        render: (_, record: ServicePageData) => {
+        sorter: getColumnSorter<File, 'name'>('name'),
+        render: (_, record: File) => {
           const fileDisplayName = getEntityName(record);
 
           return (
@@ -143,8 +143,8 @@ function FilesTable({
           );
         },
       },
-      ...descriptionTableObject<ServicePageData>({ width: 400 }),
-      ...tagTableObject<ServicePageData>(),
+      ...descriptionTableObject<File>({ width: 400 }),
+      ...tagTableObject<File>(),
     ],
     [searchValue, t]
   );

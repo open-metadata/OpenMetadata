@@ -237,9 +237,8 @@ export const getServiceCategoryFromEntityType = (
   SERVICE_CATEGORY_BY_ENTITY_TYPE_MAP[entityType] ??
   ServiceCategory.DATABASE_SERVICES;
 
-const ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP: Partial<
-  Record<ServiceCategory, EntityType>
-> = {
+const ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP = {
+  [ServiceCategory.DATABASE_SERVICES]: EntityType.DATABASE_SERVICE,
   [ServiceCategory.DASHBOARD_SERVICES]: EntityType.DASHBOARD_SERVICE,
   [ServiceCategory.MESSAGING_SERVICES]: EntityType.MESSAGING_SERVICE,
   [ServiceCategory.PIPELINE_SERVICES]: EntityType.PIPELINE_SERVICE,
@@ -250,7 +249,7 @@ const ENTITY_TYPE_BY_SERVICE_CATEGORY_MAP: Partial<
   [ServiceCategory.API_SERVICES]: EntityType.API_SERVICE,
   [ServiceCategory.DRIVE_SERVICES]: EntityType.DRIVE_SERVICE,
   [ServiceCategory.SECURITY_SERVICES]: EntityType.SECURITY_SERVICE,
-};
+} as const satisfies Record<ServiceCategory, EntityType>;
 
 export const getEntityTypeFromServiceCategory = (
   serviceCategory: ServiceTypes

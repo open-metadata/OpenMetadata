@@ -19,6 +19,8 @@ from xml.etree import ElementTree as ET
 import pytest
 from coverage import CoverageData
 
+from ingestion.tests.utils.python_tooling import prepare_locked_tooling
+
 INGESTION_DIR = Path(__file__).resolve().parents[2]
 SOURCE_FILES = (
     "ingestion/source/metadata/atlas/metadata.py",
@@ -27,7 +29,7 @@ SOURCE_FILES = (
 
 
 @pytest.fixture
-def coverage_repository(tmp_path: Path) -> Path:
+def coverage_repository(tmp_path: Path, monkeypatch) -> Path:
     module = tmp_path / "ingestion"
     module.mkdir()
     for name in ("noxfile.py", "Makefile", "pyproject.toml"):
@@ -44,6 +46,7 @@ def coverage_repository(tmp_path: Path) -> Path:
     data = CoverageData(basename=str(module / ".coverage.unit"))
     data.add_lines({str(installed / relative): [1] for relative in SOURCE_FILES})
     data.write()
+    prepare_locked_tooling(tmp_path, monkeypatch)
     return tmp_path
 
 
@@ -83,7 +86,7 @@ def test_nox_coverage_preserves_source_paths(coverage_repository: Path, from_roo
 def test_make_coverage_preserves_source_paths(coverage_repository: Path, from_root: bool) -> None:
     module = coverage_repository / "ingestion"
     cwd = coverage_repository if from_root else module
-    shutil.copyfile(module / ".coverage.unit", cwd / ".coverage")
+    shutil.copyfile(module / ".coverage.unit", module / ".coverage")
     # Reuse the collected artifact and exercise only the reporting recipe.
     result = subprocess.run(
         ["make", "MAKE=true", "coverage"],
@@ -95,3 +98,29 @@ def test_make_coverage_preserves_source_paths(coverage_repository: Path, from_ro
     )
     assert result.returncode == 0, result.stdout + result.stderr
     assert_report_sources(module)
+
+
+@pytest.mark.parametrize("from_root", [False, True], ids=["ingestion", "root"])
+def test_nox_coverage_rejects_missing_data(coverage_repository: Path, from_root: bool) -> None:
+    module = coverage_repository / "ingestion"
+    (module / ".coverage.unit").unlink()
+    (module / "ci-coverage.xml").write_text("<stale/>\n", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "nox",
+            "--no-venv",
+            "-f",
+            "ingestion/noxfile.py" if from_root else "noxfile.py",
+            "-s",
+            "combine-coverage",
+        ],
+        cwd=coverage_repository if from_root else module,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "No data to combine" in result.stdout + result.stderr

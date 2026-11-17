@@ -115,7 +115,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
     const lower = inputValue.toLowerCase();
 
     return selectItems.filter((item) =>
-      item.label.toLowerCase().includes(lower)
+      (item.label ?? '').toLowerCase().includes(lower)
     );
   }, [selectItems, inputValue, selectedLabel]);
 
@@ -131,7 +131,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
       items={filteredItems}
       placeholder={placeholder ?? t('label.condition-builder-select-field')}
       popoverClassName={QUERY_BUILDER_POPOVER_CLASS}
-      selectedKey={selectedKey ?? undefined}
+      selectedKey={selectedKey ?? null}
       shortcut={false}
       showSearchIcon={false}
       size="sm"

@@ -17,13 +17,17 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ChevronSelectorVertical,
-  Columns01,
-  Rows03,
+  ChevronSelectorVertical02,
+  LayoutColumns,
+  LayoutRows,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  getSegmentedItemClasses,
+  SEGMENTED_GROUP_CLASSES,
+} from './TopicsSectionHeader.constants';
 
 export type TopicsViewMode = 'grid' | 'list';
 
@@ -57,54 +61,62 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
   return (
     <div className="tw:mb-4 tw:flex tw:flex-wrap tw:items-end tw:justify-between tw:gap-4">
       <div>
-        <Typography size="text-sm" weight="semibold">
+        <Typography size="text-md" weight="semibold">
           {t('label.topics-to-catch-up-on')}
         </Typography>
         {/* `!` on the colour: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}
-        <Typography className="tw:block tw:text-text-tertiary!" size="text-xs">
+        <Typography
+          className="tw:mt-0.5 tw:block tw:text-text-tertiary!"
+          size="text-xs">
           {t('message.topics-to-catch-up-on-subtitle')}
         </Typography>
       </div>
 
       <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2.5">
+        {/* The design draws this control's icon smaller and its label darker
+          and bolder than a secondary button's own, so both come in styled. */}
         <Button
           color="secondary"
           data-testid="toggle-all-widgets"
-          iconLeading={ChevronSelectorVertical}
+          iconLeading={
+            <ChevronSelectorVertical02 className="tw:size-3.5 tw:text-fg-primary tw:group-disabled:text-fg-disabled" />
+          }
           isDisabled={isToggleAllDisabled}
-          size="xs"
+          size="md"
           onPress={onToggleAll}>
-          {t(
-            isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
-          )}
+          <span className="tw:ml-1 tw:font-semibold tw:text-primary tw:group-disabled:text-fg-disabled">
+            {t(
+              isEveryWidgetCollapsed ? 'label.expand-all' : 'label.collapse-all'
+            )}
+          </span>
         </Button>
 
         <ButtonGroup
+          disallowEmptySelection
+          aria-label={t('label.view')}
+          className={SEGMENTED_GROUP_CLASSES}
           selectedKeys={[viewMode]}
-          selectionMode="single"
           size="sm"
           onSelectionChange={(keys) => {
             const [selected] = [...keys] as TopicsViewMode[];
-            // react-aria allows deselecting the active item; a view has to
-            // stay chosen.
-            if (selected) {
-              onViewModeChange(selected);
-            }
+            onViewModeChange(selected);
           }}>
           <ButtonGroupItem
             aria-label={t('label.list')}
+            className={getSegmentedItemClasses(viewMode === 'list')}
             data-testid="topics-list-view"
-            iconLeading={Rows03}
-            id="list"
-          />
+            id="list">
+            <LayoutRows className="tw:size-4" />
+          </ButtonGroupItem>
           <ButtonGroupItem
             aria-label={t('label.grid')}
+            className={getSegmentedItemClasses(viewMode === 'grid')}
             data-testid="topics-grid-view"
-            iconLeading={Columns01}
-            id="grid"
-          />
+            id="grid">
+            <LayoutColumns className="tw:size-4" />
+          </ButtonGroupItem>
         </ButtonGroup>
 
         {onCustomize && (
@@ -112,7 +124,7 @@ const TopicsSectionHeader: React.FC<TopicsSectionHeaderProps> = ({
             color="secondary"
             data-testid="customize-home-page"
             iconLeading={Settings01}
-            size="xs"
+            size="md"
             onPress={onCustomize}>
             {t('label.customize')}
           </Button>

@@ -30,7 +30,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Eye,
   EyeOff,
   RefreshCw01,
@@ -58,6 +57,7 @@ import { CreatePasswordGenerator } from '../../../../../../enums/user.enum';
 import { CreatePasswordType } from '../../../../../../generated/api/teams/createUser';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { generateRandomPwd } from '../../../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
@@ -70,10 +70,12 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../../../../../utils/UsersPureUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import { CreateUserFormData } from '../../../../../Settings/Users/CreateUser/CreateUser.interface';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { MembersCreateUserFormProps, TeamNode } from './Members.types';
 import {
   flattenTeamHierarchy,
@@ -131,6 +133,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const [showGeneratedPassword, setShowGeneratedPassword] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>([]);
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty || hasDescription || selectedDomains.length > 0
+  );
 
   const [teamItems, setTeamItems] = useState<SelectItemType[]>([]);
   const [roleItems, setRoleItems] = useState<SelectItemType[]>([]);
@@ -138,6 +146,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
 
   const passwordGenerator = form.watch('passwordGenerator');
   const password = form.watch('password');
+  // The server answers an empty ADMIN_CREATE password with a misleading 409, so
+  // Save waits for the generated one (fetched on mount, slow under load).
+  const isGeneratedPasswordPending =
+    isAuthProviderBasic &&
+    passwordGenerator === CreatePasswordGenerator.AutomaticGenerate &&
+    !generatedPassword;
 
   const nameFields: FieldProp[] = [
     {
@@ -208,14 +222,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       setIsPasswordGenerating(false);
     }
   }, []);
-
-  const handleCopyPassword = async () => {
-    if (!generatedPassword) {
-      return;
-    }
-    await navigator.clipboard.writeText(generatedPassword);
-    showSuccessToast(t('message.copied-to-clipboard'));
-  };
 
   const fetchTeams = useCallback(async () => {
     try {
@@ -435,6 +441,9 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                 data-testid="description"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
 
@@ -482,7 +491,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                               direction="row">
                               <ButtonUtility
                                 className="tw:h-full tw:rounded-none tw:hover:bg-transparent"
-                                color="tertiary"
                                 data-testid="toggle-password-visibility"
                                 icon={showGeneratedPassword ? EyeOff : Eye}
                                 size="sm"
@@ -497,7 +505,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                               />
                               <ButtonUtility
                                 className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
-                                color="tertiary"
                                 data-testid="password-generator"
                                 icon={RefreshCw01}
                                 isDisabled={isPasswordGenerating}
@@ -505,14 +512,13 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                                 tooltip={String(t('label.regenerate'))}
                                 onClick={generateRandomPassword}
                               />
-                              <ButtonUtility
+                              <CopyButton
                                 className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
-                                color="tertiary"
-                                data-testid="copy-password"
-                                icon={Copy01}
+                                isDisabled={!generatedPassword}
                                 size="sm"
+                                testId="copy-password"
                                 tooltip={String(t('label.copy'))}
-                                onClick={handleCopyPassword}
+                                value={generatedPassword}
                               />
                             </Box>
                           }
@@ -588,12 +594,16 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-user"
-          onPress={() => onNavigate({ type: isAdmin ? 'admins' : 'users' })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: isAdmin ? 'admins' : 'users' }))
+          }>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="save-user"
+          isDisabled={isGeneratedPasswordPending}
           isLoading={isSaveLoading}
           onPress={() => handleSubmit(onSubmit)()}>
           {t('label.create')}

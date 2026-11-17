@@ -25,7 +25,6 @@ import {
   REFRESHABLE_AUTH_ERRORS,
   UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../constants/Auth.constants';
-import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
@@ -247,7 +246,7 @@ export const getAuthConfig = (
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
-} as const;
+};
 
 export const getNameFromEmail = (email: string) => {
   if (new RegExp(EMAIL_REG_EX).exec(email)) {
@@ -392,10 +391,6 @@ export const getNameFromUserData = (
     picture: user.picture,
     displayName: extractNameFromUserProfile(user),
   };
-};
-
-export const isTourRoute = (pathname: string) => {
-  return pathname === ROUTES.TOUR;
 };
 
 /**
@@ -643,7 +638,7 @@ export const validateAuthFieldsDetailed = (
 ): AuthFieldValidationResult => {
   const provider = configJson?.provider as string | undefined;
   const required =
-    (provider && REQUIRED_FIELDS_BY_PROVIDER[provider]) ??
+    (provider ? REQUIRED_FIELDS_BY_PROVIDER[provider] : undefined) ??
     // Fall back to the legacy required-field list when the provider is
     // unknown — the caller (AuthProvider) also independently short-circuits
     // on an unsupported provider, but this keeps the validator's contract

@@ -93,8 +93,9 @@ const ServiceInsightsTab = ({
   const [agentsInfo, setAgentsInfo] = useState<AgentsInfo[]>([]);
   const [collateAgentStatusLoading, setCollateAgentStatusLoading] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
-  const [totalAssetsCount, setTotalAssetsCount] =
-    useState<Array<TotalAssetsCount>>();
+  const [totalAssetsCount, setTotalAssetsCount] = useState<
+    Array<TotalAssetsCount>
+  >([]);
   const [liveAutoPilotStatusData, setLiveAutoPilotStatusData] = useState<
     WorkflowInstance | undefined
   >(workflowStatesData?.mainInstanceState);
@@ -381,15 +382,14 @@ const ServiceInsightsTab = ({
                 isIngestionPipelineLoading
               }
               liveAutoPilotStatusData={liveAutoPilotStatusData}
+              serviceDetails={serviceDetails}
             />
           </Grid.Item>
           <Grid.Item className="layout-column" span={24}>
             <PlatformInsightsWidget
-              chartsData={getChartsDataFromWidgetName(
-                'PlatformInsightsWidget',
-                chartsResults
-              )}
+              chartsData={chartsResults?.platformInsightsChart ?? []}
               isLoading={isLoading}
+              serviceDetails={serviceDetails}
             />
           </Grid.Item>
         </Grid>
@@ -397,6 +397,7 @@ const ServiceInsightsTab = ({
       <Grid.Item className="layout-column" span={6}>
         <TotalDataAssetsWidget
           isLoading={isLoading}
+          serviceDetails={serviceDetails}
           totalAssetsCount={totalAssetsCount}
         />
       </Grid.Item>

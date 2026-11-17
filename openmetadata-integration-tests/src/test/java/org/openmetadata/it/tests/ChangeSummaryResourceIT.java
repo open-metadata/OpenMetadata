@@ -130,7 +130,7 @@ public class ChangeSummaryResourceIT {
     // Shared user accepts a column description suggestion
     Task suggestion1 =
         createSuggestionTask(
-            table.getFullyQualifiedName(), "table", "columns::name::description", "shared_user1");
+            table.getFullyQualifiedName(), "table", "columns.name.description", "shared_user1");
     awaitTaskReadyForWorkflowResolution(suggestion1.getId());
     applySuggestion(user1Client, suggestion1.getId().toString());
 
@@ -148,7 +148,7 @@ public class ChangeSummaryResourceIT {
     // Admin accepts a second suggestion with the SAME description
     Task suggestion2 =
         createSuggestionTask(
-            table.getFullyQualifiedName(), "table", "columns::name::description", "admin");
+            table.getFullyQualifiedName(), "table", "columns.name.description", "admin");
     awaitTaskReadyForWorkflowResolution(suggestion2.getId());
     applySuggestion(adminClient, suggestion2.getId().toString());
 
@@ -245,7 +245,7 @@ public class ChangeSummaryResourceIT {
         createSuggestionTask(
             table.getFullyQualifiedName(),
             "table",
-            "columns::name::description",
+            "columns.name.description",
             "Name column description by user1",
             "shared_user1");
     awaitTaskReadyForWorkflowResolution(suggestion1.getId());
@@ -256,7 +256,7 @@ public class ChangeSummaryResourceIT {
         createSuggestionTask(
             table.getFullyQualifiedName(),
             "table",
-            "columns::email::description",
+            "columns.email.description",
             "Email column description by admin",
             "admin");
     awaitTaskReadyForWorkflowResolution(suggestion2.getId());

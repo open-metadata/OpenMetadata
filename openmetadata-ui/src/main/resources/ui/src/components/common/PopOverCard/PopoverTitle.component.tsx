@@ -59,7 +59,7 @@ export const PopoverTitle = React.memo(
               navigate(
                 type === OwnerType.TEAM
                   ? getSettingsLink(getTeamAndUserDetailsPath(name))
-                  : getUserPath(name)
+                  : getSettingsLink(getUserPath(name))
               );
             }}>
             <span className="font-medium m-r-xs" data-testid="user-name">

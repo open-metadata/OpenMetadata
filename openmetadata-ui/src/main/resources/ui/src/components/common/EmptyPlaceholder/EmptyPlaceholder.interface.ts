@@ -11,13 +11,29 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholderProps } from '@openmetadata/ui-core-components';
+import {
+  EmptyPlaceholderAction,
+  EmptyPlaceholderFeature,
+  EmptyPlaceholderProps,
+} from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 
 export type EmptyPlaceholderVariantProps = Omit<
   EmptyPlaceholderProps,
   'variant'
 >;
+
+export interface FeaturesPlaceholderFeature extends EmptyPlaceholderFeature {
+  /** Renders the feature's title as a button that runs this action. */
+  action?: Omit<EmptyPlaceholderAction, 'key' | 'label'> & {
+    'data-testid'?: string;
+  };
+}
+
+export interface FeaturesPlaceholderProps
+  extends Omit<EmptyPlaceholderVariantProps, 'features'> {
+  features?: FeaturesPlaceholderFeature[];
+}
 
 export interface NoFilteredResultsPlaceholderProps
   extends EmptyPlaceholderVariantProps {

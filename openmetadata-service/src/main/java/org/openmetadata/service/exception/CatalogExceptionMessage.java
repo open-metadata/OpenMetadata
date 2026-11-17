@@ -23,6 +23,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -86,6 +87,9 @@ public final class CatalogExceptionMessage {
       "Self Signup can only create user for self. Only Admin can create other users.";
   public static final String SELF_SIGNUP_DISABLED_MESSAGE =
       "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED = "SELF_SIGNUP_DOMAIN_NOT_ALLOWED";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED_MESSAGE =
+      "Self Signup is not allowed for this email domain. Please contact your Administrator for assistance with account creation";
 
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 
@@ -147,9 +151,18 @@ public final class CatalogExceptionMessage {
     return String.format("Entity type %s not found", entityType);
   }
 
-  public static String entityRepositoryNotFound(String entityType) {
-    return String.format(
-        "Entity repository for %s not found. Is the ENTITY_TYPE_MAP initialized?", entityType);
+  /**
+   * Entity types are case-sensitive and mix conventions ({@code glossaryTerm}, {@code
+   * eventsubscription}), so a wrong-case spelling is the usual miss; name the type that was meant.
+   */
+  public static String entityRepositoryNotFound(String entityType, Collection<String> knownTypes) {
+    String suggestion =
+        knownTypes.stream()
+            .filter(entityType::equalsIgnoreCase)
+            .findFirst()
+            .map(known -> String.format(" Did you mean '%s'?", known))
+            .orElse("");
+    return String.format("Unknown entity type '%s'.%s", entityType, suggestion);
   }
 
   public static String entityRelationshipNotFound(
@@ -173,6 +186,10 @@ public final class CatalogExceptionMessage {
 
   public static String userAlreadyPartOfTeam(String userName, String teamName) {
     return String.format("User '%s' is already part of the team '%s'", userName, teamName);
+  }
+
+  public static String invalidFQN(final String fqn) {
+    return String.format("Invalid fully qualified name %s", fqn);
   }
 
   public static String invalidColumnFQN(String fqn) {
@@ -418,6 +435,12 @@ public final class CatalogExceptionMessage {
   public static String disabledTag(TagLabel tag) {
     return String.format(
         "Tag label %s is disabled and can't be assigned to a data asset.", tag.getTagFQN());
+  }
+
+  public static String glossaryTermNotApproved(String termFqn, EntityStatus status) {
+    return String.format(
+        "Glossary term %s is %s. Only Approved glossary terms can be applied to a data asset.",
+        termFqn, status.value());
   }
 
   public static String csvNotSupported(String entityType) {

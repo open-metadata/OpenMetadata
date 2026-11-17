@@ -65,6 +65,8 @@ jest.mock('../../../../../../pages/IntakeForms/IntakeFormDesignerBody', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // The unsaved-changes popover only opens on a dirty exit.
+  ConfirmPopover: () => null,
   Box: ({
     children,
     ...props
@@ -101,6 +103,8 @@ import {
 } from '../../../../../../rest/intakeFormsAPI';
 import GovernanceIntakeFormPage from './GovernanceIntakeFormPage';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 const mockGetIntakeFormById = getIntakeFormById as jest.Mock;
 const mockCreateIntakeForm = createIntakeForm as jest.Mock;
 const mockCreateOrUpdateIntakeForm = createOrUpdateIntakeForm as jest.Mock;
@@ -194,7 +198,7 @@ describe('GovernanceIntakeFormPage — edit mode', () => {
     mockGetIntakeFormById.mockReturnValue(new Promise(() => {}));
     renderEdit();
 
-    expect(screen.getByText('label.loading')).toBeInTheDocument();
+    expect(screen.getByTestId('intake-form-page-loader')).toBeInTheDocument();
   });
 
   const renderEditAndWait = async () => {

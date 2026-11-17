@@ -128,7 +128,8 @@ class APIError(Exception):
     """
 
     def __init__(self, error, http_error=None):
-        super().__init__(error["message"])
+        # Not every API uses `message`: Alation, for one, answers with `title` and `detail`
+        super().__init__(error.get("message") or error.get("detail") or error.get("title") or str(error))
         self._error = error
         self._http_error = http_error
 

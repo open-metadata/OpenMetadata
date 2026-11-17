@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -31,7 +32,6 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -44,18 +44,12 @@ import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import {
-  EntityTabs,
-  EntityType,
-  FqnPart,
-  TabSpecificField,
-} from '../../enums/entity.enum';
+import { EntityTabs, EntityType, FqnPart } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { ServiceCategory } from '../../enums/service.enum';
 import { Tag } from '../../generated/entity/classification/tag';
 import { Database } from '../../generated/entity/data/database';
 import { PageType } from '../../generated/system/ui/uiCustomization';
-import { Include } from '../../generated/type/include';
 import { useLocationSearch } from '../../hooks/LocationSearch/useLocationSearch';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
@@ -65,7 +59,6 @@ import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import {
   addFollowers,
-  getDatabaseDetailsByFQN,
   getDatabaseSchemas,
   patchDatabaseDetails,
   removeFollowers,
@@ -171,9 +164,11 @@ const TabExpandToggle = ({
   }
 
   return (
-    <AlignRightIconButton
-      className={isTabExpanded ? 'rotate-180' : ''}
-      title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+    <ButtonUtility
+      data-testid="tab-expand-button"
+      icon={isTabExpanded ? Collapse : Expand}
+      size="lg"
+      tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
       onClick={onToggle}
     />
   );
@@ -627,15 +622,12 @@ const DatabaseDetails: FunctionComponent = () => {
   const updateVote = async (data: QueryVote, id: string) => {
     try {
       await updateDatabaseVotes(id, data);
-      const details = await getDatabaseDetailsByFQN(decodedDatabaseFQN, {
-        fields: [
-          TabSpecificField.OWNERS,
-          TabSpecificField.TAGS,
-          TabSpecificField.VOTES,
-        ],
-        include: Include.All,
-      });
-      setDatabase(details);
+      // Server-side {@code updateVote} mutates a relationship only — the rest of the entity is
+      // unchanged. Invalidate the cache slot so the next read picks up the new vote totals
+      // (a focused refetch instead of the prior narrow GET + {@code setDatabase} that would
+      // null out domains/followers/extension/dataProducts). Background revalidation keeps
+      // the current data on screen until the new body arrives.
+      await refetchDatabase();
     } catch (error) {
       showErrorToast(error as AxiosError);
     }

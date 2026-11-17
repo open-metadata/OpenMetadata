@@ -14,6 +14,7 @@ import {
   AnnouncementColored,
   DefaultAppMode,
   DefaultTime,
+  File06,
   GlossaryTerm,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
@@ -750,7 +751,7 @@ class GlobalSettingsClassBase {
         description: t('message.custom-properties-description'),
         items: [
           {
-            label: t('label.api-collection'),
+            label: t('label.api-collection-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-collection'),
             }),
@@ -759,7 +760,7 @@ class GlobalSettingsClassBase {
             icon: APICollectionIcon,
           },
           {
-            label: t('label.api-endpoint'),
+            label: t('label.api-endpoint-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.api-endpoint'),
             }),
@@ -768,7 +769,7 @@ class GlobalSettingsClassBase {
             icon: APIEndpointIcon,
           },
           {
-            label: t('label.data-product'),
+            label: t('label.data-product-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.data-product'),
             }),
@@ -786,7 +787,7 @@ class GlobalSettingsClassBase {
             icon: DashboardDataModelIcon,
           },
           {
-            label: t('label.database'),
+            label: t('label.database-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database'),
             }),
@@ -795,7 +796,7 @@ class GlobalSettingsClassBase {
             icon: DatabaseIcon,
           },
           {
-            label: t('label.database-schema'),
+            label: t('label.database-schema-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.database-schema'),
             }),
@@ -804,7 +805,7 @@ class GlobalSettingsClassBase {
             icon: SchemaIcon,
           },
           {
-            label: t('label.metric'),
+            label: t('label.metric-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.metric'),
             }),
@@ -892,7 +893,7 @@ class GlobalSettingsClassBase {
             icon: ColumnIcon,
           },
           {
-            label: t('label.glossary-term'),
+            label: t('label.glossary-term-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.glossary-term'),
             }),
@@ -901,7 +902,7 @@ class GlobalSettingsClassBase {
             icon: GlossaryIcon,
           },
           {
-            label: t('label.domain'),
+            label: t('label.domain-plural'),
             description: t('message.define-custom-property-for-entity', {
               entity: t('label.domain'),
             }),
@@ -953,6 +954,16 @@ class GlobalSettingsClassBase {
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.WORKSHEETS}`,
             icon: WorksheetIcon,
+          },
+          {
+            label: t('label.article-plural'),
+            description: t('message.define-custom-property-for-entity', {
+              entity: t('label.article-plural'),
+            }),
+            isProtected: Boolean(isAdminUser),
+            key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.ARTICLES}`,
+            icon: File06,
+            iconColor: 'green' as const,
           },
           {
             label: t('label.team-plural'),

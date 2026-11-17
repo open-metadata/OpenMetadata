@@ -104,8 +104,11 @@ const mockTestCaseData = {
   updatedBy: 'admin',
 } as TestCase;
 const mockUseTestCase: UseTestCaseStoreInterface = {
+  selectedRunTimestamp: undefined,
+  setSelectedRunTimestamp: jest.fn(),
   testCase: mockTestCaseData,
   setTestCase: jest.fn(),
+  mergeTestCase: jest.fn(),
   isLoading: false,
   setIsLoading: jest.fn(),
   reset: jest.fn(),
@@ -303,6 +306,7 @@ describe('IncidentManagerDetailPage', () => {
       hasEditDomainPermission: true,
       canAddMultipleUserOwners: true,
       canAddMultipleTeamOwner: true,
+      handleAcknowledgeIncident: jest.fn(),
       handleSeverityUpdate: jest.fn(),
       handleAssigneeUpdate: jest.fn(),
       handleDomainUpdate: jest.fn(),

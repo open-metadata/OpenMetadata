@@ -22,34 +22,44 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
-import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
+import type {
+  MembersSectionContribution,
+  TabContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
+import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { MembersPanelProps, MembersView } from './Members.types';
 import {
   buildMembersHeaderMaps,
-  hashSubPathToView,
+  getMembersAccess,
+  isMembersViewAllowed,
   isTeamsOrDetailView,
   makeBreadcrumbAction,
-  viewToSubPath,
 } from './Members.utils';
 import MembersAddTeamForm from './MembersAddTeamForm';
 import MembersCreateUserForm from './MembersCreateUserForm';
 import MembersImportForm from './MembersImportForm';
 import MembersLanding from './MembersLanding';
 import MembersOnlineUsersPanel from './MembersOnlineUsersPanel';
+import { hashSubPathToView, viewToSubPath } from './membersRoute.utils';
 import MembersTeamDetail from './MembersTeamDetail';
-import MembersUserEdit from './MembersUserEdit';
+import MembersUserDetail from './MembersUserDetail';
 import MembersUsersPanel from './MembersUsersPanel';
 
 const TEAM_DETAIL = 'team-detail' as const;
 const TEAMS_ADD = 'teams-add' as const;
 const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
-const USER_EDIT = 'user-edit' as const;
 const SECTION = 'section' as const;
+const USER_DETAIL = 'user-detail' as const;
+const TEAM_TAB_SUBPAGE = 'team-tab-subpage' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
@@ -85,10 +95,15 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: MembersView) => {
-      setHash('members', viewToSubPath(nextView));
+    (nextView: MembersView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'members',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
-    [setHash]
+    [setHash, view]
   );
 
   // The contribution backing the active `section` view, if any. A hash naming an
@@ -130,10 +145,14 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     useState<React.ReactNode>(undefined);
   const [detailHeaderTitleSuffix, setDetailHeaderTitleSuffix] =
     useState<React.ReactNode>(undefined);
-  // Detail views' sub-paths only carry the FQN / username; MembersTeamDetail and
-  // MembersUserEdit report the fetched display name back here so the header and
-  // breadcrumb show it (and update live on rename) instead of the raw value.
+  // The team-detail view's sub-path only carries the FQN; MembersTeamDetail
+  // reports the fetched team's display name back here so the header/breadcrumb
+  // show it (and update live on rename) instead of the raw FQN.
   const [resolvedName, setResolvedName] = useState('');
+  // Header slots owned by the user-detail view (avatar, name, tabs, kebab…),
+  // merged over the members header while that view is active.
+  const [userDetailHeader, setUserDetailHeader] =
+    useState<Partial<ProfileHeaderOverride>>();
 
   // One header setter for the children: a partial patch merged into the three
   // slots (only the keys present are touched, so a panel that owns just `actions`
@@ -157,10 +176,41 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     []
   );
 
-  // Identifies the detail entity so switching between two teams or two users
-  // also resets the header slots.
+  // A team tab's sub-page may name itself and add header actions; the team
+  // header keeps its own trail. The override is tagged with the sub-page that
+  // set it so a later sub-page that sets nothing never shows a stale title.
+  const subPageKey =
+    view.type === TEAM_TAB_SUBPAGE
+      ? `${view.fqn}/${view.key}/${view.subPath ?? ''}`
+      : '';
+  const [tabSubPageHeader, setTabSubPageHeader] = useState<{
+    owner: string;
+    title?: string;
+    description?: string;
+    actions?: React.ReactNode;
+  } | null>(null);
+  const handleTabSubPageHeader = useCallback(
+    (override: ProfileHeaderOverride | null) =>
+      setTabSubPageHeader(
+        override
+          ? {
+              owner: subPageKey,
+              title: override.title,
+              description: override.description,
+              actions: override.actions,
+            }
+          : null
+      ),
+    [subPageKey]
+  );
+  const activeSubPageHeader =
+    subPageKey && tabSubPageHeader?.owner === subPageKey
+      ? tabSubPageHeader
+      : null;
+
+  // Identifies the detail team so switching between two teams also resets the
+  // header slots.
   const teamFqn = view.type === TEAM_DETAIL ? view.fqn : undefined;
-  const viewFqn = view.type === USER_EDIT ? view.name : teamFqn;
 
   useEffect(() => {
     // Header actions are owned by each child panel (set + unmount-cleanup), so
@@ -170,7 +220,7 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     setDetailHeaderTitleInput(undefined);
     setDetailHeaderTitleSuffix(undefined);
     setResolvedName('');
-  }, [view.type, viewFqn]);
+  }, [view.type, teamFqn]);
 
   useEffect(() => {
     if (!onHeaderChange) {
@@ -188,7 +238,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
             ? t(activeSection.descriptionKey)
             : undefined,
           icon: activeSection.icon,
-        }
+        },
+        activeSubPageHeader
       );
     const pick = (node: React.ReactNode) =>
       isTeamsOrDetailView(view) ? node : undefined;
@@ -198,10 +249,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       title: titleByType[view.type],
       description: descByType[view.type],
       icon: iconByType[view.type],
-      onBreadcrumbAction: makeBreadcrumbAction(onNavigate),
-      actions: panelHeaderActions,
+      onBreadcrumbAction: makeBreadcrumbAction(onNavigate, view),
+      actions: activeSubPageHeader?.actions ?? panelHeaderActions,
       titleInput: pick(detailHeaderTitleInput),
       titleSuffix: pick(detailHeaderTitleSuffix),
+      ...(view.type === USER_DETAIL ? userDetailHeader : undefined),
     });
   }, [
     view,
@@ -213,6 +265,8 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     detailHeaderTitleSuffix,
     resolvedName,
     activeSection,
+    userDetailHeader,
+    activeSubPageHeader,
   ]);
 
   const permissionPlaceholder = (
@@ -261,6 +315,68 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     );
   };
 
+  // A contributed team tab's own sub-page, rendered where the team detail would
+  // be so it replaces the team chrome rather than nesting inside that tab — the
+  // same shape the team forms above use. The tab resolves its own route from
+  // `subPath`, and `onNavigate(undefined)` returns to the team.
+  const renderTeamTabSubPage = () => {
+    if (view.type !== TEAM_TAB_SUBPAGE) {
+      return null;
+    }
+
+    const { fqn, teamId, key, subPath } = view;
+    // Match MembersTeamDetail's own filter: a tab whose `condition` is false,
+    // or that is hidden, is not offered there, so a deep link must not open its
+    // sub-page either.
+    const tab = getContributions<TabContribution>(
+      EXTENSION_POINTS.TEAM_DETAILS_TABS
+    ).find((contribution) => {
+      const isVisible = contribution.condition
+        ? contribution.condition({ teamId })
+        : !contribution.isHidden;
+
+      return contribution.key === key && isVisible;
+    });
+
+    // A key that is unknown, hidden, or whose condition is now false (a stale
+    // link, or a plugin that is no longer registered) has no component to
+    // render, so fall back to the team it belongs to.
+    if (!tab) {
+      return (
+        <MembersTeamDetail
+          fqn={fqn}
+          key={fqn}
+          onNavigate={onNavigate}
+          onRename={setResolvedName}
+          onSetHeader={setPanelHeader}
+        />
+      );
+    }
+
+    const TabComponent = tab.component;
+
+    return (
+      // `flex-1`/`min-h-0`, not the section wrapper's auto height: the tab owns
+      // a full page here, so a sticky footer inside it needs a bounded height
+      // to pin against. Padding matches the profile panel's content body, so a
+      // page written for one host lays out the same in the other.
+      <Box className="tw:min-h-0 tw:flex-1 tw:px-8 tw:pb-8" direction="col">
+        <TabComponent
+          subPath={subPath}
+          teamId={teamId}
+          onHeaderChange={handleTabSubPageHeader}
+          onNavigate={(next?: string) =>
+            onNavigate(
+              next
+                ? { type: TEAM_TAB_SUBPAGE, fqn, teamId, key, subPath: next }
+                : { type: TEAM_DETAIL, fqn, name: fqn }
+            )
+          }
+        />
+      </Box>
+    );
+  };
+
   // Split out of renderView so its branches don't count against that function's
   // complexity budget.
   const renderSection = () => {
@@ -289,6 +405,17 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   // defines its renderers during render, which react/no-unstable-nested-
   // components rejects.
   const renderSecondaryView = () => {
+    if (view.type === USER_DETAIL) {
+      return (
+        <MembersUserDetail
+          key={view.name}
+          view={view}
+          onNavigate={onNavigate}
+          onSetHeader={setUserDetailHeader}
+        />
+      );
+    }
+
     if (view.type === USER_CREATE) {
       return (
         <MembersCreateUserForm isAdmin={view.isAdmin} onNavigate={onNavigate} />
@@ -297,16 +424,6 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
     if (view.type === 'online-users') {
       return <MembersOnlineUsersPanel onNavigate={onNavigate} />;
-    }
-
-    if (view.type === USER_EDIT) {
-      return (
-        <MembersUserEdit
-          key={view.name}
-          name={view.name}
-          onResolveName={setResolvedName}
-        />
-      );
     }
 
     if (view.type === SECTION) {
@@ -349,6 +466,10 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
       return renderTeamForm();
     }
 
+    if (view.type === TEAM_TAB_SUBPAGE) {
+      return renderTeamTabSubPage();
+    }
+
     if (view.type === 'users' || view.type === 'admins') {
       // Keyed so switching Users <-> Admins remounts the panel: both render the
       // same component type, and its fetch effects don't depend on isAdmin, so
@@ -366,7 +487,13 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     return renderSecondaryView();
   };
 
-  const content = isDeniedFormView ? permissionPlaceholder : renderView();
+  // A deep link to a view the landing would not offer this viewer.
+  const isDeniedView = !isMembersViewAllowed(
+    view,
+    getMembersAccess(permissions, Boolean(isAdminUser))
+  );
+  const content =
+    isDeniedFormView || isDeniedView ? permissionPlaceholder : renderView();
 
   return (
     <EntityExportModalProvider>

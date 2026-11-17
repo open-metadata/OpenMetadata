@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -250,6 +251,16 @@ public interface ColumnAggregator {
     private String metadataStatus;
     private List<String> tags;
     private List<String> glossaryTerms;
+    // The caller whose search policies scope the documents the grid aggregates over.
+    private SubjectContext subjectContext;
+
+    public SubjectContext getSubjectContext() {
+      return subjectContext;
+    }
+
+    public void setSubjectContext(SubjectContext subjectContext) {
+      this.subjectContext = subjectContext;
+    }
 
     public int getSize() {
       return size;

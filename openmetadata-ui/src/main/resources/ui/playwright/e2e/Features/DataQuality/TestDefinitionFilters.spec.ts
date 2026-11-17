@@ -323,10 +323,18 @@ test.describe(
 
         const nextButton = page.getByTestId('next');
         await expect(nextButton).toBeEnabled();
+
+        const nextPageResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+            response.request().method() === 'GET'
+        );
         await nextButton.click();
+        await nextPageResponse;
         await waitForAllLoadersToDisappear(page);
 
-        expect(page.url()).toMatch(/currentPage=2/);
+        // The URL updates asynchronously; a one-off page.url() read races it.
+        await expect(page).toHaveURL(/currentPage=2/);
 
         await toggleFilter(
           page,
@@ -334,8 +342,8 @@ test.describe(
           ENTITY_TYPE_OPTIONS.TABLE
         );
 
-        expect(page.url()).not.toContain('currentPage=2');
-        expect(page.url()).toContain('entityType=TABLE');
+        await expect(page).not.toHaveURL(/currentPage=2/);
+        await expect(page).toHaveURL(/entityType=TABLE/);
       });
     });
 

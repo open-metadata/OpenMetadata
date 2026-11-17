@@ -2,8 +2,13 @@
 
 set -euo pipefail
 
-compose_file="docker/development/docker-compose-postgres.yml"
-fast_compose_file="docker/development/docker-compose-playwright-fast.yml"
+# The launcher exports these once it has read the fixture's database; before
+# that point nothing was started through compose.
+compose_started=false
+if [[ -n "${PW_COMPOSE_FILE:-}" && -n "${PW_FAST_COMPOSE_FILE:-}" &&
+      -n "${PW_DATABASE_DATA_DIR:-}" && -n "${PW_SEARCH_DATA_DIR:-}" ]]; then
+  compose_started=true
+fi
 
 if [[ "${PW_STARTUP_FAILED:-false}" == "true" ]]; then
   diagnostics_dir="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/playwright-ci-diagnostics"
@@ -76,16 +81,17 @@ if [[ "${PW_STARTUP_FAILED:-false}" == "true" && -n "${PW_RUNTIME_ROOT:-}" ]]; t
   if [[ -f "$diagnostics_dir/server-threads.txt" ]]; then
     head -n 200 "$diagnostics_dir/server-threads.txt" >&2 || true
   fi
-  if [[ -n "${PW_POSTGRES_DATA_DIR:-}" && -n "${PW_OPENSEARCH_DATA_DIR:-}" ]]; then
-    docker compose -f "$compose_file" -f "$fast_compose_file" ps --all \
+  if [[ "$compose_started" == "true" ]]; then
+    docker compose -f "$PW_COMPOSE_FILE" -f "$PW_FAST_COMPOSE_FILE" ps --all \
       > "$diagnostics_dir/docker-compose-ps.txt" 2>&1 || true
-    docker compose -f "$compose_file" -f "$fast_compose_file" logs --no-color --tail 500 postgresql opensearch \
+    docker compose -f "$PW_COMPOSE_FILE" -f "$PW_FAST_COMPOSE_FILE" logs --no-color --tail 500 \
+      "$PW_DATABASE_SERVICE" "$PW_SEARCH_SERVICE" \
       > "$diagnostics_dir/docker-compose.log" 2>&1 || true
   fi
 fi
 
-if [[ -n "${PW_POSTGRES_DATA_DIR:-}" && -n "${PW_OPENSEARCH_DATA_DIR:-}" ]]; then
-  docker compose -f "$compose_file" -f "$fast_compose_file" down --remove-orphans || true
+if [[ "$compose_started" == "true" ]]; then
+  docker compose -f "$PW_COMPOSE_FILE" -f "$PW_FAST_COMPOSE_FILE" down --remove-orphans || true
 fi
 
 if [[ -n "${PW_RUNTIME_ROOT:-}" && "$PW_RUNTIME_ROOT" == /dev/shm/openmetadata-playwright-* ]]; then

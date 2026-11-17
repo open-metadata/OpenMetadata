@@ -113,6 +113,7 @@ export const updateDataModelVotes = async (id: string, data: QueryVote) => {
 };
 
 export interface DataModelColumnParams {
+  includeRelations?: string;
   limit?: number;
   offset?: number;
   fields?: string;

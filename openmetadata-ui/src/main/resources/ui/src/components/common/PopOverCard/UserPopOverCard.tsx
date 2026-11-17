@@ -16,17 +16,50 @@ import classNames from 'classnames';
 import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-} from '../../../utils/RouterUtils';
-import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
+import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
+import { useUserLabel } from '../../../hooks/user-profile/useUserLabel';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { PopoverContent } from './PopoverContent.component';
 import { PopoverTitle } from './PopoverTitle.component';
 import { TeamPopoverContent } from './TeamPopoverContent.component';
 import { TeamPopoverTitle } from './TeamPopoverTitle.component';
 import { UserPopOverCardProps } from './UserPopOverCard.interface';
+import { getUserPopoverPath } from './UserPopOverCard.utils';
+
+// A team card has no profile store entry; resolve its display name through the popover's own
+// query, which the hover card reuses.
+const TeamName: FC<{ teamName: string }> = ({ teamName }) => {
+  const { data } = useEntityPopoverData(teamName, OwnerType.TEAM);
+
+  return <>{getEntityName(data) || teamName}</>;
+};
+
+const UserPopoverBody: FC<{
+  profilePicture: JSX.Element;
+  type: OwnerType;
+  userName: string;
+  onTitleClick?: () => void;
+}> = ({ profilePicture, type, userName, onTitleClick }) => (
+  <div className="tw:flex tw:flex-col tw:gap-3" data-testid="user-popover-card">
+    {type === OwnerType.TEAM ? (
+      <>
+        <TeamPopoverTitle profilePicture={profilePicture} teamName={userName} />
+        <TeamPopoverContent teamName={userName} />
+      </>
+    ) : (
+      <>
+        <PopoverTitle
+          profilePicture={profilePicture}
+          type={type}
+          userName={userName}
+          onTitleClick={onTitleClick}
+        />
+        <PopoverContent type={type} userName={userName} />
+      </>
+    )}
+  </div>
+);
 
 const UserPopOverCard: FC<UserPopOverCardProps> = ({
   userName,
@@ -41,6 +74,13 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   onTitleClick,
 }) => {
   const isTeam = type === OwnerType.TEAM;
+  const userLabel = useUserLabel({
+    userName,
+    displayName,
+    enabled: showUserName && !children && !isTeam,
+  });
+  const label =
+    isTeam && !displayName ? <TeamName teamName={userName} /> : userLabel;
   const handleTitleClick = (event: MouseEvent) => {
     if (onTitleClick) {
       event.preventDefault();
@@ -59,28 +99,12 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   return (
     <HoverCard
       content={
-        <div
-          className="tw:flex tw:flex-col tw:gap-3"
-          data-testid="user-popover-card">
-          {isTeam ? (
-            <TeamPopoverTitle
-              profilePicture={profilePicture}
-              teamName={userName}
-            />
-          ) : (
-            <PopoverTitle
-              profilePicture={profilePicture}
-              type={type}
-              userName={userName}
-              onTitleClick={onTitleClick}
-            />
-          )}
-          {isTeam ? (
-            <TeamPopoverContent teamName={userName} />
-          ) : (
-            <PopoverContent type={type} userName={userName} />
-          )}
-        </div>
+        <UserPopoverBody
+          profilePicture={profilePicture}
+          type={type}
+          userName={userName}
+          onTitleClick={onTitleClick}
+        />
       }>
       {(children as ReactNode) ?? (
         <Link
@@ -92,17 +116,10 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
             className
           )}
           data-testid={userName}
-          to={
-            to ??
-            (type === OwnerType.TEAM
-              ? getSettingsLink(getTeamAndUserDetailsPath(userName))
-              : getUserPath(userName))
-          }
+          to={to ?? getUserPopoverPath(isTeam, userName)}
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? (
-            <span className="truncate">{displayName ?? userName}</span>
-          ) : null}
+          {showUserName ? <span className="truncate">{label}</span> : null}
         </Link>
       )}
     </HoverCard>

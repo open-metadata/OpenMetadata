@@ -2,6 +2,7 @@ package org.openmetadata.service.ontology;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -31,12 +32,14 @@ import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyProfileViolationCode;
+import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyRestrictionKind;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.exception.OntologyValidationException;
 
 class OntologyStructureValidatorTest {
   private static final URI PROPERTY = URI.create("urn:property");
@@ -119,6 +122,33 @@ class OntologyStructureValidatorTest {
     assertFalse(validate(customer).getValid());
     assertFalse(validate(customer.withConceptType(OntologyConceptType.BOTH)).getValid());
     assertTrue(validate(customer.withConceptType(OntologyConceptType.SKOS_CONCEPT)).getValid());
+  }
+
+  @Test
+  void aReplacementMustBeAnotherDefinitionOfTheSameKind() {
+    final var account = concept("Account");
+    final var identifier = property(URI.create("urn:identifier"), OntologyPropertyKind.DATA);
+    final var self = concept("Self");
+    assertEquals(
+        List.of(), violations(concept("Customer").withReplacedBy(account.getIri()), account));
+    assertEquals(
+        List.of(),
+        violations(
+            property(PROPERTY, OntologyPropertyKind.DATA).withReplacedBy(identifier.getIri()),
+            identifier));
+    assertEquals(
+        List.of("UNDECLARED_CLASS /replacedBy"),
+        violations(concept("Customer").withReplacedBy(account.getIri())));
+    assertEquals(
+        List.of("UNDECLARED_CLASS /replacedBy"),
+        violations(concept("Customer").withReplacedBy(identifier.getIri()), identifier));
+    assertEquals(
+        List.of("UNDECLARED_PROPERTY /replacedBy"),
+        violations(
+            property(PROPERTY, OntologyPropertyKind.DATA).withReplacedBy(account.getIri()),
+            account));
+    assertEquals(
+        List.of("UNDECLARED_CLASS /replacedBy"), violations(self.withReplacedBy(self.getIri())));
   }
 
   @Test
@@ -219,6 +249,150 @@ class OntologyStructureValidatorTest {
     assertEquals(
         OntologyProfileViolationCode.NON_SIMPLE_CARDINALITY,
         report.getViolations().getFirst().getViolation().getCode());
+  }
+
+  @Test
+  void superpropertiesMustBeDeclaredPropertiesOfTheSameKind() {
+    final var child = property(PROPERTY, OntologyPropertyKind.OBJECT);
+    final var parent = property(URI.create("urn:parent"), OntologyPropertyKind.OBJECT);
+    child.setSuperProperties(List.of(parent.getIri()));
+    assertEquals(List.of("UNDECLARED_PROPERTY /superProperties"), violations(child));
+    assertEquals(List.of(), violations(child, parent));
+    assertEquals(
+        List.of("ILLEGAL_PUNNING /superProperties"),
+        violations(child, parent.withKind(OntologyPropertyKind.DATA)));
+    final var note =
+        property(URI.create("urn:note"), OntologyPropertyKind.ANNOTATION)
+            .withSuperProperties(List.of(URI.create(RDFS.comment.getURI())));
+    assertEquals(List.of(), violations(note));
+    final var top =
+        property(URI.create("urn:top"), OntologyPropertyKind.OBJECT)
+            .withSuperProperties(List.of(URI.create(OWL2.topObjectProperty.getURI())));
+    assertEquals(List.of(), violations(top));
+  }
+
+  @Test
+  void superpropertyLinksAllowSeveralParentsButNotACycle() {
+    final var first = property(URI.create("urn:first"), OntologyPropertyKind.DATA);
+    final var second = property(URI.create("urn:second"), OntologyPropertyKind.DATA);
+    final var third = property(URI.create("urn:third"), OntologyPropertyKind.DATA);
+    final var leaf = property(URI.create("urn:leaf"), OntologyPropertyKind.DATA);
+    first.setSuperProperties(List.of(second.getIri(), third.getIri()));
+    assertEquals(List.of(), violations(first, second, third, leaf));
+    second.setSuperProperties(List.of(third.getIri()));
+    third.setSuperProperties(List.of(first.getIri()));
+    leaf.setSuperProperties(List.of(first.getIri()));
+    assertEquals(
+        List.of(
+            "SUBPROPERTY_CYCLE /superProperties",
+            "SUBPROPERTY_CYCLE /superProperties",
+            "SUBPROPERTY_CYCLE /superProperties"),
+        violations(first, second, third, leaf));
+    assertEquals(
+        List.of(
+            "Superproperty links must not form a cycle: urn:first",
+            "Superproperty links must not form a cycle: urn:second",
+            "Superproperty links must not form a cycle: urn:third"),
+        messages(first, second, third, leaf));
+  }
+
+  @Test
+  void aCompositeSubpropertyMakesEverySuperpropertyAboveItNonSimple() {
+    final var transitive =
+        property(PROPERTY, OntologyPropertyKind.OBJECT)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE))
+            .withSuperProperties(List.of(URI.create("urn:parent")));
+    final var parent =
+        property(URI.create("urn:parent"), OntologyPropertyKind.OBJECT)
+            .withSuperProperties(List.of(URI.create("urn:grandparent")))
+            .withInverse(INVERSE);
+    final var inverse = property(INVERSE, OntologyPropertyKind.OBJECT).withInverse(parent.getIri());
+    final var grandparent =
+        property(URI.create("urn:grandparent"), OntologyPropertyKind.OBJECT)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.FUNCTIONAL));
+    final var subject = concept("Subject").withIri(URI.create("urn:subject"));
+    assertEquals(
+        List.of(
+            "NON_SIMPLE_CARDINALITY /expressions/0/propertyIri",
+            "NON_SIMPLE_PROPERTY /characteristics",
+            "NON_SIMPLE_PROPERTY /superProperties",
+            "NON_SIMPLE_PROPERTY /superProperties"),
+        sortedViolations(subject, transitive, parent, inverse, grandparent, cardinality(INVERSE)));
+    // The subproperty and its parent each name the ancestor they make non-simple; the parent's
+    // inverse has no superproperty link of its own to blame.
+    assertEquals(
+        List.of(
+            "A non-simple object property cannot be functional, inverse-functional, asymmetric, irreflexive or disjoint",
+            "A non-simple object property cannot specialize a functional, inverse-functional, asymmetric, irreflexive or disjoint property: urn:grandparent",
+            "A non-simple object property cannot specialize a functional, inverse-functional, asymmetric, irreflexive or disjoint property: urn:grandparent"),
+        messages(transitive, parent, inverse, grandparent));
+    transitive.setCharacteristics(Set.of());
+    assertEquals(List.of(), violations(subject, transitive, parent, inverse, grandparent));
+  }
+
+  @Test
+  void editingOnlyTheSubpropertyRefusesASimpleOnlyAncestorItWouldMakeNonSimple() {
+    final var chained =
+        property(PROPERTY, OntologyPropertyKind.OBJECT)
+            .withPropertyChain(List.of(URI.create("urn:first"), URI.create("urn:second")))
+            .withSuperProperties(List.of(URI.create("urn:parent")));
+    final var parent =
+        property(URI.create("urn:parent"), OntologyPropertyKind.OBJECT)
+            .withDisjointWith(List.of(URI.create("urn:other")));
+    final var other = property(URI.create("urn:other"), OntologyPropertyKind.OBJECT);
+    final var first = property(URI.create("urn:first"), OntologyPropertyKind.OBJECT);
+    final var second = property(URI.create("urn:second"), OntologyPropertyKind.OBJECT);
+    final List<OntologyDefinition> model = List.of(chained, parent, other, first, second);
+    final var thrown =
+        assertThrows(
+            OntologyValidationException.class,
+            () -> OntologyStructureValidator.requireValidWorking(model, Set.of(chained.getId())));
+    assertEquals(1, thrown.getError().getViolationCount());
+    assertTrue(thrown.getMessage().contains("urn:parent"), thrown.getMessage());
+    parent.setDisjointWith(List.of());
+    OntologyStructureValidator.requireValidWorking(model, Set.of(chained.getId()));
+  }
+
+  /**
+   * OWL 2 DL puts every chain element below the chain's superproperty and forbids placing a
+   * property below one of its own subproperties; superproperty links alone never break the order.
+   */
+  @Test
+  void aChainMustNotPlaceAPropertyBelowItsOwnSubproperty() {
+    var first = property(URI.create("urn:first"), OntologyPropertyKind.OBJECT);
+    var second = property(URI.create("urn:second"), OntologyPropertyKind.OBJECT);
+    var composed =
+        property(PROPERTY, OntologyPropertyKind.OBJECT)
+            .withPropertyChain(List.of(first.getIri(), second.getIri()));
+    first.setSuperProperties(List.of(PROPERTY));
+    assertEquals(List.of(), violations(first, second, composed));
+    first.setSuperProperties(List.of());
+    composed.setSuperProperties(List.of(first.getIri()));
+    assertEquals(
+        List.of("PROPERTY_CHAIN_REGULARITY /propertyChain"), violations(first, second, composed));
+    composed.setSuperProperties(List.of());
+    var inverse = property(INVERSE, OntologyPropertyKind.OBJECT).withInverse(PROPERTY);
+    composed.setInverse(INVERSE);
+    second.setSuperProperties(List.of(INVERSE));
+    assertEquals(List.of(), violations(first, second, composed, inverse));
+    second.setSuperProperties(List.of());
+    inverse.setSuperProperties(List.of(second.getIri()));
+    assertEquals(
+        List.of(
+            "PROPERTY_CHAIN_REGULARITY /propertyChain",
+            "PROPERTY_CHAIN_REGULARITY /superProperties"),
+        sortedViolations(first, second, composed, inverse));
+  }
+
+  @Test
+  void superpropertyLinksThroughAnInverseAreNotAChainCycle() {
+    var left = property(URI.create("urn:left"), OntologyPropertyKind.OBJECT).withInverse(INVERSE);
+    var inverse = property(INVERSE, OntologyPropertyKind.OBJECT).withInverse(left.getIri());
+    var right =
+        property(URI.create("urn:right"), OntologyPropertyKind.OBJECT)
+            .withSuperProperties(List.of(INVERSE));
+    left.setSuperProperties(List.of(right.getIri()));
+    assertEquals(List.of(), violations(left, inverse, right));
   }
 
   @Test
@@ -377,9 +551,270 @@ class OntologyStructureValidatorTest {
     assertEquals(1000, report.getViolations().size());
   }
 
+  @Test
+  void deletionImpactListsChildrenRelationshipsRulesAndBlockers() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var dog = named(concept("Dog"), "Dog");
+    final var cat = named(concept("Cat"), "Cat");
+    final var plant = named(concept("Plant"), "Plant");
+    final var dogIsAnimal = named(subclass(dog, animal), "dog-is-animal");
+    final var catIsAnimal = named(subclass(cat, animal), "cat-is-animal");
+    final var animalOwnsPlant = named(subclass(animal, plant), "animal-is-plant-ish");
+    final var plantDisjointAnimal =
+        named(subclass(plant, animal).withAxiomType(OntologyAxiomType.DISJOINT_WITH), "plant-vs");
+    final var eats = named(property(URI.create("urn:eats"), OntologyPropertyKind.OBJECT), "eats");
+    eats.withRange(List.of(animal.getIri()));
+
+    final var impact =
+        OntologyStructureValidator.deletionImpact(
+            animal,
+            List.of(
+                animal,
+                dog,
+                cat,
+                plant,
+                dogIsAnimal,
+                catIsAnimal,
+                animalOwnsPlant,
+                plantDisjointAnimal,
+                eats));
+
+    assertEquals(List.of("Cat", "Dog"), names(impact.getChildren()));
+    assertEquals(
+        List.of("animal-is-plant-ish", "cat-is-animal", "dog-is-animal"),
+        names(impact.getRelationships()));
+    assertEquals(List.of("plant-vs"), names(impact.getRules()));
+    assertEquals(List.of("eats"), names(impact.getBlockers()));
+  }
+
+  @Test
+  void deletionImpactIgnoresDefinitionsThatDoNotNameTheConcept() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var dog = named(concept("Dog"), "Dog");
+    final var plant = named(concept("Plant"), "Plant");
+    final var impact =
+        OntologyStructureValidator.deletionImpact(
+            animal, List.of(animal, dog, plant, named(subclass(dog, plant), "dog-is-plant")));
+
+    assertEquals(List.of(), impact.getChildren());
+    assertEquals(List.of(), impact.getRelationships());
+    assertEquals(List.of(), impact.getRules());
+    assertEquals(List.of(), impact.getBlockers());
+  }
+
+  @Test
+  void restrictionFillerIsARelationshipButNotAChild() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var owner = named(concept("Owner"), "Owner");
+    final var owns = URI.create("urn:owns");
+    final var ownsAnimal =
+        named(
+            subclass(owner)
+                .withExpressions(
+                    List.of(
+                        new OntologyExpression()
+                            .withKind(OntologyExpressionKind.RESTRICTION)
+                            .withRestrictionKind(OntologyRestrictionKind.SOME)
+                            .withPropertyIri(owns)
+                            .withFiller(
+                                new OntologyExpression()
+                                    .withKind(OntologyExpressionKind.NAMED_CLASS)
+                                    .withClassIri(animal.getIri())))),
+            "owner-owns-animal");
+
+    final var impact =
+        OntologyStructureValidator.deletionImpact(animal, List.of(animal, owner, ownsAnimal));
+
+    assertEquals(List.of("owner-owns-animal"), names(impact.getRelationships()));
+    assertEquals(List.of(), impact.getChildren());
+  }
+
+  @Test
+  void removingTheListedAxiomsLeavesTheRestOfTheModelValid() {
+    final var animal = named(concept("Animal"), "Animal");
+    final var dog = named(concept("Dog"), "Dog");
+    final var plant = named(concept("Plant"), "Plant");
+    final var dogIsAnimal = named(subclass(dog, animal), "dog-is-animal");
+    final var plantDisjointAnimal =
+        named(subclass(plant, animal).withAxiomType(OntologyAxiomType.DISJOINT_WITH), "plant-vs");
+    final List<OntologyDefinition> model = List.of(dog, plant, dogIsAnimal, plantDisjointAnimal);
+
+    final var left =
+        assertThrows(
+            OntologyValidationException.class,
+            () -> OntologyStructureValidator.requireValidWorking(model));
+    assertEquals(2, left.getError().getViolationCount());
+
+    final var impact =
+        OntologyStructureValidator.deletionImpact(
+            animal, List.of(animal, dog, plant, dogIsAnimal, plantDisjointAnimal));
+    final var removed = new java.util.HashSet<UUID>();
+    impact.getRelationships().forEach(reference -> removed.add(reference.getId()));
+    impact.getRules().forEach(reference -> removed.add(reference.getId()));
+    final var remaining = model.stream().filter(value -> !removed.contains(value.getId())).toList();
+
+    assertEquals(List.of(dog, plant), remaining);
+    OntologyStructureValidator.requireValidWorking(remaining);
+  }
+
+  private static List<String> names(List<EntityReference> references) {
+    return references.stream().map(EntityReference::getName).toList();
+  }
+
+  private static <T extends OntologyDefinition> T named(T definition, String name) {
+    definition.setName(name);
+    return definition;
+  }
+
+  @Test
+  void aClassDisjointWithItsAncestorIsAClashNamingBoth() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report = validate(animal, dog, subclass(dog, animal), disjoint(dog, animal));
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolationCount());
+    var issue = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, issue.getViolation().getCode());
+    assertEquals(
+        "urn:class:Dog is disjoint with its ancestor urn:class:Animal",
+        issue.getViolation().getMessage());
+    assertEquals(dog.getId(), issue.getMemberId());
+    assertEquals(List.of(dog.getId(), animal.getId()), issue.getViolation().getConceptIds());
+  }
+
+  @Test
+  void validateDraftReportsOneClashRowWithBothConceptIds() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report =
+        OntologyStructureValidator.validateDraft(
+            List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    var violation = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, violation.getCode());
+    assertEquals(List.of(dog.getId(), animal.getId()), violation.getConceptIds());
+  }
+
+  @Test
+  void aClassUnderTwoDisjointAncestorsIsAClashAndTheDiamondReportsOnce() {
+    OntologyConcept left = concept("Left");
+    OntologyConcept right = concept("Right");
+    OntologyConcept bottom = concept("Bottom");
+    OntologyConcept below = concept("Below");
+    var report =
+        validate(
+            left,
+            right,
+            bottom,
+            below,
+            subclass(bottom, left, right),
+            subclass(below, bottom),
+            disjoint(left, right));
+    assertEquals(1, report.getViolationCount());
+    var issue = report.getViolations().getFirst();
+    assertEquals(bottom.getId(), issue.getMemberId());
+    assertEquals(
+        "urn:class:Bottom has disjoint ancestors urn:class:Left and urn:class:Right",
+        issue.getViolation().getMessage());
+    assertEquals(
+        List.of(bottom.getId(), left.getId(), right.getId()), issue.getViolation().getConceptIds());
+  }
+
+  @Test
+  void aTwoHundredLevelChainReportsTheClashOnceWithoutRecursing() {
+    List<OntologyConcept> chain =
+        IntStream.range(0, 200).mapToObj(level -> concept("Level" + level)).toList();
+    List<OntologyDefinition> definitions = new ArrayList<>(chain);
+    IntStream.range(1, 200)
+        .forEach(level -> definitions.add(subclass(chain.get(level), chain.get(level - 1))));
+    definitions.add(disjoint(chain.get(0), chain.get(199)));
+    var report = validate(definitions.toArray(OntologyDefinition[]::new));
+    assertEquals(1, report.getViolationCount());
+    assertEquals(chain.get(199).getId(), report.getViolations().getFirst().getMemberId());
+  }
+
+  @Test
+  void disjointnessBetweenUnrelatedClassesIsNotAClash() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept plant = concept("Plant");
+    OntologyConcept dog = concept("Dog");
+    var report = validate(animal, plant, dog, subclass(dog, animal), disjoint(animal, plant));
+    assertTrue(report.getValid());
+    assertEquals(List.of(), report.getViolations());
+  }
+
+  @Test
+  void workingValidationWarnsOnAClashWithoutBlockingTheSave() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept dog = concept("Dog");
+    var report =
+        OntologyStructureValidator.validateWorking(
+            List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+    assertTrue(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    assertEquals(
+        OntologyProfileViolationSeverity.WARNING, report.getViolations().getFirst().getSeverity());
+    assertEquals(
+        "urn:class:Dog is disjoint with its ancestor urn:class:Animal",
+        report.getViolations().getFirst().getMessage());
+    OntologyStructureValidator.requireValidWorking(
+        List.of(animal, dog, subclass(dog, animal), disjoint(dog, animal)));
+  }
+
+  @Test
+  void draftValidationReportsEveryClashAsAnErrorThatASingleSaveCouldNotSee() {
+    OntologyConcept animal = concept("Animal");
+    OntologyConcept plant = concept("Plant");
+    OntologyConcept dog = concept("Dog");
+    OntologyConcept puppy = concept("Puppy");
+    var definitions =
+        List.<OntologyDefinition>of(
+            animal,
+            plant,
+            dog,
+            puppy,
+            subclass(puppy, dog),
+            subclass(dog, plant),
+            subclass(dog, animal),
+            disjoint(animal, plant));
+    var report = OntologyStructureValidator.validateDraft(definitions);
+    assertFalse(report.getValid());
+    assertEquals(1, report.getViolations().size());
+    var clash = report.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, clash.getCode());
+    assertEquals(OntologyProfileViolationSeverity.ERROR, clash.getSeverity());
+    assertEquals(
+        "urn:class:Dog has disjoint ancestors urn:class:Animal and urn:class:Plant",
+        clash.getMessage());
+    assertEquals(List.of(dog.getId(), animal.getId(), plant.getId()), clash.getConceptIds());
+    assertTrue(
+        OntologyStructureValidator.validateDraft(List.of(animal, plant, dog, subclass(dog, animal)))
+            .getValid());
+  }
+
   private static OntologyReleaseStructureReport validate(OntologyDefinition... definitions) {
     return OntologyStructureValidator.validate(
         RELEASE, Arrays.stream(definitions).map(value -> member(RELEASE.getId(), value)).toList());
+  }
+
+  private static List<String> violations(OntologyDefinition... definitions) {
+    return validate(definitions).getViolations().stream()
+        .map(issue -> issue.getViolation().getCode() + " " + issue.getViolation().getPath())
+        .toList();
+  }
+
+  /** Sorted, because the report orders members by their generated ids. */
+  private static List<String> sortedViolations(OntologyDefinition... definitions) {
+    return violations(definitions).stream().sorted().toList();
+  }
+
+  /** Sorted, because the report orders members by their generated ids. */
+  private static List<String> messages(OntologyDefinition... definitions) {
+    return validate(definitions).getViolations().stream()
+        .map(issue -> issue.getViolation().getMessage())
+        .sorted()
+        .toList();
   }
 
   private static OntologyReleaseMember member(UUID releaseId, OntologyDefinition definition) {
@@ -420,6 +855,10 @@ class OntologyStructureValidatorTest {
                             .withKind(OntologyExpressionKind.NAMED_CLASS)
                             .withClassIri(parent.getIri()))
                 .toList());
+  }
+
+  private static OntologyAxiom disjoint(OntologyConcept subject, OntologyConcept other) {
+    return subclass(subject, other).withAxiomType(OntologyAxiomType.DISJOINT_WITH);
   }
 
   private static OntologyAxiom assertion() {

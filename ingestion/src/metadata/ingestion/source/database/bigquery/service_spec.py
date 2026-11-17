@@ -14,5 +14,6 @@ ServiceSpec = DefaultDatabaseSpec(
     usage_source_class=BigqueryUsageSource,
     profiler_class=BigQueryProfilerInterface,
     sampler_class=BigQuerySampler,
+    test_suite_class="metadata.data_quality.interface.sqlalchemy.bigquery.test_suite_interface.BigQueryTestSuiteInterface",
     connection_class=BigQueryConnection,  # pyright: ignore[reportArgumentType]
 )

@@ -19,7 +19,12 @@ import {
 } from '../../../src/generated/entity/data/topic';
 import { SERVICE_TYPE } from '../../constant/service';
 import { ServiceTypes } from '../../constant/settings';
-import { createOrFetch, okJson } from '../../utils/apiResponse';
+import {
+  createOrFetch,
+  EntityIdentity,
+  okJson,
+  requireEntityIdentity,
+} from '../../utils/apiResponse';
 import { uuid } from '../../utils/common';
 import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
@@ -56,7 +61,7 @@ export class TopicClass extends EntityClass {
   };
 
   serviceResponseData: ResponseDataType = {} as ResponseDataType;
-  entityResponseData: Topic = {} as Topic;
+  entityResponseData: Topic & EntityIdentity = {} as Topic & EntityIdentity;
 
   constructor(options: TopicClassOptions = {}) {
     super(EntityTypeEndpoint.Topic);
@@ -145,12 +150,15 @@ export class TopicClass extends EntityClass {
     this.service = { ...this.service, name: this.serviceResponseData.name };
     this.entity.service = this.serviceResponseData.name;
 
-    this.entityResponseData = await createOrFetch(apiContext, {
-      label: 'TopicClass.create',
-      createPath: '/api/v1/topics',
-      fqnSegments: [this.service.name, this.entity.name],
-      data: this.entity,
-    });
+    this.entityResponseData = requireEntityIdentity(
+      await createOrFetch<Topic>(apiContext, {
+        label: 'TopicClass.create',
+        createPath: '/api/v1/topics',
+        fqnSegments: [this.service.name, this.entity.name],
+        data: this.entity,
+      }),
+      'TopicClass.create'
+    );
 
     this.childrenSelectorId =
       this.entityResponseData.messageSchema?.schemaFields?.[0]
@@ -179,7 +187,10 @@ export class TopicClass extends EntityClass {
       }
     );
 
-    this.entityResponseData = await okJson(response, 'TopicClass.patch');
+    this.entityResponseData = requireEntityIdentity(
+      await okJson<Topic>(response, 'TopicClass.patch'),
+      'TopicClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,
@@ -199,7 +210,10 @@ export class TopicClass extends EntityClass {
     service: ResponseDataType;
     ownedRootPath?: string;
   }): void {
-    this.entityResponseData = data.entity;
+    this.entityResponseData = requireEntityIdentity(
+      data.entity,
+      'TopicClass.set'
+    );
     this.serviceResponseData = data.service;
     this.ownedRootPath = data.ownedRootPath;
     this.entity.name = data.entity.name;

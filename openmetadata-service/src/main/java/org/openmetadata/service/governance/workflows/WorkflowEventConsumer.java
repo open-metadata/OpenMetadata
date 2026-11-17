@@ -1,13 +1,18 @@
 package org.openmetadata.service.governance.workflows;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,10 +23,13 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.RecognizerFeedback;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -30,6 +38,7 @@ import org.openmetadata.service.alerting.channel.Destination;
 import org.openmetadata.service.events.consumer.EventPublisherException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.util.Registry;
@@ -37,6 +46,7 @@ import org.openmetadata.service.util.Registry;
 @Slf4j
 public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   public static final String GOVERNANCE_BOT = "governance-bot";
+  private static final String PROVIDER_FIELD = "provider";
 
   private final SubscriptionDestination subscriptionDestination;
   private final EventSubscription eventSubscription;
@@ -137,7 +147,8 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
       return;
     }
 
-    if (isBotChange(event.getUserName(), event.getImpersonatedBy())) {
+    if (isBotChange(event.getUserName(), event.getImpersonatedBy())
+        && !isAutomationProposal(event)) {
       LOG.debug(
           "Skipping bot change by {} for entity {} of type: {}",
           event.getUserName(),
@@ -196,6 +207,27 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
     return botChange;
   }
 
+  /**
+   * A bot that creates an entity an automation provides, such as a glossary term an AI agent
+   * derived from a memory, proposes it: the entity's workflows review it as they review a person's
+   * change. A workflow's own writes never count, so a workflow cannot start itself.
+   */
+  static boolean isAutomationProposal(ChangeEvent event) {
+    return EventType.ENTITY_CREATED.equals(event.getEventType())
+        && !GOVERNANCE_BOT.equals(event.getUserName())
+        && !GOVERNANCE_BOT.equals(event.getImpersonatedBy())
+        && ProviderType.AUTOMATION.value().equals(providerOf(event));
+  }
+
+  // The event carries the created entity: as stored JSON text from a request, or as an object.
+  private static String providerOf(ChangeEvent event) {
+    return event.getEntity() == null
+        ? null
+        : JsonUtils.readOrConvertValue(event.getEntity(), JsonNode.class)
+            .path(PROVIDER_FIELD)
+            .asText(null);
+  }
+
   public static Map<String, Object> defaultHandler(ChangeEvent event) {
     // NOTE: We are only consuming ENTITY related events.
     EventType eventType = event.getEventType();
@@ -203,7 +235,9 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
 
     Map<String, Object> variables = new HashMap<>();
 
-    if (validEventTypes.contains(eventType) && validEntityTypes.contains(entityType)) {
+    if (validEventTypes.contains(eventType)
+        && validEntityTypes.contains(entityType)
+        && !changesNoTriggerField(event)) {
       EntityReference entityReference;
       try {
         entityReference =
@@ -236,8 +270,39 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         variables.put(
             getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), event.getUserName());
       }
+
+      if (event.getCurrentVersion() != null) {
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+            event.getCurrentVersion());
+      }
+
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE),
+          eventType.value());
     }
     return variables;
+  }
+
+  /**
+   * An update whose own change names only fields no workflow triggers on, such as a follow or a
+   * vote, gives a workflow nothing to judge. Its run would read the entity's stored change, which is
+   * an earlier edit's, and judge that edit again.
+   */
+  static boolean changesNoTriggerField(ChangeEvent event) {
+    ChangeDescription change = event.getChangeDescription();
+    List<FieldChange> fields = new ArrayList<>();
+    if (change != null) {
+      fields.addAll(listOrEmpty(change.getFieldsAdded()));
+      fields.addAll(listOrEmpty(change.getFieldsUpdated()));
+      fields.addAll(listOrEmpty(change.getFieldsDeleted()));
+    }
+    return EventType.ENTITY_UPDATED.equals(event.getEventType())
+        && !fields.isEmpty()
+        && fields.stream()
+            .noneMatch(
+                field ->
+                    WorkflowTriggerFilters.isTriggerField(event.getEntityType(), field.getName()));
   }
 
   private static Map<String, Object> handleTagRecognizerFeedback(ChangeEvent event) {
