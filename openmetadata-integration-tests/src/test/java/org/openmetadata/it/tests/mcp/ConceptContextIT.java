@@ -16,6 +16,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.List;
@@ -41,7 +42,10 @@ import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.data.CreateTopic;
+import org.openmetadata.schema.api.data.MetricDimension;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricFilter;
+import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateMessagingService;
@@ -254,6 +258,122 @@ class ConceptContextIT extends McpTestBase {
     assertThat(context.at("/assetContext/conceptContext/totalBindings").asInt()).isEqualTo(2);
     assertThat(context.at("/assetContext/conceptContext/bindings/1/column").asText())
         .isEqualTo(orders.getFullyQualifiedName() + "." + COLUMN);
+  }
+
+  @Test
+  void metricSemanticContextReachesJsonWithoutChangingConceptMarkdown() throws Exception {
+    Metric related =
+        post("metrics", new CreateMetric().withName("related_" + suffix), Metric.class);
+    Metric semantic =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("semantic_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode(EXPRESSION))
+                .withDimensions(
+                    List.of(new MetricDimension().withName("region").withExpression("region_code")))
+                .withMeasures(
+                    List.of(new MetricMeasure().withName("amount_cents").withAggregation("sum")))
+                .withFilters(
+                    List.of(
+                        new MetricFilter().withWhere("status = 'paid'"),
+                        new MetricFilter().withWhere("amount_cents > 0"),
+                        new MetricFilter().withWhere(" ")))
+                .withRelatedMetrics(List.of(related.getFullyQualifiedName())),
+            Metric.class);
+    JsonNode context = metricContext(semantic);
+    JsonNode generic = context.at("/assetContext/generic");
+    assertThat(generic.path("definition").asText()).isEqualTo(EXPRESSION);
+    assertThat(generic.at("/dimensions/0/name").asText()).isEqualTo("region");
+    assertThat(generic.at("/dimensions/0/expression").asText()).isEqualTo("region_code");
+    assertThat(generic.at("/measures/0/aggregation").asText()).isEqualTo("sum");
+    assertThat(generic.path("filters"))
+        .isEqualTo(OBJECT_MAPPER.valueToTree(List.of("status = 'paid'", "amount_cents > 0")));
+    assertThat(generic.path("relatedMetrics"))
+        .isEqualTo(OBJECT_MAPPER.valueToTree(List.of(related.getFullyQualifiedName())));
+
+    JsonNode response =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_concept_context",
+                Map.of(
+                    "entityType",
+                    "metric",
+                    "fqn",
+                    semantic.getFullyQualifiedName(),
+                    "format",
+                    "json")));
+    JsonNode mcpContext = OBJECT_MAPPER.readTree(response.at("/result/content/0/text").asText());
+    assertThat(mcpContext.at("/assetContext/generic")).isEqualTo(generic);
+    String markdown =
+        getResponse("metrics/name/" + semantic.getFullyQualifiedName() + "/context", authToken)
+            .body();
+    assertThat(markdown)
+        .doesNotContain("Dimensions", "Measures", "region_code")
+        .contains("(status = 'paid')\nAND (amount_cents > 0)");
+  }
+
+  @Test
+  void boundedJsonDoesNotSpendTheMarkdownKnowledgeBudget() throws Exception {
+    String tail = "END_RELATED_DEFINITION";
+    Metric related =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("bounded_related_" + suffix)
+                .withDescription("Related metric grounding. ".repeat(40) + tail),
+            Metric.class);
+    List<MetricDimension> dimensions =
+        IntStream.range(0, 60)
+            .mapToObj(
+                index ->
+                    new MetricDimension()
+                        .withName("region_" + index + "_" + "x".repeat(90))
+                        .withExpression("COALESCE(region_code, 'unknown')")
+                        .withDescription("Dimension explanation. ".repeat(5)))
+            .toList();
+    Metric bounded =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("bounded_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode(EXPRESSION))
+                .withDimensions(dimensions)
+                .withRelatedMetrics(List.of(related.getFullyQualifiedName())),
+            Metric.class);
+    JsonNode generic = metricContext(bounded).at("/assetContext/generic");
+    assertThat(generic.path("semanticFieldsTruncated").asBoolean()).isTrue();
+    assertThat(generic.path("dimensions").size()).isBetween(1, 50);
+    ObjectNode semanticFields = generic.deepCopy();
+    semanticFields.remove(List.of("fields", "definition", "sourceAssets"));
+    assertThat(semanticFields.toString().length()).isLessThanOrEqualTo(8000);
+    HttpResponse<String> rest =
+        getResponse("metrics/name/" + bounded.getFullyQualifiedName() + "/context", authToken);
+    assertThat(rest.statusCode()).isEqualTo(200);
+    assertThat(rest.body()).contains(tail).doesNotContain("Dimensions");
+
+    Map<String, Object> conceptRequest =
+        McpTestUtils.createToolCallRequest(
+            "get_concept_context",
+            Map.of("entityType", "metric", "fqn", bounded.getFullyQualifiedName()));
+    Map<String, Object> detailsRequest =
+        McpTestUtils.createToolCallRequest(
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "metric",
+                "fqn",
+                bounded.getFullyQualifiedName(),
+                "include",
+                List.of("context")));
+    for (Map<String, Object> request : List.of(conceptRequest, detailsRequest)) {
+      JsonNode response = executeMcpRequest(request);
+      assertThat(response.at("/result/isError").asBoolean(false)).isFalse();
+      JsonNode body = OBJECT_MAPPER.readTree(response.at("/result/content/0/text").asText());
+      JsonNode markdown = body.has("context") ? body.at("/context/content") : body.path("content");
+      assertThat(markdown.isTextual()).isTrue();
+      assertThat(markdown.asText()).contains(tail).doesNotContain("Dimensions");
+    }
   }
 
   @Test

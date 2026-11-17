@@ -16,6 +16,7 @@
                     "$ref": "basic.json#/definitions/uuid"
                 },
                 "type": {
+                    "title": "Type",
                     "description": "The entity type of the knowledge item.",
                     "type": "string",
                     "enum": ["glossaryTerm", "metric", "page", "contextMemory"]
@@ -319,6 +320,38 @@
                     "description": "DDL, stored-procedure code, or query text backing this asset, when available.",
                     "type": "string"
                 },
+                "dimensions": {
+                    "description": "Dimensions available when slicing a metric. Omitted when the metric declares none.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "../entity/data/metric.json#/definitions/metricDimension"
+                    }
+                },
+                "measures": {
+                    "description": "Measures and their aggregations used by a metric. Omitted when the metric declares none.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "../entity/data/metric.json#/definitions/metricMeasure"
+                    }
+                },
+                "filters": {
+                    "description": "Non-blank SQL conditions defining a metric. Every condition applies together with the definition; render as one AND conjunction.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "relatedMetrics": {
+                    "description": "Distinct related metric FQNs already admitted to the visible, bounded concept metrics list. References only, without duplicating their content.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                    }
+                },
+                "semanticFieldsTruncated": {
+                    "description": "True when metric dimensions, measures, related FQNs or the complete filter group were omitted to fit the shared knowledge budget or the existing 50-item limit. Retained entries are complete; a filter group is kept in full or omitted in full. Fetch the metric entity for complete semantic declarations. The conceptContext contract and default concept Markdown are unchanged.",
+                    "type": "boolean"
+                },
                 "sourceAssets": {
                     "description": "Fully qualified names of upstream assets, when known.",
                     "type": "array",
@@ -557,7 +590,7 @@
         "assetContext": {
             "type": "object",
             "javaType": "org.openmetadata.schema.type.aicontext.AssetContext",
-            "description": "Type-specific structural context, selected by the asset's entity type. Metrics carry both their generic expression/source-assets context and conceptContext. New asset types are added as optional sub-contexts without breaking existing consumers.",
+            "description": "Type-specific structural context, selected by the asset's entity type. Metrics carry their generic expression, semantic fields and source assets alongside conceptContext. New asset types are added as optional sub-contexts without breaking existing consumers.",
             "properties": {
                 "table": {
                     "$ref": "#/definitions/tableContext"

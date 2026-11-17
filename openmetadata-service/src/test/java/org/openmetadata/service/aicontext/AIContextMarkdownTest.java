@@ -21,6 +21,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.data.MetricDimension;
+import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricMeasure;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.TableData;
@@ -46,6 +50,38 @@ import org.openmetadata.schema.type.personaContext.ContextSection;
  * the schema table, and the foreign-key / join cross-links an agent needs for SQL generation.
  */
 class AIContextMarkdownTest {
+
+  @Test
+  void metricGenericSemanticsPreserveTheAcceptedConceptMarkdown() {
+    ConceptContext concept =
+        new ConceptContext()
+            .withDefinition("SUM(amount)")
+            .withFilters(List.of("status = 'paid'", "amount > 0"))
+            .withGranularity("MONTH")
+            .withUnit("DOLLARS");
+    AIContext context =
+        new AIContext()
+            .withEntityType("metric")
+            .withFullyQualifiedName("revenue")
+            .withAssetContext(
+                new AssetContext()
+                    .withConceptContext(concept)
+                    .withGeneric(new GenericAssetContext().withDefinition("SUM(amount)")));
+    String original = AIContextMarkdown.render(context);
+    Metric metric =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("SUM(amount)"))
+            .withDimensions(List.of(new MetricDimension().withName("region")))
+            .withMeasures(List.of(new MetricMeasure().withName("amount").withAggregation("sum")));
+    context.getAssetContext().withGeneric(AIContextBuilder.buildMetricContext(metric, concept));
+
+    assertEquals(original, AIContextMarkdown.render(context));
+    assertTrue(original.contains("(status = 'paid')\nAND (amount > 0)"));
+    assertTrue(original.contains("MONTH"));
+    assertTrue(original.contains("DOLLARS"));
+    assertFalse(original.contains("Dimensions"));
+    assertFalse(original.contains("Measures"));
+  }
 
   @Test
   void renderPreservesColumnGlossaryDefinitionsOnTheirField() {

@@ -27,6 +27,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.text.StringEscapeUtils;
@@ -142,6 +143,7 @@ public class AIContextBuilder {
   private final String entityType;
   private final String fqn;
   private Authorizer authorizer;
+  private boolean includeMetricSemantics;
   private SecurityContext securityContext;
   private int knowledgeBudgetChars = DEFAULT_KNOWLEDGE_BUDGET_CHARS;
   private String query;
@@ -175,6 +177,12 @@ public class AIContextBuilder {
    */
   public AIContextBuilder withKnowledgeBudget(int budgetChars) {
     this.knowledgeBudgetChars = Math.max(budgetChars, EXCERPT_CHARS);
+    return this;
+  }
+
+  /** Structured JSON opts into metric semantics; legacy Markdown keeps its full knowledge budget. */
+  public AIContextBuilder withMetricSemantics(boolean include) {
+    this.includeMetricSemantics = include;
     return this;
   }
 
@@ -237,7 +245,8 @@ public class AIContextBuilder {
 
   /**
    * Bounds the total knowledge-item content so a bundle can't overwhelm an LLM context window.
-   * Definitions come first (glossary, metrics — short and high-value), then attached articles and
+   * Structured metric semantics draw from the same budget first when requested. Knowledge
+   * definitions come next (glossary, metrics — short and high-value), then attached articles and
    * pills (potentially long). Each item is kept in full when it fits under the per-item ceiling and
    * the remaining budget, degraded to a lead excerpt when it doesn't, and finally reduced to a
    * reference (content omitted) once the budget is exhausted. Truncated items carry
@@ -245,7 +254,7 @@ public class AIContextBuilder {
    * {@code get_entity_details(include=["content"])}.
    */
   void applyKnowledgeBudget(AIContext context) {
-    int remaining = knowledgeBudgetChars;
+    int remaining = knowledgeBudgetChars - fitMetricSemantics(context);
     remaining = fitItems(context.getGlossaryTerms(), remaining);
     if (context.getAssetContext() != null && context.getAssetContext().getTable() != null) {
       for (FieldContext field : listOrEmpty(context.getAssetContext().getTable().getColumns())) {
@@ -255,6 +264,53 @@ public class AIContextBuilder {
     remaining = fitItems(context.getMetrics(), remaining);
     remaining = fitItems(context.getArticles(), remaining);
     logDegradation(context);
+  }
+
+  private int fitMetricSemantics(AIContext context) {
+    GenericAssetContext generic =
+        context.getAssetContext() == null ? null : context.getAssetContext().getGeneric();
+    if (generic == null) {
+      return 0;
+    }
+    if (!includeMetricSemantics) {
+      generic
+          .withDimensions(null)
+          .withMeasures(null)
+          .withFilters(null)
+          .withRelatedMetrics(null)
+          .withSemanticFieldsTruncated(null);
+      return 0;
+    }
+    MetricContextBudget budget = new MetricContextBudget(knowledgeBudgetChars, MAX_KNOWLEDGE_ITEMS);
+    boolean alreadyTruncated = Boolean.TRUE.equals(generic.getSemanticFieldsTruncated());
+    generic
+        .withFilters(budget.takeAll(listOrEmpty(generic.getFilters()), JsonUtils::pojoToJson))
+        .withRelatedMetrics(
+            budget.take(listOrEmpty(generic.getRelatedMetrics()), JsonUtils::pojoToJson))
+        .withDimensions(budget.take(listOrEmpty(generic.getDimensions()), JsonUtils::pojoToJson))
+        .withMeasures(budget.take(listOrEmpty(generic.getMeasures()), JsonUtils::pojoToJson))
+        .withSemanticFieldsTruncated(alreadyTruncated || budget.truncated() ? Boolean.TRUE : null);
+    return metricSemanticChars(generic);
+  }
+
+  static int metricSemanticChars(GenericAssetContext generic) {
+    if (generic.getDimensions() == null
+        && generic.getMeasures() == null
+        && generic.getFilters() == null
+        && generic.getRelatedMetrics() == null
+        && generic.getSemanticFieldsTruncated() == null) {
+      return 0;
+    }
+    return JsonUtils.pojoToJson(
+            new GenericAssetContext()
+                .withFields(null)
+                .withSourceAssets(null)
+                .withDimensions(generic.getDimensions())
+                .withMeasures(generic.getMeasures())
+                .withFilters(generic.getFilters())
+                .withRelatedMetrics(generic.getRelatedMetrics())
+                .withSemanticFieldsTruncated(generic.getSemanticFieldsTruncated()))
+        .length();
   }
 
   private int fitItems(List<KnowledgeItem> items, int remaining) {
@@ -1221,22 +1277,36 @@ public class AIContextBuilder {
     return new TableData().withColumns(columns).withRows(rows);
   }
 
-  /**
-   * A metric's structural context is its expression — the query that defines it. Without this, asking
-   * get_asset_context about a metric returned only its description, while the same expression was
-   * already reachable through {@code get_entity_details(include=["content"])} and as attached
-   * knowledge of a table.
-   */
-  private static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
+  static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
     MetricExpression expression = metric.getMetricExpression();
     return new GenericAssetContext()
         .withDefinition(expression == null ? null : expression.getCode())
+        .withDimensions(nullOrEmpty(metric.getDimensions()) ? null : metric.getDimensions())
+        .withMeasures(nullOrEmpty(metric.getMeasures()) ? null : metric.getMeasures())
+        .withFilters(nullOrEmpty(concept.getFilters()) ? null : concept.getFilters())
+        .withRelatedMetrics(relatedMetricFqns(metric, concept))
         .withSourceAssets(
             listOrEmpty(concept.getBindings()).stream()
                 .filter(binding -> Entity.TABLE.equals(binding.getAssetType()))
                 .map(binding -> binding.getAssetFqn())
                 .distinct()
                 .toList());
+  }
+
+  private static List<String> relatedMetricFqns(Metric metric, ConceptContext concept) {
+    Set<String> visible =
+        listOrEmpty(concept.getMetrics()).stream()
+            .map(KnowledgeItem::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    List<String> related =
+        listOrEmpty(metric.getRelatedMetrics()).stream()
+            .map(EntityReference::getFullyQualifiedName)
+            .filter(Objects::nonNull)
+            .filter(visible::contains)
+            .distinct()
+            .toList();
+    return related.isEmpty() ? null : related;
   }
 
   /**

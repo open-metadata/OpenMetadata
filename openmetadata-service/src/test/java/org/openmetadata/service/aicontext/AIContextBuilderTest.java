@@ -35,7 +35,9 @@ import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.api.data.MetricDimension;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -69,15 +71,19 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
+import org.openmetadata.schema.type.aicontext.ConceptBinding;
+import org.openmetadata.schema.type.aicontext.ConceptContext;
 import org.openmetadata.schema.type.aicontext.DataQuality;
 import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
+import org.openmetadata.schema.type.aicontext.GenericAssetContext;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.aicontext.TableDataModel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -93,6 +99,228 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 class AIContextBuilderTest {
 
   private static final String CUSTOMERS_ID_FQN = "svc.db.sch.customers.id";
+
+  @Test
+  void metricContextCarriesSemanticFieldsWithoutChangingExpressionOrBindings() {
+    MetricDimension dimension =
+        new MetricDimension()
+            .withName("region")
+            .withFullyQualifiedName("revenue.dimension.region")
+            .withType(MetricDimension.Type.CATEGORICAL)
+            .withExpression("customer_region");
+    MetricMeasure measure =
+        new MetricMeasure().withName("amount").withAggregation("sum").withExpression("amount");
+    Metric metric =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("SUM(amount)"))
+            .withDimensions(List.of(dimension))
+            .withMeasures(List.of(measure))
+            .withRelatedMetrics(
+                List.of(new EntityReference().withFullyQualifiedName("net_revenue")));
+    ConceptContext concept =
+        new ConceptContext()
+            .withFilters(List.of("status = 'paid'", "amount > 0"))
+            .withMetrics(List.of(new KnowledgeItem().withFullyQualifiedName("net_revenue")))
+            .withBindings(
+                List.of(
+                    new ConceptBinding().withAssetType(Entity.TABLE).withAssetFqn("svc.db.orders"),
+                    new ConceptBinding().withAssetType(Entity.TABLE).withAssetFqn("svc.db.orders"),
+                    new ConceptBinding()
+                        .withAssetType(Entity.DASHBOARD)
+                        .withAssetFqn("svc.sales")));
+
+    GenericAssetContext context = AIContextBuilder.buildMetricContext(metric, concept);
+
+    assertEquals("SUM(amount)", context.getDefinition());
+    assertEquals(List.of(dimension), context.getDimensions());
+    assertEquals(List.of(measure), context.getMeasures());
+    assertEquals(List.of("status = 'paid'", "amount > 0"), context.getFilters());
+    assertEquals(List.of("net_revenue"), context.getRelatedMetrics());
+    assertEquals(List.of("svc.db.orders"), context.getSourceAssets());
+  }
+
+  @Test
+  void metricContextOmitsUndeclaredAndEmptySemanticFields() {
+    for (Metric metric :
+        List.of(
+            new Metric(),
+            new Metric()
+                .withMetricExpression(new MetricExpression())
+                .withDimensions(List.of())
+                .withMeasures(List.of())
+                .withRelatedMetrics(List.of()))) {
+      GenericAssetContext context =
+          AIContextBuilder.buildMetricContext(metric, new ConceptContext());
+
+      assertNull(context.getDefinition());
+      assertNull(context.getDimensions());
+      assertNull(context.getMeasures());
+      assertNull(context.getFilters());
+      assertNull(context.getRelatedMetrics());
+      assertTrue(context.getSourceAssets().isEmpty());
+    }
+    assertNull(
+        AIContextBuilder.buildMetricContext(
+                new Metric(), new ConceptContext().withFilters(List.of()))
+            .getFilters());
+  }
+
+  @Test
+  void metricContextRetainsSemanticsWithoutAnExpressionWhenKnowledgeIsBudgeted() {
+    Metric metric = new Metric().withDimensions(List.of(new MetricDimension().withName("region")));
+    GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(
+            metric, new ConceptContext().withFilters(List.of("status = 'paid'")));
+    KnowledgeItem attached = knowledgeItem("related", "x".repeat(4000));
+    AIContext context =
+        new AIContext()
+            .withAssetContext(new AssetContext().withGeneric(generic))
+            .withMetrics(List.of(attached));
+
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .withKnowledgeBudget(800)
+        .applyKnowledgeBudget(context);
+
+    assertNull(generic.getDefinition());
+    assertEquals("region", generic.getDimensions().getFirst().getName());
+    assertEquals(List.of("status = 'paid'"), generic.getFilters());
+    assertTrue(attached.getContentTruncated());
+    assertTrue(attached.getContent().length() <= 800);
+  }
+
+  @Test
+  void metricContextOnlyReferencesVisibleRelatedMetricsAndDeduplicatesFqns() {
+    Metric metric =
+        new Metric()
+            .withRelatedMetrics(
+                List.of(
+                    new EntityReference().withFullyQualifiedName("visible"),
+                    new EntityReference().withFullyQualifiedName("hidden"),
+                    new EntityReference().withFullyQualifiedName("visible"),
+                    new EntityReference()));
+    ConceptContext concept =
+        new ConceptContext()
+            .withMetrics(
+                List.of(
+                    new KnowledgeItem().withFullyQualifiedName("visible"),
+                    new KnowledgeItem().withFullyQualifiedName("attached_only")));
+
+    GenericAssetContext context = AIContextBuilder.buildMetricContext(metric, concept);
+
+    assertEquals(List.of("visible"), context.getRelatedMetrics());
+    assertNull(
+        AIContextBuilder.buildMetricContext(metric, new ConceptContext()).getRelatedMetrics());
+  }
+
+  @Test
+  void metricSemanticsShareTheKnowledgeBudgetAndKeepCompleteEntries() {
+    List<MetricDimension> dimensions = new ArrayList<>();
+    for (int index = 0; index < 60; index++) {
+      dimensions.add(
+          new MetricDimension()
+              .withName("dimension_" + index)
+              .withExpression("'\\\"\\n'".repeat(12)));
+    }
+    Metric metric = new Metric().withDimensions(dimensions);
+    GenericAssetContext generic = AIContextBuilder.buildMetricContext(metric, new ConceptContext());
+    KnowledgeItem attached = knowledgeItem("attached", "x".repeat(4000));
+    AIContext context =
+        new AIContext()
+            .withAssetContext(new AssetContext().withGeneric(generic))
+            .withMetrics(List.of(attached));
+
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .withKnowledgeBudget(800)
+        .applyKnowledgeBudget(context);
+
+    assertTrue(generic.getSemanticFieldsTruncated());
+    assertTrue(generic.getDimensions().size() < dimensions.size());
+    assertEquals(dimensions.getFirst(), generic.getDimensions().getFirst());
+    int contentChars = attached.getContent() == null ? 0 : attached.getContent().length();
+    assertTrue(AIContextBuilder.metricSemanticChars(generic) + contentChars <= 800);
+    assertEquals(60, metric.getDimensions().size());
+  }
+
+  @Test
+  void metricSemanticItemLimitAndAtomicFiltersLeaveTheConceptUnchanged() {
+    List<MetricDimension> dimensions = new ArrayList<>();
+    for (int index = 0; index < 60; index++) {
+      dimensions.add(new MetricDimension().withName("dimension_" + index));
+    }
+    List<String> filters = List.of("status = '" + "x".repeat(600) + "'", "amount > 0");
+    ConceptContext concept = new ConceptContext().withFilters(filters);
+    GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(new Metric().withDimensions(dimensions), concept);
+    AIContext context =
+        new AIContext()
+            .withAssetContext(new AssetContext().withGeneric(generic).withConceptContext(concept));
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .applyKnowledgeBudget(context);
+    assertEquals(50, generic.getDimensions().size());
+    assertEquals(filters, generic.getFilters());
+    assertTrue(generic.getSemanticFieldsTruncated());
+
+    generic.withFilters(List.of("x".repeat(900), "amount > 0"));
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .withKnowledgeBudget(800)
+        .applyKnowledgeBudget(context);
+    assertNull(generic.getFilters(), "a partial SQL conjunction must never be returned");
+    assertEquals(filters, concept.getFilters());
+    assertTrue(generic.getSemanticFieldsTruncated());
+    assertTrue(AIContextBuilder.metricSemanticChars(generic) <= 800);
+  }
+
+  @Test
+  void aSingleOversizedSemanticValueIsOmittedWithoutClippingSql() {
+    MetricDimension oversized =
+        new MetricDimension().withName("oversized").withExpression("x".repeat(10_000));
+    GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(
+            new Metric()
+                .withDimensions(List.of(oversized))
+                .withMeasures(List.of(new MetricMeasure().withName("amount"))),
+            new ConceptContext());
+    AIContext context = new AIContext().withAssetContext(new AssetContext().withGeneric(generic));
+
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withMetricSemantics(true)
+        .withKnowledgeBudget(800)
+        .applyKnowledgeBudget(context);
+
+    assertNull(generic.getDimensions());
+    assertEquals("amount", generic.getMeasures().getFirst().getName());
+    assertTrue(generic.getSemanticFieldsTruncated());
+    assertEquals(10_000, oversized.getExpression().length());
+    assertTrue(JsonUtils.pojoToJson(generic).length() < 800);
+  }
+
+  @Test
+  void metricSemanticProjectionIsOptInForTheLegacyKnowledgeBudget() {
+    GenericAssetContext generic =
+        AIContextBuilder.buildMetricContext(
+            new Metric()
+                .withDimensions(
+                    List.of(
+                        new MetricDimension().withName("region").withExpression("x".repeat(400)))),
+            new ConceptContext());
+    KnowledgeItem attached = knowledgeItem("related", "x".repeat(600));
+    AIContext context =
+        new AIContext()
+            .withAssetContext(new AssetContext().withGeneric(generic))
+            .withMetrics(List.of(attached));
+
+    new AIContextBuilder(Entity.METRIC, "revenue")
+        .withKnowledgeBudget(800)
+        .applyKnowledgeBudget(context);
+
+    assertEquals("x".repeat(600), attached.getContent());
+    assertNull(generic.getDimensions());
+    assertNull(generic.getSemanticFieldsTruncated());
+  }
 
   private Table sampleTable() {
     Column id =

@@ -299,6 +299,28 @@
         "analyzer": "om_analyzer_jp",
         "index_options": "positions"
       },
+      "metricExpression": {
+        "properties": {
+          "language": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          },
+          "code": {
+            "type": "text",
+            "fields": {
+              "keyword": {
+                "type": "keyword",
+                "ignore_above": 256
+              }
+            }
+          }
+        }
+      },
       "expression": {
         "properties": {
           "language": {
