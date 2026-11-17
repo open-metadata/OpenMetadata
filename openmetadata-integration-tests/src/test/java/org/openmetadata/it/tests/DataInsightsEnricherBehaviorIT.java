@@ -165,7 +165,8 @@ class DataInsightsEnricherBehaviorIT {
     repository.setFieldsInBulk(repository.getFields("*"), List.of(updated));
 
     assertEquals(0.1, updated.getVersion());
-    assertTrue(updated.getUpdatedAt() >= today);
+    assertEquals(yesterday, updated.getUpdatedAt());
+    assertEquals(stored.getUpdatedBy(), updated.getUpdatedBy());
     assertEquals(today, updated.getLifeCycle().getAccessed().getTimestamp());
     assertEquals(
         1,
