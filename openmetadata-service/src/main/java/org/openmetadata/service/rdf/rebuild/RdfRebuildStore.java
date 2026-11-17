@@ -268,6 +268,11 @@ public final class RdfRebuildStore {
       RdfLiveWritePause.requireWritable(handle, clock.millis(), delivery);
     }
 
+    /** Whether storage maintenance holds back a serving write made for {@code delivery}. */
+    boolean isHeldBack(final RdfWriteDelivery delivery) {
+      return RdfLiveWritePause.heldBackBy(handle, clock.millis(), delivery).isPresent();
+    }
+
     public State state() {
       return RdfRebuildStore.state(handle);
     }

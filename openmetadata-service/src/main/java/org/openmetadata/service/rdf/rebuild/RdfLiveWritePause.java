@@ -102,10 +102,16 @@ public final class RdfLiveWritePause {
    */
   static void requireWritable(
       final Handle handle, final long now, final RdfWriteDelivery delivery) {
-    final Optional<String> holder = holder(handle, now);
-    if (holder.isPresent() && !delivery.holds(holder.get())) {
+    final Optional<String> holder = heldBackBy(handle, now, delivery);
+    if (holder.isPresent()) {
       throw new RdfStorageMaintenanceException(holder.get(), RETRY_AFTER);
     }
+  }
+
+  /** The job whose pause holds back a serving write made for {@code delivery}, if one does. */
+  static Optional<String> heldBackBy(
+      final Handle handle, final long now, final RdfWriteDelivery delivery) {
+    return holder(handle, now).filter(holder -> !delivery.holds(holder));
   }
 
   /** Whether storage maintenance currently holds writes to the serving dataset. */
