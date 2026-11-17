@@ -1,0 +1,508 @@
+{
+  "default_task_info": [
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T12:15:32.608263+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.extract",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e772-7380-7000-8000-000000000002",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e772-7380-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e772-7380-7000-8000-000000000001"
+              }
+            }
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "extract"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T12:15:36.597202+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.extract",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e772-7380-7000-8000-000000000002",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e772-7380-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e772-7380-7000-8000-000000000001"
+              }
+            }
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "extract"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T12:15:36.622878+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.transform",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e772-7380-7000-8000-000000000003",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e772-7380-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e772-7380-7000-8000-000000000001"
+              }
+            }
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "transform"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "FAIL",
+      "eventTime": "2026-11-17T12:15:36.658698+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.transform",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e772-7380-7000-8000-000000000003",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e772-7380-7000-8000-000000000001"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e772-7380-7000-8000-000000000001"
+              }
+            }
+          },
+          "errorMessage": {
+            "message": "ValueError: intentional failure",
+            "programmingLanguage": "python",
+            "stackTrace": "Traceback (most recent call last):\nValueError: intentional failure"
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "transform"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "FAIL",
+      "eventTime": "2026-11-17T12:15:36.674062+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "DAG",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e772-7380-7000-8000-000000000001",
+        "facets": {
+          "errorMessage": {
+            "message": "ValueError: intentional failure",
+            "programmingLanguage": "python",
+            "stackTrace": "Traceback (most recent call last):\nValueError: intentional failure"
+          },
+          "airflowDagRun": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    }
+  ],
+  "full_task_info": [
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T12:21:42.855789+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "DAG",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e974-b232-7000-8000-000000000004",
+        "facets": {
+          "airflowDagRun": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T12:21:45.613826+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.extract",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e974-b232-7000-8000-000000000005",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e974-b232-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e974-b232-7000-8000-000000000004"
+              }
+            }
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "extract",
+              "start_date": "2026-11-05T00:00:00+00:00",
+              "end_date": "2027-01-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "COMPLETE",
+      "eventTime": "2026-11-17T12:21:46.024158+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.extract",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e974-b232-7000-8000-000000000005",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e974-b232-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e974-b232-7000-8000-000000000004"
+              }
+            }
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "extract",
+              "start_date": "2026-11-05T00:00:00+00:00",
+              "end_date": "2027-01-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "START",
+      "eventTime": "2026-11-17T12:21:46.987990+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.transform",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e974-b232-7000-8000-000000000006",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e974-b232-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e974-b232-7000-8000-000000000004"
+              }
+            }
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "transform",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "FAIL",
+      "eventTime": "2026-11-17T12:21:48.059883+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales.transform",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "TASK",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e974-b232-7000-8000-000000000006",
+        "facets": {
+          "parent": {
+            "job": {
+              "namespace": "airflow",
+              "name": "nightly_sales"
+            },
+            "run": {
+              "runId": "01a1e974-b232-7000-8000-000000000004"
+            },
+            "root": {
+              "job": {
+                "namespace": "airflow",
+                "name": "nightly_sales"
+              },
+              "run": {
+                "runId": "01a1e974-b232-7000-8000-000000000004"
+              }
+            }
+          },
+          "errorMessage": {
+            "message": "ValueError: intentional failure",
+            "programmingLanguage": "python",
+            "stackTrace": "Traceback (most recent call last):\nValueError: intentional failure"
+          },
+          "airflow": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            },
+            "task": {
+              "task_id": "transform",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    },
+    {
+      "eventType": "FAIL",
+      "eventTime": "2026-11-17T12:21:48.982457+00:00",
+      "job": {
+        "namespace": "airflow",
+        "name": "nightly_sales",
+        "facets": {
+          "jobType": {
+            "integration": "AIRFLOW",
+            "jobType": "DAG",
+            "processingType": "BATCH"
+          }
+        }
+      },
+      "run": {
+        "runId": "01a1e974-b232-7000-8000-000000000004",
+        "facets": {
+          "errorMessage": {
+            "message": "ValueError: intentional failure",
+            "programmingLanguage": "python",
+            "stackTrace": "Traceback (most recent call last):\nValueError: intentional failure"
+          },
+          "airflowDagRun": {
+            "dag": {
+              "dag_id": "nightly_sales",
+              "start_date": "2026-11-01T00:00:00+00:00"
+            }
+          }
+        }
+      },
+      "inputs": [],
+      "outputs": []
+    }
+  ]
+}

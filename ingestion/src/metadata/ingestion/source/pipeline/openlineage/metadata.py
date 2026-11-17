@@ -67,6 +67,7 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
     EventType,
+    KnownPipeline,
     LineageEdge,
     LineageNode,
     OpenLineageEvent,
@@ -80,6 +81,13 @@ from metadata.ingestion.source.pipeline.openlineage.models import (
 )
 from metadata.ingestion.source.pipeline.openlineage.ownership_resolver import (
     OpenLineageOwnerResolver,
+)
+from metadata.ingestion.source.pipeline.openlineage.run_status import (
+    build_run_update,
+    merge_run_status,
+    pipeline_job,
+    pipeline_start_date,
+    pipeline_tasks,
 )
 from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
     build_service_name,
@@ -117,6 +125,14 @@ RESOLUTION_CACHE_MAXSIZE = 1000
 # visible.
 MISSING_ENTITY_CACHE_MAXSIZE = 1000
 MISSING_ENTITY_CACHE_TTL_SECONDS = 300
+
+PROCESSED_EVENT_TYPES = [EventType.START, EventType.RUNNING, EventType.COMPLETE, EventType.FAIL, EventType.ABORT]
+FAILED_EVENT_TYPES = [EventType.FAIL, EventType.ABORT]
+
+# Every pipeline write replaces its task list and start date, while each event names one
+# job and only some carry Airflow's dates, so what a pipeline holds is read once per
+# ingestion and kept here.
+KNOWN_PIPELINES_CACHE_MAXSIZE = 1000
 
 # Kinesis Producer Library (KPL) aggregated-record framing.
 # When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
@@ -199,8 +215,7 @@ class OpenlineageSource(PipelineServiceSource):
     Works under the assumption that OpenLineage integrations produce events to Kafka topic or Kinesis stream,
     which is a source of events for this connector.
 
-    Only OpenLineage events that indicate successful data movement (COMPLETE, RUNNING, START) are taken into account
-    in this connector.
+    START, RUNNING and COMPLETE events produce lineage. FAIL and ABORT events only update the pipeline's run status.
 
     Configuring OpenLineage integrations: https://openlineage.io/docs/integrations/about
     """
@@ -232,6 +247,7 @@ class OpenlineageSource(PipelineServiceSource):
         )
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
+        self._known_pipelines: LRUCache = LRUCache(maxsize=KNOWN_PIPELINES_CACHE_MAXSIZE)
         self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
 
     def close(self) -> None:
@@ -774,16 +790,8 @@ class OpenlineageSource(PipelineServiceSource):
         :param run_facet: Open Lineage run facet
         :return: pipeline name (not fully qualified name)
         """
-        run_facet = pipeline_details.run_facet
-
-        try:
-            namespace = run_facet["facets"]["parent"]["job"]["namespace"]
-            name = run_facet["facets"]["parent"]["job"]["name"]
-        except (KeyError, TypeError):
-            namespace = pipeline_details.job["namespace"]
-            name = pipeline_details.job["name"]
-
-        return f"{namespace}-{name}"
+        job = pipeline_job(pipeline_details)
+        return f"{job['namespace']}-{job['name']}"
 
     @classmethod
     def _filter_event_by_types(
@@ -952,24 +960,50 @@ class OpenlineageSource(PipelineServiceSource):
             )
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
+            known = self._known_pipeline(pipeline_fqn, pipeline_details) if pipeline_fqn else None
             request = CreatePipelineRequest(  # pyright: ignore[reportCallIssue]
                 name=pipeline_name,
                 service=self._current_pipeline_service,
                 description=description,
-                tasks=[],
+                tasks=list(known.tasks.values()) if known else None,
+                startDate=known.start_date if known else None,
                 owners=owners,
             )
 
             yield Either(right=request)
             self.register_record(pipeline_request=request)
-        except ValueError:
+        except Exception as exc:
             yield Either(
                 left=StackTraceError(
                     name=pipeline_name,
-                    message="Failed to collect metadata required for pipeline creation.",
+                    error=f"Failed to collect metadata required for pipeline creation: {exc}",
+                    stackTrace=traceback.format_exc(),
                 ),
-                stackTrace=traceback.format_exc(),
+                right=None,
             )
+
+    def _known_pipeline(self, pipeline_fqn: str, pipeline_details: OpenLineageEvent) -> KnownPipeline:
+        """The pipeline's tasks and start date with this event applied. Tasks are never dropped:
+        a job missing from one run may still run in the next."""
+        known = self._known_pipelines.get(pipeline_fqn)
+        if known is None:
+            pipeline = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"])
+            known = KnownPipeline(
+                tasks={task.name: task for task in (pipeline.tasks if pipeline else None) or []},
+                start_date=pipeline.startDate if pipeline else None,
+            )
+            self._known_pipelines[pipeline_fqn] = known
+        known.start_date = pipeline_start_date(pipeline_details) or known.start_date
+        for task in pipeline_tasks(pipeline_details):
+            stored = known.tasks.get(task.name)
+            if stored is None:
+                known.tasks[task.name] = task
+            elif task.startDate or task.endDate:
+                # Only Airflow's full task facet carries dates; other events keep the stored ones.
+                known.tasks[task.name] = stored.model_copy(
+                    update={"startDate": task.startDate, "endDate": task.endDate}
+                )
+        return known
 
     def _has_annotated_pipeline_edge(
         self,
@@ -1069,6 +1103,10 @@ class OpenlineageSource(PipelineServiceSource):
             )
 
     def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+        # A failed or aborted job reports the datasets it meant to read and write, not what it wrote.
+        if pipeline_details.event_type in FAILED_EVENT_TYPES:
+            return
+
         # Start every event with a fresh resolution cache so results never
         # leak across events and the cache cannot grow without bound.
         self._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
@@ -1260,10 +1298,7 @@ class OpenlineageSource(PipelineServiceSource):
                     else:
                         try:
                             _result = message_to_open_lineage_event(json.loads(message.value()))
-                            result = self._filter_event_by_types(
-                                _result,
-                                [EventType.COMPLETE, EventType.RUNNING, EventType.START],
-                            )
+                            result = self._filter_event_by_types(_result, PROCESSED_EVENT_TYPES)
                             if result:
                                 yield result
                         except Exception as e:
@@ -1330,14 +1365,7 @@ class OpenlineageSource(PipelineServiceSource):
                             try:
                                 data = json.loads(payload)
                                 _result = message_to_open_lineage_event(data)
-                                result = self._filter_event_by_types(
-                                    _result,
-                                    [
-                                        EventType.COMPLETE,
-                                        EventType.RUNNING,
-                                        EventType.START,
-                                    ],
-                                )
+                                result = self._filter_event_by_types(_result, PROCESSED_EVENT_TYPES)
                                 if result:
                                     yield result
                             except Exception as e:
@@ -1354,7 +1382,33 @@ class OpenlineageSource(PipelineServiceSource):
         return OpenlineageSource._render_pipeline_name(pipeline_details)
 
     def yield_pipeline_status(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[OMetaPipelineStatus]]:
-        pass
+        pipeline_name = self.get_pipeline_name(pipeline_details)
+        try:
+            update = build_run_update(pipeline_details)
+            if update is None:
+                return
+            pipeline_fqn = fqn.build(
+                metadata=self.metadata,
+                entity_type=Pipeline,
+                service_name=self._current_pipeline_service,
+                pipeline_name=pipeline_name,
+            )
+            if not pipeline_fqn:
+                logger.warning(f"Could not build the FQN of pipeline '{pipeline_name}', skipping its run status.")
+                return
+            stored = self.metadata.list_pipeline_statuses(pipeline_fqn, update.run_key, update.run_key, limit=1)
+            status = merge_run_status(next(iter(stored), None), update)
+            if status:
+                yield Either(left=None, right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=status))
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=pipeline_name,
+                    error=f"Failed to record the run status of pipeline {pipeline_name}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
 
     def mark_pipelines_as_deleted(self):
         """
