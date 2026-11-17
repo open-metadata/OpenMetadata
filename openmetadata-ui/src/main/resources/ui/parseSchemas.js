@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 /* eslint-disable */
+// Its js-yaml 4 pin in package.json: ADR:2026-11-17-ref-parser-js-yaml-resolution-precedes-bare-js-yaml
 const { $RefParser } = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
