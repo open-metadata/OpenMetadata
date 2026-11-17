@@ -176,6 +176,8 @@ export interface ElementChange {
 
 type NamedElement = Record<string, unknown> & { name: string };
 
+const CHILDREN_PROPERTY = 'children';
+
 const isNamedList = (value: unknown): value is NamedElement[] =>
   Array.isArray(value) &&
   value.length > 0 &&
@@ -250,7 +252,12 @@ const namedListChanges = (
         [...new Set([...Object.keys(base), ...Object.keys(element)])]
           .filter((property) => !isEqual(base[property], element[property]))
           .flatMap((property) => {
-            const lists = nestedLists(base[property], element[property]);
+            // Only nested columns are elements; any other list, such as a column's tags, is a
+            // value of its element and reads as one change.
+            const lists =
+              property === CHILDREN_PROPERTY
+                ? nestedLists(base[property], element[property])
+                : undefined;
 
             return lists
               ? namedListChanges(lists[0], lists[1], name)

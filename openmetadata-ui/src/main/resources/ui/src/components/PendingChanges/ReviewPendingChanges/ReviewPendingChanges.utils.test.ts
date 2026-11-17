@@ -343,6 +343,42 @@ describe('ReviewPendingChanges utils', () => {
     ]);
   });
 
+  it("shows a column's tags as one change of the column, by their FQN", () => {
+    const sensitive = {
+      tagFQN: 'PII.Sensitive',
+      name: 'Sensitive',
+      source: 'Classification',
+    };
+    const term = {
+      tagFQN: 'Finance.Sensitive',
+      name: 'Sensitive',
+      source: 'Glossary',
+    };
+    const legacy = { tagFQN: 'Tier.Tier3', name: 'Tier3' };
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([
+        { name: 'id' },
+        { name: 'amount', tags: [term, legacy] },
+      ]),
+      value: JSON.stringify([
+        { name: 'id', tags: [sensitive] },
+        { name: 'amount', tags: [term, sensitive] },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      { element: 'id', property: 'tags', before: '', after: 'PII.Sensitive' },
+      {
+        element: 'amount',
+        property: 'tags',
+        before: 'Finance.Sensitive, Tier.Tier3',
+        after: 'Finance.Sensitive, PII.Sensitive',
+      },
+    ]);
+  });
+
   it('reads the published value of a list field from the asset', () => {
     const [, tags] = groupSuggestions([request('a', true)], {
       tags: [{ tagFQN: 'Tier.Tier3' }, { tagFQN: 'PII.NonSensitive' }],

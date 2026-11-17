@@ -16,7 +16,6 @@ package org.openmetadata.service.governance.approval;
 import static org.openmetadata.service.governance.workflows.Workflow.CHANGE_REQUEST_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
@@ -27,13 +26,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -116,18 +115,22 @@ public final class ChangeRequestVisibility {
     if (!tasks.isEmpty() && !SubjectContext.getSubjectContext(caller).isAdmin()) {
       Map<UUID, ChangeRequest> requests = requestsOf(tasks);
       Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
-      for (Task task : tasks) {
-        ChangeRequest request = requests.get(task.getId());
-        boolean readable =
-            request == null
-                || caller.equals(request.getRequestedBy())
-                || seesAllByEntity.computeIfAbsent(
-                    request.getEntityId(), id -> seesAllOn(caller, request))
-                || mayResolveTask(authorizer, securityContext, task.getId());
-        if (!readable) {
-          task.setPayload(null);
-        }
-      }
+      Set<UUID> undecided =
+          tasks.stream()
+              .map(Task::getId)
+              .filter(
+                  id -> {
+                    ChangeRequest request = requests.get(id);
+                    return request != null
+                        && !caller.equals(request.getRequestedBy())
+                        && !seesAllByEntity.computeIfAbsent(
+                            request.getEntityId(), entityId -> seesAllOn(caller, request));
+                  })
+              .collect(Collectors.toSet());
+      Set<UUID> resolvable = resolvableTasks(authorizer, securityContext, List.copyOf(undecided));
+      tasks.stream()
+          .filter(task -> undecided.contains(task.getId()) && !resolvable.contains(task.getId()))
+          .forEach(task -> task.setPayload(null));
     }
   }
 
@@ -193,16 +196,13 @@ public final class ChangeRequestVisibility {
         WorkflowVariableHandler.getNamespacedVariableName(
             GLOBAL_NAMESPACE, CHANGE_REQUEST_ID_VARIABLE);
     Map<UUID, UUID> requestByRun = new HashMap<>();
-    for (String run :
-        Entity.getCollectionDAO()
-            .workflowInstanceTimeSeriesDAO()
-            .listByIds(runIds.stream().map(UUID::toString).distinct().toList())) {
-      JsonNode node = JsonUtils.readTree(run);
-      String requestId = node.path("variables").path(variable).asText(null);
-      if (requestId != null) {
-        requestByRun.put(UUID.fromString(node.path("id").asText()), UUID.fromString(requestId));
-      }
-    }
+    Entity.getCollectionDAO()
+        .workflowInstanceTimeSeriesDAO()
+        .listRunRequests(runIds.stream().map(UUID::toString).distinct().toList(), variable)
+        .forEach(
+            run ->
+                requestByRun.put(
+                    UUID.fromString(run.runId()), UUID.fromString(run.changeRequestId())));
     return requestByRun;
   }
 
@@ -265,22 +265,33 @@ public final class ChangeRequestVisibility {
   private static Set<UUID> reviewableTasks(
       Authorizer authorizer, SecurityContext securityContext, List<ChangeRequest> requests) {
     String caller = securityContext.getUserPrincipal().getName();
-    List<EntityReference> tasks =
+    return resolvableTasks(
+        authorizer,
+        securityContext,
         requests.stream()
             .filter(r -> r.getTaskId() != null && !caller.equals(r.getRequestedBy()))
-            .map(r -> new EntityReference().withId(r.getTaskId()).withType(Entity.TASK))
-            .toList();
-    Set<UUID> reviewable = new HashSet<>();
-    if (!tasks.isEmpty()) {
+            .map(ChangeRequest::getTaskId)
+            .toList());
+  }
+
+  // The tasks the caller may resolve, loaded in one batch.
+  private static Set<UUID> resolvableTasks(
+      Authorizer authorizer, SecurityContext securityContext, List<UUID> taskIds) {
+    Set<UUID> resolvable = new HashSet<>();
+    if (!taskIds.isEmpty()) {
       TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-      List<Task> loaded = Entity.getEntities(tasks, TASK_FIELDS, Include.ALL);
+      List<EntityReference> references =
+          taskIds.stream()
+              .map(id -> new EntityReference().withId(id).withType(Entity.TASK))
+              .toList();
+      List<Task> loaded = Entity.getEntities(references, TASK_FIELDS, Include.ALL);
       for (Task task : loaded) {
         if (mayResolve(repository, authorizer, securityContext, task)) {
-          reviewable.add(task.getId());
+          resolvable.add(task.getId());
         }
       }
     }
-    return reviewable;
+    return resolvable;
   }
 
   private static boolean mayResolve(
