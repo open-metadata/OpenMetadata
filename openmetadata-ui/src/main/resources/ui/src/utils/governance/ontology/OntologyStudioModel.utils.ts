@@ -156,8 +156,17 @@ export const getDatatypeLabel = (property: OntologyProperty): string => {
   return range ? getIriLocalName(range) : 'string';
 };
 
+/**
+ * Data types whose range is not the xsd type of the same name. OWL 2 has no xsd:date, so a Date
+ * property ranges over om:date (ADR:2026-11-16-ontology-date-properties-range-over-om-date).
+ */
+const DATATYPE_IRIS: Partial<Record<StudioDatatype, string>> = {
+  date: 'https://open-metadata.org/ontology/date',
+  enum: `${XSD}string`,
+};
+
 export const getDatatypeIri = (datatype: StudioDatatype): string =>
-  `${XSD}${datatype === 'enum' ? 'string' : datatype}`;
+  DATATYPE_IRIS[datatype] ?? `${XSD}${datatype}`;
 
 const restrictionOf = (
   axiom: OntologyAxiom
