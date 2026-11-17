@@ -1359,6 +1359,8 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
                 new OperationContext(Entity.TASK, patch), new TaskResourceContext(original)));
     // Authorize before simulating the patch: its errors quote the stored task.
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ALL);
+    // The response returns the task with its proposed values.
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
     Task patched = JsonUtils.applyPatch(original, patch, Task.class);
     validateTaskPatch(original, patched, isAdmin(securityContext));
     JsonPatch effectivePatch = keepWorkflowBinding(original, patched, patch);
@@ -1367,20 +1369,13 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             new AuthRequest(
                 new OperationContext(Entity.TASK, effectivePatch),
                 new TaskResourceContext(original)));
-    Response response =
-        patchInternal(
-            uriInfo,
-            securityContext,
-            effectiveAuthRequests,
-            AuthorizationLogic.ALL,
-            id,
-            effectivePatch);
-    // JAX-RS carries the patched task as an untyped Response entity.
-    if (response.getEntity() instanceof Task patchedTask) {
-      ChangeRequestVisibility.withoutUnreadableValues(
-          authorizer, securityContext, List.of(patchedTask));
-    }
-    return response;
+    return patchInternal(
+        uriInfo,
+        securityContext,
+        effectiveAuthRequests,
+        AuthorizationLogic.ALL,
+        id,
+        effectivePatch);
   }
 
   private boolean isAdmin(SecurityContext securityContext) {
@@ -2325,6 +2320,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     // requires — otherwise a caller denied access to the entity reads its task through this
     // endpoint (issue #18158). A task with no target has nothing to gate.
     authorizeViewOnAboutEntity(securityContext, task.getAbout());
+    // The response also returns the task's proposed values, which only those who may read its
+    // change request see.
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
 
     TaskComment comment =
         new TaskComment()
@@ -2334,8 +2332,6 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             .withCreatedAt(System.currentTimeMillis());
 
     Task updatedTask = repository.addComment(task, comment);
-    ChangeRequestVisibility.withoutUnreadableValues(
-        authorizer, securityContext, List.of(updatedTask));
     return Response.ok(updatedTask)
         .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
         .build();
@@ -2369,11 +2365,10 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     String userName = securityContext.getUserPrincipal().getName();
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
 
     Task updatedTask =
         repository.editComment(task, commentId, updateComment.getMessage(), userName);
-    ChangeRequestVisibility.withoutUnreadableValues(
-        authorizer, securityContext, List.of(updatedTask));
     return Response.ok(updatedTask).build();
   }
 
@@ -2410,10 +2405,9 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     Fields fields = getFields(FIELDS);
     Task task = repository.get(uriInfo, id, fields);
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
 
     Task updatedTask = repository.deleteComment(task, commentId, userName, isAdmin);
-    ChangeRequestVisibility.withoutUnreadableValues(
-        authorizer, securityContext, List.of(updatedTask));
     return Response.ok(updatedTask).build();
   }
 

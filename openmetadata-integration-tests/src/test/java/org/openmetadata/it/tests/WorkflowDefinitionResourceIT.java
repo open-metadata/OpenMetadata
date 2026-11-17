@@ -9005,14 +9005,17 @@ public class WorkflowDefinitionResourceIT {
         "/v1/tasks/count?aboutEntity="
             + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
     assertEquals(1, openTaskCount(reader, countPath));
-    String commented =
-        reader
-            .getHttpClient()
-            .executeForString(
-                HttpMethod.POST,
-                taskPath + "/comments",
-                new CreateTaskComment().withMessage("a comment"));
-    assertFalse(commented.contains("held proposal"));
+    OpenMetadataException commentRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                reader
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        taskPath + "/comments",
+                        new CreateTaskComment().withMessage("a comment")));
+    assertEquals(403, commentRefused.getStatusCode(), commentRefused.getMessage());
     OpenMetadataException versionsRefused =
         assertThrows(
             OpenMetadataException.class,
@@ -9035,6 +9038,14 @@ public class WorkflowDefinitionResourceIT {
               .executeForString(HttpMethod.GET, entityTasksPath, null)
               .contains("held proposal"));
       assertEquals(1, openTaskCount(allowed, countPath));
+      assertTrue(
+          allowed
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST,
+                  taskPath + "/comments",
+                  new CreateTaskComment().withMessage("a comment"))
+              .contains("held proposal"));
     }
 
     // A revision closes the first review task and unlinks it from the request; its value still
