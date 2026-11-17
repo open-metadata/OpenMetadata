@@ -12,6 +12,7 @@
  */
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../constants/ResizablePanel.constants';
 
 import { DataProduct as DataProductIcon } from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
@@ -197,11 +198,9 @@ const getDataProductPreviewSecondPanel = (
       key={previewAsset.details.id ?? previewAsset.details.fullyQualifiedName}
     />
   ),
-  minWidth: 400,
-  flex: 0.33,
-  // Both minWidths can exceed the container, so reflex splits it by ratio; tw:min-w-100 keeps 400px.
+  ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
   className:
-    'entity-summary-resizable-right-panel-container domain-resizable-panel-container tw:min-w-100',
+    'entity-summary-resizable-right-panel-container domain-resizable-panel-container',
 });
 
 const getDataProductNonVersionTabs = ({

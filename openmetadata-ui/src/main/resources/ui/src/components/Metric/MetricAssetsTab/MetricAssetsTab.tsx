@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { useMemo, useState } from 'react';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../../constants/ResizablePanel.constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../enums/Assets.enum';
 import { Metric } from '../../../generated/entity/data/metric';
@@ -84,11 +85,10 @@ export const MetricAssetsTab = ({
             }
           />
         ),
-        // Both minWidths can exceed the container, so reflex splits it by ratio; tw:min-w-100 keeps 400px.
+        ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
         className:
-          'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container tw:min-w-100',
+          'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
         flex: 0.3,
-        minWidth: 400,
         wrapInCard: false,
       }}
     />
