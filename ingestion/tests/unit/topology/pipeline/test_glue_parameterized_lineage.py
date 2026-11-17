@@ -473,6 +473,45 @@ df.write.format("snowflake").option("dbtable", f"CONTRACT_{{table}}").save()
         assert targets == expected_targets
 
     @pytest.mark.parametrize(
+        ("options_setup", "expected_targets"),
+        [
+            pytest.param('opts = ["KNOWN"]; opts.append("MARKET")', [], id="append"),
+            pytest.param('opts = ["KNOWN"]; opts.extend(["MARKET"])', [], id="extend"),
+            pytest.param('opts = ["KNOWN"]; opts.insert(1, "MARKET")', [], id="insert"),
+            pytest.param('opts = ["KNOWN"]; alias = opts; alias.append("MARKET")', [], id="alias_append"),
+            pytest.param(
+                'opts = ["KNOWN"]; alias = opts; nested = alias; nested.extend(["MARKET"])',
+                [],
+                id="chained_alias_extend",
+            ),
+            pytest.param('original = ["KNOWN"]; opts = original; original.append("MARKET")', [], id="source_append"),
+            pytest.param('opts = ["KNOWN"]; opts[0] = "MARKET"', [], id="item_assignment"),
+            pytest.param('opts = ["KNOWN", "MARKET"]', [SnowflakeRef(table="CONTRACT_DE")], id="unchanged_list"),
+            pytest.param(
+                'opts = ["KNOWN", "MARKET"]; unrelated = []; unrelated.append("OTHER")',
+                [SnowflakeRef(table="CONTRACT_DE")],
+                id="unrelated_list_mutation",
+            ),
+        ],
+    )
+    def test_requested_options_list_mutations(self, options_setup: str, expected_targets: list[SnowflakeRef]):
+        script = f"""
+import sys
+from awsglue.utils import getResolvedOptions
+
+{options_setup}
+args = getResolvedOptions(sys.argv, opts)
+market = args.get("MARKET", "FALLBACK")
+df.write.format("snowflake").option("dbtable", f"CONTRACT_{{market}}").save()
+"""
+        ctx = ParameterContext.from_mappings(job_args={"--KNOWN": "x", "--MARKET": "DE"})
+
+        _, targets = parse_snowflake_refs(script, context=ctx)
+
+        assert targets == expected_targets
+        assert parse_glue_script(script, context=ctx).snowflake_targets == expected_targets
+
+    @pytest.mark.parametrize(
         ("argv_statement", "expected_targets"),
         [
             pytest.param('sys.argv.extend(["--MARKET", "US"])', [], id="extended"),

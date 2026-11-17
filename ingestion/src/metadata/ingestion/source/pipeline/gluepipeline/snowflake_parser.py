@@ -263,7 +263,7 @@ class _Bindings:
             self._bindings.setdefault((self._owner(self._scope_of(function), name), name), []).append(binding)
         for node in ast.walk(tree):
             self._index_change(node)
-        self._carry_changes_to_aliased_dicts()
+        self._carry_changes_to_aliases()
 
     # --- indexing
 
@@ -316,8 +316,8 @@ class _Bindings:
             container, binding = self._module, replace(binding, is_remote=container is not self._module)
         self._bindings.setdefault((container, name), []).append(binding)
 
-    def _carry_changes_to_aliased_dicts(self) -> None:
-        """`opts = sf_options; opts["k"] = v` changes the dict sf_options names too."""
+    def _carry_changes_to_aliases(self) -> None:
+        """A write through an alias must also invalidate its source binding."""
         aliases = [
             (owner, name, binding.value)
             for (owner, name), bindings in self._bindings.items()
@@ -341,7 +341,11 @@ class _Bindings:
             target, keys = node.value, [node.slice]
         elif isinstance(node, ast.AugAssign) and isinstance(node.op, ast.BitOr):
             target, keys = node.target, _changed_keys(node.value)
-        elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in MUTATING_METHODS:
+        elif (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and (node.func.attr in MUTATING_METHODS or node.func.attr in LIST_MUTATING_METHODS)
+        ):
             target, keys = node.func.value, _method_changed_keys(node)
         else:
             return
@@ -521,7 +525,7 @@ def _method_changed_keys(call: ast.Call) -> list[ast.expr | None]:
     if method == "update":
         keys = [key for arg in call.args for key in _changed_keys(arg)]
         return keys + [ast.Constant(keyword.arg) if keyword.arg else None for keyword in call.keywords]
-    return [None]  # popitem(), clear()
+    return [None]
 
 
 def _callee_name(func: ast.expr) -> str | None:
