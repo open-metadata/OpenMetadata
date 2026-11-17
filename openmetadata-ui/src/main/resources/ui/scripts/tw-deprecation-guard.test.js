@@ -210,6 +210,9 @@ for (const staged of [true, false]) {
             'const chain = "tw:[&_button]:bg-blue-50";',
             'const hex = { color: "#FF0000" };',
             'const el = <div style={{ margin: 8 }} />;',
+            'const trailing = "tw:bg-blue-50!";',
+            'const darkOnly = "tw:dark:bg-blue-500";',
+            '// matches brand #3E7BC2 — documentation, not a rendered colour',
             '',
           ].join('\n')
         );
@@ -222,6 +225,9 @@ for (const staged of [true, false]) {
         assert.ok(result.out.includes('Foo.tsx:3'), result.out); // variant chain
         assert.ok(result.out.includes('[hex-colour]'), result.out);
         assert.ok(result.out.includes('[inline-style]'), result.out);
+        assert.ok(result.out.includes('Foo.tsx:6'), result.out); // trailing ! still fails
+        assert.ok(!result.out.includes('Foo.tsx:7'), result.out); // dark: override allowed
+        assert.ok(!result.out.includes('Foo.tsx:8'), result.out); // hex in comment allowed
       } finally {
         fs.rmSync(dir, { recursive: true, force: true });
       }

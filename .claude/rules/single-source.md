@@ -32,7 +32,7 @@ Every one started as "quicker to write than to find". This rule makes finding ma
 | Date range | `common/DatePickerMenu` / ui-core `DateRangePicker` | hand-rolled preset pickers |
 | Pagination | `usePaging` + `common/NextPrevious` | per-feature pagination |
 | Search input | `common/SearchBarComponent` | per-file `<Input>` + hand-rolled debounce |
-| Owner/user display | `common/OwnerLabel` / `common/ProfilePicture` | — |
+| Owner/user display | ui-core `Owner` / `OwnerChip` (`application/owner`) | per-feature owner renderers |
 | Rich text preview | one previewer (`RichTextEditorPreviewerV1`) | another `*New`/`*V2` previewer |
 
 ## Variants are forks

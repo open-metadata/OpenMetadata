@@ -327,8 +327,8 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
   is a prop/variant on the original, or a core-component extension. Name the existing component in
   the finding. A sanctioned migration's successor is done only when the old variant's importer count
   is zero and the file is deleted.
-- **No new page scaffold.** New pages use the ui-core `PageLayout` (`ObservabilityPageShell` for
-  observability; `PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header` +
+- **No new page scaffold.** New pages use the ui-core `PageLayout`
+  (`PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header`/`.PageHeader` +
   `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
   mechanism is a finding.
 - **antd → core migrations keep behavior.** List each implicit antd behavior or default the call

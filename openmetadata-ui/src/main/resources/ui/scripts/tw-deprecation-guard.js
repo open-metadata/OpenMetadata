@@ -142,9 +142,19 @@ async function loadPaletteCore() {
 function hasRawPaletteClass(line) {
   const tokens = line.match(/tw:[^\s"'\\`]+/g) || [];
   return tokens.some((token) => {
-    const last = token.slice(3).split(':').pop().replace(/^!/, '');
-    return PALETTE_CORE.test(last);
+    const segments = token.slice(3).split(':');
+    // Strip Tailwind's important modifier in both positions (tw:!bg-x, tw:bg-x!).
+    const last = segments.pop().replace(/^!/, '').replace(/!$/, '');
+    // Mirror the ESLint rule's exemption: a `dark:` class is a deliberate
+    // dark-only override, not a bug (openmetadata-ui-patterns.mjs classify()).
+    return !segments.includes('dark') && PALETTE_CORE.test(last);
   });
+}
+
+// A comment explaining a colour choice (e.g. "// matches brand #3E7BC2") is
+// documentation, not a rendered colour — the hex check skips comment lines.
+function isCommentLine(line) {
+  return /^\s*(\/\/|\/?\*)/.test(line);
 }
 
 const STYLE_LINE_CHECKS = [
@@ -156,6 +166,7 @@ const STYLE_LINE_CHECKS = [
   {
     name: 'hex-colour',
     test: (line) =>
+      !isCommentLine(line) &&
       /(?<!href=["'\\`])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b(?=[^\w]|$)/.test(line),
     why: 'hardcoded hex colour — use a semantic design token (docs/colors.md)',
   },
