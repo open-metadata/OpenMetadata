@@ -196,9 +196,15 @@ public class ListRowAuthorizationIT {
             new CreateFolder()
                 .withName(ns.prefix("visibleSub"))
                 .withParent(parent.getFullyQualifiedName()));
+    folders.create(
+        new CreateFolder()
+            .withName(ns.prefix("hiddenGrandchild"))
+            .withParent(visible.getFullyQualifiedName())
+            .withTags(List.of(tag(secret))));
 
     JsonNode contents = list(restricted, contentsPath(parent));
     assertEquals(List.of(visible.getName()), names(contents.path("folders")));
+    assertEquals(List.of(), names(contents.path("folders").path(0).path("children")));
     assertEquals(1, contents.path("childrenFolderCount").asInt(), contents.toString());
     assertEquals(List.of(visible.getName()), names(contents.path("folder").path("children")));
     JsonNode got = list(restricted, folderPath(parent) + "?fields=children");

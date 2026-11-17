@@ -212,6 +212,7 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
     Folder folder = getInternal(uriInfo, securityContext, id, "parent,children", include);
     List<Folder> folders =
         readableFolders(securityContext, repository.getChildFolderEntities(folder));
+    retainViewableReferences(securityContext, getFields("children"), folders);
     countVisibleFiles(securityContext, folders);
     List<ContextFile> files =
         visibleFiles(securityContext, repository.getChildFileEntities(folder));
