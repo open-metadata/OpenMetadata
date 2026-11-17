@@ -65,6 +65,16 @@ jest.mock(
   })
 );
 
+jest.mock('../../../../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn(
+    ({ displayName, userName }: { displayName?: string; userName: string }) => (
+      <span data-testid={`user-popover-${userName}`}>
+        {displayName || userName}
+      </span>
+    )
+  )
+);
+
 type Column = { id: string; label: string };
 
 jest.mock('@openmetadata/ui-core-components', () => {
@@ -175,6 +185,7 @@ const USER_DETAILS = {
     id: 'u1',
     name: 'alice',
     displayName: 'Alice',
+    email: 'alice@example.com',
     teams: [{ id: 't1', name: 'Data', type: 'team' }],
     roles: [
       { id: 'r1', name: 'DataSteward', type: 'role' },
@@ -232,6 +243,12 @@ describe('PersonaUsersTab', () => {
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('DataSteward, DataConsumer')).toBeInTheDocument();
     expect(screen.getAllByText('--')).toHaveLength(2);
+    // Each name links to the user through the hover card, keyed by login.
+    expect(screen.getByTestId('user-popover-alice')).toBeInTheDocument();
+    // Email column: the email, or the login when the user has none.
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument();
+    expect(screen.getByTestId('user-popover-bob')).toHaveTextContent('bob');
+    expect(screen.getAllByText('bob')).toHaveLength(2);
   });
 
   it('skips users missing from the search index', async () => {
