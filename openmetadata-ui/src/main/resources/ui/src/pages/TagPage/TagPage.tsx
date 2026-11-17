@@ -20,8 +20,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
 import {
-  Brush01,
   Edit01,
+  ImageBrush,
   Tag01,
   TagOff,
   Trash01,
@@ -544,7 +544,7 @@ const TagPage = () => {
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={Brush01}
+                icon={ImageBrush}
                 id="rename-button"
                 name={t('label.style')}
               />

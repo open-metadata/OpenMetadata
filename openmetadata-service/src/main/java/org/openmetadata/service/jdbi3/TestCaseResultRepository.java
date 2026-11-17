@@ -68,7 +68,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
   public static String INCLUDE_SEARCH_FIELDS =
-      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,duration,errorDetails,evaluationScope";
+      "id,testCaseFQN,timestamp,testCaseStatus,result,sampleData,testResultValue,passedRows,failedRows,passedRowsPercentage,failedRowsPercentage,incidentId,maxBound,minBound,duration,errorDetails,evaluationScope,configuredMaxBound,configuredMinBound,appliedThreshold";
 
   public enum OperationType {
     CREATE,
@@ -452,6 +452,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       dimResult.setTimestamp(testCaseResult.getTimestamp());
       // A dimension is a group of the rows the run read, so it was measured on the same scope.
       dimResult.setEvaluationScope(testCaseResult.getEvaluationScope());
+      // The threshold is the run's, not the group's: every dimension was judged by the same one.
+      dimResult.setAppliedThreshold(testCaseResult.getAppliedThreshold());
 
       // Store each dimensional result
       dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);

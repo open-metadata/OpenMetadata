@@ -1,16 +1,17 @@
 # A reference list names only entities the caller may view
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial); v2 2026-11-16 (a folder's `children`)
 - **Deciders:** Mohit Yadav
 - **Guard:** `DomainIsolationIT.test_referenceListsLeaveOutEntitiesOfAnotherDomain`,
-  `ReferenceListWriteBackIT`, `ShownReferenceListsTest`
+  `ReferenceListWriteBackIT`, `ShownReferenceListsTest`,
+  `ListRowAuthorizationIT.aFolderContentsLeavesOutSubfoldersADenyRuleRefuses`
 - **Related:** open-metadata/openmetadata-collate#8018
 
 ## Context
 Some fields list references to other entities: a user's `owns` and `follows`, a team's `owns`,
-`children`, `descendantTeams` and `parents`, a schema's `tables` and a database's
-`databaseSchemas`. Each reference carries its target's name and description, so a list names only
+`children`, `descendantTeams` and `parents`, a schema's `tables`, a database's
+`databaseSchemas` and a Context Center folder's `children`. Each reference carries its target's name and description, so a list names only
 the targets the caller may view, as their own endpoints decide. A write keeps the entries its
 caller was not shown.
 

@@ -113,12 +113,14 @@ const TestSuiteHeaderTitle = ({
           {name}
         </Typography>
       </Box>
-      <CopyButton
-        testId="entity-header-copy-button"
-        tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
-        value={globalThis.location.href}
-      />
-      <LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />
+      <Box align="center" gap={1}>
+        <CopyButton
+          testId="entity-header-copy-button"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
+          value={globalThis.location.href}
+        />
+        <LearningIcon pageId={LEARNING_PAGE_IDS.TEST_SUITE} />
+      </Box>
     </Box>
   );
 };

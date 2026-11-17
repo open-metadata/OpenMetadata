@@ -72,7 +72,26 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
 - **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
   `text:TextDataset`; no OpenMetadata code issues `text:query`.
 
+### Docker Compose
+
+`docker/docker-compose-quickstart/docker-compose-fuseki.yml` adds Fuseki to the release compose
+file and points `execute-migrate-all` and `openmetadata-server` at it:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-fuseki.yml up -d
+docker compose -f docker-compose-postgres.yml -f docker-compose-fuseki.yml up -d
+```
+
+`FUSEKI_ADMIN_PASSWORD` sets the image's `ADMIN_PASSWORD` and OpenMetadata's
+`RDF_REMOTE_PASSWORD` to the same value (default `admin`).
+
 ### Upgrading from the in-repo image
+
+Compose files written for OpenMetadata 2.0.0 through 2.1.0-rc1 do not start the published image:
+they pass `FUSEKI_ADMIN_PASSWORD` and `FUSEKI_OPENMETADATA_PASSWORD` to the container, which reads
+only `ADMIN_PASSWORD` and exits with `Set ADMIN_PASSWORD, or FUSEKI_MANAGE_SHIRO=false with your
+own shiro.ini`. They also mount the data volume at `/fuseki-data`. Replace the `fuseki` service
+with the one in `docker-compose-fuseki.yml`, then move or rebuild the data as described below.
 
 The retired `docker/rdf-store/` image stored TDB2 at `/fuseki-data/<dataset>`. Mounting that volume
 at `/fuseki` does not fail: it silently starts **empty** datasets. Verify data survival with a
