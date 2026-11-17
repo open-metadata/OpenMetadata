@@ -91,7 +91,7 @@ const CodeEditor = ({
           </div>
           {showCopyButton && (
             <div
-              className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
+              className="tw:ml-auto tw:py-1 tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
               <CopyButton
                 size="sm"
