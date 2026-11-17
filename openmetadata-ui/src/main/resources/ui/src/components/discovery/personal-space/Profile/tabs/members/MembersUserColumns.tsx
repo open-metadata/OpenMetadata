@@ -36,7 +36,7 @@ import ProfileHashLink from './ProfileHashLink';
 
 type GoTo = (target: ProfileHashTarget) => void;
 
-// Username cell shared by the Users, Online-Users and Team-detail member tables —
+// Name cell shared by the Users, Online-Users and Team-detail member tables —
 // a UserPopOverCard that both links (href for new-tab) and navigates in-app.
 export const UserNameCell: FC<{ record: User; goTo: GoTo }> = ({
   record,
@@ -57,8 +57,6 @@ export const UserNameCell: FC<{ record: User; goTo: GoTo }> = ({
   return (
     <UserPopOverCard
       showUserName
-      // The "Username" column shows the login; the "Name" column beside it shows the display name.
-      displayName={record.name}
       profileWidth={16}
       to={toHashLocation(target)}
       userName={record.name}

@@ -36,13 +36,7 @@ import { getSettingsLink } from './SettingsModalLinkUtils';
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
     <div className="w-max-full">
-      <UserPopOverCard
-        showUserName
-        // The "Username" column shows the login; the "Name" column beside it shows the display name.
-        displayName={user.name}
-        profileWidth={16}
-        userName={user.name}
-      />
+      <UserPopOverCard showUserName profileWidth={16} userName={user.name} />
     </div>
   ) : (
     getEntityName(user)
@@ -53,9 +47,9 @@ export const commonUserDetailColumns = (
   isLoading?: boolean
 ): ColumnsType<User> => [
   {
-    title: t('label.username'),
-    dataIndex: 'username',
-    key: 'username',
+    title: t('label.name'),
+    dataIndex: 'name',
+    key: 'name',
     ellipsis: { showTitle: false },
     render: (_, record) => (
       <Box
@@ -84,11 +78,11 @@ export const commonUserDetailColumns = (
     ),
   },
   {
-    title: t('label.name'),
-    dataIndex: 'name',
-    key: 'name',
+    title: t('label.email'),
+    dataIndex: 'email',
+    key: 'email',
     ellipsis: { showTitle: false },
-    render: (_, record) => getEntityName(record),
+    render: (_, record) => record.email,
   },
   {
     title: t('label.team-plural'),

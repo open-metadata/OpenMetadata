@@ -284,13 +284,14 @@ describe('MembersUsersPanel', () => {
     });
   });
 
-  it('shows the login, not the display name, in the username column', async () => {
+  it('shows the display name in the name column and the email beside it', async () => {
     renderComponent();
 
-    const usernameCell = await screen.findByTestId('user1');
+    const nameCell = await screen.findByTestId('user1');
 
-    expect(usernameCell).toHaveTextContent('user1');
-    expect(usernameCell).not.toHaveTextContent('User One');
+    expect(nameCell).toHaveTextContent('User One');
+    expect(screen.getByText('label.email')).toBeInTheDocument();
+    expect(screen.queryByText('label.username')).not.toBeInTheDocument();
   });
 
   // Regression: the add-user button is published as a header action and the

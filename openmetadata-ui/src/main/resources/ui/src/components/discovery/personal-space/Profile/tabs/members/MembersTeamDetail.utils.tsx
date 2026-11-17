@@ -218,22 +218,22 @@ export const getUserColumns = (
   onRemoveUser: (record: User) => Promise<boolean>
 ): ColumnsType<User> => [
   {
-    title: t('label.username'),
+    title: t('label.name'),
     dataIndex: 'name',
-    key: 'username',
+    key: 'name',
     ellipsis: true,
     render: (_: unknown, record: User) => (
       <UserNameCell goTo={goTo} record={record} />
     ),
   },
   {
-    title: t('label.name'),
-    dataIndex: 'displayName',
-    key: 'name',
+    title: t('label.email'),
+    dataIndex: 'email',
+    key: 'email',
     ellipsis: true,
     render: (_: unknown, record: User) => (
       <Typography className="tw:truncate tw:block tw:max-w-full">
-        {getEntityName(record)}
+        {record.email}
       </Typography>
     ),
   },

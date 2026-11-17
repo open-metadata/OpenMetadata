@@ -10,17 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { EntityReference } from '../generated/entity/type';
 import { userCellRenderer } from './Users.util';
 import { isMaskedEmail } from './UsersPureUtils';
 
 jest.mock('../components/common/PopOverCard/UserPopOverCard', () =>
-  jest.fn().mockImplementation(({ displayName }) => <span>{displayName}</span>)
+  jest.fn().mockImplementation(({ userName }) => <span>{userName}</span>)
 );
 
 describe('User Utils -- userCellRenderer', () => {
-  it('should keep the login in the username column', () => {
+  it('should leave the display name to UserPopOverCard', () => {
     const user: EntityReference = {
       id: '1',
       name: 'jdoe',
@@ -30,8 +31,10 @@ describe('User Utils -- userCellRenderer', () => {
 
     render(<>{userCellRenderer(user)}</>);
 
-    expect(screen.getByText('jdoe')).toBeInTheDocument();
-    expect(screen.queryByText('John Doe')).not.toBeInTheDocument();
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.not.objectContaining({ displayName: expect.anything() }),
+      expect.anything()
+    );
   });
 });
 
