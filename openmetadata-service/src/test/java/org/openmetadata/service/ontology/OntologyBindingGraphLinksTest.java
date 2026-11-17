@@ -57,6 +57,37 @@ class OntologyBindingGraphLinksTest {
   }
 
   @Test
+  void theAddedConceptsAndEdgesAreOfferedAsFilters() {
+    final UUID table = UUID.randomUUID();
+    when(bindings.linksForAsset(ACCESS, "table", table))
+        .thenReturn(
+            new OntologyAssetConceptLinks()
+                .withLinks(
+                    List.of(
+                        new OntologyAssetConceptLink().withConcept(concept("Patient")),
+                        new OntologyAssetConceptLink().withConcept(concept("Visit")))));
+    final String rdfGraph =
+        rootGraph("table", table)
+            .replace(
+                "\"truncated\":false}",
+                "\"truncated\":false,\"filterOptions\":{\"entityTypes\":"
+                    + "[{\"id\":\"table\",\"label\":\"Table\",\"count\":1}],"
+                    + "\"relationshipTypes\":[]}}");
+
+    final JsonNode filters =
+        merge(rdfGraph, request(table, "table", 2, Set.of())).path("filterOptions");
+
+    assertEquals(1, option(filters.path("entityTypes"), "table").path("count").asInt());
+    final JsonNode concepts = option(filters.path("entityTypes"), "ontologyConcept");
+    assertEquals("Ontology Concept", concepts.path("label").asText());
+    assertEquals(2, concepts.path("count").asInt());
+    final JsonNode bound =
+        option(filters.path("relationshipTypes"), OntologyBindingGraphLinks.BOUND_ASSET);
+    assertEquals("Bound Asset", bound.path("label").asText());
+    assertEquals(2, bound.path("count").asInt());
+  }
+
+  @Test
   void aConceptGraphGainsEveryBoundAssetAcrossPages() {
     final EntityReference patient = concept("Patient");
     final EntityReference first = asset("table", "patients");
@@ -193,6 +224,15 @@ class OntologyBindingGraphLinksTest {
       }
     }
     throw new AssertionError("No node " + id + " in " + graph);
+  }
+
+  private static JsonNode option(final JsonNode options, final String id) {
+    for (final JsonNode option : options) {
+      if (id.equals(option.path("id").asText())) {
+        return option;
+      }
+    }
+    throw new AssertionError("No filter option " + id + " in " + options);
   }
 
   private static EntityReference concept(final String name) {
