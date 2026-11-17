@@ -120,7 +120,7 @@ describe('CustomPropertyTable', () => {
     expect(within(row).getByTestId('property-type')).toHaveTextContent(
       'label.string'
     );
-    expect(within(row).getByTestId('no-config')).toHaveTextContent('—');
+    expect(within(row).getByTestId('no-config')).toHaveTextContent('--');
   });
 
   it('caps enum values at three chips and counts the rest', () => {

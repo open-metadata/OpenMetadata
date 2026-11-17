@@ -102,9 +102,10 @@ public final class ApprovedGlossaryTermGuard {
   }
 
   /**
-   * For each target {@link #checkNewlyApplied} would reject, the message it would reject with. Terms
-   * are looked up once for every target, and stored labels are read only when a term that is not
-   * Approved reaches a target that the loaded state does not show holding it.
+   * For each target {@link #checkNewlyApplied} would reject, the message it would reject with. Only
+   * terms a target does not already hold are looked up, in one batch for every target, and stored
+   * labels are read only when a term that is not Approved reaches a target that the loaded state
+   * does not show holding it.
    */
   public static Map<String, String> rejectionsByTarget(
       Map<String, List<TagLabel>> requested, Map<String, List<TagLabel>> held) {
@@ -146,17 +147,30 @@ public final class ApprovedGlossaryTermGuard {
   private static Rejected rejectedTerms(
       Map<String, List<TagLabel>> requested, Map<String, List<TagLabel>> held) {
     Map<String, Set<String>> requestedTerms = appliedTermsByTarget(requested);
-    Map<String, GlossaryTerm> unapprovedByHash =
-        TagLabelUtil.unapprovedGlossaryTerms(allTerms(requestedTerms)).stream()
-            .collect(Collectors.toMap(term -> termHash(term.getFullyQualifiedName()), t -> t));
     Map<String, Set<String>> newlyApplied = termHashesByTarget(requestedTerms);
+    // Held terms are dropped before any lookup, so an edit that applies no new term reads nothing.
+    dropHeld(newlyApplied, termHashesByTarget(appliedTermsByTarget(held)));
+    Map<String, GlossaryTerm> unapprovedByHash = unapprovedByHash(requestedTerms, newlyApplied);
     newlyApplied.values().forEach(hashes -> hashes.retainAll(unapprovedByHash.keySet()));
     newlyApplied.values().removeIf(Set::isEmpty);
-    dropHeld(newlyApplied, termHashesByTarget(appliedTermsByTarget(held)));
     if (!newlyApplied.isEmpty()) {
       dropHeld(newlyApplied, storedTermHashesByTarget(newlyApplied.keySet()));
     }
     return new Rejected(newlyApplied, unapprovedByHash);
+  }
+
+  // Looks up only the terms some target newly applies, in one batch.
+  private static Map<String, GlossaryTerm> unapprovedByHash(
+      Map<String, Set<String>> requestedTerms, Map<String, Set<String>> newlyApplied) {
+    Set<String> newHashes = allTerms(newlyApplied);
+    Set<String> newTerms =
+        allTerms(requestedTerms).stream()
+            .filter(fqn -> newHashes.contains(termHash(fqn)))
+            .collect(Collectors.toSet());
+    return TagLabelUtil.unapprovedGlossaryTerms(newTerms).stream()
+        .collect(
+            Collectors.toMap(
+                term -> termHash(term.getFullyQualifiedName()), term -> term, (a, b) -> a));
   }
 
   /** An entity with its tagged inline fields, by the container path that holds them. */

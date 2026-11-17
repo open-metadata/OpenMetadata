@@ -57,20 +57,42 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children?: ReactNode;
     onPress?: () => void;
   }) => <button onClick={onPress}>{children}</button>,
-  PageLayout: {
-    PageHeader: ({
-      title,
-      actions,
+  PageLayout: Object.assign(
+    ({
+      children,
+      className,
+      'data-testid': testId = 'page-layout',
     }: {
-      title: string;
-      actions?: ReactNode;
+      children?: ReactNode;
+      className?: string;
+      'data-testid'?: string;
     }) => (
-      <div data-testid="page-header">
-        <span>{title}</span>
-        {actions}
+      <div className={className} data-testid={testId}>
+        {children}
       </div>
     ),
-  },
+    {
+      Content: ({ children }: { children?: ReactNode }) => (
+        <main>{children}</main>
+      ),
+      Header: ({ children }: { children?: ReactNode }) => (
+        <header>{children}</header>
+      ),
+
+      PageHeader: ({
+        title,
+        actions,
+      }: {
+        title: string;
+        actions?: ReactNode;
+      }) => (
+        <div data-testid="page-header">
+          <span>{title}</span>
+          {actions}
+        </div>
+      ),
+    }
+  ),
 }));
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
@@ -252,12 +274,12 @@ describe('AlertsPage', () => {
     expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
-  it('uses the shared observability page shell when loaded', () => {
+  it('renders the core page layout with its own stacking context when loaded', () => {
     mockUseObservabilityAlerts.mockReturnValue(getAlertsState());
 
     renderAlertsPage();
 
-    expect(screen.getByTestId('observability-page-shell')).toBeInTheDocument();
+    expect(screen.getByTestId('page-layout')).toHaveClass('tw:isolate');
     expect(screen.getByTestId('page-header')).toBeInTheDocument();
     expect(screen.getByTestId('alerts-table')).toBeInTheDocument();
   });

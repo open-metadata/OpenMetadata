@@ -36,6 +36,7 @@ import {
   getTokenExpiry,
   getTokenIssuedAtMs,
 } from '../../../../../../utils/BotsUtils';
+import { formatDateTimeLong } from '../../../../../../utils/date-time/DateTimeUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -74,11 +75,11 @@ const BotTokenSection: React.FC<BotTokenSectionProps> = ({
     const issuedAtMs = getTokenIssuedAtMs(jwtToken);
 
     if (issuedAtMs) {
-      return new Date(issuedAtMs).toLocaleString();
+      return formatDateTimeLong(issuedAtMs);
     }
 
     if (botUserData.updatedAt) {
-      return new Date(botUserData.updatedAt).toLocaleString();
+      return formatDateTimeLong(botUserData.updatedAt);
     }
 
     return '';

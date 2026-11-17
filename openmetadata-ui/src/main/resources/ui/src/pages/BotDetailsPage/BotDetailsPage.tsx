@@ -157,9 +157,7 @@ const BotDetailsPage = () => {
               {t('message.no-entity-available-with-name', {
                 entity: t('label.bot-plural'),
               })}{' '}
-              <span className="font-medium" data-testid="username">
-                {botsName}
-              </span>{' '}
+              <span data-testid="username">{botsName}</span>
             </span>
           }
         />
