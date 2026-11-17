@@ -21,8 +21,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.BadRequestException;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.OntologyEntityRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -55,25 +53,32 @@ final class OntologyResourceAccess {
 
   /**
    * The Studio's Undo restores the id it deleted. Re-creating the name in between already brought
-   * that id back, so a restore of a live definition succeeds with it as it stands; a restore that
-   * leaves the definition deleted still fails.
+   * that id back, so a restore of a live definition, authorized as the restore itself is, still
+   * brings back its deleted children and succeeds with the definition as it stands.
    */
   static Response restoreOrKeepLive(
-      final Supplier<Response> restore, final EntityRepository<?> repository, final UUID id) {
-    try {
-      return restore.get();
-    } catch (BadRequestException notDeleted) {
-      return Response.ok(liveOrRethrow(repository, id, notDeleted)).build();
-    }
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final EntityRepository<?> repository,
+      final UUID id,
+      final Supplier<Response> restore) {
+    final boolean deleted = Boolean.TRUE.equals(repository.find(id, Include.ALL).getDeleted());
+    return deleted ? restore.get() : restoreChildrenOfLive(authorizer, context, repository, id);
   }
 
-  private static Object liveOrRethrow(
-      final EntityRepository<?> repository, final UUID id, final BadRequestException failure) {
-    try {
-      return repository.find(id, Include.NON_DELETED);
-    } catch (EntityNotFoundException stillDeleted) {
-      throw failure;
-    }
+  private static Response restoreChildrenOfLive(
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final EntityRepository<?> repository,
+      final UUID id) {
+    final String type = repository.getEntityType();
+    authorizer.authorize(
+        context,
+        new OperationContext(type, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(type, id, null));
+    repository.validateRestore(id);
+    repository.restoreEntity(context.getUserPrincipal().getName(), id);
+    return Response.ok(repository.find(id, Include.NON_DELETED)).build();
   }
 
   /**

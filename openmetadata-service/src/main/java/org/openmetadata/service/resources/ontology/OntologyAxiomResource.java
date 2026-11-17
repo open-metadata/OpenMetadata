@@ -215,9 +215,11 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final SecurityContext securityContext,
       @Valid final RestoreEntity restore) {
     return OntologyResourceAccess.restoreOrKeepLive(
-        () -> restoreEntity(uriInfo, securityContext, restore.getId()),
+        authorizer,
+        securityContext,
         repository,
-        restore.getId());
+        restore.getId(),
+        () -> restoreEntity(uriInfo, securityContext, restore.getId()));
   }
 
   private static String user(final SecurityContext securityContext) {

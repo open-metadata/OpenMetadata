@@ -94,20 +94,20 @@ public class OntologyAxiomResourceIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void deletedRuleIsRestoredByUndoOrByStatingItAgain(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Ontology ontology = createModel(ns);
-    CreateOntologyAxiom request = restrictionRequest(ontology, ns.prefix("treatedBy"));
-    String id = client.ontologyAxioms().create(request).getId().toString();
+  void deletedRuleIsRestoredByUndoOrByStatingItAgain(final TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Ontology ontology = createModel(ns);
+    final CreateOntologyAxiom request = restrictionRequest(ontology, ns.prefix("treatedBy"));
+    final String id = client.ontologyAxioms().create(request).getId().toString();
     client.ontologyAxioms().delete(id);
     client.ontologyAxioms().restore(id);
     assertFalse(client.ontologyAxioms().get(id).getDeleted());
     client.ontologyAxioms().delete(id);
 
     request.getExpressions().getFirst().setCardinality(2);
-    OntologyAxiom restated = client.ontologyAxioms().create(request);
+    final OntologyAxiom restated = client.ontologyAxioms().create(request);
     client.ontologyAxioms().restore(id);
-    OntologyAxiom stored = client.ontologyAxioms().get(id);
+    final OntologyAxiom stored = client.ontologyAxioms().get(id);
 
     assertEquals(id, restated.getId().toString());
     assertFalse(stored.getDeleted());
@@ -115,13 +115,13 @@ public class OntologyAxiomResourceIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void validationRefusesARuleThatRestatesALiveOne(TestNamespace ns) {
-    OpenMetadataClient client = SdkClients.adminClient();
-    Ontology ontology = createModel(ns);
-    CreateOntologyAxiom existing = restrictionRequest(ontology, ns.prefix("statedRule"));
+  void validationRefusesARuleThatRestatesALiveOne(final TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Ontology ontology = createModel(ns);
+    final CreateOntologyAxiom existing = restrictionRequest(ontology, ns.prefix("statedRule"));
     client.ontologyAxioms().create(existing);
 
-    OpenMetadataException duplicate =
+    final OpenMetadataException duplicate =
         assertThrows(
             OpenMetadataException.class,
             () ->

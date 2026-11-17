@@ -189,24 +189,24 @@ abstract class BaseOntologyIT<T extends OntologyEntityInterface, K> extends Base
   }
 
   @Test
-  void recreatingASoftDeletedNameRestoresTheSameDefinitionWithTheNewValues(TestNamespace ns) {
-    K request = createMinimalRequest(ns);
-    T archived = createEntity(request);
-    String id = archived.getId().toString();
+  void recreatingASoftDeletedNameRestoresTheSameDefinitionWithTheNewValues(final TestNamespace ns) {
+    final K request = createMinimalRequest(ns);
+    final T archived = createEntity(request);
+    final String id = archived.getId().toString();
     deleteRecursively(id);
     restoreEntity(id);
     assertEquals(false, getEntity(id).getDeleted());
     deleteRecursively(id);
 
     setFieldViaReflection(request, "setDescription", String.class, "Re-created definition");
-    T recreated = createEntity(request);
+    final T recreated = createEntity(request);
 
     assertEquals(archived.getId(), recreated.getId());
     assertEquals(false, recreated.getDeleted());
     assertEquals("Re-created definition", getEntity(id).getDescription());
 
     restoreEntity(id);
-    T afterUndo = getEntity(id);
+    final T afterUndo = getEntity(id);
     assertEquals(false, afterUndo.getDeleted());
     assertEquals("Re-created definition", afterUndo.getDescription());
   }

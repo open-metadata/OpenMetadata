@@ -49,7 +49,7 @@ public class OntologyRecreateDeletedIT extends BaseOntologyApprovalIT {
   private static final URI PATIENT = URI.create("https://example.org/model/Patient");
 
   @Test
-  void recreatedOntologyComesBackEmptyUntilItIsRestored(TestNamespace ns) {
+  void recreatedOntologyComesBackEmptyUntilItIsRestored(final TestNamespace ns) {
     final var ontologies = SdkClients.adminClient().ontologies();
     final Ontology ontology = createOntology(ns, "recreatedOntology");
     final String conceptId = declareClass(ontology, "Patient", PATIENT).getId().toString();
@@ -73,7 +73,7 @@ public class OntologyRecreateDeletedIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void changeSetUpsertRestoresADeletedConceptWithTheNewValues(TestNamespace ns) {
+  void changeSetUpsertRestoresADeletedConceptWithTheNewValues(final TestNamespace ns) {
     final var concepts = SdkClients.adminClient().ontologyConcepts();
     final Ontology ontology = createOntology(ns, "changeSetOntology");
     final OntologyConcept deleted = declareClass(ontology, "Patient", PATIENT);
@@ -98,7 +98,7 @@ public class OntologyRecreateDeletedIT extends BaseOntologyApprovalIT {
     assertEquals("A person receiving care", restored.getDescription());
   }
 
-  private static int conceptLookupStatus(String id) {
+  private static int conceptLookupStatus(final String id) {
     final OpenMetadataException missing =
         assertThrows(
             OpenMetadataException.class, () -> SdkClients.adminClient().ontologyConcepts().get(id));
@@ -107,7 +107,7 @@ public class OntologyRecreateDeletedIT extends BaseOntologyApprovalIT {
   }
 
   private static OntologyChangeSet draft(
-      TestNamespace ns, Ontology ontology, OntologyConcept concept) {
+      final TestNamespace ns, final Ontology ontology, final OntologyConcept concept) {
     final var client = SdkClients.adminClient();
     final OntologyChangeOperation upsert =
         new OntologyChangeOperation()
@@ -130,7 +130,7 @@ public class OntologyRecreateDeletedIT extends BaseOntologyApprovalIT {
                     .withOperations(List.of(upsert))));
   }
 
-  private static void apply(OntologyChangeSet draft) {
+  private static void apply(final OntologyChangeSet draft) {
     final var client = SdkClients.adminClient();
     final var lease =
         client
