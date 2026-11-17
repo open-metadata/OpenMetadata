@@ -11511,10 +11511,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     /**
-     * A change that does not bump the version (lifeCycle) leaves the current version's change
-     * description and its author in place. Restamping updatedBy made the writer (usage-bot) look
-     * like the author of someone else's version, and its next PATCH in the session then
-     * consolidated over that version and took over its description change summary.
+     * A non-versioned change (lifeCycle) keeps the current version's change description, author and
+     * timestamp; otherwise the writer's next PATCH consolidates over a version it did not make.
      */
     private void keepCurrentVersionAttribution() {
       if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {

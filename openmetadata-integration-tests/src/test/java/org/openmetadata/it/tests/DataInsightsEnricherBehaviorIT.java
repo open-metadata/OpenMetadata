@@ -161,7 +161,8 @@ class DataInsightsEnricherBehaviorIT {
 
     assertEquals(0.1, updated.getVersion());
     assertEquals(yesterday, updated.getCreatedAt());
-    assertTrue(updated.getUpdatedAt() >= today);
+    assertEquals(yesterday, updated.getUpdatedAt());
+    assertEquals(stored.getUpdatedBy(), updated.getUpdatedBy());
     assertEquals(today, updated.getLifeCycle().getAccessed().getTimestamp());
     assertEquals(
         1,

@@ -283,11 +283,7 @@ public class ChangeSummaryResourceIT {
         "Expected email column changedBy to contain admin but was: " + emailChangedBy);
   }
 
-  /**
-   * The usage workflow PATCHes lifeCycle, which does not bump the version. That write used to
-   * restamp the current version's updatedBy, so the workflow's next PATCH in the same session
-   * consolidated over the ingestion bot's version and took authorship of its column descriptions.
-   */
+  /** Usage workflow lifeCycle PATCHes must not take over the description author (#37663). */
   @Test
   void testLifeCyclePatchesKeepDescriptionAuthor(TestNamespace ns) throws Exception {
     Table table = createTestTableWithColumns(ns);
@@ -301,6 +297,7 @@ public class ChangeSummaryResourceIT {
 
     assertEquals(described.getVersion(), afterUsage.getVersion());
     assertEquals(described.getUpdatedBy(), afterUsage.getUpdatedBy());
+    assertEquals(described.getUpdatedAt(), afterUsage.getUpdatedAt());
     Map<String, Object> nameEntry =
         extractChangeSummary(getChangeSummary("table", table.getFullyQualifiedName()))
             .get("columns.name.description");
