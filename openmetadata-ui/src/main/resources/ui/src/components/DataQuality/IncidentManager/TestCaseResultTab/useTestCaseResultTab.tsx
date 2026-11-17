@@ -54,7 +54,6 @@ import testCaseResultTabClassBase, {
 
 export interface UseTestCaseResultTabResult {
   testCase: TestCase | undefined;
-  setTestCase: (testCase: TestCase) => void;
   mergeTestCase: (testCase: TestCase) => void;
   isVersionPage: boolean;
   testDefinition: TestDefinition | undefined;
@@ -93,7 +92,6 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
-    setTestCase,
     mergeTestCase,
     showAILearningBanner,
     testCasePermission,
@@ -333,7 +331,6 @@ export const useTestCaseResultTab = (): UseTestCaseResultTabResult => {
 
   return {
     testCase: testCaseData,
-    setTestCase,
     mergeTestCase,
     isVersionPage,
     testDefinition,

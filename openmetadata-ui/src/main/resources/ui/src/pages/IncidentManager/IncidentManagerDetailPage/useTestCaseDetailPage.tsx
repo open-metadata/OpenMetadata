@@ -98,7 +98,6 @@ export interface UseTestCaseDetailPageResult {
   handleDisplayNameChange: (entityName?: EntityName) => Promise<void>;
   handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
-  setTestCase: (testCase: TestCase) => void;
   mergeTestCase: (testCase: TestCase) => void;
 }
 
@@ -536,7 +535,6 @@ export const useTestCaseDetailPage = ({
     handleDisplayNameChange,
     handleRestore,
     getEntityFeedCount,
-    setTestCase,
     mergeTestCase,
   };
 };
