@@ -252,6 +252,7 @@ const SubDomainsTable = ({
           gap={4}>
           <Box align="center" direction="row" gap={5}>
             <Input
+              autoComplete="off"
               className="tw:max-w-60"
               icon={Search}
               placeholder={t('label.search-entity', {

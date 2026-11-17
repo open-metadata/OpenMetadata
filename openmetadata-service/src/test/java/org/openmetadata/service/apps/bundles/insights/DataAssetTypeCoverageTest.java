@@ -1,6 +1,7 @@
 package org.openmetadata.service.apps.bundles.insights;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -116,6 +117,12 @@ class DataAssetTypeCoverageTest {
     // An aliased type points at a live index. Ingesting it as well would have the app create and
     // delete a datastream whose name that alias already occupies, i.e. aimed at live data.
     assertTrue(overlap.isEmpty(), "types both ingested and aliased in: " + overlap);
+  }
+
+  @Test
+  void testCasesAreDailySnapshotsRatherThanALiveIndexAlias() {
+    assertFalse(aliasedTypes().contains("testCase"), "testCase must not alias the live index");
+    assertTrue(ingestedTypes().contains("testCase"), "testCase must have daily snapshots");
   }
 
   /** Every entity type the search layer knows how to index. */

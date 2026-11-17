@@ -11,11 +11,9 @@
  *  limitations under the License.
  */
 import { Box, Button, Tooltip } from '@openmetadata/ui-core-components';
+import { Logs, Pause, Play } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
-import { ReactComponent as PauseIcon } from '../../../../../../assets/svg/pause.svg';
-import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resume.svg';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -107,7 +105,7 @@ function PipelineActions({
           showTextWhileLoading
           color="secondary"
           data-testid={pipeline.enabled ? 'pause-button' : 'resume-button'}
-          iconLeading={pipeline.enabled ? PauseIcon : ResumeIcon}
+          iconLeading={pipeline.enabled ? Pause : Play}
           isDisabled={isDisabled || !pipeline.deployed}
           isLoading={isToggling}
           onPress={() => onPauseUnpauseClick(pipelineId)}>
@@ -130,7 +128,7 @@ function PipelineActions({
         <Button
           color="secondary"
           data-testid="logs-button"
-          iconLeading={LogsIcon}
+          iconLeading={Logs}
           isDisabled={isDisabled}
           onPress={handleLogsClick}>
           {t('label.log-plural')}

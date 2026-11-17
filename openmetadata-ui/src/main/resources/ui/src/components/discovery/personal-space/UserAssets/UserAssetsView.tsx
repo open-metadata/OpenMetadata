@@ -90,6 +90,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
               />
               <Input
                 aria-label={searchLabel}
+                autoComplete="off"
                 className="tw:min-w-0 tw:flex-1"
                 icon={Search}
                 inputDataTestId="user-assets-search"

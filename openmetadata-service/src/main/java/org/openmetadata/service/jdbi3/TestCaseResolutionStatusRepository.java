@@ -193,15 +193,34 @@ public class TestCaseResolutionStatusRepository
   // Fields a TCRS search doc carries that the {@link TestCaseResolutionStatus} schema
   // ({@code additionalProperties: false}) does not, so each one left in a hit 400s strict Jackson
   // deserialization on /testCaseIncidentStatus/search/list. {@code table} is the parent table
-  // reference the tag cascade matches incidents on. {@code testSuites} stays to scrub legacy docs
-  // written before the SearchRepository inheritable-field refactor stopped propagating
-  // testCase.testSuites onto child TCRS docs.
+  // reference the tag cascade matches incidents on; {@code database}, {@code databaseSchema} and
+  // {@code service} are the ancestors a soft delete matches them on. {@code testSuites} stays to
+  // scrub legacy docs written before the SearchRepository inheritable-field refactor stopped
+  // propagating testCase.testSuites onto child TCRS docs.
   static final List<String> SEARCH_ONLY_FIELDS =
-      List.of("@timestamp", "domains", "testCase", "testSuite", "testSuites", "fqnParts", "table");
+      List.of(
+          "@timestamp",
+          "domains",
+          "testCase",
+          "testSuite",
+          "testSuites",
+          "fqnParts",
+          "table",
+          "database",
+          "databaseSchema",
+          "service",
+          "certification");
 
   @Override
   protected List<String> getExcludeSearchFields() {
     return SEARCH_ONLY_FIELDS;
+  }
+
+  // An incident has no deleted flag of its own: it is deleted with its test case, whose flag the
+  // document embeds.
+  @Override
+  public String getSearchDeletedField() {
+    return "testCase.deleted";
   }
 
   // The {@code latest=false} listing path skips client-side {@code extractAndFilterSource} and
@@ -1121,6 +1140,14 @@ public class TestCaseResolutionStatusRepository
     if (unowned) {
       filter.addQueryParam("testCaseUnowned", Boolean.TRUE.toString());
     }
+  }
+
+  // A domain filter covers the domain and its sub-domains, as the navbar pick does.
+  public static String resolveDomainFilterIds(String domain) {
+    return nullOrEmpty(domain)
+        ? null
+        : EntityUtil.domainAndSubDomainIds(
+            getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED));
   }
 
   public static UUID resolveFilterEntityId(String entityType, String name) {

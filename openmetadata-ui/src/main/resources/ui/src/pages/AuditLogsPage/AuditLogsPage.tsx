@@ -22,13 +22,16 @@ import {
   SimpleModal,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExportIcon } from '../../assets/svg/ic-download.svg';
 import AuditLogFilters from '../../components/AuditLog/AuditLogFilters.component';
 import AuditLogList from '../../components/AuditLog/AuditLogList.component';
 import '../../components/common/atoms/filters/FilterSelection.less';
@@ -492,7 +495,7 @@ const AuditLogsPage = () => {
           <Button
             color="primary"
             data-testid="export-audit-logs-button"
-            iconLeading={ExportIcon}
+            iconLeading={Download01}
             onPress={() => setIsExportModalOpen(true)}>
             {t('label.export')}
           </Button>
@@ -507,6 +510,7 @@ const AuditLogsPage = () => {
                 className="tw:shrink-0"
                 data-testid="audit-log-search-container">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   inputDataTestId="audit-log-search"

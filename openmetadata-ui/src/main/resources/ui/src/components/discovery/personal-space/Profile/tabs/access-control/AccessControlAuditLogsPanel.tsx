@@ -25,7 +25,11 @@ import {
   ProgressBarBase,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, isString } from 'lodash';
 import { DateTime } from 'luxon';
@@ -38,7 +42,6 @@ import React, {
 } from 'react';
 import type { DateValue } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ExportIcon } from '../../../../../../assets/svg/ic-download.svg';
 import AuditLogList from '../../../../../../components/AuditLog/AuditLogList.component';
 import '../../../../../../components/common/atoms/filters/FilterSelection.less';
 import Banner from '../../../../../../components/common/Banner/Banner';
@@ -564,8 +567,9 @@ const AccessControlAuditLogsPanel: React.FC<
       <Button
         color="primary"
         data-testid="export-audit-logs-button"
-        iconLeading={ExportIcon}
+        iconLeading={Download01}
         ref={exportButtonRef}
+        size="xs"
         onPress={() => setIsExportModalOpen(true)}>
         {t('label.export')}
       </Button>
@@ -655,7 +659,7 @@ const AccessControlAuditLogsPanel: React.FC<
 
   return (
     <Box
-      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-6"
+      className="tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:px-8"
       data-testid="audit-logs-page"
       direction="col">
       {/* Card wrapping filters + log list */}
@@ -671,6 +675,7 @@ const AccessControlAuditLogsPanel: React.FC<
               className="tw:shrink-0"
               data-testid="audit-log-search-container">
               <Input
+                autoComplete="off"
                 className="tw:max-w-86"
                 icon={Search as React.FC}
                 inputDataTestId="audit-log-search"

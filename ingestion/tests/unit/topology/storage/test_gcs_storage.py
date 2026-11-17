@@ -163,8 +163,7 @@ class StorageUnitTest(TestCase):
         return_value=None,
     )
     @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
-    def __init__(self, method_name: str, test_connection, _get_manifest_file) -> None:
-        super().__init__(method_name)
+    def setUp(self, test_connection, _get_manifest_file) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_OBJECT_STORE_CONFIG)
 
@@ -309,8 +308,8 @@ class StorageUnitTest(TestCase):
             GCSContainerDetails(
                 name="transactions",
                 prefix="/transactions",
-                number_of_objects=100,
-                size=100,
+                number_of_objects=None,
+                size=None,
                 file_formats=[FileFormat.csv],
                 data_model=ContainerDataModel(isPartitioned=False, columns=columns),
                 creation_date=datetime.datetime(2000, 1, 1).isoformat(),
@@ -334,6 +333,37 @@ class StorageUnitTest(TestCase):
                 parent=entity_ref,
             ),
         )
+
+        client = self.object_store_source.gcs_clients.storage_client.clients["my-gcp-project"]
+        with patch.object(
+            client,
+            "list_blobs",
+            return_value=[MockObjectFilePath(name="transactions/child/file.csv")],
+        ):
+            children = list(
+                self.object_store_source._generate_structured_containers(
+                    bucket_response=GCSBucketResponse(
+                        name="test_bucket",
+                        project_id="my-gcp-project",
+                        creation_date=datetime.datetime(2000, 1, 1),
+                    ),
+                    entries=[MetadataEntry(dataPath="transactions", structureFormat="csv", depth=1)],
+                    parent=entity_ref,
+                )
+            )
+
+        assert len(children) == 1
+        child = children[0]
+        assert child.name == "transactions/child"
+        assert child.number_of_objects is None
+        assert child.size is None
+        assert child.parent == entity_ref
+        assert child.data_model.columns == columns
+
+        self.object_store_source.context.get().objectstore_service = "test_service"
+        request = next(self.object_store_source.yield_create_container_requests(child)).right
+        assert request.numberOfObjects is None
+        assert request.size is None
 
     #  Most of the parsing support are covered in test_datalake unit tests related to the Data lake implementation
     def test_extract_column_definitions(self):

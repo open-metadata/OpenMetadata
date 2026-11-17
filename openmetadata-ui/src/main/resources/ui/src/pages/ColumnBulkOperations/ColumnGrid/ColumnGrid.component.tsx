@@ -2797,6 +2797,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               {/* Search */}
               <div className="tw:shrink-0">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   placeholder={t('label.search-columns')}

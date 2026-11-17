@@ -80,6 +80,27 @@ describe('useUserLabel', () => {
     expect(result.current).toBe('ghost');
   });
 
+  it('falls back to the login when the loaded user has an empty display name', async () => {
+    mockGetUserByName.mockResolvedValue({
+      id: 'u2',
+      name: 'blank.user',
+      displayName: '',
+      email: 'blank@example.com',
+    } as User);
+
+    const { result, waitFor } = renderHook(() =>
+      useUserLabel({ userName: 'blank.user', enabled: true })
+    );
+
+    await waitFor(() =>
+      expect(
+        useApplicationStore.getState().userProfilePics['blank.user']
+      ).toBeDefined()
+    );
+
+    expect(result.current).toBe('blank.user');
+  });
+
   it('prefers a non-empty displayName and skips empty ones', () => {
     const { result, rerender } = renderHook(
       ({ displayName }) =>

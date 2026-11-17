@@ -20,16 +20,26 @@ import {
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  ChevronCollapseVertical,
+  Edit01,
+  Sort,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
+import { groupBy, isEmpty, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
   ENTITY_PATH,
   INITIAL_PAGING_VALUE,
@@ -84,6 +94,7 @@ import {
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
@@ -100,7 +111,7 @@ import {
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -175,9 +186,6 @@ const SchemaTable = () => {
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
-  const [prevTableColumns, setPrevTableColumns] = useState<
-    Column[] | undefined
-  >();
   const {
     entityFqn: tableFqn,
     columnFqn: columnPart,
@@ -196,6 +204,7 @@ const SchemaTable = () => {
     openColumnDetailPanel,
     setDisplayedColumns,
   } = useGenericContext<TableType>();
+  const syncedTableColumnsRef = useRef(table?.columns);
 
   useFqnDeepLink({
     data: table.columns || [],
@@ -213,6 +222,17 @@ const SchemaTable = () => {
       deleted: table?.deleted,
     }),
     [testCaseSummary, table]
+  );
+
+  const testCountsByColumnFqn = useMemo(
+    () =>
+      new Map(
+        testCaseCounts.map((count) => [
+          getEntityColumnFQN(count.entityLink ?? ''),
+          count,
+        ])
+      ),
+    [testCaseCounts]
   );
 
   useScrollToElement(
@@ -445,38 +465,33 @@ const SchemaTable = () => {
     }
   }, [tableColumns]);
 
+  // Propagates column edits made elsewhere (e.g. the column detail panel writes to the
+  // table query cache) into the loaded page. Reference equality so the first load (and
+  // unchanged refetches) skip a second setTableColumns, which re-rendered the whole table.
+  // Assumes every writer to the table query cache replaces the `columns` array; mutating
+  // it in place and then calling setQueryData would be skipped here.
   useEffect(() => {
-    if (!hasInitialLoad || !table?.columns) {
+    if (
+      !hasInitialLoad ||
+      !table?.columns ||
+      table.columns === syncedTableColumnsRef.current
+    ) {
       return;
     }
 
-    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+    syncedTableColumnsRef.current = table.columns;
 
-    if (!columnsChanged) {
-      return;
-    }
+    const updatesByFqn = new Map(
+      table.columns.map((col) => [col.fullyQualifiedName, col])
+    );
+    setTableColumns((prev) =>
+      prev.map((col) => {
+        const update = updatesByFqn.get(col.fullyQualifiedName);
 
-    setPrevTableColumns(table.columns);
-
-    const updatedColumns = table.columns;
-    setTableColumns((prev) => {
-      // Create a deep clone to avoid mutation of the previous state during updates
-      let newColumns = [...prev];
-      updatedColumns?.forEach((updatedCol) => {
-        // Recursively remove empty children from the update object
-        const [cleanUpdate] = pruneEmptyChildren([updatedCol]);
-
-        // Use the utility to recursively find and update the column in the nested structure
-        newColumns = updateColumnInNestedStructure(
-          newColumns,
-          updatedCol.fullyQualifiedName ?? '',
-          cleanUpdate
-        );
-      });
-
-      return newColumns;
-    });
-  }, [table?.columns, hasInitialLoad, prevTableColumns]);
+        return update ? { ...col, ...pruneEmptyChildren([update])[0] } : col;
+      })
+    );
+  }, [table?.columns, hasInitialLoad]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -780,10 +795,15 @@ const SchemaTable = () => {
                 />
               )}
               {record.fullyQualifiedName && (
-                <CopyLinkButton
-                  entityType={EntityType.TABLE}
-                  fieldFqn={record.fullyQualifiedName}
+                <CopyButton
+                  className="hover-cell-icon"
+                  isDisabled={!record.fullyQualifiedName}
+                  size="xs"
                   testId="copy-column-link-button"
+                  value={getEntityDetailsUrl(
+                    EntityType.TABLE,
+                    record.fullyQualifiedName ?? ''
+                  )}
                 />
               )}
             </div>
@@ -804,19 +824,14 @@ const SchemaTable = () => {
   );
 
   const renderDataQuality = useCallback(
-    (_: string, record: Column) => {
-      const testCounts = testCaseCounts.find((column) => {
-        return isEqual(
-          getEntityColumnFQN(column.entityLink ?? ''),
-          record.fullyQualifiedName
-        );
-      });
-
-      return (
-        <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
-      );
-    },
-    [testCaseCounts]
+    (_: string, record: Column) => (
+      <TestCaseStatusSummaryIndicator
+        testCaseStatusCounts={testCountsByColumnFqn.get(
+          record.fullyQualifiedName ?? ''
+        )}
+      />
+    ),
+    [testCountsByColumnFqn]
   );
 
   const customPropertyColumns: ColumnsType<Column> = useMemo(
@@ -851,7 +866,7 @@ const SchemaTable = () => {
             color="tertiary"
             data-testid="name-column-header"
             iconTrailing={
-              <IconSortIndicator
+              <ChevronCollapseVertical
                 className={classNames(
                   'tw:transition-transform',
                   sortOrder === 'desc' && 'tw:rotate-180'
@@ -1089,7 +1104,7 @@ const SchemaTable = () => {
                 <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
-                  iconLeading={IconSort}
+                  iconLeading={Sort}
                   size="sm">
                   {t('label.sort')}
                 </Button>

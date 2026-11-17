@@ -185,7 +185,9 @@ class ConceptContextCatalogTest {
                 "fullyQualifiedName",
                 term.getFullyQualifiedName(),
                 "description",
-                "An amount stored in cents."),
+                "An amount stored in cents.",
+                "entityStatus",
+                "Approved"),
             items,
             candidates);
 

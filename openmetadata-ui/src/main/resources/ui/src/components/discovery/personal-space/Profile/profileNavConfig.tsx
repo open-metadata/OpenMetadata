@@ -14,12 +14,13 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
+  Bot,
   Customize,
   GridView,
   Key01,
-  PermissionDebugger as AccessControlIcon,
+  PermissionDebugger,
   Persona as PersonaIcon,
-  Policy as GovernanceTabIcon,
+  Policy,
   Settings01,
   ShieldTick,
   SingleSignOn,
@@ -29,7 +30,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
-import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
 import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -87,6 +87,11 @@ export const PROFILE_NAV_GROUP_ORDER: ProfileNavGroup[] = [
  * All fields are optional — panels provide only what they need to override.
  */
 export interface ProfileHeaderOverride {
+  /**
+   * Full trail, root first. ProfilePage replaces the first crumb with the
+   * sidebar group label, rendered non-navigable
+   * (ADR:2026-11-16-settings-breadcrumb-root-is-the-sidebar-group).
+   */
   breadcrumbs?: BreadcrumbItemType[];
   title?: string;
   description?: string;
@@ -194,7 +199,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'administration',
     label: 'label.access-control',
     description: 'message.access-control-description',
-    icon: AccessControlIcon,
+    icon: PermissionDebugger,
     // Admin-only whatever view permissions a non-admin holds
     // (ADR:2026-10-21-settings-pages-are-classic-only).
     isVisible: (_permissions, isAdmin) => isAdmin,
@@ -208,7 +213,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'administration',
     label: 'label.bot-plural',
     description: 'message.page-sub-header-for-bots',
-    icon: BotIcon as FC<{ className?: string }>,
+    icon: Bot as FC<{ className?: string }>,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
@@ -293,7 +298,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     group: 'features',
     label: 'label.governance',
     description: 'message.governance-settings-description',
-    icon: GovernanceTabIcon as FC<{ className?: string }>,
+    icon: Policy as FC<{ className?: string }>,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (

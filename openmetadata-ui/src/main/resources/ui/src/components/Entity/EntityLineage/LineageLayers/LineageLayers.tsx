@@ -21,9 +21,9 @@ import {
   ChevronDown,
   Columns03,
   Dataflow03,
+  DataProduct,
   Globe01,
   LayersThree01,
-  Package,
   ShieldTick,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -52,7 +52,7 @@ const SCENE_LENS_OPTIONS = [
 const SCENE_LENS_ICONS: Record<LineageLens, MenuIcon> = {
   [LineageLens.Service]: Dataflow03,
   [LineageLens.Domain]: Globe01,
-  [LineageLens.DataProduct]: Package,
+  [LineageLens.DataProduct]: DataProduct,
 };
 
 const ASSET_LAYER_OPTIONS: {
@@ -87,7 +87,7 @@ const ASSET_LAYER_OPTIONS: {
   },
   {
     key: LineagePlatformView.DataProduct,
-    icon: Package,
+    icon: DataProduct,
     labelKey: 'label.data-product',
     testId: 'lineage-layer-data-product-btn',
   },

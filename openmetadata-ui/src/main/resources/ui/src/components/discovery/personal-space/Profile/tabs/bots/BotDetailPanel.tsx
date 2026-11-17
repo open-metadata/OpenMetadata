@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Autocomplete,
@@ -506,7 +507,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
 
 interface BotDetailPanelProps {
   fqn: string;
-  onNavigate: (view: BotsView) => void;
+  onNavigate: (view: BotsView, options?: SettingsNavigateOptions) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -674,7 +675,7 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
 
   const handleDeleteAction = useCallback(async () => {
     await getResourceLimit('bot', true, true);
-    onNavigate({ type: 'list' });
+    onNavigate({ type: 'list' }, { replace: true });
   }, [onNavigate, getResourceLimit]);
 
   const handleRestore = useCallback(async () => {

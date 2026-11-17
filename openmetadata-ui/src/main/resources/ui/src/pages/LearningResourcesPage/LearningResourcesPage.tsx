@@ -356,6 +356,7 @@ export const LearningResourcesPage: React.FC = () => {
           <Box className="tw:shrink-0 tw:p-3" direction="col" gap={2}>
             <Box align="center" gap={2}>
               <Input
+                autoComplete="off"
                 className="tw:max-w-86"
                 icon={Search}
                 placeholder={t('label.search-entity', {

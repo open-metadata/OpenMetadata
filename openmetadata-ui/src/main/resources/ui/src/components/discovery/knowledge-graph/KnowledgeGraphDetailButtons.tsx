@@ -12,11 +12,7 @@
  */
 
 import { Box, Button, Typography } from '@openmetadata/ui-core-components';
-import {
-  AlertTriangle,
-  Columns03,
-  List,
-} from '@openmetadata/ui-core-components/icons';
+import { Alert, Columns03, List } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import {
@@ -28,7 +24,7 @@ import {
 const icons = {
   columns: Columns03,
   relationships: List,
-  coverage: AlertTriangle,
+  coverage: Alert,
 };
 const labels = {
   'knowledge-graph': {

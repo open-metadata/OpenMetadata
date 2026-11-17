@@ -23,6 +23,7 @@ import {
   ChevronUp,
   MessageDotsCircle,
   ThumbsUp,
+  ThumbsUpFilled,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
@@ -30,7 +31,6 @@ import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import { uniqBy } from 'lodash';
 import React, {
-  SVGProps,
   useCallback,
   useEffect,
   useMemo,
@@ -201,20 +201,15 @@ const getThreadButtonLabel = (
     : t('label.number-reply-plural', { number: count });
 };
 
-// The footer's text buttons: 16px icons, like the reaction smiley between
+// The footer's text buttons: the 18px icon frame of the reaction smiley between
 // them, and tighter padding, which alone spaces the row.
-const FOOTER_BUTTON_CLASS = 'tw:px-2';
+const FOOTER_BUTTON_CLASS =
+  'tw:px-2 tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]';
 
 // A toggle (Like, the replies thread) reads brand while it is on: its text and
 // icon, without the link underline a link-colored button draws on hover.
 const TOGGLE_ON_CLASS =
   'tw:text-brand-secondary tw:hover:text-brand-secondary tw:*:data-icon:text-utility-brand-600 tw:hover:*:data-icon:text-utility-brand-600';
-
-// A liked card fills its thumb. Every prop passes through: the Button sizes
-// and colors its icon by the `data-icon` it sets.
-const FilledThumbsUp = (props: SVGProps<SVGSVGElement>) => (
-  <ThumbsUp {...props} fill="currentColor" />
-);
 
 const getLikeLabel = (
   likeCount: number,
@@ -251,7 +246,7 @@ const LikeButton = ({ likeCount, isLiked, onToggle }: LikeButtonProps) => {
       )}
       color="tertiary"
       data-testid="activity-like"
-      iconLeading={isLiked ? FilledThumbsUp : ThumbsUp}
+      iconLeading={isLiked ? ThumbsUpFilled : ThumbsUp}
       size="sm"
       onPress={onToggle}>
       {getLikeLabel(likeCount, isLiked, t)}

@@ -144,6 +144,32 @@ class ListFilterTest {
     }
   }
 
+  @ParameterizedTest
+  @CsvSource({"true", "false"})
+  void queryRunnerRequesterKeepsOnlyThatRequestersQueryRunnerWorkflows(boolean mysql) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      ListFilter unscoped = new ListFilter();
+      assertFalse(unscoped.getCondition("automations_workflow").contains("QUERY_RUNNER"));
+
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam(ListFilter.QUERY_RUNNER_REQUESTER_ID, "requester-id");
+      String storedRequester =
+          mysql
+              ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.request.userId'))"
+              : "json->'request'->>'userId'";
+      assertTrue(
+          filter
+              .getCondition("automations_workflow")
+              .contains(
+                  "(workflowType <> 'QUERY_RUNNER' OR "
+                      + storedRequester
+                      + " = :queryRunnerRequesterId)"));
+    }
+  }
+
   @Test
   void test_escapeApostrophe() {
     assertEquals("abcd", ListFilter.escape("abcd"));
@@ -245,6 +271,22 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_changeSetOntologyBindsTheIdAndOnlyFiltersChangeSets() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("changeSetOntologyId", "11111111-1111-1111-1111-111111111111");
+
+    String condition = filter.getCondition("ontology_change_set_entity");
+
+    assertTrue(condition.contains("ontology_change_set_entity.id IN (SELECT"), condition);
+    assertTrue(condition.contains("entity_relationship.fromId = :changeSetOntologyIdParam"));
+    assertTrue(condition.contains("entity_relationship.fromEntity = 'ontology'"));
+    assertFalse(condition.contains("11111111"), condition);
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111", filter.getQueryParam("changeSetOntologyIdParam"));
+    assertFalse(filter.getCondition("ontology_concept_entity").contains("changeSetOntologyId"));
+  }
+
+  @Test
   void taskConditions_bindValuesInsteadOfInliningThemInSql() {
     ListFilter filter = new ListFilter();
     filter.addQueryParam("taskType", "task-type");
@@ -315,6 +357,29 @@ class ListFilterTest {
         condition.contains(
             "fromId IN ('11111111-1111-1111-1111-111111111111','22222222-2222-2222-2222-222222222222')"));
     assertFalse(condition.contains("domain_entity"));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true", "false"})
+  void getDomainCondition_keepsSystemProvidedItemsWhenAsked(boolean mysql) {
+    try (MockedStatic<DatasourceConfig> datasource = mockStatic(DatasourceConfig.class)) {
+      DatasourceConfig config = mock(DatasourceConfig.class);
+      datasource.when(DatasourceConfig::getInstance).thenReturn(config);
+      when(config.isMySQL()).thenReturn(mysql);
+      ListFilter filter = new ListFilter();
+      filter.addQueryParam("domainId", "11111111-1111-1111-1111-111111111111");
+      filter.addQueryParam("domainAccessControl", "true");
+      assertFalse(filter.getDomainCondition("classification").contains("provider"));
+
+      filter.addQueryParam(ListFilter.KEEPS_SYSTEM_PROVIDED, "true");
+      String provider =
+          mysql
+              ? "JSON_UNQUOTE(JSON_EXTRACT(classification.json, '$.provider'))"
+              : "classification.json->>'provider'";
+      assertTrue(
+          filter.getDomainCondition("classification").endsWith(" OR " + provider + " = 'system')"),
+          filter.getDomainCondition("classification"));
+    }
   }
 
   @Test
@@ -943,5 +1008,21 @@ class ListFilterTest {
     assertEquals("deleted = FALSE", new ListFilter().getIncludeCondition(null));
     assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
     assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
+  }
+
+  // An incident list filtered by a domain covers its sub-domains, so the param holds several ids.
+  @Test
+  void incidentDomainFilterMatchesEveryGivenDomainId() {
+    ListFilter grouped = new ListFilter(Include.ALL).addQueryParam("incidentDomainId", "d1,d2");
+    ListFilter flat = new ListFilter(Include.ALL).addQueryParam("incidentListDomainId", "d1,d2");
+
+    String groupedCondition = grouped.getCondition();
+    String flatCondition = flat.getCondition();
+
+    assertTrue(groupedCondition.contains(".fromId IN (:incidentDomainId_0,:incidentDomainId_1)"));
+    assertTrue(
+        flatCondition.contains(".fromId IN (:incidentListDomainId_0,:incidentListDomainId_1)"));
+    assertEquals("d2", grouped.getQueryParams().get("incidentDomainId_1"));
+    assertFalse(groupedCondition.contains(".fromId = :incidentDomainId"));
   }
 }

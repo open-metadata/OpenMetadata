@@ -928,7 +928,7 @@ describe('Test GlossaryTermTab component', () => {
 
       const dragIcons = document.querySelectorAll('.drag-icon');
 
-      expect(dragIcons).toHaveLength(0);
+      expect(dragIcons).toHaveLength(mockedGlossaryTerms.length);
     });
   });
 

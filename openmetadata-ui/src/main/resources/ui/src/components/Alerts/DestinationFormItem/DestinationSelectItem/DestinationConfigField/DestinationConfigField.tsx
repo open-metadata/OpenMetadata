@@ -27,7 +27,11 @@ import {
   RadioGroup,
   Select,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Configuration,
+  Plus,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual } from 'lodash';
 import { useCallback, useState } from 'react';
 import {
@@ -38,7 +42,6 @@ import {
 } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 
-import { ReactComponent as ConfigIcon } from '../../../../../assets/svg/configuration-icon.svg';
 import { DESTINATION_TYPE_BASED_PLACEHOLDERS } from '../../../../../constants/Alerts.constants';
 import { SearchIndex } from '../../../../../enums/search.enum';
 import {
@@ -399,7 +402,10 @@ function DestinationConfigField({
             <AccordionItem id={advancedConfigId}>
               <AccordionHeader>
                 <span className="tw:flex tw:items-center tw:gap-2">
-                  <ConfigIcon className="tw:size-4" />
+                  <Configuration
+                    className="tw:text-utility-gray-500"
+                    size={16}
+                  />
                   {t('label.advanced-configuration')}
                 </span>
               </AccordionHeader>

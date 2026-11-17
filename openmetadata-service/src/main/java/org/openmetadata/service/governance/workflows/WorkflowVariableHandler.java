@@ -144,7 +144,8 @@ public class WorkflowVariableHandler {
     return entity;
   }
 
-  private String getNodeNamespace() {
+  /** The name of the node this execution or task belongs to, which namespaces its variables. */
+  public String getNodeNamespace() {
     String namespace;
     if (varScope instanceof DelegateExecution execution) {
       namespace =

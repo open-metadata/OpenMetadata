@@ -366,6 +366,7 @@ export const updateTableColumn = async (
 export interface GetColumnByFQNParams {
   entityType: string;
   fields?: string;
+  include?: Include;
 }
 
 export const getColumnByFQN = async (

@@ -169,6 +169,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -180,6 +181,7 @@ import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
@@ -219,6 +221,14 @@ public class SearchRepository {
   private static final int MAX_PARENT_IDS_PER_TERMS_QUERY = 1024;
 
   private static final int REFERENCE_REINDEX_BATCH_SIZE = 100;
+  private static final String REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT =
+      """
+      if (!params.preserveCurrent || ctx._source.fingerprint != params.fingerprint) {
+        for (field in params.fieldsToRemove) {
+          ctx._source.remove(field);
+        }
+      }
+      """;
   // Bounds one custom-property cleanup request; more holders are split across requests.
   private static final int MAX_HOLDER_IDS_PER_CLEANUP_REQUEST = 10_000;
 
@@ -2177,6 +2187,9 @@ public class SearchRepository {
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
+      if (Entity.CONTEXT_MEMORY.equals(entityType)) {
+        invalidateMemoryEmbedding(entity);
+      }
 
       if (Entity.TABLE.equals(entityType)) {
         try {
@@ -2275,9 +2288,13 @@ public class SearchRepository {
   }
 
   public void updateEntity(EntityReference entityReference) {
+    updateEntity(entityReference, Include.NON_DELETED);
+  }
+
+  public void updateEntity(EntityReference entityReference, Include include) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntity(entityReference),
+            () -> updateEntity(entityReference, include),
             "updateEntity",
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
@@ -2294,9 +2311,38 @@ public class SearchRepository {
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface<?> entity =
         entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+            null,
+            entityReference.getId(),
+            entityRepository.getOnlySupportedFields(fields),
+            include,
+            false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
+    if (Entity.CONTEXT_MEMORY.equals(entityReference.getType())
+        && vectorEmbeddingHandler != null
+        && !Boolean.TRUE.equals(entity.getDeleted())) {
+      vectorEmbeddingHandler.updateEmbedding(entity);
+    }
+  }
+
+  private void invalidateMemoryEmbedding(EntityInterface<?> entity) {
+    if (vectorEmbeddingHandler != null) {
+      vectorEmbeddingHandler.invalidateStaleEmbedding(entity);
+    } else {
+      boolean preserveCurrent =
+          !Boolean.TRUE.equals(entity.getDeleted()) && Entity.isVectorEmbeddable(entity);
+      searchClient.updateEntity(
+          getWriteIndexName(getIndexMapping(Entity.CONTEXT_MEMORY)),
+          entity.getId().toString(),
+          Map.of(
+              "preserveCurrent",
+              preserveCurrent,
+              "fingerprint",
+              preserveCurrent ? VectorDocBuilder.computeFingerprintForEntity(entity) : "",
+              SearchClient.FIELDS_TO_REMOVE,
+              List.copyOf(ContextMemoryIndex.VECTOR_FIELDS)),
+          REMOVE_STALE_MEMORY_VECTOR_FIELDS_SCRIPT);
+    }
   }
 
   /**
@@ -3261,6 +3307,21 @@ public class SearchRepository {
   private List<String> filterChildAliasesByCapability(
       IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
     return withClusterAlias(childAliasesWithCapability(indexMapping, includeCapability));
+  }
+
+  private List<String> filterChildWriteTargetsByCapability(
+      IndexMapping indexMapping, Predicate<EntityIndexCapability> includeCapability) {
+    List<String> childAliases = childAliasesWithCapability(indexMapping, includeCapability);
+    List<String> targets = new ArrayList<>(withClusterAlias(childAliases));
+    // Resolve each child's canonical key: fanning out a short alias would include staged indices
+    // of unrelated types, whose documents may not support this script's deleted field.
+    childAliases.stream()
+        .map(this::canonicalIndexFor)
+        .filter(Objects::nonNull)
+        .map(activeStagedIndices::get)
+        .filter(Objects::nonNull)
+        .forEach(targets::add);
+    return targets;
   }
 
   private List<String> childAliasesWithCapability(
@@ -4495,23 +4556,33 @@ public class SearchRepository {
   public void softDeleteOrRestoredChildren(
       EntityReference entityReference, IndexMapping indexMapping, boolean delete)
       throws IOException {
-    // Each childAlias is an entity-type name (per indexMapping.json). Use the typed script's
-    // capability check so we never apply soft-delete to an index whose schema lacks `deleted`.
-    SoftDeleteScript script = new SoftDeleteScript(delete);
-    List<String> targets = filterChildAliasesByCapability(indexMapping, script::compatibleWith);
-    if (targets.isEmpty()) {
-      return;
-    }
     String entityType = entityReference.getType();
     // Service entities propagate child deletions through a shared service.id field; everything
     // else uses the entity-type-specific <type>.id. Reuses the canonical SERVICE_ENTITY_SET that
     // updateChildrenForSearchPropagation also relies on, so the contract stays in one place.
     String parentIdField =
         SERVICE_ENTITY_SET.contains(entityType) ? "service.id" : entityType + ".id";
-    searchClient.softDeleteOrRestoreChildren(
-        targets,
-        script.painless(),
-        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString())));
+    List<Pair<String, String>> parentMatch =
+        List.of(new ImmutablePair<>(parentIdField, entityReference.getId().toString()));
+    // Each childAlias is an entity-type name (per indexMapping.json) whose capability names the
+    // field that marks its docs deleted, so one script runs per field and never reaches an index
+    // without one. A cascade writes no search document per descendant, so this update is the only
+    // one: an incident under the parent takes its test case's flag here.
+    for (String deletedField : childDeletedFields(indexMapping)) {
+      SoftDeleteScript script = new SoftDeleteScript(delete, deletedField);
+      List<String> targets =
+          filterChildWriteTargetsByCapability(indexMapping, script::compatibleWith);
+      searchClient.softDeleteOrRestoreChildren(targets, script.painless(), parentMatch);
+    }
+  }
+
+  private List<String> childDeletedFields(IndexMapping indexMapping) {
+    return childAliasesWithCapability(
+            indexMapping, capability -> capability != null && capability.hasFieldDeleted())
+        .stream()
+        .map(alias -> EntityIndexCapabilityRegistry.get(alias).deletedField())
+        .distinct()
+        .toList();
   }
 
   public String getScriptWithParams(

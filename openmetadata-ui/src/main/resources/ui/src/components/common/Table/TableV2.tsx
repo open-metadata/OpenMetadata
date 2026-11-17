@@ -44,6 +44,7 @@ import {
   ButtonUtility,
   MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
+  Popover,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
 import {
@@ -66,12 +67,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  ColumnResizer,
-  Dialog,
-  Popover,
-  ResizableTableContainer,
-} from 'react-aria-components';
+import { ColumnResizer, ResizableTableContainer } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { twMerge } from 'tailwind-merge';
 import { PAGE_SIZE_BASE } from '../../../constants/constants';
@@ -392,14 +388,15 @@ const HeaderFilterTrigger = ({
         size="xs"
         onPress={() => onOpenChange(!isOpen)}
       />
+      {/* offset 8 is react-aria's default, which the filter opened at before core. */}
       <Popover
+        aria-label="filter"
         isOpen={isOpen}
+        offset={8}
         placement="bottom right"
         triggerRef={triggerRef}
         onOpenChange={onOpenChange}>
-        <Dialog aria-label="filter" className="tw:outline-none">
-          {children}
-        </Dialog>
+        {children}
       </Popover>
     </span>
   );
@@ -1969,10 +1966,7 @@ const TableV2 = <T extends object>(
                             <div
                               // Caps at ~264px and scrolls, like the filter
                               // dropdown it replaced.
-                              className={classNames(
-                                'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
-                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
-                              )}
+                              className="tw:max-h-[264px] tw:max-w-80 tw:overflow-auto"
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>
                               {typeof colType.filterDropdown === 'function'

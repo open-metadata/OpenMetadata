@@ -13,14 +13,13 @@
 
 import { Badge, Box } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   ChevronRight,
-  Copy01,
   Lightbulb03,
 } from '@openmetadata/ui-core-components/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClipboard } from '../../../hooks/useClipBoard';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
 import { fmtNum } from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
@@ -84,10 +83,8 @@ const RawLogSection: FC<{ stackLines: string[] }> = ({ stackLines }) => {
 
 const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
   const { t } = useTranslation();
+  // Only the raw logs go to the clipboard — the title, message and hint are already on screen.
   const stackLines = att.stackTrace ? att.stackTrace.split('\n') : [];
-  // Only the raw logs go to the clipboard — the title, message and hint are already on screen, and
-  // pasting them into a ticket or a terminal alongside the log body is noise.
-  const { hasCopied, onCopyToClipBoard } = useClipboard(att.stackTrace ?? '');
   const isError = att.severity === 'error';
   const { surfaceClass, dividerClass, accentClass, accentIconClass } =
     getAttentionClasses(isError);
@@ -98,7 +95,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
       <Box
         align="center"
         className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
-        <AlertTriangle className={accentIconClass} size={15} />
+        <Alert className={accentIconClass} size={15} />
         <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>
@@ -108,13 +105,12 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         </span>
         <span className="tw:flex-1" />
         {stackLines.length > 0 && (
-          <button
-            className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
-            type="button"
-            onClick={() => onCopyToClipBoard()}>
-            <Copy01 size={18} />
-            {hasCopied ? t('label.copied') : t('label.copy')}
-          </button>
+          <CopyButton
+            label={t('label.copy')}
+            labelColor="tertiary"
+            testId="copy-attention-log"
+            value={att.stackTrace ?? ''}
+          />
         )}
       </Box>
       <div className="tw:p-3">

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { AddTestCaseListChangePayload } from './AddTestCaseList.interface';
 
@@ -41,6 +42,67 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
   }
 
   return [];
+}
+
+// The picker always sends `filter`, as `{}` when no search or filter is
+// active, so only a filter with keys narrows the selection.
+function isUnscopedSelectAll(p: AddTestCaseListChangePayload): boolean {
+  return isEmpty(p.excludeIds) && isEmpty(p.filter);
+}
+
+/**
+ * Returns `true` when the `testCases` form field value represents a valid
+ * selection — either an explicit list of test case names/references, or a
+ * picker {@link AddTestCaseListChangePayload} that selects all test cases
+ * (`selectAll: true`) or includes specific ids. Mirrors the validation logic
+ * in `BundleSuiteFormBody.tsx` so the pipeline form and the bundle suite form
+ * treat the same picker payload consistently.
+ *
+ * The picker intentionally emits `selectAll: true` with an *empty* `testCases`
+ * array for "Select all N test cases" (the backend resolves the full set via
+ * `selectAll`/`excludeIds`/`filter`), so validating purely on
+ * `normalizeSelectedTestProp(value).length` rejects a full selection.
+ *
+ * A select-all carrying `excludeIds` or an active `filter` is rejected here:
+ * the pipeline config only accepts a flat list of test case names, so those
+ * fields cannot be carried through, and accepting the payload would silently
+ * widen the run to every test case (including rows the user unticked).
+ */
+export function isValidTestCaseSelection(value: unknown): boolean {
+  if (value == null) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (typeof value === 'object' && value !== null && 'selectAll' in value) {
+    const p = value as AddTestCaseListChangePayload;
+
+    if (p.selectAll) {
+      return isUnscopedSelectAll(p);
+    }
+
+    return (p.includeIds?.length ?? 0) > 0;
+  }
+
+  return false;
+}
+
+/**
+ * Returns `true` when the `testCases` form field value is a *clean* picker
+ * select-all — `selectAll: true` with no exclusions and no active filter —
+ * the only select-all shape the pipeline can save as "run all", since its
+ * config takes a flat list of test case names and cannot represent
+ * `excludeIds`/`filter`. Select-all with exclusions or a filter is rejected
+ * in {@link isValidTestCaseSelection} rather than silently widened.
+ */
+export function isSelectAllPayload(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || !('selectAll' in value)) {
+    return false;
+  }
+  const p = value as AddTestCaseListChangePayload;
+
+  return Boolean(p.selectAll) && isUnscopedSelectAll(p);
 }
 
 /**

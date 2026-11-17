@@ -12,10 +12,10 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { CollapsePanel } from '@openmetadata/ui-core-components/icons';
 import React, { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CollapsePanelIcon } from '../../../../assets/svg/collapse-panel.svg';
 import {
   useAppModeSidebarHeader,
   useAppModeSidebarMainFooter,
@@ -65,7 +65,7 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
           <ButtonUtility
             className="ask-main-panel__collapse-btn"
             data-testid="ask-collapse-btn"
-            icon={CollapsePanelIcon}
+            icon={CollapsePanel}
             size="lg"
             tooltip={t('label.collapse')}
             type="button"
@@ -109,10 +109,7 @@ const MainPanel: React.FC<MainPanelProps> = ({ onCollapse, nodes }) => {
       </nav>
 
       {recentSlots.length > 0 ? (
-        <div
-          className="ask-main-panel__chats"
-          data-testid="ask-recent-region"
-          data-tour-step="recent-chats">
+        <div className="ask-main-panel__chats" data-testid="ask-recent-region">
           {recentSlots.map(({ key, component: Slot }) => (
             <Slot key={key} />
           ))}

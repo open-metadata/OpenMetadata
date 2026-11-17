@@ -31,6 +31,8 @@ import { enableAiAppMode } from '../Utils/appMode';
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const SETTINGS_PUT = '**/api/v1/system/settings';
+const ENTITY_RULE_PATCH =
+  '**/api/v1/system/settings/entityRulesSettings/rules/**';
 
 type PatchOp = { op: string; path: string; value: unknown };
 
@@ -485,6 +487,73 @@ test.describe(
       );
     });
 
+    test('lineage: asks before leaving unsaved edits, and only Discard drops them', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'lineageSettings', {
+        initial: {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          lineageLayer: 'EntityLineage',
+          pipelineViewMode: 'Node',
+        },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'lineage');
+      await header(page).getByTestId('edit-button').click();
+      await fillField(page, 'field-upstream', '4');
+
+      // Switching sidebar item is held until the user decides.
+      await page.getByTestId('profile-nav-bots').click();
+      const prompt = page.getByTestId('unsaved-changes-popover');
+      await expect(prompt).toBeVisible();
+      await prompt.getByTestId('unsaved-changes-popover-cancel').click();
+      await expect(prompt).toBeHidden();
+      await expect(
+        page.getByTestId('field-upstream').locator('input')
+      ).toHaveValue('4');
+
+      // Esc is held the same way; Discard then closes without saving.
+      await page.keyboard.press('Escape');
+      await expect(prompt).toBeVisible();
+      await prompt.getByTestId('unsaved-changes-popover-confirm').click();
+      await expect(page.getByTestId('ai-profile-page')).toBeHidden();
+      expect(settings.puts).toHaveLength(0);
+    });
+
+    test('browser Back walks the opened views and never reopens a saved form', async ({
+      page,
+    }) => {
+      await stubSettingRoundTrip(page, 'lineageSettings', {
+        initial: {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          lineageLayer: 'EntityLineage',
+          pipelineViewMode: 'Node',
+        },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'lineage');
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('2');
+
+      await page.goBack();
+      await expect(page.getByTestId('platform-settings-landing')).toBeVisible();
+
+      await page.goForward();
+      await header(page).getByTestId('edit-button').click();
+      await fillField(page, 'field-upstream', '3');
+      await saveSettings(page);
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('3');
+
+      // Save replaced the editor's entry, so Back stays on the page view.
+      await page.goBack();
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('3');
+      await expect(page.getByTestId('field-upstream')).toBeHidden();
+
+      await page.goBack();
+      await expect(page.getByTestId('platform-settings-landing')).toBeVisible();
+    });
+
     test('default app mode: saves the selected mode', async ({ page }) => {
       const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
         initial: { defaultAppMode: null },
@@ -757,7 +826,9 @@ test.describe(
         await afterAction();
       }
     });
-    test('data asset rules: toggling a rule saves it', async ({ page }) => {
+    test('data asset rules: toggling a rule patches only that rule', async ({
+      page,
+    }) => {
       const rule = {
         name: 'Single Domain',
         description: 'One domain per asset.',
@@ -766,6 +837,21 @@ test.describe(
       };
       const settings = await stubSettingRoundTrip(page, 'entityRulesSettings', {
         initial: { entitySemantics: [rule] },
+      });
+      // The rule patch is stubbed too: entity rules are tenant-wide, and this
+      // rule does not exist on the real backend.
+      const rulePatches: { url: string; ops: PatchOp[] }[] = [];
+      await page.route(ENTITY_RULE_PATCH, async (route) => {
+        rulePatches.push({
+          url: route.request().url(),
+          ops: route.request().postDataJSON() as PatchOp[],
+        });
+        await route.fulfill({
+          json: {
+            config_type: 'entityRulesSettings',
+            config_value: { entitySemantics: [{ ...rule, enabled: true }] },
+          },
+        });
       });
       await openPlatformSettings(page);
       await openCard(page, 'data-asset-rules');
@@ -776,12 +862,18 @@ test.describe(
       await clickAndWaitFor(
         page,
         page.getByTestId('toggle-Single Domain'),
-        SETTINGS_PUT
+        ENTITY_RULE_PATCH
       );
 
-      expect(settings.puts[0].config_value).toEqual({
-        entitySemantics: [{ ...rule, enabled: true }],
-      });
+      expect(rulePatches).toEqual([
+        {
+          url: expect.stringContaining(
+            '/api/v1/system/settings/entityRulesSettings/rules/Single%20Domain'
+          ),
+          ops: [{ op: 'replace', path: '/enabled', value: true }],
+        },
+      ]);
+      expect(settings.puts).toHaveLength(0);
     });
 
     test('data asset rules: empty state offers no Add, as adding is unsupported', async ({

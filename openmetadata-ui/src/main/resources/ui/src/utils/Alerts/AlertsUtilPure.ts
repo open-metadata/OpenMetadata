@@ -40,7 +40,7 @@ import {
   Type,
   type Webhook,
 } from '../../generated/events/eventSubscription';
-import type { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../utils/AlertsClassBase.interface';
 import type { ModifiedWebhookConfig } from '../AlertsClassBase.interface';
 import { t } from '../i18next/LocalUtil';
 
@@ -61,27 +61,6 @@ export const getFunctionDisplayName = (func: string): string => {
   };
 
   return displayNameByFunction[func] ?? '';
-};
-
-export const getAlertActionTypeDisplayName = (
-  alertActionType: SubscriptionType
-) => {
-  switch (alertActionType) {
-    case SubscriptionType.ActivityFeed:
-      return t('label.activity-feed-plural');
-    case SubscriptionType.Email:
-      return t('label.email');
-    case SubscriptionType.Webhook:
-      return t('label.webhook');
-    case SubscriptionType.Slack:
-      return t('label.slack');
-    case SubscriptionType.MSTeams:
-      return t('label.ms-team-plural');
-    case SubscriptionType.GChat:
-      return t('label.g-chat');
-    default:
-      return '';
-  }
 };
 
 export const getDisplayNameForEntities = (entity: string) => {

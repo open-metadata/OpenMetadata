@@ -13,11 +13,8 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { Icon as ImageIcon } from '@openmetadata/ui-core-components/icon';
 
+import { DataProduct as DataProductIcon } from '@openmetadata/ui-core-components/icons';
 import { lazy } from 'react';
-import {
-  ReactComponent as DataProductIcon,
-  ReactComponent as DefaultDataProductIcon,
-} from '../assets/svg/entity/data-product.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -145,7 +142,10 @@ export interface DataProductDetailPageTabProps {
 export const getDataProductIconByUrl = (iconURL?: string) => (
   <ImageIcon
     fallback={
-      <DefaultDataProductIcon className="tw:text-quaternary data-product-default-icon" />
+      <DataProductIcon
+        className="tw:text-quaternary data-product-default-icon"
+        size={24}
+      />
     }
     iconValue={iconURL}
     imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
@@ -467,7 +467,7 @@ export const DataProductListItemRenderer = (props: EntityReference) => {
         className="layout-space layout-space-horizontal"
         gap={2}
         itemClassName="layout-space-item">
-        <DataProductIcon className="tw:size-4 tw:shrink-0" />
+        <DataProductIcon className="tw:shrink-0" size={16} />
         <Typography>{getEntityName(props)}</Typography>
       </Box>
       {props.description && (

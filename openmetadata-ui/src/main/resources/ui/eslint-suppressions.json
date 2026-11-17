@@ -104,7 +104,7 @@
   },
   "playwright/e2e/Features/CustomizeNavigationNewItems.spec.ts": {
     "om-playwright/no-positional-locator": {
-      "count": 4
+      "count": 3
     }
   },
   "playwright/e2e/Features/DataAssetRulesDisabled.spec.ts": {
@@ -781,11 +781,6 @@
   "src/components/Alerts/AlertDetails/AlertDiagnosticInfo/AlertDiagnosticInfoTab.tsx": {
     "openmetadata-ui-patterns/no-new-om-tokens": {
       "count": 1
-    }
-  },
-  "src/components/Alerts/AlertDetails/AlertRecentEventsTab/AlertRecentEventsTab.tsx": {
-    "openmetadata-ui-patterns/no-new-om-tokens": {
-      "count": 5
     }
   },
   "src/components/Alerts/ClassicAlertRuleSection.tsx": {

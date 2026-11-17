@@ -917,6 +917,7 @@ public class IngestionPipelineResource
     if (pipelineServiceClient == null) {
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
+    repository.assertOwnsRunnerName(pipeline);
     decryptOrNullify(securityContext, pipeline, true);
     pipelineServiceClient.toggleIngestion(pipeline);
     Response response =
@@ -960,6 +961,7 @@ public class IngestionPipelineResource
           .withCode(200)
           .withReason("Pipeline Client Disabled");
     }
+    repository.assertOwnsRunnerName(ingestionPipeline);
     return pipelineServiceClient.killIngestion(ingestionPipeline);
   }
 
