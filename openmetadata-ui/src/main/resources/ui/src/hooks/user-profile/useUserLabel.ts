@@ -28,8 +28,9 @@ export const useUserLabel = ({
   displayName?: ReactNode;
   enabled: boolean;
 }): ReactNode => {
+  // A passed displayName is the label, so there is nothing to look up.
   const [, , storedUser] = useUserProfile({
-    permission: enabled,
+    permission: enabled && !displayName,
     name: userName,
   });
 

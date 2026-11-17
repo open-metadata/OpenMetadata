@@ -5967,14 +5967,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/BlockEditor/Extensions/CodeBlock/CodeBlockComponent.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Flow/ServiceDocPanel.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/BlockEditor/Extensions/File/FileNodeView.tsx"
       ],
       "specs": [
@@ -7170,8 +7162,7 @@
       ],
       "specs": [
         "playwright/e2e/Features/Permission.spec.ts",
-        "playwright/e2e/Features/QueryEntity.spec.ts",
-        "playwright/e2e/Features/Table.spec.ts"
+        "playwright/e2e/Features/QueryEntity.spec.ts"
       ]
     },
     {
@@ -10467,14 +10458,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/ConnectionStepCard/ConnectionStepCard.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Features/Table.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/TestConnection/TestConnection.tsx"
       ],
       "specs": [
@@ -11029,8 +11012,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
-        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts",
         "playwright/e2e/Pages/Policies.spec.ts"
       ]
@@ -11041,8 +11022,6 @@
       ],
       "specs": [
         "playwright/e2e/Features/AccessControlSettings.spec.ts",
-        "playwright/e2e/Features/ContextCenterDocument.spec.ts",
-        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts"
       ]
     },
