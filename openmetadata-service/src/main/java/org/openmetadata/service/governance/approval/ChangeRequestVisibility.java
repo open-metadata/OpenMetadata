@@ -13,26 +13,26 @@
 
 package org.openmetadata.service.governance.approval;
 
+import static org.openmetadata.service.governance.workflows.Workflow.CHANGE_REQUEST_ID_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -77,15 +77,7 @@ public final class ChangeRequestVisibility {
 
   public static void requireVisible(
       Authorizer authorizer, SecurityContext securityContext, ChangeRequest request) {
-    ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, request);
-    String caller = securityContext.getUserPrincipal().getName();
-    if (!caller.equals(request.getRequestedBy())
-        && !seesAll(caller, entity)
-        && !reviewableTasks(authorizer, securityContext, List.of(request))
-            .contains(request.getTaskId())) {
-      throw new ForbiddenException(
-          "You cannot view change requests made by other users on this asset");
-    }
+    requireVisible(authorizer, securityContext, request, request.getTaskId());
   }
 
   /**
@@ -93,90 +85,69 @@ public final class ChangeRequestVisibility {
    * change request is left to the task's own checks.
    */
   public static void requireTaskVisible(
-      Authorizer authorizer, SecurityContext securityContext, UUID taskId) {
-    ChangeRequest request = ChangeRequestService.dao().changeRequestDAO().findByTaskId(taskId);
+      Authorizer authorizer, SecurityContext securityContext, Task task) {
+    ChangeRequest request = requestOf(task);
     if (request != null) {
-      requireVisible(authorizer, securityContext, request);
+      requireVisible(authorizer, securityContext, request, task.getId());
     }
   }
 
-  /**
-   * The page without the review tasks of change requests the caller may not read, so a task shows
-   * a pending change to the same users its change request does. It is not refilled, so it can come
-   * back short.
-   */
-  public static ResultList<Task> retainVisibleTasks(
-      Authorizer authorizer, SecurityContext securityContext, ResultList<Task> page) {
-    List<Task> tasks = page.getData() == null ? List.of() : page.getData();
-    if (!tasks.isEmpty()) {
-      Set<UUID> hidden =
-          hiddenTaskIds(
-              authorizer,
-              securityContext,
-              tasks.stream().map(task -> task.getId().toString()).toList());
-      if (!hidden.isEmpty()) {
-        page.setData(
-            tasks.stream()
-                .filter(task -> !hidden.contains(task.getId()))
-                .collect(Collectors.toCollection(ArrayList::new)));
-      }
-    }
-    return page;
+  public static void requireTaskVisible(
+      Authorizer authorizer, SecurityContext securityContext, UUID taskId) {
+    Task task = Entity.getEntity(Entity.TASK, taskId, "", Include.ALL);
+    requireTaskVisible(authorizer, securityContext, task);
   }
 
-  /**
-   * Which of {@code taskIds} review a change request the caller may not read: another user's
-   * request on an entity the caller neither owns nor reviews, whose task the caller may not
-   * resolve.
-   */
-  public static Set<UUID> hiddenTaskIds(
-      Authorizer authorizer, SecurityContext securityContext, List<String> taskIds) {
+  private static void requireVisible(
+      Authorizer authorizer, SecurityContext securityContext, ChangeRequest request, UUID taskId) {
+    ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, request);
     String caller = securityContext.getUserPrincipal().getName();
-    Set<UUID> hidden = Set.of();
-    if (!taskIds.isEmpty() && !SubjectContext.getSubjectContext(caller).isAdmin()) {
-      hidden =
-          hiddenTasks(
-              authorizer,
-              securityContext,
-              caller,
-              ChangeRequestService.dao().changeRequestDAO().listByTaskIds(taskIds));
+    if (!caller.equals(request.getRequestedBy())
+        && !seesAll(caller, entity)
+        && !mayResolveTask(authorizer, securityContext, taskId)) {
+      throw new ForbiddenException(
+          "You cannot view change requests made by other users on this asset");
     }
-    return hidden;
   }
 
-  private static Set<UUID> hiddenTasks(
-      Authorizer authorizer,
-      SecurityContext securityContext,
-      String caller,
-      List<ChangeRequest> requests) {
-    Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
-    List<ChangeRequest> others =
-        requests.stream()
-            .filter(request -> !caller.equals(request.getRequestedBy()))
-            .filter(
-                request ->
-                    !seesAllByEntity.computeIfAbsent(
-                        request.getEntityId(), id -> seesAllOn(caller, request)))
-            .toList();
-    Set<UUID> reviewable =
-        others.isEmpty() ? Set.of() : reviewableTasks(authorizer, securityContext, others);
-    return others.stream()
-        .map(ChangeRequest::getTaskId)
-        .filter(taskId -> !reviewable.contains(taskId))
-        .collect(Collectors.toSet());
+  // A request links only its current review task. Revising the request closes the earlier task and
+  // unlinks it; the workflow run that created that task records the request it reviewed.
+  private static ChangeRequest requestOf(Task task) {
+    ChangeRequest request =
+        ChangeRequestService.dao().changeRequestDAO().findByTaskId(task.getId());
+    if (request == null && task.getWorkflowInstanceId() != null) {
+      UUID requestId = requestOfRun(task.getWorkflowInstanceId());
+      request =
+          requestId == null
+              ? null
+              : ChangeRequestService.dao().changeRequestDAO().findById(requestId);
+    }
+    return request;
   }
 
-  // An entity that can no longer be read has no owners or reviewers to grant the view.
-  private static boolean seesAllOn(String caller, ChangeRequest request) {
-    boolean seesAll;
-    try {
-      seesAll =
-          seesAll(
-              caller, new ResourceContext<>(request.getEntityType(), request.getEntityId(), null));
-    } catch (EntityNotFoundException missing) {
-      seesAll = false;
+  private static UUID requestOfRun(UUID runId) {
+    String run = Entity.getCollectionDAO().workflowInstanceTimeSeriesDAO().getById(runId);
+    String requestId =
+        run == null
+            ? null
+            : JsonUtils.readTree(run)
+                .path("variables")
+                .path(
+                    WorkflowVariableHandler.getNamespacedVariableName(
+                        GLOBAL_NAMESPACE, CHANGE_REQUEST_ID_VARIABLE))
+                .asText(null);
+    return requestId == null ? null : UUID.fromString(requestId);
+  }
+
+  private static boolean mayResolveTask(
+      Authorizer authorizer, SecurityContext securityContext, UUID taskId) {
+    boolean allowed = false;
+    if (taskId != null) {
+      TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+      Task task = Entity.getEntity(Entity.TASK, taskId, TASK_FIELDS, Include.ALL);
+      allowed = mayResolve(repository, authorizer, securityContext, task);
     }
-    return seesAll;
+    return allowed;
   }
 
   private static List<ChangeRequest> listForEntity(

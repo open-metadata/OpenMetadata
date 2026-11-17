@@ -1699,27 +1699,13 @@
     {
       "_comment": "Change request review: the Pending Changes preview and the change request store.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/PendingChanges/**",
-        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/GovernanceDAOs.java"
+        "openmetadata-ui/src/main/resources/ui/src/components/PendingChanges/**"
       ],
       "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts",
         "playwright/e2e/Features/Glossary/GlossaryTermMoveApproval.spec.ts",
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
-      ]
-    },
-    {
-      "_comment": "Task store queries: task lists, counts and their visibility.",
-      "sources": [
-        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/FeedDAOs.java"
-      ],
-      "projects": ["chromium"],
-      "specs": [
-        "playwright/e2e/Features/Tasks/TaskPermissions.spec.ts",
-        "playwright/e2e/Features/Tasks/TaskResolution.spec.ts",
-        "playwright/e2e/Pages/Tasks.spec.ts",
-        "playwright/e2e/Features/Workflows/ChangeRequestReviewLifecycle.spec.ts"
       ]
     }
   ]

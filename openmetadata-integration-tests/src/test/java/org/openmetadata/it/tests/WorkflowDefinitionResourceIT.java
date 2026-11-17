@@ -119,6 +119,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -9003,6 +9004,22 @@ public class WorkflowDefinitionResourceIT {
             .executeForString(HttpMethod.GET, entityTasksPath, null)
             .contains(task.getId().toString()));
 
+    String countPath =
+        "/v1/tasks/count?aboutEntity="
+            + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    assertEquals(0, openTaskCount(reader, countPath));
+    OpenMetadataException commentRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                reader
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        taskPath + "/comments",
+                        new CreateTaskComment().withMessage("a comment")));
+    assertEquals(403, commentRefused.getStatusCode(), commentRefused.getMessage());
+
     // The requester and the reviewer the task is assigned to still read it.
     for (OpenMetadataClient allowed : List.of(SdkClients.user2Client(), SdkClients.user1Client())) {
       assertTrue(
@@ -9015,7 +9032,30 @@ public class WorkflowDefinitionResourceIT {
               .getHttpClient()
               .executeForString(HttpMethod.GET, entityTasksPath, null)
               .contains(task.getId().toString()));
+      assertEquals(1, openTaskCount(allowed, countPath));
     }
+
+    // A revision closes the first review task and unlinks it from the request; it stays readable
+    // only by those who may read the request.
+    Task revised = awaitRequestTask(submitDescription(glossary, "revised proposal"), glossary);
+    assertNotEquals(task.getId(), revised.getId());
+    OpenMetadataException supersededHidden =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> reader.getHttpClient().executeForString(HttpMethod.GET, taskPath, null));
+    assertEquals(403, supersededHidden.getStatusCode(), supersededHidden.getMessage());
+    assertTrue(
+        SdkClients.user2Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, taskPath, null)
+            .contains(task.getId().toString()));
+  }
+
+  private int openTaskCount(OpenMetadataClient client, String countPath) throws Exception {
+    return MAPPER
+        .readTree(client.getHttpClient().executeForString(HttpMethod.GET, countPath, null))
+        .path("open")
+        .asInt();
   }
 
   @RetryingTest(2)

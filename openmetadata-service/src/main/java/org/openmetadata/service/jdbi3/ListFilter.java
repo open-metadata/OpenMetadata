@@ -177,6 +177,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskAccessTypeCondition());
     conditions.add(getTaskCreatedAtRangeCondition(tableName));
     conditions.add(getTaskSearchCondition());
+    conditions.add(getChangeRequestReviewCondition(tableName));
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getAgentIdCondition());
@@ -452,6 +453,39 @@ public class ListFilter extends Filter<ListFilter> {
    * vote removes the voter from a task's assignees, so a reviewer's own listing keeps the task
    * through the reviewer relationship.
    */
+  /**
+   * For a reader who is not an admin, leaves out the review tasks of other users' change requests,
+   * except those the reader is assigned to or reviews, and those about an entity the reader owns or
+   * reviews: the users the change request API shows a request to
+   * (ADR:2026-11-17-a-change-requests-review-task-is-read-by-whoever-may-read-the-request).
+   * {@code changeRequestReaderIds} holds the reader's id and the ids of the reader's teams.
+   */
+  private String getChangeRequestReviewCondition(String tableName) {
+    String reader = queryParams.get("changeRequestReader");
+    String readerIds = queryParams.get("changeRequestReaderIds");
+    if (nullOrEmpty(reader) || nullOrEmpty(readerIds)) {
+      return "";
+    }
+    String id = qualifyColumn(tableName, "id");
+    String ids = buildIndexedBindParams("changeRequestReaderId", readerIds);
+    return String.format(
+        "(%1$s NOT IN (SELECT cr.taskId FROM change_request cr "
+            + "WHERE cr.taskId IS NOT NULL AND cr.requestedBy <> :changeRequestReader) "
+            + "OR %1$s IN (SELECT er.toId FROM entity_relationship er "
+            + "WHERE er.toEntity = '%3$s' AND er.fromId IN (%2$s) AND er.relation IN (%4$d, %5$d)) "
+            + "OR %1$s IN (SELECT about.toId FROM entity_relationship about "
+            + "INNER JOIN entity_relationship role ON role.toId = about.fromId "
+            + "WHERE about.toEntity = '%3$s' AND about.relation = %6$d AND about.deleted = FALSE "
+            + "AND role.fromId IN (%2$s) AND role.relation IN (%7$d, %5$d)))",
+        id,
+        ids,
+        Entity.TASK,
+        Relationship.ASSIGNED_TO.ordinal(),
+        Relationship.REVIEWS.ordinal(),
+        Relationship.MENTIONED_IN.ordinal(),
+        Relationship.OWNS.ordinal());
+  }
+
   private String getTaskReviewerOrAssigneeCondition() {
     String ids = queryParams.get("reviewerOrAssigneeIds");
     if (nullOrEmpty(ids)) {
