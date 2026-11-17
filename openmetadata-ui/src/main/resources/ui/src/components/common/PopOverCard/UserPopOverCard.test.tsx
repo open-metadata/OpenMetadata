@@ -28,6 +28,15 @@ const mockUseUserProfile = jest.fn(
   ]
 );
 
+const mockTeams: Record<string, { name: string; displayName?: string }> = {};
+
+jest.mock('../../../hooks/popover/useEntityPopoverData', () => ({
+  useEntityPopoverData: (name: string) => ({
+    data: mockTeams[name],
+    loading: false,
+  }),
+}));
+
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: (args: { name: string; permission: boolean }) =>
     mockUseUserProfile(args),
@@ -190,6 +199,18 @@ describe('UserPopOverCard Component', () => {
 
     expect(screen.getByTestId('testTeam')).toHaveTextContent('testTeam');
     expect(screen.queryByText('Some User')).not.toBeInTheDocument();
+  });
+
+  it('should show the team display name for a team', () => {
+    mockTeams.testTeam = { name: 'testTeam', displayName: 'Data Platform' };
+
+    render(
+      <UserPopOverCard showUserName type={OwnerType.TEAM} userName="testTeam" />
+    );
+
+    expect(screen.getByTestId('testTeam')).toHaveTextContent('Data Platform');
+
+    delete mockTeams.testTeam;
   });
 
   it('should render children instead of the resolved name', () => {

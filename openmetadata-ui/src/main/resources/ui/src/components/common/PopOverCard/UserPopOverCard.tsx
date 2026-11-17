@@ -16,49 +16,23 @@ import classNames from 'classnames';
 import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
-import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
+import { useEntityPopoverData } from '../../../hooks/popover/useEntityPopoverData';
+import { useUserLabel } from '../../../hooks/user-profile/useUserLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import {
-  getTeamAndUserDetailsPath,
-  getUserPath,
-} from '../../../utils/RouterUtils';
-import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
 import { PopoverContent } from './PopoverContent.component';
 import { PopoverTitle } from './PopoverTitle.component';
 import { TeamPopoverContent } from './TeamPopoverContent.component';
 import { TeamPopoverTitle } from './TeamPopoverTitle.component';
 import { UserPopOverCardProps } from './UserPopOverCard.interface';
+import { getUserPopoverPath } from './UserPopOverCard.utils';
 
-const getUserPopoverPath = (isTeam: boolean, userName: string) =>
-  getSettingsLink(
-    isTeam ? getTeamAndUserDetailsPath(userName) : getUserPath(userName)
-  );
+// A team card has no profile store entry; resolve its display name through the popover's own
+// query, which the hover card reuses.
+const TeamName: FC<{ teamName: string }> = ({ teamName }) => {
+  const { data } = useEntityPopoverData(teamName, OwnerType.TEAM);
 
-// Resolves the user even when no avatar is shown. It shares the avatar's cache, so a card that
-// also renders ProfilePicture makes no extra request. An empty displayName falls back too.
-const useUserLabel = ({
-  userName,
-  displayName,
-  isTeam,
-  enabled,
-}: {
-  userName: string;
-  displayName?: ReactNode;
-  isTeam: boolean;
-  enabled: boolean;
-}) => {
-  const [, , storedUser] = useUserProfile({
-    permission: enabled && !isTeam,
-    name: userName,
-    isTeam,
-  });
-
-  if (displayName) {
-    return displayName;
-  }
-
-  return isTeam ? userName : getEntityName(storedUser) || userName;
+  return <>{getEntityName(data) || teamName}</>;
 };
 
 const UserPopoverBody: FC<{
@@ -103,9 +77,10 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   const userLabel = useUserLabel({
     userName,
     displayName,
-    isTeam,
-    enabled: showUserName && !children,
+    enabled: showUserName && !children && !isTeam,
   });
+  const label =
+    isTeam && !displayName ? <TeamName teamName={userName} /> : userLabel;
   const handleTitleClick = (event: MouseEvent) => {
     if (onTitleClick) {
       event.preventDefault();
@@ -144,7 +119,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           to={to ?? getUserPopoverPath(isTeam, userName)}
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? <span className="truncate">{userLabel}</span> : null}
+          {showUserName ? <span className="truncate">{label}</span> : null}
         </Link>
       )}
     </HoverCard>

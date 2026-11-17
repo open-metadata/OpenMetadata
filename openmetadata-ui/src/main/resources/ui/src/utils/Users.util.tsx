@@ -38,6 +38,7 @@ export const userCellRenderer = (user: EntityReference | User) => {
     <div className="w-max-full">
       <UserPopOverCard
         showUserName
+        // The "Username" column shows the login; the "Name" column beside it shows the display name.
         displayName={user.name}
         profileWidth={16}
         userName={user.name}

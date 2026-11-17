@@ -57,6 +57,7 @@ export const UserNameCell: FC<{ record: User; goTo: GoTo }> = ({
   return (
     <UserPopOverCard
       showUserName
+      // The "Username" column shows the login; the "Name" column beside it shows the display name.
       displayName={record.name}
       profileWidth={16}
       to={toHashLocation(target)}
