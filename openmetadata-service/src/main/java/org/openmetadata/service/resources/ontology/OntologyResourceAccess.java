@@ -24,6 +24,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.OntologyEntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -35,6 +36,22 @@ final class OntologyResourceAccess {
   private static final Set<String> CONTENT_FIELDS = Set.of("description", "tags");
 
   private OntologyResourceAccess() {}
+
+  /**
+   * A name held only by a soft-deleted definition is re-created through PUT, so the write is
+   * authorized as an edit of that stored definition rather than as a create.
+   * ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
+   */
+  static <T extends OntologyDefinition> Response createOrRecreate(
+      final OntologyEntityRepository<T> repository,
+      final T entity,
+      final Supplier<Response> create,
+      final Supplier<Response> recreate) {
+    repository.setFullyQualifiedName(entity);
+    return repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.DELETED) == null
+        ? create.get()
+        : repository.recreating(recreate);
+  }
 
   /**
    * The Studio's Undo restores the id it deleted. Re-creating the name in between already brought

@@ -808,7 +808,11 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final SecurityContext securityContext,
       @Valid final CreateOntology request) {
     final Ontology entity = mapper.createToEntity(request, user(securityContext));
-    return create(uriInfo, securityContext, entity);
+    return OntologyResourceAccess.createOrRecreate(
+        repository,
+        entity,
+        () -> create(uriInfo, securityContext, entity),
+        () -> createOrUpdate(uriInfo, securityContext, entity));
   }
 
   @PUT

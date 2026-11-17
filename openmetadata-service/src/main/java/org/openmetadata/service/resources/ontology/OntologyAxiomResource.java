@@ -131,7 +131,11 @@ public class OntologyAxiomResource extends EntityResource<OntologyAxiom, Ontolog
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyAxiom request) {
     final OntologyAxiom entity = mapper.createToEntity(request, user(securityContext));
-    return create(uriInfo, securityContext, entity);
+    return OntologyResourceAccess.createOrRecreate(
+        repository,
+        entity,
+        () -> create(uriInfo, securityContext, entity),
+        () -> createOrUpdate(uriInfo, securityContext, entity));
   }
 
   @POST

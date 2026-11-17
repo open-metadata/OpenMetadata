@@ -102,6 +102,22 @@ class OntologyBindingGraphLinksTest {
   }
 
   @Test
+  void aTableBoundToMoreConceptsThanTheCapIsMarkedTruncated() {
+    final UUID table = UUID.randomUUID();
+    final List<OntologyAssetConceptLink> bound =
+        IntStream.rangeClosed(0, OntologyBindingGraphLinks.MAX_ASSETS)
+            .mapToObj(index -> new OntologyAssetConceptLink().withConcept(concept("C" + index)))
+            .toList();
+    when(bindings.linksForAsset(ACCESS, "table", table))
+        .thenReturn(new OntologyAssetConceptLinks().withLinks(bound));
+
+    final JsonNode graph = merge(rootGraph("table", table), request(table, "table", 2, Set.of()));
+
+    assertEquals(OntologyBindingGraphLinks.MAX_ASSETS + 1, graph.path("nodes").size());
+    assertTrue(graph.path("truncated").asBoolean());
+  }
+
+  @Test
   void aRootOnlyRequestOrAnotherRelationshipFilterLeavesTheGraphAlone() {
     final UUID table = UUID.randomUUID();
     final String graph = rootGraph("table", table);

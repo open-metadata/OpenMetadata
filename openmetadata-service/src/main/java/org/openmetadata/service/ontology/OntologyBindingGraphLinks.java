@@ -66,7 +66,7 @@ public final class OntologyBindingGraphLinks {
         bindings.linksForAsset(access, root.getType(), root.getId()).getLinks().stream()
             .map(link -> new Link(link.getConcept(), root))
             .toList();
-    return new Links(links, false);
+    return capped(links);
   }
 
   private Links assetsOf(
@@ -80,9 +80,13 @@ public final class OntologyBindingGraphLinks {
       }
       after = page.getAfter();
     } while (after != null && links.size() < MAX_ASSETS);
-    final boolean truncated = after != null || links.size() > MAX_ASSETS;
-    return new Links(
-        links.size() > MAX_ASSETS ? List.copyOf(links.subList(0, MAX_ASSETS)) : links, truncated);
+    final Links capped = capped(links);
+    return new Links(capped.links(), capped.truncated() || after != null);
+  }
+
+  private static Links capped(final List<Link> links) {
+    final boolean truncated = links.size() > MAX_ASSETS;
+    return new Links(truncated ? List.copyOf(links.subList(0, MAX_ASSETS)) : links, truncated);
   }
 
   static String withLinks(
