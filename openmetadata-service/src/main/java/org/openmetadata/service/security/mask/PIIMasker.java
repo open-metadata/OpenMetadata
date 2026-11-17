@@ -453,9 +453,17 @@ public class PIIMasker {
                   && isSensitiveColumn(table, link.getArrayFieldName())));
     }
 
+    /**
+     * A column test case outlives the column it points at: schema drift (rename/drop) deletes the
+     * column's tags while the test case and its results keep their dangling {@code entityLink},
+     * and {@code OrphanTestCaseCleanup} only sweeps rows whose table is gone. An unresolved column
+     * path must therefore fail closed exactly like a missing table and the profile path resolution
+     * in {@link #isPiiSensitiveOrUnresolvedProfile} — when the deciding metadata is gone, fall back
+     * to the caller's PII authorization rather than exposing the orphan's results.
+     */
     private boolean isSensitiveColumn(Table table, String columnName) {
       final List<Column> path = ColumnUtil.resolveColumnChainByPath(table.getColumns(), columnName);
-      return !path.isEmpty() && hasPiiSensitiveTagInPath(path);
+      return path.isEmpty() || hasPiiSensitiveTagInPath(path);
     }
 
     TestCaseResult maskResult(TestCaseResult result) {

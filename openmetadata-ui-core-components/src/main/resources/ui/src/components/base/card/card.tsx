@@ -53,6 +53,11 @@ export const cardStyles = sortCx({
     tile: {
       root: 'tw:border-1 tw:border-secondary tw:bg-primary_alt tw:shadow-xs',
     },
+    // A clickable summary tile (Ontology Studio overview counts): the default
+    // surface, with a light brand edge and a soft lift on hover.
+    stat: {
+      root: 'tw:border-1 tw:border-subtle tw:bg-surface',
+    },
   },
   colors: {
     default: { root: '' },
@@ -85,6 +90,7 @@ export const cardStyles = sortCx({
       root: 'tw:hover:shadow-lg tw:motion-safe:hover:-translate-y-0.5',
     },
     tile: { root: 'tw:hover:bg-primary_hover' },
+    stat: { root: 'tw:hover:border-utility-brand-300 tw:hover:shadow-sm' },
   },
   selected: { root: 'tw:border-2 tw:border-brand' },
 });

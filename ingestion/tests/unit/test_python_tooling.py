@@ -12,6 +12,9 @@
 """Behavioral checks for the local Python development entry points."""
 
 import fcntl
+import functools
+import hashlib
+import http.server
 import importlib.metadata
 import json
 import os
@@ -19,7 +22,10 @@ import select
 import shutil
 import subprocess
 import sys
+import threading
 import xml.etree.ElementTree as ET
+import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -741,67 +747,337 @@ def test_generation_and_installation_exclude_other_writers(generation_repo: Path
     assert process.returncode == 0, log.read_text()
 
 
-@pytest.mark.parametrize("paused", [True, False])
-def test_classification_provisioning_can_be_paused(nox_repo: Path, monkeypatch, paused: bool) -> None:
-    monkeypatch.setenv("OM_SKIP_CLASSIFICATION_MODELS", "true" if paused else "false")
-    config = nox_repo / "ingestion/pyproject.toml"
-    config.write_text(
-        config.read_text() + '\n[tool.openmetadata.python-environments.classification-models]\nlanguages = ["en"]\n'
-    )
-    marker = nox_repo / "provisioned.txt"
-    (nox_repo / "ingestion/src/metadata/__main__.py").write_text(
-        f"from pathlib import Path\nPath({str(marker)!r}).write_text('provisioned')\n"
-    )
+@pytest.fixture
+def model_origin(tmp_path):
+    requests = []
+    state = {"status": 200, "transient": 0}
 
-    assert_success(run(sys.executable, str(nox_repo / "scripts/check_generated_models.py"), "--write", cwd=nox_repo))
+    class Handler(http.server.SimpleHTTPRequestHandler):
+        def log_message(self, *_args):
+            pass
 
-    result = run("make", "install_test", "OM_VENV_DIR=env", cwd=nox_repo)
+        def end_headers(self):
+            self.send_header("Cache-Control", "max-age=0")
+            super().end_headers()
 
-    assert_success(result)
-    assert marker.exists() is not paused
+        def do_GET(self):
+            requests.append(self.path)
+            if state["transient"]:
+                state["transient"] -= 1
+                self.send_error(503)
+            elif state["status"] != 200:
+                self.send_error(state["status"])
+            else:
+                super().do_GET()
 
-
-def test_paused_setup_uses_the_lock_without_fetching_model_wheels(nox_repo: Path, monkeypatch) -> None:
-    monkeypatch.setenv("OM_SKIP_CLASSIFICATION_MODELS", "true")
-    monkeypatch.setenv("UV_OFFLINE", "true")
-    models = ["en-core-web-md", "es-core-news-md", "it-core-news-md", "pl-core-news-md"]
-    config = nox_repo / "ingestion/pyproject.toml"
-    config.write_text(
-        config.read_text().replace(
-            "test = [",
-            "test = ["
-            + ", ".join(
-                f'"{model} @ https://example.com/{model.replace("-", "_")}-3.8.0-py3-none-any.whl"' for model in models
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Handler, directory=str(tmp_path)))
+    thread = threading.Thread(target=server.serve_forever)
+    thread.start()
+    requirements = []
+    for name in ("fixture_first", "fixture_second"):
+        wheel = tmp_path / f"{name}-1.0.0-py3-none-any.whl"
+        with zipfile.ZipFile(wheel, "w") as stream:
+            stream.writestr(f"{name}/__init__.py", "VALUE = 42\n")
+            stream.writestr(
+                f"{name}-1.0.0.dist-info/METADATA",
+                f"Metadata-Version: 2.3\nName: {name}\nVersion: 1.0.0\nRequires-Python: >=3.10\n",
             )
-            + ", ",
-            1,
+            stream.writestr(
+                f"{name}-1.0.0.dist-info/WHEEL",
+                "Wheel-Version: 1.0\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
+            )
+            stream.writestr(f"{name}-1.0.0.dist-info/RECORD", "")
+        digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+        requirements.append(
+            f"{name.replace('_', '-')} @ http://127.0.0.1:{server.server_port}/{wheel.name}#sha256={digest}"
         )
-        + '\n[tool.openmetadata.python-environments.classification-models]\nlanguages = ["en"]\n'
+    try:
+        yield requirements, state, requests
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join()
+
+
+def model_helper(*args, cwd):
+    return run(sys.executable, str(REPO_ROOT / "scripts/prepare_classification_models.py"), *args, cwd=cwd)
+
+
+def add_fixture_models(repo, requirements):
+    config = repo / "ingestion/pyproject.toml"
+    text = (
+        config.read_text()
+        .replace("[dependency-groups]", "[dependency-groups]\nclassification-models = " + json.dumps(requirements))
+        .replace(
+            '[tool.openmetadata.python-environments.profiles.test-classification]\ngroups = ["test"]',
+            '[tool.openmetadata.python-environments.profiles.test-classification]\ngroups = ["test", "classification-models"]',
+        )
     )
-    lock = nox_repo / "ingestion/uv.lock"
-    lock.write_text(
-        lock.read_text().replace(
-            "test = [", "test = [" + ", ".join(f'{{name = "{model}"}}' for model in models) + ", ", 1
+    for name in ("fixture-first", "fixture-second"):
+        text += f'\n[[tool.uv.dependency-metadata]]\nname = "{name}"\nversion = "1.0.0"\nrequires-dist = []\nrequires-python = ">=3.10"\n'
+    config.write_text(text)
+    assert_success(run("uv", "lock", "--project", "ingestion", cwd=repo))
+    assert_success(run(sys.executable, str(repo / "scripts/check_generated_models.py"), "--write", cwd=repo))
+
+
+def test_model_archives_merge_and_repeated_locked_sync_avoids_denied_origin(nox_repo, model_origin, monkeypatch):
+    requirements, state, requests = model_origin
+    add_fixture_models(nox_repo, requirements)
+    archives = []
+    for index, requirement in enumerate(requirements):
+        archive = nox_repo / f"model-{index}.tar"
+        assert_success(
+            model_helper(
+                "prepare",
+                "--requirement",
+                requirement,
+                "--uv-version",
+                "0.13.4",
+                "--output",
+                str(archive),
+                cwd=nox_repo,
+            )
         )
-        + "".join(
-            f'\n[[package]]\nname = "{model}"\nversion = "3.8.0"\n'
-            f'source = {{url = "https://example.com/{model.replace("-", "_")}-3.8.0-py3-none-any.whl"}}\n'
-            f'wheels = [{{url = "https://example.com/{model.replace("-", "_")}-3.8.0-py3-none-any.whl", hash = "sha256:{"0" * 64}"}}]\n'
-            for model in models
-        )
-    )
+        archives.append(archive)
+    cache = nox_repo / "cache"
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    state["status"] = 503
+    requests.clear()
+    lock = (nox_repo / "ingestion/uv.lock").read_bytes()
+    # The general test profile must neither install weights nor run the public provisioning CLI.
     (nox_repo / "ingestion/src/metadata/__main__.py").write_text("raise AssertionError('unexpected provisioning')\n")
-
-    assert_success(run(sys.executable, str(nox_repo / "scripts/check_generated_models.py"), "--write", cwd=nox_repo))
-
-    result = run("make", "install_test", "OM_VENV_DIR=env", cwd=nox_repo)
-
-    assert_success(result)
-    result = run(
-        str(nox_repo / "env/bin/python"),
-        "-c",
-        "import importlib.metadata as m; names = {d.metadata['Name'] for d in m.distributions()}; "
-        + f"assert not names.intersection({models!r}), names",
-        cwd=nox_repo,
+    assert_success(run("nox", "--no-venv", "-s", "install", "--", "test", cwd=nox_repo / "ingestion"))
+    python = str(nox_repo / "env/bin/python")
+    assert_success(
+        run(
+            python,
+            "-c",
+            "import importlib.util; assert importlib.util.find_spec('fixture_first') is None",
+            cwd=nox_repo,
+        )
     )
+    for archive in archives * 2:
+        assert_success(model_helper("import", "--archive", str(archive), "--cache-dir", str(cache), cwd=nox_repo))
+    for _ in range(2):
+        assert_success(run("make", "install_test", cwd=nox_repo))
+        assert_success(
+            run(
+                python,
+                "-c",
+                "import fixture_first, fixture_second, idna; assert fixture_first.VALUE + fixture_second.VALUE == 84",
+                cwd=nox_repo,
+            )
+        )
+    assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
+    assert requests == []
+    assert_success(model_helper("clean", "--project", str(nox_repo / "ingestion"), cwd=nox_repo))
+    assert_success(run("uv", "cache", "prune", "--ci", "--force", cwd=nox_repo))
+    assert not any(p.name in ("fixture_first", "fixture_second") for p in cache.rglob("*"))
+    assert (cache / "CACHEDIR.TAG").is_file()
+    # Stale requirements still fail with locked validation, even when models cannot be fetched.
+    config = nox_repo / "ingestion/pyproject.toml"
+    config.write_text(config.read_text().replace("idna==3.11", "idna==3.10"))
+    result = run("make", "install_test", cwd=nox_repo)
+    assert result.returncode != 0
+    assert "lockfile" in result.stderr.lower()
+    assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
+    assert requests == []
+
+
+@pytest.mark.parametrize("failure", ["transient", "permanent", "hash"])
+def test_model_preparation_retries_only_transient_failures(tmp_path, model_origin, failure):
+    requirements, state, requests = model_origin
+    requirement = requirements[0]
+    if failure == "transient":
+        state["transient"] = 1
+    elif failure == "permanent":
+        state["status"] = 404
+    else:
+        requirement = requirement.split("#")[0] + "#sha256=" + "0" * 64
+    output = tmp_path / "model.tar"
+    result = model_helper(
+        "prepare", "--requirement", requirement, "--uv-version", "0.13.4", "--output", str(output), cwd=tmp_path
+    )
+    if failure == "transient":
+        assert_success(result)
+        assert output.is_file()
+        assert 2 <= len(requests) <= 3
+    else:
+        assert result.returncode != 0
+        assert not output.exists()
+        assert len(requests) == (2 if failure == "hash" else 1)
+        if failure == "hash":
+            assert "Hash mismatch" in result.stderr
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="CI bootstrap uses stdlib tomllib")
+@pytest.mark.parametrize(
+    ("versions", "maximum"),
+    [(["3.10", "3.11", "3.12"], "3.12"), (["3.9", "3.10"], "3.10")],
+)
+def test_python_matrix_bootstraps_from_pyproject_without_site_packages(tmp_path, versions, maximum):
+    project = tmp_path / "ingestion"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(
+        "[tool.openmetadata.python-environments]\nsupported-python = " + json.dumps(versions) + "\n"
+    )
+
+    result = run(
+        sys.executable,
+        "-I",
+        "-S",
+        str(REPO_ROOT / "scripts/prepare_classification_models.py"),
+        "matrix",
+        "--project",
+        str(project),
+        cwd=tmp_path,
+    )
+
     assert_success(result)
+    assert json.loads(result.stdout) == {"python-versions": versions, "discovery-python": maximum}
+
+
+def test_model_discovery_rejects_metadata_version_mismatch_and_tracks_identity(tmp_path):
+    project = tmp_path / "ingestion"
+    project.mkdir()
+    config = project / "pyproject.toml"
+    original = (REPO_ROOT / "ingestion/pyproject.toml").read_text()
+    config.write_text(original)
+    result = model_helper("discover", "--project", str(project), cwd=tmp_path)
+    assert_success(result)
+    baseline = json.loads(result.stdout)
+    assert baseline["discovery-python"] == "3.12"
+    keys = {entry["name"]: entry["key"] for entry in baseline["include"]}
+    for old, new in [
+        ("#sha256=5e63", "?mirror=second#sha256=5e63"),
+        ("#sha256=5e63", "?#sha256=5e63"),
+        ("#sha256=5e63", "#sha256=6e63"),
+        ("==0.13.4", "==0.13.5"),
+    ]:
+        config.write_text(original.replace(old, new))
+        result = model_helper("discover", "--project", str(project), cwd=tmp_path)
+        assert_success(result)
+        changed = {entry["name"]: entry["key"] for entry in json.loads(result.stdout)["include"]}
+        assert changed["en-core-web-md"] != keys["en-core-web-md"]
+    config.write_text(original.replace('version = "3.8.0"', 'version = "3.9.0"', 1))
+    result = model_helper("discover", "--project", str(project), cwd=tmp_path)
+    assert result.returncode != 0
+    assert "Missing exact static dependency metadata" in result.stderr
+
+
+def test_model_free_test_profile_preserves_test_dependencies_after_model_selection(nox_repo, model_origin, monkeypatch):
+    requirements, state, requests = model_origin
+    add_fixture_models(nox_repo, requirements)
+    cache = nox_repo / "cache"
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    for index, requirement in enumerate(requirements):
+        archive = nox_repo / f"model-{index}.tar"
+        assert_success(
+            model_helper(
+                "prepare",
+                "--requirement",
+                requirement,
+                "--uv-version",
+                "0.13.4",
+                "--output",
+                str(archive),
+                cwd=nox_repo,
+            )
+        )
+        assert_success(model_helper("import", "--archive", str(archive), "--cache-dir", str(cache), cwd=nox_repo))
+    state["status"] = 403
+    requests.clear()
+    for profile, present in [("test", False), ("test-classification", True), ("test", False)]:
+        assert_success(run("make", "install_test", f"PYTHON_TEST_PROFILE={profile}", cwd=nox_repo))
+        result = run(
+            str(nox_repo / "env/bin/python"),
+            "-I",
+            "-c",
+            "import importlib.util, pytest; "
+            f"assert (importlib.util.find_spec('fixture_first') is not None) is {present}; "
+            f"assert (importlib.util.find_spec('fixture_second') is not None) is {present}",
+            cwd=nox_repo,
+        )
+        assert_success(result)
+    assert requests == []
+
+
+def test_model_versions_coexist_in_one_cache_after_parallel_preparation(tmp_path, model_origin, monkeypatch):
+    requirements, state, requests = model_origin
+    first = requirements[0]
+    second_wheel = tmp_path / "fixture_first-2.0.0-py3-none-any.whl"
+    with (
+        zipfile.ZipFile(tmp_path / "fixture_first-1.0.0-py3-none-any.whl") as original,
+        zipfile.ZipFile(second_wheel, "w") as updated,
+    ):
+        for name in original.namelist():
+            content = (
+                original.read(name).replace(b"Version: 1.0.0", b"Version: 2.0.0").replace(b"VALUE = 42", b"VALUE = 43")
+            )
+            updated.writestr(name.replace("1.0.0", "2.0.0"), content)
+    second = (
+        first.split("#")[0].replace("1.0.0", "2.0.0")
+        + "#sha256="
+        + hashlib.sha256(second_wheel.read_bytes()).hexdigest()
+    )
+    archives = [tmp_path / "old.tar", tmp_path / "new.tar"]
+
+    def seed(pair):
+        requirement, archive = pair
+        assert_success(
+            model_helper(
+                "prepare",
+                "--requirement",
+                requirement,
+                "--uv-version",
+                "0.13.4",
+                "--output",
+                str(archive),
+                cwd=tmp_path,
+            )
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        list(pool.map(seed, zip([first, second], archives, strict=True)))
+    cache = tmp_path / "cache"
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    monkeypatch.delenv("UV_PROJECT_ENVIRONMENT", raising=False)
+    for archive in archives:
+        assert_success(model_helper("import", "--archive", str(archive), "--cache-dir", str(cache), cwd=tmp_path))
+    state["status"] = 503
+    requests.clear()
+    for version, requirement, value in [("1.0.0", first, 42), ("2.0.0", second, 43)]:
+        project = tmp_path / version
+        project.mkdir()
+        (project / "pyproject.toml").write_text(
+            '[project]\nname="fixture-project"\nversion="0.0.0"\nrequires-python=">=3.10"\n'
+            "[dependency-groups]\nclassification-models=[" + json.dumps(requirement) + "]\n"
+            '[tool.uv]\npackage=false\nrequired-version="==0.13.4"\ndefault-groups=[]\n'
+            '[[tool.uv.dependency-metadata]]\nname="fixture-first"\nversion="'
+            + version
+            + '"\nrequires-dist=[]\nrequires-python=">=3.10"\n'
+        )
+        assert_success(run("uv", "lock", "--python", sys.executable, cwd=project))
+        lock = (project / "uv.lock").read_bytes()
+        assert_success(
+            run(
+                "uv",
+                "sync",
+                "--locked",
+                "--only-group",
+                "classification-models",
+                "--python",
+                sys.executable,
+                cwd=project,
+            )
+        )
+        assert_success(
+            run(
+                str(project / ".venv/bin/python"),
+                "-c",
+                f"import fixture_first; assert fixture_first.VALUE == {value}",
+                cwd=project,
+            )
+        )
+        assert (project / "uv.lock").read_bytes() == lock
+    assert requests == []

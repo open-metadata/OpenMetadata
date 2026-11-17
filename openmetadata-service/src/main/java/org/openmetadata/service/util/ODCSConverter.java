@@ -206,12 +206,12 @@ public class ODCSConverter {
       contract.setSla(ODCSSlaMapper.toContractSla(odcs.getSlaProperties(), issues));
     }
 
-    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs);
+    String importedObject = importedSchemaObjectName(odcs, entityRef, objectName).orElse(null);
+    List<ODCSQualityRule> allQualityRules = collectAllQualityRules(odcs, importedObject);
     if (!allQualityRules.isEmpty()) {
       contract.setOdcsQualityRules(allQualityRules);
     }
 
-    String importedObject = importedSchemaObjectName(odcs, entityRef, objectName).orElse(null);
     contract.setOdcsPreservedFields(
         ODCSPreservedFields.capture(
             original, captureBaseline(contract, importedObject), importedObject));
@@ -367,6 +367,12 @@ public class ODCSConverter {
     column.setDescription(element.getDescription());
     column.setDataType(
         mapLogicalTypeToDataType(element.getLogicalType(), element.getPhysicalType()));
+
+    if (column.getDataType() == ColumnDataType.ARRAY && element.getItems() != null) {
+      column.setArrayDataType(
+          mapLogicalTypeToDataType(
+              element.getItems().getLogicalType(), element.getItems().getPhysicalType()));
+    }
 
     if (Boolean.TRUE.equals(element.getPrimaryKey())) {
       column.setConstraint(ColumnConstraint.PRIMARY_KEY);
@@ -539,7 +545,8 @@ public class ODCSConverter {
     }
   }
 
-  private static List<ODCSQualityRule> collectAllQualityRules(ODCSDataContract odcs) {
+  private static List<ODCSQualityRule> collectAllQualityRules(
+      ODCSDataContract odcs, String selectedObject) {
     List<ODCSQualityRule> allRules = new ArrayList<>();
 
     if (odcs.getQuality() != null && !odcs.getQuality().isEmpty()) {
@@ -548,6 +555,7 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
+        if (selectedObject != null && !selectedObject.equals(schemaObject.getName())) continue;
         boolean table =
             schemaObject.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
                 || !nullOrEmpty(schemaObject.getProperties());

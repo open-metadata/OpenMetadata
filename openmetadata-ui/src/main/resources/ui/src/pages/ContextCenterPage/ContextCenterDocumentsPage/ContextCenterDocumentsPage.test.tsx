@@ -116,15 +116,27 @@ jest.mock(
         ({
           canEdit,
           canDelete,
+          data,
           previewFileId,
           selectedIds,
           onSelectFile,
           onClearSelection,
           onDeleteFile,
+          onFileRefreshed,
+          onFileUpdated,
         }) => (
           <div
             data-can-delete={String(Boolean(canDelete))}
             data-can-edit={String(Boolean(canEdit))}
+            data-first-file-folder={data?.[0]?.folder?.name ?? ''}
+            data-first-file-memory-count={String(data?.[0]?.memoryCount ?? '')}
+            data-first-file-never-extracted={String(
+              data?.[0]?.neverExtracted ?? ''
+            )}
+            data-first-file-status={data?.[0]?.processingStatus ?? ''}
+            data-first-file-visibility={
+              data?.[0]?.shareConfig?.visibility ?? ''
+            }
             data-preview-file-id={previewFileId ?? ''}
             data-selected-ids={Array.from(selectedIds ?? []).join(',')}
             data-testid="documents-view">
@@ -132,6 +144,34 @@ jest.mock(
               data-testid="select-file-btn"
               onClick={() => onSelectFile?.('file-1')}>
               select
+            </button>
+            {/* What a PATCH returns: stored fields only. */}
+            <button
+              data-testid="update-file-btn"
+              onClick={() =>
+                onFileUpdated?.({
+                  id: 'file-1',
+                  name: 'file-1.pdf',
+                  processingStatus: 'Processed',
+                  shareConfig: { visibility: 'Private', sharedWith: [] },
+                })
+              }>
+              update-file
+            </button>
+            {/* What an Extract returns: every field the list reads. */}
+            <button
+              data-testid="refresh-file-btn"
+              onClick={() =>
+                onFileRefreshed?.({
+                  id: 'file-1',
+                  name: 'file-1.pdf',
+                  folder: { id: 'folder-1', type: 'folder', name: 'finance' },
+                  memoryCount: 0,
+                  neverExtracted: false,
+                  processingStatus: 'ExtractingContext',
+                })
+              }>
+              refresh-file
             </button>
             <button
               data-testid="clear-selection-btn"
@@ -155,7 +195,31 @@ jest.mock(
   '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="document-preview-panel" />,
+    default: ({
+      file,
+      onFileRefreshed,
+    }: {
+      file: { id: string; processingStatus?: string };
+      onFileRefreshed?: (file: object) => void;
+    }) => (
+      <div
+        data-file-status={file.processingStatus ?? ''}
+        data-testid="document-preview-panel">
+        <button
+          data-testid="preview-refresh-file-btn"
+          onClick={() =>
+            onFileRefreshed?.({
+              id: file.id,
+              name: `${file.id}.pdf`,
+              memoryCount: 0,
+              neverExtracted: false,
+              processingStatus: 'Failed',
+            })
+          }>
+          refresh-preview
+        </button>
+      </div>
+    ),
   })
 );
 
@@ -473,6 +537,135 @@ describe('ContextCenterDocumentsPage — selection', () => {
         'data-selected-ids',
         ''
       )
+    );
+  });
+});
+
+describe('ContextCenterDocumentsPage — file writes', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({});
+  });
+
+  // A write response carries only stored fields; the row keeps what its list read computed.
+  it('keeps the read-only fields of a file when a write returns it', async () => {
+    (listContextFiles as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'file-1',
+          name: 'file-1.pdf',
+          folder: { id: 'folder-1', type: 'folder', name: 'finance' },
+          memoryCount: 3,
+          neverExtracted: true,
+          processingStatus: 'Processed',
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-first-file-never-extracted',
+        'true'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('update-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-first-file-visibility',
+        'Private'
+      )
+    );
+    const view = screen.getByTestId('documents-view');
+
+    expect(view).toHaveAttribute('data-first-file-never-extracted', 'true');
+    expect(view).toHaveAttribute('data-first-file-memory-count', '3');
+    expect(view).toHaveAttribute('data-first-file-folder', 'finance');
+  });
+});
+
+// An Extract response, or the read after one is refused, carries every field the list reads.
+describe('ContextCenterDocumentsPage — extraction refreshes', () => {
+  const notExtracted = {
+    id: 'file-1',
+    name: 'file-1.pdf',
+    folder: { id: 'folder-1', type: 'folder', name: 'finance' },
+    memoryCount: 3,
+    neverExtracted: true,
+    processingStatus: 'Processed',
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({});
+    (listContextFiles as jest.Mock).mockResolvedValue({
+      data: [notExtracted],
+      paging: { total: 1 },
+    });
+  });
+
+  // Unlike a metadata write's merge, the response replaces what the list read computed.
+  it('replaces the row and its preview with the file a row extraction returns', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/context-center/documents?document=file-1']}>
+        <ContextCenterDocumentsPage />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('document-preview-panel')).toHaveAttribute(
+        'data-file-status',
+        'Processed'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('refresh-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-first-file-never-extracted',
+        'false'
+      )
+    );
+    const view = screen.getByTestId('documents-view');
+
+    expect(view).toHaveAttribute('data-first-file-status', 'ExtractingContext');
+    expect(view).toHaveAttribute('data-first-file-memory-count', '0');
+    expect(screen.getByTestId('document-preview-panel')).toHaveAttribute(
+      'data-file-status',
+      'ExtractingContext'
+    );
+  });
+
+  it('replaces the row with the file the preview reads after its extraction is refused', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={['/context-center/documents?document=file-1']}>
+        <ContextCenterDocumentsPage />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(await screen.findByTestId('preview-refresh-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-first-file-status',
+        'Failed'
+      )
+    );
+
+    expect(screen.getByTestId('documents-view')).toHaveAttribute(
+      'data-first-file-never-extracted',
+      'false'
+    );
+    expect(screen.getByTestId('document-preview-panel')).toHaveAttribute(
+      'data-file-status',
+      'Failed'
     );
   });
 });

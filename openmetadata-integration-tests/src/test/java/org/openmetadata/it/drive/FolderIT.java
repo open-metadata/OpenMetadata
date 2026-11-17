@@ -363,6 +363,26 @@ class FolderIT {
     assertEquals(2, ownerView.getInt("childrenFileCount"));
   }
 
+  /** A file's fully qualified name starts with its folder's, and editing the file keeps it so. */
+  @Test
+  void testPatchingAFileKeepsItsFolderInItsFullyQualifiedName(TestNamespace ns) throws Exception {
+    RestClient adminRest = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "patch-owner");
+    Folder folder = createFolder(adminRest, new CreateFolder().withName(ns.prefix("patched")));
+    ContextFile file =
+        adminRest.create(
+            FILE_PATH, fileIn(folder, ns.prefix("patched-file"), owner), ContextFile.class);
+    assertTrue(file.getFullyQualifiedName().startsWith(folder.getFullyQualifiedName() + "."));
+    String original = JsonUtils.pojoToJson(file);
+    file.setDescription("Edited after upload");
+
+    adminRest.patch(FILE_PATH, file.getId(), original, file, ContextFile.class);
+
+    ContextFile patched = adminRest.getById(FILE_PATH, file.getId(), "folder", ContextFile.class);
+    assertEquals(file.getFullyQualifiedName(), patched.getFullyQualifiedName());
+    assertEquals(folder.getId(), patched.getFolder().getId());
+  }
+
   private static CreateContextFile fileIn(Folder folder, String name, User owner) {
     return new CreateContextFile()
         .withName(name)

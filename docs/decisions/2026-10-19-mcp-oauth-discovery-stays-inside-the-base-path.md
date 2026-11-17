@@ -1,11 +1,13 @@
 # MCP and its OAuth discovery are served inside BASE_PATH, and the MCP base URL must carry it
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-11-16 (the advertised signing algorithm is
+  the one the server signs its own tokens with)
 - **Deciders:** Vishnu Jain
 - **Guard:** `HttpServletStatelessServerTransportTest#doPost_underBasePath_reachesTheHandler`,
-  `McpOAuthIT#testOpenIdConfigurationAppendedToIssuer_servesOpenIdDiscoveryMetadata`
-- **Related:** #35539
+  `McpOAuthIT#testOpenIdConfigurationAppendedToIssuer_servesOpenIdDiscoveryMetadata`,
+  `OAuthHttpStatelessServerTransportProviderTest#openIdDiscoveryAdvertisesTheAlgorithmOfTheTokensTheServerIssues`
+- **Related:** #35539, ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256
 
 ## Context
 
@@ -40,3 +42,12 @@ SDK parses that URL as OpenID Connect Discovery and aborts discovery when `jwks_
   rejected because a client can set those headers and would choose the advertised OAuth endpoints.
 - The document advertises ID token fields although MCP issues no ID tokens. Revisit if a client is
   found that fails on that.
+
+## Amendment — 2026-11-16: the advertised algorithm is the server's own
+
+ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256 made the server sign every token it
+issues, MCP access tokens included, with RS256 (`JWTTokenGenerator.SIGNING_ALGORITHM`), and left
+`tokenValidationAlgorithm` to describe only the identity provider's tokens. Until then the two were
+the same value. `id_token_signing_alg_values_supported` is therefore `["RS256"]`, the algorithm of
+the tokens the server issues, and no longer the configured `tokenValidationAlgorithm`. This
+replaces the last clause of the second Decision bullet; the rest of this record stands.

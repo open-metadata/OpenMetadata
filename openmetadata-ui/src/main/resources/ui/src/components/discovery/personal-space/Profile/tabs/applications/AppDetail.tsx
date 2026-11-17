@@ -436,7 +436,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       getResourceLimit('app', true, true).catch(noop);
     }
     setAction(undefined);
-    onNavigate({ type: 'list' });
+    // An uninstalled app's detail no longer resolves, so Back must skip it.
+    onNavigate({ type: 'list' }, { replace: action === 'uninstall' });
 
     return true;
   };

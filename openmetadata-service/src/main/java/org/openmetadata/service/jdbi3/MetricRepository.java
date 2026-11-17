@@ -1113,6 +1113,7 @@ public class MetricRepository extends EntityRepository<Metric> {
       compareAndUpdate(
           "filters", () -> recordChange("filters", original.getFilters(), updated.getFilters()));
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
+      keepHierarchyTheBotLeftOut();
       compareAndUpdate(FIELD_PARENT, () -> updateParent(original, updated));
       compareAndUpdateAny(
           () -> updateMetricGroup(original, updated), FIELD_PARENT, FIELD_METRIC_GROUP);
@@ -1154,6 +1155,26 @@ public class MetricRepository extends EntityRepository<Metric> {
                   asset.getType(),
                   Relationship.APPLIED_TO.ordinal())
           > 0;
+    }
+
+    /**
+     * Connectors never send a parent, so a bot PUT keeps the parent and group users set, except a
+     * deleted parent. See ADR:2026-11-11-a-bot-put-never-removes-a-metric-parent-or-group.
+     */
+    private void keepHierarchyTheBotLeftOut() {
+      EntityReference storedParent = original.getParent();
+      boolean botNamesNoParent = operation.isPut() && updatedByBot() && updated.getParent() == null;
+      if (!botNamesNoParent || isDeletedReference(storedParent)) {
+        return;
+      }
+      updated.setParent(storedParent);
+      if (storedParent != null || updated.getMetricGroup() == null) {
+        updated.setMetricGroup(original.getMetricGroup());
+      }
+    }
+
+    private static boolean isDeletedReference(EntityReference reference) {
+      return reference != null && Boolean.TRUE.equals(reference.getDeleted());
     }
 
     private void updateMetricGroup(Metric original, Metric updated) {
@@ -1298,17 +1319,20 @@ public class MetricRepository extends EntityRepository<Metric> {
    */
   public Predicate<EntityReference> groupInDomainPick(
       Optional<Set<UUID>> pickedGroups, Set<UUID> pickedMetrics) {
+    // A batch lookup rejects an empty id list (e.g. a picked domain with no metrics).
     Set<UUID> holdingPickedMetric =
-        daoCollection
-            .relationshipDAO()
-            .findFromBatch(
-                pickedMetrics.stream().map(UUID::toString).toList(),
-                Relationship.HAS.ordinal(),
-                Entity.METRIC_GROUP,
-                NON_DELETED)
-            .stream()
-            .map(relationship -> UUID.fromString(relationship.getFromId()))
-            .collect(java.util.stream.Collectors.toSet());
+        pickedMetrics.isEmpty()
+            ? Set.of()
+            : daoCollection
+                .relationshipDAO()
+                .findFromBatch(
+                    pickedMetrics.stream().map(UUID::toString).toList(),
+                    Relationship.HAS.ordinal(),
+                    Entity.METRIC_GROUP,
+                    NON_DELETED)
+                .stream()
+                .map(relationship -> UUID.fromString(relationship.getFromId()))
+                .collect(java.util.stream.Collectors.toSet());
     return group ->
         pickedGroups.map(ids -> ids.contains(group.getId())).orElse(false)
             || holdingPickedMetric.contains(group.getId());

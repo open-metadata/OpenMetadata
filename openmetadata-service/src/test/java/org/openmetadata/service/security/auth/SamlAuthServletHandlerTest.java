@@ -45,6 +45,8 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -369,6 +371,91 @@ class SamlAuthServletHandlerTest {
 
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     verify(servletOutputStream).print(contains("does not answer this login's request"));
+    verify(sessionService, never()).recordPendingUser(any(), any());
+  }
+
+  /** A post that is no SAML response is the sender's error: java-saml must never be handed it. */
+  @Test
+  void handleCallback_refusesAPostThatIsNoSamlResponseAsABadRequest() throws Exception {
+    MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
+    String notSaml =
+        Base64.getEncoder()
+            .encodeToString("<html><body>hi</body></html>".getBytes(StandardCharsets.UTF_8));
+    UserSession login =
+        UserSession.builder()
+            .id("pending-session-id")
+            .status(SessionStatus.PENDING)
+            .redirectUri("https://example.com/callback")
+            .state("request-id")
+            .build();
+    when(request.getParameter("RelayState")).thenReturn(login.getId());
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "SAMLResponse",
+                new String[] {notSaml},
+                "RelayState",
+                new String[] {login.getId()}));
+    when(request.getRequestURL()).thenReturn(new StringBuffer(ACS_URL));
+    when(sessionService.getPendingSessionById(login.getId())).thenReturn(Optional.of(login));
+
+    try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
+        mockStatic(SamlSettingsHolder.class)) {
+      samlSettingsHolder
+          .when(SamlSettingsHolder::getSaml2Settings)
+          .thenReturn(nonStrictSettings(idp));
+
+      handler.handleCallback(request, response);
+    }
+
+    verify(response).setStatus(HttpServletResponse.SC_BAD_REQUEST);
+    verify(servletOutputStream).print(contains("SAML response could not be read"));
+    verify(sessionService, never()).recordPendingUser(any(), any());
+  }
+
+  /**
+   * Microsoft Entra signs only the assertion unless told to sign the response too, so a service
+   * provider that wants signed messages turns the login down. The person signing in must see
+   * java-saml's reason, not only that SAML failed.
+   */
+  @Test
+  void handleCallback_showsWhyJavaSamlRejectedTheResponse() throws Exception {
+    MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
+    String assertionSigned =
+        idp.assertionSignedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, "request-id", "request-id");
+    UserSession login =
+        UserSession.builder()
+            .id("pending-session-id")
+            .status(SessionStatus.PENDING)
+            .redirectUri("https://example.com/callback")
+            .state("request-id")
+            .build();
+    when(request.getParameter("RelayState")).thenReturn(login.getId());
+    when(request.getParameterMap())
+        .thenReturn(
+            Map.of(
+                "SAMLResponse",
+                new String[] {assertionSigned},
+                "RelayState",
+                new String[] {login.getId()}));
+    when(request.getRequestURL()).thenReturn(new StringBuffer(ACS_URL));
+    when(sessionService.getPendingSessionById(login.getId())).thenReturn(Optional.of(login));
+
+    try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
+        mockStatic(SamlSettingsHolder.class)) {
+      samlSettingsHolder
+          .when(SamlSettingsHolder::getSaml2Settings)
+          .thenReturn(strictSettingsWantingSignedMessages(idp));
+
+      handler.handleCallback(request, response);
+    }
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(servletOutputStream)
+        .print(
+            contains(
+                "SAML response rejected: The Message of the Response is not signed and the SP"
+                    + " requires it"));
     verify(sessionService, never()).recordPendingUser(any(), any());
   }
 
@@ -799,8 +886,18 @@ class SamlAuthServletHandlerTest {
   }
 
   private static Saml2Settings nonStrictSettings(MockSamlIdp idp) {
+    return settings(idp, false, false);
+  }
+
+  /** java-saml enforces "want messages signed" in strict mode only. */
+  private static Saml2Settings strictSettingsWantingSignedMessages(MockSamlIdp idp) {
+    return settings(idp, true, true);
+  }
+
+  private static Saml2Settings settings(
+      MockSamlIdp idp, boolean strict, boolean wantMessagesSigned) {
     Map<String, Object> values = new HashMap<>();
-    values.put(SettingsBuilder.STRICT_PROPERTY_KEY, false);
+    values.put(SettingsBuilder.STRICT_PROPERTY_KEY, strict);
     values.put(SettingsBuilder.SP_ENTITYID_PROPERTY_KEY, SP_ENTITY_ID);
     values.put(SettingsBuilder.SP_ASSERTION_CONSUMER_SERVICE_URL_PROPERTY_KEY, ACS_URL);
     values.put(SettingsBuilder.IDP_ENTITYID_PROPERTY_KEY, IDP_ENTITY_ID);
@@ -809,7 +906,7 @@ class SamlAuthServletHandlerTest {
         "https://mock-idp.openmetadata.test/sso");
     values.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, idp.idpCertificatePem());
     values.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, false);
-    values.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, false);
+    values.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, wantMessagesSigned);
     return new SettingsBuilder().fromValues(values).build();
   }
 

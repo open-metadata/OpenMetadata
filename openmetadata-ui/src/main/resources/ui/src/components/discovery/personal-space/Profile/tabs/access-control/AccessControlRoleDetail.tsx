@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Autocomplete,
@@ -395,7 +396,10 @@ const RenameHeaderInput: FC<RenameHeaderInputProps> = ({
 
 interface AccessControlRoleDetailProps {
   fqn: string;
-  onNavigate: (view: AccessControlView) => void;
+  onNavigate: (
+    view: AccessControlView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -497,7 +501,7 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   }, [role, renameValue, t, fetchRole, onRename]);
 
   const handleAfterDeleteRole = useCallback(
-    () => onNavigate({ type: 'roles' }),
+    () => onNavigate({ type: 'roles' }, { replace: true }),
     [onNavigate]
   );
 

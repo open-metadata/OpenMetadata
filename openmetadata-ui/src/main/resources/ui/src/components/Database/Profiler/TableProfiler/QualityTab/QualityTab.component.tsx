@@ -89,6 +89,7 @@ export const QualityTab = () => {
     testCasePaging,
     table,
     testCaseSummary,
+    isTableDeleted,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
   const { permissions: globalPermissions } = usePermissionProvider();
@@ -529,7 +530,7 @@ export const QualityTab = () => {
                 </Box>
                 <ManageButton
                   canDelete={false}
-                  deleted={table?.deleted ?? false}
+                  deleted={isTableDeleted}
                   displayName={t('label.manage-entity', {
                     entity: t('label.test-case-plural'),
                   })}
@@ -543,7 +544,7 @@ export const QualityTab = () => {
             </Box>
           )}
 
-          {!isTestCaseTab && ingestionPipelineCount > 0 && (
+          {!isTestCaseTab && !isTableDeleted && ingestionPipelineCount > 0 && (
             <Button
               className="tw:ml-auto tw:shrink-0"
               data-testid="add-pipeline-button"
@@ -577,6 +578,7 @@ export const QualityTab = () => {
 
         {qualityTab === EntityTabs.PIPELINE && (
           <TestSuitePipelineTab
+            deleted={isTableDeleted}
             key={pipelineListKey}
             showAddPipelineButton={false}
             testSuite={testSuite}
