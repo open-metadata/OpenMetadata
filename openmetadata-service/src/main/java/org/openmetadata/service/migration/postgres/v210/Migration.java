@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ContextFileFqnRepair;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -216,5 +217,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         OntologyRolesMigration.STEP_NAME,
         () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
+    // Released versions stored a Context Center file edited inside a folder under its bare name;
+    // each such file is given the FQN its folder derives again.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ContextFileFqnRepair.STEP_NAME,
+        () -> ContextFileFqnRepair.repairAll(handle, POSTGRES));
   }
 }
