@@ -148,14 +148,19 @@ def is_nested(data_type: str | None) -> bool:
 
 
 def split_top_level(text: str) -> list[str]:
-    """Split on the commas that are not inside parentheses"""
-    parts, depth, current = [], 0, ""
+    """
+    Split on the commas that are neither inside parentheses nor inside a quoted
+    name (where `""` is a quote that belongs to the name)
+    """
+    parts, depth, current, quoted = [], 0, "", False
     for char in text:
-        if char == "(":
+        if char == '"':
+            quoted = not quoted
+        elif not quoted and char == "(":
             depth += 1
-        elif char == ")":
+        elif not quoted and char == ")":
             depth -= 1
-        if char == "," and depth == 0:
+        if char == "," and depth == 0 and not quoted:
             parts.append(current.strip())
             current = ""
         else:
@@ -165,10 +170,29 @@ def split_top_level(text: str) -> list[str]:
     return parts
 
 
+def split_field(field: str) -> tuple[str, str]:
+    """`"first name" VARCHAR` is the name `first name` and the type `VARCHAR`"""
+    if not field.startswith('"'):
+        name, _, field_type = field.partition(" ")
+        return name, field_type
+    position = 1
+    while True:
+        end = field.index('"', position)
+        if field[end + 1 : end + 2] != '"':
+            return field[1:end].replace('""', '"'), field[end + 1 :].strip()
+        position = end + 2
+
+
+# The column parser of OpenMetadata removes the spaces of a type and splits it
+# on these characters, so a field name that holds one comes out wrong.
+UNPARSABLE_NAME_CHARACTERS = frozenset(" \t\n,<>`")
+
+
 def to_om_type(data_type: str) -> str:
     """
     Write a Dremio type the way the column parser of OpenMetadata reads it:
-    `ROW(a VARCHAR, b ROW(c INTEGER))` becomes `struct<a:varchar,b:struct<c:int>>`
+    `ROW(a VARCHAR, b ROW(c INTEGER))` becomes `struct<a:varchar,b:struct<c:int>>`.
+    A row with a field name that the parser cannot read back is a plain `struct`.
     """
     data_type = data_type.strip()
     upper = data_type.upper()
@@ -176,10 +200,12 @@ def to_om_type(data_type: str) -> str:
     if upper.startswith(("ROW(", "STRUCT(")):
         fields = []
         for field in split_top_level(data_type[data_type.index("(") + 1 : -1]):
-            if field.startswith('"'):
-                name, _, field_type = field[1:].partition('"')
-            else:
-                name, _, field_type = field.partition(" ")
+            try:
+                name, field_type = split_field(field)
+            except ValueError:  # a quoted name that is never closed
+                return "struct"
+            if UNPARSABLE_NAME_CHARACTERS & set(name):
+                return "struct"
             fields.append(f"{name}:{to_om_type(field_type)}")
         return f"struct<{','.join(fields)}>"
     if upper.startswith(("ARRAY(", "LIST(")):
