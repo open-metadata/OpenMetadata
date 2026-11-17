@@ -119,6 +119,7 @@ import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.tasks.CreateTaskComment;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
@@ -8969,6 +8970,105 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(ApprovalOutcomeDecision.APPROVED, outcome.getDecision());
     assertEquals(
         Set.of(shared.USER1.getName(), shared.USER3.getName()), Set.copyOf(outcome.getDecidedBy()));
+  }
+
+  @Test
+  void test_taskReadsShowAPendingValueOnlyToWhoMaySeeItsChangeRequest(TestNamespace ns)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("taskReadVisibility"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withReviewers(List.of(shared.USER1_REF)));
+    deployDescriptionGate(glossary, 1, true);
+    Task task = awaitRequestTask(submitDescription(glossary, "held proposal"), glossary);
+    String taskPath = "/v1/tasks/" + task.getId();
+    String entityTasksPath =
+        "/v1/tasks?statusGroup=open&limit=100&aboutEntity="
+            + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
+
+    // USER3 neither made the edit nor owns, reviews or may resolve its task: it sees the task, as
+    // every viewer of the glossary does, but not the proposed value.
+    OpenMetadataClient reader = SdkClients.user3Client();
+    String readerTask = reader.getHttpClient().executeForString(HttpMethod.GET, taskPath, null);
+    assertTrue(readerTask.contains(task.getId().toString()));
+    assertFalse(readerTask.contains("held proposal"));
+    String readerList =
+        reader.getHttpClient().executeForString(HttpMethod.GET, entityTasksPath, null);
+    assertTrue(readerList.contains(task.getId().toString()));
+    assertFalse(readerList.contains("held proposal"));
+    String countPath =
+        "/v1/tasks/count?aboutEntity="
+            + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    assertEquals(1, openTaskCount(reader, countPath));
+    OpenMetadataException commentRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                reader
+                    .getHttpClient()
+                    .executeForString(
+                        HttpMethod.POST,
+                        taskPath + "/comments",
+                        new CreateTaskComment().withMessage("a comment")));
+    assertEquals(403, commentRefused.getStatusCode(), commentRefused.getMessage());
+    OpenMetadataException versionsRefused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                reader
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, taskPath + "/versions", null));
+    assertEquals(403, versionsRefused.getStatusCode(), versionsRefused.getMessage());
+
+    // The requester and the reviewer the task is assigned to read the proposed value.
+    for (OpenMetadataClient allowed : List.of(SdkClients.user2Client(), SdkClients.user1Client())) {
+      assertTrue(
+          allowed
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, taskPath, null)
+              .contains("held proposal"));
+      assertTrue(
+          allowed
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, entityTasksPath, null)
+              .contains("held proposal"));
+      assertEquals(1, openTaskCount(allowed, countPath));
+      assertTrue(
+          allowed
+              .getHttpClient()
+              .executeForString(
+                  HttpMethod.POST,
+                  taskPath + "/comments",
+                  new CreateTaskComment().withMessage("a comment"))
+              .contains("held proposal"));
+    }
+
+    // A revision closes the first review task and unlinks it from the request; its value still
+    // reaches only those who may read the request.
+    Task revised = awaitRequestTask(submitDescription(glossary, "revised proposal"), glossary);
+    assertNotEquals(task.getId(), revised.getId());
+    assertFalse(
+        reader
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, taskPath, null)
+            .contains("held proposal"));
+    assertTrue(
+        SdkClients.user2Client()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, taskPath, null)
+            .contains("held proposal"));
+  }
+
+  private int openTaskCount(OpenMetadataClient client, String countPath) throws Exception {
+    return MAPPER
+        .readTree(client.getHttpClient().executeForString(HttpMethod.GET, countPath, null))
+        .path("open")
+        .asInt();
   }
 
   @RetryingTest(2)
