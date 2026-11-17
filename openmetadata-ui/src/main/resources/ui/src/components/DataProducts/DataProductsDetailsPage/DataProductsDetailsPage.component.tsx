@@ -19,11 +19,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
-  Brush01,
   Collapse,
   Download01,
   Edit01,
   Expand,
+  ImageBrush,
   RefreshCcw01,
   Trash01,
   Upload01,
@@ -224,7 +224,7 @@ const getManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.data-product'),
               })}
-              icon={Brush01}
+              icon={ImageBrush}
               id="rename-button"
               name={t('label.style')}
             />
@@ -1031,8 +1031,10 @@ const DataProductsDetailsPage = ({
                 serviceName=""
                 suffix={
                   <>
-                    {statusBadge}
                     <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
+                    {statusBadge && (
+                      <Box className="tw:ml-2">{statusBadge}</Box>
+                    )}
                   </>
                 }
                 titleColor={dataProduct.style?.color}

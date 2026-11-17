@@ -20,11 +20,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
-  Brush01,
   ChevronDown,
   Collapse,
   Edit01,
   Expand,
+  ImageBrush,
   Trash01,
   Version,
 } from '@openmetadata/ui-core-components/icons';
@@ -869,7 +869,7 @@ const DomainDetails = ({
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.domain'),
                 })}
-                icon={Brush01}
+                icon={ImageBrush}
                 id="edit-style-button"
                 name={t('label.style')}
               />
@@ -1054,10 +1054,10 @@ const DomainDetails = ({
               serviceName=""
               suffix={
                 <>
-                  {statusBadge}
                   {!isTreeView && (
                     <LearningIcon pageId={LEARNING_PAGE_IDS.DOMAIN} />
                   )}
+                  {statusBadge && <Box className="tw:ml-2">{statusBadge}</Box>}
                 </>
               }
               titleColor={domain.style?.color}
