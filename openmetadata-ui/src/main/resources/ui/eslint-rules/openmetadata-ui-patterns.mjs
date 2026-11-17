@@ -361,6 +361,10 @@ const omTokenUsage = {
   },
 };
 
+// The palette vocabulary is also consumed by scripts/tw-deprecation-guard.js
+// (the added-lines style gate), so the two can never drift.
+export { PALETTE_FAMILIES, COLOR_PROP, SHADE };
+
 export default {
   rules: {
     'deprecated-om-tokens': omTokenUsage,

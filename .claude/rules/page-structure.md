@@ -13,7 +13,7 @@ the canon can't express a layout, extend the canonical component in
 
 | Layout | Source | When |
 |---|---|---|
-| `PageLayout` (compound: `.Header`/`.Panel`/`.Content`, `scroll` modes) | `@openmetadata/ui-core-components` `application/page-layout` | **default for new pages** |
+| `PageLayout` (compound: `.Header`/`.LeftPanel`/`.RightPanel`/`.Content`, `scroll` modes) | `@openmetadata/ui-core-components` `application/page-layout` | **default for new pages** |
 | `ObservabilityPageShell` | `components/observability/ObservabilityPageShell` | observability surfaces (alerts, pipelines, data quality) |
 | `PageLayoutV1` | `components/PageLayoutV1` | legacy. Fine to keep when editing an existing V1 page; do not use for new pages |
 | `ResizablePanels` / `ResizableLeftPanels` | `components/common/ResizablePanels` | split layouts with a resizable side panel (react-reflex) — composes inside a layout, not a page shell |

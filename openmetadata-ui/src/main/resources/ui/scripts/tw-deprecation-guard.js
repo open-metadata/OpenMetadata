@@ -29,6 +29,7 @@
  *   node scripts/tw-deprecation-guard.js <baseRef>    # vs a base branch (CI)
  */
 const { execSync, execFileSync } = require('child_process');
+const path = require('path');
 
 const base = process.argv[2];
 const diffArgs = base ? `${base}...HEAD` : '--cached';
@@ -112,26 +113,55 @@ function newSvgImports() {
 
 const STYLE_ALLOW_TOKEN = 'style-guard-allow';
 
+// A bare token is not an exception — it needs a stated reason on the line
+// (`style-guard-allow: chart lib needs literal colours`), so reviewers can
+// tell why the added debt is deliberate.
+const STYLE_ALLOW_RE = /style-guard-allow\s*[:\-—–]\s*\S+/;
+
 const STYLE_EXEMPT_PATH =
   /\.(?:test|spec|stories)\.tsx?$|(^|\/)src\/generated\/|(^|\/)scripts\//;
+
+// The raw-palette vocabulary is imported from the no-non-adaptive-palette
+// ESLint rule (eslint-rules/openmetadata-ui-patterns.mjs), the single source
+// for palette families/props/shades — so `tw:bg-brand-500`, `tw:text-error-600`
+// and multi-word families like `gray-blue` fail here exactly as the rule
+// recognises them. Matching mirrors the rule: take each `tw:` class token's
+// LAST variant segment (so `tw:[&_button]:bg-blue-50` and `tw:!bg-gray-100`
+// match regardless of variant syntax) and test it against the palette core.
+let PALETTE_CORE; // built in main() from the dynamic import (this file is CJS)
+
+async function loadPaletteCore() {
+  const { pathToFileURL } = require('url');
+  const rulePath = path.join(__dirname, '..', 'eslint-rules', 'openmetadata-ui-patterns.mjs');
+  const { PALETTE_FAMILIES, COLOR_PROP, SHADE } = await import(pathToFileURL(rulePath));
+  return new RegExp(
+    `^${COLOR_PROP}-(?:${PALETTE_FAMILIES.join('|')})-${SHADE}(?:/\\d{1,3})?$`
+  );
+}
+
+function hasRawPaletteClass(line) {
+  const tokens = line.match(/tw:[^\s"'\\`]+/g) || [];
+  return tokens.some((token) => {
+    const last = token.slice(3).split(':').pop().replace(/^!/, '');
+    return PALETTE_CORE.test(last);
+  });
+}
 
 const STYLE_LINE_CHECKS = [
   {
     name: 'raw-palette',
-    // Any tw: utility (including variant chains like tw:hover:bg-gray-50)
-    // ending in a raw palette colour + shade. Use semantic tokens
-    // (tw:text-secondary, tw:bg-utility-*) — they carry the dark-mode variant.
-    re: /tw:[\w![\]:-]*(?:bg|text|border|outline|fill|stroke|from|to|via)-(?:gray|slate|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)-\d{2,3}\b/,
-    why: 'raw Tailwind palette class — use a semantic token (docs/colors.md)',
+    test: (line) => hasRawPaletteClass(line),
+    why: 'raw Tailwind palette class — use a semantic token (docs/colors.md; vocabulary from the no-non-adaptive-palette rule)',
   },
   {
     name: 'hex-colour',
-    re: /(?<!href=["'`])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b(?=[^\w]|$)/,
+    test: (line) =>
+      /(?<!href=["'\\`])#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}(?:[0-9a-fA-F]{2})?)?\b(?=[^\w]|$)/.test(line),
     why: 'hardcoded hex colour — use a semantic design token (docs/colors.md)',
   },
   {
     name: 'inline-style',
-    re: /style=\{\{/,
+    test: (line) => /style=\{\{/.test(line),
     why: 'inline style object — use tw: utilities or the core component prop',
   },
 ];
@@ -172,12 +202,12 @@ function newStyleDebt() {
     if (
       !/\.tsx?$/.test(file) ||
       STYLE_EXEMPT_PATH.test(file) ||
-      added.includes(STYLE_ALLOW_TOKEN)
+      STYLE_ALLOW_RE.test(added)
     ) {
       continue;
     }
     for (const check of STYLE_LINE_CHECKS) {
-      if (check.re.test(added)) {
+      if (check.test(added)) {
         hits.push(`${file}:${current}  [${check.name}] ${check.why}`);
       }
     }
@@ -275,7 +305,8 @@ function newOmTokenUses() {
   });
 }
 
-function main() {
+async function main() {
+  PALETTE_CORE = await loadPaletteCore();
   const less = newLessFiles();
   const svgFiles = newSvgFiles();
   const svgImports = newSvgImports();
@@ -327,10 +358,19 @@ function main() {
 }
 
 if (require.main === module) {
-  main();
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
 }
 
 module.exports = {
+  loadPaletteCore,
+  setPaletteCore: (re) => {
+    PALETTE_CORE = re;
+  },
+  hasRawPaletteClass,
+  STYLE_ALLOW_RE,
   newLessFiles,
   newSvgFiles,
   newSvgImports,
