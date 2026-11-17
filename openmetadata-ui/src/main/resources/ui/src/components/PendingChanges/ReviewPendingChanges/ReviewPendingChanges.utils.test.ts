@@ -392,6 +392,43 @@ describe('ReviewPendingChanges utils', () => {
     ]);
   });
 
+  it('shows the nested columns of an added column with their details', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([{ name: 'id' }]),
+      value: JSON.stringify([
+        { name: 'id' },
+        {
+          name: 'amount',
+          children: [
+            {
+              name: 'currency',
+              description: 'ISO code',
+              children: [{ name: 'symbol', description: 'Sign' }],
+            },
+          ],
+        },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      { element: 'amount', status: 'added', properties: [] },
+      {
+        element: 'amount.currency',
+        status: 'added',
+        properties: [
+          { property: 'description', before: '', after: 'ISO code' },
+        ],
+      },
+      {
+        element: 'amount.currency.symbol',
+        status: 'added',
+        properties: [{ property: 'description', before: '', after: 'Sign' }],
+      },
+    ]);
+  });
+
   it('shows every column removed when a change empties the list', () => {
     const op = {
       op: MutationOpType.Set,

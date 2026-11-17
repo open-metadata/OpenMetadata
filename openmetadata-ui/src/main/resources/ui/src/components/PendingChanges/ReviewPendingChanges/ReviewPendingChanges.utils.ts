@@ -249,15 +249,18 @@ const namedListChanges = (
       const previous = beforeByName.get(element.name);
       if (!previous) {
         const description = textOf(element.description);
+        // An added column's nested columns are proposed too; a reviewer must see each of them.
+        const children = namedOrEmpty(element[CHILDREN_PROPERTY]) ?? [];
 
         return [
           {
             element: name.join('.'),
-            status: 'added',
+            status: 'added' as const,
             properties: description
               ? [{ property: 'description', before: '', after: description }]
               : [],
           },
+          ...namedListChanges([], children, name),
         ];
       }
       const changed = [
