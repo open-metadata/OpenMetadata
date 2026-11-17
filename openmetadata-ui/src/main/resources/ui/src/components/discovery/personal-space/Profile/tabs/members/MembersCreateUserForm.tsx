@@ -58,6 +58,7 @@ import { CreatePasswordGenerator } from '../../../../../../enums/user.enum';
 import { CreatePasswordType } from '../../../../../../generated/api/teams/createUser';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { generateRandomPwd } from '../../../../../../rest/auth-API';
 import { getAllPersonas } from '../../../../../../rest/PersonaAPI';
@@ -74,6 +75,7 @@ import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
 import { CreateUserFormData } from '../../../../../Settings/Users/CreateUser/CreateUser.interface';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { MembersCreateUserFormProps, TeamNode } from './Members.types';
 import {
   flattenTeamHierarchy,
@@ -131,6 +133,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
   const [isPasswordGenerating, setIsPasswordGenerating] = useState(false);
   const [showGeneratedPassword, setShowGeneratedPassword] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<EntityReference[]>([]);
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty || hasDescription || selectedDomains.length > 0
+  );
 
   const [teamItems, setTeamItems] = useState<SelectItemType[]>([]);
   const [roleItems, setRoleItems] = useState<SelectItemType[]>([]);
@@ -441,6 +449,9 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                 data-testid="description"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
 
@@ -591,9 +602,12 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-user"
-          onPress={() => onNavigate({ type: isAdmin ? 'admins' : 'users' })}>
+          onPress={() =>
+            runGuarded(() => onNavigate({ type: isAdmin ? 'admins' : 'users' }))
+          }>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="save-user"

@@ -148,8 +148,12 @@ const EntitySearchSettings = ({
   }, []);
   useEffect(() => {
     if (!entityType) {
-      // A stale or mistyped link: back to the entity list.
-      onNavigate({ type: 'page', page: 'search', isEditing: false });
+      // A stale or mistyped link: back to the entity list, replacing it so
+      // Back does not land on it again.
+      onNavigate(
+        { type: 'page', page: 'search', isEditing: false },
+        { replace: true }
+      );
 
       return;
     }

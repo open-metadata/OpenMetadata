@@ -135,8 +135,12 @@ const AiSidebarEditor = ({
           entity: t('label.app-mode-sidebar'),
         })
       );
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsSaving(false);
     }
