@@ -16,7 +16,7 @@ of that verdict: the agent records it with the result rather than leaving the re
 whatever the test case says later.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import MagicMock
 from uuid import uuid4
 
@@ -36,7 +36,7 @@ from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameter
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.metrics.registry import Metrics
 
-EXECUTION_DATE = datetime.strptime("2021-07-03", "%Y-%m-%d")
+EXECUTION_DATE = int(datetime(2021, 7, 3, tzinfo=timezone.utc).timestamp() * 1000)
 ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 
 
@@ -175,7 +175,7 @@ def test_an_unset_bound_is_left_out_of_the_configured_window():
 def test_every_dimension_of_a_run_carries_the_run_s_threshold(create_sqlite_table):
     """A dimension is a group of the rows the run read, so it was judged by the same tolerance"""
     test_case = build_test_case(threshold_params(60, "PERCENTAGE"), dimension_columns=("name",))
-    validator = ColumnValuesToBeNotNullValidator(create_sqlite_table, test_case, EXECUTION_DATE.timestamp())
+    validator = ColumnValuesToBeNotNullValidator(create_sqlite_table, test_case, EXECUTION_DATE)
 
     result = validator.run_validation()
 
@@ -192,7 +192,7 @@ def test_every_dimension_of_a_statistical_run_keeps_the_configured_window(create
         ],
         dimension_columns=("name",),
     )
-    validator = ColumnValueMeanToBeBetweenValidator(create_sqlite_table, test_case, EXECUTION_DATE.timestamp())
+    validator = ColumnValueMeanToBeBetweenValidator(create_sqlite_table, test_case, EXECUTION_DATE)
 
     result = validator.run_validation()
 
