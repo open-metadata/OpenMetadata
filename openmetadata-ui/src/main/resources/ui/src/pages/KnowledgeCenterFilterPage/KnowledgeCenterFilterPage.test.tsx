@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { EntityType } from '../../enums/entity.enum';
 import {
   KnowledgePage,
@@ -113,6 +113,41 @@ beforeEach(() => {
   mockGetListKnowledgePages.mockResolvedValue({
     data: [DEFAULT_ARTICLE],
     paging: { total: 1 },
+  });
+});
+
+describe('KnowledgeCenterFilterPage — breadcrumb', () => {
+  it('links back to Context Center and the entity, and marks the listing as current', async () => {
+    mockGetListKnowledgePages.mockResolvedValue({
+      data: [
+        {
+          ...DEFAULT_ARTICLE,
+          relatedEntities: [
+            {
+              id: 'entity-1',
+              type: EntityType.TABLE,
+              name: 'orders',
+              fullyQualifiedName: 'svc.db.schema.orders',
+            },
+          ],
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    renderPage();
+
+    const breadcrumb = await screen.findByTestId('breadcrumb');
+
+    expect(
+      within(breadcrumb).getByRole('link', { name: 'label.context-center' })
+    ).toHaveAttribute('href', '/context-center');
+    expect(
+      within(breadcrumb).getByRole('link', { name: 'orders' })
+    ).toHaveAttribute('href', '/table/svc.db.schema.orders');
+    expect(
+      within(breadcrumb).getByText('label.related-article-plural')
+    ).toBeInTheDocument();
   });
 });
 

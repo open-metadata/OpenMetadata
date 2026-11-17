@@ -90,7 +90,7 @@ public class LineageSceneResolver {
         return cached.get();
       }
     }
-    LoadedScene loaded = new LineageSceneLoader(repository, request).load();
+    LoadedScene loaded = loadScene(request);
     SearchLineageResult lineage = loaded.lineage();
     boolean sampled = loaded.sampled();
     if (request.requiresEntityAuthorization()) {
@@ -112,6 +112,17 @@ public class LineageSceneResolver {
       LineageSceneCache.getInstance().put(cacheKey, scene);
     }
     return scene;
+  }
+
+  private LoadedScene loadScene(LineageSceneRequest request) throws IOException {
+    try {
+      return new LineageSceneLoader(repository, request).load();
+    } catch (IOException | RuntimeException e) {
+      if (request.queryFilter() != null && LineageSceneQuery.isRejectedBySearchEngine(e)) {
+        throw LineageSceneQuery.invalidQueryFilter(e);
+      }
+      throw e;
+    }
   }
 
   LineageScene resolveScene(

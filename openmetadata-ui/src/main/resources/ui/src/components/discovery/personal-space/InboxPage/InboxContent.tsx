@@ -116,7 +116,11 @@ const InboxContent: React.FC = () => {
     selectedTab === 'tasks' ? (
       <TasksTab />
     ) : (
-      <Box className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col" direction="col">
+      // The gutter the Activity toolbar's negative margin assumes; without it
+      // the feed runs into the card's edges on a narrow window.
+      <Box
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col tw:px-3"
+        direction="col">
         <ActivityTab
           dateRange={dateRange}
           initialFilter={parseActivityFilter(

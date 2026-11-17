@@ -35,6 +35,7 @@ import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.InstantiateOntologyPattern;
 import org.openmetadata.schema.api.data.OntologyBulkOperation;
 import org.openmetadata.schema.api.data.OntologyBulkRequest;
@@ -61,6 +62,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeSetState;
+import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.schema.type.OntologyExpression;
@@ -197,6 +199,43 @@ class IndependentOntologyAuthorizationIT extends BaseOntologyApprovalIT {
     assertEquals(200, patchAsAdmin(conceptPath, describe));
     assertNotEquals(403, patchAsAdmin(conceptPath, tag));
     assertEquals(200, patchAsAdmin(ontologyPath, describe));
+  }
+
+  @Test
+  void recreatingADeletedConceptNeedsTheRightToEditIt(final TestNamespace ns) {
+    final User creator =
+        createUserWithOperations(
+            ns, "recreator", List.of(MetadataOperation.CREATE, MetadataOperation.VIEW_ALL));
+    final Ontology ontology = createOntologyWith(ns, "recreate", List.of(), List.of());
+    final CreateOntologyConcept request =
+        new CreateOntologyConcept()
+            .withOntology(ontology.getFullyQualifiedName())
+            .withName("Archived")
+            .withIri(URI.create(ontology.getNamespace() + "Archived"))
+            .withDescription("Original text")
+            .withConceptType(OntologyConceptType.OWL_CLASS);
+    final var concepts = SdkClients.adminClient().ontologyConcepts();
+    final String id = concepts.create(request).getId().toString();
+    concepts.delete(id);
+    final String overwrite = json(request.withDescription("Overwritten text"));
+
+    assertEquals(403, status(creator, "POST", "/v1/ontologyConcepts", overwrite));
+    final OntologyConcept untouched = concepts.get(id, null, "deleted");
+    assertTrue(untouched.getDeleted());
+    assertEquals("Original text", untouched.getDescription());
+    assertEquals(
+        201,
+        status(
+            creator,
+            "POST",
+            "/v1/ontologyConcepts",
+            json(
+                request.withName("Fresh").withIri(URI.create(ontology.getNamespace() + "Fresh")))));
+
+    assertEquals(200, statusAsAdmin("POST", "/v1/ontologyConcepts", overwrite));
+    final OntologyConcept recreated = concepts.get(id);
+    assertFalse(recreated.getDeleted());
+    assertEquals("Overwritten text", recreated.getDescription());
   }
 
   @Test

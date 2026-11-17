@@ -22,7 +22,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
-  Copy01,
   Edit01 as Edit,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
@@ -42,7 +41,6 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getPersonaByName,
@@ -53,6 +51,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
@@ -116,11 +115,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   } = useEntityPermissions(ResourceEntity.PERSONA, fqn);
 
   // Deep link that reopens this persona in the personal-space modal.
-  const { onCopyToClipBoard, hasCopied } = useClipboard(
-    `${globalThis.location.origin}${
-      globalThis.location.pathname
-    }#personas/${viewToSubPath({ type: 'detail', fqn, name: fqn })}`
-  );
+  const personaLink = `${globalThis.location.origin}${
+    globalThis.location.pathname
+  }#personas/${viewToSubPath({ type: 'detail', fqn, name: fqn })}`;
 
   const fetchPersona = useCallback(async () => {
     const requestId = ++fetchRequestIdRef.current;
@@ -254,7 +251,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="tertiary"
           isDisabled={isSavingRename}
-          size="sm"
+          size="xs"
           onPress={() => {
             setIsRenameOpen(false);
             setRenameValue('');
@@ -265,7 +262,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           color="primary"
           isDisabled={!renameValue.trim()}
           isLoading={isSavingRename}
-          size="sm"
+          size="xs"
           onPress={handleSaveRename}>
           {t('label.save')}
         </Button>
@@ -280,16 +277,12 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
     return (
       <Box align="center" direction="row" gap={1}>
-        <ButtonUtility
-          data-testid="copy-persona-link"
-          icon={Copy01}
-          tooltip={String(
-            hasCopied
-              ? t('message.link-copy-to-clipboard')
-              : t('label.copy-item', { item: t('label.url-uppercase') })
-          )}
+        <CopyButton
+          size="sm"
+          testId="copy-persona-link"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
           tooltipPlacement="right"
-          onPress={() => onCopyToClipBoard()}
+          value={personaLink}
         />
         <ButtonUtility
           data-testid="rename-persona-btn"
@@ -306,14 +299,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         />
       </Box>
     );
-  }, [
-    isRenameOpen,
-    persona,
-    canEditDescription,
-    hasCopied,
-    onCopyToClipBoard,
-    t,
-  ]);
+  }, [isRenameOpen, persona, canEditDescription, personaLink, t]);
 
   const actionsNode = useMemo<React.ReactNode>(() => {
     if (isRenameOpen || !persona) {
@@ -330,7 +316,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
-          size="sm"
+          size="xs"
           onPress={handleToggleDefault}>
           {persona.default
             ? t('label.remove-default')

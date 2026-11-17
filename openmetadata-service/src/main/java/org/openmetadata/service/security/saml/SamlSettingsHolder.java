@@ -133,9 +133,7 @@ public class SamlSettingsHolder {
   private static void putSpCredentials(
       Map<String, Object> samlData, ServiceProviderConfig sp, SamlSecurityConfig securityConfig)
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
-    boolean credentialsRequired =
-        securityConfig.getSendSignedAuthRequest() || securityConfig.getWantAssertionEncrypted();
-    if (credentialsRequired && hasKeyStore(securityConfig)) {
+    if (readsSpCredentialsFromKeyStore(securityConfig)) {
       KeyStore keyStore =
           loadKeyStore(
               securityConfig.getKeyStoreFilePath(),
@@ -146,10 +144,25 @@ public class SamlSettingsHolder {
     } else if (hasPemCredentials(sp)) {
       samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, sp.getSpPrivateKey());
       samlData.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, sp.getSpX509Certificate());
-    } else if (credentialsRequired) {
+    } else if (needsSpCredentials(securityConfig)) {
       throw new IllegalArgumentException(
           "Either Specify (KeyStoreFilePath, KeyStoreAlias and KeyStorePassword) or (Sp X509 Certificate and Private Key) as one of both is mandatory.");
     }
+  }
+
+  /**
+   * Whether sign-in takes the SP key and certificate from the keystore rather than from the PEM
+   * values: only when signing requests or decrypting assertions needs them and the keystore's path,
+   * alias and password are all set. The save check asks the same question, so the two cannot
+   * disagree about which credentials a configuration supplies.
+   */
+  public static boolean readsSpCredentialsFromKeyStore(SamlSecurityConfig securityConfig) {
+    return needsSpCredentials(securityConfig) && hasKeyStore(securityConfig);
+  }
+
+  private static boolean needsSpCredentials(SamlSecurityConfig securityConfig) {
+    return Boolean.TRUE.equals(securityConfig.getSendSignedAuthRequest())
+        || Boolean.TRUE.equals(securityConfig.getWantAssertionEncrypted());
   }
 
   private static boolean hasKeyStore(SamlSecurityConfig securityConfig) {
