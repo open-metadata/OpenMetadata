@@ -282,7 +282,7 @@ class CompiledRuleTest {
     return new CompiledRule(
         new Rule()
             .withName("deny")
-            .withResources(List.of("table"))
+            .withResources(List.of(Entity.TABLE))
             .withOperations(List.of(MetadataOperation.VIEW_ALL))
             .withEffect(Rule.Effect.DENY)
             .withCondition(condition));
@@ -291,7 +291,7 @@ class CompiledRuleTest {
   private static void evaluateViewCustomFieldsDeny(
       CompiledRule denyRule, ResourceContextInterface resourceContext) {
     OperationContext operationContext =
-        new OperationContext("table", MetadataOperation.VIEW_CUSTOM_FIELDS);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_CUSTOM_FIELDS);
     SubjectContext subject = new SubjectContext(new User().withName("caller"), null);
     PolicyContext policyContext = new PolicyContext(Entity.ROLE, "role", "role", "policy", null);
     denyRule.evaluateDenyRule(operationContext, subject, resourceContext, policyContext);
@@ -301,7 +301,7 @@ class CompiledRuleTest {
     return new ResourceContextInterface() {
       @Override
       public String getResource() {
-        return "table";
+        return Entity.TABLE;
       }
 
       @Override
