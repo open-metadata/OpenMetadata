@@ -12,8 +12,15 @@
  */
 
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ComponentProps,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
+import { useInView } from 'react-intersection-observer';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MyTaskNoDataIcon } from '../../../../assets/svg/add-placeholder.svg';
 import { ReactComponent as MyTaskIcon } from '../../../../assets/svg/widget/my-task.svg';
@@ -36,6 +43,28 @@ import WidgetFooter from '../Common/WidgetFooter/WidgetFooter';
 import WidgetHeader from '../Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Common/WidgetWrapper/WidgetWrapper';
 import './my-task-widget.less';
+
+const TASK_CARD_PLACEHOLDER_HEIGHT = 150;
+
+/**
+ * A description task card mounts a read-only BlockEditor for every changed
+ * line of its diff. Mounting all PAGE_SIZE_BASE cards on page load blocked the
+ * main thread for over a second, while the widget's scroll area only shows two
+ * or three, so each card mounts once it scrolls into view.
+ */
+const DeferredTaskCard = (
+  props: ComponentProps<typeof TaskFeedCardFromTask>
+) => {
+  const { ref, inView } = useInView({ triggerOnce: true });
+
+  return (
+    <div
+      ref={ref}
+      style={inView ? undefined : { minHeight: TASK_CARD_PLACEHOLDER_HEIGHT }}>
+      {inView && <TaskFeedCardFromTask {...props} />}
+    </div>
+  );
+};
 
 const MyTaskWidget = ({
   isEditView = false,
@@ -157,7 +186,7 @@ const MyTaskWidget = ({
           <>
             <div className="entity-list-body">
               {tasks.slice(0, PAGE_SIZE_BASE).map((task) => (
-                <TaskFeedCardFromTask
+                <DeferredTaskCard
                   isOpenInDrawer={myTaskData?.w === 1}
                   key={task.id}
                   task={task}

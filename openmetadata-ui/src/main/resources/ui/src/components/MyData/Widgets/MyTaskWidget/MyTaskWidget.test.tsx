@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
+import { mockIsIntersecting } from 'react-intersection-observer/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import {
   PAGE_SIZE_BASE,
@@ -36,6 +37,16 @@ jest.mock('../../../../hooks/useApplicationStore', () => ({
 
 jest.mock('../../../ActivityFeed/ActivityFeedPanel/FeedPanelBodyV1New', () =>
   jest.fn().mockImplementation(() => <div>FeedPanelBodyV1New</div>)
+);
+
+jest.mock(
+  '../../../ActivityFeed/TaskFeedCard/TaskFeedCardFromTask.component',
+  () =>
+    jest
+      .fn()
+      .mockImplementation(({ task }) => (
+        <div data-testid={`task-card-${task.id}`} />
+      ))
 );
 
 jest.mock('../../../AppRouter/withActivityFeed', () => ({
@@ -182,5 +193,19 @@ describe('MyTaskWidget', () => {
       undefined,
       PAGE_SIZE_MEDIUM
     );
+  });
+
+  it('mounts a task card only once it scrolls into view', () => {
+    const { container } = renderMyTaskWidget();
+    const [firstSlot] = Array.from(
+      container.querySelector('.entity-list-body')?.children ?? []
+    );
+
+    expect(screen.queryByTestId('task-card-1')).not.toBeInTheDocument();
+
+    act(() => mockIsIntersecting(firstSlot, true));
+
+    expect(screen.getByTestId('task-card-1')).toBeInTheDocument();
+    expect(screen.queryByTestId('task-card-2')).not.toBeInTheDocument();
   });
 });
