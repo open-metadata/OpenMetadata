@@ -30,6 +30,7 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
 } from '../../../../../../rest/securityConfigAPI';
+import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
 import {
   getProviderDisplayName,
   getProviderIcon,
@@ -150,8 +151,11 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   );
 
   const onNavigate = useCallback(
-    (next: SsoView) => setHash(SSO_HASH_TAB, viewToSubPath(next)),
-    [setHash]
+    (next: SsoView) =>
+      setHash(SSO_HASH_TAB, viewToSubPath(next), undefined, {
+        push: pushesSettingsView(view, next),
+      }),
+    [setHash, view]
   );
 
   const fetchConfig = useCallback(async () => {

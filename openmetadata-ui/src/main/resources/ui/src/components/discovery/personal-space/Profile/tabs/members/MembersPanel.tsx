@@ -27,6 +27,7 @@ import type {
   TabContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -92,9 +93,11 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
   const onNavigate = useCallback(
     (nextView: MembersView) => {
-      setHash('members', viewToSubPath(nextView));
+      setHash('members', viewToSubPath(nextView), undefined, {
+        push: pushesSettingsView(view, nextView),
+      });
     },
-    [setHash]
+    [setHash, view]
   );
 
   // The contribution backing the active `section` view, if any. A hash naming an

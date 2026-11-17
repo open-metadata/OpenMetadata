@@ -247,29 +247,38 @@ describe('MembersUsersPanel', () => {
     );
   });
 
-  it('jumps to a page it has not shown by walking the cursors in between', async () => {
+  it('goes back with the page-3 before cursor from the Previous button', async () => {
     mockGetUsers
       .mockResolvedValueOnce(usersPage({ after: 'cursor-2', total: 100 }))
-      .mockResolvedValueOnce(usersPage({ after: 'cursor-3', total: 100 }))
-      .mockResolvedValueOnce(usersPage({ after: 'cursor-4', total: 100 }));
+      .mockResolvedValueOnce(
+        usersPage({ after: 'cursor-3', before: 'before-2', total: 100 })
+      )
+      .mockResolvedValueOnce(
+        usersPage({ after: 'cursor-4', before: 'before-3', total: 100 })
+      )
+      .mockResolvedValueOnce(
+        usersPage({ after: 'cursor-3', before: 'before-2', total: 100 })
+      );
     renderComponent();
 
-    await screen.findByTestId('next');
-    fireEvent.click(screen.getByText('3', { selector: 'button' }));
+    const next = await screen.findByTestId('next');
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+    await waitFor(() => expect(mockGetUsers).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(next).toBeEnabled());
+    fireEvent.click(next);
+    await waitFor(() => expect(mockGetUsers).toHaveBeenCalledTimes(3));
+
+    fireEvent.click(screen.getByTestId('previous'));
 
     await waitFor(() =>
       expect(mockGetUsers).toHaveBeenLastCalledWith(
-        expect.objectContaining({ after: 'cursor-3' })
+        expect.objectContaining({ before: 'before-3' })
       )
     );
 
-    // Page 2 was fetched only for its cursor, so page 3 shows page 3's rows.
-    expect(mockGetUsers).toHaveBeenNthCalledWith(
-      2,
-      expect.objectContaining({ after: 'cursor-2' })
-    );
     expect(mockSetHashPage).toHaveBeenLastCalledWith(
-      3,
+      2,
       undefined,
       undefined,
       15
@@ -287,7 +296,7 @@ describe('MembersUsersPanel', () => {
       if (after === 'cursor-2') {
         pageTwoCalls++;
 
-        // Page 2's own load hangs; the page-3 jump's walk gets an answer.
+        // Page 2's own load hangs; the walk to page 3 gets an answer.
         return pageTwoCalls === 1
           ? new Promise((resolve) => heldPageTwo.push(resolve))
           : Promise.resolve(
@@ -304,9 +313,10 @@ describe('MembersUsersPanel', () => {
     renderComponent();
     await screen.findByText('page-one-user');
 
-    fireEvent.click(screen.getByText('2', { selector: 'button' }));
+    // Next stays clickable while page 2 loads, so page 3 is reached by walking.
+    fireEvent.click(screen.getByTestId('next'));
     await waitFor(() => expect(pageTwoCalls).toBe(1));
-    fireEvent.click(screen.getByText('3', { selector: 'button' }));
+    fireEvent.click(screen.getByTestId('next'));
 
     expect(await screen.findByText('page-three-user')).toBeInTheDocument();
 

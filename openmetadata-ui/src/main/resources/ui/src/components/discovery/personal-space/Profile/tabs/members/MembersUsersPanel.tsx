@@ -531,6 +531,8 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
         </div>
         {showPagination && (
           <PaginationCardWithControls
+            // Same compact pager as the Teams list.
+            minimal
             page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}

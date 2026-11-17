@@ -157,14 +157,18 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 
   const handleSelectEntityType = useCallback(
     (entityTypeFqn: string) => {
-      setHash(HASH_TAB, entityTypeDetailSubPath(entityTypeFqn));
+      setHash(HASH_TAB, entityTypeDetailSubPath(entityTypeFqn), undefined, {
+        push: true,
+      });
     },
     [setHash]
   );
 
   const handleAddProperty = useCallback(() => {
     if (entityType) {
-      setHash(HASH_TAB, viewToSubPath({ type: 'add', entityType }));
+      setHash(HASH_TAB, viewToSubPath({ type: 'add', entityType }), undefined, {
+        push: true,
+      });
     }
   }, [entityType, setHash]);
 
@@ -173,7 +177,9 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       if (entityType) {
         setHash(
           HASH_TAB,
-          viewToSubPath({ type: 'edit', entityType, property })
+          viewToSubPath({ type: 'edit', entityType, property }),
+          undefined,
+          { push: true }
         );
       }
     },

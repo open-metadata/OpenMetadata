@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { getAppCronExpression } from '../../../../../../utils/ApplicationUtils';
 import { useAppScheduleOptions } from '../../../../../Settings/Applications/AppSchedule/useAppScheduleOptions';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
 import { AppFooter } from './AppFooter';
 import type { AppScheduleEditProps } from './Applications.types';
 
@@ -33,6 +34,9 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
     getAppCronExpression(appData.appSchedule)
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
+  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+    scheduleValue !== getAppCronExpression(appData.appSchedule)
+  );
 
   return (
     <Box
@@ -51,9 +55,10 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
           color="tertiary"
           data-testid="cancel-button"
           isDisabled={isSaving}
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        {prompt}
         <Button
           color="primary"
           data-testid="save-button"

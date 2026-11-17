@@ -684,7 +684,14 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
     const cursor = teamsPaging[cursorType];
 
-    if (Math.abs(newPage - teamsPage) !== 1 || !cursor) {
+    // The teams list can come back with a total but no cursor; the search
+    // index then serves the page by number, so Next and Previous still work.
+    if (!cursor) {
+      void searchChildTeams('', newPage);
+
+      return;
+    }
+    if (Math.abs(newPage - teamsPage) !== 1) {
       return;
     }
 

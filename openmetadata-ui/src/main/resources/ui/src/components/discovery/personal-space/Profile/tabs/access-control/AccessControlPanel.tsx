@@ -30,6 +30,7 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
@@ -92,9 +93,11 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
 
   const onNavigate = useCallback(
     (nextView: AccessControlView) => {
-      setHash(HASH_TAB, viewToSubPath(nextView));
+      setHash(HASH_TAB, viewToSubPath(nextView), undefined, {
+        push: pushesSettingsView(view, nextView),
+      });
     },
-    [setHash]
+    [setHash, view]
   );
 
   const isAuditLogsView = view.type === 'audit-logs';

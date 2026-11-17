@@ -157,7 +157,9 @@ describe('SsoPanel', () => {
 
     fireEvent.click(await screen.findByText('Google'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google', undefined, {
+      push: true,
+    });
   });
 
   it('renders the setup form with the provider in the header and a hint toggle', async () => {
@@ -239,7 +241,9 @@ describe('SsoPanel', () => {
     renderHeaderActions();
     fireEvent.click(screen.getByTestId('change-provider-button'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers', undefined, {
+      push: false,
+    });
   });
 
   it('shows the Overview / Configure tabs in the header and switches them through the hash', async () => {
@@ -249,7 +253,9 @@ describe('SsoPanel', () => {
     render(<>{lastHeader().tabs}</>);
     fireEvent.click(screen.getByTestId('sso-tab-configure'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure', undefined, {
+      push: true,
+    });
   });
 
   it('shows Test Login as a sub page in the breadcrumb, without tabs or actions', async () => {

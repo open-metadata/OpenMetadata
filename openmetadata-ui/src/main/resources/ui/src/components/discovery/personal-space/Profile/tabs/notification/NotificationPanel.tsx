@@ -37,6 +37,7 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
+import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -101,9 +102,11 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
 
   const onNavigate = useCallback(
     (nextView: NotificationView) => {
-      setHash('notification', viewToSubPath(nextView));
+      setHash('notification', viewToSubPath(nextView), undefined, {
+        push: pushesSettingsView(view, nextView),
+      });
     },
-    [setHash]
+    [setHash, view]
   );
 
   // Actions injected by detail panels (e.g. edit/delete buttons).

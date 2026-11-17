@@ -484,11 +484,8 @@ test.describe('AI Profile Members - admin paging', () => {
     await openAdminsPanel(page);
 
     const usersList = page.getByTestId('users-list-container');
-    const currentPage = usersList.getByRole('textbox', {
-      name: 'Current page',
-    });
 
-    await expect(currentPage).toHaveValue('1');
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
     await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
 
     const nextResponse = page.waitForResponse((response) => {
@@ -502,7 +499,7 @@ test.describe('AI Profile Members - admin paging', () => {
     await clickIgnoringToasts(usersList.getByTestId('next'));
     await nextResponse;
 
-    await expect(currentPage).toHaveValue('2');
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
     await expect(getRowByName(page, secondPageAdmin)).toBeVisible();
 
     // Page 1 needs no cursor: it reloads the list from the start.
@@ -518,7 +515,7 @@ test.describe('AI Profile Members - admin paging', () => {
     await clickIgnoringToasts(usersList.getByTestId('previous'));
     await previousResponse;
 
-    await expect(currentPage).toHaveValue('1');
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
     await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
   });
 });
@@ -552,56 +549,16 @@ test.describe('AI Profile Members - Users pagination', () => {
     const usersList = page.getByTestId('users-list-container');
     await usersList.getByTestId('rows-per-page-dropdown').click();
     await page.getByTestId('rows-per-page-option-15').click();
-    await expect(usersList.locator('button', { hasText: /^3$/ })).toBeVisible();
-  };
-
-  test('Should open an unvisited page with that page’s users', async ({
-    page,
-  }) => {
-    await openUsersAtSmallestPageSize(page);
-
-    // The list is cursor-paged: reaching page 3 from page 1 fetches page 2 for
-    // its cursor, then page 3 from that cursor.
-    const cursorPages: { after: string | null; body: Promise<unknown> }[] = [];
-    page.on('response', (response) => {
-      const url = new URL(response.url());
-      if (
-        url.pathname.endsWith('/api/v1/users') &&
-        url.searchParams.has('after')
-      ) {
-        cursorPages.push({
-          after: url.searchParams.get('after'),
-          body: response.json(),
-        });
-      }
-    });
-
-    await page
-      .getByTestId('users-list-container')
-      .locator('button', { hasText: /^3$/ })
-      .click();
-
-    await expect.poll(() => cursorPages.length).toBe(2);
-    const pageTwo = (await cursorPages[0].body) as {
-      paging: { after: string };
-    };
-    const pageThree = (await cursorPages[1].body) as {
-      data: { name: string }[];
-    };
-
-    expect(cursorPages[1].after).toBe(pageTwo.paging.after);
-    await expect(getRowByName(page, pageThree.data[0].name)).toBeVisible();
     await expect(
-      page.getByRole('textbox', { name: 'Current page' })
-    ).toHaveValue('3');
-  });
+      usersList.getByText(/^Page 1 of ([3-9]|\d{2,})$/)
+    ).toBeVisible();
+  };
 
   test('Should go back a page with the before cursor of the page shown', async ({
     page,
   }) => {
     await openUsersAtSmallestPageSize(page);
     const usersList = page.getByTestId('users-list-container');
-    const currentPage = page.getByRole('textbox', { name: 'Current page' });
 
     const cursorPages: Promise<unknown>[] = [];
     page.on('response', (response) => {
@@ -613,9 +570,11 @@ test.describe('AI Profile Members - Users pagination', () => {
         cursorPages.push(response.json());
       }
     });
-    await usersList.locator('button', { hasText: /^3$/ }).click();
+    await clickIgnoringToasts(usersList.getByTestId('next'));
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
+    await clickIgnoringToasts(usersList.getByTestId('next'));
     await expect.poll(() => cursorPages.length).toBe(2);
-    await expect(currentPage).toHaveValue('3');
+    await expect(usersList.getByText(/^Page 3 of/)).toBeVisible();
     const pageThree = (await cursorPages[1]) as { paging: { before: string } };
 
     const pageTwoResponse = page.waitForResponse((response) => {
@@ -631,7 +590,7 @@ test.describe('AI Profile Members - Users pagination', () => {
       data: { name: string }[];
     };
 
-    await expect(currentPage).toHaveValue('2');
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
     await expect(getRowByName(page, pageTwo.data[0].name)).toBeVisible();
   });
 });

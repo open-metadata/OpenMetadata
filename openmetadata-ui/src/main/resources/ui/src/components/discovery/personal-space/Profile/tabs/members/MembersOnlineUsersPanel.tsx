@@ -400,6 +400,8 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
         {showPagination && (
           <PaginationCardWithControls
+            // Same compact pager as the Teams list.
+            minimal
             page={currentPage}
             pageSize={pageSize}
             pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
