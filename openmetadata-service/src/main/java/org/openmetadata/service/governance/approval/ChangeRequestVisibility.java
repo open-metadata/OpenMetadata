@@ -96,7 +96,18 @@ public final class ChangeRequestVisibility {
    */
   public static void requireTaskVisible(
       Authorizer authorizer, SecurityContext securityContext, UUID taskId) {
-    Task task = Entity.getEntity(Entity.TASK, taskId, "", Include.ALL);
+    Task task = Entity.getEntity(Entity.TASK, taskId, TASK_FIELDS, Include.ALL);
+    requireTaskVisible(authorizer, securityContext, task);
+  }
+
+  /**
+   * As {@link #requireTaskVisible(Authorizer, SecurityContext, UUID)}, for a task the caller already
+   * loaded with its assignees, reviewers, target and creator. A route that writes the task passes
+   * the copy it read from the database: reading the task again through the entity cache before
+   * the write would cache the copy the write replaces.
+   */
+  public static void requireTaskVisible(
+      Authorizer authorizer, SecurityContext securityContext, Task task) {
     ChangeRequest request = requestsOf(List.of(task)).get(task.getId());
     if (request != null && !mayRead(authorizer, securityContext, request, task)) {
       throw new ForbiddenException(
@@ -140,7 +151,11 @@ public final class ChangeRequestVisibility {
     String caller = securityContext.getUserPrincipal().getName();
     return caller.equals(request.getRequestedBy())
         || seesAll(caller, entity)
-        || mayResolveTask(authorizer, securityContext, task.getId());
+        || mayResolve(
+            (TaskRepository) Entity.getEntityRepository(Entity.TASK),
+            authorizer,
+            securityContext,
+            task);
   }
 
   // An entity that can no longer be read has no owners or reviewers to grant the view.
