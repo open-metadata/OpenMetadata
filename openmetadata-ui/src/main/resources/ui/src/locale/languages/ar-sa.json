@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "أصول البيانات",
     "data-asset-name": "اسم أصل البيانات",
     "data-asset-plural": "أصول البيانات",
+    "data-asset-plural-by-connector": "أصول البيانات حسب الموصّل",
     "data-asset-plural-coverage": "تغطية أصول البيانات",
     "data-asset-plural-with-field": "أصول البيانات مع {{field}}",
     "data-asset-rules": "قواعد أصول البيانات",

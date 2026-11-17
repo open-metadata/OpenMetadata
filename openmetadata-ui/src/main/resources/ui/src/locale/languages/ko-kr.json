@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "데이터 자산들",
     "data-asset-name": "데이터 자산 이름",
     "data-asset-plural": "데이터 자산들",
+    "data-asset-plural-by-connector": "커넥터별 데이터 자산",
     "data-asset-plural-coverage": "데이터 자산 커버리지",
     "data-asset-plural-with-field": "{{field}}가 있는 데이터 자산들",
     "data-asset-rules": "데이터 자산 규칙",

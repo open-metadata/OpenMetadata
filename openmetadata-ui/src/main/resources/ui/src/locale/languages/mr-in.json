@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "डेटा मालमत्ता",
     "data-asset-name": "डेटा ॲसेटचे नाव",
     "data-asset-plural": "डेटा ॲसेट्स",
+    "data-asset-plural-by-connector": "कनेक्टरनुसार डेटा ॲसेट्स",
     "data-asset-plural-coverage": "डेटा ॲसेट्स कव्हरेज",
     "data-asset-plural-with-field": "{{field}} सह डेटा ॲसेट्स",
     "data-asset-rules": "डेटा अॅसेट नियम",

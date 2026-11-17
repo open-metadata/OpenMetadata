@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "gegevens activa",
     "data-asset-name": "Naam van data-asset",
     "data-asset-plural": "Data-assets",
+    "data-asset-plural-by-connector": "Data-assets per connector",
     "data-asset-plural-coverage": "Dekking van data-assets",
     "data-asset-plural-with-field": "Data-assets met {{field}}",
     "data-asset-rules": "Data asset regels",

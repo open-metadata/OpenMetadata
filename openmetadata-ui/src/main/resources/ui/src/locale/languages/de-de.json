@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "datenanlagen",
     "data-asset-name": "Name des Daten-Assets",
     "data-asset-plural": "Daten-Assets",
+    "data-asset-plural-by-connector": "Daten-Assets nach Konnektor",
     "data-asset-plural-coverage": "Data Assets Abdeckung",
     "data-asset-plural-with-field": "Daten-Assets mit {{field}}",
     "data-asset-rules": "Datenasset-Regeln",

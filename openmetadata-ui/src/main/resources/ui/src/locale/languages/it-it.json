@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "asset di dati",
     "data-asset-name": "Nome dell'Asset di Dati",
     "data-asset-plural": "Asset di Dati",
+    "data-asset-plural-by-connector": "Asset di dati per connettore",
     "data-asset-plural-coverage": "Copertura degli Asset di Dati",
     "data-asset-plural-with-field": "Asset di Dati con {{field}}",
     "data-asset-rules": "Regole degli Asset di Dati",

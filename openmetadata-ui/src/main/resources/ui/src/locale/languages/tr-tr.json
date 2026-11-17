@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "veri varlıkları",
     "data-asset-name": "Veri Varlığı Adı",
     "data-asset-plural": "Veri Varlıkları",
+    "data-asset-plural-by-connector": "Bağlayıcıya Göre Veri Varlıkları",
     "data-asset-plural-coverage": "Veri Varlıkları Kapsamı",
     "data-asset-plural-with-field": "{{field}} İçeren Veri Varlıkları",
     "data-asset-rules": "Veri Varlığı Kuralları",

@@ -895,6 +895,7 @@
     "data-asset-lowercase-plural": "دارایی‌های داده",
     "data-asset-name": "نام دارایی داده",
     "data-asset-plural": "دارایی‌های داده",
+    "data-asset-plural-by-connector": "دارایی‌های داده بر اساس رابط",
     "data-asset-plural-coverage": "پوشش دارایی‌های داده",
     "data-asset-plural-with-field": "دارایی‌های داده با {{field}}",
     "data-asset-rules": "قوانین دارایی داده",
