@@ -137,3 +137,9 @@ dispute can. Otherwise nothing is written, and an admin or a requeue takes it fr
 is followed through the Archive: a later value archived with its document makes the decision wait
 (409), as a disputed memory in the Archive does, and one a person deleted is gone. Rejecting is
 unaffected.
+
+This supersedes "Writers link only memories the same audience may read; Collate links same-audience
+pairs only" in the Consequences. A re-point can name a memory of another audience that its resolver
+can read, and Collate's Memory Reconciliation now names a contradicting memory of any audience,
+written as an admin, with a fixed reason when the two memories have different readers
+(openmetadata-collate's record `2026-11-17-reconciliation-compares-a-memory-with-similar-memories-anywhere`).
