@@ -64,6 +64,34 @@
           "description": "JSON Logic condition the asset must meet. Required for an automatic exit.",
           "type": "string",
           "minLength": 1
+        },
+        "approval": {
+          "description": "Who approves a request for an on-request exit. The request is a status update task assigned to them.",
+          "type": "object",
+          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleExitApproval",
+          "properties": {
+            "assignees": {
+              "description": "Groups of the asset asked to approve.",
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "owners",
+                  "reviewers"
+                ],
+                "javaType": "org.openmetadata.schema.governance.workflows.LifecycleApproverGroup"
+              },
+              "uniqueItems": true
+            },
+            "candidates": {
+              "description": "Specific users and teams asked in addition to the groups.",
+              "type": "array",
+              "items": {
+                "$ref": "../../type/entityReference.json"
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "required": [

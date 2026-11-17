@@ -1,30 +1,39 @@
-# A lifecycle request triggers only the lifecycle playbooks that take requests
+# A lifecycle status request is a status update task, decided by the lifecycle's exit approvers
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial)
-- **Deciders:** Ram Narayan Balaji
-- **Guard:** `FilterEntityImplTest#eventPath_lifecycleRequestOnly_*`,
-  `WorkflowDefinitionResourceIT#test_lifecycleRequestLeavesTheSeededReviewOfAGlossaryTermAlone`
+- **Revisions:** v1 2026-11-16 (initial: a `lifecycleRequest` entity field) · v2 2026-11-17 (a status update
+  task instead of the field, after review)
+- **Deciders:** Ram Narayan Balaji, Pere Miquel Brull, Adrià Manero
+- **Guard:** `WorkflowDefinitionResourceIT#test_approvedStatusRequestMovesTheAssetAndEndsItsOnboardingApproval`,
+  `#test_rejectedStatusRequestLeavesTheStageAndTheOnboardingApproval`,
+  `#test_statusRequestForAStageTheLifecycleDoesNotOfferIsRejected`,
+  `#test_secondStatusRequestWhileOneIsOpenIsRejected`, `#test_withdrawnStatusRequestCanBeRaisedAgain`
 - **Related:** ADR:2026-11-16-requestable-stages-are-read-per-entity
 
 ## Context
-A user asks an asset's lifecycle to move it to an on-request exit, such as Deprecated, by setting
-the entity's `lifecycleRequest`. While that field sat in the `common` trigger fields, every
-event-based workflow on the entity type fired on it. On a glossary term the seeded Glossary Term
-Approval Workflow superseded the term's pending review, opened a second review beside the exit's
-approval, and left that review open on a term the exit had just deprecated. Excluding the field in
-each seeded workflow would need a data migration and would still miss the workflows customers build.
+A lifecycle playbook can offer exits, such as Deprecated or Archived, that a user requests. The first version
+stored the request on the asset as a `lifecycleRequest` field. That put workflow state in the asset: every asset
+type with a lifecycle needed the field, every write path had to handle it (PUT, CSV import), the request lived both
+on the asset and in its approval task and could drift apart, and a request whose run went away stayed on the asset
+with no way to cancel it. Requests also ran inside the lifecycle's own run, where an exit's approval replaced the
+pending onboarding approval and an exit without approval left that approval open to undo the move.
 
 ## Decision
-`workflowTriggerFields.json` lists `lifecycleRequest` under `lifecycle`, not `common`. A change to a
-`lifecycle` field triggers a workflow only when that workflow is the active lifecycle playbook that
-owns the entity's stage and has an on-request exit (`EntityStatusWorkflows.takesLifecycleRequests`),
-whatever its trigger `include`/`exclude`; it triggers no other workflow, and `WorkflowEventConsumer`
-passes such a change on so the trigger can decide. The approval gate never holds the field, since it
-is no trigger field, so the gate and the trigger agree that no other workflow reacts to it.
+A request is a task of type `StatusUpdate` on the task framework, like the other update tasks: created with
+`POST /v1/tasks`, decided by `StatusUpdateTaskWorkflow`, and applied on approval by setting `entityStatus` from the
+task's `newStatus`, written for the approver with governance-bot as impersonator, so the lifecycle's ownership of the
+status holds. The lifecycle governs it: creating one requires a stage the asset's owning lifecycle offers on request
+(`EntityRepository.getRequestableStages`), refuses a second open request on the asset, and assigns it to the approvers
+the exit names (owners, reviewers, named users; admins when no one but the requester is left). Approving re-checks the
+stage is still offered. Withdrawing closes the task and ends its run. An on-request exit always names approvers, since
+an approval with no assignees approves without applying the task's change; a move needing no approval is an
+automatic exit. Whenever the asset moves to one of its lifecycle's exit stages, by an approved request or an
+automatic exit, the lifecycle's open approval runs on it end and its tasks for other stages close
+(`LifecycleExitRuns`). On-request exits compile to no lifecycle node; automatic exits never move an asset from one exit
+stage to another.
 
 ## Consequences
-A request reaches the one lifecycle it is addressed to, and other workflows on the type see no
-event for it; the workflow builder no longer offers the field to include or exclude. A future field
-addressed to the lifecycle joins the `lifecycle` list. Revisit if a non-playbook workflow ever needs
-to react to a request.
+No asset schema carries request state, and a new asset type with a lifecycle needs nothing to offer requests. The
+request lives in one task: pending, approved, rejected or withdrawn. A request and the onboarding approval no longer
+replace each other. Revisit if requests need to change a stage on the onboarding path, which the lifecycle's gates
+own.

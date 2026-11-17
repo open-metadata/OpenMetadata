@@ -318,14 +318,12 @@ export const DataAssetsHeader = ({
         entityType={entityType}
         fqn={dataAsset.fullyQualifiedName}
         requestStages={lifecycleRequests?.stages}
-        requestedStage={
-          'lifecycleRequest' in dataAsset
-            ? dataAsset.lifecycleRequest
-            : undefined
-        }
+        requestTaskId={lifecycleRequests?.pending?.taskId}
+        requestedStage={lifecycleRequests?.pending?.stage}
         showDivider={false}
         status={entityStatus}
         onRequest={lifecycleRequests?.request}
+        onWithdraw={lifecycleRequests?.withdraw}
       />
     ) : null;
   }, [entityType, dataAsset, lifecycleRequests]);

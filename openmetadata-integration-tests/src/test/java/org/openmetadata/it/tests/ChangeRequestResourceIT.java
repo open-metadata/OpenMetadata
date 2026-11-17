@@ -37,6 +37,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.ai.CreateMcpServer;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
 import org.openmetadata.schema.api.services.CreateMcpService;
 import org.openmetadata.schema.entity.ai.Env;
@@ -60,6 +61,7 @@ import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 // Each test deploys its own Enforce workflow, which receives the signals of every event on its
@@ -287,6 +289,44 @@ class ChangeRequestResourceIT {
     assertTrue(openEntityTasksJsonAs(SdkClients.user3Client(), fqn).contains(staged));
     assertFalse(taskJsonAs(SdkClients.user2Client(), task.getId()).contains(staged));
     assertFalse(openEntityTasksJsonAs(SdkClients.user2Client(), fqn).contains(staged));
+  }
+
+  @Test
+  void theDomainTaskListCarriesTheRequestFieldsOnlyForThoseWhoMayViewTheRequest(TestNamespace ns) {
+    String domainFqn = SharedEntities.get().DOMAIN.getFullyQualifiedName();
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.shortPrefix("domainGlossary"))
+                        .withDescription("Glossary in a domain")
+                        .withOwners(List.of(SharedEntities.get().USER2.getEntityReference()))
+                        .withReviewers(List.of(SharedEntities.get().USER1.getEntityReference()))
+                        .withDomains(List.of(domainFqn))));
+    deployHookWorkflow(ns, "\"description\"", "", filterScopedTo(glossary.getFullyQualifiedName()));
+    String staged = ns.prefix("staged-description");
+    patchAs(
+        SdkClients.user2Client(),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]".formatted(staged));
+    onlyPendingRequest(glossary.getId());
+    awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+
+    assertTrue(domainTasksJsonAs(SdkClients.adminClient(), domainFqn).contains(staged));
+    assertFalse(domainTasksJsonAs(SdkClients.user3Client(), domainFqn).contains(staged));
+  }
+
+  private static String domainTasksJsonAs(OpenMetadataClient client, String domainFqn) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/domains/%s/tasks?limit=100".formatted(domainFqn),
+            null,
+            RequestOptions.builder().build());
   }
 
   private static String taskJsonAs(OpenMetadataClient client, UUID taskId) {

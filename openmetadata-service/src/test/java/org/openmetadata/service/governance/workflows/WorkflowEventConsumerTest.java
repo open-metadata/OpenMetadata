@@ -532,8 +532,6 @@ class WorkflowEventConsumerTest {
     assertTrue(WorkflowEventConsumer.changesNoTriggerField(updateOf("votes")));
     assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("tags")));
     assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("followers", "description")));
-    // A lifecycle request reaches the triggers, which pass it only to the lifecycle it addresses.
-    assertFalse(WorkflowEventConsumer.changesNoTriggerField(updateOf("lifecycleRequest")));
     assertFalse(
         WorkflowEventConsumer.changesNoTriggerField(
             updateOf("followers").withEventType(EventType.ENTITY_CREATED)));

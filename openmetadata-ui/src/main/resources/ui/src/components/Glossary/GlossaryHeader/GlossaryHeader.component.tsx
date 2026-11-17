@@ -727,11 +727,9 @@ const GlossaryHeader = ({
   const lifecycleRequests = useLifecycleRequests({
     entityType: isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
     entityId: selectedData.id,
+    entityFqn: selectedData.fullyQualifiedName,
     entityStatus: selectedData.entityStatus,
-    lifecycleRequest: selectedData.lifecycleRequest,
     canRequest: canEditAll && !isVersionView && !selectedData.deleted,
-    onRequest: (stage) =>
-      onUpdate({ ...selectedData, lifecycleRequest: stage }),
   });
 
   const manageButtonContent: ManageMenuItem[] = buildManageButtonContent({
@@ -760,10 +758,12 @@ const GlossaryHeader = ({
         entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         fqn={selectedData.fullyQualifiedName}
         requestStages={lifecycleRequests.stages}
-        requestedStage={selectedData.lifecycleRequest}
+        requestTaskId={lifecycleRequests.pending?.taskId}
+        requestedStage={lifecycleRequests.pending?.stage}
         showDivider={false}
         status={entityStatus}
         onRequest={lifecycleRequests.request}
+        onWithdraw={lifecycleRequests.withdraw}
       />
     );
   }, [selectedData, isGlossary, lifecycleRequests]);

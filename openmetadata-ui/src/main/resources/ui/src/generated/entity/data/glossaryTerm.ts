@@ -100,11 +100,6 @@ export interface GlossaryTerm {
      */
     iri?: string;
     /**
-     * Stage a user requested the lifecycle to move this asset to, such as Deprecated or
-     * Archived. The lifecycle clears it once it decides the request.
-     */
-    lifecycleRequest?: EntityStatus;
-    /**
      * Glossary terms that are children of this term are mutually exclusive. When mutually
      * exclusive is `true` only one term can be used to label an entity from this group. When
      * mutually exclusive is `false`, multiple terms from this group can be used to label an
@@ -348,9 +343,6 @@ export enum ConceptMappingType {
  * can declare their own status schema and lifecycle policy. Entity types without an
  * entityStatus property have no lifecycle. When a create request omits the stage, the
  * server assigns the entity type's initial stage.
- *
- * Stage a user requested the lifecycle to move this asset to, such as Deprecated or
- * Archived. The lifecycle clears it once it decides the request.
  *
  * Approval status of this relation edge.
  */

@@ -246,11 +246,9 @@ export enum ResolutionType {
  */
 export interface LifecycleMove {
     /**
-     * Stage the asset is in while the approval is pending. Unset for a move the lifecycle makes
-     * from any stage, such as an exit to Deprecated; the task then names the stage the asset is
-     * in when it opens.
+     * Stage the asset is in while the approval is pending.
      */
-    stage?: EntityStatus;
+    stage: EntityStatus;
     /**
      * Stage the asset moves to once approved.
      */
@@ -258,9 +256,7 @@ export interface LifecycleMove {
 }
 
 /**
- * Stage the asset is in while the approval is pending. Unset for a move the lifecycle makes
- * from any stage, such as an exit to Deprecated; the task then names the stage the asset is
- * in when it opens.
+ * Stage the asset is in while the approval is pending.
  *
  * General lifecycle stage for entities that reference this vocabulary. Specialized entities
  * can declare their own status schema and lifecycle policy. Entity types without an

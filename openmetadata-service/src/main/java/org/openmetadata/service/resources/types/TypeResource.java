@@ -255,7 +255,7 @@ public class TypeResource extends EntityResource<Type, TypeRepository> {
       summary = "Get the stages a user can request for an entity",
       description =
           "Get the stages, such as Deprecated or Archived, a user can request for this entity "
-              + "through the `lifecycleRequest` field: the on-request exits of the lifecycle that "
+              + "with a status update task: the on-request exits of the lifecycle that "
               + "owns its stage, other than the stage it is in. Empty when no lifecycle owns its "
               + "stage or that lifecycle takes no requests.",
       responses = {

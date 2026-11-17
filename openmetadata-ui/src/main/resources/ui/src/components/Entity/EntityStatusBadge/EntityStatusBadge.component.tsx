@@ -10,13 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Divider } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Divider,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
+import { PLACEHOLDER_TASK_ID, ROUTES } from '../../../constants/constants';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
 import { EntityStageBadge } from './EntityStageBadge';
-import { STAGE_REQUESTED } from './EntityStageBadge.constants';
+import {
+  STAGE_REQUESTED,
+  STAGE_TRIGGER_CLASS,
+} from './EntityStageBadge.constants';
 
 export interface EntityStatusBadgeProps {
   status: EntityStatus;
@@ -29,7 +39,11 @@ export interface EntityStatusBadgeProps {
   requestedStage?: EntityStatus;
   /** Stages the user can ask the asset's lifecycle for, offered from the stage badge. */
   requestStages?: EntityStatus[];
-  onRequest?: (stage: EntityStatus) => void;
+  onRequest?: (stage: EntityStatus, reason: string) => Promise<boolean>;
+  /** The pending request's task, opened from its badge. */
+  requestTaskId?: string;
+  /** Withdraws the pending request; offered to the user who raised it. */
+  onWithdraw?: () => void;
 }
 
 export const EntityStatusBadge = ({
@@ -41,8 +55,11 @@ export const EntityStatusBadge = ({
   requestedStage,
   requestStages = [],
   onRequest,
+  requestTaskId,
+  onWithdraw,
 }: EntityStatusBadgeProps) => {
   const { t } = useTranslation();
+  const navigate = useNavigate();
   // An Unprocessed asset shows no stage badge unless its lifecycle takes a request from it.
   const showStage =
     status !== EntityStatus.Unprocessed || requestStages.length > 0;
@@ -66,15 +83,52 @@ export const EntityStatusBadge = ({
         />
       )}
       {requestedStage && (
-        <StatusBadge
-          dataTestId="lifecycle-request-badge"
-          label={
-            STAGE_REQUESTED[requestedStage]
-              ? t(STAGE_REQUESTED[requestedStage])
-              : t('label.stage-requested', { stage: requestedStage })
-          }
-          status={StatusType.Pending}
-        />
+        <Dropdown.Root>
+          <Button
+            noTextPadding
+            aria-label={t('label.view-entity', { entity: t('label.request') })}
+            className={STAGE_TRIGGER_CLASS}
+            color="tertiary"
+            data-testid="lifecycle-request-trigger"
+            size="sm">
+            <StatusBadge
+              dataTestId="lifecycle-request-badge"
+              label={
+                STAGE_REQUESTED[requestedStage]
+                  ? t(STAGE_REQUESTED[requestedStage])
+                  : t('label.stage-requested', { stage: requestedStage })
+              }
+              status={StatusType.Pending}
+            />
+          </Button>
+          <Dropdown.Popover placement="bottom start">
+            <Dropdown.Menu data-testid="lifecycle-request-menu">
+              {requestTaskId ? (
+                <Dropdown.Item
+                  data-testid="view-lifecycle-request"
+                  id="view"
+                  label={t('label.view-entity', { entity: t('label.request') })}
+                  onAction={() =>
+                    navigate(
+                      ROUTES.TASK_DETAIL.replace(
+                        PLACEHOLDER_TASK_ID,
+                        requestTaskId
+                      )
+                    )
+                  }
+                />
+              ) : null}
+              {onWithdraw ? (
+                <Dropdown.Item
+                  data-testid="withdraw-lifecycle-request"
+                  id="withdraw"
+                  label={t('label.withdraw-request')}
+                  onAction={onWithdraw}
+                />
+              ) : null}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       )}
     </Box>
   ) : null;

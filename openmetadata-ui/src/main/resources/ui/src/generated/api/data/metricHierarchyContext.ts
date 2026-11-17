@@ -163,11 +163,6 @@ export interface Metric {
      */
     incrementalChangeDescription?: ChangeDescription;
     /**
-     * Stage a user requested the lifecycle to move this asset to, such as Deprecated or
-     * Archived. The lifecycle clears it once it decides the request.
-     */
-    lifecycleRequest?: EntityStatus;
-    /**
      * Measures associated with this metric from a semantic layer.
      */
     measures?: MetricMeasure[];
@@ -625,9 +620,6 @@ export enum Type {
  * can declare their own status schema and lifecycle policy. Entity types without an
  * entityStatus property have no lifecycle. When a create request omits the stage, the
  * server assigns the entity type's initial stage.
- *
- * Stage a user requested the lifecycle to move this asset to, such as Deprecated or
- * Archived. The lifecycle clears it once it decides the request.
  *
  * Status of the Metric Group.
  */

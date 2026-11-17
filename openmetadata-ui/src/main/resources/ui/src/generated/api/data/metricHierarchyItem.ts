@@ -490,9 +490,6 @@ export interface EntityReference {
  * server assigns the entity type's initial stage.
  *
  * Status of the Metric.
- *
- * Stage a user requested the lifecycle to move this asset to, such as Deprecated or
- * Archived. The lifecycle clears it once it decides the request.
  */
 export enum EntityStatus {
     Approved = "Approved",
@@ -666,11 +663,6 @@ export interface Metric {
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
-    /**
-     * Stage a user requested the lifecycle to move this asset to, such as Deprecated or
-     * Archived. The lifecycle clears it once it decides the request.
-     */
-    lifecycleRequest?: EntityStatus;
     /**
      * Measures associated with this metric from a semantic layer.
      */

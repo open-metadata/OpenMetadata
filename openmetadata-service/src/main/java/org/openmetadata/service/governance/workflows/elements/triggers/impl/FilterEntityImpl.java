@@ -25,7 +25,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.approval.ChangeRequestRun;
-import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
@@ -98,8 +97,7 @@ public class FilterEntityImpl implements JavaDelegate {
               TriggeringEvent.from(varHandler),
               excludedFilter,
               includeFields,
-              filterLogic,
-              mainWorkflowName(execution));
+              filterLogic);
     }
 
     // Duplicate-instance supersede is intentionally NOT done here. Deciding "the new event
@@ -161,8 +159,7 @@ public class FilterEntityImpl implements JavaDelegate {
       TriggeringEvent triggeringEvent,
       List<String> excludedFilter,
       List<String> includeFields,
-      String filterLogic,
-      String workflowName) {
+      String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
     EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
@@ -175,10 +172,7 @@ public class FilterEntityImpl implements JavaDelegate {
       List<FieldChange> changedFields = getAllChangedFields(change);
       fieldBasedFilter =
           changedFields.isEmpty()
-              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter)
-              || (carriesLifecycleRequest(changedFields)
-                  && EntityStatusWorkflows.takesLifecycleRequests(
-                      workflowName, entityType, entity));
+              || passesFieldBasedFilter(entityType, changedFields, includeFields, excludedFilter);
     }
 
     return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
@@ -221,12 +215,5 @@ public class FilterEntityImpl implements JavaDelegate {
             field ->
                 WorkflowTriggerFilters.fieldTriggers(
                     entityType, field.getName(), includeFields, excludedFilter));
-  }
-
-  // A lifecycle request fires only the lifecycle that owns the entity's stage and takes requests,
-  // whatever its include/exclude; that lookup runs only when a request is part of the change.
-  private boolean carriesLifecycleRequest(List<FieldChange> changedFields) {
-    return changedFields.stream()
-        .anyMatch(field -> WorkflowTriggerFilters.isLifecycleField(field.getName()));
   }
 }

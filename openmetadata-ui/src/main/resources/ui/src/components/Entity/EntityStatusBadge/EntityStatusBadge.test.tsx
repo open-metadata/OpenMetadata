@@ -18,6 +18,12 @@ import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import { EntityStatusBadge } from './EntityStatusBadge.component';
 import { getStatusChange } from './EntityStatusDecision.utils';
 
+const mockNavigate = jest.fn();
+
+jest.mock('react-router-dom', () => ({
+  useNavigate: () => mockNavigate,
+}));
+
 // Only the lookup is mocked; the wording runs for real.
 jest.mock('./EntityStatusDecision.utils', () => ({
   ...jest.requireActual('./EntityStatusDecision.utils'),
@@ -259,8 +265,8 @@ describe('EntityStatusBadge', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('opens the stages the lifecycle takes requests for from the stage badge', async () => {
-    const onRequest = jest.fn();
+  it('requests a stage the lifecycle offers with a reason, from the stage badge', async () => {
+    const onRequest = jest.fn().mockResolvedValue(true);
     render(
       <EntityStatusBadge
         requestStages={[EntityStatus.Deprecated, EntityStatus.Archived]}
@@ -276,7 +282,64 @@ describe('EntityStatusBadge', () => {
 
     await user.click(screen.getByTestId('request-deprecated-button'));
 
-    expect(onRequest).toHaveBeenCalledWith(EntityStatus.Deprecated);
+    expect(
+      await screen.findByTestId('status-request-modal')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('status-request-submit')).toBeDisabled();
+
+    await user.type(
+      screen.getByRole('textbox', { name: /label.reason/ }),
+      'Replaced by Revenue'
+    );
+    await user.click(screen.getByTestId('status-request-submit'));
+
+    expect(onRequest).toHaveBeenCalledWith(
+      EntityStatus.Deprecated,
+      'Replaced by Revenue'
+    );
+  });
+
+  it('opens the pending request and lets the requester withdraw it', async () => {
+    const onWithdraw = jest.fn();
+    render(
+      <EntityStatusBadge
+        requestTaskId="task-id"
+        requestedStage={EntityStatus.Deprecated}
+        showDivider={false}
+        status={EntityStatus.Approved}
+        onWithdraw={onWithdraw}
+      />
+    );
+
+    await user.click(screen.getByTestId('lifecycle-request-trigger'));
+    await user.click(await screen.findByTestId('withdraw-lifecycle-request'));
+
+    expect(onWithdraw).toHaveBeenCalled();
+
+    await user.click(screen.getByTestId('lifecycle-request-trigger'));
+    await user.click(await screen.findByTestId('view-lifecycle-request'));
+
+    expect(mockNavigate).toHaveBeenCalledWith('/tasks/task-id');
+  });
+
+  it('offers no withdraw on a request someone else raised', async () => {
+    render(
+      <EntityStatusBadge
+        requestTaskId="task-id"
+        requestedStage={EntityStatus.Deprecated}
+        showDivider={false}
+        status={EntityStatus.Approved}
+      />
+    );
+
+    await user.click(screen.getByTestId('lifecycle-request-trigger'));
+
+    expect(
+      await screen.findByTestId('view-lifecycle-request')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('withdraw-lifecycle-request')
+    ).not.toBeInTheDocument();
   });
 
   it('keeps a plain badge when the lifecycle takes no request', () => {

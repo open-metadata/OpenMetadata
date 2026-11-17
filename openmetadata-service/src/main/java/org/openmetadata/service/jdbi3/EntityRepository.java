@@ -42,7 +42,6 @@ import static org.openmetadata.service.Entity.FIELD_ENTITY_STATUS;
 import static org.openmetadata.service.Entity.FIELD_EXPERTS;
 import static org.openmetadata.service.Entity.FIELD_EXTENSION;
 import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
-import static org.openmetadata.service.Entity.FIELD_LIFECYCLE_REQUEST;
 import static org.openmetadata.service.Entity.FIELD_LIFE_CYCLE;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
@@ -261,6 +260,7 @@ import org.openmetadata.service.governance.approval.ApprovedApplication;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.LifecycleExitRuns;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
@@ -614,7 +614,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @Getter protected final boolean supportsReviewers;
   @Getter protected final boolean supportsExperts;
   @Getter protected final boolean supportsEntityStatus;
-  @Getter protected final boolean supportsLifecycleRequest;
 
   /**
    * Lifecycle stage a new entity starts in when its create request carries none. Most entities
@@ -836,7 +835,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     this.supportsChildren = allowedFields.contains(FIELD_CHILDREN);
     this.supportsEntityStatus = allowedFields.contains(FIELD_ENTITY_STATUS);
-    this.supportsLifecycleRequest = allowedFields.contains(FIELD_LIFECYCLE_REQUEST);
     if (supportsEntityStatus) {
       this.patchFields.addField(allowedFields, FIELD_ENTITY_STATUS);
       this.putFields.addField(allowedFields, FIELD_ENTITY_STATUS);
@@ -1638,7 +1636,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   public List<String> getRequestableStages(T entity) {
     List<String> requestable = List.of();
-    if (supportsLifecycleRequest && workflowsOwnEntityStatus) {
+    if (supportsEntityStatus && workflowsOwnEntityStatus) {
       String current = entityLifecycle.adapter().read(entity);
       requestable =
           stageOwnership.requestableStagesOf(entityType, entity).stream()
@@ -1651,16 +1649,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** As {@link #getRequestableStages(EntityInterface)}, read with the fields a trigger filter sees. */
   public List<String> getRequestableStages(UUID id) {
     return getRequestableStages(get(null, id, getFields("*")));
-  }
-
-  // Clearing a request needs no check. The stages are read from the stored entity with every field,
-  // as the requestable-stages endpoint reads them, so a stage that is offered is accepted.
-  private void validateLifecycleRequest(T entity, EntityStatus requested) {
-    if (!getRequestableStages(entity.getId()).contains(requested.value())) {
-      throw BadRequestException.of(
-          "The lifecycle of %s '%s' does not move it to %s on request"
-              .formatted(entityType, entity.getFullyQualifiedName(), requested.value()));
-    }
   }
 
   private void validateEntityStatusChange(T current, T change, String from, String to) {
@@ -1688,15 +1676,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * Applies the update path's stage rules to a CSV row that the batched import stores without an
-   * {@link EntityUpdater}: a row without a stage keeps the stored one, a pending lifecycle request is
-   * kept, and a stage change must be a move in the type's lifecycle that no active workflow owns. Throws so the row is reported as
+   * {@link EntityUpdater}: a row without a stage keeps the stored one, and a stage change must be a
+   * move in the type's lifecycle that no active workflow owns. Throws so the row is reported as
    * failed instead of silently leaving the lifecycle.
    */
   public void applyEntityStatusRulesForImport(T original, T updated, String importedBy) {
-    // An import row has no lifecycle request column, so a pending request stays as it is.
-    if (supportsLifecycleRequest) {
-      updated.setLifecycleRequest(original.getLifecycleRequest());
-    }
     if (supportsEntityStatus) {
       if (updated.getEntityStatus() == null) {
         entityLifecycle.adapter().write(updated, entityLifecycle.adapter().read(original));
@@ -1806,6 +1790,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (approvalTaskReviewsEntityStatus && updated.getUpdatedBy() != null) {
       approvalTaskClosingComment(entityType, original.getEntityStatus(), updated.getEntityStatus())
           .ifPresent(comment -> closeApprovalTask(updated, comment));
+    }
+  }
+
+  /** A move to one of its lifecycle's exit stages ends that lifecycle's other runs on the entity. */
+  private void endLifecycleRunsOnExit(T original, T updated) {
+    if (supportsEntityStatus && workflowsOwnEntityStatus) {
+      String stage = entityLifecycle.adapter().read(updated);
+      if (stage != null && !stage.equals(entityLifecycle.adapter().read(original))) {
+        LifecycleExitRuns.endRuns(updated, entityType, stage);
+      }
     }
   }
 
@@ -4860,6 +4854,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    endLifecycleRunsOnExit(original, updated);
     invalidateListCountsOnStageChange(original, updated);
     refreshCountingParentsOnMove(original, updated);
   }
@@ -11692,8 +11687,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         compareAndUpdate(FIELD_DESCRIPTION, this::updateDescription);
         compareAndUpdate(FIELD_DISPLAY_NAME, this::updateDisplayName);
         compareAndUpdate(FIELD_ENTITY_STATUS, () -> updateEntityStatus(consolidatingChanges));
-        compareAndUpdate(
-            FIELD_LIFECYCLE_REQUEST, () -> updateLifecycleRequest(consolidatingChanges));
         compareAndUpdate(FIELD_OWNERS, this::updateOwners);
         compareAndUpdate(FIELD_EXTENSION, () -> updateExtension(consolidatingChanges));
         compareAndUpdate(
@@ -11728,7 +11721,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateDescription();
         updateDisplayName();
         updateEntityStatus(consolidatingChanges);
-        updateLifecycleRequest(consolidatingChanges);
         updateOwnersForImport();
         updateExtension(consolidatingChanges);
         updateTagsForImport(
@@ -11832,26 +11824,6 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           validateEntityStatusChange(from, to);
         }
         recordChange(FIELD_ENTITY_STATUS, original.getEntityStatus(), updated.getEntityStatus());
-      }
-    }
-
-    // A create request carries no lifecycle request, so a PUT built from one keeps the stored one.
-    // A user's request is checked against the lifecycle; the lifecycle's own writes, and a session
-    // diff whose request was checked when it was made, are not.
-    private void updateLifecycleRequest(boolean consolidatingChanges) {
-      if (supportsLifecycleRequest) {
-        if (operation.isPut() && updated.getLifecycleRequest() == null) {
-          updated.setLifecycleRequest(original.getLifecycleRequest());
-        }
-        EntityStatus requested = updated.getLifecycleRequest();
-        boolean userRequest =
-            !consolidatingChanges
-                && !isDiffFromSessionStart()
-                && !EntityStatusWorkflows.isWorkflowChange(updated);
-        if (userRequest && requested != null && requested != original.getLifecycleRequest()) {
-          validateLifecycleRequest(original, requested);
-        }
-        recordChange(FIELD_LIFECYCLE_REQUEST, original.getLifecycleRequest(), requested);
       }
     }
 

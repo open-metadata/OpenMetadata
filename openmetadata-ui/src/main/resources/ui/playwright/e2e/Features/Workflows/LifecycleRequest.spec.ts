@@ -54,14 +54,21 @@ const createDeprecateOnRequestLifecycle = async (
     await apiContext.post('/api/v1/governance/workflowDefinitions', {
       data: {
         name,
-        description: 'Moves one domain to Deprecated when a user requests it.',
+        description:
+          'Offers one domain Deprecated on request, approved by its owners.',
         config: {
           storeStageStatus: true,
           lifecycle: {
             version: 1,
             entityType: 'domain',
             gates: [],
-            exits: [{ stage: 'Deprecated', trigger: 'onRequest' }],
+            exits: [
+              {
+                stage: 'Deprecated',
+                trigger: 'onRequest',
+                approval: { assignees: ['owners'] },
+              },
+            ],
           },
         },
         trigger: {
@@ -79,56 +86,26 @@ const createDeprecateOnRequestLifecycle = async (
         nodes: [
           { name: 'start', type: 'startEvent', subType: 'startEvent' },
           {
-            name: 'ExitCheck0',
+            name: 'Never',
             type: 'automatedTask',
             subType: 'checkEntityAttributesTask',
-            config: {
-              rules: JSON.stringify({
-                '==': [{ var: 'lifecycleRequest' }, 'Deprecated'],
-              }),
-            },
+            config: { rules: JSON.stringify({ '==': [1, 0] }) },
             inputNamespaceMap: { relatedEntity: 'global' },
           },
           {
-            name: 'ExitApprove0',
-            type: 'userTask',
-            subType: 'userApprovalTask',
-            config: {
-              assignees: { addOwners: true, emptyAssigneeStrategy: 'wait' },
-              approvalThreshold: 1,
-              rejectionThreshold: 1,
-              lifecycleMove: { targetStage: 'Deprecated' },
-            },
-            inputNamespaceMap: { relatedEntity: 'global' },
-            output: ['updatedBy'],
-          },
-          {
-            name: 'ExitSet0',
+            name: 'SetDraft',
             type: 'automatedTask',
             subType: 'setEntityAttributeTask',
-            config: { fieldName: 'status', fieldValue: 'Deprecated' },
-            inputNamespaceMap: {
-              relatedEntity: 'global',
-              updatedBy: 'ExitApprove0',
-            },
-          },
-          {
-            name: 'ExitClear0',
-            type: 'automatedTask',
-            subType: 'setEntityAttributeTask',
-            config: { fieldName: 'lifecycleRequest', fieldValue: '' },
+            config: { fieldName: 'status', fieldValue: 'Draft' },
             inputNamespaceMap: { relatedEntity: 'global', updatedBy: 'global' },
           },
           { name: 'end', type: 'endEvent', subType: 'endEvent' },
         ],
         edges: [
-          { from: 'start', to: 'ExitCheck0' },
-          { from: 'ExitCheck0', to: 'ExitApprove0', condition: 'true' },
-          { from: 'ExitCheck0', to: 'end', condition: 'false' },
-          { from: 'ExitApprove0', to: 'ExitSet0', condition: 'approve' },
-          { from: 'ExitApprove0', to: 'ExitClear0', condition: 'reject' },
-          { from: 'ExitSet0', to: 'ExitClear0' },
-          { from: 'ExitClear0', to: 'end' },
+          { from: 'start', to: 'Never' },
+          { from: 'Never', to: 'SetDraft', condition: 'true' },
+          { from: 'Never', to: 'end', condition: 'false' },
+          { from: 'SetDraft', to: 'end' },
         ],
       },
     }),
@@ -206,37 +183,32 @@ const openStageMenu = async (page: Page) => {
 
 const openRequestTasks = async (
   apiContext: APIRequestContext,
-  domain: Domain,
-  lifecycleId: string
+  domain: Domain
 ) =>
   (
     await okJson<{ data: Task[] }>(
       await apiContext.get('/api/v1/tasks', {
         params: {
           aboutEntity: domain.fullyQualifiedName,
-          statusGroup: 'open',
+          type: 'StatusUpdate',
+          status: 'Open',
           limit: 20,
         },
       }),
       'openTasks'
     )
-  ).data.filter((task) => task.workflowDefinitionId === lifecycleId);
+  ).data;
 
 const approveOpenRequest = async (
   apiContext: APIRequestContext,
-  domain: Domain,
-  lifecycleId: string
+  domain: Domain
 ) => {
   await expect
-    .poll(
-      async () =>
-        (
-          await openRequestTasks(apiContext, domain, lifecycleId)
-        ).length,
-      { timeout: 60_000 }
-    )
+    .poll(async () => (await openRequestTasks(apiContext, domain)).length, {
+      timeout: 60_000,
+    })
     .toBe(1);
-  const [request] = await openRequestTasks(apiContext, domain, lifecycleId);
+  const [request] = await openRequestTasks(apiContext, domain);
   await okJson(
     await apiContext.post(`/api/v1/tasks/${request.id}/resolve`, {
       data: { resolutionType: 'Approved' },
@@ -303,21 +275,26 @@ test.describe('Lifecycle request', () => {
     await openDomain(page, offered);
     await openStageMenu(page);
 
+    await page.getByTestId('request-deprecated-button').click();
+    await expect(page.getByTestId('status-request-modal')).toBeVisible();
+    await page
+      .getByRole('textbox', { name: /Reason/ })
+      .fill('Replaced by a newer domain');
     const requestResponse = page.waitForResponse(
       (response) =>
-        response.url().includes(`/api/v1/domains/${offered.id}`) &&
-        response.request().method() === 'PATCH'
+        response.url().endsWith('/api/v1/tasks') &&
+        response.request().method() === 'POST'
     );
-    await page.getByTestId('request-deprecated-button').click();
+    await page.getByTestId('status-request-submit').click();
 
-    expect((await requestResponse).status()).toBe(200);
+    expect((await requestResponse).status()).toBe(201);
     await expect(page.getByTestId('lifecycle-request-badge')).toBeVisible();
     await expect(page.getByTestId('entity-status-request-trigger')).toHaveCount(
       0
     );
 
     const { apiContext, afterAction } = await getApiContext(dataStewardPage);
-    await approveOpenRequest(apiContext, offered, lifecycleId);
+    await approveOpenRequest(apiContext, offered);
     await afterAction();
 
     await expect

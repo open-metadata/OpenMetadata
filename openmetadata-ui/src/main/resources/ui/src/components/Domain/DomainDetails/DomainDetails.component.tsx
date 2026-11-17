@@ -820,10 +820,9 @@ const DomainDetails = ({
   const lifecycleRequests = useLifecycleRequests({
     entityType: EntityType.DOMAIN,
     entityId: domain.id,
+    entityFqn: domain.fullyQualifiedName,
     entityStatus: domain.entityStatus,
-    lifecycleRequest: domain.lifecycleRequest,
     canRequest: editAllPermission && !isVersionsView,
-    onRequest: (stage) => onUpdate({ ...domain, lifecycleRequest: stage }),
   });
 
   // Wrapped in an IIFE so the permission-driven ternaries are scoped to
@@ -1024,10 +1023,12 @@ const DomainDetails = ({
         entityType={EntityType.DOMAIN}
         fqn={domain.fullyQualifiedName}
         requestStages={lifecycleRequests.stages}
-        requestedStage={domain.lifecycleRequest}
+        requestTaskId={lifecycleRequests.pending?.taskId}
+        requestedStage={lifecycleRequests.pending?.stage}
         showDivider={false}
         status={domain.entityStatus}
         onRequest={lifecycleRequests.request}
+        onWithdraw={lifecycleRequests.withdraw}
       />
     ) : null;
 

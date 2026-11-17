@@ -65,7 +65,6 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -85,6 +84,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowRunTermination;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -96,8 +96,6 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
-import org.openmetadata.service.util.AsyncService;
-import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -919,50 +917,8 @@ public class CreateTask implements TaskListener {
         prior.getId(),
         prior.getWorkflowInstanceId());
     taskRepository.closeTask(prior, updatedBy, SUPERSEDED_BY_NEWER_RUN);
-    dispatchPriorInstanceTermination(
+    WorkflowRunTermination.terminateOnceTaskCloses(
         inferWorkflowDefinitionRef(delegateTask), prior.getId(), prior.getWorkflowInstanceId());
-  }
-
-  private void dispatchPriorInstanceTermination(
-      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
-    // Run on the shared async executor in its own transaction so deleting the superseded Flowable
-    // process can never poison the current task-creation transaction. Flowable runs as a standalone
-    // engine with its own JDBC connection, so closeTask() above already committed in a separate OM
-    // transaction before this dispatch. The worker reads the prior task straight from the database
-    // (not the entity cache) to observe that committed status, and only terminates the process when
-    // the task is actually terminal — so a still-live approval is never orphaned.
-    AsyncService.getInstance()
-        .submitDatabaseTask(
-            DatabaseOperation.WORKFLOW_TASK,
-            priorInstanceId.toString(),
-            () -> {
-              terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId);
-              return null;
-            })
-        .exceptionally(
-            ex -> {
-              LOG.error(
-                  "[CreateTask] Failed to terminate superseded workflow instance '{}'",
-                  priorInstanceId,
-                  ex);
-              return null;
-            });
-  }
-
-  private void terminateSupersededInstance(
-      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    Task prior = taskRepository.findCommittedTask(priorTaskId);
-    if (prior != null && isTerminalTaskStatus(prior.getStatus())) {
-      WorkflowHandler.getInstance()
-          .terminateWorkflowInstance(priorInstanceId, mainWorkflowName, SUPERSEDED_BY_NEWER_RUN);
-    } else {
-      LOG.debug(
-          "[CreateTask] Prior approval task '{}' is not terminal (status={}); leaving its workflow "
-              + "process intact",
-          priorTaskId,
-          prior == null ? null : prior.getStatus());
-    }
   }
 
   /**
@@ -1232,20 +1188,7 @@ public class CreateTask implements TaskListener {
       PreviewChanges changes) {
     return move == null
         ? applyProposedChangesIfApproval(taskType, entity, payload, changes)
-        : withLifecycleMove(payload, fromCurrentStage(move, entity));
-  }
-
-  // A move the lifecycle makes from any stage names no stage of its own; the task names the stage
-  // the asset is in when it opens.
-  static LifecycleMove fromCurrentStage(LifecycleMove move, EntityInterface<?> entity) {
-    LifecycleMove named = move;
-    if (move.getStage() == null && entity.getEntityStatus() != null) {
-      named =
-          new LifecycleMove()
-              .withStage(EntityStatus.fromValue(entity.getEntityStatus().toString()))
-              .withTargetStage(move.getTargetStage());
-    }
-    return named;
+        : withLifecycleMove(payload, move);
   }
 
   static Object withLifecycleMove(Object payload, LifecycleMove move) {

@@ -17,7 +17,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -46,7 +45,6 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger;
 import org.openmetadata.service.governance.workflows.elements.triggers.WorkflowTriggerFilters;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -123,44 +121,6 @@ class FilterEntityImplTest {
     delegate.execute(execution);
 
     assertFalse(passesFilter(), "A change to only an excluded field must not fire");
-  }
-
-  @Test
-  void
-      eventPath_lifecycleRequestOnly_doesNotFireAWorkflowThatDoesNotOwnTheStageOrTakesNoRequests() {
-    givenEntity(glossary().withChangeDescription(changeOf("lifecycleRequest")));
-    exclude("entityStatus");
-
-    try (MockedStatic<EntityStatusWorkflows> workflows = mockStatic(EntityStatusWorkflows.class)) {
-      workflows
-          .when(
-              () ->
-                  EntityStatusWorkflows.takesLifecycleRequests(
-                      eq("PendingChangeApprovalWorkflow"), anyString(), any()))
-          .thenReturn(false);
-      delegate.execute(execution);
-    }
-
-    assertFalse(
-        passesFilter(), "A lifecycle request must reach only the lifecycle that owns the stage");
-  }
-
-  @Test
-  void eventPath_lifecycleRequestOnly_firesAPlaybookThatTakesRequests() {
-    givenEntity(glossary().withChangeDescription(changeOf("lifecycleRequest")));
-    exclude("entityStatus");
-
-    try (MockedStatic<EntityStatusWorkflows> workflows = mockStatic(EntityStatusWorkflows.class)) {
-      workflows
-          .when(
-              () ->
-                  EntityStatusWorkflows.takesLifecycleRequests(
-                      eq("PendingChangeApprovalWorkflow"), anyString(), any()))
-          .thenReturn(true);
-      delegate.execute(execution);
-    }
-
-    assertTrue(passesFilter(), "A lifecycle request must reach the playbook that takes it");
   }
 
   @Test

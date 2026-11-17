@@ -69,12 +69,6 @@ public final class WorkflowTriggerFilters {
         .anyMatch(triggerField -> matchesField(fieldName, triggerField));
   }
 
-  /** A field addressed to the asset's lifecycle, which only lifecycle playbooks react to. */
-  public static boolean isLifecycleField(String fieldName) {
-    return WorkflowTriggerFieldsRegistry.getLifecycleFields().stream()
-        .anyMatch(lifecycleField -> matchesField(fieldName, lifecycleField));
-  }
-
   public static boolean matchesField(String fieldName, String triggerField) {
     return fieldName.equals(triggerField) || fieldName.startsWith(triggerField + Entity.SEPARATOR);
   }

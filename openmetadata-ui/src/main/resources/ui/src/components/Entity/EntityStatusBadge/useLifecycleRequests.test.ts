@@ -13,128 +13,159 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getRequestableStages } from '../../../rest/metadataTypeAPI';
+import { closeTask, createTask, listTasks } from '../../../rest/tasksAPI';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useLifecycleRequests } from './useLifecycleRequests';
 
+const mockCurrentUser = { name: 'requester', isAdmin: false };
+
 jest.mock('../../../rest/metadataTypeAPI', () => ({
   getRequestableStages: jest.fn(),
+}));
+
+jest.mock('../../../rest/tasksAPI', () => ({
+  closeTask: jest.fn(),
+  createTask: jest.fn(),
+  listTasks: jest.fn(),
+  TaskCategory: { MetadataUpdate: 'MetadataUpdate' },
+  TaskEntityStatus: { Open: 'Open' },
+  TaskEntityType: { StatusUpdate: 'StatusUpdate' },
+}));
+
+jest.mock('../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-type Options = Parameters<typeof useLifecycleRequests>[0];
+const ENTITY_LINK = '<#E::domain::Sales>';
 
-const renderRequests = (overrides: Partial<Options> = {}) => {
-  const onRequest = jest.fn().mockResolvedValue(undefined);
-  const hook = renderHook((props: Options) => useLifecycleRequests(props), {
-    initialProps: {
+const renderRequests = () =>
+  renderHook(() =>
+    useLifecycleRequests({
       entityType: 'domain',
       entityId: 'domain-id',
+      entityFqn: 'Sales',
       entityStatus: EntityStatus.Approved,
       canRequest: true,
-      onRequest,
-      ...overrides,
-    },
-  });
+    })
+  );
 
-  return { ...hook, onRequest };
-};
+const pendingTask = (createdBy: string) => ({
+  data: [
+    {
+      id: 'task-id',
+      payload: { newStatus: EntityStatus.Deprecated },
+      createdBy: { name: createdBy },
+    },
+  ],
+});
 
 describe('useLifecycleRequests', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockCurrentUser.isAdmin = false;
     (getRequestableStages as jest.Mock).mockResolvedValue([
       'Archived',
       'Deprecated',
     ]);
+    (listTasks as jest.Mock).mockResolvedValue({ data: [] });
   });
 
-  it("offers the stages the asset's own lifecycle takes requests for", async () => {
+  it("offers the stages the asset's lifecycle takes requests for", async () => {
     const { result } = renderRequests();
 
     await waitFor(() => expect(result.current.stages).toHaveLength(2));
 
     expect(getRequestableStages).toHaveBeenCalledWith('domain', 'domain-id');
-    expect(result.current.stages).toEqual([
-      EntityStatus.Archived,
-      EntityStatus.Deprecated,
-    ]);
+    expect(listTasks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        aboutEntity: 'Sales',
+        type: 'StatusUpdate',
+        status: 'Open',
+      })
+    );
+    expect(result.current.pending).toBeUndefined();
   });
 
-  it('sends the request for the stage chosen', async () => {
-    const { result, onRequest } = renderRequests();
-
-    await act(async () => result.current.request(EntityStatus.Deprecated));
-
-    expect(onRequest).toHaveBeenCalledWith(EntityStatus.Deprecated);
-  });
-
-  it('reads the offer again once the asset moves to another stage', async () => {
-    const { result, rerender, onRequest } = renderRequests();
+  it('still offers the stages when the pending request cannot be read', async () => {
+    (listTasks as jest.Mock).mockRejectedValue(new Error('unavailable'));
+    const { result } = renderRequests();
 
     await waitFor(() => expect(result.current.stages).toHaveLength(2));
 
-    (getRequestableStages as jest.Mock).mockResolvedValue(['Archived']);
-    rerender({
-      entityType: 'domain',
-      entityId: 'domain-id',
-      entityStatus: EntityStatus.Deprecated,
-      canRequest: true,
-      onRequest,
+    expect(result.current.pending).toBeUndefined();
+  });
+
+  it('raises a status update task with the stage and the reason', async () => {
+    (createTask as jest.Mock).mockResolvedValue({ id: 'task-id' });
+    const { result } = renderRequests();
+    await waitFor(() => expect(result.current.stages).toHaveLength(2));
+
+    let raised = false;
+    await act(async () => {
+      raised = await result.current.request(
+        EntityStatus.Deprecated,
+        'Replaced by Revenue'
+      );
     });
+
+    expect(raised).toBe(true);
+    expect(createTask).toHaveBeenCalledWith({
+      category: 'MetadataUpdate',
+      type: 'StatusUpdate',
+      about: ENTITY_LINK,
+      description: 'Replaced by Revenue',
+      payload: {
+        newStatus: EntityStatus.Deprecated,
+        reason: 'Replaced by Revenue',
+      },
+    });
+  });
+
+  it('reports a refused request and keeps the dialog open', async () => {
+    (createTask as jest.Mock).mockRejectedValue(new Error('not offered'));
+    const { result } = renderRequests();
+    await waitFor(() => expect(result.current.stages).toHaveLength(2));
+
+    let raised = true;
+    await act(async () => {
+      raised = await result.current.request(EntityStatus.Archived, 'Old');
+    });
+
+    expect(raised).toBe(false);
+    expect(showErrorToast).toHaveBeenCalled();
+  });
+
+  it('shows the pending request and lets the requester withdraw it', async () => {
+    (listTasks as jest.Mock).mockResolvedValue(pendingTask('requester'));
+    const { result } = renderRequests();
 
     await waitFor(() =>
-      expect(result.current.stages).toEqual([EntityStatus.Archived])
+      expect(result.current.pending).toEqual({
+        stage: EntityStatus.Deprecated,
+        taskId: 'task-id',
+        requestedBy: 'requester',
+      })
     );
 
-    expect(getRequestableStages).toHaveBeenCalledTimes(2);
-  });
+    expect(result.current.stages).toEqual([]);
 
-  it('offers nothing while a request is pending', async () => {
-    const { result } = renderRequests({
-      lifecycleRequest: EntityStatus.Deprecated,
+    await act(async () => {
+      await result.current.withdraw?.();
     });
 
-    await act(async () => Promise.resolve());
-
-    expect(result.current.stages).toEqual([]);
+    expect(closeTask).toHaveBeenCalledWith('task-id');
   });
 
-  it('asks nothing for a user who may not edit the asset', async () => {
-    const { result } = renderRequests({ canRequest: false });
+  it('offers withdrawing to no one but the requester and admins', async () => {
+    (listTasks as jest.Mock).mockResolvedValue(pendingTask('someone-else'));
+    const { result } = renderRequests();
 
-    await act(async () => Promise.resolve());
+    await waitFor(() => expect(result.current.pending).toBeDefined());
 
-    expect(getRequestableStages).not.toHaveBeenCalled();
-    expect(result.current.stages).toEqual([]);
-  });
-
-  it('drops an earlier offer when the next read fails', async () => {
-    const { result, rerender, onRequest } = renderRequests();
-
-    await waitFor(() => expect(result.current.stages).toHaveLength(2));
-
-    (getRequestableStages as jest.Mock).mockRejectedValue(new Error('down'));
-    rerender({
-      entityType: 'domain',
-      entityId: 'domain-id',
-      entityStatus: EntityStatus.InReview,
-      canRequest: true,
-      onRequest,
-    });
-
-    await waitFor(() => expect(result.current.stages).toEqual([]));
-  });
-
-  it('shows the error when the server refuses the request', async () => {
-    const error = new Error('does not move it to Deprecated on request');
-    const { result, onRequest } = renderRequests();
-    onRequest.mockRejectedValue(error);
-
-    await act(async () => result.current.request(EntityStatus.Deprecated));
-
-    expect(showErrorToast).toHaveBeenCalledWith(error);
+    expect(result.current.withdraw).toBeUndefined();
   });
 });

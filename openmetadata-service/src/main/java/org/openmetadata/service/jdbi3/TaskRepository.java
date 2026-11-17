@@ -69,7 +69,9 @@ import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
+import org.openmetadata.service.governance.workflows.StatusUpdateTasks;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowRunTermination;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -415,6 +417,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // Compute aboutFqnHash for efficient querying by target entity FQN
     computeAboutFqnHash(task);
 
+    StatusUpdateTasks.prepare(task, update);
     initializeWorkflowManagedTask(task, update);
     OntologyApprovalWorkflow.prepare(task, update);
 
@@ -957,6 +960,10 @@ public class TaskRepository extends EntityRepository<Task> {
       ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
+    StatusUpdateTasks.requireUnchangedRequest(task, resolvedPayload);
+    if (resolutionType == TaskResolutionType.Approved || "approve".equals(transitionId)) {
+      StatusUpdateTasks.requireStillOffered(task);
+    }
     return TaskWorkflowHandler.getInstance()
         .resolveTask(
             task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
@@ -1035,7 +1042,24 @@ public class TaskRepository extends EntityRepository<Task> {
    * Close a task without applying any entity changes.
    */
   public Task closeTask(Task task, String user, String comment) {
-    return TaskWorkflowHandler.getInstance().closeTask(task, user, comment);
+    Task closed = TaskWorkflowHandler.getInstance().closeTask(task, user, comment);
+    endWithdrawnStatusRequestRun(closed);
+    return closed;
+  }
+
+  // Withdrawing a status request closes its task; its workflow run then has nothing left to wait
+  // for.
+  private static void endWithdrawnStatusRequestRun(Task task) {
+    if (task != null
+        && task.getType() == TaskEntityType.StatusUpdate
+        && task.getWorkflowInstanceId() != null
+        && task.getWorkflowDefinitionId() != null) {
+      WorkflowDefinition workflow =
+          Entity.getEntity(
+              Entity.WORKFLOW_DEFINITION, task.getWorkflowDefinitionId(), "", Include.ALL);
+      WorkflowRunTermination.terminateOnceTaskCloses(
+          workflow.getName(), task.getId(), task.getWorkflowInstanceId());
+    }
   }
 
   /**
@@ -1351,7 +1375,7 @@ public class TaskRepository extends EntityRepository<Task> {
       case TagUpdate -> MetadataOperation.EDIT_TAGS;
       case OwnershipUpdate -> MetadataOperation.EDIT_OWNERS;
       case TierUpdate -> MetadataOperation.EDIT_TIER;
-      case DomainUpdate -> MetadataOperation.EDIT_ALL;
+      case DomainUpdate, StatusUpdate -> MetadataOperation.EDIT_ALL;
       default -> null;
     };
   }

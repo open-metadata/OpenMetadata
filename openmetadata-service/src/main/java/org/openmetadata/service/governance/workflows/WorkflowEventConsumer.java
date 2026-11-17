@@ -287,8 +287,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
   /**
    * An update whose own change names only fields no workflow triggers on, such as a follow or a
    * vote, gives a workflow nothing to judge. Its run would read the entity's stored change, which is
-   * an earlier edit's, and judge that edit again. A lifecycle request passes: each workflow's trigger
-   * decides whether it is the lifecycle the request is addressed to.
+   * an earlier edit's, and judge that edit again.
    */
   static boolean changesNoTriggerField(ChangeEvent event) {
     ChangeDescription change = event.getChangeDescription();
@@ -303,8 +302,7 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         && fields.stream()
             .noneMatch(
                 field ->
-                    WorkflowTriggerFilters.isTriggerField(event.getEntityType(), field.getName())
-                        || WorkflowTriggerFilters.isLifecycleField(field.getName()));
+                    WorkflowTriggerFilters.isTriggerField(event.getEntityType(), field.getName()));
   }
 
   private static Map<String, Object> handleTagRecognizerFeedback(ChangeEvent event) {

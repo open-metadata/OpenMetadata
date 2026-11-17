@@ -168,6 +168,11 @@ const TASK_TYPE_BADGE: Record<
     color: 'orange',
     icon: 'tier',
   },
+  [TaskType.StatusUpdate]: {
+    labelKey: 'label.status',
+    color: 'gray',
+    icon: 'deprecation',
+  },
   [TaskType.DomainUpdate]: {
     labelKey: 'label.domain',
     color: 'indigo',
@@ -630,6 +635,41 @@ const describeOwnershipUpdate = (
   };
 };
 
+interface StatusUpdatePayload {
+  currentStatus?: string;
+  newStatus?: string;
+  reason?: string;
+}
+
+const describeStatusUpdate = (
+  task: Task,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  const payload = getPayload<StatusUpdatePayload>(task);
+
+  return {
+    subtitleKey: 'message.task-requested',
+    rows: [
+      ...textRow(
+        'newStatus',
+        'shield',
+        t('label.new-entity', { entity: t('label.status') }),
+        payload.newStatus
+      ),
+      ...textRow(
+        'currentStatus',
+        'shield',
+        t('label.current-entity', { entity: t('label.status') }),
+        payload.currentStatus
+      ),
+      ...getCommonRows(task, t, 'label.requested-on'),
+    ],
+    callout: payload.reason
+      ? { label: t('label.reason'), text: payload.reason }
+      : undefined,
+  };
+};
+
 const describeTierUpdate = (
   task: Task,
   t: Translate
@@ -752,6 +792,7 @@ const DESCRIBERS: Record<string, Describer> = {
   [TaskType.Suggestion]: describeSuggestion,
   [TaskType.OwnershipUpdate]: describeOwnershipUpdate,
   [TaskType.TierUpdate]: describeTierUpdate,
+  [TaskType.StatusUpdate]: describeStatusUpdate,
   [TaskType.DomainUpdate]: describeDomainUpdate,
   [TaskType.MetadataCompletion]: describeMetadataCompletion,
 };

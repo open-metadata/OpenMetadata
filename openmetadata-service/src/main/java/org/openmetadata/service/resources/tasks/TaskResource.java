@@ -1907,6 +1907,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       limits.invalidateCache(entityType);
     }
     addHref(uriInfo, response.entity());
+    ChangeRequestVisibility.redactTask(authorizer, securityContext, response.entity());
     return response.toResponse();
   }
 

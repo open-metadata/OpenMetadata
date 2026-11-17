@@ -22,6 +22,7 @@ export const TASK_ENTITY_TYPES: Record<TaskEntityType, string> = {
   [TaskEntityType.TagUpdate]: 'message.update-tag-message',
   [TaskEntityType.OwnershipUpdate]: 'message.ownership-update-message',
   [TaskEntityType.TierUpdate]: 'message.tier-update-message',
+  [TaskEntityType.StatusUpdate]: 'message.status-update-message',
   [TaskEntityType.DomainUpdate]: 'message.domain-update-message',
   [TaskEntityType.Suggestion]: 'message.suggestion-message',
   [TaskEntityType.TestCaseResolution]:

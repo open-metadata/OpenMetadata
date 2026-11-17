@@ -17,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.governance.workflows.LifecycleExit;
 import org.openmetadata.schema.governance.workflows.LifecycleExitTrigger;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -100,31 +101,39 @@ public final class EntityStatusWorkflows implements StageOwnership {
         .orElse(List.of());
   }
 
-  /**
-   * Whether the active workflow of this name owns the entity's stage and is a lifecycle playbook
-   * with an on-request exit: the one lifecycle a request on that entity is addressed to.
-   */
-  public static boolean takesLifecycleRequests(
-      String workflowName, String entityType, EntityInterface<?> entity) {
-    return ACTIVE.owningStageOf(entityType, entity).filter(workflowName::equals).isPresent()
-        && ACTIVE_STAGE_WORKFLOWS.get().stream()
-            .anyMatch(
-                workflow ->
-                    workflow.getName().equals(workflowName)
-                        && !onRequestStages(workflow).isEmpty());
-  }
-
   /** The stages a lifecycle playbook moves an asset to when a user requests it. */
   static List<String> onRequestStages(WorkflowDefinition workflow) {
-    List<String> stages = List.of();
-    if (isLifecyclePlaybook(workflow)) {
-      stages =
-          listOrEmpty(workflow.getConfig().getLifecycle().getExits()).stream()
-              .filter(exit -> exit.getTrigger() == LifecycleExitTrigger.ON_REQUEST)
-              .map(exit -> exit.getStage().value())
-              .toList();
-    }
-    return stages;
+    return exitsOf(workflow).stream()
+        .filter(exit -> exit.getTrigger() == LifecycleExitTrigger.ON_REQUEST)
+        .map(exit -> exit.getStage().value())
+        .toList();
+  }
+
+  /** Every stage a lifecycle playbook exits to, whether on request or automatically. */
+  static List<String> exitStages(WorkflowDefinition workflow) {
+    return exitsOf(workflow).stream().map(exit -> exit.getStage().value()).toList();
+  }
+
+  /** The playbook's on-request exit to this stage, if it has one. */
+  public static Optional<LifecycleExit> onRequestExit(WorkflowDefinition playbook, String stage) {
+    return exitsOf(playbook).stream()
+        .filter(exit -> exit.getTrigger() == LifecycleExitTrigger.ON_REQUEST)
+        .filter(exit -> exit.getStage().value().equals(stage))
+        .findFirst();
+  }
+
+  /** The active lifecycle playbook of this name, when it is one and has exits. */
+  public static Optional<WorkflowDefinition> playbookWithExits(String workflowName) {
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
+        .filter(workflow -> workflow.getName().equals(workflowName))
+        .filter(workflow -> !exitsOf(workflow).isEmpty())
+        .findFirst();
+  }
+
+  private static List<LifecycleExit> exitsOf(WorkflowDefinition workflow) {
+    return isLifecyclePlaybook(workflow)
+        ? listOrEmpty(workflow.getConfig().getLifecycle().getExits())
+        : List.of();
   }
 
   private static boolean isLifecyclePlaybook(WorkflowDefinition workflow) {

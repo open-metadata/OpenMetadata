@@ -62,6 +62,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.ApprovalGate;
+import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.jdbi3.DomainRepository;
 import org.openmetadata.service.jdbi3.DomainStyleReader;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -283,11 +284,14 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         securityContext, listOperationContext, filter.getResourceContext(Entity.TASK));
     EntityUtil.addDomainQueryParam(securityContext, filter, Entity.TASK);
 
-    return taskAboutVisibility.retainViewable(
-        securityContext,
-        before != null
-            ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
-            : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after));
+    ResultList<Task> viewable =
+        taskAboutVisibility.retainViewable(
+            securityContext,
+            before != null
+                ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
+                : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after));
+    ChangeRequestVisibility.redactTasks(authorizer, securityContext, viewable.getData());
+    return viewable;
   }
 
   @GET

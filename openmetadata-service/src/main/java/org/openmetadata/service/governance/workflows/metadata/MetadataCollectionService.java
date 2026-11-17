@@ -163,12 +163,30 @@ public final class MetadataCollectionService {
         .forEach(task -> finish(task, false));
   }
 
+  /**
+   * The lifecycle moved the asset off its onboarding path to {@code stage}: no task of another
+   * stage applies to it any more, so they all close.
+   */
+  public void closeTasksOutside(final EntityInterface<?> entity, final String stage) {
+    repository
+        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
+        .stream()
+        .filter(task -> isForOtherStage(payloadOf(task), stage))
+        .forEach(task -> finish(task, false));
+  }
+
   private static boolean isRevisionOutside(final Task task, final String stage) {
-    final MetadataCompletionPayload payload =
-        JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
-    return payload.getRevision() != null
-        && payload.getStage() != null
-        && !payload.getStage().value().equals(stage);
+    final MetadataCompletionPayload payload = payloadOf(task);
+    return payload.getRevision() != null && isForOtherStage(payload, stage);
+  }
+
+  private static boolean isForOtherStage(
+      final MetadataCompletionPayload payload, final String stage) {
+    return payload.getStage() != null && !payload.getStage().value().equals(stage);
+  }
+
+  private static MetadataCompletionPayload payloadOf(final Task task) {
+    return JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
   }
 
   /** Resolving the task only re-checks it: it completes once nothing is missing. */

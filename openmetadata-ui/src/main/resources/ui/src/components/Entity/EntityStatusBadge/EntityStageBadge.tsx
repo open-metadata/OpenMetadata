@@ -16,7 +16,7 @@ import {
   ChevronDown,
   SlashCircle01,
 } from '@openmetadata/ui-core-components/icons';
-import { lazy } from 'react';
+import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -28,6 +28,7 @@ import {
   STAGE_ACTION,
   STAGE_TRIGGER_CLASS,
 } from './EntityStageBadge.constants';
+import { StatusRequestModal } from './StatusRequestModal';
 
 // The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
 const EntityStatusDecisionTitle = withSuspenseFallback(
@@ -53,7 +54,8 @@ export interface EntityStageBadgeProps {
   fqn?: string;
   /** Stages the user can ask the asset's lifecycle for; the badge then opens a menu of them. */
   requestStages?: EntityStatus[];
-  onRequest?: (stage: EntityStatus) => void;
+  /** Raises the request; resolves true once it exists. */
+  onRequest?: (stage: EntityStatus, reason: string) => Promise<boolean>;
 }
 
 /** The asset's lifecycle stage, with who set it on hover when the asset is known. */
@@ -66,6 +68,7 @@ export const EntityStageBadge = ({
   onRequest,
 }: EntityStageBadgeProps) => {
   const { t } = useTranslation();
+  const [requesting, setRequesting] = useState<EntityStatus>();
   const badge = (
     <StatusBadge label={status} status={getEntityStatusClass(status)} />
   );
@@ -104,34 +107,44 @@ export const EntityStageBadge = ({
   }
 
   return (
-    <Dropdown.Root>
-      {withDecision(
-        <Button
-          noTextPadding
-          aria-label={t('label.change-entity', { entity: t('label.status') })}
-          className={STAGE_TRIGGER_CLASS}
-          color="tertiary"
-          data-testid="entity-status-request-trigger"
-          iconTrailing={ChevronDown}
-          size="sm">
-          {badge}
-        </Button>
+    <>
+      <Dropdown.Root>
+        {withDecision(
+          <Button
+            noTextPadding
+            aria-label={t('label.change-entity', { entity: t('label.status') })}
+            className={STAGE_TRIGGER_CLASS}
+            color="tertiary"
+            data-testid="entity-status-request-trigger"
+            iconTrailing={ChevronDown}
+            size="sm">
+            {badge}
+          </Button>
+        )}
+        <Dropdown.Popover placement="bottom start">
+          <Dropdown.Menu
+            data-testid="entity-status-request-menu"
+            onAction={(key) => setRequesting(key as EntityStatus)}>
+            {requestStages.map((stage) => (
+              <Dropdown.Item
+                data-testid={`request-${stageKey(stage)}-button`}
+                icon={stage === EntityStatus.Archived ? Archive : SlashCircle01}
+                id={stage}
+                key={stage}
+                label={STAGE_ACTION[stage] ? t(STAGE_ACTION[stage]) : stage}
+              />
+            ))}
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
+      {requesting && (
+        <StatusRequestModal
+          initialStage={requesting}
+          stages={requestStages}
+          onCancel={() => setRequesting(undefined)}
+          onSubmit={onRequest}
+        />
       )}
-      <Dropdown.Popover placement="bottom start">
-        <Dropdown.Menu
-          data-testid="entity-status-request-menu"
-          onAction={(key) => onRequest(key as EntityStatus)}>
-          {requestStages.map((stage) => (
-            <Dropdown.Item
-              data-testid={`request-${stageKey(stage)}-button`}
-              icon={stage === EntityStatus.Archived ? Archive : SlashCircle01}
-              id={stage}
-              key={stage}
-              label={STAGE_ACTION[stage] ? t(STAGE_ACTION[stage]) : stage}
-            />
-          ))}
-        </Dropdown.Menu>
-      </Dropdown.Popover>
-    </Dropdown.Root>
+    </>
   );
 };

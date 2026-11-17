@@ -194,20 +194,4 @@ class WorkflowTriggerFiltersTest {
     assertNull(WorkflowTriggerFilters.sanitizeFilterValue("{}"));
     assertNull(WorkflowTriggerFilters.sanitizeFilterValue("  "));
   }
-
-  // ---- fieldTriggers: lifecycle requests ------------------------------------------------------
-
-  @Test
-  void lifecycleRequestIsNotACommonTriggerField() {
-    assertFalse(WorkflowTriggerFilters.isTriggerField(GLOSSARY, "lifecycleRequest"));
-    assertTrue(WorkflowTriggerFilters.isLifecycleField("lifecycleRequest"));
-  }
-
-  @Test
-  void lifecycleRequestDoesNotTriggerAWorkflowThatTakesNoRequests() {
-    assertFalse(WorkflowTriggerFilters.fieldTriggers(GLOSSARY, "lifecycleRequest", null, null));
-    assertFalse(
-        WorkflowTriggerFilters.fieldTriggers(
-            GLOSSARY, "lifecycleRequest", List.of(), List.of("entityStatus")));
-  }
 }

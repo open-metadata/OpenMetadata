@@ -271,14 +271,9 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
   const lifecycleRequests = useLifecycleRequests({
     entityType: EntityType.METRIC,
     entityId: metricDetails.id,
+    entityFqn: metricDetails.fullyQualifiedName,
     entityStatus: metricDetails.entityStatus,
-    lifecycleRequest: metricDetails.lifecycleRequest,
     canRequest: editAllPermission,
-    onRequest: (stage) =>
-      onMetricUpdate(
-        { ...metricDetails, lifecycleRequest: stage },
-        'lifecycleRequest'
-      ),
   });
 
   const openAssetModal = useCallback(() => setIsAssetModalOpen(true), []);

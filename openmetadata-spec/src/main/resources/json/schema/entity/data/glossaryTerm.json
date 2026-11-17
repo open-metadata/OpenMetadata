@@ -147,10 +147,6 @@
       "description": "Approval status of the glossary term.",
       "$ref": "../../type/status.json"
     },
-    "lifecycleRequest": {
-      "description": "Stage a user requested the lifecycle to move this asset to, such as Deprecated or Archived. The lifecycle clears it once it decides the request.",
-      "$ref": "../../type/status.json"
-    },
     "deleted": {
       "description": "When `true` indicates the entity has been soft deleted.",
       "type": "boolean",

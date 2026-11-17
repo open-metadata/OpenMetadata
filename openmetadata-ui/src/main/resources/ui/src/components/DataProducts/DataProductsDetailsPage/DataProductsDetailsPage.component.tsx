@@ -750,10 +750,9 @@ const DataProductsDetailsPage = ({
   const lifecycleRequests = useLifecycleRequests({
     entityType: EntityType.DATA_PRODUCT,
     entityId: dataProduct.id,
+    entityFqn: dataProduct.fullyQualifiedName,
     entityStatus: dataProduct.entityStatus,
-    lifecycleRequest: dataProduct.lifecycleRequest,
     canRequest: editAllPermission,
-    onRequest: (stage) => onUpdate({ ...dataProduct, lifecycleRequest: stage }),
   });
 
   const manageButtonContent: ManageMenuItem[] = getManageButtonContent({
@@ -992,10 +991,12 @@ const DataProductsDetailsPage = ({
         entityType={EntityType.DATA_PRODUCT}
         fqn={dataProduct.fullyQualifiedName}
         requestStages={lifecycleRequests.stages}
-        requestedStage={dataProduct.lifecycleRequest}
+        requestTaskId={lifecycleRequests.pending?.taskId}
+        requestedStage={lifecycleRequests.pending?.stage}
         showDivider={false}
         status={entityStatus}
         onRequest={lifecycleRequests.request}
+        onWithdraw={lifecycleRequests.withdraw}
       />
     ) : null;
   }, [dataProduct, lifecycleRequests]);
