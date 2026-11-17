@@ -58,6 +58,7 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -73,7 +74,9 @@ import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.MemoryDerivations;
+import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
 import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.context.review.ExtractedMemoryApprover;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -110,6 +113,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       "Memories are extracted from context files and pages, not from a %s";
   static final String EXTRACTED_APPROVAL_NEEDS_OWNER =
       "Only an admin or an owner of the document can approve its extracted memories";
+  private static final String DECISIONS_INDEX_UNAVAILABLE =
+      "The memory search index, which holds other documents' decisions, is unavailable";
   private static final Set<String> EXTRACTION_SOURCES = Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
@@ -124,7 +129,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   public ContextMemoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTEXT_MEMORY, authorizer, limits);
-    extractedMemoryApprover = new ExtractedMemoryApprover(repository);
+    extractedMemoryApprover =
+        new ExtractedMemoryApprover(
+            repository,
+            SemanticMemoryDuplicateFinder.forDecisionChecks(repository)::isHeldByADecision);
   }
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {
@@ -274,7 +282,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.listingFields(entityType, fieldsParam),
+                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
                 filter,
                 limitParam,
                 before,
@@ -318,7 +326,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.listingFields(entityType, null),
+                ContextMemoryVisibility.guardFields(entityType, null),
                 filter,
                 MAX_VISIBLE_COUNT_SCAN,
                 null,
@@ -958,6 +966,27 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   }
 
   @GET
+  @Path("/extractionAvailability")
+  @Operation(
+      operationId = "getMemoryExtractionAvailability",
+      summary = "Get whether memories can be extracted",
+      description =
+          "Whether memories can be extracted from Context Center documents and articles now, and"
+              + " why not when they cannot. Any authenticated user may read it.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Whether memory extraction is available",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ExtractionAvailability.class)))
+      })
+  public ExtractionAvailability getExtractionAvailability() {
+    return AiProviderHolder.get().extractionAvailability();
+  }
+
+  @GET
   @Path("/extractedApproval")
   @Operation(
       operationId = "previewExtractedMemoryApproval",
@@ -965,8 +994,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       description =
           "List the Unprocessed memories extracted from a context file or page that approval would"
               + " approve, each as read, and those it leaves for a decision: a second value of a"
-              + " question another pending or Approved memory of the document asks, or a value held"
-              + " beside a decided memory of the document. Admins and the document's owners only.",
+              + " question another pending or Approved memory of the document asks, a value held"
+              + " beside a decided memory of the document, a memory another document it is linked"
+              + " to leaves for a decision, and a value a person's decision in another document"
+              + " holds. Admins and the document's owners only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -981,7 +1012,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         @ApiResponse(
             responseCode = "403",
             description = "Not an admin or an owner of the document"),
-        @ApiResponse(responseCode = "404", description = "Document not found")
+        @ApiResponse(responseCode = "404", description = "Document not found"),
+        @ApiResponse(responseCode = "503", description = DECISIONS_INDEX_UNAVAILABLE)
       })
   public ExtractedMemoryApproval previewExtractedApproval(
       @Context SecurityContext securityContext,
@@ -1010,8 +1042,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
               + " request lists as its preview read them. A listed memory that changed since, or that"
               + " approval would no longer approve, fails; a memory the request does not list is"
               + " untouched. A second value of a question another pending or Approved memory of the"
-              + " document asks, and a value held beside a decided memory of the document, stay"
-              + " pending and are returned for a decision. Admins and the document's owners only.",
+              + " document asks, a value held beside a decided memory of the document, a memory"
+              + " another document it is linked to leaves for a decision, and a value a person's"
+              + " decision in another document holds stay pending and are returned for a decision."
+              + " Admins and the document's owners only.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1026,7 +1060,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         @ApiResponse(
             responseCode = "403",
             description = "Not an admin or an owner of the document"),
-        @ApiResponse(responseCode = "404", description = "Document not found")
+        @ApiResponse(responseCode = "404", description = "Document not found"),
+        @ApiResponse(responseCode = "503", description = DECISIONS_INDEX_UNAVAILABLE)
       })
   public ExtractedMemoryApproval approveExtracted(
       @Context SecurityContext securityContext, @Valid @NotNull ApproveExtractedMemories request) {

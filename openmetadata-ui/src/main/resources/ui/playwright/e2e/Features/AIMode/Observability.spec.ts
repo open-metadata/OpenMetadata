@@ -23,6 +23,10 @@ import {
 import { expectFormHint } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
+import {
+  openTestDefinitionDetailsFromLibrary,
+  withTestDefinitionAndTestCase,
+} from '../../../utils/testCases';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
 test.use({
@@ -44,6 +48,22 @@ test.describe('AI mode Observability', () => {
     });
 
     await expect(page).toHaveURL(/\/observability\/data-quality/);
+  });
+
+  test('should open a test definition from its name and list its test cases', async ({
+    page,
+  }) => {
+    await redirectToAiModeHomePage(page);
+    await withTestDefinitionAndTestCase(
+      page,
+      ({ definitionFqn, testCaseName }) =>
+        openTestDefinitionDetailsFromLibrary(
+          page,
+          '/observability/test-library',
+          definitionFqn,
+          testCaseName
+        )
+    );
   });
 
   test.describe('Page Rendering', () => {

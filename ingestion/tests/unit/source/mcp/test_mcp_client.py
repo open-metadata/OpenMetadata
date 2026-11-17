@@ -254,6 +254,7 @@ class TestHttpTransport:
 
         client.initialize()
 
+        assert transport.send_request.call_args.args[1]["protocolVersion"] == "2025-11-25"
         assert transport._protocol_version == "2025-03-26"
         transport.send_notification.assert_called_once_with("notifications/initialized", {})
 

@@ -1,9 +1,11 @@
 # An owned credential's secret key is derived from its owner's id
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (references compared by resolved name)
+- **Revisions:** v1 2026-10-30 (initial); v2 2026-11-04 (references compared by resolved name);
+  v3 2026-11-09 (secrets deleted by resolved name)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `OwnedSecretsTest`, `AzureKVSecretsManagerTest`, `AWSSecretsManagerTest`
+- **Guard:** `OwnedSecretsTest`, `AzureKVSecretsManagerTest`, `AWSSecretsManagerTest`,
+  `AWSSecretsManagerLocalStackTest`, `AWSSSMSecretsManagerLocalStackTest`
 - **Related:** `SecretOwner`, `OwnedSecrets`
 
 ## Context
@@ -38,7 +40,9 @@ whole life, and it has to be valid as it is on every supported provider.
   Vault names are case-insensitive, and AWS reads a secret by its ARN as well as its name, with or
   without the ARN's random suffix. `retire` deletes what a write stopped referring to by that
   comparison, so a secret the write still reads under another spelling stays, and `resolvedName`
-  gives callers the same comparison.
+  gives callers the same comparison. A secret is deleted by that resolved name too, since a
+  provider may read a secret under a spelling it does not delete by: SSM reads a parameter by its
+  ARN but deletes it only by its name.
 - `rekey` copies a secret from another key of the managed namespace to the owner's key and never
   deletes the source, because copies of a configuration outside the database may still point at it.
   It copies whatever value the reference holds and does not check who wrote it, so a caller passes

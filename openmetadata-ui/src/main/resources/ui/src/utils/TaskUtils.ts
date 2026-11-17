@@ -17,12 +17,22 @@ import {
   TaskStatus as TaskEntityStatus,
   TaskType,
 } from '../generated/entity/tasks/task';
+import ontologyExplorerClassBase from './OntologyExplorerClassBase';
 
 export const isOntologyReviewTask = (
   task: Pick<Task, 'type' | 'about'>
 ): boolean =>
   task.type === TaskType.RequestApproval &&
   task.about?.type === 'ontologyRelease';
+
+/** Approve and Reject wait until the review panel, where there is one, has loaded the release. */
+export const isAwaitingReviewPanel = (
+  task: Pick<Task, 'id' | 'type' | 'about'>,
+  readyTaskId: string | undefined
+): boolean =>
+  isOntologyReviewTask(task) &&
+  ontologyExplorerClassBase.getReviewPanel() !== null &&
+  readyTaskId !== task.id;
 
 export const getTaskResolveBody = (
   task: Task,

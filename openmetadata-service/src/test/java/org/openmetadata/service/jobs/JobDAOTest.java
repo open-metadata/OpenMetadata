@@ -25,9 +25,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.sql.ResultSet;
 import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -264,5 +267,29 @@ class JobDAOTest {
             "{}",
             "admin",
             null);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "ADMIN_OPS_REINDEX",
+        "ADMIN_OPS_DEPLOY_PIPELINES",
+        "ADMIN_OPS_SSO_CONFIG",
+        "ADMIN_OPS_AUTHORIZER_CONFIG",
+        "ADMIN_OPS_LIMITS_CONFIG",
+        "ADMIN_OPS_APP_CONFIG"
+      })
+  void workerReadsAQueuedAdminOpsJob(String storedJobType) throws Exception {
+    ResultSet row = mock(ResultSet.class);
+    when(row.getLong("id")).thenReturn(7L);
+    when(row.getString("jobType")).thenReturn(storedJobType);
+    when(row.getString("methodName")).thenReturn("AdminOpsJobHandler");
+    when(row.getString("jobArgs")).thenReturn("{}");
+    when(row.getString("status")).thenReturn("PENDING");
+
+    BackgroundJob job = new JobDAO.BackgroundJobMapper().map(row, null);
+
+    assertEquals(storedJobType, job.getJobType().value());
+    assertEquals(BackgroundJob.Status.PENDING, job.getStatus());
   }
 }

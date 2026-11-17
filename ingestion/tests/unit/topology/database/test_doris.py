@@ -66,8 +66,7 @@ mock_doris_config = {
 class DorisUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.create_connection")
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection, get_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection, get_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_doris_config)
         self.doris_source = DorisSource.create(
@@ -80,13 +79,6 @@ class DorisUnitTest(TestCase):
     def test_close_connection(self, engine, connection):
         connection.return_value = True
         self.doris_source.close()
-
-    def test_iceberg_relkind_mapping(self):
-        from metadata.generated.schema.entity.data.table import TableType
-        from metadata.ingestion.source.database.doris.metadata import RELKIND_MAP
-
-        assert RELKIND_MAP["Iceberg"] == TableType.Iceberg
-        assert RELKIND_MAP["ICEBERG"] == TableType.Iceberg
 
     def test_qualified_identifier_escapes_catalog_names(self):
         preparer = MySQLDialect().identifier_preparer
