@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { groupBy } from 'lodash';
+import { groupBy, isEqual } from 'lodash';
 import {
   ChangeDecision,
   Decision as ChangeDecisionType,
@@ -166,6 +166,96 @@ export const elementLabel = (op: MutationOp): string => {
 
 export const valueText = (json?: string) => textOf(parse(json));
 
+/** A changed property of one element of a list of named elements, such as a column. */
+export interface ElementChange {
+  element: string;
+  property: string;
+  before: string;
+  after: string;
+}
+
+type NamedElement = Record<string, unknown> & { name: string };
+
+const isNamedList = (value: unknown): value is NamedElement[] =>
+  Array.isArray(value) &&
+  value.length > 0 &&
+  value.every(
+    (element) =>
+      typeof element === 'object' &&
+      element !== null &&
+      typeof (element as { name?: unknown }).name === 'string'
+  );
+
+const namedListChanges = (
+  before: NamedElement[],
+  after: NamedElement[],
+  path: string[]
+): ElementChange[] => {
+  const beforeByName = new Map(
+    before.map((element) => [element.name, element])
+  );
+  const afterNames = new Set(after.map((element) => element.name));
+  const removed = before
+    .filter((element) => !afterNames.has(element.name))
+    .map((element) => ({
+      element: [...path, element.name].join('.'),
+      property: 'name',
+      before: element.name,
+      after: '',
+    }));
+
+  return after
+    .flatMap((element) => {
+      const name = [...path, element.name];
+      const previous = beforeByName.get(element.name);
+      if (!previous) {
+        return [
+          {
+            element: name.join('.'),
+            property: 'name',
+            before: '',
+            after: element.name,
+          },
+        ];
+      }
+
+      return [...new Set([...Object.keys(previous), ...Object.keys(element)])]
+        .filter((property) => !isEqual(previous[property], element[property]))
+        .flatMap((property) =>
+          isNamedList(previous[property]) && isNamedList(element[property])
+            ? namedListChanges(
+                previous[property] as NamedElement[],
+                element[property] as NamedElement[],
+                name
+              )
+            : [
+                {
+                  element: name.join('.'),
+                  property,
+                  before: textOf(previous[property]),
+                  after: textOf(element[property]),
+                },
+              ]
+        );
+    })
+    .concat(removed);
+};
+
+/**
+ * A list of named elements, as a table's columns and their nested children, is set whole; a
+ * reviewer reads which elements change and how. Undefined for any other change.
+ */
+export const elementChanges = (op: MutationOp): ElementChange[] | undefined => {
+  const before = parse(op.baseValue);
+  const after = parse(op.value);
+
+  return op.op === MutationOpType.Set &&
+    isNamedList(before) &&
+    isNamedList(after)
+    ? namedListChanges(before, after, [])
+    : undefined;
+};
+
 /** How many elements a list suggestion adds and removes. */
 export const listCounts = ({ ops }: Suggestion) => ({
   added: ops.filter((op) => op.op === MutationOpType.Add).length,
@@ -201,9 +291,10 @@ export const groupSuggestions = (
         .flatMap((s) => s.ops)
         .find((op) => op.baseValue !== undefined)?.baseValue;
       let current: string | undefined;
-      if (base !== undefined) {
+      // A list of named elements shows its current value element by element, beside each change.
+      if (base !== undefined && !isNamedList(parse(base))) {
         current = valueText(base);
-      } else if (published) {
+      } else if (base === undefined && published) {
         current = textOf(published[field]);
       }
 

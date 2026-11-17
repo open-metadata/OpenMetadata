@@ -14,6 +14,7 @@ import {
   Badge,
   BadgeColors,
   BadgeWithIcon,
+  Box,
   Button,
   Dialog,
   Dot,
@@ -62,6 +63,7 @@ import { RequestHistory } from '../ChangeRequestTools/ChangeRequestTools.compone
 import {
   buildResolutions,
   DiffPart,
+  elementChanges,
   elementLabel,
   FieldGroup,
   groupSuggestions,
@@ -255,6 +257,29 @@ const TextDiff = ({ before, after }: { before: string; after: string }) => (
 
 const SuggestionBody = ({ suggestion }: { suggestion: Suggestion }) => {
   const [first] = suggestion.ops;
+  const changes =
+    suggestion.ops.length === 1 ? elementChanges(first) : undefined;
+  if (changes?.length) {
+    return (
+      <Box direction="col" gap={3}>
+        {changes.map((change) => (
+          <Box
+            data-testid="element-change"
+            direction="col"
+            gap={1}
+            key={`${change.element}|${change.property}`}>
+            <Typography size="text-xs" weight="medium">
+              {change.element}
+            </Typography>
+            <Typography color="secondary" size="text-xs">
+              {startCase(change.property)}
+            </Typography>
+            <TextDiff after={change.after} before={change.before} />
+          </Box>
+        ))}
+      </Box>
+    );
+  }
   if (isTextChange(suggestion)) {
     return (
       <TextDiff

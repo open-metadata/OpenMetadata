@@ -25,6 +25,7 @@ import {
 } from '../../../generated/governance/changeRequest/changeRequest';
 import {
   buildResolutions,
+  elementChanges,
   groupSuggestions,
   incompleteRequests,
   isCompeting,
@@ -240,6 +241,76 @@ describe('ReviewPendingChanges utils', () => {
         key: 'PII.NonSensitive',
         decision: ChangeDecisionType.Reject,
       },
+    ]);
+  });
+
+  it('shows the columns whose descriptions a request changes, and how', () => {
+    const columns = (amount: string, id: string) =>
+      JSON.stringify([
+        { name: 'id', description: id, dataType: 'INT' },
+        {
+          name: 'amount',
+          description: amount,
+          dataType: 'STRUCT',
+          children: [{ name: 'currency', description: 'ISO code' }],
+        },
+      ]);
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: columns('<p>Total</p>', 'Key'),
+      value: columns('<p>Total in cents</p>', 'Row key'),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'id',
+        property: 'description',
+        before: 'Key',
+        after: 'Row key',
+      },
+      {
+        element: 'amount',
+        property: 'description',
+        before: 'Total',
+        after: 'Total in cents',
+      },
+    ]);
+    expect(elementChanges(DESCRIPTION)).toBeUndefined();
+    expect(
+      groupSuggestions([request('a', true, [op])])[0].current
+    ).toBeUndefined();
+  });
+
+  it('names a nested element by its path, and lists elements added and removed', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([
+        {
+          name: 'amount',
+          children: [{ name: 'currency', description: 'ISO' }],
+        },
+        { name: 'legacy' },
+      ]),
+      value: JSON.stringify([
+        {
+          name: 'amount',
+          children: [{ name: 'currency', description: 'ISO 4217' }],
+        },
+        { name: 'region' },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'amount.currency',
+        property: 'description',
+        before: 'ISO',
+        after: 'ISO 4217',
+      },
+      { element: 'region', property: 'name', before: '', after: 'region' },
+      { element: 'legacy', property: 'name', before: 'legacy', after: '' },
     ]);
   });
 
