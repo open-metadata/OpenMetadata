@@ -27,6 +27,8 @@ class TaskRepositoryDomainFilterTest {
   private static final String ENTITY_TYPE = "entityType";
   private static final String FINANCE_DOMAIN_ID = "'11111111-1111-1111-1111-111111111111'";
   private static final String MARKETING_DOMAIN_ID = "'22222222-2222-2222-2222-222222222222'";
+  private static final String MARKETING_REQUESTED_DOMAIN_ID =
+      "22222222-2222-2222-2222-222222222222";
   private static final String NO_MATCH_DOMAIN_ID = "'00000000-0000-0000-0000-000000000000'";
 
   private final TaskRepository repository = mock(TaskRepository.class, CALLS_REAL_METHODS);
@@ -44,11 +46,11 @@ class TaskRepositoryDomainFilterTest {
   @Test
   void restrictedUserCanRequestTheirOwnDomain() {
     ListFilter filter = restrictedUserFilter(MARKETING_DOMAIN_ID);
-    filter.addQueryParam(REQUESTED_DOMAIN_ID, MARKETING_DOMAIN_ID);
+    filter.addQueryParam(REQUESTED_DOMAIN_ID, MARKETING_REQUESTED_DOMAIN_ID);
 
     repository.applyTaskDomainFilter(filter);
 
-    assertEquals(MARKETING_DOMAIN_ID, filter.getQueryParam(DOMAIN_ID));
+    assertEquals(MARKETING_REQUESTED_DOMAIN_ID, filter.getQueryParam(DOMAIN_ID));
   }
 
   @Test
