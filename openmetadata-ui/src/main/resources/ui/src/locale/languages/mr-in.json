@@ -5273,6 +5273,7 @@
     "import-terms-into-glossary": "{{glossary}} मध्ये संज्ञा आयात करा.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "या डेटाबेसमध्ये",
+    "inbox-activity-capped": "या तारीख श्रेणीतील फक्त नवीनतम अद्यतने दाखवली आहेत.",
     "inbox-desc": "तुमची कार्ये आणि क्रियाकलाप, सर्व एकाच ठिकाणी.",
     "incident-group-filtered": "फक्त गटांच्या फिल्टरशी जुळणाऱ्या घटना दाखवल्या आहेत.",
     "incident-group-seen-range": "प्रथम आढळले {{firstSeen}} · शेवटचे आढळले {{lastSeen}}",

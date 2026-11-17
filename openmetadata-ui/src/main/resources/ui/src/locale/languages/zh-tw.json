@@ -5273,6 +5273,7 @@
     "import-terms-into-glossary": "將詞彙匯入到 {{glossary}}。",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "在此資料庫中",
+    "inbox-activity-capped": "僅顯示此日期範圍內的最新動態。",
     "inbox-desc": "您的任務與活動，盡在一處。",
     "incident-group-filtered": "僅列出符合群組篩選條件的事件。",
     "incident-group-seen-range": "首次出現於 {{firstSeen}} · 最後出現於 {{lastSeen}}",

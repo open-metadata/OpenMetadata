@@ -5273,6 +5273,7 @@
     "import-terms-into-glossary": "Terimleri {{glossary}} sözlüğüne aktar.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "Bu Veritabanında",
+    "inbox-activity-capped": "Bu tarih aralığındaki yalnızca en yeni güncellemeler gösteriliyor.",
     "inbox-desc": "Görevleriniz ve etkinliğiniz, hepsi tek bir yerde.",
     "incident-group-filtered": "Yalnızca grupların filtreleriyle eşleşen olaylar listelenir.",
     "incident-group-seen-range": "ilk görülme {{firstSeen}} · son görülme {{lastSeen}}",

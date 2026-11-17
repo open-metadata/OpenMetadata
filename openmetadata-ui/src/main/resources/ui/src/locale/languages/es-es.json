@@ -5273,6 +5273,7 @@
     "import-terms-into-glossary": "Importar términos a {{glossary}}.",
     "importing-entity": "Importing {{entity}}...",
     "in-this-database": "En esta base de datos",
+    "inbox-activity-capped": "Solo se muestran las actualizaciones más recientes de este rango de fechas.",
     "inbox-desc": "Tus tareas y actividad, todo en un solo lugar.",
     "incident-group-filtered": "Solo se muestran los incidentes que coinciden con los filtros de los grupos.",
     "incident-group-seen-range": "visto por primera vez {{firstSeen}} · visto por última vez {{lastSeen}}",

@@ -5273,6 +5273,7 @@
     "import-terms-into-glossary": "Импортировать термины в {{glossary}}.",
     "importing-entity": "Импорт {{entity}}...",
     "in-this-database": "В этой базе данных",
+    "inbox-activity-capped": "Показаны только самые свежие обновления за этот период.",
     "inbox-desc": "Ваши задачи и активность в одном месте.",
     "incident-group-filtered": "Показаны только инциденты, соответствующие фильтрам групп.",
     "incident-group-seen-range": "впервые {{firstSeen}} · в последний раз {{lastSeen}}",
