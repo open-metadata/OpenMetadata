@@ -560,22 +560,24 @@ test.describe('AI Profile Members - Users pagination', () => {
     await openUsersAtSmallestPageSize(page);
     const usersList = page.getByTestId('users-list-container');
 
-    const cursorPages: Promise<unknown>[] = [];
-    page.on('response', (response) => {
+    const isUsersPage = (response: { url: () => string }) => {
       const url = new URL(response.url());
-      if (
-        url.pathname.endsWith('/api/v1/users') &&
-        url.searchParams.has('after')
-      ) {
-        cursorPages.push(response.json());
-      }
-    });
-    await clickIgnoringToasts(usersList.getByTestId('next'));
+
+      return (
+        url.pathname.endsWith('/api/v1/users') && url.searchParams.has('after')
+      );
+    };
+    // Page 2 must land first, or its response could pass for page 3's.
+    const pageTwoLoaded = page.waitForResponse(isUsersPage);
+    await usersList.getByTestId('next').click();
+    await pageTwoLoaded;
     await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
-    await clickIgnoringToasts(usersList.getByTestId('next'));
-    await expect.poll(() => cursorPages.length).toBe(2);
+    const pageThreeResponse = page.waitForResponse(isUsersPage);
+    await usersList.getByTestId('next').click();
+    const pageThree = (await (await pageThreeResponse).json()) as {
+      paging: { before: string };
+    };
     await expect(usersList.getByText(/^Page 3 of/)).toBeVisible();
-    const pageThree = (await cursorPages[1]) as { paging: { before: string } };
 
     const pageTwoResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
