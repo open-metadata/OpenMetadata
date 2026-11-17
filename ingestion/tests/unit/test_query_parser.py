@@ -20,7 +20,7 @@ from collate_sqllineage.core.models import Column, Location, Table
 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser, resolve_identifier_literals
+from metadata.ingestion.lineage.parser import LineageParser
 
 
 class QueryParserTests(TestCase):
@@ -204,68 +204,6 @@ class QueryParserTests(TestCase):
             LineageParser.clean_raw_query(query),
             None,
         )
-
-    def test_resolve_identifier_literals(self):
-        """
-        Validate IDENTIFIER('<literal>') is replaced by the name in the literal
-        """
-        rewritten = {
-            "select * from IDENTIFIER('my_db.my_schema.orders')": "select * from my_db.my_schema.orders",
-            "select * from identifier( 'orders' ) o": "select * from orders o",
-            """select * from Identifier('"My Db"."My Schema"."Orders"')""": """select * from "My Db"."My Schema"."Orders\"""",
-            "select a from IDENTIFIER('t1') join IDENTIFIER('t2') using (a)": "select a from t1 join t2 using (a)",
-            "select * from IDENTIFIER('my_db.my_schema.orders')where id = 1": (
-                "select * from my_db.my_schema.orders where id = 1"
-            ),
-            r"select 'it\'s' as note from IDENTIFIER('orders')": r"select 'it\'s' as note from orders",
-            "select $$it's ok$$ as note from IDENTIFIER('orders')": "select $$it's ok$$ as note from orders",
-            "select a$$b from IDENTIFIER('orders') where c$$d = 1": "select a$$b from orders where c$$d = 1",
-            "select `o'brien` from IDENTIFIER('orders')": "select `o'brien` from orders",
-        }
-        for query, expected in rewritten.items():
-            self.assertEqual(resolve_identifier_literals(query), expected)
-
-        untouched = [
-            "select * from IDENTIFIER($table_name)",
-            "select * from IDENTIFIER(:table_name)",
-            "select * from IDENTIFIER(?)",
-            "select * from IDENTIFIER('my_db.' || $table_name)",
-            "select * from IDENTIFIER('my_db.my_schema.it''s')",
-            r"""select * from IDENTIFIER('"my\\table"')""",
-            "select * from IDENTIFIER('')",
-            "select my_identifier('orders') from my_table",
-            "select my_schema.identifier('orders') from my_table",
-            "select my_schema . identifier('orders') from my_table",
-            "select my_schema./* comment */identifier('orders') from my_table",
-            "select 'from IDENTIFIER(' || name || ')' from my_table",
-            "select note from my_table where note = 'IDENTIFIER(''orders'')'",
-            "select $$IDENTIFIER('orders')$$ as note from my_table",
-            "select * from `identifier('orders')`",
-        ]
-        for query in untouched:
-            self.assertEqual(resolve_identifier_literals(query), query)
-
-    def test_identifier_literal_lineage(self):
-        """
-        Validate tables referenced through IDENTIFIER('<literal>') are lineage sources
-        """
-        queries = [
-            "CREATE OR REPLACE VIEW my_db.my_schema.my_view AS SELECT o.id FROM IDENTIFIER('my_db.my_schema.orders') o"
-            " JOIN my_db.my_schema.customers c ON c.id = o.customer_id",
-            "INSERT INTO my_db.my_schema.target SELECT o.id FROM IDENTIFIER('my_db.my_schema.orders') o"
-            " JOIN my_db.my_schema.customers c ON c.id = o.customer_id",
-        ]
-        for query in queries:
-            for dialect in (Dialect.SNOWFLAKE, Dialect.DATABRICKS):
-                parser = LineageParser(query, dialect=dialect)
-                self.assertEqual(
-                    {str(table) for table in parser.source_tables},
-                    {"my_db.my_schema.orders", "my_db.my_schema.customers"},
-                )
-            self.assertNotIn(
-                "my_db.my_schema.orders",
-                {str(table) for table in LineageParser(query, dialect=Dialect.POSTGRES).source_tables},
-            )
 
     # TODO: Fix this case at the earliest
     @pytest.mark.skip(reason="Flaky with sqlglot parser, returns no column lineage or correct column lineage randomly.")

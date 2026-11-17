@@ -13,7 +13,6 @@ Lineage Parser configuration
 """
 
 import hashlib
-import re
 import time
 import traceback
 from collections import defaultdict
@@ -74,36 +73,6 @@ logger = ingestion_logger()
 LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
-
-IDENTIFIER_LITERAL_DIALECTS = {Dialect.SNOWFLAKE, Dialect.DATABRICKS}
-
-# Only the first alternative is rewritten; the rest are spans whose text must stay as it is
-IDENTIFIER_LITERAL = re.compile(
-    r"""
-    (?<![\w$.])identifier\s*\(\s*'(?P<name>[^'\\]+)'\s*\)
-    | '(?:[^'\\]|\\.|'')*'                      # string literal
-    | "(?:[^"]|"")*"                             # quoted name
-    | `(?:[^`]|``)*`                             # backtick-quoted name
-    | (?<![\w$])\$\$.*?\$\$                       # dollar-quoted string
-    | --[^\n]* | /\*.*?\*/                        # comments
-    | \.\s*(?:/\*.*?\*/\s*)*identifier\b          # schema-qualified function call
-    """,
-    flags=re.IGNORECASE | re.DOTALL | re.VERBOSE,
-)
-
-
-def _replace_identifier_literal(match: re.Match[str]) -> str:
-    """The name inside IDENTIFIER('<name>'), kept apart from a token that follows the parenthesis"""
-    name = match.group("name")
-    if name is None:
-        return match.group(0)
-    following = match.string[match.end() : match.end() + 1]
-    return f"{name} " if following.isalnum() or following in ("_", "$", '"', "`") else name
-
-
-def resolve_identifier_literals(query: str) -> str:
-    """Replace each IDENTIFIER('<name>') table reference in `query` with the name itself"""
-    return IDENTIFIER_LITERAL.sub(_replace_identifier_literal, query)
 
 
 def _sqlglot_dialect(dialect: Dialect) -> DialectType:
@@ -264,8 +233,6 @@ class LineageParser:
         self._clean_query = self.clean_raw_query(query)
         if self._clean_query and dialect == Dialect.TSQL:
             self._clean_query = rewrite_switch_statements(self._clean_query)
-        if self._clean_query and dialect in IDENTIFIER_LITERAL_DIALECTS:
-            self._clean_query = resolve_identifier_literals(self._clean_query)
         self.parser = self._evaluate_best_parser(
             self._clean_query,
             dialect=dialect,
