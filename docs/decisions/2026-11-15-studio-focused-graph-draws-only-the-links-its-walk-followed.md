@@ -1,9 +1,9 @@
 # The focused Studio graph draws only the links its walk followed
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-15 (initial)
+- **Revisions:** v1 2026-11-15 (initial) · v2 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Ontology Studio program
-- **Guard:** `studioFocusedGraph.test.ts` ("draws only the links the walk followed, not those between two outer concepts"), `OntologyGraphView.test.tsx` ("above the node limit"), `OntologyLargeGraph.spec.ts`
+- **Guard:** `studioFocusedGraph.test.ts` *(openmetadata-collate)* ("draws only the links the walk followed, not those between two outer concepts"), `OntologyGraphView.test.tsx` *(openmetadata-collate)* ("above the node limit"), `OntologyLargeGraph.spec.ts` *(openmetadata-collate)*
 - **Related:** open-metadata/OpenMetadata#37821, supersedes ADR:2026-11-02-studio-graph-draws-a-neighbourhood-above-500-concepts
 
 ## Context
@@ -35,3 +35,7 @@ A relation between two shown outer concepts is invisible until one of them is se
 focused canvas is not a complete picture of the scope; Tree, the concept drawer and re-centring
 are. Revisit if parallel properties between the same two concepts are merged into one drawn link,
 or if users need cross-links in the focused view (e.g. a toggle to show them).
+
+## Amendment
+
+v2 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

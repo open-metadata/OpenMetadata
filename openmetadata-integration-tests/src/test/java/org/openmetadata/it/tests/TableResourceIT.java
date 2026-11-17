@@ -51,6 +51,7 @@ import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -74,6 +76,7 @@ import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
@@ -4607,6 +4610,165 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertEquals(sqlQuery, storedEdge.path("sqlQuery").asText(null));
   }
 
+  // collate#7983: a column rename must reach every edge out of the table, not only the ones into
+  // other tables. A metric is its own single column endpoint, so an edge into a metric carries the
+  // source column's FQN just as the table edge beside it does.
+  @Test
+  void test_renamedColumnFollowsMetricLineage(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_ren_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("gross_amount", "BIGINT").build())));
+    // Bump version past 0.1 so consolidateChanges() is eligible on the rename PATCH below
+    source.setDescription("metric lineage rename source");
+    source = client.tables().update(source.getId().toString(), source);
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_ren_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("total_amount", "BIGINT").build())));
+    Metric metric =
+        client.metrics().create(new CreateMetric().withName(ns.prefix("metric_ren_total")));
+    String sourceColumn = source.getFullyQualifiedName() + ".gross_amount";
+    String sqlQuery = "SELECT SUM(gross_amount) FROM metric_ren_src";
+    addLineage(
+        client,
+        source.getEntityReference(),
+        target.getEntityReference(),
+        columnLineage(
+            sqlQuery, List.of(sourceColumn), target.getFullyQualifiedName() + ".total_amount"));
+    addLineage(
+        client,
+        source.getEntityReference(),
+        metric.getEntityReference(),
+        columnLineage(sqlQuery, List.of(sourceColumn), metric.getFullyQualifiedName()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      String metricDocPath = "/openmetadata_metric_search_index/_doc/" + metric.getId();
+      Awaitility.await("Wait for the metric's column lineage to be indexed")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  readDocumentSource(searchClient, metricDocPath)
+                      .path("upstreamLineage")
+                      .toString()
+                      .contains(sourceColumn));
+
+      // A case-only rename is the change EntityUtil.columnMatch reports as a rename.
+      source.setColumns(List.of(ColumnBuilder.of("GROSS_AMOUNT", "BIGINT").build()));
+      client.tables().update(source.getId().toString(), source);
+
+      String renamedColumn = source.getFullyQualifiedName() + ".GROSS_AMOUNT";
+      JsonNode renamed = JsonUtils.valueToTree(List.of(renamedColumn));
+      assertEquals(
+          renamed,
+          getStoredLineageEdge(client, source, target).at("/columnsLineage/0/fromColumns"));
+      JsonNode metricEdge = getStoredLineageEdge(client, source, metric);
+      assertEquals(renamed, metricEdge.at("/columnsLineage/0/fromColumns"));
+      assertEquals(
+          metric.getFullyQualifiedName(), metricEdge.at("/columnsLineage/0/toColumn").asText());
+      assertEquals(sqlQuery, metricEdge.path("sqlQuery").asText(null));
+
+      Awaitility.await("Wait for the metric's indexed column lineage to follow the rename")
+          .atMost(Duration.ofSeconds(30))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .until(
+              () ->
+                  readDocumentSource(searchClient, metricDocPath)
+                      .path("upstreamLineage")
+                      .toString()
+                      .contains(renamedColumn));
+    }
+  }
+
+  // collate#7983, the delete leg: a deleted source column must leave the metric edge's mapping as
+  // it leaves the table edge's, instead of pointing at a column that no longer exists.
+  @Test
+  void test_deletedColumnLeavesMetricLineage(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table source =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_del_src"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            ColumnBuilder.of("keep_col", "BIGINT").build(),
+                            ColumnBuilder.of("drop_col", "BIGINT").build())));
+    Table target =
+        client
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("metric_del_tgt"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(List.of(ColumnBuilder.of("tgt_col", "BIGINT").build())));
+    Metric metric =
+        client.metrics().create(new CreateMetric().withName(ns.prefix("metric_del_total")));
+    String keepColFqn = source.getFullyQualifiedName() + ".keep_col";
+    List<String> fromColumns = List.of(keepColFqn, source.getFullyQualifiedName() + ".drop_col");
+    addLineage(
+        client,
+        source.getEntityReference(),
+        target.getEntityReference(),
+        columnLineage(null, fromColumns, target.getFullyQualifiedName() + ".tgt_col"));
+    addLineage(
+        client,
+        source.getEntityReference(),
+        metric.getEntityReference(),
+        columnLineage(null, fromColumns, metric.getFullyQualifiedName()));
+
+    source.setColumns(List.of(ColumnBuilder.of("keep_col", "BIGINT").build()));
+    client.tables().update(source.getId().toString(), source);
+
+    JsonNode kept = JsonUtils.valueToTree(List.of(keepColFqn));
+    assertEquals(
+        kept, getStoredLineageEdge(client, source, target).at("/columnsLineage/0/fromColumns"));
+    assertEquals(
+        kept, getStoredLineageEdge(client, source, metric).at("/columnsLineage/0/fromColumns"));
+  }
+
+  private static LineageDetails columnLineage(
+      String sqlQuery, List<String> fromColumns, String toColumn) {
+    return new LineageDetails()
+        .withSqlQuery(sqlQuery)
+        .withColumnsLineage(
+            List.of(new ColumnLineage().withFromColumns(fromColumns).withToColumn(toColumn)));
+  }
+
+  private static void addLineage(
+      OpenMetadataClient client,
+      EntityReference from,
+      EntityReference to,
+      LineageDetails lineageDetails) {
+    client
+        .lineage()
+        .addLineage(
+            new AddLineage()
+                .withEdge(
+                    new EntitiesEdge()
+                        .withFromEntity(from)
+                        .withToEntity(to)
+                        .withLineageDetails(lineageDetails)));
+  }
+
   private static void addColumnLineage(
       OpenMetadataClient client,
       Table sourceTable,
@@ -4653,13 +4815,14 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
 
   /** The stored edge from the relationship table — what reindex reads and the edge drawer shows. */
   private static JsonNode getStoredLineageEdge(
-      OpenMetadataClient client, Table sourceTable, Table targetTable) throws Exception {
+      OpenMetadataClient client, EntityInterface<?> source, EntityInterface<?> target)
+      throws Exception {
     String response =
         client
             .getHttpClient()
             .executeForString(
                 HttpMethod.GET,
-                "/v1/lineage/getLineageEdge/" + sourceTable.getId() + "/" + targetTable.getId(),
+                "/v1/lineage/getLineageEdge/" + source.getId() + "/" + target.getId(),
                 null);
     return JsonUtils.readTree(response).path("edge");
   }

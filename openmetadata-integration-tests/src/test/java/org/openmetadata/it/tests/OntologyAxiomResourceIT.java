@@ -93,6 +93,52 @@ public class OntologyAxiomResourceIT extends BaseOntologyApprovalIT {
     assertFalse(exception.getMessage().isBlank());
   }
 
+  @Test
+  void deletedRuleIsRestoredByUndoOrByStatingItAgain(final TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Ontology ontology = createModel(ns);
+    final CreateOntologyAxiom request = restrictionRequest(ontology, ns.prefix("treatedBy"));
+    final String id = client.ontologyAxioms().create(request).getId().toString();
+    client.ontologyAxioms().delete(id);
+    client.ontologyAxioms().restore(id);
+    assertFalse(client.ontologyAxioms().get(id).getDeleted());
+    client.ontologyAxioms().delete(id);
+
+    request.getExpressions().getFirst().setCardinality(2);
+    final OntologyAxiom restated = client.ontologyAxioms().create(request);
+    client.ontologyAxioms().restore(id);
+    final OntologyAxiom stored = client.ontologyAxioms().get(id);
+
+    assertEquals(id, restated.getId().toString());
+    assertFalse(stored.getDeleted());
+    assertEquals(Integer.valueOf(2), stored.getExpressions().getFirst().getCardinality());
+  }
+
+  @Test
+  void validationRefusesARuleThatRestatesALiveOne(final TestNamespace ns) {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Ontology ontology = createModel(ns);
+    final CreateOntologyAxiom existing = restrictionRequest(ontology, ns.prefix("statedRule"));
+    client.ontologyAxioms().create(existing);
+
+    final OpenMetadataException duplicate =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                client
+                    .ontologyAxioms()
+                    .validate(restrictionRequest(ontology, ns.prefix("restatedRule"))));
+
+    assertEquals(400, duplicate.getStatusCode());
+    assertTrue(
+        duplicate
+            .getMessage()
+            .contains(
+                "The rule 'Jurisdiction requirement' already states this; a duplicate rule adds"
+                    + " nothing"));
+    assertTrue(client.ontologyAxioms().validate(existing).getValid());
+  }
+
   private static Ontology createModel(TestNamespace ns) {
     final var ontology = createOntology(ns);
     declareClass(ontology, "RegulatedProduct", SUBJECT_IRI);

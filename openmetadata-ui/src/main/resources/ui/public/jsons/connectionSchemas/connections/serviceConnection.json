@@ -3600,6 +3600,42 @@
                             "personalAccessTokenSecret"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -23539,9 +23575,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -23561,7 +23596,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -34388,9 +34424,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -34439,7 +34474,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -34609,6 +34645,42 @@
                           "required": [
                             "personalAccessTokenName",
                             "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
                           ],
                           "additionalProperties": false
                         }
@@ -41987,6 +42059,42 @@
                             "personalAccessTokenSecret"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -61926,9 +62034,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -61948,7 +62055,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -72775,9 +72883,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -72826,7 +72933,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -72996,6 +73104,42 @@
                           "required": [
                             "personalAccessTokenName",
                             "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
                           ],
                           "additionalProperties": false
                         }

@@ -102,6 +102,7 @@ import {
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import ontologyExplorerClassBase from '../../../../utils/OntologyExplorerClassBase';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import {
   getClassificationTagPath,
@@ -144,6 +145,7 @@ import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getTaskResolveBody,
   getTaskStatusIconClassName,
+  isAwaitingReviewPanel,
   isOntologyReviewTask,
 } from '../../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
@@ -160,7 +162,6 @@ import {
   isApproveTransition,
   isRejectTransition,
 } from '../../../discovery/personal-space/InboxPage/taskList.utils';
-import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
@@ -427,8 +428,8 @@ export const TaskTabNew = ({
     },
     [task.id]
   );
-  const reviewReady =
-    !isOntologyReviewTask(task) || readyReviewTask === task.id;
+  const ReviewPanel = ontologyExplorerClassBase.getReviewPanel();
+  const reviewReady = !isAwaitingReviewPanel(task, readyReviewTask);
   const isWorkflowDrivenTask =
     isOntologyReviewTask(task) || Boolean(task.availableTransitions?.length);
   // A voter keeps the stage's other transitions (e.g. reassign); the server
@@ -1902,10 +1903,8 @@ export const TaskTabNew = ({
   };
 
   const renderFeedbackOrTaskPayload = () => {
-    if (isOntologyReviewTask(task)) {
-      return (
-        <OntologyReviewPanel task={task} onReadyChange={handleReviewReady} />
-      );
+    if (isOntologyReviewTask(task) && ReviewPanel) {
+      return <ReviewPanel task={task} onReadyChange={handleReviewReady} />;
     }
 
     if (isTaskRecognizerFeedbackApproval) {

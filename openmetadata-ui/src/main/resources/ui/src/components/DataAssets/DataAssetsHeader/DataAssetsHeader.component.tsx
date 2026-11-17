@@ -312,7 +312,13 @@ export const DataAssetsHeader = ({
         : EntityStatus.Unprocessed;
 
     return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
+      <EntityStatusBadge
+        entityId={dataAsset.id}
+        entityType={entityType}
+        fqn={dataAsset.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
     ) : null;
   }, [entityType, dataAsset]);
 

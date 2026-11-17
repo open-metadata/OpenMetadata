@@ -569,6 +569,7 @@ const AccessControlAuditLogsPanel: React.FC<
         data-testid="export-audit-logs-button"
         iconLeading={Download01}
         ref={exportButtonRef}
+        size="xs"
         onPress={() => setIsExportModalOpen(true)}>
         {t('label.export')}
       </Button>

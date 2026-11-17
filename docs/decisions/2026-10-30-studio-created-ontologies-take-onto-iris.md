@@ -1,9 +1,9 @@
 # Ontologies created in the Studio take `<baseUri>/onto/<prefix>` IRIs
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-03 (the prefix keeps digits and is numbered when taken, the ID comes from the display name, Advanced replaces the IRI and namespace, installs and imports take the same IRIs) · v3 2026-11-14 (accented letters fold to their base letter instead of being dropped)
+- **Revisions:** v1 2026-10-30 (initial) · v2 2026-11-03 (the prefix keeps digits and is numbered when taken, the ID comes from the display name, Advanced replaces the IRI and namespace, installs and imports take the same IRIs) · v3 2026-11-14 (accented letters fold to their base letter instead of being dropped) · v4 2026-11-15 (UI guards moved to Collate)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyCreateDialog.test.tsx`, `OntologyCreateForm.utils.test.ts`, `useOntologyIdentitySource.test.tsx`, `OntologyNativeStudio.spec.ts` ("keeps Create enabled for names that differ only in digits"), `OntologyStudioFlows.spec.ts` (flow 2), reviewer
+- **Guard:** `OntologyCreateDialog.test.tsx` *(openmetadata-collate)*, `OntologyCreateForm.utils.test.ts` *(openmetadata-collate)*, `useOntologyIdentitySource.test.tsx` *(openmetadata-collate)*, `OntologyNativeStudio.spec.ts` *(openmetadata-collate)* ("keeps Create enabled for names that differ only in digits"), `OntologyStudioFlows.spec.ts` *(openmetadata-collate)* (flow 2), reviewer
 - **Related:** open-metadata/OpenMetadata#36713, ADR:2026-10-19-native-ontology-imports-use-working-drafts, ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-19-ontology-studio-opens-native-models-by-default
 
 ## Context
@@ -105,3 +105,5 @@ In `OntologyNativeStudio.spec.ts`, "keeps Create enabled for names that differ o
 creates `Qzx Guard 37973 <suffix>` and `Qzx Guard 38000 <suffix>` through the dialog, and checks
 that their IRIs and namespaces differ. `OntologyStudioFlows.spec.ts` flow 2 creates a name that
 differs from a taken one only in digits.
+
+v4 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.
