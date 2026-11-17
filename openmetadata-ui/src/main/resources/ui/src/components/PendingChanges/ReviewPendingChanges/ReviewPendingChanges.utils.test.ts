@@ -314,6 +314,35 @@ describe('ReviewPendingChanges utils', () => {
     ]);
   });
 
+  it('shows a first nested column added with its details', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([{ name: 'amount', children: [] }]),
+      value: JSON.stringify([
+        {
+          name: 'amount',
+          children: [{ name: 'currency', description: 'ISO code' }],
+        },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'amount.currency',
+        property: 'name',
+        before: '',
+        after: 'currency',
+      },
+      {
+        element: 'amount.currency',
+        property: 'description',
+        before: '',
+        after: 'ISO code',
+      },
+    ]);
+  });
+
   it('reads the published value of a list field from the asset', () => {
     const [, tags] = groupSuggestions([request('a', true)], {
       tags: [{ tagFQN: 'Tier.Tier3' }, { tagFQN: 'PII.NonSensitive' }],

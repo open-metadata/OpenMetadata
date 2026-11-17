@@ -186,6 +186,32 @@ const isNamedList = (value: unknown): value is NamedElement[] =>
       typeof (element as { name?: unknown }).name === 'string'
   );
 
+// A missing or empty list compares as an empty list of named elements, so a first child added or
+// a last one removed is still shown element by element.
+const namedOrEmpty = (value: unknown): NamedElement[] | undefined => {
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  return Array.isArray(value) && (value.length === 0 || isNamedList(value))
+    ? (value as NamedElement[])
+    : undefined;
+};
+
+// Both sides of a property as lists of named elements, when at least one side has elements.
+const nestedLists = (
+  before: unknown,
+  after: unknown
+): [NamedElement[], NamedElement[]] | undefined => {
+  const beforeList = namedOrEmpty(before);
+  const afterList = namedOrEmpty(after);
+  const hasElements = isNamedList(before) || isNamedList(after);
+
+  return hasElements && beforeList && afterList
+    ? [beforeList, afterList]
+    : undefined;
+};
+
 const namedListChanges = (
   before: NamedElement[],
   after: NamedElement[],
@@ -208,35 +234,36 @@ const namedListChanges = (
     .flatMap((element) => {
       const name = [...path, element.name];
       const previous = beforeByName.get(element.name);
-      if (!previous) {
-        return [
-          {
-            element: name.join('.'),
-            property: 'name',
-            before: '',
-            after: element.name,
-          },
-        ];
-      }
+      const base = previous ?? { name: element.name };
+      const added = previous
+        ? []
+        : [
+            {
+              element: name.join('.'),
+              property: 'name',
+              before: '',
+              after: element.name,
+            },
+          ];
 
-      return [...new Set([...Object.keys(previous), ...Object.keys(element)])]
-        .filter((property) => !isEqual(previous[property], element[property]))
-        .flatMap((property) =>
-          isNamedList(previous[property]) && isNamedList(element[property])
-            ? namedListChanges(
-                previous[property] as NamedElement[],
-                element[property] as NamedElement[],
-                name
-              )
-            : [
-                {
-                  element: name.join('.'),
-                  property,
-                  before: textOf(previous[property]),
-                  after: textOf(element[property]),
-                },
-              ]
-        );
+      return added.concat(
+        [...new Set([...Object.keys(base), ...Object.keys(element)])]
+          .filter((property) => !isEqual(base[property], element[property]))
+          .flatMap((property) => {
+            const lists = nestedLists(base[property], element[property]);
+
+            return lists
+              ? namedListChanges(lists[0], lists[1], name)
+              : [
+                  {
+                    element: name.join('.'),
+                    property,
+                    before: textOf(base[property]),
+                    after: textOf(element[property]),
+                  },
+                ];
+          })
+      );
     })
     .concat(removed);
 };
