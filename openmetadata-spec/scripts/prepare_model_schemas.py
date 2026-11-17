@@ -158,6 +158,30 @@ def _schema_inputs(source_directory: Path, vendor_directory: Path):
         )
 
 
+def _stamp_locations(node, location: str) -> None:
+    if not isinstance(node, dict):
+        return
+    node["x-om-schema-location"] = location
+    for keyword in ("properties", "patternProperties", "definitions", "$defs"):
+        for name, child in node.get(keyword, {}).items():
+            escaped = name.replace("~", "~0").replace("/", "~1")
+            _stamp_locations(child, f"{location}/{keyword}/{escaped}")
+    for keyword in (
+        "items",
+        "additionalProperties",
+        "contains",
+        "propertyNames",
+        "not",
+        "if",
+        "then",
+        "else",
+    ):
+        _stamp_locations(node.get(keyword), f"{location}/{keyword}")
+    for keyword in ("allOf", "anyOf", "oneOf", "prefixItems"):
+        for index, child in enumerate(node.get(keyword, [])):
+            _stamp_locations(child, f"{location}/{keyword}/{index}")
+
+
 def _write_schema(target: Path, content: bytes) -> None:
     target.parent.mkdir(parents=True, exist_ok=True)
     # Separate generation entry points can prepare the same tree concurrently.
@@ -185,8 +209,11 @@ def prepare(
             raise ValueError(f"Schema input directory does not exist: {directory}")
     current = True
     expected = set()
-    for relative, content in _schema_inputs(source_directory, vendor_directory):
+    for relative, source_content in _schema_inputs(source_directory, vendor_directory):
         target = output_directory / relative
+        schema = json.loads(source_content)
+        _stamp_locations(schema, f"json/schema/{relative.as_posix()}#")
+        content = (json.dumps(schema, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
         expected.add(target)
         if target.exists() and target.read_bytes() == content:
             continue

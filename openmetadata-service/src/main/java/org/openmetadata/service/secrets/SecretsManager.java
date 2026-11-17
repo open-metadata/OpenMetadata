@@ -53,6 +53,7 @@ import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.SchemaBackedMap;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -168,7 +169,7 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {
       Object newConnectionConfig =
-          SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+          SecretsUtil.convertForRead(connectionConfig, connectionType, serviceType);
       return decryptPasswordFields(newConnectionConfig);
     } catch (Exception e) {
       String message =
@@ -326,7 +327,7 @@ public abstract class SecretsManager {
   public AuthenticationMechanism decryptAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
-      AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
+      AuthenticationMechanismBuilder.addDefinedConfigForRead(authenticationMechanism);
       try {
         AuthenticationMechanism fernetDecrypted =
             (AuthenticationMechanism) decryptPasswordFields(authenticationMechanism);
@@ -356,11 +357,11 @@ public abstract class SecretsManager {
   }
 
   public void encryptIngestionPipeline(IngestionPipeline ingestionPipeline) {
+    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
     try {
       // A pipeline name is unique only within its service, so it cannot key the vault entry.
       encryptPasswordFields(
@@ -394,10 +395,10 @@ public abstract class SecretsManager {
   }
 
   public Workflow encryptWorkflow(Workflow workflow) {
-    OpenMetadataConnection openMetadataConnection =
-        encryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
     Workflow workflowConverted =
         (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    OpenMetadataConnection openMetadataConnection =
+        encryptOpenMetadataConnection(workflowConverted.getOpenMetadataServerConnection(), true);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
@@ -416,7 +417,7 @@ public abstract class SecretsManager {
     OpenMetadataConnection openMetadataConnection =
         decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection());
     Workflow workflowConverted =
-        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convertForRead(workflow);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
@@ -455,7 +456,7 @@ public abstract class SecretsManager {
       OpenMetadataConnection openMetadataConnectionConverted =
           (OpenMetadataConnection)
               ClassConverterFactory.getConverter(OpenMetadataConnection.class)
-                  .convert(openMetadataConnection);
+                  .convertForRead(openMetadataConnection);
       try {
         decryptPasswordFields(openMetadataConnectionConverted);
       } catch (Exception e) {
@@ -666,6 +667,15 @@ public abstract class SecretsManager {
 
   private Object decryptPasswordFields(Object toDecryptObject) {
     try {
+      if (toDecryptObject instanceof SchemaBackedMap raw) {
+        raw.visitSecrets(
+            slot -> {
+              if (slot.value() instanceof String secret) {
+                slot.setValue(fernet.decryptIfApplies(secret));
+              }
+            });
+        return raw;
+      }
       // for each get method
       Arrays.stream(toDecryptObject.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
@@ -706,11 +716,7 @@ public abstract class SecretsManager {
               });
       return toDecryptObject;
     } catch (Exception e) {
-      LOG.error("Error trying to decrypt object due to [{}]", e.getMessage());
-      throw new SecretsManagerException(
-          String.format(
-              "Error trying to decrypt object [%s] due to [%s]",
-              toDecryptObject.toString(), e.getMessage()));
+      throw new SecretsManagerException("Error trying to decrypt secret fields", e);
     }
   }
 
@@ -719,6 +725,15 @@ public abstract class SecretsManager {
    */
   private Object getSecretFields(Object toDecryptObject) {
     try {
+      if (toDecryptObject instanceof SchemaBackedMap raw) {
+        raw.visitSecrets(
+            slot -> {
+              if (slot.value() instanceof String secret && Boolean.TRUE.equals(isSecret(secret))) {
+                slot.setValue(getSecretValue(secret));
+              }
+            });
+        return raw;
+      }
       // for each get method
       Arrays.stream(toDecryptObject.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
@@ -757,10 +772,7 @@ public abstract class SecretsManager {
               });
       return toDecryptObject;
     } catch (Exception e) {
-      throw new SecretsManagerException(
-          String.format(
-              "Error trying to GET secret [%s] due to [%s]",
-              toDecryptObject.toString(), e.getMessage()));
+      throw new SecretsManagerException("Error trying to resolve secret fields", e);
     }
   }
 
@@ -864,7 +876,7 @@ public abstract class SecretsManager {
 
     try {
       Object newConnectionConfig =
-          SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
+          SecretsUtil.convertForRead(connectionConfig, connectionType, serviceType);
       deleteSecrets(newConnectionConfig, buildSecretId(true, serviceType.value(), connectionName));
     } catch (Exception e) {
       String message =
@@ -880,7 +892,7 @@ public abstract class SecretsManager {
 
   public void deleteSecretsFromWorkflow(Workflow workflow) {
     Workflow workflowConverted =
-        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convertForRead(workflow);
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
@@ -905,6 +917,10 @@ public abstract class SecretsManager {
   private void visitStoredSecrets(
       Object toDeleteSecretsFrom, List<String> secretIds, Consumer<StoredSecret> visitor) {
     String secretId = secretIds.getLast();
+    if (toDeleteSecretsFrom instanceof SchemaBackedMap raw) {
+      raw.visitSecrets(slot -> visitRawStoredSecret(slot, secretIds, visitor));
+      return;
+    }
     if (toDeleteSecretsFrom != null
         && !DO_NOT_ENCRYPT_CLASSES.contains(toDeleteSecretsFrom.getClass())) {
       Arrays.stream(toDeleteSecretsFrom.getClass().getMethods())
@@ -958,6 +974,24 @@ public abstract class SecretsManager {
     }
   }
 
+  private void visitRawStoredSecret(
+      SchemaBackedMap.SecretSlot slot, List<String> secretIds, Consumer<StoredSecret> visitor) {
+    if (slot.value() instanceof String secret) {
+      List<String> parents = new ArrayList<>(secretIds);
+      for (int length : slot.ownerPathLengths()) {
+        List<String> segments = new ArrayList<>();
+        segments.add(secretIds.getLast());
+        segments.addAll(slot.path().subList(0, length));
+        parents.add(buildSecretId(false, segments.toArray(String[]::new)));
+      }
+      visitor.accept(
+          new StoredSecret(
+              storedSecretName(secret, parents, slot.path().getLast().toLowerCase(Locale.ROOT)),
+              secret,
+              slot.mapEntry()));
+    }
+  }
+
   private void visitSecretMapEntries(
       Map<?, ?> secretMap, List<String> mapSecretIds, Consumer<StoredSecret> visitor) {
     secretMap.forEach(
@@ -977,11 +1011,8 @@ public abstract class SecretsManager {
     Object config =
         service.getConnection() == null || service.getConnection().getConfig() == null
             ? null
-            : SecretsUtil.convert(
-                service.getConnection().getConfig(),
-                service.getServiceType().value(),
-                service.getName(),
-                serviceType);
+            : SecretsUtil.convertForRead(
+                service.getConnection().getConfig(), service.getServiceType().value(), serviceType);
     return secretInventory(config, buildSecretId(true, serviceType.value(), service.getName()));
   }
 

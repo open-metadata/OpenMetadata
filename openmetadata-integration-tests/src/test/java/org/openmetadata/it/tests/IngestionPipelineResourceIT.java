@@ -13,6 +13,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.kubernetes.client.openapi.apis.CoreV1Api;
 import io.kubernetes.client.util.Config;
+import jakarta.json.Json;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -29,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.joda.time.DateTime;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -36,6 +38,9 @@ import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
@@ -94,6 +99,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.resources.services.ingestionpipelines.IngestionPipelineResource;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.EntityUtil;
 import org.slf4j.Logger;
@@ -121,6 +127,10 @@ public class IngestionPipelineResourceIT
   private static final Logger LOG = LoggerFactory.getLogger(IngestionPipelineResourceIT.class);
   private static final Date START_DATE = new DateTime("2022-06-10T15:06:47+00:00").toDate();
   private static final String INGESTION_PIPELINES_PATH = "/v1/services/ingestionPipelines";
+  private static final String DBT_SECRET_POINTER =
+      "/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey";
+  private static final String STORAGE_MANIFEST_SECRET_POINTER =
+      "/sourceConfig/config/storageMetadataConfigSource/securityConfig/awsSecretAccessKey";
 
   // IngestionPipeline only supports owners,followers fields - no tags, no domain
   {
@@ -1871,6 +1881,186 @@ public class IngestionPipelineResourceIT
     return JsonUtils.getObjectMapper().createArrayNode().add(replaceOp(path, value));
   }
 
+  @ParameterizedTest
+  @MethodSource("protectedPipelineSources")
+  void nestedPipelineSecretMustBeReenteredWhenTheSourceMoves(
+      PipelineType pipelineType,
+      String configJson,
+      String targetPath,
+      String secretPath,
+      TestNamespace ns) {
+    String ownerName = "sourceowner" + ns.uniqueShortId();
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+    OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns)
+            .withPipelineType(pipelineType)
+            .withOwners(List.of(owner.getEntityReference()))
+            .withSourceConfig(
+                new SourceConfig().withConfig(JsonUtils.readValue(configJson, Object.class)));
+    IngestionPipeline pipeline = createEntity(request);
+    asOwner.ingestionPipelines().patch(pipeline.getId(), descriptionPatch("Owner can edit"));
+    IngestionPipeline masked = asOwner.ingestionPipelines().get(pipeline.getId());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        JsonUtils.valueToTree(masked.getSourceConfig()).at(secretPath).asText());
+    String stored = storedPipelineJson(pipeline.getId());
+    String elsewhere = "https://elsewhere.example";
+
+    assertRetargetRequiresSecrets(
+        () ->
+            asOwner
+                .ingestionPipelines()
+                .patch(pipeline.getId(), replace("/sourceConfig" + targetPath, elsewhere)));
+    assertEquals(stored, storedPipelineJson(pipeline.getId()));
+
+    SourceConfig retargeted =
+        JsonUtils.applyPatch(
+            masked.getSourceConfig(),
+            Json.createPatchBuilder().replace(targetPath, elsewhere).build(),
+            SourceConfig.class);
+    assertRetargetRequiresSecrets(
+        () ->
+            asOwner
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    INGESTION_PIPELINES_PATH,
+                    request.withSourceConfig(retargeted),
+                    IngestionPipeline.class));
+    assertEquals(stored, storedPipelineJson(pipeline.getId()));
+
+    asOwner
+        .ingestionPipelines()
+        .patch(
+            pipeline.getId(),
+            replace("/sourceConfig" + targetPath, elsewhere)
+                .add(replaceOp("/sourceConfig" + secretPath, "entered-again")));
+    SourceConfig changed =
+        SdkClients.ingestionBotClient()
+            .ingestionPipelines()
+            .get(pipeline.getId())
+            .getSourceConfig();
+    assertEquals(elsewhere, JsonUtils.valueToTree(changed).at(targetPath).asText());
+    assertEquals("entered-again", JsonUtils.valueToTree(changed).at(secretPath).asText());
+  }
+
+  private static void assertRetargetRequiresSecrets(Runnable update) {
+    OpenMetadataException failure = assertThrows(OpenMetadataException.class, update::run);
+    assertEquals(400, failure.getStatusCode(), failure.getMessage());
+    assertTrue(
+        failure.getMessage().contains(ConnectionSecretsGuard.SECRETS_REQUIRED),
+        failure.getMessage());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"PUT", "PATCH"})
+  void retargetingOneServiceConnectionPreservesTheOtherConnectionsSecret(
+      HttpMethod method, TestNamespace ns) {
+    String ownerName = "sourceowner" + ns.uniqueShortId();
+    User owner =
+        SdkClients.adminClient()
+            .users()
+            .create(new CreateUser().withName(ownerName).withEmail(ownerName + "@test.com"));
+    OpenMetadataClient asOwner =
+        SdkClients.createClient(owner.getName(), owner.getEmail(), new String[] {});
+    CreateIngestionPipeline request =
+        createMinimalRequest(ns)
+            .withPipelineType(PipelineType.TEST_SUITE)
+            .withOwners(List.of(owner.getEntityReference()))
+            .withSourceConfig(
+                new SourceConfig()
+                    .withConfig(
+                        JsonUtils.readValue(
+                            """
+                            {"type":"TestSuite","serviceConnections":[
+                              {"serviceName":"first","serviceConnection":{"config":
+                                {"type":"Mysql","username":"user","hostPort":"first:3306",
+                                 "authType":{"password":"first-secret"}}}},
+                              {"serviceName":"second","serviceConnection":{"config":
+                                {"type":"Mysql","username":"user","hostPort":"second:3306",
+                                 "authType":{"password":"second-secret"}}}}
+                            ]}
+                            """,
+                            Object.class)));
+    IngestionPipeline pipeline = createEntity(request);
+    SourceConfig masked = asOwner.ingestionPipelines().get(pipeline.getId()).getSourceConfig();
+    String first = "/config/serviceConnections/0/serviceConnection/config";
+    String second = "/config/serviceConnections/1/serviceConnection/config";
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        JsonUtils.valueToTree(masked).at(first + "/authType/password").asText());
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        JsonUtils.valueToTree(masked).at(second + "/authType/password").asText());
+    SourceConfig retargeted =
+        JsonUtils.applyPatch(
+            masked,
+            Json.createPatchBuilder()
+                .replace(first + "/hostPort", "elsewhere:3306")
+                .replace(first + "/authType/password", "entered-again")
+                .build(),
+            SourceConfig.class);
+
+    if (method == HttpMethod.PUT) {
+      asOwner
+          .getHttpClient()
+          .execute(
+              method,
+              INGESTION_PIPELINES_PATH,
+              request.withSourceConfig(retargeted),
+              IngestionPipeline.class);
+    } else {
+      asOwner.ingestionPipelines().patch(pipeline.getId(), replace("/sourceConfig", retargeted));
+    }
+
+    SourceConfig saved =
+        SdkClients.ingestionBotClient()
+            .ingestionPipelines()
+            .get(pipeline.getId())
+            .getSourceConfig();
+    assertEquals("elsewhere:3306", JsonUtils.valueToTree(saved).at(first + "/hostPort").asText());
+    assertEquals(
+        "entered-again", JsonUtils.valueToTree(saved).at(first + "/authType/password").asText());
+    assertEquals("second:3306", JsonUtils.valueToTree(saved).at(second + "/hostPort").asText());
+    assertEquals(
+        "second-secret", JsonUtils.valueToTree(saved).at(second + "/authType/password").asText());
+  }
+
+  private static Stream<Arguments> protectedPipelineSources() {
+    return Stream.of(
+        Arguments.of(
+            PipelineType.TEST_SUITE,
+            """
+            {"type":"TestSuite","serviceConnections":[{"serviceName":"mysql","serviceConnection":{"config":
+             {"type":"Mysql","username":"user","hostPort":"db.internal:3306","authType":{"password":"stored-secret"}}}}]}
+            """,
+            "/config/serviceConnections/0/serviceConnection/config/hostPort",
+            "/config/serviceConnections/0/serviceConnection/config/authType/password"),
+        Arguments.of(
+            PipelineType.APPLICATION,
+            """
+            {"type":"Application","appConfig":{"clientId":"client","clientSecret":"client-secret",
+             "signingSecret":"signing-secret","botToken":"stored-secret"}}
+            """,
+            "/config/appConfig/clientId",
+            "/config/appConfig/botToken"),
+        Arguments.of(
+            PipelineType.APPLICATION,
+            """
+            {"type":"Application","appPrivateConfig":{"waiiInstance":"https://waii.example",
+             "collateURL":"https://collate.example","token":"stored-secret","limits":{"actions":{}}}}
+            """,
+            "/config/appPrivateConfig/waiiInstance",
+            "/config/appPrivateConfig/token"));
+  }
+
   private static ObjectNode replaceOp(String path, Object value) {
     ObjectNode op = JsonUtils.getObjectMapper().createObjectNode();
     op.put("op", "replace").put("path", path);
@@ -1937,6 +2127,33 @@ public class IngestionPipelineResourceIT
     assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
   }
 
+  @Test
+  void storageManifestCredentialsAreEncryptedAndMasked(TestNamespace ns) {
+    String secret = "storage-manifest-secret-" + UUID.randomUUID();
+    StorageMetadataS3Config manifest =
+        new StorageMetadataS3Config()
+            .withPrefixConfig(new StorageMetadataBucketDetails().withContainerName("bucket"))
+            .withSecurityConfig(
+                new AWSCredentials().withAwsAccessKeyId("key").withAwsSecretAccessKey(secret));
+    IngestionPipeline pipeline =
+        createEntity(
+            createMinimalRequest(ns)
+                .withService(StorageServiceTestFactory.createS3(ns).getEntityReference())
+                .withPipelineType(PipelineType.METADATA)
+                .withSourceConfig(
+                    new SourceConfig()
+                        .withConfig(
+                            new StorageServiceMetadataPipeline()
+                                .withStorageMetadataConfigSource(manifest))));
+
+    assertSecretEncryptedAt(
+        storedPipelineJson(pipeline.getId()), STORAGE_MANIFEST_SECRET_POINTER, secret);
+    String response =
+        JsonUtils.pojoToJson(
+            SdkClients.testUserClient().ingestionPipelines().get(pipeline.getId()));
+    assertDbtSecretMasked(response, secret);
+  }
+
   private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {
     assertTrue(Fernet.getInstance().isKeyDefined(), "The test server must encrypt secrets at rest");
     AWSCredentials credentials =
@@ -1986,15 +2203,17 @@ public class IngestionPipelineResourceIT
   }
 
   private static String dbtSecret(String json) {
-    return JsonUtils.readTree(json)
-        .at("/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey")
-        .asText();
+    return JsonUtils.readTree(json).at(DBT_SECRET_POINTER).asText();
   }
 
   private static void assertDbtSecretEncrypted(String json, String secret) {
+    assertSecretEncryptedAt(json, DBT_SECRET_POINTER, secret);
+  }
+
+  private static void assertSecretEncryptedAt(String json, String pointer, String secret) {
     assertFalse(json.contains(secret), "Persisted pipeline must not contain plaintext credentials");
-    String storedSecret = dbtSecret(json);
-    assertTrue(Fernet.isTokenized(storedSecret), "Stored dbt credential must be Fernet ciphertext");
+    String storedSecret = JsonUtils.readTree(json).at(pointer).asText();
+    assertTrue(Fernet.isTokenized(storedSecret), "Stored credential must be Fernet ciphertext");
     assertEquals(secret, Fernet.getInstance().decrypt(storedSecret));
   }
 

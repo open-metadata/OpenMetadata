@@ -14,7 +14,6 @@
 package org.openmetadata.service.secrets;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +42,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.ServiceEntityRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
+import org.openmetadata.service.secrets.converter.SchemaConversionException;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -71,23 +71,48 @@ public class SecretsManagerUpdateService {
           Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
       connectionTypeRepositoriesMap;
 
+  record Repositories(
+      Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
+          services,
+      UserRepository users,
+      IngestionPipelineRepository pipelines,
+      WorkflowRepository workflows) {}
+
   public SecretsManagerUpdateService(SecretsManager secretsManager, String clusterName) {
+    this(
+        secretsManager,
+        SecretsManagerFactory.createSecretsManager(null, clusterName),
+        new Repositories(
+            retrieveConnectionTypeRepositoriesMap(),
+            (UserRepository) Entity.getEntityRepository(Entity.USER),
+            (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE),
+            (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW)));
+  }
+
+  SecretsManagerUpdateService(
+      SecretsManager secretsManager, SecretsManager oldSecretManager, Repositories repositories) {
     this.secretManager = secretsManager;
-    this.connectionTypeRepositoriesMap = retrieveConnectionTypeRepositoriesMap();
-    this.userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    this.ingestionPipelineRepository =
-        (IngestionPipelineRepository) Entity.getEntityRepository(Entity.INGESTION_PIPELINE);
-    this.workflowRepository = (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW);
-    // by default, it is going to be non-managed secrets manager since decrypt is the same for all
-    // of them
-    this.oldSecretManager = SecretsManagerFactory.createSecretsManager(null, clusterName);
+    this.oldSecretManager = oldSecretManager;
+    this.connectionTypeRepositoriesMap = Map.copyOf(repositories.services());
+    this.userRepository = repositories.users();
+    this.ingestionPipelineRepository = repositories.pipelines();
+    this.workflowRepository = repositories.workflows();
   }
 
   public void updateEntities() {
-    updateServices();
-    updateBotUsers();
-    updateIngestionPipelines();
-    runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class).iterator());
+    List<String> failed = new ArrayList<>();
+    updateServices(failed);
+    updateBotUsers(failed);
+    updateIngestionPipelines(failed);
+    try {
+      runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class).iterator());
+    } catch (SecretsManagerUpdateException e) {
+      failed.add("extensions");
+    }
+    if (!failed.isEmpty()) {
+      throw new SecretsManagerUpdateException(
+          String.format("Secrets migration incomplete; failed entities %s", failed));
+    }
   }
 
   /**
@@ -131,7 +156,7 @@ public class SecretsManagerUpdateService {
     }
   }
 
-  private void updateServices() {
+  private void updateServices(List<String> failed) {
     LOG.info(
         "Updating services in case of an update on the JSON schema: [{}]",
         secretManager.getSecretsManagerProvider().value());
@@ -141,17 +166,13 @@ public class SecretsManagerUpdateService {
               try {
                 updateService(service);
               } catch (Exception e) {
-                LOG.error(
-                    "Failed to update service [{}] with id [{}]: {}",
-                    service.getName(),
-                    service.getId(),
-                    e.getMessage());
-                // Continue processing other services instead of failing the entire migration
+                failed.add("service " + service.getId());
+                logRowFailure("service", service.getId().toString(), e);
               }
             });
   }
 
-  private void updateBotUsers() {
+  private void updateBotUsers(List<String> failed) {
     LOG.info(
         "Updating bot users in case of an update on the JSON schema: [{}]",
         secretManager.getSecretsManagerProvider().value());
@@ -161,42 +182,49 @@ public class SecretsManagerUpdateService {
               try {
                 updateBotUser(botUser);
               } catch (Exception e) {
-                LOG.error(
-                    "Failed to update bot user [{}] with id [{}]: {}",
-                    botUser.getName(),
-                    botUser.getId(),
-                    e.getMessage());
-                // Continue processing other bot users instead of failing the entire migration
+                failed.add("bot user " + botUser.getId());
+                logRowFailure("bot user", botUser.getId().toString(), e);
               }
             });
   }
 
-  private void updateIngestionPipelines() {
+  private void updateIngestionPipelines(List<String> failed) {
     LOG.info(
         "Updating ingestion pipelines in case of an update on the JSON schema: [{}]",
         secretManager.getSecretsManagerProvider().value());
-    retrieveIngestionPipelines()
+    retrieveIngestionPipelines(failed)
         .forEach(
             ingestionPipeline -> {
               try {
                 updateIngestionPipeline(ingestionPipeline);
               } catch (Exception e) {
-                LOG.error(
-                    "Failed to update ingestion pipeline [{}] with id [{}]: {}",
-                    ingestionPipeline.getName(),
-                    ingestionPipeline.getId(),
-                    e.getMessage());
-                // Continue processing other pipelines instead of failing the entire migration
+                failed.add("ingestion pipeline " + ingestionPipeline.getId());
+                logRowFailure("ingestion pipeline", ingestionPipeline.getId().toString(), e);
               }
             });
+  }
+
+  private static void logRowFailure(String entityType, String id, Exception failure) {
+    Throwable reason = failure;
+    while (reason.getCause() != null && !(reason instanceof SchemaConversionException)) {
+      reason = reason.getCause();
+    }
+    LOG.error(
+        "Secrets migration skipped {} [{}]: {}",
+        entityType,
+        id,
+        reason instanceof SchemaConversionException
+            ? reason.getMessage()
+            : reason.getClass().getSimpleName());
   }
 
   private void updateService(ServiceEntityInterface serviceEntityInterface) {
     ServiceEntityRepository<?, ?> repository =
         connectionTypeRepositoriesMap.get(serviceEntityInterface.getConnection().getClass());
     try {
-      ServiceEntityInterface service =
+      ServiceEntityInterface stored =
           repository.getDao().findEntityById(serviceEntityInterface.getId());
+      ServiceEntityInterface service = JsonUtils.deepCopy(stored, stored.getClass());
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       service
           .getConnection()
@@ -219,7 +247,7 @@ public class SecretsManagerUpdateService {
           "Service entity {} not found during secrets migration. Skipping.",
           serviceEntityInterface.getId());
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 
@@ -249,16 +277,17 @@ public class SecretsManagerUpdateService {
                       && !Objects.isNull(service.getConnection().getConfig()))
           .collect(Collectors.toList());
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 
-  private Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
+  private static Map<
+          Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
       retrieveConnectionTypeRepositoriesMap() {
     Map<Class<? extends ServiceConnectionEntityInterface>, ServiceEntityRepository<?, ?>>
         connTypeRepositoriesMap =
             Entity.getEntityList().stream()
-                .map(this::retrieveServiceRepository)
+                .map(SecretsManagerUpdateService::retrieveServiceRepository)
                 .filter(Optional::isPresent)
                 .map(Optional::get)
                 .collect(
@@ -271,7 +300,8 @@ public class SecretsManagerUpdateService {
     return connTypeRepositoriesMap;
   }
 
-  private Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(String entityType) {
+  private static Optional<ServiceEntityRepository<?, ?>> retrieveServiceRepository(
+      String entityType) {
     try {
       EntityRepository<? extends EntityInterface<?>> repository =
           Entity.getEntityRepository(entityType);
@@ -298,13 +328,14 @@ public class SecretsManagerUpdateService {
           .filter(user -> Boolean.TRUE.equals(user.getIsBot()))
           .collect(Collectors.toList());
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 
   private void updateBotUser(User botUser) {
     try {
-      User user = userRepository.getDao().findEntityById(botUser.getId());
+      User stored = userRepository.getDao().findEntityById(botUser.getId());
+      User user = JsonUtils.deepCopy(stored, User.class);
       oldSecretManager.decryptAuthenticationMechanism(
           botUser.getName(), user.getAuthenticationMechanism());
       secretManager.encryptAuthenticationMechanism(
@@ -313,11 +344,11 @@ public class SecretsManagerUpdateService {
     } catch (EntityNotFoundException e) {
       LOG.warn("Bot user {} not found during secrets migration. Skipping.", botUser.getId());
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 
-  private List<IngestionPipeline> retrieveIngestionPipelines() {
+  private List<IngestionPipeline> retrieveIngestionPipelines(List<String> failed) {
     try {
       Fields fields = new Fields(Set.of("service"));
       List<IngestionPipeline> pipelines =
@@ -335,18 +366,18 @@ public class SecretsManagerUpdateService {
       return pipelines;
     } catch (UnhandledServerException e) {
       if (e.getMessage().contains("does not have expected relationship contains")) {
-        LOG.warn("Found orphaned pipelines, filtering them out: {}", e.getMessage());
-        return retrievePipelinesIndividually();
+        LOG.warn("Found orphaned pipelines during secrets migration");
+        return retrievePipelinesIndividually(failed);
       }
       // Re-throw if it's a different UnhandledServerException
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     } catch (Exception e) {
-      LOG.error("Failed to retrieve ingestion pipelines: {}", e.getMessage());
-      return Collections.emptyList();
+      throw new SecretsManagerUpdateException(
+          "Cannot retrieve ingestion pipelines for secrets migration", e);
     }
   }
 
-  private List<IngestionPipeline> retrievePipelinesIndividually() {
+  private List<IngestionPipeline> retrievePipelinesIndividually(List<String> failed) {
     List<IngestionPipeline> validPipelines = new ArrayList<>();
     try {
       int totalCount = ingestionPipelineRepository.getDao().listCount(new ListFilter());
@@ -365,6 +396,9 @@ public class SecretsManagerUpdateService {
 
           if (fullPipeline != null && fullPipeline.getService() != null) {
             validPipelines.add(fullPipeline);
+          } else {
+            failed.add("ingestion pipeline " + pipeline.getId());
+            skippedCount++;
           }
         } catch (UnhandledServerException e) {
           if (e.getMessage().contains("does not have expected relationship contains")) {
@@ -372,21 +406,20 @@ public class SecretsManagerUpdateService {
               IngestionPipeline basicInfo =
                   JsonUtils.readValue(pipelineJson, IngestionPipeline.class);
               LOG.warn(
-                  "Skipping orphaned ingestion pipeline {} (id: {}) - no service relationship",
-                  basicInfo.getName(),
+                  "Secrets migration skipped ingestion pipeline [{}]: no service relationship",
                   basicInfo.getId());
+              failed.add("ingestion pipeline " + basicInfo.getId());
               skippedCount++;
             } catch (Exception parseEx) {
               LOG.warn("Skipping orphaned ingestion pipeline - unable to parse details");
+              failed.add("unreadable ingestion pipeline");
               skippedCount++;
             }
           } else {
-            throw new SecretsManagerUpdateException(
-                String.format("Failed to load ingestion pipeline: %s", e.getMessage()), e);
+            throw new SecretsManagerUpdateException("Failed to load ingestion pipeline", e);
           }
         } catch (Exception e) {
-          throw new SecretsManagerUpdateException(
-              String.format("Unexpected error loading ingestion pipeline: %s", e.getMessage()), e);
+          throw new SecretsManagerUpdateException("Unexpected error loading ingestion pipeline", e);
         }
       }
 
@@ -398,8 +431,8 @@ public class SecretsManagerUpdateService {
 
       return validPipelines;
     } catch (Exception e) {
-      LOG.error("Failed to retrieve pipelines individually: {}", e.getMessage());
-      return Collections.emptyList();
+      throw new SecretsManagerUpdateException(
+          "Cannot retrieve individual ingestion pipelines for secrets migration", e);
     }
   }
 
@@ -414,14 +447,16 @@ public class SecretsManagerUpdateService {
               null)
           .getData();
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 
   private void updateIngestionPipeline(IngestionPipeline ingestionPipeline) {
     try {
       IngestionPipeline ingestion =
-          ingestionPipelineRepository.getDao().findEntityById(ingestionPipeline.getId());
+          JsonUtils.deepCopy(
+              ingestionPipelineRepository.getDao().findEntityById(ingestionPipeline.getId()),
+              IngestionPipeline.class);
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       oldSecretManager.decryptIngestionPipeline(ingestion);
       secretManager.encryptIngestionPipeline(ingestion);
@@ -431,13 +466,15 @@ public class SecretsManagerUpdateService {
           "Ingestion pipeline {} not found during secrets migration. Skipping.",
           ingestionPipeline.getId());
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 
   private void updateWorkflow(Workflow workflow) {
     try {
-      Workflow workflowObject = workflowRepository.getDao().findEntityById(workflow.getId());
+      Workflow workflowObject =
+          JsonUtils.deepCopy(
+              workflowRepository.getDao().findEntityById(workflow.getId()), Workflow.class);
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);
@@ -445,7 +482,7 @@ public class SecretsManagerUpdateService {
     } catch (EntityNotFoundException e) {
       LOG.warn("Workflow {} not found during secrets migration. Skipping.", workflow.getId());
     } catch (Exception e) {
-      throw new SecretsManagerUpdateException(e.getMessage(), e.getCause());
+      throw new SecretsManagerUpdateException("Secrets migration operation failed", e);
     }
   }
 }

@@ -27,6 +27,7 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.ReflectionException;
+import org.openmetadata.service.secrets.converter.SchemaBackedMap;
 
 @Slf4j
 public class ReflectionUtil {
@@ -126,6 +127,12 @@ public class ReflectionUtil {
 
   /** The name an element reports, or null when it has none - see {@link #getCollectionElementKeys}. */
   private static String readName(Object element) {
+    if (element == null) {
+      return null;
+    }
+    if (element instanceof SchemaBackedMap map) {
+      return map.collectionName();
+    }
     try {
       Method getName = element.getClass().getMethod("getName");
       if (String.class.equals(getName.getReturnType())) {

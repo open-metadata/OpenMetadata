@@ -31,7 +31,11 @@ class NestedConfigClassConverterTest {
   @Test
   void convertsAPopulatedDatabaseConnection() {
     AlationConnection result =
-        convert(new PostgresConnection().withHostPort("localhost:5432").withUsername("user"));
+        convert(
+            new PostgresConnection()
+                .withHostPort("localhost:5432")
+                .withUsername("user")
+                .withDatabase("alation"));
 
     assertInstanceOf(PostgresConnection.class, result.getConnection());
   }

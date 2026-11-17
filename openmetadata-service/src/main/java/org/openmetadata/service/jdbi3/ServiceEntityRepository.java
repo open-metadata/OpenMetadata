@@ -193,6 +193,8 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
+      SecretsUtil.validateSslConfig(
+          service.getConnection().getConfig(), service.getServiceType().value(), serviceType);
       Object config =
           SecretsManagerFactory.getSecretsManager()
               .prepareServiceConnectionConfig(
@@ -200,7 +202,6 @@ public abstract class ServiceEntityRepository<
                   service.getServiceType().value(),
                   service.getName(),
                   serviceType);
-      SecretsUtil.validateSslConfig(config, service.getServiceType().value());
       service.getConnection().setConfig(config);
     }
   }

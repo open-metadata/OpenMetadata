@@ -1,12 +1,18 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -45,6 +51,7 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.messaging.SchemaRegistryConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -430,24 +437,19 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
-  void testExceptionConnection() {
+  void malformedStoredConnectionStaysReadableButCannotBeWrittenBackUnchanged() {
     Map<String, Object> mysqlConnectionObject =
-        Map.of(
-            "authType", Map.of("password", "openmetadata-test"), "username1", "openmetadata-test");
+        Map.of("authType", Map.of("password", "openmetadata-test"), "username1", "legacy-user");
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(mysqlConnectionObject, "Mysql", ServiceType.DATABASE);
+    assertEquals(
+        getMaskedPassword(), JsonUtils.valueToTree(masked).at("/authType/password").asText());
+    assertEquals("legacy-user", JsonUtils.valueToTree(masked).path("username1").asText());
+    assertFalse(JsonUtils.pojoToJson(masked).contains("openmetadata-test"));
 
     EntityMaskException thrown =
-        Assertions.assertThrows(
-            EntityMaskException.class,
-            () ->
-                EntityMaskerFactory.createEntityMasker()
-                    .maskServiceConnectionConfig(
-                        mysqlConnectionObject, "Mysql", ServiceType.DATABASE));
-
-    assertEquals(
-        "Failed to mask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
-        thrown.getMessage());
-
-    thrown =
         Assertions.assertThrows(
             EntityMaskException.class,
             () ->
@@ -458,9 +460,9 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                         "Mysql",
                         ServiceType.DATABASE));
 
-    assertEquals(
-        "Failed to unmask 'Mysql' connection stored in DB due to an unrecognized field: 'username1'",
-        thrown.getMessage());
+    assertTrue(thrown.getMessage().contains("username1"));
+    assertTrue(thrown.getMessage().contains("undeclared"));
+    assertFalse(thrown.getMessage().contains("openmetadata-test"));
   }
 
   @Test
@@ -640,6 +642,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                     new DbtPipeline()
                         .withDbtConfigSource(
                             new DbtHttpConfig()
+                                .withDbtManifestHttpPath("https://gitlab.example/manifest.json")
                                 .withDbtHttpHeaders(
                                     new DbtHttpHeaders()
                                         .withAdditionalProperty("PRIVATE-TOKEN", GITLAB_TOKEN)))));
@@ -651,5 +654,101 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
         .getDbtHttpHeaders()
         .getAdditionalProperties()
         .get("PRIVATE-TOKEN");
+  }
+
+  @Test
+  void testNestedFieldTheSchemaNoLongerDeclaresIsPreservedAndTheSecretMasked() {
+    Object connection =
+        JsonUtils.readValue(
+            """
+            {"type":"Mysql","username":"user","hostPort":"localhost:3306",
+             "authType":{"password":"secret-value","legacyField":"x"}}
+            """,
+            Map.class);
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(connection, "Mysql", ServiceType.DATABASE);
+
+    String serialized = JsonUtils.pojoToJson(masked);
+    assertFalse(serialized.contains("secret-value"), serialized);
+    assertEquals("x", JsonUtils.valueToTree(masked).at("/authType/legacyField").asText());
+    assertTrue(serialized.contains(PasswordEntityMasker.PASSWORD_MASK), serialized);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("nestedSecretConnections")
+  void testSecretsBelowEveryNestedOneOfAreMasked(
+      String name, String connectionType, ServiceType serviceType, String json) {
+    Object connection = JsonUtils.readValue(json, Map.class);
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(connection, connectionType, serviceType);
+
+    String serialized = JsonUtils.pojoToJson(masked);
+    assertFalse(serialized.contains("secret-value"), serialized);
+    assertTrue(serialized.contains(PasswordEntityMasker.PASSWORD_MASK), serialized);
+  }
+
+  private static Stream<Arguments> nestedSecretConnections() {
+    return Stream.of(
+        Arguments.of(
+            "PowerBI GCS private key",
+            "PowerBI",
+            ServiceType.DASHBOARD,
+            """
+            {"type":"PowerBI","clientId":"client","clientSecret":"secret-value","tenantId":"tenant",
+             "pbitFilesSource":{"pbitFileConfigType":"gcs","securityConfig":{"gcpConfig":{"privateKey":"secret-value"}}}}
+            """),
+        Arguments.of(
+            "MySQL CloudSQL password and private key",
+            "Mysql",
+            ServiceType.DATABASE,
+            """
+            {"type":"Mysql","username":"user","authType":{"password":"secret-value","enableIamAuth":false,
+             "gcpConfig":{"gcpConfig":{"privateKey":"secret-value"}}}}
+            """),
+        Arguments.of(
+            "SSIS database TLS key",
+            "SSIS",
+            ServiceType.PIPELINE,
+            """
+            {"type":"SSIS","packageConnection":"/tmp/packages","databaseConnection":{"type":"Mssql",
+             "username":"user","password":"secret-value","hostPort":"localhost:1433",
+             "sslConfig":{"sslKey":"secret-value"}}}
+            """),
+        Arguments.of(
+            "Superset API TLS key",
+            "Superset",
+            ServiceType.DASHBOARD,
+            """
+            {"type":"Superset","hostPort":"https://superset.example.com","connection":{"provider":"db",
+             "username":"user","password":"secret-value","sslConfig":{"sslKey":"secret-value"}}}
+            """),
+        Arguments.of(
+            "NATS password",
+            "Nats",
+            ServiceType.MESSAGING,
+            """
+            {"type":"Nats","natsServers":"nats://localhost:4222",
+             "authType":{"username":"user","password":"secret-value"}}
+            """),
+        Arguments.of(
+            "SAP S4HANA password",
+            "SapS4Hana",
+            ServiceType.DASHBOARD,
+            """
+            {"type":"SapS4Hana","hostPort":"https://sap.example.com",
+             "authType":{"authType":"basic","username":"user","password":"secret-value"}}
+            """),
+        Arguments.of(
+            "QlikSense TLS key",
+            "QlikSense",
+            ServiceType.DASHBOARD,
+            """
+            {"type":"QlikSense","hostPort":"wss://qlik.example.com",
+             "certificates":{"sslConfig":{"sslKey":"secret-value"}}}
+            """));
   }
 }

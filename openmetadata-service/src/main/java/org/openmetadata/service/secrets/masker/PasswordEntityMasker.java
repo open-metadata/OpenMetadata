@@ -30,6 +30,7 @@ import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.SchemaBackedMap;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -46,7 +47,7 @@ public class PasswordEntityMasker extends EntityMasker {
     if (connectionConfig != null) {
       try {
         Object convertedConnectionConfig =
-            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+            SecretsUtil.convertForRead(connectionConfig, connectionType, serviceType);
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {
@@ -65,7 +66,7 @@ public class PasswordEntityMasker extends EntityMasker {
   public void maskAuthenticationMechanism(
       String name, AuthenticationMechanism authenticationMechanism) {
     if (authenticationMechanism != null) {
-      AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
+      AuthenticationMechanismBuilder.addDefinedConfigForRead(authenticationMechanism);
       try {
         maskPasswordFields(authenticationMechanism);
       } catch (Exception e) {
@@ -91,7 +92,7 @@ public class PasswordEntityMasker extends EntityMasker {
   public Workflow maskWorkflow(Workflow workflow) {
     if (workflow != null) {
       Workflow workflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convertForRead(workflow);
       try {
         maskPasswordFields(workflowConverted);
       } catch (Exception e) {
@@ -109,11 +110,12 @@ public class PasswordEntityMasker extends EntityMasker {
       String connectionType,
       ServiceType serviceType) {
     if (originalConnectionConfig != null && connectionConfig != null) {
+      SecretsUtil.validateSslConfig(connectionConfig, connectionType, serviceType);
       try {
         Object toUnmaskConfig =
             SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
         Object originalConvertedConfig =
-            SecretsUtil.convert(originalConnectionConfig, connectionType, null, serviceType);
+            SecretsUtil.convertForRead(originalConnectionConfig, connectionType, serviceType);
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalConvertedConfig, NEW_KEY, passwordsMap);
         rejectMasksWithoutStoredSecret(toUnmaskConfig, passwordsMap);
@@ -157,7 +159,7 @@ public class PasswordEntityMasker extends EntityMasker {
       AuthenticationMechanism originalAuthenticationMechanism) {
     if (authenticationMechanism != null && originalAuthenticationMechanism != null) {
       AuthenticationMechanismBuilder.addDefinedConfig(authenticationMechanism);
-      AuthenticationMechanismBuilder.addDefinedConfig(originalAuthenticationMechanism);
+      AuthenticationMechanismBuilder.addDefinedConfigForRead(originalAuthenticationMechanism);
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(originalAuthenticationMechanism, NEW_KEY, passwordsMap);
@@ -175,7 +177,8 @@ public class PasswordEntityMasker extends EntityMasker {
       Workflow workflowConverted =
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
       Workflow origWorkflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(originalWorkflow);
+          (Workflow)
+              ClassConverterFactory.getConverter(Workflow.class).convertForRead(originalWorkflow);
       try {
         Map<String, String> passwordsMap = new HashMap<>();
         buildPasswordsMap(origWorkflowConverted, NEW_KEY, passwordsMap);
@@ -233,8 +236,11 @@ public class PasswordEntityMasker extends EntityMasker {
     walkPasswordFields(
         toMapObject,
         key,
-        (holder, fieldName, fieldKey, value) ->
-            passwordsMap.put(fieldKey, Fernet.getInstance().decryptIfApplies((String) value)));
+        (holder, fieldName, fieldKey, value) -> {
+          if (value instanceof String secret) {
+            passwordsMap.put(fieldKey, Fernet.getInstance().decryptIfApplies(secret));
+          }
+        });
   }
 
   /**
@@ -249,6 +255,13 @@ public class PasswordEntityMasker extends EntityMasker {
    */
   private void walkPasswordFields(Object target, String key, PasswordFieldVisitor visitor) {
     if (target == null || DO_NOT_MASK_CLASSES.contains(target.getClass())) {
+      return;
+    }
+    if (target instanceof SchemaBackedMap raw) {
+      raw.visitSecrets(
+          slot ->
+              visitor.visit(
+                  slot, NEW_KEY, createKey(key, String.join(".", slot.path())), slot.value()));
       return;
     }
     Arrays.stream(target.getClass().getMethods())
@@ -310,6 +323,10 @@ public class PasswordEntityMasker extends EntityMasker {
   }
 
   private void setField(Object holder, String fieldName, Object currentValue, String newValue) {
+    if (holder instanceof SchemaBackedMap.SecretSlot slot) {
+      slot.setValue(newValue);
+      return;
+    }
     if (holder instanceof Map<?, ?> map) {
       @SuppressWarnings("unchecked")
       Map<String, Object> secretMap = (Map<String, Object>) map;

@@ -17,7 +17,11 @@ class MatillionConnectionClassConverterTest {
 
   @Test
   void testConvertsETLAuth() {
-    MatillionETLAuth etlAuth = new MatillionETLAuth().withHostPort("https://matillion.example.com");
+    MatillionETLAuth etlAuth =
+        new MatillionETLAuth()
+            .withHostPort("https://matillion.example.com")
+            .withUsername("fixture-user")
+            .withPassword("fixture-password");
 
     MatillionConnection input = new MatillionConnection().withConnection(etlAuth);
     Object rawInput = JsonUtils.readValue(JsonUtils.pojoToJson(input), Object.class);

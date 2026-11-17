@@ -79,9 +79,25 @@ public final class SecretsUtil {
       String connectionType,
       String connectionName,
       ServiceType serviceType) {
+    return convert(connectionConfig, connectionType, connectionName, serviceType, false);
+  }
+
+  public static Object convertForRead(
+      Object connectionConfig, String connectionType, ServiceType serviceType) {
+    return convert(connectionConfig, connectionType, null, serviceType, true);
+  }
+
+  private static Object convert(
+      Object connectionConfig,
+      String connectionType,
+      String connectionName,
+      ServiceType serviceType,
+      boolean forRead) {
     try {
       Class<?> clazz = ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
-      return ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
+      return forRead
+          ? ClassConverterFactory.getConverter(clazz).convertForRead(connectionConfig)
+          : ClassConverterFactory.getConverter(clazz).convert(connectionConfig);
     } catch (Exception e) {
       // If we have the name we are trying to encrypt a connection
       String message = e.getMessage();
@@ -108,17 +124,35 @@ public final class SecretsUtil {
    * this on writes only; already-stored configs must stay readable so they can be fixed by a PATCH.
    */
   public static void validateSslConfig(Object connectionConfig, String connectionType) {
-    if (untypedSslConfig(connectionConfig) instanceof Map<?, ?> sslConfig) {
+    if (untypedSslConfig(connectionConfig, connectionConfig.getClass())
+        instanceof Map<?, ?> sslConfig) {
       requireValidSslConfig(sslConfig, connectionType);
     }
   }
 
-  private static Object untypedSslConfig(Object connectionConfig) {
-    return Arrays.stream(connectionConfig.getClass().getMethods())
+  public static void validateSslConfig(
+      Object connectionConfig, String connectionType, ServiceType serviceType) {
+    try {
+      Class<?> connectionClass =
+          ReflectionUtil.createConnectionConfigClass(connectionType, serviceType);
+      if (untypedSslConfig(connectionConfig, connectionClass) instanceof Map<?, ?> sslConfig) {
+        requireValidSslConfig(sslConfig, connectionType);
+      }
+    } catch (ClassNotFoundException e) {
+      throw new InvalidServiceConnectionException("Unknown connection type: " + connectionType, e);
+    }
+  }
+
+  private static Object untypedSslConfig(Object connectionConfig, Class<?> connectionClass) {
+    return Arrays.stream(connectionClass.getMethods())
         .filter(method -> GET_SSL_CONFIG.equals(method.getName()))
         .filter(method -> method.getParameterCount() == 0 && method.getReturnType() == Object.class)
         .findFirst()
-        .map(method -> ReflectionUtil.getObjectFromMethod(method, connectionConfig))
+        .map(
+            method ->
+                connectionConfig instanceof Map<?, ?> map
+                    ? map.get("sslConfig")
+                    : ReflectionUtil.getObjectFromMethod(method, connectionConfig))
         .orElse(null);
   }
 

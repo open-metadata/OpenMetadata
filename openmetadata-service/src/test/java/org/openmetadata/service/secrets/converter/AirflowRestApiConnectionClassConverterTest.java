@@ -28,8 +28,8 @@ import org.openmetadata.schema.services.connections.pipeline.AirflowRestApiConne
 
 class AirflowRestApiConnectionClassConverterTest {
 
-  private final AirflowRestApiConnectionClassConverter converter =
-      new AirflowRestApiConnectionClassConverter();
+  private final ClassConverter converter =
+      ClassConverterFactory.getConverter(AirflowRestApiConnection.class);
 
   @Test
   void convert_basicAuth_convertsAuthConfig() {
@@ -118,7 +118,6 @@ class AirflowRestApiConnectionClassConverterTest {
 
   @Test
   void convert_nullAuthConfig_returnsConnectionWithoutConversion() {
-    // When authConfig is null, it's not a Map instance, so line 40 (early return) is hit
     Map<String, Object> connMap = new HashMap<>();
     connMap.put("authConfig", null);
 

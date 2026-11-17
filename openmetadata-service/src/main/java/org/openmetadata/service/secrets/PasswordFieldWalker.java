@@ -18,9 +18,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import org.openmetadata.annotations.PasswordField;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.service.secrets.converter.SchemaBackedMap;
 import org.openmetadata.service.util.ReflectionUtil;
 
 /**
@@ -38,7 +40,16 @@ final class PasswordFieldWalker {
   private PasswordFieldWalker() {}
 
   static void walk(Object value, List<String> path, Visitor visitor) {
-    if (!SecretsManager.DO_NOT_ENCRYPT_CLASSES.contains(value.getClass())) {
+    if (value instanceof SchemaBackedMap raw) {
+      raw.visitSecrets(
+          slot -> {
+            if (slot.value() instanceof String secret) {
+              List<String> fieldPath = new ArrayList<>(path);
+              fieldPath.addAll(slot.fieldPath());
+              slot.setValue(visitor.visit(List.copyOf(fieldPath), secret));
+            }
+          });
+    } else if (value != null && !SecretsManager.DO_NOT_ENCRYPT_CLASSES.contains(value.getClass())) {
       Arrays.stream(value.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
           .forEach(getter -> visitGetter(value, getter, path, visitor));
@@ -53,11 +64,28 @@ final class PasswordFieldWalker {
     if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(field))) {
       walk(field, fieldPath, visitor);
     } else if (field != null && getter.getAnnotation(PasswordField.class) != null) {
-      visitPasswordField(holder, fieldName, fieldPath, (String) field, visitor);
+      if (field instanceof Map<?, ?> secretMap) {
+        visitSecretMap(secretMap, fieldPath, visitor);
+      } else {
+        visitPasswordField(holder, fieldName, fieldPath, (String) field, visitor);
+      }
     } else {
       SecretsManager.forEachTraversableElement(
           field, (element, elementKey) -> walk(element, append(fieldPath, elementKey), visitor));
     }
+  }
+
+  private static void visitSecretMap(Map<?, ?> secretMap, List<String> path, Visitor visitor) {
+    new ArrayList<>(secretMap.entrySet())
+        .forEach(
+            entry -> {
+              if (entry.getValue() instanceof String secret) {
+                String key = String.valueOf(entry.getKey());
+                @SuppressWarnings("unchecked")
+                Map<String, Object> mutable = (Map<String, Object>) secretMap;
+                mutable.put(key, visitor.visit(append(path, key), secret));
+              }
+            });
   }
 
   private static void visitPasswordField(

@@ -384,7 +384,10 @@ class SecretMapEntriesExternalStoreTest {
             new SourceConfig()
                 .withConfig(
                     new DbtPipeline()
-                        .withDbtConfigSource(new DbtHttpConfig().withDbtHttpHeaders(httpHeaders))));
+                        .withDbtConfigSource(
+                            new DbtHttpConfig()
+                                .withDbtManifestHttpPath("https://example.test/manifest.json")
+                                .withDbtHttpHeaders(httpHeaders))));
   }
 
   private String serviceSecretId() {

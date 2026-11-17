@@ -317,20 +317,25 @@ class TestNatsConnectionConfig:
 
         assert expected_key in _build_connect_opts(connection, [])
 
-    def test_anonymous_authentication_is_supported(self):
-        connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
+    @pytest.mark.parametrize("auth_config", [{}, {"authType": None}, {"authType": {}}])
+    def test_anonymous_authentication_is_supported(self, auth_config):
+        connection = NatsConnectionConfig.model_validate({"natsServers": "nats://localhost:4222", **auth_config})
 
         assert _build_connect_opts(connection, []) == {
             "servers": ["nats://localhost:4222"],
             "max_reconnect_attempts": 5,
         }
 
-    def test_partial_basic_authentication_is_rejected(self):
+    @pytest.mark.parametrize(
+        "auth_type",
+        [{"username": "alice"}, {"password": "secret"}, {"token": None}, {"nkeySeed": None}, {"unexpected": True}],
+    )
+    def test_invalid_authentication_is_rejected(self, auth_type):
         with pytest.raises(ValidationError):
             NatsConnectionConfig.model_validate(
                 {
                     "natsServers": "nats://localhost:4222",
-                    "authType": {"username": "alice"},
+                    "authType": auth_type,
                 }
             )
 

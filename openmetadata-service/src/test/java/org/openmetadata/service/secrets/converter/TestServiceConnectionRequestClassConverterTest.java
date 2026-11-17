@@ -16,10 +16,19 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.database.AthenaConnection;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
+import org.openmetadata.schema.type.DashboardConnection;
+import org.openmetadata.schema.type.MessagingConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
+import org.openmetadata.service.util.ReflectionUtil;
 import org.slf4j.LoggerFactory;
 
 class TestServiceConnectionRequestClassConverterTest {
@@ -112,7 +121,7 @@ class TestServiceConnectionRequestClassConverterTest {
     InvalidServiceConnectionException failure =
         assertThrows(InvalidServiceConnectionException.class, () -> converter.convert(request));
 
-    assertInstanceOf(ClassNotFoundException.class, failure.getCause());
+    assertInstanceOf(ClassNotFoundException.class, ExceptionUtils.getRootCause(failure));
     assertFalse(failure.getMessage().contains(SECRET));
   }
 
@@ -129,6 +138,94 @@ class TestServiceConnectionRequestClassConverterTest {
     AthenaConnection athena = assertInstanceOf(AthenaConnection.class, connection.getConfig());
     assertEquals(URI.create("s3://bucket/results/"), athena.getS3StagingDir());
     assertEquals(SECRET, athena.getAwsConfig().getAwsSecretAccessKey());
+  }
+
+  @ParameterizedTest
+  @CsvSource({
+    "Database, Mysql, org.openmetadata.schema.api.services.DatabaseConnection",
+    "Dashboard, PowerBI, org.openmetadata.schema.type.DashboardConnection",
+    "Messaging, Nats, org.openmetadata.schema.type.MessagingConnection",
+    "Pipeline, Airflow, org.openmetadata.schema.type.PipelineConnection",
+    "MlModel, Sklearn, org.openmetadata.schema.type.MlModelConnection",
+    "Metadata, OpenMetadata, org.openmetadata.schema.entity.services.MetadataConnection",
+    "Storage, S3, org.openmetadata.schema.type.StorageConnection",
+    "Search, ElasticSearch, org.openmetadata.schema.type.SearchConnection",
+    "Api, Rest, org.openmetadata.schema.type.ApiConnection",
+    "Security, Ranger, org.openmetadata.schema.type.SecurityConnection",
+    "Drive, Sftp, org.openmetadata.schema.type.DriveConnection",
+    "LLM, OpenAI, org.openmetadata.schema.type.LLMConnection",
+    "Mcp, Mcp, org.openmetadata.schema.type.McpConnection"
+  })
+  void selectsWrapperByServiceType(String serviceType, String connectionType, String wrapperName)
+      throws Exception {
+    Class<?> config =
+        ReflectionUtil.createConnectionConfigClass(
+            connectionType, ServiceType.fromValue(serviceType));
+    JsonSchemaRepository schemas = JsonSchemaRepository.getInstance();
+    Class<?> wrapper =
+        new SchemaClassConverter(schemas)
+            .connectionWrapper(schemas.schemaFor(TestServiceConnectionRequest.class), config);
+    assertEquals(wrapperName, wrapper.getName());
+  }
+
+  @Test
+  void recursivelyConvertsNatsCredentialsInsideMessagingWrapper() {
+    TestServiceConnectionRequest converted =
+        (TestServiceConnectionRequest)
+            converter.convert(
+                Map.of(
+                    "serviceType", "Messaging",
+                    "connectionType", "Nats",
+                    "connection",
+                        Map.of(
+                            "config",
+                            Map.of(
+                                "natsServers",
+                                "nats://localhost:4222",
+                                "authType",
+                                Map.of("username", "user", "password", SECRET)))));
+
+    MessagingConnection wrapper =
+        assertInstanceOf(MessagingConnection.class, converted.getConnection());
+    NatsConnection config = assertInstanceOf(NatsConnection.class, wrapper.getConfig());
+    assertFalse(config.getAuthType() instanceof Map);
+    assertEquals(SECRET, JsonUtils.valueToTree(config).at("/authType/password").asText());
+  }
+
+  @Test
+  void recursivelyConvertsPowerBiCredentialsInsideDashboardWrapper() {
+    TestServiceConnectionRequest converted =
+        (TestServiceConnectionRequest)
+            converter.convert(
+                Map.of(
+                    "serviceType", "Dashboard",
+                    "connectionType", "PowerBI",
+                    "connection",
+                        Map.of(
+                            "config",
+                            Map.of(
+                                "clientId",
+                                "client",
+                                "tenantId",
+                                "tenant",
+                                "clientSecret",
+                                SECRET,
+                                "pbitFilesSource",
+                                Map.of(
+                                    "pbitFileConfigType",
+                                    "gcs",
+                                    "securityConfig",
+                                    Map.of("gcpConfig", Map.of("privateKey", SECRET)))))));
+
+    DashboardConnection wrapper =
+        assertInstanceOf(DashboardConnection.class, converted.getConnection());
+    PowerBIConnection config = assertInstanceOf(PowerBIConnection.class, wrapper.getConfig());
+    assertFalse(config.getPbitFilesSource() instanceof Map);
+    assertEquals(
+        SECRET,
+        JsonUtils.valueToTree(config)
+            .at("/pbitFilesSource/securityConfig/gcpConfig/privateKey")
+            .asText());
   }
 
   static Map<String, Object> athenaConfig(String s3StagingDir) {

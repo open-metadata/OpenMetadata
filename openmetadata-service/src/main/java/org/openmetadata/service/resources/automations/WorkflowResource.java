@@ -34,6 +34,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.UnaryOperator;
@@ -865,12 +866,17 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           new OperationContext(entityType, MetadataOperation.VIEW_ALL),
           getResourceContextById(workflow.getId()));
     } catch (AuthorizationException e) {
-      Workflow workflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-      if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest) {
-        ((ServiceConnectionEntityInterface)
-                ((TestServiceConnectionRequest) workflowConverted.getRequest()).getConnection())
-            .setConfig(null);
+      Workflow workflowConverted = EntityMaskerFactory.getEntityMasker().maskWorkflow(workflow);
+      workflowConverted.setOpenMetadataServerConnection(null);
+      if (workflowConverted.getRequest() instanceof TestServiceConnectionRequest request) {
+        if (request.getConnection() instanceof ServiceConnectionEntityInterface connection) {
+          connection.setConfig(null);
+        } else {
+          request.setConnection(null);
+        }
+      } else if (WorkflowType.TEST_CONNECTION.equals(workflowConverted.getWorkflowType())
+          && workflowConverted.getRequest() instanceof Map<?, ?> request) {
+        request.remove("connection");
       }
       return workflowConverted;
     }

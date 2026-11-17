@@ -1,5 +1,5 @@
 /*
- *  Copyright 2021 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -13,84 +13,59 @@
 
 package org.openmetadata.service.secrets.converter;
 
-import java.util.List;
+import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.openmetadata.schema.ServiceConnectionEntityInterface;
-import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
-import org.openmetadata.schema.entity.services.MetadataConnection;
-import org.openmetadata.schema.type.DashboardConnection;
-import org.openmetadata.schema.type.MessagingConnection;
-import org.openmetadata.schema.type.MlModelConnection;
-import org.openmetadata.schema.type.PipelineConnection;
-import org.openmetadata.schema.type.StorageConnection;
+import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.util.ReflectionUtil;
 
-/** Converter class to get an `TestServiceConnectionRequest` object. */
+/** Supplies the request's explicit connector type to the schema-derived wrapper. */
 @Slf4j
-public class TestServiceConnectionRequestClassConverter extends ClassConverter {
-
-  private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(
-          DatabaseConnection.class,
-          DashboardConnection.class,
-          MessagingConnection.class,
-          PipelineConnection.class,
-          MlModelConnection.class,
-          MetadataConnection.class,
-          StorageConnection.class);
-
-  public TestServiceConnectionRequestClassConverter() {
-    super(TestServiceConnectionRequest.class);
+public final class TestServiceConnectionRequestClassConverter extends ClassConverter {
+  TestServiceConnectionRequestClassConverter(SchemaClassConverter engine) {
+    super(TestServiceConnectionRequest.class, engine);
   }
 
   @Override
   public Object convert(Object object) {
-    TestServiceConnectionRequest testServiceConnectionRequest =
-        (TestServiceConnectionRequest) JsonUtils.convertValue(object, this.clazz);
     try {
-      convertConnection(testServiceConnectionRequest);
-    } catch (ClassNotFoundException | RuntimeException e) {
-      throw invalidConnection(testServiceConnectionRequest, e);
+      return super.convert(object);
+    } catch (SchemaConversionException failure) {
+      throw invalidConnection(object, failure);
     }
-    return testServiceConnectionRequest;
   }
 
-  private void convertConnection(TestServiceConnectionRequest request)
-      throws ClassNotFoundException {
-    Class<?> configClass =
-        ReflectionUtil.createConnectionConfigClass(
-            request.getConnectionType(), request.getServiceType());
-    tryToConvertOrFail(request.getConnection(), CONNECTION_CLASSES)
-        .ifPresent(request::setConnection);
-    ServiceConnectionEntityInterface connection =
-        (ServiceConnectionEntityInterface) request.getConnection();
-    connection.setConfig(
-        ClassConverterFactory.getConverter(configClass).convert(connection.getConfig()));
+  static Class<?> configClass(Map<String, Object> request) {
+    Object service = request.get("serviceType");
+    Object connection = request.get("connectionType");
+    if (service == null || connection == null) {
+      throw new SchemaConversionException("Fields 'serviceType' and 'connectionType' are required");
+    }
+    try {
+      return ReflectionUtil.createConnectionConfigClass(
+          connection.toString(), ServiceType.fromValue(service.toString()));
+    } catch (ClassNotFoundException | IllegalArgumentException failure) {
+      throw new SchemaConversionException(
+          "The requested connection type is not supported", failure);
+    }
   }
 
-  /**
-   * The connection is user input, and any value in it may be a credential, including a URI's
-   * user-info or signed query string. The message therefore names only the offending field and the
-   * constraint it broke. The cause stays on the exception but is not logged, because its messages
-   * quote the rejected value.
-   */
-  private static InvalidServiceConnectionException invalidConnection(
-      TestServiceConnectionRequest request, Exception cause) {
+  static InvalidServiceConnectionException invalidConnection(
+      Object object, SchemaConversionException cause) {
+    Map<?, ?> request =
+        object instanceof Map<?, ?> map ? map : JsonUtils.convertValue(object, Map.class);
+    String detail = JsonUtils.describeBindingFailure(cause).orElse(cause.getMessage());
     String message =
-        String.format(
-            "Invalid %s connection: %s",
-            request.getConnectionType(),
-            JsonUtils.describeBindingFailure(cause)
-                .orElse("the connection could not be converted"));
+        String.format("Invalid %s connection: %s", request.get("connectionType"), detail);
+    Throwable root = ExceptionUtils.getRootCause(cause);
     LOG.warn(
         "Rejected test connection for service [{}]: {}; cause: {}",
-        request.getServiceName(),
+        request.get("serviceName"),
         message,
-        ExceptionUtils.getRootCause(cause).getClass().getName());
+        (root == null ? cause : root).getClass().getName());
     return new InvalidServiceConnectionException(message, cause);
   }
 }
