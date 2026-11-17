@@ -128,6 +128,8 @@ class ServiceVersionSecretsMaskingTest {
         version(id, "dashboardService.version.0.1", powerBi(PLAIN), powerBi(MASK)),
         unchanged(id, "dashboardService.version.0.2", powerBi(FERNET)),
         version(id, "dashboardService.version.0.3", superset(PLAIN), superset(MASK)),
+        version(
+            id, "dashboardService.version.0.4", supersetCloudSql(PLAIN), supersetCloudSql(MASK)),
         version(id, "databaseService.version.0.1", mysqlCloudSql(PLAIN), mysqlCloudSql(MASK)),
         unchanged(
             id,
@@ -174,14 +176,20 @@ class ServiceVersionSecretsMaskingTest {
             + "\"}}}");
   }
 
+  private static String supersetCloudSql(String value) {
+    return service("Superset", "{\"connection\":" + cloudSqlConfig(value) + "}");
+  }
+
   private static String mysqlCloudSql(String value) {
-    return service(
-        "Mysql",
-        "{\"authType\":{\"password\":\""
-            + value
-            + "\",\"gcpConfig\":{\"gcpConfig\":{\"privateKey\":\""
-            + value
-            + "\"}}}}");
+    return service("Mysql", cloudSqlConfig(value));
+  }
+
+  private static String cloudSqlConfig(String value) {
+    return "{\"authType\":{\"password\":\""
+        + value
+        + "\",\"gcpConfig\":{\"gcpConfig\":{\"privateKey\":\""
+        + value
+        + "\"}}}}";
   }
 
   private static String service(String serviceType, String config) {
