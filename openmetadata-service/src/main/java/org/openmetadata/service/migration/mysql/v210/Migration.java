@@ -84,7 +84,6 @@ public class Migration extends MigrationProcessImpl {
     addCreateConversationRuleToDataConsumerPolicy(collectionDAO);
     addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(collectionDAO);
     alignHybridSearchWeightsWithDefaults();
-    IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
     new MigrationUtil(handle, MYSQL).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, MYSQL);
     copyConceptBindingsToRows(handle, MYSQL);
@@ -232,6 +231,14 @@ public class Migration extends MigrationProcessImpl {
         () -> {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
+        });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        IncidentWorkflowTransitionMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);

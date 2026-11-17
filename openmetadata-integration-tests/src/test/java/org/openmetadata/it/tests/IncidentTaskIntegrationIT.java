@@ -549,6 +549,36 @@ public class IncidentTaskIntegrationIT {
   }
 
   @Test
+  void testTaskApi_ReturnToNewDropsManualAssignee(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    TestCase testCase = createTestCase(client, ns, "task-api-return-new");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    client
+        .tasks()
+        .resolve(
+            task.getId().toString(),
+            new ResolveTask()
+                .withTransitionId("assign")
+                .withPayload(assigneePayload(shared.USER1_REF)));
+    awaitIncidentTask(
+        client, task.getId(), TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
+
+    client.tasks().resolve(task.getId().toString(), new ResolveTask().withTransitionId("new"));
+
+    Task returned = awaitIncidentTask(client, task.getId(), TaskEntityStatus.Open, "new", null);
+    assertTrue(returned.getAssignees() == null || returned.getAssignees().isEmpty());
+    assertLatestTcrsEventually(client, task.getId(), TestCaseResolutionStatusTypes.New, null);
+    client.tasks().resolve(task.getId().toString(), new ResolveTask().withTransitionId("ack"));
+    Task acknowledged =
+        awaitIncidentTask(client, task.getId(), TaskEntityStatus.InProgress, "ack", null);
+    assertTrue(
+        acknowledged.getAssignees() == null || acknowledged.getAssignees().isEmpty(),
+        "a later stage must not restore the old process assignees");
+  }
+
+  @Test
   void testBulkNewOnOpenIncident_MovesItBackToNew(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 

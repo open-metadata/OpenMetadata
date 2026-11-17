@@ -24,6 +24,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.utils.JsonUtils;
 
 class IncidentWorkflowTransitionMigrationTest {
@@ -49,6 +51,28 @@ class IncidentWorkflowTransitionMigrationTest {
 
     assertEquals(1, countTransitions(definition, "AssignedStage", "new"));
     assertEquals(1, countEdges(definition, "AssignedStage", "NewStage", "new"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"AssignedStage", "NewStage"})
+  void leavesCustomizedStageNamesUnchanged(String stageName) throws IOException {
+    ObjectNode definition = seedWithoutAssignedToNew();
+    ((ObjectNode) nodeNamed(definition, stageName)).put("name", "CustomStage");
+    ObjectNode original = definition.deepCopy();
+
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertEquals(original, definition);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"AssignedStage", "NewStage"})
+  void leavesCustomizedStageIdsUnchanged(String stageName) throws IOException {
+    ObjectNode definition = seedWithoutAssignedToNew();
+    ((ObjectNode) nodeNamed(definition, stageName).path("config")).put("stageId", "custom");
+    ObjectNode original = definition.deepCopy();
+
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertEquals(original, definition);
   }
 
   private static ObjectNode seedWithoutAssignedToNew() throws IOException {

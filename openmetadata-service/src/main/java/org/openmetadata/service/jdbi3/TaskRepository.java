@@ -24,6 +24,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -83,6 +84,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskFieldTarget;
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
@@ -953,9 +955,49 @@ public class TaskRepository extends EntityRepository<Task> {
       ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
-    return TaskWorkflowHandler.getInstance()
-        .resolveTask(
-            task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
+    boolean returningToNew =
+        task.getType() == TaskEntityType.TestCaseResolution
+            && IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId);
+    List<EntityReference> previousAssignees = List.of();
+    if (returningToNew) {
+      requireIncidentReturnToNew(task, transitionId);
+      Task current = get(null, task.getId(), getFields("*"));
+      previousAssignees = listOrEmpty(current.getAssignees());
+      task = replaceAssignees(current, List.of(), user);
+      ObjectNode payload =
+          resolvedPayload == null
+              ? JsonUtils.getObjectMapper().createObjectNode()
+              : (ObjectNode) JsonUtils.valueToTree(resolvedPayload);
+      payload.putArray("assignees");
+      resolvedPayload = payload;
+    }
+    try {
+      return TaskWorkflowHandler.getInstance()
+          .resolveTask(
+              task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
+    } catch (RuntimeException failure) {
+      // Both APIs clear assignment before Flowable computes the next stage's assignees. Restore
+      // the prior assignment if the transition is refused, without undoing a committed stage move.
+      if (returningToNew) {
+        Task current = get(null, task.getId(), getFields("*"));
+        if (Objects.equals(current.getWorkflowStageId(), task.getWorkflowStageId())) {
+          replaceAssignees(current, previousAssignees, user);
+        }
+      }
+      throw failure;
+    }
+  }
+
+  private static void requireIncidentReturnToNew(Task task, String transitionId) {
+    if (isTerminalStatus(task.getStatus())) {
+      rejectReopeningIncident(task);
+    }
+    if (TaskWorkflowLifecycleResolver.findTransition(task, transitionId) == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incident task %s cannot return to New from its current stage; its workflow predates the return-to-New transition",
+              task.getId()));
+    }
   }
 
   /**

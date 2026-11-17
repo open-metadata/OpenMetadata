@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -52,6 +53,7 @@ import org.openmetadata.service.migration.utils.v210.DataContractEntityReference
 import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
@@ -118,6 +120,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
             mockStatic(GlossaryAutomationReviewMigration.class);
+        MockedStatic<IncidentWorkflowTransitionMigration> incidentWorkflowMigration =
+            mockStatic(IncidentWorkflowTransitionMigration.class);
         MockedStatic<LineageEdgePipelineCleanupMigration> lineageEdgeCleanup =
             mockStatic(LineageEdgePipelineCleanupMigration.class);
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
@@ -174,7 +178,14 @@ class IngestionPipelineMigrationEntryPointTest {
         collationAlignment.verify(() -> EntityExtensionCollationAlignment.alignOnMySql(handle));
       }
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
-      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
+      workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)), times(2));
+      InOrder initializedBeforeIncidentMigration =
+          inOrder(WorkflowHandler.class, IncidentWorkflowTransitionMigration.class);
+      initializedBeforeIncidentMigration.verify(
+          workflowHandler, () -> WorkflowHandler.initialize(any(), eq(true)), times(2));
+      initializedBeforeIncidentMigration.verify(
+          incidentWorkflowMigration,
+          IncidentWorkflowTransitionMigration::addAssignedToNewTransition);
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(

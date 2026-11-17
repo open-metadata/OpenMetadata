@@ -740,22 +740,6 @@ public class TestCaseResolutionStatusRepository
     }
     String user =
         recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
-    boolean returningToNew =
-        recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New;
-    if (returningToNew
-        && TaskWorkflowLifecycleResolver.findTransition(task, transitionId) == null) {
-      // A task started before the return-to-New edge existed carries no such transition, and its
-      // Flowable process has no edge for it either. Refuse before any write.
-      throw new IllegalArgumentException(
-          String.format(
-              "Incident for %s cannot return to New from its current stage; its workflow predates the return-to-New transition",
-              recordFQN));
-    }
-    List<EntityReference> previousAssignees = task.getAssignees();
-    if (returningToNew) {
-      task = taskRepository.replaceAssignees(task, List.of(), user);
-    }
-
     TaskResolutionType resolutionType =
         recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.Resolved
             ? TaskResolutionType.Completed
@@ -763,17 +747,8 @@ public class TestCaseResolutionStatusRepository
     Object resolvedPayload = buildLegacyResolvedPayload(recordEntity);
     String comment = extractLegacyResolutionComment(recordEntity);
 
-    try {
-      taskRepository.resolveTaskWithWorkflow(
-          task, transitionId, resolutionType, null, resolvedPayload, comment, user);
-    } catch (RuntimeException e) {
-      // The assignee write is its own change, so put the previous assignees back when the
-      // transition does not go through.
-      if (returningToNew) {
-        taskRepository.replaceAssignees(task, previousAssignees, user);
-      }
-      throw e;
-    }
+    taskRepository.resolveTaskWithWorkflow(
+        task, transitionId, resolutionType, null, resolvedPayload, comment, user);
 
     LOG.info(
         "Applied legacy incident status {} to task {} using transition {}",
@@ -823,11 +798,6 @@ public class TestCaseResolutionStatusRepository
   }
 
   private Object buildLegacyResolvedPayload(TestCaseResolutionStatus recordEntity) {
-    if (recordEntity.getTestCaseResolutionStatusType() == TestCaseResolutionStatusTypes.New) {
-      // An empty assignee list also overwrites the workflow's taskAssignees, which would otherwise
-      // re-assign the previous assignee when the New stage computes its assignees.
-      return Map.of("assignees", List.of());
-    }
     if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Resolved) {
       if (recordEntity.getTestCaseResolutionStatusType()
           == TestCaseResolutionStatusTypes.Assigned) {

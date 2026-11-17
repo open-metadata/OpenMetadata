@@ -15,6 +15,8 @@ package org.openmetadata.it.tests;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -49,6 +51,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
@@ -70,11 +73,56 @@ public class IncidentWorkflowUpgradeIT {
 
   private static final String WORKFLOW_NAME = "TestCaseResolutionTaskWorkflow";
   private static final String ASSIGNED_STAGE = "AssignedStage";
+  private static final String LEGACY_ASSIGNED_STAGE = "LegacyAssignedStage";
   private static final String NEW_STAGE = "NewStage";
   private static final String NEW_TRANSITION = "new";
   private static final String ASSIGNED_STAGE_ID = "assigned";
   private static final String NEW_STAGE_ID = "new";
   private static final Duration TIMEOUT = Duration.ofSeconds(120);
+
+  @Test
+  void failedProcessMigrationDoesNotAdvertiseNewOrClearAssignees(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    try {
+      installPreUpgradeWorkflow();
+      renameAssignedStage(ASSIGNED_STAGE, LEGACY_ASSIGNED_STAGE);
+      TestCase testCase = createTestCase(client, ns);
+      createFailedTestResult(client, testCase);
+      Task task = awaitIncidentTask(client, testCase);
+      client
+          .testCaseResolutionStatuses()
+          .create(
+              new CreateTestCaseResolutionStatus()
+                  .withTestCaseReference(testCase.getFullyQualifiedName())
+                  .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                  .withTestCaseResolutionStatusDetails(
+                      new Assigned().withAssignee(SharedEntities.get().USER1_REF)));
+      awaitStage(client, task.getId(), ASSIGNED_STAGE_ID);
+      renameAssignedStage(LEGACY_ASSIGNED_STAGE, ASSIGNED_STAGE);
+      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+
+      Task unchanged =
+          client.tasks().get(task.getId().toString(), "assignees,availableTransitions");
+      assertFalse(
+          unchanged.getAvailableTransitions().stream()
+              .anyMatch(t -> NEW_TRANSITION.equals(t.getId())));
+      assertThrows(
+          OpenMetadataException.class,
+          () ->
+              client
+                  .testCaseResolutionStatuses()
+                  .create(
+                      new CreateTestCaseResolutionStatus()
+                          .withTestCaseReference(testCase.getFullyQualifiedName())
+                          .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)));
+      Task rejected = client.tasks().get(task.getId().toString(), "assignees");
+      assertEquals(ASSIGNED_STAGE_ID, rejected.getWorkflowStageId());
+      assertEquals(
+          SharedEntities.get().USER1_REF.getId(), rejected.getAssignees().getFirst().getId());
+    } finally {
+      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+    }
+  }
 
   @Test
   void incidentAssignedBeforeTheUpgradeReturnsToNew(TestNamespace ns) {
@@ -95,6 +143,12 @@ public class IncidentWorkflowUpgradeIT {
       awaitStage(client, task.getId(), ASSIGNED_STAGE_ID);
 
       IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      Double migratedVersion = client.tasks().get(task.getId().toString()).getVersion();
+      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      assertEquals(
+          migratedVersion,
+          client.tasks().get(task.getId().toString()).getVersion(),
+          "retrying the backfill must not rewrite an already refreshed task");
 
       client
           .testCaseResolutionStatuses()
@@ -108,6 +162,27 @@ public class IncidentWorkflowUpgradeIT {
     } finally {
       IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
     }
+  }
+
+  private void renameAssignedStage(String from, String to) {
+    WorkflowDefinitionRepository repository =
+        (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
+    WorkflowDefinition definition = repository.findByNameOrNull(WORKFLOW_NAME, Include.NON_DELETED);
+    definition.getNodes().stream()
+        .filter(node -> from.equals(node.getName()))
+        .forEach(node -> node.setName(to));
+    definition
+        .getEdges()
+        .forEach(
+            edge -> {
+              if (from.equals(edge.getFrom())) {
+                edge.setFrom(to);
+              }
+              if (from.equals(edge.getTo())) {
+                edge.setTo(to);
+              }
+            });
+    repository.createOrUpdate(null, definition, Entity.ADMIN_USER_NAME);
   }
 
   private void installPreUpgradeWorkflow() {
