@@ -69,6 +69,8 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
  * Integration tests for task-first incident workflow.
@@ -413,6 +415,35 @@ public class IncidentTaskIntegrationIT {
 
     assertNotNull(ourTask, "Our incident task should be in the list");
     assertEquals(TaskCategory.Incident, ourTask.getCategory());
+  }
+
+  @Test
+  void testResolvedIncident_TaskApiCannotReopenIt(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createTestCase(client, ns, "incident-final-task-api");
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    resolveIncidentTask(client, task.getId());
+    Task resolved =
+        awaitIncidentTask(client, task.getId(), TaskEntityStatus.Completed, "resolved", null);
+
+    JsonNode patch =
+        JsonUtils.readTree("[{\"op\":\"replace\",\"path\":\"/status\",\"value\":\"Open\"}]");
+    assertThrows(
+        OpenMetadataException.class, () -> client.tasks().patch(task.getId().toString(), patch));
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            client
+                .tasks()
+                .resolve(task.getId().toString(), new ResolveTask().withTransitionId("new")));
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> repository.reopenTask(resolved, Entity.ADMIN_USER_NAME));
+    awaitIncidentTask(client, task.getId(), TaskEntityStatus.Completed, "resolved", null);
+    assertLatestTcrsEventually(client, task.getId(), TestCaseResolutionStatusTypes.Resolved, null);
+    assertEquals(1, countIncidentTasksForTestCase(client, testCase));
   }
 
   @Test

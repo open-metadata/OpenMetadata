@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskAvailableTransition;
+import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -219,7 +220,32 @@ public final class IncidentWorkflowTransitionMigration {
         && IncidentWorkflowStages.NEW_STAGE_ID.equals(
             newStage.path(CONFIG).path("stageId").asText())
         && assigned.path(CONFIG).path(TRANSITION_METADATA) instanceof ArrayNode
-        && definition.path(EDGES) instanceof ArrayNode;
+        && definition.path(EDGES) instanceof ArrayNode
+        && !hasConflictingNewTransition(assigned.path(CONFIG).path(TRANSITION_METADATA))
+        && !hasConflictingNewEdge(definition.path(EDGES));
+  }
+
+  private static boolean hasConflictingNewTransition(JsonNode transitions) {
+    for (JsonNode transition : transitions) {
+      if (IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transition.path(ID).asText())
+          && (!IncidentWorkflowStages.NEW_STAGE_ID.equals(transition.path("targetStageId").asText())
+              || !TaskEntityStatus.Open.value()
+                  .equals(transition.path("targetTaskStatus").asText()))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean hasConflictingNewEdge(JsonNode edges) {
+    for (JsonNode edge : edges) {
+      if (ASSIGNED_NODE_NAME.equals(edge.path(FROM).asText())
+          && IncidentWorkflowStages.NEW_TRANSITION_ID.equals(edge.path(CONDITION).asText())
+          && !NEW_NODE_NAME.equals(edge.path(TO).asText())) {
+        return true;
+      }
+    }
+    return false;
   }
 
   static boolean addMissingAssignedToNewPieces(ObjectNode definition) {

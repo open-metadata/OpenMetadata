@@ -960,16 +960,16 @@ public class TaskRepository extends EntityRepository<Task> {
             && IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId);
     List<EntityReference> previousAssignees = List.of();
     if (returningToNew) {
-      requireIncidentReturnToNew(task, transitionId);
       Task current = get(null, task.getId(), getFields("*"));
+      requireIncidentReturnToNew(current, transitionId);
       previousAssignees = listOrEmpty(current.getAssignees());
-      task = replaceAssignees(current, List.of(), user);
       ObjectNode payload =
           resolvedPayload == null
               ? JsonUtils.getObjectMapper().createObjectNode()
               : (ObjectNode) JsonUtils.valueToTree(resolvedPayload);
       payload.putArray("assignees");
       resolvedPayload = payload;
+      task = replaceAssignees(current, List.of(), user);
     }
     try {
       return TaskWorkflowHandler.getInstance()

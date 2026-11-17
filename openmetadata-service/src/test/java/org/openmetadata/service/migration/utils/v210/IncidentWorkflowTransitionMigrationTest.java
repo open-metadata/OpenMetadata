@@ -75,6 +75,34 @@ class IncidentWorkflowTransitionMigrationTest {
     assertEquals(original, definition);
   }
 
+  @Test
+  void leavesAConflictingCustomTransitionUnchanged() throws IOException {
+    ObjectNode definition = seedWithoutAssignedToNew();
+    ((ArrayNode) nodeNamed(definition, "AssignedStage").path("config").path("transitionMetadata"))
+        .addObject()
+        .put("id", "new")
+        .put("targetStageId", "ack")
+        .put("targetTaskStatus", "InProgress");
+    ObjectNode original = definition.deepCopy();
+
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertEquals(original, definition);
+  }
+
+  @Test
+  void leavesAConflictingCustomEdgeUnchanged() throws IOException {
+    ObjectNode definition = seedWithoutAssignedToNew();
+    ((ArrayNode) definition.path("edges"))
+        .addObject()
+        .put("from", "AssignedStage")
+        .put("to", "AckStage")
+        .put("condition", "new");
+    ObjectNode original = definition.deepCopy();
+
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertEquals(original, definition);
+  }
+
   private static ObjectNode seedWithoutAssignedToNew() throws IOException {
     ObjectNode definition = readSeed();
     JsonNode assignedNode = nodeNamed(definition, "AssignedStage");

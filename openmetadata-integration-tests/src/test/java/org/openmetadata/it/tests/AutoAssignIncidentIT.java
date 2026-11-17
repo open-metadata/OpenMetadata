@@ -20,7 +20,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -38,6 +37,7 @@ import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -171,19 +171,44 @@ public class AutoAssignIncidentIT {
   }
 
   private void setWorkflowAutoAssignOwners(OpenMetadataClient client, boolean enabled) {
-    String workflowId =
-        client.workflowDefinitions().getByName(WORKFLOW_NAME, "deployed").getId().toString();
-    JsonNode patch =
-        JsonUtils.readTree(
-            "[{\"op\": \"add\", \"path\": \"/config/autoAssignOwners\", \"value\": %s}]"
-                .formatted(enabled));
-    client
-        .getHttpClient()
-        .executeForString(
-            HttpMethod.PATCH,
-            "/v1/governance/workflowDefinitions/" + workflowId,
-            patch,
-            RequestOptions.builder().build());
+    CreateWorkflowDefinition request =
+        JsonUtils.convertValue(
+            client.workflowDefinitions().getByName(WORKFLOW_NAME), CreateWorkflowDefinition.class);
+    request.getConfig().setAutoAssignOwners(enabled);
+    assertEquals(
+        enabled, client.workflowDefinitions().upsert(request).getConfig().getAutoAssignOwners());
+  }
+
+  @Test
+  void workflowCreateAndUpdatePreserveOwnerAutoAssignment(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateWorkflowDefinition request =
+        JsonUtils.convertValue(
+            client.workflowDefinitions().getByName(WORKFLOW_NAME), CreateWorkflowDefinition.class);
+    request.setName("ownerConfig" + ns.shortPrefix());
+    request.getConfig().setAutoAssignOwners(false);
+    var created = client.workflowDefinitions().create(request);
+    try {
+      assertFalse(created.getConfig().getAutoAssignOwners());
+      assertFalse(
+          client
+              .workflowDefinitions()
+              .get(created.getId().toString())
+              .getConfig()
+              .getAutoAssignOwners());
+      request.getConfig().setAutoAssignOwners(true);
+      assertTrue(client.workflowDefinitions().upsert(request).getConfig().getAutoAssignOwners());
+      request.getConfig().setAutoAssignOwners(false);
+      assertFalse(client.workflowDefinitions().upsert(request).getConfig().getAutoAssignOwners());
+      assertFalse(
+          client
+              .workflowDefinitions()
+              .get(created.getId().toString())
+              .getConfig()
+              .getAutoAssignOwners());
+    } finally {
+      client.workflowDefinitions().delete(created.getId());
+    }
   }
 
   @Test
