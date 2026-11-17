@@ -2,12 +2,14 @@ package org.openmetadata.mcp;
 
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.jetty.MutableServletContextHandler;
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerFeatures;
 import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpSchema;
 import jakarta.servlet.DispatcherType;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
@@ -18,6 +20,7 @@ import org.openmetadata.mcp.server.auth.util.UriUtils;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
+import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -31,6 +34,7 @@ import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 
 @Slf4j
 public class McpServer implements McpServerProvider {
@@ -287,42 +291,64 @@ public class McpServer implements McpServerProvider {
 
   protected McpStatelessServerFeatures.SyncToolSpecification getTool(McpSchema.Tool tool) {
     return new McpStatelessServerFeatures.SyncToolSpecification(
-        tool,
-        (context, req) -> {
-          CatalogSecurityContext securityContext =
-              jwtFilter.getCatalogSecurityContext((String) context.get("Authorization"));
-          String userName = securityContext.getUserPrincipal().getName();
-          String clientName =
-              (String)
-                  context.get(org.openmetadata.mcp.AuthEnrichedMcpContextExtractor.CLIENT_NAME);
-          org.openmetadata.mcp.tools.DefaultToolContext.CallToolOutcome outcome = null;
-          try {
-            ImpersonationContext.setImpersonatedBy(getMcpBotName());
-            outcome =
-                toolContext.callToolWithMetadata(
-                    authorizer, limits, tool.name(), securityContext, req);
-            return outcome.result();
-          } finally {
-            boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
-            Long latencyMs = outcome != null ? outcome.latencyMs() : null;
-            org.openmetadata.schema.entity.app.mcp.McpToolCallUsage.ErrorCategory category =
-                outcome != null ? outcome.errorCategory() : null;
-            McpUsageRecorder.record(
-                tool.name(), userName, success, latencyMs, category, clientName);
-            ImpersonationContext.clear();
-          }
-        });
+        tool, (context, req) -> runInCleanRequestContext(() -> executeTool(tool, context, req)));
   }
 
-  private McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
+  private McpSchema.CallToolResult executeTool(
+      McpSchema.Tool tool, McpTransportContext context, McpSchema.CallToolRequest req) {
+    CatalogSecurityContext securityContext =
+        jwtFilter.getCatalogSecurityContext(
+            (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER));
+    String userName = securityContext.getUserPrincipal().getName();
+    String clientName = (String) context.get(AuthEnrichedMcpContextExtractor.CLIENT_NAME);
+    DefaultToolContext.CallToolOutcome outcome = null;
+    try {
+      ImpersonationContext.setImpersonatedBy(getMcpBotName());
+      outcome =
+          toolContext.callToolWithMetadata(authorizer, limits, tool.name(), securityContext, req);
+      return outcome.result();
+    } finally {
+      recordUsage(tool.name(), userName, clientName, outcome);
+    }
+  }
+
+  private void recordUsage(
+      String toolName,
+      String userName,
+      String clientName,
+      DefaultToolContext.CallToolOutcome outcome) {
+    boolean success = outcome != null && !Boolean.TRUE.equals(outcome.result().isError());
+    Long latencyMs = outcome != null ? outcome.latencyMs() : null;
+    McpToolCallUsage.ErrorCategory category = outcome != null ? outcome.errorCategory() : null;
+    McpUsageRecorder.record(toolName, userName, success, latencyMs, category, clientName);
+  }
+
+  McpStatelessServerFeatures.SyncPromptSpecification getPrompt(McpSchema.Prompt prompt) {
     return new McpStatelessServerFeatures.SyncPromptSpecification(
         prompt,
         (context, arguments) ->
-            promptsContext.callPrompt(
-                jwtFilter.getCatalogSecurityContext(
-                    (String) context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER)),
-                prompt.name(),
-                arguments));
+            runInCleanRequestContext(
+                () ->
+                    promptsContext.callPrompt(
+                        jwtFilter.getCatalogSecurityContext(
+                            (String)
+                                context.get(AuthEnrichedMcpContextExtractor.AUTHORIZATION_HEADER)),
+                        prompt.name(),
+                        arguments)));
+  }
+
+  /**
+   * The SDK runs each callback on a Reactor bounded-elastic worker that outlives the call, so the
+   * entity cache and impersonation state a call leaves on its thread would otherwise answer the
+   * next call that lands there. A servlet filter cannot clear them: it runs on a different thread.
+   */
+  private static <T> T runInCleanRequestContext(Supplier<T> callback) {
+    PerRequestContextCleaner.clear();
+    try {
+      return callback.get();
+    } finally {
+      PerRequestContextCleaner.clear();
+    }
   }
 
   private String getBaseUrlFromConfig() {
