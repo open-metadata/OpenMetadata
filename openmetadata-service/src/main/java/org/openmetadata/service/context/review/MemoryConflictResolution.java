@@ -172,10 +172,11 @@ public final class MemoryConflictResolution {
   private static void apply(Verdict verdict, Task task, Decision decision) {
     ContextMemory reviewed = reviewedMemory(task);
     List<MemoryDispute> disputes = disputesOf(task, reviewed);
-    Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+    Map<UUID, ContextMemory> stored = storedDisputed(disputes);
+    Map<UUID, ContextMemory> disputed = stillDisputed(stored, archivedWithSources()::isMarked);
     requireNoneArchived(disputed.values());
     if (verdict == Verdict.APPROVE) {
-      requireNoLaterValue(reviewed, disputes, disputed, decision.user());
+      requireNoLaterValue(reviewed, disputes, stored, decision.user());
     }
     MemoryConflictDecision.requireComparedAsIs(decision.comparison(), reviewed, disputes, disputed);
     List<MemoryChange> changes =
@@ -198,18 +199,19 @@ public final class MemoryConflictResolution {
    * Approving over a claim another decision replaced since detection would leave two values
    * Approved, so the decision is refused. When the person deciding may read the value that replaced
    * it, the review is first pointed at it, written as that person, so they compare it; otherwise
-   * nothing is written and the memory needs a requeue.
+   * nothing is written and the memory needs a requeue. The chain starts at every disputed memory
+   * still stored: one a person deleted after another decision replaced it takes nothing back.
    */
   private static void requireNoLaterValue(
       ContextMemory reviewed,
       List<MemoryDispute> disputes,
-      Map<UUID, ContextMemory> disputed,
+      Map<UUID, ContextMemory> stored,
       String user) {
     Map<UUID, ContextMemory> later =
         reviewed.getEntityStatus() == ContextMemoryStatus.DRAFT
             ? laterValuesInUse(
                 MemoryConflictDecision.laterValues(
-                    reviewed, disputed, MemoryConflictResolution::live),
+                    reviewed, stored, MemoryConflictResolution::live),
                 archivedWithSources()::isMarked)
             : Map.of();
     if (!later.isEmpty()) {
@@ -352,8 +354,8 @@ public final class MemoryConflictResolution {
         Entity.CONTEXT_MEMORY, about.getId(), DISPUTED_FIELDS, Include.NON_DELETED);
   }
 
-  /** Archived ones included; a permanently deleted one is gone, and the decision skips it. */
-  private static Map<UUID, ContextMemory> disputedMemories(List<MemoryDispute> disputes) {
+  /** Archived and deleted ones included; a permanently deleted one is gone, and is skipped. */
+  private static Map<UUID, ContextMemory> storedDisputed(List<MemoryDispute> disputes) {
     Map<UUID, ContextMemory> disputed = new HashMap<>();
     disputes.forEach(
         dispute -> {
@@ -365,7 +367,7 @@ public final class MemoryConflictResolution {
             LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
           }
         });
-    return stillDisputed(disputed, archivedWithSources()::isMarked);
+    return disputed;
   }
 
   /**

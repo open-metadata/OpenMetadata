@@ -368,6 +368,34 @@ public class ContextMemoryConflictReviewIT {
   }
 
   /**
+   * Deleting the original after another decision replaced it takes nothing back: the review is
+   * pointed at the value that replaced it rather than approved next to it.
+   */
+  @Test
+  void aReviewIsPointedPastADeletedOriginalToTheValueThatReplacedIt(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "gone-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory eight = heldAgainst(ns, "gone-eight", table, original);
+    ContextMemory seven = heldAgainst(ns, "gone-seven", table, original);
+    Task sevenReview = openTask(seven);
+    resolve(SdkClients.adminClient(), openTask(eight), "approve", TaskResolutionType.Approved);
+    admin().delete(idOf(original));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(), sevenReview, "approve", TaskResolutionType.Approved));
+
+    assertEquals(412, refused.getStatusCode());
+    assertEquals(List.of(eight.getId()), disputedIds(admin().get(idOf(seven))));
+    assertEquals(ContextMemoryStatus.DRAFT, admin().get(idOf(seven)).getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, admin().get(idOf(eight)).getEntityStatus());
+  }
+
+  /**
    * The re-pointed dispute is written as the person deciding: one who may not read the value that
    * replaced the disputed memory is refused, and nothing is written.
    */
