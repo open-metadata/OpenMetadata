@@ -6415,6 +6415,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
   }
 
+  /**
+   * Rejects a glossary term that is not Approved and that {@code updated} newly applies to the
+   * entity or one of its fields. Edits an approval workflow holds are checked when they are staged,
+   * so a term is rejected before a change request is opened for it, not when the request is
+   * approved.
+   */
+  public final void checkNewlyAppliedGlossaryTermsApproved(
+      final EntityInterface original, final EntityInterface updated) {
+    final T stored = entityClass.cast(original);
+    final T edited = entityClass.cast(updated);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        ApprovedGlossaryTermGuard.tagsByStoredTarget(
+            new ApprovedGlossaryTermGuard.TaggedEntity(edited, taggedFieldContainers(edited)),
+            new ApprovedGlossaryTermGuard.TaggedEntity(stored, taggedFieldContainers(stored))),
+        glossaryTagsByTarget(stored));
+  }
+
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
   final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
     return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
@@ -11247,12 +11264,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Runs before any write, and before consolidation rebases `original` onto the pre-session
     // version, so the baseline is the stored entity this request changes.
     private void checkNewlyAppliedGlossaryTermsApproved() {
-      ApprovedGlossaryTermGuard.checkNewlyApplied(
-          ApprovedGlossaryTermGuard.tagsByStoredTarget(
-              new ApprovedGlossaryTermGuard.TaggedEntity(updated, taggedFieldContainers(updated)),
-              new ApprovedGlossaryTermGuard.TaggedEntity(
-                  original, taggedFieldContainers(original))),
-          glossaryTagsByTarget(original));
+      EntityRepository.this.checkNewlyAppliedGlossaryTermsApproved(original, updated);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
