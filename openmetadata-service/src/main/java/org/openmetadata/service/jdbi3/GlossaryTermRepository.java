@@ -159,6 +159,8 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 @Slf4j
 public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
+  // The type of a validation row for an asset search has no document for.
+  private static final String NO_SEARCH_DOCUMENT_TYPE = "unknown";
   private static final String ES_MISSING_DATA =
       "Entity Details is unavailable in Elastic Search. Please reindex to get more Information.";
   private static final String UPDATE_FIELDS =
@@ -1896,7 +1898,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           success.add(
               new BulkResponse()
                   .withRequest(
-                      new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"))
+                      new EntityReference()
+                          .withFullyQualifiedName(fqnHash)
+                          .withType(NO_SEARCH_DOCUMENT_TYPE))
                   .withMessage(ES_MISSING_DATA));
         }
         result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
@@ -1907,7 +1911,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
           failures.add(
               new BulkResponse()
                   .withRequest(
-                      new EntityReference().withFullyQualifiedName(fqnHash).withType("unknown"))
+                      new EntityReference()
+                          .withFullyQualifiedName(fqnHash)
+                          .withType(NO_SEARCH_DOCUMENT_TYPE))
                   .withMessage(String.format("%s %s", ex.getMessage(), ES_MISSING_DATA)));
         }
         result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
@@ -1967,7 +1973,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   private static List<BulkResponse> rowsKept(
       List<BulkResponse> rows, Predicate<BulkResponse> isViewable) {
-    return listOrEmpty(rows).stream().filter(isViewable).toList();
+    return listOrEmpty(rows).stream()
+        .filter(isViewable)
+        .map(GlossaryTermRepository::withoutAssetDetails)
+        .toList();
+  }
+
+  /** A row for an asset search has no document for keeps only the generic message. */
+  private static BulkResponse withoutAssetDetails(BulkResponse row) {
+    return isNoSearchDocument(row)
+        ? new BulkResponse()
+            .withRequest(row.getRequest())
+            .withStatus(row.getStatus())
+            .withHasSideEffects(row.getHasSideEffects())
+            .withMessage(ES_MISSING_DATA)
+        : row;
   }
 
   /** The entity whose view permission decides a row: the asset, or a column's table. */
@@ -2017,10 +2037,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
    * document for, which carries only an FQN hash).
    */
   private static boolean namesNoAsset(BulkResponse row) {
-    return row.getRequest() == null
-        || (row.getRequest() instanceof EntityReference ref
-            && ref.getId() == null
-            && "unknown".equals(ref.getType()));
+    return row.getRequest() == null || isNoSearchDocument(row);
+  }
+
+  private static boolean isNoSearchDocument(BulkResponse row) {
+    return row.getRequest() instanceof EntityReference ref
+        && ref.getId() == null
+        && NO_SEARCH_DOCUMENT_TYPE.equals(ref.getType());
   }
 
   private static EntityReference assetOf(BulkResponse row) {
