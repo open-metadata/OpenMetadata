@@ -130,14 +130,16 @@ final class OntologyWorkingModel {
           ontologyId, subjectHashes.subList(half, subjectHashes.size()), changedIds);
     } else {
       requireBound(rules.size());
-      requireNoDuplicate(rules, changedIds);
+      requireNoDuplicate(
+          rules.stream().map(json -> JsonUtils.readValue(json, OntologyAxiom.class)).toList(),
+          changedIds);
     }
   }
 
-  private static void requireNoDuplicate(final List<String> rules, final Set<UUID> changedIds) {
+  private static void requireNoDuplicate(
+      final List<OntologyAxiom> rules, final Set<UUID> changedIds) {
     final Map<String, OntologyAxiom> bySignature = new HashMap<>();
-    for (final String json : rules) {
-      final OntologyAxiom rule = JsonUtils.readValue(json, OntologyAxiom.class);
+    for (final OntologyAxiom rule : rules) {
       final OntologyAxiom earlier =
           bySignature.putIfAbsent(NativeOntologyDocument.signature(rule), rule);
       if (earlier != null
@@ -155,10 +157,32 @@ final class OntologyWorkingModel {
   }
 
   OntologyProfileReport validate(final OntologyAxiom proposed) {
+    requireNotADuplicate(proposed);
     final var context = new Context(proposed.getOntology().getId(), false, true);
     context.add(proposed, true);
     context.expand();
     return OntologyStructureValidator.validateWorking(context.values(), context.affected);
+  }
+
+  /**
+   * A dry run refuses a duplicate the way the save would, so the Studio never shows a rule as
+   * valid that create then rejects. A plain read: a validation holds no locks. The proposed rule
+   * replaces its own stored revision, so re-validating an unchanged rule is not a duplicate.
+   */
+  private void requireNotADuplicate(final OntologyAxiom proposed) {
+    final List<OntologyAxiom> rules = new ArrayList<>(List.of(proposed));
+    dao
+        .ontologyReferenceDAO()
+        .axiomsOfSubjects(
+            proposed.getOntology().getId(),
+            List.of(DigestUtils.sha256Hex(proposed.getSubjectIri().toString())),
+            LIMIT + 1,
+            "")
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))
+        .filter(rule -> !rule.getId().equals(proposed.getId()))
+        .forEach(rules::add);
+    requireNoDuplicate(rules, Set.of(proposed.getId()));
   }
 
   private static ObjectNode structure(final OntologyDefinition value) {
