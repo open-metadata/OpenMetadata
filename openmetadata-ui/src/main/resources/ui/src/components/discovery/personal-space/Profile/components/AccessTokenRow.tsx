@@ -24,7 +24,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Eye,
   EyeOff,
   Key01,
@@ -57,6 +56,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
+import CopyButton from '../../../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 const AI_PROFILE_TOKEN_NAME = 'ai-profile-token';
@@ -171,7 +171,6 @@ const AccessTokenDetails = ({
   reveal,
   setReveal,
   canReveal,
-  handleCopy,
   isLoading,
   isLimitReached,
   handleRegenerate,
@@ -185,7 +184,6 @@ const AccessTokenDetails = ({
   reveal: boolean;
   setReveal: Dispatch<SetStateAction<boolean>>;
   canReveal: boolean;
-  handleCopy: () => void;
   isLoading: boolean;
   isLimitReached: boolean;
   handleRegenerate: () => void;
@@ -243,15 +241,12 @@ const AccessTokenDetails = ({
             tooltip={t('label.show')}
             onClick={() => setReveal(!reveal)}
           />
-          <Button
-            color="secondary"
-            data-testid="copy-token"
-            iconLeading={Copy01}
-            isDisabled={!canReveal}
-            size="sm"
-            onClick={handleCopy}>
-            {t('label.copy')}
-          </Button>
+          <CopyButton
+            isDisabled={!canReveal || !token?.jwtToken}
+            label={t('label.copy')}
+            testId="copy-token"
+            value={token?.jwtToken ?? ''}
+          />
         </Box>
       </Box>
 
@@ -421,23 +416,6 @@ const AccessTokenRow: React.FC = () => {
     }
   };
 
-  const handleCopy = async () => {
-    if (!token?.jwtToken) {
-      return;
-    }
-    if (!navigator.clipboard?.writeText) {
-      showErrorToast(t('message.clipboard-not-available') as string);
-
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(token.jwtToken);
-      showSuccessToast(t('label.copied'));
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
-
   if (isFetching) {
     return <AccessTokenLoadingSkeleton />;
   }
@@ -470,7 +448,6 @@ const AccessTokenRow: React.FC = () => {
     <AccessTokenDetails
       canReveal={canReveal}
       expiryDate={expiryDate}
-      handleCopy={handleCopy}
       handleRegenerate={handleRegenerate}
       handleRevoke={handleRevoke}
       isLimitReached={isLimitReached}

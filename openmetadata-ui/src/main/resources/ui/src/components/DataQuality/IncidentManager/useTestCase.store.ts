@@ -10,10 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { pick } from 'lodash';
 import { create } from 'zustand';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TestCase } from '../../../generated/tests/testCase';
 import { EntityLineageResponse } from '../../../interface/lineage.interface';
+
+/**
+ * Fields the page fetches by name that PATCH and restore responses leave out.
+ * Only these are carried over: any other key a response omits was removed.
+ */
+const FETCHED_ONLY_FIELDS = [
+  'testCaseResult',
+  'incidentId',
+  'incidentStatus',
+] as const;
+
+export const keepFetchedOnlyFields = (
+  loaded: TestCase | undefined,
+  response: TestCase
+): TestCase => ({ ...pick(loaded, FETCHED_ONLY_FIELDS), ...response });
 
 export interface UseTestCaseStoreInterface {
   testCase: TestCase | undefined;
@@ -26,6 +42,8 @@ export interface UseTestCaseStoreInterface {
   ) => void;
   setIsPermissionLoading: (isPermissionLoading: boolean) => void;
   setTestCase: (testCase: TestCase) => void;
+  /** Applies a PATCH response, keeping the fields it leaves out. */
+  mergeTestCase: (testCase: TestCase) => void;
   setIsLoading: (isLoading: boolean) => void;
   setShowAILearningBanner: (showBanner: boolean) => void;
   reset: () => void;
@@ -52,6 +70,11 @@ export const useTestCaseStore = create<UseTestCaseStoreInterface>()((set) => ({
   selectedRunTimestamp: undefined,
   setTestCase: (testCase: TestCase) => {
     set({ testCase });
+  },
+  mergeTestCase: (testCase: TestCase) => {
+    set((state) => ({
+      testCase: keepFetchedOnlyFields(state.testCase, testCase),
+    }));
   },
   setTestCasePermission: (
     testCasePermission: OperationPermission | undefined

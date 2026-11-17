@@ -485,10 +485,12 @@ class MicrostrategySource(DashboardServiceSource):
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
         keys = Counter(normalized(available_object.name or "") for available_object in objects.values())
         ambiguous = {key for key, count in keys.items() if count > 1}
+        names = Counter((available_object.name or "").casefold() for available_object in objects.values())
+        repeated = {name for name, count in names.items() if count > 1}
         lineage = []
         for available_object in objects.values():
             for target, columns in self._object_columns(
-                project_id, available_object, data_import, reads, targets, ambiguous
+                project_id, available_object, data_import, reads, targets, ambiguous, repeated
             ):
                 from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
                 if from_columns:
@@ -508,6 +510,7 @@ class MicrostrategySource(DashboardServiceSource):
         reads: set[SourceColumn],
         targets: dict[str, str],
         ambiguous: set[str],
+        repeated: set[str],
     ) -> Iterable[tuple[str, set[str]]]:
         """
         (data model column FQN, warehouse columns of this table it reads) for one dataset object.
@@ -518,7 +521,7 @@ class MicrostrategySource(DashboardServiceSource):
         if not target:
             return
         if data_import:
-            match = name_match(available_object.name or "", {column for _, column in reads}, ambiguous)
+            match = name_match(available_object.name or "", {column for _, column in reads}, ambiguous, repeated)
             columns = {match} if match else set()
         elif available_object.type == "attribute":
             form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}

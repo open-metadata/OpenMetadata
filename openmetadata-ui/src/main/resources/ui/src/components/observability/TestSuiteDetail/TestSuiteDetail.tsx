@@ -13,7 +13,6 @@
 import {
   Box,
   Button,
-  ButtonUtility,
   Dialog,
   DialogTrigger,
   FeaturedIcon,
@@ -25,18 +24,14 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Copy01,
-  TestSuite as TestSuiteIcon,
-} from '@openmetadata/ui-core-components/icons';
+import { TestSuite as TestSuiteIcon } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { ComponentProps, useCallback, useMemo } from 'react';
+import { ComponentProps, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import '../../../pages/TestSuiteDetailsPage/test-suite-details-page.less';
 import { useTestSuiteDetailsPage } from '../../../pages/TestSuiteDetailsPage/useTestSuiteDetailsPage';
@@ -45,6 +40,7 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { useListSearchInput } from '../../common/atoms/navigation/useListSearchInput';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import { DomainLabel } from '../../common/DomainLabel/DomainLabel.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -269,17 +265,6 @@ const TestSuiteDetail = () => {
     [t, testSuite]
   );
 
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-
-  const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard(globalThis.location.href);
-  }, [onCopyToClipBoard]);
-
-  const getCopyTooltipTitle = () =>
-    hasCopied
-      ? t('message.link-copy-to-clipboard')
-      : t('label.copy-item', { item: t('label.url-uppercase') });
-
   const activeTabContent = useMemo(() => {
     const renderDescription = () => (
       <div className="tw:w-full">
@@ -442,12 +427,12 @@ const TestSuiteDetail = () => {
                     displayName={testSuite?.displayName}
                     name={testSuite?.name}
                   />
-                  <ButtonUtility
-                    data-testid="entity-header-copy-button"
-                    icon={Copy01}
-                    size="lg"
-                    tooltip={getCopyTooltipTitle()}
-                    onClick={handleCopyEntityUrl}
+                  <CopyButton
+                    testId="entity-header-copy-button"
+                    tooltip={t('label.copy-item', {
+                      item: t('label.url-uppercase'),
+                    })}
+                    value={globalThis.location.href}
                   />
                 </Box>
               </Box>
