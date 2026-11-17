@@ -214,9 +214,15 @@ class QueryParserTests(TestCase):
             "select * from identifier( 'orders' ) o": "select * from orders o",
             """select * from Identifier('"My Db"."My Schema"."Orders"')""": """select * from "My Db"."My Schema"."Orders\"""",
             "select a from IDENTIFIER('t1') join IDENTIFIER('t2') using (a)": "select a from t1 join t2 using (a)",
+            "select * from IDENTIFIER('my_db.my_schema.orders')where id = 1": (
+                "select * from my_db.my_schema.orders where id = 1"
+            ),
+            r"select 'it\'s' as note from IDENTIFIER('orders')": r"select 'it\'s' as note from orders",
+            "select $$it's ok$$ as note from IDENTIFIER('orders')": "select $$it's ok$$ as note from orders",
         }
-        for query, expected in rewritten.items():
-            self.assertEqual(LineageParser.clean_raw_query(query), expected)
+        for dialect in (Dialect.SNOWFLAKE, Dialect.DATABRICKS):
+            for query, expected in rewritten.items():
+                self.assertEqual(LineageParser.clean_raw_query(query, dialect), expected)
 
         untouched = [
             "select * from IDENTIFIER($table_name)",
@@ -224,14 +230,22 @@ class QueryParserTests(TestCase):
             "select * from IDENTIFIER(?)",
             "select * from IDENTIFIER('my_db.' || $table_name)",
             "select * from IDENTIFIER('my_db.my_schema.it''s')",
+            r"""select * from IDENTIFIER('"my\\table"')""",
             "select * from IDENTIFIER('')",
             "select my_identifier('orders') from my_table",
             "select my_schema.identifier('orders') from my_table",
+            "select my_schema . identifier('orders') from my_table",
+            "select my_schema./* comment */identifier('orders') from my_table",
             "select 'from IDENTIFIER(' || name || ')' from my_table",
             "select note from my_table where note = 'IDENTIFIER(''orders'')'",
+            "select $$IDENTIFIER('orders')$$ as note from my_table",
         ]
         for query in untouched:
-            self.assertEqual(LineageParser.clean_raw_query(query), query)
+            self.assertEqual(LineageParser.clean_raw_query(query, Dialect.SNOWFLAKE), query)
+
+        for dialect in (Dialect.ANSI, Dialect.POSTGRES):
+            for query in rewritten:
+                self.assertEqual(LineageParser.clean_raw_query(query, dialect), query)
 
     def test_identifier_literal_lineage(self):
         """

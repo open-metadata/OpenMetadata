@@ -75,11 +75,29 @@ LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
 
-# String literals, quoted names and comments are matched too so that text inside them is never rewritten
+IDENTIFIER_LITERAL_DIALECTS = {Dialect.SNOWFLAKE, Dialect.DATABRICKS}
+
+# Only the first alternative is rewritten; the rest are spans whose text must stay as it is
 IDENTIFIER_LITERAL = re.compile(
-    r"""(?<![\w$.])identifier\s*\(\s*'([^']+)'\s*\)|'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|/\*.*?\*/""",
-    flags=re.IGNORECASE | re.DOTALL,
+    r"""
+    (?<![\w$.])identifier\s*\(\s*'(?P<name>[^'\\]+)'\s*\)
+    | '(?:[^'\\]|\\.|'')*'                      # string literal
+    | "(?:[^"]|"")*"                             # quoted name
+    | \$\$.*?\$\$                                # dollar-quoted string
+    | --[^\n]* | /\*.*?\*/                        # comments
+    | \.\s*(?:/\*.*?\*/\s*)*identifier\b          # schema-qualified function call
+    """,
+    flags=re.IGNORECASE | re.DOTALL | re.VERBOSE,
 )
+
+
+def _replace_identifier_literal(match: re.Match) -> str:
+    """The name inside IDENTIFIER('<name>'), kept apart from a token that follows the parenthesis"""
+    name = match.group("name")
+    if name is None:
+        return match.group(0)
+    following = match.string[match.end() : match.end() + 1]
+    return f"{name} " if following.isalnum() or following in ("_", "$", '"') else name
 
 
 def _sqlglot_dialect(dialect: Dialect) -> DialectType:
@@ -237,7 +255,7 @@ class LineageParser:
         self.query_parsing_failure_reason = None
         self.dialect = dialect
         self.masked_query = None
-        self._clean_query = self.clean_raw_query(query)
+        self._clean_query = self.clean_raw_query(query, dialect)
         if self._clean_query and dialect == Dialect.TSQL:
             self._clean_query = rewrite_switch_statements(self._clean_query)
         self.parser = self._evaluate_best_parser(
@@ -644,7 +662,7 @@ class LineageParser:
         return [self.clean_table_name(table) for table in tables if isinstance(table, (Table, DataFunction, Location))]
 
     @classmethod
-    def clean_raw_query(cls, raw_query: str) -> str | None:
+    def clean_raw_query(cls, raw_query: str, dialect: Dialect = Dialect.ANSI) -> str | None:
         """
         Given a raw query from any input (e.g., view definition,
         query from logs, etc.), perform a cleaning step
@@ -657,7 +675,8 @@ class LineageParser:
         )
 
         clean_query = clean_query.replace("\\n", "\n")
-        clean_query = IDENTIFIER_LITERAL.sub(lambda match: match.group(1) or match.group(0), clean_query)
+        if dialect in IDENTIFIER_LITERAL_DIALECTS:
+            clean_query = IDENTIFIER_LITERAL.sub(_replace_identifier_literal, clean_query)
 
         if insensitive_match(clean_query, r"\s*/\*.*?\*/\s*merge.*into.*?when matched.*?"):
             clean_query = insensitive_replace(
