@@ -59,7 +59,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * version of the file saved after the edit lists every tag under the stored FQN, and one row can be
  * the tag of both. The file's FQN is still repaired, its rows are left where they are, and the
  * file, both FQNs and the other entities are logged for repair by hand. A table a later migration
- * creates, as one of a server built on this one, holds no entity yet and is not looked up.
+ * creates, as one of a server built on this one, holds no entity yet, so it does not stop the move.
  *
  * <p>A file's stored JSON carries its extracted text, up to 200,000 characters, so the scan reads
  * only each file's name, FQN and nameHash, and a rewrite loads one file at a time.

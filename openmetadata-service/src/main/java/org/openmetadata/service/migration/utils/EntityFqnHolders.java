@@ -13,8 +13,11 @@
 
 package org.openmetadata.service.migration.utils;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -28,15 +31,18 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * each entity table up by its name hash.
  *
  * <p>Migrations run before the server's own tables of later versions exist, while every entity
- * type of the running build is already registered. A table that does not exist yet holds no
- * entity, so it is not searched. A table that exists but cannot be searched is reported, so a
- * caller never takes a name it could not check as free. Table and column names come from the
- * registered DAOs, never from input, since SQL cannot bind them.
+ * type of the running build is already registered. A table the database reports as missing holds
+ * no entity yet. Any other failure is reported as a holder, so a caller never takes a name it could
+ * not check as free. Table and column names come from the registered DAOs, never from input, since
+ * SQL cannot bind them.
  */
 @Slf4j
 public final class EntityFqnHolders {
+  // MySQL's ER_NO_SUCH_TABLE and PostgreSQL's undefined_table.
+  private static final Set<String> MISSING_TABLE_STATES = Set.of("42S02", "42P01");
   private final Handle handle;
   private final List<EntityTable> tables;
+  private final Set<String> reportedMissing = new HashSet<>();
 
   /** The table an entity type is stored in, and its name hash column. */
   public record EntityTable(String entityType, String tableName, String nameHashColumn) {}
@@ -82,20 +88,8 @@ public final class EntityFqnHolders {
     return tables;
   }
 
-  /** Searches the given tables that exist in the database the handle is connected to. */
   public static EntityFqnHolders in(final Handle handle, final List<EntityTable> tables) {
-    List<EntityTable> existing = new ArrayList<>();
-    for (EntityTable table : tables) {
-      if (MigrationTableUtil.tableExists(handle, table.tableName())) {
-        existing.add(table);
-      } else {
-        LOG.info(
-            "Table {} does not exist yet, so it holds no {} and is not searched",
-            table.tableName(),
-            table.entityType());
-      }
-    }
-    return new EntityFqnHolders(handle, List.copyOf(existing));
+    return new EntityFqnHolders(handle, List.copyOf(tables));
   }
 
   public List<Holder> holding(final String fqn) {
@@ -123,7 +117,30 @@ public final class EntityFqnHolders {
           .map(id -> Holder.found(table.entityType(), id))
           .toList();
     } catch (Exception e) {
-      return List.of(Holder.notLookedUp(table.entityType(), e.getMessage()));
+      return missingTable(e) ? notCreatedYet(table) : notLookedUp(table, e);
     }
+  }
+
+  private List<Holder> notCreatedYet(final EntityTable table) {
+    if (reportedMissing.add(table.tableName())) {
+      LOG.info(
+          "Table {} does not exist yet, so it holds no {}", table.tableName(), table.entityType());
+    }
+    return List.of();
+  }
+
+  private static List<Holder> notLookedUp(final EntityTable table, final Exception e) {
+    return List.of(Holder.notLookedUp(table.entityType(), e.getMessage()));
+  }
+
+  /** Only the database's own "no such table" error proves the table holds nothing. */
+  private static boolean missingTable(final Throwable failure) {
+    boolean missing = false;
+    for (Throwable cause = failure; cause != null && !missing; cause = cause.getCause()) {
+      missing =
+          cause instanceof SQLException sqlException
+              && MISSING_TABLE_STATES.contains(sqlException.getSQLState());
+    }
+    return missing;
   }
 }

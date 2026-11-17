@@ -34,9 +34,10 @@ class EntityFqnHoldersIT {
   @Test
   void aTableALaterMigrationCreatesHoldsNoEntity(TestNamespace ns) {
     Folder folder = createRootFolder(ns.shortPrefix("Finance"));
+    // The missing table first: a failed query must not break the lookups after it.
     List<EntityTable> tables =
         List.of(
-            folderTable(), new EntityTable(NOT_CREATED_YET, "not_created_yet_entity", "nameHash"));
+            new EntityTable(NOT_CREATED_YET, "not_created_yet_entity", "nameHash"), folderTable());
 
     List<Holder> holders = holding(tables, folder.getFullyQualifiedName());
 
