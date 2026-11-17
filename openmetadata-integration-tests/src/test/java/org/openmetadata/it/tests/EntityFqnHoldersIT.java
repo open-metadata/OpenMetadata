@@ -4,11 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 
-import java.sql.SQLException;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.jdbi.v3.core.statement.SqlLogger;
-import org.jdbi.v3.core.statement.StatementContext;
+import java.util.UUID;
+import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -23,6 +21,7 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.migration.utils.EntityFqnHolders;
 import org.openmetadata.service.migration.utils.EntityFqnHolders.EntityTable;
 import org.openmetadata.service.migration.utils.EntityFqnHolders.Holder;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * A migration runs while every entity type of the running build is registered, but before the
@@ -48,28 +47,28 @@ class EntityFqnHoldersIT {
     assertEquals(List.of(FOLDER_ENTITY + " " + folder.getId()), descriptions(holders));
   }
 
+  /** A table found missing is not looked up again, even if it is created later in the run. */
   @Test
-  void aMissingTableIsQueriedOncePerRun(TestNamespace ns) {
-    List<EntityTable> tables =
-        List.of(new EntityTable(NOT_CREATED_YET, "not_created_yet_entity", "nameHash"));
-    AtomicInteger failedQueries = new AtomicInteger();
+  void aTableFoundMissingIsNotLookedUpAgain(TestNamespace ns) {
+    String tableName = "fqn_holders_" + UUID.randomUUID().toString().replace("-", "");
+    String fqn = ns.shortPrefix("created-later");
+    List<EntityTable> tables = List.of(new EntityTable(NOT_CREATED_YET, tableName, "nameHash"));
 
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle -> {
-              handle.setSqlLogger(
-                  new SqlLogger() {
-                    @Override
-                    public void logException(StatementContext context, SQLException ex) {
-                      failedQueries.incrementAndGet();
-                    }
-                  });
-              EntityFqnHolders lookup = EntityFqnHolders.in(handle, tables);
-              lookup.holding(ns.shortPrefix("first"));
-              lookup.holding(ns.shortPrefix("second"));
-            });
+    List<Holder> holders =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle -> {
+                  EntityFqnHolders lookup = EntityFqnHolders.in(handle, tables);
+                  lookup.holding(fqn);
+                  try {
+                    createTableHolding(handle, tableName, fqn);
+                    return lookup.holding(fqn);
+                  } finally {
+                    handle.execute("DROP TABLE IF EXISTS " + tableName);
+                  }
+                });
 
-    assertEquals(1, failedQueries.get(), "the second lookup does not query the missing table");
+    assertEquals(List.of(), holders);
   }
 
   @Test
@@ -97,6 +96,16 @@ class EntityFqnHoldersIT {
   private static List<Holder> holding(List<EntityTable> tables, String fqn) {
     return TestSuiteBootstrap.getJdbi()
         .withHandle(handle -> EntityFqnHolders.in(handle, tables).holding(fqn));
+  }
+
+  private static void createTableHolding(Handle handle, String tableName, String fqn) {
+    handle.execute(
+        "CREATE TABLE " + tableName + " (id VARCHAR(36) NOT NULL, nameHash VARCHAR(256) NOT NULL)");
+    handle
+        .createUpdate("INSERT INTO " + tableName + " (id, nameHash) VALUES (:id, :nameHash)")
+        .bind("id", UUID.randomUUID().toString())
+        .bind("nameHash", FullyQualifiedName.buildHash(fqn))
+        .execute();
   }
 
   private static EntityTable folderTable() {
