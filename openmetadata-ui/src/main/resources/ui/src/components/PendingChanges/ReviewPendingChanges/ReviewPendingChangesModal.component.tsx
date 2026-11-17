@@ -14,6 +14,7 @@ import {
   Badge,
   BadgeColors,
   BadgeWithIcon,
+  Box,
   Button,
   Dialog,
   Dot,
@@ -62,6 +63,7 @@ import { RequestHistory } from '../ChangeRequestTools/ChangeRequestTools.compone
 import {
   buildResolutions,
   DiffPart,
+  ElementChange,
   elementLabel,
   FieldGroup,
   groupSuggestions,
@@ -243,18 +245,89 @@ const verbOf = (suggestion: Suggestion, t: TFunction) => {
   return t('label.edited-lowercase');
 };
 
-const TextDiff = ({ before, after }: { before: string; after: string }) => (
-  <div className="tw:rounded-lg tw:border tw:border-secondary tw:px-3 tw:py-2.5 tw:text-sm tw:text-pretty">
-    {wordDiff(before, after).map((part) => (
-      <span className={DIFF_CLASSES[part.type]} key={part.id}>
-        {part.text}
-      </span>
-    ))}
-  </div>
-);
+const TextDiff = ({ before, after }: { before: string; after: string }) => {
+  // The diff is quadratic in the words compared; deciding another suggestion must not redo it.
+  const parts = useMemo(() => wordDiff(before, after), [before, after]);
+
+  return (
+    <div className="tw:rounded-lg tw:border tw:border-secondary tw:px-3 tw:py-2.5 tw:text-sm tw:text-pretty">
+      {parts.map((part) => (
+        <span className={DIFF_CLASSES[part.type]} key={part.id}>
+          {part.text}
+        </span>
+      ))}
+    </div>
+  );
+};
+
+// A bulk edit can touch hundreds of columns; the dialog lists the first ones until asked for all.
+const ELEMENT_CHANGES_SHOWN = 20;
+
+const ElementChanges = ({ changes }: { changes: ElementChange[] }) => {
+  const { t } = useTranslation();
+  const [showAll, setShowAll] = useState(false);
+  const shown = showAll ? changes : changes.slice(0, ELEMENT_CHANGES_SHOWN);
+
+  return (
+    <Box direction="col" gap={3}>
+      {shown.map((change) => (
+        <Box
+          data-testid="element-change"
+          direction="col"
+          gap={1}
+          key={change.element}>
+          <Box align="center" direction="row" gap={2}>
+            <Typography
+              className={
+                change.status === 'removed' ? 'tw:line-through' : undefined
+              }
+              size="text-xs"
+              weight="medium">
+              {change.element}
+            </Typography>
+            {change.status !== 'changed' && (
+              <Badge
+                color={change.status === 'added' ? 'success' : 'error'}
+                size="sm"
+                type="color">
+                {t(`label.${change.status}`)}
+              </Badge>
+            )}
+          </Box>
+          {change.properties.map(({ property, before, after }) => (
+            <Box direction="col" gap={1} key={property}>
+              <Typography color="secondary" size="text-xs">
+                {startCase(property)}
+              </Typography>
+              <TextDiff after={after} before={before} />
+            </Box>
+          ))}
+        </Box>
+      ))}
+      {changes.length > ELEMENT_CHANGES_SHOWN && (
+        <Button
+          className="tw:self-start"
+          color="link-color"
+          data-testid="element-changes-toggle"
+          size="sm"
+          onClick={() => setShowAll((all) => !all)}>
+          {showAll
+            ? t('label.show-less')
+            : t('label.show-more-count', {
+                shown: ELEMENT_CHANGES_SHOWN,
+                total: changes.length,
+              })}
+        </Button>
+      )}
+    </Box>
+  );
+};
 
 const SuggestionBody = ({ suggestion }: { suggestion: Suggestion }) => {
   const [first] = suggestion.ops;
+  if (suggestion.changes) {
+    return <ElementChanges changes={suggestion.changes} />;
+  }
   if (isTextChange(suggestion)) {
     return (
       <TextDiff

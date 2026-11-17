@@ -27,7 +27,6 @@ from metadata.generated.schema.tests.basic import (
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testSuite import TestSuite
 from metadata.generated.schema.type.basic import ComponentConfig
-from metadata.ingestion.api.status import TruncatedStackTraceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.data_quality import TestSuiteWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
@@ -364,7 +363,7 @@ def get_incompatible_column_type_config(workflow_config, sink_config, db_service
 class IncompatibleTypeParameter:
     entity_fqn: str
     test_case: TestCaseDefinition
-    expected_failure: TruncatedStackTraceError
+    expected_error: str
 
 
 @pytest.fixture(
@@ -380,11 +379,7 @@ class IncompatibleTypeParameter:
                     {"name": "maxValueForMaxInCol", "value": "10"},
                 ],
             ),
-            expected_failure=TruncatedStackTraceError(
-                name="Incompatible Column for Test Case",
-                error="Test case string_max_between of type columnValueMaxToBeBetween "
-                "is not compatible with column first_name of type VARCHAR",
-            ),
+            expected_error="Test definition 'columnValueMaxToBeBetween' does not support column type VARCHAR",
         ),
         IncompatibleTypeParameter(
             entity_fqn="{database_service}.dvdrental.public.customer",
@@ -393,11 +388,7 @@ class IncompatibleTypeParameter:
                 testDefinitionName="columnValuesToBeUnique",
                 columnName="json_field",
             ),
-            expected_failure=TruncatedStackTraceError(
-                name="Incompatible Column for Test Case",
-                error="Test case unique_json_column of type columnValuesToBeUnique "
-                "is not compatible with column json_field of type JSON",
-            ),
+            expected_error="Test definition 'columnValuesToBeUnique' does not support column type JSON",
         ),
     ],
     ids=lambda x: x.test_case.name,
@@ -427,10 +418,11 @@ def test_incompatible_column_type(
         TestCase,
         f"{parameters.entity_fqn}.{parameters.test_case.columnName}.{parameters.test_case.name}",
     )
-    assert_equal_pydantic_objects(
-        parameters.expected_failure,
-        test_suite_processor.steps[0].get_status().failures[0],
-    )
+    # The server rejects the test case at create, so the runner reports it against the table
+    failure = test_suite_processor.steps[0].get_status().failures[0]
+    assert failure.name == parameters.entity_fqn
+    assert f"Couldn't create test case name {parameters.test_case.name}" in failure.error
+    assert parameters.expected_error in failure.error
     assert (
         f"{db_service.fullyQualifiedName.root}.dvdrental.public.customer.customer_id.compatible_test"
         in test_suite_processor.steps[1].get_status().records

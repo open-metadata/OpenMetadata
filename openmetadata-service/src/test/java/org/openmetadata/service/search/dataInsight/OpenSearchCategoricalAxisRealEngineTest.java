@@ -4,12 +4,9 @@ import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
-import org.openmetadata.schema.dataInsight.custom.Function;
 import org.openmetadata.schema.dataInsight.custom.LineChart;
-import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.service.search.opensearch.dataInsightAggregator.OpenSearchLineChartAggregator;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -43,20 +40,12 @@ class OpenSearchCategoricalAxisRealEngineTest extends CategoricalAxisSelectionTe
   }
 
   @Override
-  protected String rankedRequest() {
-    LineChart lineChart =
-        new LineChart()
-            .withMetrics(
-                List.of(
-                    new LineChartMetric()
-                        .withName("tables")
-                        .withFunction(Function.COUNT)
-                        .withField("id.keyword")
-                        .withFilter(TABLE_FILTER)))
-            .withxAxisField(X_AXIS_FIELD);
+  protected String requestFor(LineChart lineChart) {
     SearchRequest request =
         aggregator.prepareSearchRequest(
-            new DataInsightCustomChart().withName("tables_per_service").withChartDetails(lineChart),
+            new DataInsightCustomChart()
+                .withName("categorical_axis_chart")
+                .withChartDetails(lineChart),
             0L,
             System.currentTimeMillis(),
             new ArrayList<>(),

@@ -5028,6 +5028,10 @@ export interface AirflowConnectionObject {
     salesforceApiVersion?: string;
     /**
      * Domain of Salesforce instance
+     *
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -6017,6 +6021,9 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -6134,6 +6141,9 @@ export interface AuthenticationType {
     /**
      * Username to access the service.
      *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
+     *
      * Username to authenticate with SAP S/4HANA.
      *
      * Username for authenticating with Dremio Software. This user should have appropriate
@@ -6157,16 +6167,26 @@ export interface AuthenticationType {
      */
     personalAccessTokenSecret?: string;
     /**
-     * Authentication type identifier.
-     */
-    authType?: AuthType;
-    /**
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      *
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      */
     clientId?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
     /**
      * OAuth 2.0 client secret.
      *

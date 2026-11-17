@@ -416,6 +416,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           pageSize: teamsPageSize,
           searchIndex: SearchIndex.TEAM,
           includeDeleted: showDeletedTeam,
+          // Without a term, pages stand in for the name-ordered list, so they
+          // keep its order; a typed search keeps relevance order.
+          ...(query ? {} : { sortField: 'name.keyword', sortOrder: 'asc' }),
           queryFilter: {
             query: { bool: { must: [{ term: { 'parents.id': team.id } }] } },
           },
@@ -684,7 +687,16 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
     const cursor = teamsPaging[cursorType];
 
-    if (Math.abs(newPage - teamsPage) !== 1 || !cursor) {
+    // ponytail: some backend builds list teams with a total but no cursor;
+    // the search index then serves the page by number, in the same name order.
+    // Its documents carry no user/sub-team counts. Drop this once the teams
+    // list returns cursors everywhere.
+    if (!cursor) {
+      void searchChildTeams('', newPage);
+
+      return;
+    }
+    if (Math.abs(newPage - teamsPage) !== 1) {
       return;
     }
 

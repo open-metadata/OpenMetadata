@@ -48,7 +48,10 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import DataAssetAsyncSelectList from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import { AddLineagePopoverProps } from './AddLineagePopover.interface';
-import { getCanvasColumnAssets } from './AddLineagePopover.utils';
+import {
+  getCanvasColumnAssets,
+  isSelfColumnEndpoint,
+} from './AddLineagePopover.utils';
 
 type EntityHit = {
   id: string;
@@ -93,6 +96,17 @@ const LineagePreviewCard = ({
 
 const joinNames = (...names: (string | undefined | false)[]) =>
   names.filter(Boolean).join('.') || undefined;
+
+// A metric is its own column endpoint, so naming its column would repeat it.
+const getEndpointName = (
+  name?: string,
+  ownerFqn?: string,
+  columnFqn?: string
+) =>
+  joinNames(
+    name,
+    columnFqn !== ownerFqn && columnFqn && getNameFromFQN(columnFqn)
+  );
 
 // Shows the edge about to be created, so the panel reads as a new input rather
 // than another node on the canvas.
@@ -143,6 +157,7 @@ const ColumnTargetFields = ({
   entityId,
   columnFqn,
   isDisabled,
+  showColumnSelect,
   onAssetChange,
   onColumnChange,
 }: {
@@ -151,6 +166,7 @@ const ColumnTargetFields = ({
   entityId?: string;
   columnFqn?: string;
   isDisabled: boolean;
+  showColumnSelect: boolean;
   onAssetChange: (key: string | number | null) => void;
   onColumnChange: (columnFqn?: string) => void;
 }) => {
@@ -173,7 +189,7 @@ const ColumnTargetFields = ({
           </Select.Item>
         )}
       </Select>
-      {entityId && (
+      {showColumnSelect && (
         <Select
           data-testid="add-lineage-column-select"
           isDisabled={isDisabled}
@@ -317,7 +333,7 @@ const AddLineagePopover = ({
   );
 
   // A column edit connects to another node already on the canvas, as dragging
-  // between column handles did; only tables and data models carry columns.
+  // between column handles did: a table's or data model's column, or a metric.
   const canvasAssets = useMemo(
     () => getCanvasColumnAssets(canvasNodes, excludeEntityId),
     [canvasNodes, excludeEntityId]
@@ -350,6 +366,11 @@ const AddLineagePopover = ({
         entityType: asset.entityType,
       };
       setEntity(hit);
+      if (isSelfColumnEndpoint(asset.entityType)) {
+        setColumnFqn(asset.fullyQualifiedName);
+
+        return;
+      }
       void loadColumns(hit);
     },
     [canvasAssets, loadColumns]
@@ -374,6 +395,13 @@ const AddLineagePopover = ({
       }),
     [t, typeCounts]
   );
+  const editedNodeFqn = useMemo(
+    () =>
+      canvasNodes?.find(({ id }) => id === request?.nodeId)?.data?.node
+        ?.fullyQualifiedName,
+    [canvasNodes, request?.nodeId]
+  );
+
   const columnItems: SelectItemType[] = useMemo(() => {
     if (!entity) {
       return [];
@@ -394,13 +422,18 @@ const AddLineagePopover = ({
 
   const isUpstream = request.direction === LineageDirection.Upstream;
   const canSubmit = Boolean(entity && (!isColumnTarget || columnFqn));
-  const currentName = joinNames(
+  const currentName = getEndpointName(
     nodeName,
-    request.columnFqn && getNameFromFQN(request.columnFqn)
+    editedNodeFqn,
+    request.columnFqn
   );
   const pickedName =
     entity &&
-    joinNames(getEntityName(entity), columnFqn && getNameFromFQN(columnFqn));
+    getEndpointName(
+      getEntityName(entity),
+      entity.fullyQualifiedName,
+      columnFqn
+    );
 
   return (
     <SlideoutMenu
@@ -450,6 +483,9 @@ const AddLineagePopover = ({
                 columnItems={columnItems}
                 entityId={entity?.id}
                 isDisabled={isSubmitting}
+                showColumnSelect={
+                  Boolean(entity) && !isSelfColumnEndpoint(entity?.entityType)
+                }
                 onAssetChange={handleCanvasAssetChange}
                 onColumnChange={setColumnFqn}
               />

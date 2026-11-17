@@ -108,6 +108,7 @@ const mockUseTestCase: UseTestCaseStoreInterface = {
   setSelectedRunTimestamp: jest.fn(),
   testCase: mockTestCaseData,
   setTestCase: jest.fn(),
+  mergeTestCase: jest.fn(),
   isLoading: false,
   setIsLoading: jest.fn(),
   reset: jest.fn(),

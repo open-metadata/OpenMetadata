@@ -12,16 +12,20 @@ import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.AuthnRequestParams;
 import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.exception.SAMLException;
+import com.onelogin.saml2.exception.ValidationError;
 import com.onelogin.saml2.factory.SamlMessageFactory;
 import com.onelogin.saml2.http.HttpRequest;
+import com.onelogin.saml2.servlet.ServletUtils;
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.util.Constants;
+import com.onelogin.saml2.util.Util;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -69,6 +73,7 @@ import org.openmetadata.service.security.session.SessionStatus;
 import org.openmetadata.service.security.session.UserSession;
 import org.openmetadata.service.util.TokenUtil;
 import org.openmetadata.service.util.UserUtil;
+import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
@@ -76,6 +81,10 @@ import org.w3c.dom.NodeList;
 public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
   private static final String MCP_RELAY_STATE_PREFIX = "mcp:";
+  private static final String USER_FIELDS = "id,roles,teams,isAdmin,email";
+  private static final String UNREADABLE_RESPONSE = "SAML response could not be read";
+  private static final String SAML_RESPONSE_PARAMETER = "SAMLResponse";
+  private static final String SAML_RESPONSE_ELEMENT = "Response";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -299,6 +308,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       Auth auth = new Auth(samlSettings, wrappedRequest, wrappedResponse);
       ValidatedResponse validatedResponse = new ValidatedResponse();
       auth.setSamlMessageFactory(validatedResponse);
+      requireSamlResponseDocument(wrappedRequest);
       auth.processResponse(expectedRequestId);
       SamlResponseValidator.requireAccepted(auth);
       SamlResponseValidator.validate(samlSettings, wrappedRequest);
@@ -371,10 +381,37 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     } catch (AuthenticationException e) {
       LOG.warn("SAML callback rejected: {}", e.getMessage());
       sendError(resp, HttpServletResponse.SC_UNAUTHORIZED, e.getMessage());
+    } catch (ValidationError | com.onelogin.saml2.exception.Error unreadable) {
+      // Raised only for a post that is no SAML response, which is the sender's error; a response
+      // that can be read but is not accepted is refused above with a 401.
+      LOG.warn("SAML callback refused: {}", unreadable.getMessage());
+      sendError(resp, HttpServletResponse.SC_BAD_REQUEST, UNREADABLE_RESPONSE);
     } catch (Exception e) {
       LOG.error("Error processing SAML callback", e);
       sendError(
           resp, HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "SAML callback processing failed");
+    }
+  }
+
+  /**
+   * The post must carry a SAML Response document: java-saml fails with a NullPointerException on
+   * well-formed XML of any other kind, and an unreadable post is the sender's error, not a server
+   * failure.
+   */
+  private static void requireSamlResponseDocument(javax.servlet.http.HttpServletRequest req)
+      throws ValidationError {
+    String encoded = ServletUtils.makeHttpRequest(req).getParameter(SAML_RESPONSE_PARAMETER);
+    Document document =
+        encoded == null
+            ? null
+            : Util.loadXML(new String(Util.base64decoder(encoded), StandardCharsets.UTF_8));
+    Element root = document == null ? null : document.getDocumentElement();
+    boolean isSamlResponse =
+        root != null
+            && Constants.NS_SAMLP.equals(root.getNamespaceURI())
+            && SAML_RESPONSE_ELEMENT.equals(root.getLocalName());
+    if (!isSamlResponse) {
+      throw new ValidationError(UNREADABLE_RESPONSE, ValidationError.INVALID_XML_FORMAT);
     }
   }
 
@@ -781,8 +818,7 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
     try {
       // Fetch user with teams relationship loaded to preserve existing team memberships
       User existingUser =
-          Entity.getEntityByName(
-              Entity.USER, username, "id,roles,teams,isAdmin,email", Include.NON_DELETED);
+          Entity.getEntityByName(Entity.USER, username, USER_FIELDS, Include.NON_DELETED);
 
       boolean shouldBeAdmin = isUserAdmin(email, username);
       boolean needsUpdate = false;
@@ -841,7 +877,10 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
         // Assign teams from claims if provided
         UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
-        return UserUtil.addOrUpdateUser(newUser);
+        return UserUtil.createOrAdoptConcurrentlyCreatedUser(
+            () -> UserUtil.addOrUpdateUser(newUser),
+            () -> Entity.getEntityByName(Entity.USER, username, USER_FIELDS, Include.NON_DELETED),
+            email);
       }
       throw new AuthenticationException("User not found and self-signup is disabled");
     }
