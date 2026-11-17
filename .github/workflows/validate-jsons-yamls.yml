@@ -22,6 +22,8 @@ on:
       - ".github/scripts/check_pr_workflow_security.py"
       - ".github/scripts/tests/test_pr_workflow_security.py"
       - ".github/scripts/tests/test_ci_speed_*.py"
+      - ".github/scripts/prepare_python_coverage.py"
+      - ".github/scripts/tests/test_prepare_python_coverage.py"
       - ".github/scripts/configure_docker_storage.sh"
       - "openmetadata-ui/src/main/resources/ui/jest.config.js"
       - "openmetadata-integration-tests/pom.xml"
@@ -51,7 +53,7 @@ jobs:
         run: |
           python3 -m venv env
           source env/bin/activate
-          pip install pyyaml==6.0.3 pytest==9.1.1
+          pip install pyyaml==6.0.3 pytest==9.1.1 "coverage[toml]"
 
       - name: Verify PR workflow security
         run: |
@@ -64,6 +66,11 @@ jobs:
         run: |
           source env/bin/activate
           python -m pytest .github/scripts/tests/test_ci_speed_*.py -q
+
+      - name: Verify Python coverage report preparation
+        run: |
+          source env/bin/activate
+          python -m pytest .github/scripts/tests/test_prepare_python_coverage.py -q
 
       # Add back linting once we have 10/10 on main
       - name: Code style check
