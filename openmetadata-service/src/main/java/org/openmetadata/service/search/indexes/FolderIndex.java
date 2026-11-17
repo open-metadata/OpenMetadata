@@ -8,6 +8,7 @@ import org.openmetadata.schema.entity.data.Folder;
 import org.openmetadata.service.Entity;
 
 public class FolderIndex implements TaggableIndex {
+  private static final String FIELD_CHILDREN_COUNT = "childrenCount";
   final Folder folder;
 
   public FolderIndex(Folder folder) {
@@ -19,6 +20,15 @@ public class FolderIndex implements TaggableIndex {
     Set<String> fields = new HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add(Entity.FIELD_PARENT);
     return Collections.unmodifiableSet(fields);
+  }
+
+  /**
+   * {@code childrenCount}, which releases before 2.1 indexed: no single value is right for every
+   * reader (see {@link #buildSearchIndexDocInternal}).
+   */
+  @Override
+  public Set<String> getRetiredFields() {
+    return Set.of(FIELD_CHILDREN_COUNT);
   }
 
   @Override
