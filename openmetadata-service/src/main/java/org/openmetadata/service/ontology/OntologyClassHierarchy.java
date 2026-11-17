@@ -281,6 +281,16 @@ public final class OntologyClassHierarchy {
             .toList();
   }
 
+  /** Whether the axiom only states that its subject is a subclass of one named class. */
+  public static boolean isHierarchyLink(final OntologyAxiom axiom) {
+    final List<OntologyExpression> expressions = listOrEmpty(axiom.getExpressions());
+    return axiom.getAxiomType() == OntologyAxiomType.SUBCLASS_OF
+        && expressions.size() == 1
+        && expressions.getFirst() != null
+        && expressions.getFirst().getKind() == OntologyExpressionKind.NAMED_CLASS
+        && expressions.getFirst().getClassIri() != null;
+  }
+
   private static Map<String, Set<String>> namedEdges(
       final List<? extends OntologyDefinition> definitions) {
     final Map<String, Set<String>> edges = new HashMap<>();

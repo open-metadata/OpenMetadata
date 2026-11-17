@@ -27,6 +27,8 @@ import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseChangeType;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.type.OntologyReleaseMemberChange;
+import org.openmetadata.schema.type.OntologyRestrictionKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 
@@ -284,6 +286,56 @@ class OntologyReleaseComparisonTest {
             List.of(party, customer, subclass("Customer", "Party"))));
   }
 
+  @Test
+  void onlyASubclassOfOneNamedClassIsMarkedAsAHierarchyLink() {
+    final var patient = concept("Patient");
+    final var patientIsPerson = subclass("Patient", "Person");
+    final var retiredLink = subclass("Visitor", "Person");
+    final var exactlyOneId = exactlyOne("Patient", "patientId");
+    final var linkAndRule =
+        subclass("Inpatient", "Patient")
+            .withExpressions(
+                List.of(
+                    subclass("Inpatient", "Patient").getExpressions().getFirst(),
+                    exactlyOneId.getExpressions().getFirst()));
+    final var disjoint =
+        subclass("Patient", "Doctor").withAxiomType(OntologyAxiomType.DISJOINT_WITH);
+
+    final Map<String, Boolean> flags =
+        OntologyReleaseComparison.compareMembers(
+                List.of(member(BASE_ID, retiredLink)),
+                Stream.of(patient, patientIsPerson, exactlyOneId, linkAndRule, disjoint)
+                    .map(entity -> member(RELEASE_ID, entity))
+                    .toList())
+            .stream()
+            .collect(
+                Collectors.toMap(
+                    change -> change.getEntity().getName(),
+                    change -> Boolean.TRUE.equals(change.getHierarchyLink())));
+
+    assertEquals(
+        Map.of(
+            "Patient", false,
+            "Patient-Person", true,
+            "Visitor-Person", true,
+            "Patient-patientId", false,
+            "Inpatient-Patient", false,
+            "Patient-Doctor", false),
+        flags);
+  }
+
+  @Test
+  void membersOtherThanHierarchyLinksLeaveTheFlagAbsent() {
+    final List<OntologyReleaseMemberChange> changes =
+        OntologyReleaseComparison.compareMembers(
+            List.of(),
+            Stream.of(concept(), exactlyOne("Patient", "patientId"))
+                .map(entity -> member(RELEASE_ID, entity))
+                .toList());
+    assertEquals(2, changes.size());
+    changes.forEach(change -> assertNull(change.getHierarchyLink()));
+  }
+
   private static List<OntologyReleaseChangeType> changeTypes(
       final List<OntologyDefinition> before, final List<OntologyDefinition> after) {
     return OntologyReleaseComparison.compareMembers(
@@ -365,6 +417,17 @@ class OntologyReleaseComparisonTest {
                 new OntologyExpression()
                     .withKind(OntologyExpressionKind.NAMED_CLASS)
                     .withClassIri(URI.create("urn:" + parent))));
+  }
+
+  private static OntologyAxiom exactlyOne(final String subject, final String property) {
+    return subclass(subject, property)
+        .withExpressions(
+            List.of(
+                new OntologyExpression()
+                    .withKind(OntologyExpressionKind.RESTRICTION)
+                    .withPropertyIri(URI.create("urn:" + property))
+                    .withRestrictionKind(OntologyRestrictionKind.EXACT)
+                    .withCardinality(1)));
   }
 
   private static MemberKind kind(final OntologyDefinition entity) {

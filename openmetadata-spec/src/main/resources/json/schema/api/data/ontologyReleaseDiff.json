@@ -45,6 +45,10 @@
         "afterReleaseId": {
           "description": "Release containing the proposed member. Absent for removals.",
           "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "hierarchyLink": {
+          "description": "True when the member is a SUBCLASS_OF axiom whose single expression is a named class, so it states a class hierarchy edge rather than a rule. Absent for every other member.",
+          "type": "boolean"
         }
       },
       "required": [

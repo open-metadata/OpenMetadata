@@ -35,8 +35,13 @@ export interface MemberChange {
     beforeReleaseId?: string;
     changeType:       ChangeType;
     entity:           EntityReference;
-    memberKind:       MemberKind;
-    ontologyId:       string;
+    /**
+     * True when the member is a SUBCLASS_OF axiom whose single expression is a named class, so
+     * it states a class hierarchy edge rather than a rule. Absent for every other member.
+     */
+    hierarchyLink?: boolean;
+    memberKind:     MemberKind;
+    ontologyId:     string;
 }
 
 export enum ChangeType {

@@ -10,6 +10,7 @@ import java.util.stream.Stream;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.OntologyReleaseDiff;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
@@ -255,7 +256,17 @@ public final class OntologyReleaseComparison {
         .withMemberKind(selected.kind())
         .withChangeType(changeType(before, after))
         .withBeforeReleaseId(before == null ? null : before.releaseId())
-        .withAfterReleaseId(after == null ? null : after.releaseId());
+        .withAfterReleaseId(after == null ? null : after.releaseId())
+        .withHierarchyLink(hierarchyLink(entity));
+  }
+
+  private static Boolean hierarchyLink(final OntologyDefinition definition) {
+    return switch (definition) {
+      case OntologyAxiom axiom -> OntologyClassHierarchy.isHierarchyLink(axiom)
+          ? Boolean.TRUE
+          : null;
+      default -> null;
+    };
   }
 
   private static Stream<String> keys(final Map<String, ?> before, final Map<String, ?> after) {
