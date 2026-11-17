@@ -56,7 +56,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import testCaseClassBase, { TestCaseTabType } from './TestCaseClassBase';
-import { useTestCaseStore } from './useTestCase.store';
+import { keepFetchedOnlyFields, useTestCaseStore } from './useTestCase.store';
 
 export interface UseTestCaseDetailPageProps {
   isVersionPage?: boolean;
@@ -99,6 +99,7 @@ export interface UseTestCaseDetailPageResult {
   handleRestore: () => Promise<boolean>;
   getEntityFeedCount: () => void;
   setTestCase: (testCase: TestCase) => void;
+  mergeTestCase: (testCase: TestCase) => void;
 }
 
 /**
@@ -131,6 +132,7 @@ export const useTestCaseDetailPage = ({
   const {
     setIsLoading,
     setTestCase,
+    mergeTestCase,
     testCase,
     reset,
     setTestCasePermission,
@@ -333,7 +335,7 @@ export const useTestCaseDetailPage = ({
 
       try {
         const res = await updateTestCaseById(id, patch);
-        setEntityDetails(res);
+        setEntityDetails((prev) => keepFetchedOnlyFields(prev, res));
       } catch (error) {
         showErrorToast(error as AxiosError);
       }
@@ -535,5 +537,6 @@ export const useTestCaseDetailPage = ({
     handleRestore,
     getEntityFeedCount,
     setTestCase,
+    mergeTestCase,
   };
 };
