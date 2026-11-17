@@ -30,6 +30,28 @@ def test_ingest_tables_and_views(
     assert "customers" in view.schemaDefinition.root.lower()
 
 
+def test_a_folder_named_like_its_space_is_ingested(
+    patch_passwords_for_db_services,
+    run_workflow,
+    ingestion_config,
+    metadata,
+    db_service,
+):
+    ingestion_config["source"]["sourceConfig"]["config"]["databaseFilterPattern"] = {"includes": ["^reporting$"]}
+    run_workflow(MetadataWorkflow, ingestion_config)
+    service = db_service.fullyQualifiedName.root
+
+    # The root of the space is the schema `reporting`, the folder `reporting` keeps its full path.
+    assert metadata.get_by_name(entity=Table, fqn=f"{service}.reporting.reporting.customer_totals")
+    assert not metadata.get_by_name(entity=Table, fqn=f"{service}.reporting.reporting.archived_customers")
+    archived = metadata.get_by_name(
+        entity=Table, fqn=f'{service}.reporting."reporting.reporting".archived_customers', fields=["columns"]
+    )
+    assert archived
+    assert archived.tableType == TableType.View
+    assert {c.name.root for c in archived.columns} == {"name"}
+
+
 def test_system_catalogs_are_not_ingested(
     patch_passwords_for_db_services,
     run_workflow,

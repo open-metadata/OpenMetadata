@@ -24,6 +24,7 @@ from metadata.ingestion.source.database.dremio.queries import DREMIO_GET_DATABAS
 def dremio_source(database="polaris") -> DremioSource:
     source = DremioSource.__new__(DremioSource)
     source.database = database
+    source.schema_paths = {}
     return source
 
 
@@ -67,6 +68,48 @@ class TestSchemas:
         source._execute_database_query = MagicMock(return_value=["om_demo.reports", "om_demo"])
 
         assert list(source.get_raw_database_schema_names()) == ["reports", "om_demo"]
+
+    @pytest.mark.parametrize(
+        "dremio_schemas",
+        [["sales", "sales.sales"], ["sales.sales", "sales"]],
+    )
+    def test_a_folder_named_like_its_namespace_keeps_its_full_path(self, dremio_schemas):
+        # The root of `sales` is the schema `sales`: the folder `sales.sales`
+        # cannot have that name too, or its objects are never read.
+        source = dremio_source("sales")
+        source._execute_database_query = MagicMock(return_value=dremio_schemas)
+
+        assert sorted(source.get_raw_database_schema_names()) == ["sales", "sales.sales"]
+        assert source._add_database_to_schema_name("sales") == "sales"
+        assert source._add_database_to_schema_name("sales.sales") == "sales.sales"
+
+    def test_a_schema_is_read_from_the_path_it_was_listed_with(self):
+        source = dremio_source("om_demo")
+        source._execute_database_query = MagicMock(return_value=["om_demo", "om_demo.reports.monthly"])
+
+        list(source.get_raw_database_schema_names())
+
+        assert source._add_database_to_schema_name("reports.monthly") == "om_demo.reports.monthly"
+        assert source._add_database_to_schema_name("om_demo") == "om_demo"
+
+    def test_two_paths_that_would_share_a_name_are_read_once(self):
+        # `sales.sales` keeps its full path, which is also the name of the folder `sales.sales.sales`
+        source = dremio_source("sales")
+        source._execute_database_query = MagicMock(return_value=["sales.sales", "sales.sales.sales"])
+
+        assert list(source.get_raw_database_schema_names()) == ["sales.sales"]
+        assert source._add_database_to_schema_name("sales.sales") == "sales.sales"
+
+    def test_the_paths_of_the_previous_namespace_are_forgotten(self):
+        source = dremio_source("sales")
+        source._execute_database_query = MagicMock(return_value=["sales", "sales.sales"])
+        list(source.get_raw_database_schema_names())
+
+        source.database = "finance"
+        source._execute_database_query = MagicMock(return_value=["finance", "finance.sales"])
+        list(source.get_raw_database_schema_names())
+
+        assert source._add_database_to_schema_name("sales") == "finance.sales"
 
     def test_the_query_looks_for_the_namespace_itself_and_its_folders(self):
         assert "STARTS_WITH(SCHEMA_NAME, '{database_name}.')" in DREMIO_GET_SCHEMAS

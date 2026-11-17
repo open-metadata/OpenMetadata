@@ -128,6 +128,9 @@ def dremio_data(dremio_container, dremio_rest):
     dremio_rest.run_sql(
         "CREATE VIEW reporting.top_customers AS SELECT name, total FROM reporting.customer_totals WHERE total > 10"
     )
+    # A folder named like its space, next to the views at the root of the space.
+    dremio_rest.call("POST", "/api/v3/catalog", {"entityType": "folder", "path": ["reporting", "reporting"]})
+    dremio_rest.run_sql("CREATE VIEW reporting.reporting.archived_customers AS SELECT name FROM lake.sales.customers")
 
 
 @pytest.fixture(scope="module")

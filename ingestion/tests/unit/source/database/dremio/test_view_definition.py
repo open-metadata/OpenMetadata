@@ -29,6 +29,7 @@ GROUP BY o.order_id
 def dremio_source(database: str = "space") -> DremioSource:
     source = DremioSource.__new__(DremioSource)
     source.database = database
+    source.schema_paths = {}
     return source
 
 
