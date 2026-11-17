@@ -20,6 +20,7 @@ from sqlalchemy import types
 from sqlalchemy.dialects import registry
 from sqlalchemy.engine import URL
 
+from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.dremio.dialect import (
     COLUMNS_CACHE_SIZE,
     DremioFlightDialect,
@@ -268,8 +269,44 @@ class TestNestedTypes:
     def test_a_decimal_loses_its_precision(self):
         assert to_om_type("ROW(amount DECIMAL(38, 2), id BIGINT)") == "struct<amount:decimal,id:bigint>"
 
-    def test_a_quoted_field_name_may_hold_a_space(self):
-        assert to_om_type('ROW("first name" VARCHAR, age INTEGER)') == "struct<first name:varchar,age:int>"
+    def test_a_quoted_field_name_loses_its_quotes(self):
+        assert to_om_type('ROW("order_id" BIGINT)') == "struct<order_id:bigint>"
+        assert to_om_type('ROW("order_id" BIGINT, "a""b" VARCHAR)') == 'struct<order_id:bigint,a"b:varchar>'
+
+    @pytest.mark.parametrize(
+        "data_type",
+        [
+            'ROW("first name" VARCHAR, age INTEGER)',
+            'ROW("a,b" VARCHAR, c INTEGER)',
+            'ROW("say ""hi""" VARCHAR)',
+            'ROW("a<b" VARCHAR)',
+        ],
+    )
+    def test_a_row_whose_field_names_the_parser_cannot_hold_has_no_fields(self, data_type):
+        # The column parser of OpenMetadata removes spaces and splits on commas
+        # and angle brackets: a struct without fields is better than wrong ones.
+        assert to_om_type(data_type) == "struct"
+
+    def test_a_quoted_name_that_is_never_closed_gives_a_struct(self):
+        assert to_om_type('ROW("broken VARCHAR)') == "struct"
+
+    def test_only_the_row_that_holds_such_a_name_loses_its_fields(self):
+        assert to_om_type('ROW(id BIGINT, address ROW("zip code" VARCHAR))') == "struct<id:bigint,address:struct>"
+
+    @pytest.mark.parametrize(
+        "data_type,children",
+        [
+            ("ROW(a VARCHAR, b ROW(c INTEGER))", ["a", "b"]),
+            ('ROW("a""b" VARCHAR, "c.d" INTEGER)', ['a"b', "c.d"]),
+            ('ROW("first name" VARCHAR, age INTEGER)', []),
+            ('ROW("a,b" VARCHAR, c INTEGER)', []),
+        ],
+    )
+    def test_the_column_parser_reads_the_fields_with_their_names(self, data_type, children):
+        parsed = ColumnTypeParser._parse_datatype_string(to_om_type(data_type))
+
+        assert parsed["dataType"] == "STRUCT"
+        assert [child["name"] for child in parsed.get("children", [])] == children
 
     def test_maps_and_arrays(self):
         assert to_om_type("MAP(VARCHAR, ARRAY(INTEGER))") == "map<varchar,array<int>>"
@@ -280,6 +317,13 @@ class TestNestedTypes:
             "a DECIMAL(38, 2)",
             "b ROW(c INTEGER, d INTEGER)",
             "e VARCHAR",
+        ]
+
+    def test_commas_and_parentheses_inside_quotes_do_not_split(self):
+        assert split_top_level('a VARCHAR, "x,(y" INTEGER, "q"",)" BIGINT') == [
+            "a VARCHAR",
+            '"x,(y" INTEGER',
+            '"q"",)" BIGINT',
         ]
 
 
