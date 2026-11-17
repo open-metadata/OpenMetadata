@@ -41,7 +41,6 @@ import {
   OnlineUsersQueryParams,
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -53,6 +52,7 @@ import {
   useCursorPageJump,
 } from '../../../../../../hooks/paging/useCursorPageJump';
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
@@ -266,21 +266,21 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const columns = useMemo(
     (): ColumnsType<User> => [
       {
-        title: t('label.username'),
+        title: t('label.name'),
         dataIndex: 'name',
-        key: 'username',
+        key: 'name',
         ellipsis: true,
         render: (_: string, record: User) => (
           <UserNameCell goTo={goTo} record={record} />
         ),
       },
       {
-        title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'name',
+        title: t('label.email'),
+        dataIndex: 'email',
+        key: 'email',
         ellipsis: true,
         render: (_: string, record: User) => (
-          <Typography size="text-sm">{getEntityName(record)}</Typography>
+          <Typography size="text-sm">{getUserIdentifier(record)}</Typography>
         ),
       },
       {

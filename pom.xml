@@ -778,17 +778,6 @@
       <version>${handlebars.version}</version>
     </dependency>
       <dependency>
-        <groupId>com.microsoft.azure</groupId>
-        <artifactId>msal4j</artifactId>
-        <version>1.22.0</version>
-        <exclusions>
-          <exclusion>
-            <groupId>net.minidev</groupId>
-            <artifactId>json-smart</artifactId>
-          </exclusion>
-        </exclusions>
-      </dependency>
-      <dependency>
         <groupId>com.azure</groupId>
         <artifactId>azure-identity</artifactId>
         <version>1.15.2</version>

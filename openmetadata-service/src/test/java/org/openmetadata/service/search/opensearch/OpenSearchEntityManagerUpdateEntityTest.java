@@ -85,6 +85,22 @@ class OpenSearchEntityManagerUpdateEntityTest {
             .collect(Collectors.toSet()));
   }
 
+  @Test
+  void fieldsADocumentRemovesSurviveItsNullFields() {
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "folder");
+    doc.put("certification", null);
+    doc.put("fieldsToRemove", List.of("childrenCount"));
+
+    JsonNode removal = serializeRequest(doc).path("script").path("params").path("fieldsToRemove");
+
+    assertEquals(
+        Set.of("certification", "childrenCount"),
+        StreamSupport.stream(removal.spliterator(), false)
+            .map(JsonNode::asText)
+            .collect(Collectors.toSet()));
+  }
+
   private JsonNode serializeUpsert(Map<String, Object> doc) {
     return serializeRequest(doc).path("upsert");
   }

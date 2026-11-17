@@ -26,7 +26,6 @@ import {
 import {
   Check,
   ChevronRight,
-  Copy01,
   Documents,
   DotsVertical,
   Download01,
@@ -63,13 +62,13 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getFileExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
 import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import MemoryExtractionMenuItem from '../../discovery/context-center/MemoryExtractionMenuItem/MemoryExtractionMenuItem';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
@@ -795,9 +794,7 @@ const FileRow: FC<FileRowProps> = ({
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton size="lg" url={rowUrl}>
-          <Copy01 data-icon aria-hidden="true" />
-        </CopyLinkButton>
+        <CopyButton size="lg" value={rowUrl} />
         <FileActions
           canDelete={canDelete}
           canEdit={canEdit}
