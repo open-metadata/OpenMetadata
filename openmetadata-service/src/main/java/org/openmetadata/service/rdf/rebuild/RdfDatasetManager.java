@@ -147,16 +147,15 @@ public final class RdfDatasetManager implements AutoCloseable {
         () ->
             store.withActiveLock(
                 session -> {
-                  if (mayWaitAgain && session.isHeldBack(delivery)) {
-                    return false;
+                  final boolean writable = session.allowsLiveWrite(delivery, mayWaitAgain);
+                  if (writable) {
+                    final RdfRebuildStore.State state = session.state();
+                    if (state != null && state.failure() == null) {
+                      capture(session, state, captured);
+                    }
+                    mutation.accept(storage(session.activeDataset()));
                   }
-                  session.requireLiveWritesAllowed(delivery);
-                  final RdfRebuildStore.State state = session.state();
-                  if (state != null && state.failure() == null) {
-                    capture(session, state, captured);
-                  }
-                  mutation.accept(storage(session.activeDataset()));
-                  return true;
+                  return writable;
                 }));
   }
 
