@@ -303,6 +303,93 @@ class SearchMetadataToolTest {
     }
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"8:00–20:00", "7:00–19:00"})
+  void contradictoryApprovedDocumentMemoriesKeepBothAnswersAndTheirSources(String otherHours)
+      throws Exception {
+    final Map<String, Object> first =
+        supportHoursMemory(
+            "support-hours-a", "Support desk hours are 9:00–17:00.", "support-policy-a");
+    final Map<String, Object> second =
+        supportHoursMemory(
+            "support-hours-b", "Support desk hours are " + otherHours + ".", "support-policy-b");
+    first.put("sourceFile", first.get("sourceEntity"));
+    final Map<String, Object> response =
+        Map.of(
+            "hits",
+            Map.of(
+                "total",
+                Map.of("value", 2),
+                "hits",
+                List.of(Map.of("_source", first), Map.of("_source", second))));
+    when(searchRepository.getIndexMapping(Entity.CONTEXT_MEMORY))
+        .thenReturn(mock(IndexMapping.class));
+    when(searchRepository.getIndexOrAliasName(Entity.CONTEXT_MEMORY))
+        .thenReturn("context_memory_search_index");
+    when(searchRepository.search(any(), any(SubjectContext.class)))
+        .thenReturn(Response.ok(JsonUtils.pojoToJson(response)).build());
+
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      final JsonNode result =
+          JsonUtils.valueToTree(
+              searchMetadataTool.execute(
+                  authorizer,
+                  securityContext,
+                  Map.of(
+                      "query",
+                      "support desk hours",
+                      "entityType",
+                      Entity.CONTEXT_MEMORY,
+                      "fields",
+                      "question,answer,entityStatus,primaryEntity,sourceType,sourceEntity,sourceFile")));
+
+      assertEquals(2, result.path("returnedCount").asInt());
+      for (int index = 0; index < 2; index++) {
+        final Map<String, Object> expected = index == 0 ? first : second;
+        final JsonNode memory = result.path("results").get(index);
+        assertEquals("Approved", memory.path("entityStatus").asText());
+        assertEquals(first.get("question"), memory.path("question").asText());
+        assertEquals(expected.get("answer"), memory.path("answer").asText());
+        assertEquals(
+            expected.get("fullyQualifiedName"), memory.path("fullyQualifiedName").asText());
+        assertEquals("FileExtraction", memory.path("sourceType").asText());
+        assertEquals(
+            JsonUtils.valueToTree(expected.get("sourceEntity")), memory.path("sourceEntity"));
+      }
+      assertEquals(
+          JsonUtils.valueToTree(first.get("sourceFile")), result.at("/results/0/sourceFile"));
+      assertFalse(result.at("/results/1").has("sourceFile"));
+    }
+  }
+
+  private static Map<String, Object> supportHoursMemory(String fqn, String answer, String source) {
+    return new HashMap<>(
+        Map.of(
+            "fullyQualifiedName",
+            fqn,
+            "entityType",
+            Entity.CONTEXT_MEMORY,
+            "entityStatus",
+            "Approved",
+            "question",
+            "What are the support desk hours?",
+            "answer",
+            answer,
+            "primaryEntity",
+            Map.of("type", Entity.GLOSSARY_TERM, "fullyQualifiedName", "Business.SupportDesk"),
+            "sourceType",
+            "FileExtraction",
+            "sourceEntity",
+            Map.of(
+                "id",
+                UUID.randomUUID().toString(),
+                "type",
+                Entity.CONTEXT_FILE,
+                "fullyQualifiedName",
+                source)));
+  }
+
   @Test
   void testRegisteredEntityTypeResolvesToOwnIndex() {
     // Regression for #27796: databaseService is absent from the legacy switch and not part of the

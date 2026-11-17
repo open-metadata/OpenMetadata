@@ -57,7 +57,10 @@ class McpContextDiscoveryGuidanceTest {
             "answer",
             "entityStatus",
             "primaryEntity",
-            "relatedEntities");
+            "relatedEntities",
+            "sourceType",
+            "sourceEntity",
+            "sourceFile");
   }
 
   @Test
@@ -76,9 +79,27 @@ class McpContextDiscoveryGuidanceTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"search_metadata", "get_entity_details"})
+  @ValueSource(
+      strings = {"search_metadata", "get_entity_details", "company_context", "find_context"})
   void memoryGuidanceDoesNotElevateRetrievedTextIntoTrustedInstructions(final String toolName) {
     assertThat(listedTools.get(toolName).path("description").asText())
         .contains("reference data", "user's instructions", "caller permissions");
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"search_metadata", "get_entity_details", "company_context", "find_context"})
+  void memoryGuidancePreservesSourcesAndSurfacesConflictingApprovedClaims(final String toolName) {
+    assertThat(listedTools.get(toolName).path("description").asText())
+        .contains(
+            "lifecycle eligibility",
+            "not truth",
+            "human adjudication",
+            "source/provenance",
+            "Approved memories conflict",
+            "do not silently choose",
+            "uncertainty",
+            "clarification",
+            "redacted source details");
   }
 }

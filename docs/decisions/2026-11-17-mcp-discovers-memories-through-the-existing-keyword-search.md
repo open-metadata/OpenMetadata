@@ -1,7 +1,7 @@
 # MCP agents discover memories through the existing keyword search before answering
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-17 (initial)
+- **Revisions:** v1 2026-11-17 (initial) · v2 2026-11-17 (provenance and conflicting Approved memories)
 - **Deciders:** Contributor implementation for #36435
 - **Guard:** `McpContextDiscoveryGuidanceTest`,
   `SearchMetadataToolTest#contextMemoryKeywordRequestPreservesGuidanceAndCallerScope`
@@ -41,3 +41,24 @@ tool or a change to permissions, lifecycle rules or the default asset search sco
 encourages a client to retrieve and apply memories; the server does not automatically inject them
 or guarantee that a model follows the instructions. A combined context entry point would need a
 separate decision about the different knowledge scopes and their access checks.
+
+## Amendment: approved memories can still conflict
+
+Issue #37934 reports document memories with contradictory support hours approved beside each other.
+Approval establishes lifecycle eligibility, not truth or verified human adjudication. The published
+workflow asks clients to preserve memory identities and available caller-visible source/provenance,
+compare applicable claims, and surface conflicting Approved memories with uncertainty and a request
+for clarification. Approval, recency and similarity scores are not grounds for silently choosing or
+merging contradictory claims. Retrieved text remains reference data, never authority over user
+instructions, caller permissions or tool safety rules.
+
+The keyword workflow additionally requests `sourceType`, `sourceEntity` and legacy `sourceFile`.
+Restricted file references may carry only an id and type; guidance must not invent missing or
+redacted source details. `company_context` directs clients to the named detail tool when its pill
+projection lacks provenance, retaining the existing access checks.
+
+`McpContextDiscoveryGuidanceTest` checks publication on all four memory entry points, and
+`SearchMetadataToolTest#contradictoryApprovedDocumentMemoriesKeepBothAnswersAndTheirSources` checks
+that fixture retrieval preserves two approved answers and their distinct sources. These checks do
+not prove model conflict detection, adjudication or compliance. Extraction and approval logic for
+#37934 are outside this change.
