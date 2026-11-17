@@ -17,9 +17,10 @@ import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
-    getTeamAndUserDetailsPath,
-    getUserPath
+  getTeamAndUserDetailsPath,
+  getUserPath,
 } from '../../../utils/RouterUtils';
 import { getSettingsLink } from '../../../utils/SettingsModalLinkUtils';
 import ProfilePicture from '../ProfilePicture/ProfilePicture';
@@ -44,11 +45,12 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   const isTeam = type === OwnerType.TEAM;
   // ponytail: reads the user the avatar's useUserProfile already fetched, so no extra request;
   // with showUserProfile={false} and no displayName the login is shown — call useUserProfile here if that case matters.
-  const label = useApplicationStore(
-    (state) =>
-      displayName ??
-      ((!isTeam && state.userProfilePics[userName]?.displayName) || userName)
+  const cachedUser = useApplicationStore((state) =>
+    isTeam ? undefined : state.userProfilePics[userName]
   );
+  const label =
+    displayName ??
+    getEntityName({ name: userName, displayName: cachedUser?.displayName });
   const handleTitleClick = (event: MouseEvent) => {
     if (onTitleClick) {
       event.preventDefault();
