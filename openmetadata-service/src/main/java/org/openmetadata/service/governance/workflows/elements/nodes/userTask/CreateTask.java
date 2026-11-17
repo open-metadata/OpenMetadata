@@ -878,20 +878,21 @@ public class CreateTask implements TaskListener {
 
   /**
    * A lifecycle can ask for approval of several moves on one asset at once, such as its onboarding
-   * step and a transition to Deprecated, so a new approval replaces only an earlier one for the
-   * same move. An approval that gates no lifecycle move replaces any earlier one, as before.
+   * step and a transition to Deprecated, so a new approval replaces only an earlier one for a move
+   * to the same stage. Comparing the target alone keeps an approval asked from an earlier stage, for
+   * a transition from any stage, from staying open next to its replacement. An approval that gates
+   * no lifecycle move, on either side, replaces as before.
    */
   static boolean decidesSameMove(Task prior, LifecycleMove move) {
     boolean same = true;
     if (move != null) {
       // The task payload is free-form JSON shared by every task type, so it is read as a map.
       Object priorMove = JsonUtils.getMap(prior.getPayload()).get(LIFECYCLE_MOVE_KEY);
-      LifecycleMove priorMoveValue =
-          priorMove == null ? null : JsonUtils.convertValue(priorMove, LifecycleMove.class);
       same =
-          priorMoveValue != null
-              && Objects.equals(priorMoveValue.getStage(), move.getStage())
-              && Objects.equals(priorMoveValue.getTargetStage(), move.getTargetStage());
+          priorMove == null
+              || Objects.equals(
+                  JsonUtils.convertValue(priorMove, LifecycleMove.class).getTargetStage(),
+                  move.getTargetStage());
     }
     return same;
   }

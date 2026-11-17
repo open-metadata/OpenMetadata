@@ -859,7 +859,29 @@ class CreateTaskTest {
 
     assertTrue(CreateTask.decidesSameMove(priorOnboarding, onboarding));
     assertFalse(CreateTask.decidesSameMove(priorOnboarding, deprecate));
-    assertFalse(CreateTask.decidesSameMove(new Task().withPayload(Map.of()), deprecate));
+  }
+
+  @Test
+  void anApprovalAskedFromAnEarlierStageIsReplacedByTheSameMoveFromTheStageNow() {
+    LifecycleMove fromDraft =
+        new LifecycleMove().withStage(EntityStatus.DRAFT).withTargetStage(EntityStatus.DEPRECATED);
+    LifecycleMove fromReview =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.DEPRECATED);
+    Task priorFromDraft = new Task().withPayload(Map.of(CreateTask.LIFECYCLE_MOVE_KEY, fromDraft));
+
+    assertTrue(CreateTask.decidesSameMove(priorFromDraft, fromReview));
+  }
+
+  @Test
+  void anEarlierApprovalThatGatesNoMoveIsStillReplaced() {
+    LifecycleMove deprecate =
+        new LifecycleMove()
+            .withStage(EntityStatus.IN_REVIEW)
+            .withTargetStage(EntityStatus.DEPRECATED);
+
+    assertTrue(CreateTask.decidesSameMove(new Task().withPayload(Map.of()), deprecate));
   }
 
   @Test

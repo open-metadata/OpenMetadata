@@ -101,12 +101,24 @@ public final class StatusUpdateTasks {
   }
 
   /**
-   * Approving still requires the lifecycle to offer the move from the stage the asset is in now,
-   * which may differ from the stage it was in when the request was raised.
+   * Approving requires the asset to still be in the stage the request was raised from, so the
+   * request's approvers are those of the transition it asked for, and the lifecycle to still offer
+   * that move.
    */
   public static void requireStillOffered(Task task) {
     if (task.getType() == TaskEntityType.StatusUpdate) {
-      requireOffered(approvalTarget(task), requestedStage(task));
+      EntityInterface<?> entity = approvalTarget(task);
+      Object raisedFrom = JsonUtils.getMap(task.getPayload()).get(CURRENT_STATUS);
+      if (raisedFrom != null && !raisedFrom.equals(stageOf(entity))) {
+        throw new BadRequestException(
+            "%s '%s' has moved from %s to %s since this request; raise a new request"
+                .formatted(
+                    entityType(entity),
+                    entity.getFullyQualifiedName(),
+                    raisedFrom,
+                    stageOf(entity)));
+      }
+      requireOffered(entity, requestedStage(task));
     }
   }
 
@@ -195,9 +207,13 @@ public final class StatusUpdateTasks {
                 EntityStatusWorkflows.onRequestTransition(playbook, stageOf(entity), stage));
   }
 
+  // Read with every field, as the offer is (EntityRepository.getRequestableStages), so a lifecycle
+  // whose trigger filter reads tags or domains resolves the same playbook for both.
   private static Optional<WorkflowDefinition> owningPlaybook(EntityInterface<?> entity) {
+    EntityInterface<?> full =
+        Entity.getEntity(entity.getEntityReference(), "*", Include.NON_DELETED);
     return EntityStatusWorkflows.ACTIVE
-        .owningStageOf(entityType(entity), entity)
+        .owningStageOf(entityType(full), full)
         .flatMap(EntityStatusWorkflows::playbookWithTransitions);
   }
 

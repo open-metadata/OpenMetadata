@@ -17865,6 +17865,31 @@ public class WorkflowDefinitionResourceIT {
     awaitStage(admin, domain, EntityStatus.IN_REVIEW);
   }
 
+  @Test
+  @Order(235)
+  void test_aStatusRequestIsRefusedOnceTheAssetHasMovedSinceItWasRaised(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    WorkflowDefinition playbook = deployDeprecateOnRequestPlaybook(admin, ns, "movedSince");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("movedSince"));
+    Task onboarding =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), playbook.getId());
+    Task request = requestStatus(admin, domain, "Deprecated", "Raised before approval");
+
+    approveRequest(ownerClient, onboarding);
+    awaitStage(admin, domain, EntityStatus.APPROVED);
+
+    // The request was raised from the earlier stage, so its approvers are that transition's; the
+    // asset has moved since, so a new request has to go to the approvers of the stage it is in now.
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approveRequest(ownerClient, request));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("has moved"));
+    assertEquals(
+        EntityStatus.APPROVED, admin.domains().get(domain.getId().toString()).getEntityStatus());
+  }
+
   private static void approveRequest(OpenMetadataClient approver, Task request) {
     approver
         .tasks()
