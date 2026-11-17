@@ -218,9 +218,14 @@ class OntologyAiServiceTest {
             "test-model",
             List.of(
                 new OntologyAiCompletionGateway.DomainConceptCandidate(
-                    "clinical", "Clinical", "Clinical concepts", null),
+                    "clinical", "Clinical", "Clinical concepts", null, 0.9D, "Top-level area"),
                 new OntologyAiCompletionGateway.DomainConceptCandidate(
-                    "diagnosis", "Diagnosis", "Diagnosis concept", "clinical")));
+                    "diagnosis",
+                    "Diagnosis",
+                    "Diagnosis concept",
+                    "clinical",
+                    0.7D,
+                    "Core clinical finding")));
 
     final var result = service.generateDomainDraft(domainRequest());
     final var operations = result.getDraft().getOperations();
@@ -235,6 +240,19 @@ class OntologyAiServiceTest {
     assertEquals(parent.getId(), child.getParent().getId());
     assertEquals("healthcare.clinical.diagnosis", child.getFullyQualifiedName());
     assertEquals(EntityStatus.DRAFT, child.getEntityStatus());
+    assertEquals(0.7D, operations.getLast().getConfidence());
+    assertEquals("Core clinical finding", operations.getLast().getRationale());
+  }
+
+  @Test
+  void rejectsDomainConceptWithoutRationale() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical", "Clinical", "Clinical concepts", null, 0.9D, " "));
+
+    assertThrows(
+        OntologyAiProviderException.class, () -> service.generateDomainDraft(domainRequest()));
   }
 
   @Test
@@ -242,7 +260,7 @@ class OntologyAiServiceTest {
     gateway.domainCompletion =
         completion(
             new OntologyAiCompletionGateway.DomainConceptCandidate(
-                "child", "Child", "Child concept", "missing"));
+                "child", "Child", "Child concept", "missing", 0.5D, "Child of a missing parent"));
 
     assertThrows(
         OntologyAiProviderException.class, () -> service.generateDomainDraft(domainRequest()));

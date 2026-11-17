@@ -16,6 +16,7 @@ package org.openmetadata.service.ontology;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.ontology.OntologyAiOutputValidator.invalid;
 import static org.openmetadata.service.ontology.OntologyAiOutputValidator.requireCompletion;
+import static org.openmetadata.service.ontology.OntologyAiOutputValidator.requireConfidence;
 import static org.openmetadata.service.ontology.OntologyAiOutputValidator.requireEntityName;
 import static org.openmetadata.service.ontology.OntologyAiOutputValidator.requireText;
 
@@ -85,6 +86,8 @@ final class OntologyAiDomainDraftFactory {
       final List<CreatedConcept> created) {
     final String name = requireEntityName(candidate.name());
     requireUniqueName(name, names);
+    requireConfidence(candidate.confidence());
+    requireText(candidate.rationale(), "domain concept rationale");
     final EntityReference parent = requireParent(candidate.parentName(), created);
     final GlossaryTerm term = term(candidate, glossary, name, parent);
     created.add(new CreatedConcept(name, term.getEntityReference()));
@@ -92,6 +95,8 @@ final class OntologyAiDomainDraftFactory {
         .withId(UUID.randomUUID())
         .withOperationType(OntologyChangeOperationType.CREATE_TERM)
         .withTerm(term)
+        .withConfidence(candidate.confidence())
+        .withRationale(candidate.rationale())
         .withState(OntologyChangeOperationState.ACTIVE);
   }
 

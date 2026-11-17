@@ -73,5 +73,10 @@ public interface OntologyAiCompletionGateway {
   record SparqlCandidate(String query, String explanation) {}
 
   record DomainConceptCandidate(
-      String name, String displayName, String description, String parentName) {}
+      String name,
+      String displayName,
+      String description,
+      String parentName,
+      double confidence,
+      String rationale) {}
 }
