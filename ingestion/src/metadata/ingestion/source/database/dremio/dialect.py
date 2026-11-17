@@ -84,9 +84,14 @@ SIMPLE_TYPES = {
 }
 
 
-# The schemas of a database are read one after the other, so the columns of the
-# last few are enough to read them with one query per schema.
-COLUMNS_CACHE_SIZE = 8
+# The columns of a schema are read with one INFORMATION_SCHEMA query and kept
+# here while its tables are reflected. With `threads` > 1 each thread reflects
+# the tables of one schema at a time, so the cache holds one entry per thread:
+# 32 keeps the schemas of up to 32 threads without evicting each other. Above
+# that, an evicted schema is only read again (one more query); the result does
+# not change. The cap stays small because the column list of a schema can hold
+# thousands of rows.
+COLUMNS_CACHE_SIZE = 32
 
 PROJECT_ID_PROPERTY = "project_id"
 SET_SESSION_OPTIONS_ACTION = "SetSessionOptions"
