@@ -1466,6 +1466,44 @@ class ContextMemoryReconcilerTest {
     assertEquals("The finance team signs it.", asked.getFirst().getAnswer());
   }
 
+  /**
+   * The document drops one of its two figures and rewords the other, held one: the dropped pill is
+   * released to the file still stating it, so the reworded value stays held, whichever of the two
+   * pills the run reads first.
+   */
+  @ParameterizedTest
+  @CsvSource({"true", "false"})
+  void aRewordedValueBesideASharedPillTheRunReleasesStaysHeldInEitherOrder(boolean sharedFirst) {
+    ContextMemory shared =
+        pill(
+            "When is the support desk open?",
+            "From 9:00 to 17:00.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.APPROVED);
+    ContextMemory held =
+        pill(
+            "When is the support desk open?",
+            "From 8:00 to 16:00.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.UNPROCESSED);
+    if (sharedFirst) {
+      existing(shared, held);
+    } else {
+      existing(held, shared);
+    }
+    lenient().when(memoryRepository.hasOtherSources(any(), any())).thenReturn(false);
+    when(memoryRepository.hasOtherSources(shared.getId(), source)).thenReturn(true);
+
+    reconcile(
+        List.of(derived("When is the support desk open?", "The desk opens from 8:00 to 16:00.")));
+
+    verify(memoryRepository).releaseExtractedMemory(shared.getId(), source);
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository)
+        .updateIfCurrent(isNull(), eq(held), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+    assertEquals(ContextMemoryStatus.UNPROCESSED, captor.getValue().getEntityStatus());
+  }
+
   private static final String HERONFIELD_HOURS = "What are the Heronfield support desk hours?";
 
   /** Unprocessed for a person, with no dispute or reason that could name the other document. */

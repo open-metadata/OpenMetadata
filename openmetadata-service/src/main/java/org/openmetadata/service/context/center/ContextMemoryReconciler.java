@@ -107,6 +107,7 @@ public class ContextMemoryReconciler {
 
     List<ContextMemory> unmatched = planExactMatches(sourceRef, derivedByQuestion, existing, plan);
     planSimilarMatches(sourceRef, derivedByQuestion, unmatched, plan);
+    planChangedClaimHolds(plan);
     planHolds(existing, derivedByQuestion, plan);
     planNewMemories(sourceRef, derivedByQuestion, plan);
     // ADR:2026-10-27-memory-reconciliation-resolves-comparisons-before-writes
@@ -347,7 +348,8 @@ public class ContextMemoryReconciler {
       if (!sameClaim(existing, derived) && derived.getEntityStatus() != null) {
         // A reviewing provider derives Unprocessed, so a changed claim is reviewed again; a
         // reworded title or summary is the same claim and keeps the stage it was reviewed in.
-        updated.setEntityStatus(changedClaimStage(existing, derived, plan));
+        updated.setEntityStatus(derived.getEntityStatus());
+        plan.changedClaims.add(new ChangedClaim(existing, derived, updated));
       }
       updated.setTitle(derived.getTitle());
       updated.setQuestion(derived.getQuestion());
@@ -372,16 +374,24 @@ public class ContextMemoryReconciler {
 
   /**
    * A changed claim takes the stage it was derived in, unless another document holds it: a held
-   * value reworded by re-extraction must not come out Approved beside the other document's.
+   * value reworded by re-extraction must not come out Approved beside the other document's. Runs
+   * once every release is planned, whatever order the pills were read in, and before the writes.
    */
-  private ContextMemoryStatus changedClaimStage(
-      ContextMemory existing, ContextMemory derived, ReconciliationPlan plan) {
-    boolean held =
-        derived.getEntityStatus() != ContextMemoryStatus.UNPROCESSED
-            && (isHeldByAReleasedValue(derived, plan)
-                || duplicateFinder.isHeldAcrossDocuments(claimOf(existing, derived)));
-    return held ? ContextMemoryStatus.UNPROCESSED : derived.getEntityStatus();
+  private void planChangedClaimHolds(ReconciliationPlan plan) {
+    plan.changedClaims.stream()
+        .filter(claim -> claim.derived().getEntityStatus() != ContextMemoryStatus.UNPROCESSED)
+        .filter(claim -> isHeldElsewhere(claim, plan))
+        .forEach(claim -> claim.updated().setEntityStatus(ContextMemoryStatus.UNPROCESSED));
   }
+
+  private boolean isHeldElsewhere(ChangedClaim claim, ReconciliationPlan plan) {
+    return isHeldByAReleasedValue(claim.derived(), plan)
+        || duplicateFinder.isHeldAcrossDocuments(claimOf(claim.existing(), claim.derived()));
+  }
+
+  /** A pill whose claim this run changes: as stored, as derived, and as it will be written. */
+  private record ChangedClaim(
+      ContextMemory existing, ContextMemory derived, ContextMemory updated) {}
 
   /** The stored pill stating the derived claim: its documents are the ones it is linked to. */
   private static ContextMemory claimOf(ContextMemory existing, ContextMemory derived) {
@@ -477,6 +487,9 @@ public class ContextMemoryReconciler {
 
     /** Pills this run releases that other documents still state. */
     private final List<ContextMemory> releasedShared = new ArrayList<>();
+
+    /** Pills whose claim this run changes, whose stage waits until every release is planned. */
+    private final List<ChangedClaim> changedClaims = new ArrayList<>();
 
     private int created;
     private int updated;
