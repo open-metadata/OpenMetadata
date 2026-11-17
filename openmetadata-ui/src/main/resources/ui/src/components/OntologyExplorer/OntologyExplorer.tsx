@@ -76,8 +76,6 @@ const SearchInputIcon = ({ className }: { className?: string }) => (
 );
 const DEFAULT_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:14px_14px]';
-const STUDIO_GRAPH_BACKDROP_CLASS =
-  'tw:absolute tw:inset-0 tw:z-0 tw:bg-canvas tw:[background-image:radial-gradient(circle,var(--tw-color-border-secondary)_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
   'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:shadow-md';
@@ -130,9 +128,9 @@ function OntologyOnboardingEmptyState() {
         footer={
           <Button
             color="primary"
-            data-testid="ontology-view-all"
-            href={ROUTES.ONTOLOGY_EXPLORER}>
-            {t('label.view-all-entity', { entity: t('label.ontology-plural') })}
+            data-testid="ontology-onboarding-view-glossary"
+            href={ROUTES.GLOSSARY}>
+            {t('label.view-entity', { entity: t('label.glossary') })}
           </Button>
         }
         title={t('message.ontology-empty-title')}
@@ -911,9 +909,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       {!showOnboardingEmptyState ? renderGraphToolbar() : null}
       <div
         className={classNames(
-          scope === 'global'
-            ? STUDIO_GRAPH_BACKDROP_CLASS
-            : DEFAULT_GRAPH_BACKDROP_CLASS,
+          DEFAULT_GRAPH_BACKDROP_CLASS,
           'tw:overflow-hidden'
         )}>
         {renderGraphContent()}
