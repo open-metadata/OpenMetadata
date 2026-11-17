@@ -74,6 +74,7 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import type { MembersUsersPanelProps } from './Members.types';
 import { EntityLinksCell, UserNameCell } from './MembersUserColumns';
 import { profileHash } from './profileHash.utils';
@@ -318,7 +319,7 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
       dataIndex: 'email',
       key: 'email',
       ellipsis: true,
-      render: (_: unknown, record: User) => record.email,
+      render: (_: unknown, record: User) => getUserIdentifier(record),
     };
 
     const teamsColumn = {

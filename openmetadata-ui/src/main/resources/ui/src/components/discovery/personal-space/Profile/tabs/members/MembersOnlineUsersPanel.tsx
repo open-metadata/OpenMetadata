@@ -49,6 +49,7 @@ import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
@@ -222,7 +223,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         key: 'email',
         ellipsis: true,
         render: (_: string, record: User) => (
-          <Typography size="text-sm">{record.email}</Typography>
+          <Typography size="text-sm">{getUserIdentifier(record)}</Typography>
         ),
       },
       {

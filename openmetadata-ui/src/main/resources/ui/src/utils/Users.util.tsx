@@ -32,6 +32,7 @@ import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';
 import { getSettingsLink } from './SettingsModalLinkUtils';
+import { getUserIdentifier } from './UsersPureUtils';
 
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
@@ -82,7 +83,7 @@ export const commonUserDetailColumns = (
     dataIndex: 'email',
     key: 'email',
     ellipsis: { showTitle: false },
-    render: (_, record) => record.email,
+    render: (_, record) => getUserIdentifier(record),
   },
   {
     title: t('label.team-plural'),

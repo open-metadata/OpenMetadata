@@ -24,6 +24,7 @@ import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import type { MembersView } from './Members.types';
@@ -233,7 +234,7 @@ export const getUserColumns = (
     ellipsis: true,
     render: (_: unknown, record: User) => (
       <Typography className="tw:truncate tw:block tw:max-w-full">
-        {record.email}
+        {getUserIdentifier(record)}
       </Typography>
     ),
   },
