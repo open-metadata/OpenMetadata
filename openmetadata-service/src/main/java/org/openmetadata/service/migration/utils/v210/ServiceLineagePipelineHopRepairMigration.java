@@ -49,7 +49,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * <p>This migration recomputes each hop's {@code assetEdges} from the child edges themselves (a
  * fixed point: a second run reads the same child rows, arrives at the same target, and changes
  * nothing), then upserts the row so already-upgraded instances where the backfill wrote the wrong
- * count are corrected. Hops with no attributable child edges are left untouched — their cleanup is
+ * count are corrected. A hop row can also be fed by plain (un-annotated) child edges that project
+ * onto the same service pair (for example a plain pipeline &rarr; table edge lands on the same row
+ * as a pipelineService &rarr; toService hop); such plain edges share the hop's refcount and are
+ * counted toward it. Hops with no attributable child edges are left untouched — their cleanup is
  * the runtime's job on the next child-edge delete.
  *
  * <p>Operators must reindex afterwards: the lineage graph is served from the search index, which is
@@ -127,6 +130,12 @@ public class ServiceLineagePipelineHopRepairMigration {
               + " This migration is safe to re-run (via openmetadata-ops.sh migrate) once the"
               + " cause above is resolved.",
           failed);
+      // Throw so runOnce does not record the step as complete: a hop that failed a transient
+      // read/write still carries a stale refcount, and recording the marker would make the next
+      // `migrate` skip the retry the warning above promises. Repaired hops are idempotent, so a
+      // re-run after the cause is fixed re-applies them without harm.
+      throw new IllegalStateException(
+          "Aborting pipeline service hop repair: " + failed + " hop(s) could not be repaired");
     }
   }
 
@@ -137,6 +146,11 @@ public class ServiceLineagePipelineHopRepairMigration {
    */
   private static Map<ServiceEdge, Integer> countHopContributions(CollectionDAO collectionDAO) {
     Map<ServiceEdge, Integer> hopCounts = new HashMap<>();
+    // Plain (un-annotated) child edges project onto the direct fromService -> toService row. When
+    // that row is also a pipeline-service hop (e.g. a plain pipeline -> table edge lands on the
+    // same row as a pipelineService -> toService hop), the plain edge shares the hop's refcount,
+    // so it is tallied here and merged into the matching hop count after the scan.
+    Map<ServiceEdge, Integer> plainDirectCounts = new HashMap<>();
     Cache<String, Optional<EntityReference>> serviceCache =
         Caffeine.newBuilder().maximumSize(SERVICE_CACHE_SIZE).build();
 
@@ -151,10 +165,10 @@ public class ServiceLineagePipelineHopRepairMigration {
               .relationshipDAO()
               .getAllRelationshipsAfter(fromId, toId, relation, relationType, BATCH_SIZE);
       if (batch.isEmpty()) {
-        return hopCounts;
+        break;
       }
       for (CollectionDAO.EntityRelationshipObject record : batch) {
-        tally(record, serviceCache, hopCounts);
+        tally(record, serviceCache, hopCounts, plainDirectCounts);
       }
       CollectionDAO.EntityRelationshipObject last = batch.getLast();
       fromId = last.getFromId();
@@ -162,16 +176,25 @@ public class ServiceLineagePipelineHopRepairMigration {
       relation = last.getRelation();
       relationType = last.getRelationType() == null ? "" : last.getRelationType();
     }
+
+    for (Map.Entry<ServiceEdge, Integer> hop : hopCounts.entrySet()) {
+      hop.setValue(hop.getValue() + plainDirectCounts.getOrDefault(hop.getKey(), 0));
+    }
+    return hopCounts;
   }
 
   /**
-   * If the record is a pipeline-annotated child edge (not a service-to-service row), resolves the
-   * service triple it projects onto and increments the two hop counts it feeds.
+   * If the record is a child edge (not a service-to-service row), resolves the service triple it
+   * projects onto. A pipeline-annotated edge increments the two hop counts it feeds
+   * (fromService -> pipelineService and pipelineService -> toService). A plain (un-annotated)
+   * edge instead feeds the direct fromService -> toService row, which may be the same row as a
+   * hop and is tallied separately so it can be merged into that hop's count.
    */
   private static void tally(
       CollectionDAO.EntityRelationshipObject record,
       Cache<String, Optional<EntityReference>> serviceCache,
-      Map<ServiceEdge, Integer> hopCounts) {
+      Map<ServiceEdge, Integer> hopCounts,
+      Map<ServiceEdge, Integer> plainDirectCounts) {
     if (record.getRelation() != Relationship.UPSTREAM.ordinal()
         || SERVICE_ENTITY_TYPES.contains(record.getFromEntity())
         || SERVICE_ENTITY_TYPES.contains(record.getToEntity())) {
@@ -190,15 +213,21 @@ public class ServiceLineagePipelineHopRepairMigration {
           e.getMessage());
       return;
     }
-    EntityReference pipelineRef = details.getPipeline();
-    if (pipelineRef == null || pipelineRef.getId() == null) {
-      return;
-    }
     EntityReference fromService =
         serviceOf(record.getFromEntity(), record.getFromId(), serviceCache);
     EntityReference toService = serviceOf(record.getToEntity(), record.getToId(), serviceCache);
+    if (fromService == null || toService == null) {
+      return;
+    }
+    EntityReference pipelineRef = details.getPipeline();
+    if (pipelineRef == null || pipelineRef.getId() == null) {
+      // A plain child edge feeds the direct fromService -> toService row; merged into any hop
+      // that shares that row after the scan.
+      incrementHop(plainDirectCounts, fromService, toService);
+      return;
+    }
     EntityReference pipelineService = resolvePipelineService(pipelineRef, serviceCache);
-    if (fromService == null || toService == null || pipelineService == null) {
+    if (pipelineService == null) {
       return;
     }
     incrementHop(hopCounts, fromService, pipelineService);

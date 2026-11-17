@@ -16,6 +16,7 @@ package org.openmetadata.service.migration.utils.v210;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -183,6 +184,64 @@ class ServiceLineagePipelineHopRepairMigrationTest {
         "all 650 contributing child edges must be counted across batch boundaries");
   }
 
+  /**
+   * A plain (un-annotated) child edge can land on the same row as a pipeline-service hop: a plain
+   * pipeline -> table edge projects onto the pipelineService -> toService row. The runtime
+   * refcount on that row tracks both the annotated children that feed the hop and the plain
+   * children that feed the direct edge, so the repair must count both or deleting the plain edge
+   * would drop the shared row's refcount below 1 while the annotated children still need it.
+   */
+  @Test
+  void repairCountsPlainEdgesSharingAHopRow() {
+    UUID fromServiceId = UUID.randomUUID();
+    UUID toServiceId = UUID.randomUUID();
+    UUID pipelineServiceId = UUID.randomUUID();
+
+    TestTopology topo =
+        new TestTopology()
+            .withServices(fromServiceId, toServiceId, pipelineServiceId)
+            .withChildEdges(2)
+            .withPlainEdgeOnSecondHop()
+            .withExistingHops(fromServiceId, pipelineServiceId, toServiceId, 1);
+
+    topo.runRepair();
+
+    assertEquals(
+        2,
+        topo.assetEdgesOf(fromServiceId, pipelineServiceId),
+        "the first hop is not shared with a plain edge, so it counts only the 2 annotated children");
+    assertEquals(
+        3,
+        topo.assetEdgesOf(pipelineServiceId, toServiceId),
+        "the second hop is shared by a plain edge, so it counts 2 annotated + 1 plain = 3");
+  }
+
+  /**
+   * A hop that fails a transient read/write must leave the step unrecorded so {@code runOnce}
+   * retries it on the next {@code migrate}; otherwise the warning's promised re-run is skipped
+   * because the marker is already recorded. The repair throws after collecting failures, and the
+   * already-repaired hops are idempotent so a re-run re-applies them without harm.
+   */
+  @Test
+  void repairThrowsWhenAHopFailsSoRunOnceCanRetryIt() {
+    UUID fromServiceId = UUID.randomUUID();
+    UUID toServiceId = UUID.randomUUID();
+    UUID pipelineServiceId = UUID.randomUUID();
+
+    TestTopology topo =
+        new TestTopology()
+            .withServices(fromServiceId, toServiceId, pipelineServiceId)
+            .withChildEdges(2)
+            .withExistingHops(fromServiceId, pipelineServiceId, toServiceId, 1);
+
+    topo.failGetRecord(fromServiceId, pipelineServiceId);
+
+    IllegalStateException ex = assertThrows(IllegalStateException.class, topo::runRepair);
+    assertTrue(
+        ex.getMessage().contains("could not be repaired"),
+        "the exception must report the failed hop count so operators can correlate it");
+  }
+
   // --- Test infrastructure ---
 
   private static final class TestTopology {
@@ -227,6 +286,25 @@ class ServiceLineagePipelineHopRepairMigrationTest {
       entityServices.put(toTable, serviceRef(toServiceId, Entity.DATABASE_SERVICE));
       store.add(plainChildEdge(fromTable, toTable));
       return this;
+    }
+
+    /**
+     * A plain (un-annotated) edge from a pipeline (in pipelineServiceId) to a table (in
+     * toServiceId) that projects onto the pipelineService -> toService row, the same row as the
+     * second hop, so its refcount must include this plain edge.
+     */
+    TestTopology withPlainEdgeOnSecondHop() {
+      UUID pipeline = UUID.randomUUID();
+      UUID toTable = UUID.randomUUID();
+      entityServices.put(pipeline, serviceRef(pipelineServiceId, Entity.PIPELINE_SERVICE));
+      entityServices.put(toTable, serviceRef(toServiceId, Entity.DATABASE_SERVICE));
+      store.add(plainEdge(pipeline, Entity.PIPELINE, toTable, Entity.TABLE));
+      return this;
+    }
+
+    /** Makes the next {@code getRecord} for this pair throw, simulating a transient read failure. */
+    void failGetRecord(UUID fromId, UUID toId) {
+      store.failGetRecord(fromId, toId);
     }
 
     TestTopology withExistingHops(
@@ -309,12 +387,17 @@ class ServiceLineagePipelineHopRepairMigrationTest {
     }
 
     private CollectionDAO.EntityRelationshipObject plainChildEdge(UUID fromTable, UUID toTable) {
+      return plainEdge(fromTable, Entity.TABLE, toTable, Entity.TABLE);
+    }
+
+    private CollectionDAO.EntityRelationshipObject plainEdge(
+        UUID fromId, String fromEntity, UUID toId, String toEntity) {
       LineageDetails details = new LineageDetails().withSource(LineageDetails.Source.MANUAL);
       return CollectionDAO.EntityRelationshipObject.builder()
-          .fromId(fromTable.toString())
-          .toId(toTable.toString())
-          .fromEntity(Entity.TABLE)
-          .toEntity(Entity.TABLE)
+          .fromId(fromId.toString())
+          .toId(toId.toString())
+          .fromEntity(fromEntity)
+          .toEntity(toEntity)
           .relation(UPSTREAM)
           .relationType("")
           .json(JsonUtils.pojoToJson(details))
@@ -386,6 +469,12 @@ class ServiceLineagePipelineHopRepairMigrationTest {
 
     void add(CollectionDAO.EntityRelationshipObject row) {
       rows.put(RelKey.of(row), row);
+    }
+
+    /** Makes {@code getRecord} throw for this pair, simulating a transient read failure. */
+    void failGetRecord(UUID fromId, UUID toId) {
+      when(dao.getRecord(eq(fromId), eq(toId), eq(UPSTREAM)))
+          .thenThrow(new RuntimeException("simulated read failure"));
     }
 
     CollectionDAO.EntityRelationshipObject getRecord(UUID fromId, UUID toId, int relation) {
