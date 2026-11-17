@@ -1,37 +1,34 @@
-# A change request's review task is read by whoever may read the request
+# A change request's review task shows its proposed values to whoever may read the request
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-17 (initial)
 - **Deciders:** Ram Narayan Balaji
-- **Guard:** `WorkflowDefinitionResourceIT.test_taskReadsShowAPendingEditOnlyToWhoMaySeeItsChangeRequest`
-- **Related:** `ChangeRequestVisibility`, `ListFilter`, `TaskResource`, `TaskAboutVisibility`
+- **Guard:** `WorkflowDefinitionResourceIT.test_taskReadsShowAPendingValueOnlyToWhoMaySeeItsChangeRequest`
+- **Related:** `ChangeRequestVisibility`, `TaskResource`, `TaskAboutVisibility`
 
 ## Context
 A change request holds an edit until it is reviewed. The change request API shows a request to
-admins, the entity's owners and reviewers, the user who made it, and whoever may resolve its review
-task. The review task carries the same proposed values, but the task API applied only the entity's
-view permission, so its reads followed a different rule from the request's.
+admins, the entity's owners and reviewers (owners as the entity reports them, inherited ones
+included), the user who made it, and whoever may resolve its review task. The review task carries
+the same proposed values in its `payload`, but the task API applied only the entity's view
+permission, so any viewer of the entity read them.
 
 ## Decision
-- Task lists and counts carry one SQL condition in `ListFilter`
-  (`getChangeRequestReviewCondition`), set for every reader who is not an admin. A task is kept
-  unless it is the current review task of another user's change request, and then only if the
-  reader is assigned to or reviews the task, or owns or reviews the entity it is about. The reader
-  is matched by user id and the ids of the reader's teams. Lists and counts filter in the query, so
-  pages are full and counts match the list.
-- The task by id or name, its versions, and the comment routes check the task with
-  `ChangeRequestVisibility`, which also admits whoever a policy lets resolve the task, and return
-  403 otherwise.
+- Every viewer of an entity still sees its tasks: lists, counts, and the task by id or name are
+  unchanged, so pages stay full and counts match the list.
+- For a viewer the request's rule does not admit, a change request's review task comes back
+  without its `payload`, the field that carries the proposed values. The decision is the change
+  request API's own (`ChangeRequestVisibility`), so inherited owners, team membership and
+  policy-based resolve rights count exactly as they do there. It applies to the lists, the task by
+  id or name, and the task returned by the comment routes.
+- A task's versions carry its payload as stored, so they return 403 to such a viewer.
 - A request links only its current review task: revising the request closes the earlier task and
-  unlinks it. A single read finds the request of such a task through the workflow run that created
-  it, which records `global_changeRequestId`.
-- A task that reviews no change request keeps the task API's own checks; admins are not checked.
+  unlinks it. Its request is found through the workflow run that created it, which records
+  `global_changeRequestId`.
+- A page's links, runs and requests are read in one query each; admins are not checked.
 
 ## Consequences
-- A user who may view an entity but not a change request on it does not see the request's open
-  review task in lists or counts, and cannot read or comment on any of its review tasks.
-- The caller's own task queues are unaffected: a requester, assignee or task reviewer passes.
-- Known limits: lists and counts do not link an earlier revision's closed review task, since only
-  its workflow run records the request; and a reader allowed to resolve a task only through a
-  policy, not by assignment, ownership or review, reads the task directly but does not find it in
-  lists.
+- A user who may view an entity but not a change request on it still sees the review task exists,
+  with its title, status and assignees, but not the proposed values.
+- Tasks that review no change request are unchanged.
+- A new field that carries proposed values on a review task must be removed here too.

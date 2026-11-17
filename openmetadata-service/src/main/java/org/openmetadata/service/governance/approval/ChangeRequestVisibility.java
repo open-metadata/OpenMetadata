@@ -16,9 +16,12 @@ package org.openmetadata.service.governance.approval;
 import static org.openmetadata.service.governance.workflows.Workflow.CHANGE_REQUEST_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.Collection;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +35,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.security.AuthorizationException;
@@ -77,7 +81,14 @@ public final class ChangeRequestVisibility {
 
   public static void requireVisible(
       Authorizer authorizer, SecurityContext securityContext, ChangeRequest request) {
-    requireVisible(authorizer, securityContext, request, request.getTaskId());
+    ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, request);
+    String caller = securityContext.getUserPrincipal().getName();
+    if (!caller.equals(request.getRequestedBy())
+        && !seesAll(caller, entity)
+        && !mayResolveTask(authorizer, securityContext, request.getTaskId())) {
+      throw new ForbiddenException(
+          "You cannot view change requests made by other users on this asset");
+    }
   }
 
   /**
@@ -85,58 +96,114 @@ public final class ChangeRequestVisibility {
    * change request is left to the task's own checks.
    */
   public static void requireTaskVisible(
-      Authorizer authorizer, SecurityContext securityContext, Task task) {
-    ChangeRequest request = requestOf(task);
-    if (request != null) {
-      requireVisible(authorizer, securityContext, request, task.getId());
-    }
-  }
-
-  public static void requireTaskVisible(
       Authorizer authorizer, SecurityContext securityContext, UUID taskId) {
     Task task = Entity.getEntity(Entity.TASK, taskId, "", Include.ALL);
-    requireTaskVisible(authorizer, securityContext, task);
-  }
-
-  private static void requireVisible(
-      Authorizer authorizer, SecurityContext securityContext, ChangeRequest request, UUID taskId) {
-    ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, request);
-    String caller = securityContext.getUserPrincipal().getName();
-    if (!caller.equals(request.getRequestedBy())
-        && !seesAll(caller, entity)
-        && !mayResolveTask(authorizer, securityContext, taskId)) {
+    ChangeRequest request = requestsOf(List.of(task)).get(task.getId());
+    if (request != null && !mayRead(authorizer, securityContext, request, task)) {
       throw new ForbiddenException(
           "You cannot view change requests made by other users on this asset");
     }
   }
 
-  // A request links only its current review task. Revising the request closes the earlier task and
-  // unlinks it; the workflow run that created that task records the request it reviewed.
-  private static ChangeRequest requestOf(Task task) {
-    ChangeRequest request =
-        ChangeRequestService.dao().changeRequestDAO().findByTaskId(task.getId());
-    if (request == null && task.getWorkflowInstanceId() != null) {
-      UUID requestId = requestOfRun(task.getWorkflowInstanceId());
-      request =
-          requestId == null
-              ? null
-              : ChangeRequestService.dao().changeRequestDAO().findById(requestId);
+  /**
+   * Removes the proposed values from the review tasks of change requests the caller may not read.
+   * The tasks stay listed, as they are to every viewer of the entity, so pages and counts do not
+   * change; only the values follow the request's rule.
+   */
+  public static void withoutUnreadableValues(
+      Authorizer authorizer, SecurityContext securityContext, List<Task> tasks) {
+    String caller = securityContext.getUserPrincipal().getName();
+    if (!tasks.isEmpty() && !SubjectContext.getSubjectContext(caller).isAdmin()) {
+      Map<UUID, ChangeRequest> requests = requestsOf(tasks);
+      Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
+      for (Task task : tasks) {
+        ChangeRequest request = requests.get(task.getId());
+        boolean readable =
+            request == null
+                || caller.equals(request.getRequestedBy())
+                || seesAllByEntity.computeIfAbsent(
+                    request.getEntityId(), id -> seesAllOn(caller, request))
+                || mayResolveTask(authorizer, securityContext, task.getId());
+        if (!readable) {
+          task.setPayload(null);
+        }
+      }
     }
-    return request;
   }
 
-  private static UUID requestOfRun(UUID runId) {
-    String run = Entity.getCollectionDAO().workflowInstanceTimeSeriesDAO().getById(runId);
-    String requestId =
-        run == null
-            ? null
-            : JsonUtils.readTree(run)
-                .path("variables")
-                .path(
-                    WorkflowVariableHandler.getNamespacedVariableName(
-                        GLOBAL_NAMESPACE, CHANGE_REQUEST_ID_VARIABLE))
-                .asText(null);
-    return requestId == null ? null : UUID.fromString(requestId);
+  private static boolean mayRead(
+      Authorizer authorizer, SecurityContext securityContext, ChangeRequest request, Task task) {
+    ResourceContext<?> entity = authorizeEntityView(authorizer, securityContext, request);
+    String caller = securityContext.getUserPrincipal().getName();
+    return caller.equals(request.getRequestedBy())
+        || seesAll(caller, entity)
+        || mayResolveTask(authorizer, securityContext, task.getId());
+  }
+
+  // An entity that can no longer be read has no owners or reviewers to grant the view.
+  private static boolean seesAllOn(String caller, ChangeRequest request) {
+    boolean seesAll;
+    try {
+      seesAll =
+          seesAll(
+              caller, new ResourceContext<>(request.getEntityType(), request.getEntityId(), null));
+    } catch (EntityNotFoundException missing) {
+      seesAll = false;
+    }
+    return seesAll;
+  }
+
+  // A request links only its current review task. Revising the request closes the earlier task and
+  // unlinks it; the workflow run that created that task records the request it reviewed. A page's
+  // links, runs and requests are each read in one query.
+  private static Map<UUID, ChangeRequest> requestsOf(List<Task> tasks) {
+    Map<UUID, ChangeRequest> byTask = new HashMap<>();
+    ChangeRequestService.dao()
+        .changeRequestDAO()
+        .listByTaskIds(tasks.stream().map(task -> task.getId().toString()).toList())
+        .forEach(request -> byTask.put(request.getTaskId(), request));
+    Map<UUID, UUID> runByTask = new HashMap<>();
+    for (Task task : tasks) {
+      if (!byTask.containsKey(task.getId()) && task.getWorkflowInstanceId() != null) {
+        runByTask.put(task.getId(), task.getWorkflowInstanceId());
+      }
+    }
+    if (!runByTask.isEmpty()) {
+      Map<UUID, UUID> requestByRun = requestIdsOfRuns(runByTask.values());
+      Map<UUID, ChangeRequest> requests = new HashMap<>();
+      if (!requestByRun.isEmpty()) {
+        ChangeRequestService.dao()
+            .changeRequestDAO()
+            .listByIds(requestByRun.values().stream().map(UUID::toString).distinct().toList())
+            .forEach(request -> requests.put(request.getId(), request));
+      }
+      runByTask.forEach(
+          (taskId, runId) -> {
+            ChangeRequest request = requests.get(requestByRun.get(runId));
+            if (request != null) {
+              byTask.put(taskId, request);
+            }
+          });
+    }
+    return byTask;
+  }
+
+  private static Map<UUID, UUID> requestIdsOfRuns(Collection<UUID> runIds) {
+    String variable =
+        WorkflowVariableHandler.getNamespacedVariableName(
+            GLOBAL_NAMESPACE, CHANGE_REQUEST_ID_VARIABLE);
+    Map<UUID, UUID> requestByRun = new HashMap<>();
+    for (String run :
+        Entity.getCollectionDAO()
+            .workflowInstanceTimeSeriesDAO()
+            .listByIds(runIds.stream().map(UUID::toString).distinct().toList())) {
+      JsonNode node = JsonUtils.readTree(run);
+      String requestId = node.path("variables").path(variable).asText(null);
+      if (requestId != null) {
+        requestByRun.put(UUID.fromString(node.path("id").asText()), UUID.fromString(requestId));
+      }
+    }
+    return requestByRun;
   }
 
   private static boolean mayResolveTask(

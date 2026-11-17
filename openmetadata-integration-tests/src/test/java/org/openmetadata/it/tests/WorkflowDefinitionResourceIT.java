@@ -8973,7 +8973,7 @@ public class WorkflowDefinitionResourceIT {
   }
 
   @Test
-  void test_taskReadsShowAPendingEditOnlyToWhoMaySeeItsChangeRequest(TestNamespace ns)
+  void test_taskReadsShowAPendingValueOnlyToWhoMaySeeItsChangeRequest(TestNamespace ns)
       throws Exception {
     SharedEntities shared = SharedEntities.get();
     Glossary glossary =
@@ -8991,36 +8991,38 @@ public class WorkflowDefinitionResourceIT {
         "/v1/tasks?statusGroup=open&limit=100&aboutEntity="
             + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
 
-    // USER3 neither made the edit nor owns, reviews or may resolve its task.
+    // USER3 neither made the edit nor owns, reviews or may resolve its task: it sees the task, as
+    // every viewer of the glossary does, but not the proposed value.
     OpenMetadataClient reader = SdkClients.user3Client();
-    OpenMetadataException hidden =
-        assertThrows(
-            OpenMetadataException.class,
-            () -> reader.getHttpClient().executeForString(HttpMethod.GET, taskPath, null));
-    assertEquals(403, hidden.getStatusCode(), hidden.getMessage());
-    assertFalse(
-        reader
-            .getHttpClient()
-            .executeForString(HttpMethod.GET, entityTasksPath, null)
-            .contains(task.getId().toString()));
-
+    String readerTask = reader.getHttpClient().executeForString(HttpMethod.GET, taskPath, null);
+    assertTrue(readerTask.contains(task.getId().toString()));
+    assertFalse(readerTask.contains("held proposal"));
+    String readerList =
+        reader.getHttpClient().executeForString(HttpMethod.GET, entityTasksPath, null);
+    assertTrue(readerList.contains(task.getId().toString()));
+    assertFalse(readerList.contains("held proposal"));
     String countPath =
         "/v1/tasks/count?aboutEntity="
             + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
-    assertEquals(0, openTaskCount(reader, countPath));
-    OpenMetadataException commentRefused =
+    assertEquals(1, openTaskCount(reader, countPath));
+    String commented =
+        reader
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.POST,
+                taskPath + "/comments",
+                new CreateTaskComment().withMessage("a comment"));
+    assertFalse(commented.contains("held proposal"));
+    OpenMetadataException versionsRefused =
         assertThrows(
             OpenMetadataException.class,
             () ->
                 reader
                     .getHttpClient()
-                    .executeForString(
-                        HttpMethod.POST,
-                        taskPath + "/comments",
-                        new CreateTaskComment().withMessage("a comment")));
-    assertEquals(403, commentRefused.getStatusCode(), commentRefused.getMessage());
+                    .executeForString(HttpMethod.GET, taskPath + "/versions", null));
+    assertEquals(403, versionsRefused.getStatusCode(), versionsRefused.getMessage());
 
-    // The requester and the reviewer the task is assigned to still read it.
+    // The requester and the reviewer the task is assigned to read the proposed value.
     for (OpenMetadataClient allowed : List.of(SdkClients.user2Client(), SdkClients.user1Client())) {
       assertTrue(
           allowed
@@ -9031,24 +9033,24 @@ public class WorkflowDefinitionResourceIT {
           allowed
               .getHttpClient()
               .executeForString(HttpMethod.GET, entityTasksPath, null)
-              .contains(task.getId().toString()));
+              .contains("held proposal"));
       assertEquals(1, openTaskCount(allowed, countPath));
     }
 
-    // A revision closes the first review task and unlinks it from the request; it stays readable
-    // only by those who may read the request.
+    // A revision closes the first review task and unlinks it from the request; its value still
+    // reaches only those who may read the request.
     Task revised = awaitRequestTask(submitDescription(glossary, "revised proposal"), glossary);
     assertNotEquals(task.getId(), revised.getId());
-    OpenMetadataException supersededHidden =
-        assertThrows(
-            OpenMetadataException.class,
-            () -> reader.getHttpClient().executeForString(HttpMethod.GET, taskPath, null));
-    assertEquals(403, supersededHidden.getStatusCode(), supersededHidden.getMessage());
+    assertFalse(
+        reader
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, taskPath, null)
+            .contains("held proposal"));
     assertTrue(
         SdkClients.user2Client()
             .getHttpClient()
             .executeForString(HttpMethod.GET, taskPath, null)
-            .contains(task.getId().toString()));
+            .contains("held proposal"));
   }
 
   private int openTaskCount(OpenMetadataClient client, String countPath) throws Exception {

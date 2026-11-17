@@ -1699,7 +1699,9 @@
     {
       "_comment": "Change request review: the Pending Changes preview and the change request store.",
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/PendingChanges/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/PendingChanges/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/GovernanceDAOs.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/WorkflowDocStoreDAOs.java"
       ],
       "projects": ["chromium"],
       "specs": [

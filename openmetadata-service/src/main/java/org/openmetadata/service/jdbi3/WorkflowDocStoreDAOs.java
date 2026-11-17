@@ -742,6 +742,9 @@ public interface WorkflowDocStoreDAOs {
       return "workflow_instance_time_series";
     }
 
+    @SqlQuery("SELECT json FROM workflow_instance_time_series WHERE id IN (<ids>)")
+    List<String> listByIds(@BindList("ids") List<String> ids);
+
     /**
      * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
      * filters by) for an entire moved subtree in one set-based statement: the moved term itself
