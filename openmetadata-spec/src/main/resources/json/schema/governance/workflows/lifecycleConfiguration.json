@@ -28,11 +28,11 @@
         "$ref": "#/definitions/lifecycleGate"
       }
     },
-    "exits": {
-      "description": "Moves off the onboarding path, such as to Deprecated or Archived, that the lifecycle makes from any stage.",
+    "transitions": {
+      "description": "Moves besides the onboarding path, from the stages each one lists or from any stage, to any stage: made once the asset meets their conditions, or when a user requests them.",
       "type": "array",
       "items": {
-        "$ref": "#/definitions/lifecycleExit"
+        "$ref": "#/definitions/lifecycleTransition"
       }
     }
   },
@@ -43,32 +43,41 @@
   ],
   "additionalProperties": false,
   "definitions": {
-    "lifecycleExit": {
-      "description": "A stage the lifecycle moves an asset to from any stage: once its conditions are met, or when a user requests it.",
+    "lifecycleTransition": {
+      "description": "A move the lifecycle makes between two of its stages: a step of its onboarding path made on request, or a move besides that path such as In Review to Rejected, Rejected back to Draft, or any stage to Deprecated.",
       "type": "object",
-      "javaType": "org.openmetadata.schema.governance.workflows.LifecycleExit",
+      "javaType": "org.openmetadata.schema.governance.workflows.LifecycleTransition",
       "properties": {
-        "stage": {
+        "from": {
+          "description": "Stages the move is made from. Empty or absent means any stage other than the one it moves to.",
+          "type": "array",
+          "items": {
+            "$ref": "../../type/status.json"
+          },
+          "uniqueItems": true
+        },
+        "to": {
+          "description": "The stage the asset moves to.",
           "$ref": "../../type/status.json"
         },
         "trigger": {
-          "description": "automatic moves the asset once the conditions are met; onRequest waits until a user requests the move.",
+          "description": "automatic moves the asset once the conditions are met, after its approvers approve when it names any; onRequest waits until a user requests the move, which its conditions must allow and its approvers approve.",
           "type": "string",
-          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleExitTrigger",
+          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleTransitionTrigger",
           "enum": [
             "automatic",
             "onRequest"
           ]
         },
         "conditions": {
-          "description": "JSON Logic condition the asset must meet. Required for an automatic exit.",
+          "description": "JSON Logic condition the asset must meet: an automatic transition waits for it, and a request for an on-request one is refused until it holds. Required for an automatic transition.",
           "type": "string",
           "minLength": 1
         },
         "approval": {
-          "description": "Who approves a request for an on-request exit. The request is a status update task assigned to them.",
+          "description": "Who approves the move. An on-request transition always names approvers, and its request is a status update task assigned to them; an automatic one may name approvers, who are asked once the conditions are met.",
           "type": "object",
-          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleExitApproval",
+          "javaType": "org.openmetadata.schema.governance.workflows.LifecycleTransitionApproval",
           "properties": {
             "assignees": {
               "description": "Groups of the asset asked to approve.",
@@ -92,10 +101,15 @@
             }
           },
           "additionalProperties": false
+        },
+        "onPath": {
+          "description": "This transition is a step of the onboarding path that the lifecycle makes on request instead of automatically. The path's own stage holds the asset until the request is approved.",
+          "type": "boolean",
+          "default": false
         }
       },
       "required": [
-        "stage",
+        "to",
         "trigger"
       ],
       "additionalProperties": false

@@ -124,6 +124,31 @@ class FilterEntityImplTest {
   }
 
   @Test
+  void lifecycleRestart_firesOnTheStageChangeItsExcludeListSkips() {
+    givenEntity(glossary().withChangeDescription(changeOf("entityStatus")));
+    exclude("entityStatus");
+    when(execution.getVariable("global_lifecycleRestart")).thenReturn(true);
+
+    delegate.execute(execution);
+
+    assertTrue(
+        passesFilter(),
+        "A lifecycle restarted after an approved request runs on the stage the request set");
+  }
+
+  @Test
+  void lifecycleRestart_stillHonoursTheEntityFilter() {
+    givenEntity(glossary().withChangeDescription(changeOf("entityStatus")));
+    exclude("entityStatus");
+    when(execution.getVariable("global_lifecycleRestart")).thenReturn(true);
+    when(filterExpr.getValue(execution)).thenReturn(Map.of("glossary", "{\"!=\":[1,0]}"));
+
+    delegate.execute(execution);
+
+    assertFalse(passesFilter(), "The entity filter still excludes the entity on a restart");
+  }
+
+  @Test
   void eventPath_nonExcludedField_fires() {
     givenEntity(glossary().withChangeDescription(changeOf("tags")));
     exclude("description");

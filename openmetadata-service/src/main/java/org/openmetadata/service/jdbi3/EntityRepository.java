@@ -260,7 +260,7 @@ import org.openmetadata.service.governance.approval.ApprovedApplication;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
-import org.openmetadata.service.governance.workflows.LifecycleExitRuns;
+import org.openmetadata.service.governance.workflows.LifecycleTransitionRuns;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
@@ -1631,17 +1631,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Stages a user can request for this entity now: the on-request exits of the lifecycle that owns
-   * its stage, other than the stage it is already in.
+   * Stages a user can request for this entity now: the on-request transitions that leave its stage
+   * in the lifecycle that owns it.
    */
   public List<String> getRequestableStages(T entity) {
     List<String> requestable = List.of();
     if (supportsEntityStatus && workflowsOwnEntityStatus) {
-      String current = entityLifecycle.adapter().read(entity);
       requestable =
-          stageOwnership.requestableStagesOf(entityType, entity).stream()
-              .filter(stage -> !stage.equals(current))
-              .toList();
+          stageOwnership.requestableStagesOf(
+              entityType, entity, entityLifecycle.adapter().read(entity));
     }
     return requestable;
   }
@@ -1793,12 +1791,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  /** A move to one of its lifecycle's exit stages ends that lifecycle's other runs on the entity. */
-  private void endLifecycleRunsOnExit(T original, T updated) {
+  /** A move one of its lifecycle's transitions makes ends that lifecycle's other runs on the entity. */
+  private void endLifecycleRunsOnTransition(T original, T updated) {
     if (supportsEntityStatus && workflowsOwnEntityStatus) {
-      String stage = entityLifecycle.adapter().read(updated);
-      if (stage != null && !stage.equals(entityLifecycle.adapter().read(original))) {
-        LifecycleExitRuns.endRuns(updated, entityType, stage);
+      String from = entityLifecycle.adapter().read(original);
+      String to = entityLifecycle.adapter().read(updated);
+      if (to != null && !to.equals(from)) {
+        LifecycleTransitionRuns.endRuns(updated, entityType, from, to);
       }
     }
   }
@@ -4854,7 +4853,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
-    endLifecycleRunsOnExit(original, updated);
+    endLifecycleRunsOnTransition(original, updated);
     invalidateListCountsOnStageChange(original, updated);
     refreshCountingParentsOnMove(original, updated);
   }

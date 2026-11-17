@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
-import {
-  Archive,
-  ChevronDown,
-  SlashCircle01,
-} from '@openmetadata/ui-core-components/icons';
+import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
@@ -25,9 +21,11 @@ import { stageKey } from '../../../utils/governance/lifecycle/LifecycleRequest.u
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
 import {
-  STAGE_ACTION,
+  STAGE_MENU_CLASS,
+  STAGE_MENU_HEADER_CLASS,
   STAGE_TRIGGER_CLASS,
 } from './EntityStageBadge.constants';
+import { getStageActionLabel } from './EntityStageBadge.utils';
 import { StatusRequestModal } from './StatusRequestModal';
 
 // The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
@@ -121,19 +119,38 @@ export const EntityStageBadge = ({
             {badge}
           </Button>
         )}
-        <Dropdown.Popover placement="bottom start">
+        <Dropdown.Popover className={STAGE_MENU_CLASS} placement="bottom start">
           <Dropdown.Menu
             data-testid="entity-status-request-menu"
             onAction={(key) => setRequesting(key as EntityStatus)}>
-            {requestStages.map((stage) => (
-              <Dropdown.Item
-                data-testid={`request-${stageKey(stage)}-button`}
-                icon={stage === EntityStatus.Archived ? Archive : SlashCircle01}
-                id={stage}
-                key={stage}
-                label={STAGE_ACTION[stage] ? t(STAGE_ACTION[stage]) : stage}
-              />
-            ))}
+            <Dropdown.Section>
+              <Dropdown.SectionHeader
+                className={STAGE_MENU_HEADER_CLASS}
+                data-testid="entity-status-request-menu-header">
+                {t('label.request-a-move')}
+              </Dropdown.SectionHeader>
+              {requestStages.map((stage) => {
+                const actionLabel = getStageActionLabel(t, stage);
+
+                return (
+                  <Dropdown.Item
+                    data-testid={`request-${stageKey(stage)}-button`}
+                    id={stage}
+                    key={stage}
+                    textValue={actionLabel}>
+                    <span className="tw:flex tw:items-center tw:justify-between tw:gap-2">
+                      <span className="tw:truncate">{actionLabel}</span>
+                      <StatusBadge
+                        className="tw:shrink-0"
+                        dataTestId={`request-${stageKey(stage)}-stage-badge`}
+                        label={stage}
+                        status={getEntityStatusClass(stage)}
+                      />
+                    </span>
+                  </Dropdown.Item>
+                );
+              })}
+            </Dropdown.Section>
           </Dropdown.Menu>
         </Dropdown.Popover>
       </Dropdown.Root>

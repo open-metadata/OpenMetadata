@@ -27,24 +27,25 @@ import org.openmetadata.service.governance.workflows.metadata.MetadataCollection
 import org.openmetadata.service.jdbi3.TaskRepository;
 
 /**
- * An exit moves an asset off its lifecycle's onboarding path, so the lifecycle's runs on that asset
- * no longer apply: their approval tasks close and their runs end, and the asset's open tasks for
- * other stages close. It holds whatever made the move: an automatic exit, or an approved status
- * request. ADR:2026-11-16-a-lifecycle-request-triggers-only-lifecycle-playbooks
+ * A transition moves an asset besides its lifecycle's onboarding path, so the lifecycle's runs on
+ * that asset no longer apply: their approval tasks close and their runs end, and the asset's open
+ * tasks for other stages close. It holds whatever made the move: an automatic transition, or an
+ * approved status request. A move along the onboarding path matches no transition and leaves the
+ * path's own tasks as the path decides. ADR:2026-11-16-a-lifecycle-request-triggers-only-lifecycle-playbooks
  */
 @Slf4j
-public final class LifecycleExitRuns {
-  static final String ENDED_BY_EXIT = "The lifecycle moved this asset to %s";
+public final class LifecycleTransitionRuns {
+  static final String ENDED_BY_TRANSITION = "The lifecycle moved this asset to %s";
 
-  private LifecycleExitRuns() {}
+  private LifecycleTransitionRuns() {}
 
-  /** Called once the entity's stage has changed to {@code stage}. */
-  public static void endRuns(EntityInterface<?> entity, String entityType, String stage) {
+  /** Called once the entity's stage has changed from {@code from} to {@code to}. */
+  public static void endRuns(EntityInterface<?> entity, String entityType, String from, String to) {
     EntityStatusWorkflows.ACTIVE
         .owningStageOf(entityType, entity)
-        .flatMap(EntityStatusWorkflows::playbookWithExits)
-        .filter(playbook -> EntityStatusWorkflows.exitStages(playbook).contains(stage))
-        .ifPresent(playbook -> endRuns(entity, stage, playbook));
+        .flatMap(EntityStatusWorkflows::playbookWithTransitions)
+        .filter(playbook -> EntityStatusWorkflows.makesTransition(playbook, from, to))
+        .ifPresent(playbook -> endRuns(entity, to, playbook));
   }
 
   private static void endRuns(
@@ -73,7 +74,7 @@ public final class LifecycleExitRuns {
         task.getWorkflowInstanceId(),
         workflowName,
         stage);
-    tasks.closeTask(task, GOVERNANCE_BOT, ENDED_BY_EXIT.formatted(stage));
+    tasks.closeTask(task, GOVERNANCE_BOT, ENDED_BY_TRANSITION.formatted(stage));
     WorkflowRunTermination.terminateOnceTaskCloses(
         workflowName, task.getId(), task.getWorkflowInstanceId());
   }

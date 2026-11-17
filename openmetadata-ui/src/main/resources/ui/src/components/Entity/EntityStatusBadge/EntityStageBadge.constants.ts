@@ -22,6 +22,13 @@ export const STAGE_ACTION: Partial<Record<EntityStatus, string>> = {
 export const STAGE_TRIGGER_CLASS =
   'tw:h-auto tw:min-h-0 tw:gap-0.5 tw:p-0 tw:shadow-none tw:after:outline-0 tw:bg-transparent';
 
+// Wide enough for "Move to <stage>" plus the stage's badge on one line.
+export const STAGE_MENU_CLASS = 'tw:w-auto tw:min-w-62';
+
+// Lines up with the items' icons: the item's outer and inner padding add up to 16px.
+export const STAGE_MENU_HEADER_CLASS =
+  'tw:px-4 tw:pt-1.5 tw:pb-1 tw:text-xs tw:font-semibold tw:text-quaternary';
+
 /** The pending-request label for each stage; other stages read "<stage> requested". */
 export const STAGE_REQUESTED: Partial<Record<EntityStatus, string>> = {
   [EntityStatus.Deprecated]: 'label.deprecation-requested',

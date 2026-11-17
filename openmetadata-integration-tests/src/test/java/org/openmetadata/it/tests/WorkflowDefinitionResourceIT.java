@@ -17500,7 +17500,7 @@ public class WorkflowDefinitionResourceIT {
       """
       {
         "name": "%1$s",
-        "description": "Lifecycle playbook with an onboarding approval and an on-request exit",
+        "description": "Lifecycle playbook with an onboarding approval and on-request transitions",
         "trigger": {
           "type": "eventBasedEntity",
           "config": {
@@ -17531,9 +17531,51 @@ public class WorkflowDefinitionResourceIT {
         ],
         "config": {
           "storeStageStatus": true,
-          "lifecycle": {"version": 1, "entityType": "%3$s", "gates": [],
-                        "exits": [{"stage": "Deprecated", "trigger": "onRequest",
-                                   "approval": {"assignees": ["owners"]}}]}
+          "lifecycle": {"version": 1, "entityType": "%3$s", "gates": [], "transitions": %4$s}
+        }
+      }""";
+
+  private static final String DEFAULT_TRANSITIONS =
+      """
+      [{"to": "Deprecated", "trigger": "onRequest", "approval": {"assignees": ["owners"]}},
+       {"from": ["Approved"], "to": "In Review", "trigger": "onRequest",
+        "approval": {"assignees": ["owners"]}}]""";
+
+  // Moves a Draft asset to In Review on every run; requests move it to Rejected and back to Draft.
+  private static final String DRAFT_TO_REVIEW_PLAYBOOK =
+      """
+      {
+        "name": "%1$s",
+        "description": "Lifecycle playbook that moves Draft assets to In Review",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["%3$s"],
+            "events": ["Created", "Updated"],
+            "exclude": ["entityStatus"],
+            "filter": {"%3$s": %2$s}
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "type": "startEvent", "subType": "startEvent"},
+          {"name": "InDraft", "type": "automatedTask", "subType": "checkEntityAttributesTask",
+           "config": {"rules": "{\\"==\\":[{\\"var\\":\\"entityStatus\\"},\\"Draft\\"]}"},
+           "inputNamespaceMap": {"relatedEntity": "global"}},
+          {"name": "SetInReview", "type": "automatedTask", "subType": "setEntityAttributeTask",
+           "config": {"fieldName": "status", "fieldValue": "In Review"},
+           "inputNamespaceMap": {"relatedEntity": "global", "updatedBy": "global"}},
+          {"name": "end", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "InDraft"},
+          {"from": "InDraft", "to": "SetInReview", "condition": "true"},
+          {"from": "InDraft", "to": "end", "condition": "false"},
+          {"from": "SetInReview", "to": "end"}
+        ],
+        "config": {
+          "storeStageStatus": true,
+          "lifecycle": {"version": 1, "entityType": "%3$s", "gates": [], "transitions": %4$s}
         }
       }""";
 
@@ -17549,6 +17591,9 @@ public class WorkflowDefinitionResourceIT {
         awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), playbook.getId());
 
     Task request = requestStatus(admin, domain, "Deprecated", "Replaced by a newer domain");
+    assertEquals(
+        List.of("shared_user1"),
+        request.getAssignees().stream().map(EntityReference::getName).toList());
     ownerClient
         .tasks()
         .resolve(
@@ -17696,6 +17741,145 @@ public class WorkflowDefinitionResourceIT {
     assertEquals(TaskEntityStatus.Open, admin.tasks().get(request.getId().toString()).getStatus());
   }
 
+  @Test
+  @Order(231)
+  void test_statusRequestRaisedByTheOnlyOwnerGoesToTheAdmins(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    deployDeprecateOnRequestPlaybook(admin, ns, "requestedByOwner");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("requestedByOwner"));
+
+    Task request =
+        requestStatus(SdkClients.user1Client(), domain, "Deprecated", "Moved to another domain");
+
+    List<String> approvers = request.getAssignees().stream().map(EntityReference::getName).toList();
+    assertFalse(approvers.contains("shared_user1"));
+    assertTrue(approvers.contains("admin"));
+  }
+
+  @Test
+  @Order(232)
+  void test_aTransitionIsOfferedOnlyFromItsStagesAndMovesTheAssetBackOntoThePath(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    WorkflowDefinition playbook = deployDeprecateOnRequestPlaybook(admin, ns, "reopened");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("reopened"));
+    Task onboarding =
+        awaitOpenApprovalTaskOf(ownerClient, domain.getFullyQualifiedName(), playbook.getId());
+
+    assertEquals(List.of("Deprecated"), requestableStages(admin, Entity.DOMAIN, domain.getId()));
+    OpenMetadataException notYet =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> requestStatus(admin, domain, "In Review", "Reopen it"));
+    assertEquals(400, notYet.getStatusCode());
+
+    ownerClient
+        .tasks()
+        .resolve(
+            onboarding.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+    await("the onboarding approval to approve the domain")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () ->
+                admin.domains().get(domain.getId().toString()).getEntityStatus()
+                    == EntityStatus.APPROVED);
+    assertEquals(
+        List.of("Deprecated", "In Review"),
+        requestableStages(admin, Entity.DOMAIN, domain.getId()));
+
+    Task reopen = requestStatus(admin, domain, "In Review", "Definitions changed, review again");
+    ownerClient
+        .tasks()
+        .resolve(
+            reopen.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+
+    await("the approved request to move the domain back to In Review")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(
+            () ->
+                admin.domains().get(domain.getId().toString()).getEntityStatus()
+                    == EntityStatus.IN_REVIEW);
+    assertEquals(List.of("Deprecated"), requestableStages(admin, Entity.DOMAIN, domain.getId()));
+  }
+
+  @Test
+  @Order(233)
+  void test_aStatusRequestIsOfferedAndAcceptedOnlyWhileItsConditionsHold(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    deployPlaybook(
+        admin,
+        ns,
+        "retireWhenNoted",
+        DEPRECATE_ON_REQUEST_PLAYBOOK,
+        """
+        [{"to": "Archived", "trigger": "onRequest", "approval": {"assignees": ["owners"]},
+          "conditions": "{\\"in\\":[\\"retire\\",{\\"var\\":\\"description\\"}]}"}]""");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("retireWhenNoted"));
+
+    assertEquals(List.of(), requestableStages(admin, Entity.DOMAIN, domain.getId()));
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> requestStatus(admin, domain, "Archived", "Archive it"));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("does not meet the conditions"));
+
+    Domain noted = admin.domains().get(domain.getId().toString());
+    noted.setDescription("Scheduled to retire next quarter");
+    admin.domains().update(noted.getId().toString(), noted);
+
+    assertEquals(List.of("Archived"), requestableStages(admin, Entity.DOMAIN, domain.getId()));
+    assertEquals(
+        TaskEntityStatus.Open, requestStatus(admin, domain, "Archived", "Retiring").getStatus());
+  }
+
+  @Test
+  @Order(234)
+  void test_anApprovedRequestMovesTheAssetAndTheLifecycleCarriesOnAtOnce(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    OpenMetadataClient ownerClient = SdkClients.user1Client();
+    deployPlaybook(
+        admin,
+        ns,
+        "reworked",
+        DRAFT_TO_REVIEW_PLAYBOOK,
+        """
+        [{"to": "Rejected", "trigger": "onRequest", "approval": {"assignees": ["owners"]}},
+         {"from": ["Rejected"], "to": "Draft", "trigger": "onRequest",
+          "approval": {"assignees": ["owners"]}}]""");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("reworked"));
+    approveRequest(ownerClient, requestStatus(admin, domain, "Rejected", "Not ready"));
+    awaitStage(admin, domain, EntityStatus.REJECTED);
+
+    approveRequest(ownerClient, requestStatus(admin, domain, "Draft", "Rework it"));
+
+    // The approved move lands on Draft, and the lifecycle runs again from there without any edit:
+    // its Draft step moves the domain on to In Review.
+    awaitStage(admin, domain, EntityStatus.IN_REVIEW);
+  }
+
+  private static void approveRequest(OpenMetadataClient approver, Task request) {
+    approver
+        .tasks()
+        .resolve(
+            request.getId().toString(),
+            new ResolveTask().withResolutionType(TaskResolutionType.Approved));
+  }
+
+  private static void awaitStage(OpenMetadataClient admin, Domain domain, EntityStatus stage) {
+    await("the domain to reach " + stage.value())
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(1))
+        .until(() -> admin.domains().get(domain.getId().toString()).getEntityStatus() == stage);
+  }
+
   private Domain domainOwnedByUser1(OpenMetadataClient admin, String name) {
     EntityReference owner = admin.users().getByName("shared_user1").getEntityReference();
     return admin
@@ -17711,6 +17895,17 @@ public class WorkflowDefinitionResourceIT {
   // Deployed before the domain is created, so the playbook owns the domain from its first edit.
   private WorkflowDefinition deployDeprecateOnRequestPlaybook(
       OpenMetadataClient admin, TestNamespace ns, String domainName) throws Exception {
+    return deployPlaybook(
+        admin, ns, domainName, DEPRECATE_ON_REQUEST_PLAYBOOK, DEFAULT_TRANSITIONS);
+  }
+
+  private WorkflowDefinition deployPlaybook(
+      OpenMetadataClient admin,
+      TestNamespace ns,
+      String domainName,
+      String playbook,
+      String transitions)
+      throws Exception {
     // The name sorts before other stage workflows, such as the seeded approval workflows, so this
     // playbook owns the entity's stage. It stays short: Flowable keeps the trigger's process
     // definition id, "<name>Trigger:<version>:<deployment>", within 64 characters.
@@ -17720,8 +17915,11 @@ public class WorkflowDefinitionResourceIT {
             .workflowDefinitions()
             .create(
                 MAPPER.readValue(
-                    DEPRECATE_ON_REQUEST_PLAYBOOK.formatted(
-                        workflowName, onlyEntityNamed(ns.shortPrefix(domainName)), Entity.DOMAIN),
+                    playbook.formatted(
+                        workflowName,
+                        onlyEntityNamed(ns.shortPrefix(domainName)),
+                        Entity.DOMAIN,
+                        transitions),
                     CreateWorkflowDefinition.class));
     trackWorkflow(created.getName(), created.getId().toString());
     waitForWorkflowDeployment(admin, workflowName);

@@ -17,10 +17,11 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { expect, test } from '../../fixtures/pages';
 
 /**
- * A lifecycle with an on-request exit to Deprecated offers "Deprecate" from the stage badge of the
- * assets it owns, and only those. Requesting it shows the pending request next to the stage until
- * the owner approves, after which the asset is Deprecated and the request is gone. The domains
- * belong to the data steward, since nobody approves their own request.
+ * A lifecycle with on-request exits to Deprecated and Archived offers them from the stage badge of
+ * the assets it owns, and only those. Requesting one shows the pending request next to the stage
+ * until the owner decides: approving moves the asset, rejecting leaves it where it was. Only the
+ * requester or an admin can withdraw a request. The domains belong to the data steward, since
+ * nobody approves their own request.
  */
 
 type Domain = { id: string; name: string; fullyQualifiedName: string };
@@ -43,9 +44,10 @@ const createDomain = async (
     'createDomain'
   );
 
-// Owns the stage of one domain and moves it to Deprecated once its owner approves a request.
-// The name sorts before other stage workflows and stays short for Flowable's 64-character ids.
-const createDeprecateOnRequestLifecycle = async (
+// Owns the stage of one domain and moves it to Deprecated or Archived once its owner approves a
+// request. The name sorts before other stage workflows and stays short for Flowable's
+// 64-character ids.
+const createExitOnRequestLifecycle = async (
   apiContext: APIRequestContext,
   name: string,
   domainName: string
@@ -55,20 +57,18 @@ const createDeprecateOnRequestLifecycle = async (
       data: {
         name,
         description:
-          'Offers one domain Deprecated on request, approved by its owners.',
+          'Offers one domain Deprecated or Archived on request, approved by its owners.',
         config: {
           storeStageStatus: true,
           lifecycle: {
             version: 1,
             entityType: 'domain',
             gates: [],
-            exits: [
-              {
-                stage: 'Deprecated',
-                trigger: 'onRequest',
-                approval: { assignees: ['owners'] },
-              },
-            ],
+            transitions: ['Deprecated', 'Archived'].map((to) => ({
+              to,
+              trigger: 'onRequest',
+              approval: { assignees: ['owners'] },
+            })),
           },
         },
         trigger: {
@@ -109,7 +109,7 @@ const createDeprecateOnRequestLifecycle = async (
         ],
       },
     }),
-    'createDeprecateOnRequestLifecycle'
+    'createExitOnRequestLifecycle'
   );
 
 // Owns the stage of one domain without any exit, so the domain is offered no request whatever
@@ -199,9 +199,28 @@ const openRequestTasks = async (
     )
   ).data;
 
-const approveOpenRequest = async (
+const requestStage = async (
   apiContext: APIRequestContext,
-  domain: Domain
+  domain: Domain,
+  stage: string
+) =>
+  okJson<Task>(
+    await apiContext.post('/api/v1/tasks', {
+      data: {
+        category: 'MetadataUpdate',
+        type: 'StatusUpdate',
+        about: `<#E::domain::${domain.fullyQualifiedName}>`,
+        description: 'No longer used',
+        payload: { newStatus: stage, reason: 'No longer used' },
+      },
+    }),
+    'requestStage'
+  );
+
+const decideOpenRequest = async (
+  apiContext: APIRequestContext,
+  domain: Domain,
+  resolutionType: 'Approved' | 'Rejected'
 ) => {
   await expect
     .poll(async () => (await openRequestTasks(apiContext, domain)).length, {
@@ -211,10 +230,34 @@ const approveOpenRequest = async (
   const [request] = await openRequestTasks(apiContext, domain);
   await okJson(
     await apiContext.post(`/api/v1/tasks/${request.id}/resolve`, {
-      data: { resolutionType: 'Approved' },
+      data: { resolutionType, comment: 'Decided by the owner' },
     }),
     'resolveRequest'
   );
+};
+
+const submitRequestFromChip = async (
+  page: Page,
+  stage: 'deprecated' | 'archived',
+  reason: string
+) => {
+  await openStageMenu(page);
+  await page.getByTestId(`request-${stage}-button`).click();
+  await expect(page.getByTestId('status-request-modal')).toBeVisible();
+  await page.getByRole('textbox', { name: /Reason/ }).fill(reason);
+  const requestResponse = page.waitForResponse(
+    (response) =>
+      response.url().endsWith('/api/v1/tasks') &&
+      response.request().method() === 'POST'
+  );
+  await page.getByTestId('status-request-submit').click();
+  expect((await requestResponse).status()).toBe(201);
+  await expect(page.getByTestId('lifecycle-request-badge')).toBeVisible();
+};
+
+const openPendingRequestMenu = async (page: Page) => {
+  await page.getByTestId('lifecycle-request-trigger').click();
+  await expect(page.getByTestId('lifecycle-request-menu')).toBeVisible();
 };
 
 test.describe('Lifecycle request', () => {
@@ -240,7 +283,7 @@ test.describe('Lifecycle request', () => {
       `pwNotOffered${uuid()}`,
       owner.id
     );
-    ({ id: lifecycleId } = await createDeprecateOnRequestLifecycle(
+    ({ id: lifecycleId } = await createExitOnRequestLifecycle(
       apiContext,
       `ALcPw_${suffix}${uuid()}`,
       offered.name
@@ -294,7 +337,7 @@ test.describe('Lifecycle request', () => {
     );
 
     const { apiContext, afterAction } = await getApiContext(dataStewardPage);
-    await approveOpenRequest(apiContext, offered);
+    await decideOpenRequest(apiContext, offered, 'Approved');
     await afterAction();
 
     await expect
@@ -308,9 +351,10 @@ test.describe('Lifecycle request', () => {
       )
       .toBe(0);
     await expect(page.getByText('Deprecated', { exact: true })).toBeVisible();
-    await expect(page.getByTestId('entity-status-request-trigger')).toHaveCount(
-      0
-    );
+    // A Deprecated domain can still be archived, but not deprecated again.
+    await openStageMenu(page);
+    await expect(page.getByTestId('request-archived-button')).toBeVisible();
+    await expect(page.getByTestId('request-deprecated-button')).toHaveCount(0);
   });
 
   test('a domain its lifecycle does not offer Deprecate to shows no request entry', async ({
@@ -331,5 +375,99 @@ test.describe('Lifecycle request', () => {
       0
     );
     await expect(page.getByTestId('lifecycle-request-badge')).toHaveCount(0);
+  });
+
+  test('the stage menu offers each on-request exit, and an approved Archived request archives the domain', async ({
+    page,
+    dataStewardPage,
+  }) => {
+    await openDomain(page, offered);
+    await openStageMenu(page);
+    await expect(page.getByTestId('request-deprecated-button')).toBeVisible();
+    await expect(page.getByTestId('request-archived-button')).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await submitRequestFromChip(page, 'archived', 'Data moved to the archive');
+    const { apiContext, afterAction } = await getApiContext(dataStewardPage);
+    await decideOpenRequest(apiContext, offered, 'Approved');
+    await afterAction();
+
+    await expect
+      .poll(
+        async () => {
+          await openDomain(page, offered);
+
+          return page.getByTestId('lifecycle-request-badge').count();
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(0);
+    await expect(page.getByText('Archived', { exact: true })).toBeVisible();
+  });
+
+  test('a rejected request leaves the stage and offers the request again', async ({
+    page,
+    dataStewardPage,
+  }) => {
+    await openDomain(page, offered);
+    const stageBefore = await page
+      .getByTestId('entity-status-request-trigger')
+      .innerText();
+    await submitRequestFromChip(page, 'deprecated', 'No longer used');
+
+    const { apiContext, afterAction } = await getApiContext(dataStewardPage);
+    await decideOpenRequest(apiContext, offered, 'Rejected');
+    await afterAction();
+
+    await expect
+      .poll(
+        async () => {
+          await openDomain(page, offered);
+
+          return page.getByTestId('lifecycle-request-badge').count();
+        },
+        { timeout: 60_000 }
+      )
+      .toBe(0);
+    await expect(page.getByTestId('entity-status-request-trigger')).toHaveText(
+      stageBefore
+    );
+    await openStageMenu(page);
+    await expect(page.getByTestId('request-deprecated-button')).toBeVisible();
+  });
+
+  test('the owner can view a request but only the requester can withdraw it', async ({
+    page,
+    dataStewardPage,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const request = await requestStage(apiContext, offered, 'Deprecated');
+    await afterAction();
+
+    await openDomain(dataStewardPage, offered);
+    await openPendingRequestMenu(dataStewardPage);
+    await expect(
+      dataStewardPage.getByTestId('view-lifecycle-request')
+    ).toBeVisible();
+    await expect(
+      dataStewardPage.getByTestId('withdraw-lifecycle-request')
+    ).toHaveCount(0);
+
+    await openDomain(page, offered);
+    await openPendingRequestMenu(page);
+    const withdrawn = page.waitForResponse(
+      (response) =>
+        response.url().includes(`/api/v1/tasks/${request.id}`) && response.ok()
+    );
+    await page.getByTestId('withdraw-lifecycle-request').click();
+    await withdrawn;
+
+    await expect(page.getByTestId('lifecycle-request-badge')).toHaveCount(0);
+    await expect(
+      page.getByTestId('entity-status-request-trigger')
+    ).toBeVisible();
+    const { apiContext: check, afterAction: done } = await getApiContext(page);
+    expect(await openRequestTasks(check, offered)).toHaveLength(0);
+    await done();
   });
 });

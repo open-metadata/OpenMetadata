@@ -30,7 +30,8 @@ public class TriggerFactory {
           triggerWorkflowId,
           (EventBasedEntityTriggerDefinition) workflow.getTrigger(),
           GovernanceApprovalRegistry.holdsChanges(workflow),
-          excludedEntityTypes);
+          excludedEntityTypes,
+          workflow.getConfig() != null && workflow.getConfig().getLifecycle() != null);
       case NO_OP -> new NoOpTrigger(
           workflow.getName(), triggerWorkflowId, (NoOpTriggerDefinition) workflow.getTrigger());
       case PERIODIC_BATCH_ENTITY -> new PeriodicBatchEntityTrigger(

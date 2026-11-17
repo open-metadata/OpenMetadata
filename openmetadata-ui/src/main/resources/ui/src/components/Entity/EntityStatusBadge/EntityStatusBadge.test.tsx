@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Decision } from '../../../generated/governance/workflows/approvalOutcome';
@@ -297,6 +297,79 @@ describe('EntityStatusBadge', () => {
       EntityStatus.Deprecated,
       'Replaced by Revenue'
     );
+  });
+
+  it('requests a move to any stage a transition leads to, such as back to Draft', async () => {
+    const onRequest = jest.fn().mockResolvedValue(true);
+    render(
+      <EntityStatusBadge
+        requestStages={[EntityStatus.Draft, EntityStatus.Deprecated]}
+        showDivider={false}
+        status={EntityStatus.Rejected}
+        onRequest={onRequest}
+      />
+    );
+
+    await user.click(screen.getByTestId('entity-status-request-trigger'));
+
+    expect(await screen.findByTestId('request-draft-button')).toHaveTextContent(
+      'label.move-to-stage'
+    );
+
+    await user.click(screen.getByTestId('request-draft-button'));
+    await user.type(
+      screen.getByRole('textbox', { name: /label.reason/ }),
+      'Rework the definition'
+    );
+    await user.click(screen.getByTestId('status-request-submit'));
+
+    expect(onRequest).toHaveBeenCalledWith(
+      EntityStatus.Draft,
+      'Rework the definition'
+    );
+  });
+
+  it('titles the stage menu as a request, so picking a stage does not read as an instant change', async () => {
+    render(
+      <EntityStatusBadge
+        requestStages={[EntityStatus.Deprecated]}
+        showDivider={false}
+        status={EntityStatus.Approved}
+        onRequest={jest.fn()}
+      />
+    );
+
+    await user.click(screen.getByTestId('entity-status-request-trigger'));
+
+    expect(
+      await screen.findByTestId('entity-status-request-menu-header')
+    ).toHaveTextContent('label.request-a-move');
+    // The title is not an option of its own: only the offered stage is.
+    expect(screen.getAllByRole('menuitemradio')).toHaveLength(1);
+  });
+
+  it('shows each offered stage as its own badge next to the action', async () => {
+    render(
+      <EntityStatusBadge
+        requestStages={[EntityStatus.Draft, EntityStatus.Archived]}
+        showDivider={false}
+        status={EntityStatus.Rejected}
+        onRequest={jest.fn()}
+      />
+    );
+
+    await user.click(screen.getByTestId('entity-status-request-trigger'));
+
+    const archive = await screen.findByTestId('request-archived-button');
+    const draft = screen.getByTestId('request-draft-button');
+
+    expect(within(archive).getByText('label.archive')).toBeInTheDocument();
+    expect(
+      within(archive).getByTestId('request-archived-stage-badge')
+    ).toHaveTextContent(EntityStatus.Archived);
+    expect(
+      within(draft).getByTestId('request-draft-stage-badge')
+    ).toHaveTextContent(EntityStatus.Draft);
   });
 
   it('opens the pending request and lets the requester withdraw it', async () => {

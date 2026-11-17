@@ -26,8 +26,9 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.LifecycleApproverGroup;
-import org.openmetadata.schema.governance.workflows.LifecycleExit;
-import org.openmetadata.schema.governance.workflows.LifecycleExitApproval;
+import org.openmetadata.schema.governance.workflows.LifecycleTransition;
+import org.openmetadata.schema.governance.workflows.LifecycleTransitionApproval;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskEntityType;
@@ -41,15 +42,18 @@ import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
- * A status update task asks to move an asset to a stage its lifecycle offers on request, such as
- * Deprecated. The task framework carries the request and applies the move once it is approved; the
- * asset's lifecycle decides which stages can be requested and who approves.
+ * A status update task asks to move an asset along one of its lifecycle's on-request transitions,
+ * such as In Review to Rejected or any stage to Deprecated. The task framework carries the request
+ * and applies the move once it is approved; the asset's lifecycle decides which moves can be
+ * requested from the stage the asset is in, and who approves them.
  * ADR:2026-11-16-a-lifecycle-request-triggers-only-lifecycle-playbooks
  */
 public final class StatusUpdateTasks {
   static final String NEW_STATUS = "newStatus";
   static final String CURRENT_STATUS = "currentStatus";
   private static final int ADMIN_PAGE_SIZE = 100;
+  private static final LifecycleTransitionApproval OWNERS_APPROVE =
+      new LifecycleTransitionApproval().withAssignees(Set.of(LifecycleApproverGroup.OWNERS));
 
   private StatusUpdateTasks() {}
 
@@ -96,7 +100,10 @@ public final class StatusUpdateTasks {
     }
   }
 
-  /** Approving still requires the lifecycle to offer the stage, as it did when it was requested. */
+  /**
+   * Approving still requires the lifecycle to offer the move from the stage the asset is in now,
+   * which may differ from the stage it was in when the request was raised.
+   */
   public static void requireStillOffered(Task task) {
     if (task.getType() == TaskEntityType.StatusUpdate) {
       requireOffered(approvalTarget(task), requestedStage(task));
@@ -113,9 +120,18 @@ public final class StatusUpdateTasks {
   private static void requireOffered(EntityInterface<?> entity, String stage) {
     EntityRepository<?> repository = Entity.getEntityRepository(entityType(entity));
     if (!repository.getRequestableStages(entity.getId()).contains(stage)) {
-      throw new BadRequestException(
-          "The lifecycle of %s '%s' does not offer %s on request"
-              .formatted(entityType(entity), entity.getFullyQualifiedName(), stage));
+      String message =
+          owningPlaybook(entity)
+                  .filter(
+                      playbook ->
+                          EntityStatusWorkflows.offersOnRequest(playbook, stageOf(entity), stage))
+                  .isPresent()
+              ? "%s '%s' does not meet the conditions its lifecycle sets for moving to %s"
+                  .formatted(entityType(entity), entity.getFullyQualifiedName(), stage)
+              : "The lifecycle of %s '%s' does not offer %s on request from %s"
+                  .formatted(
+                      entityType(entity), entity.getFullyQualifiedName(), stage, stageOf(entity));
+      throw new BadRequestException(message);
     }
   }
 
@@ -132,30 +148,18 @@ public final class StatusUpdateTasks {
   private static Object withCurrentStatus(Object payload, EntityInterface<?> entity) {
     // The task payload is free-form JSON shared by every task type, so it is edited as a map.
     Map<String, Object> updated = new LinkedHashMap<>(JsonUtils.getMap(payload));
-    Object current = entity.getEntityStatus();
-    updated.put(CURRENT_STATUS, current == null ? null : current.toString());
+    updated.put(CURRENT_STATUS, stageOf(entity));
     return updated;
   }
 
-  // The exit's approvers other than the requester; with none left, the admins decide.
+  // The transition's approvers other than the requester; with none left, the admins decide.
   private static List<EntityReference> approvers(
       EntityInterface<?> entity, String stage, String requester) {
-    LifecycleExitApproval approval =
-        onRequestExit(entity, stage)
-            .map(LifecycleExit::getApproval)
-            .orElse(
-                new LifecycleExitApproval().withAssignees(Set.of(LifecycleApproverGroup.OWNERS)));
-    Set<LifecycleApproverGroup> groups =
-        Optional.ofNullable(approval.getAssignees()).orElse(Set.of());
-    List<EntityReference> approvers = new ArrayList<>();
-    if (groups.contains(LifecycleApproverGroup.OWNERS)) {
-      approvers.addAll(listOrEmpty(entity.getOwners()));
-    }
-    if (groups.contains(LifecycleApproverGroup.REVIEWERS)) {
-      approvers.addAll(listOrEmpty(entity.getReviewers()));
-    }
-    approvers.addAll(listOrEmpty(approval.getCandidates()));
-    List<EntityReference> others = withoutRequester(approvers, requester);
+    LifecycleTransitionApproval approval =
+        onRequestTransition(entity, stage)
+            .map(LifecycleTransition::getApproval)
+            .orElse(OWNERS_APPROVE);
+    List<EntityReference> others = selectApprovers(approval, entity, requester);
     if (others.isEmpty()) {
       others = withoutRequester(admins(), requester);
     }
@@ -167,11 +171,40 @@ public final class StatusUpdateTasks {
     return EntityUtil.populateEntityReferences(others);
   }
 
-  private static Optional<LifecycleExit> onRequestExit(EntityInterface<?> entity, String stage) {
+  /** The users and teams a transition's approval names on this asset, without the requester. */
+  static List<EntityReference> selectApprovers(
+      LifecycleTransitionApproval approval, EntityInterface<?> entity, String requester) {
+    Set<LifecycleApproverGroup> groups =
+        Optional.ofNullable(approval.getAssignees()).orElse(Set.of());
+    List<EntityReference> approvers = new ArrayList<>();
+    if (groups.contains(LifecycleApproverGroup.OWNERS)) {
+      approvers.addAll(listOrEmpty(entity.getOwners()));
+    }
+    if (groups.contains(LifecycleApproverGroup.REVIEWERS)) {
+      approvers.addAll(listOrEmpty(entity.getReviewers()));
+    }
+    approvers.addAll(listOrEmpty(approval.getCandidates()));
+    return withoutRequester(approvers, requester);
+  }
+
+  private static Optional<LifecycleTransition> onRequestTransition(
+      EntityInterface<?> entity, String stage) {
+    return owningPlaybook(entity)
+        .flatMap(
+            playbook ->
+                EntityStatusWorkflows.onRequestTransition(playbook, stageOf(entity), stage));
+  }
+
+  private static Optional<WorkflowDefinition> owningPlaybook(EntityInterface<?> entity) {
     return EntityStatusWorkflows.ACTIVE
         .owningStageOf(entityType(entity), entity)
-        .flatMap(EntityStatusWorkflows::playbookWithExits)
-        .flatMap(playbook -> EntityStatusWorkflows.onRequestExit(playbook, stage));
+        .flatMap(EntityStatusWorkflows::playbookWithTransitions);
+  }
+
+  private static String stageOf(EntityInterface<?> entity) {
+    // The generated status enums print their value.
+    Object stage = entity.getEntityStatus();
+    return stage == null ? null : stage.toString();
   }
 
   private static List<EntityReference> withoutRequester(

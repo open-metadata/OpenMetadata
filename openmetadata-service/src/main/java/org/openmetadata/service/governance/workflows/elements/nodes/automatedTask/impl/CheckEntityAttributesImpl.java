@@ -84,6 +84,15 @@ public class CheckEntityAttributesImpl implements JavaDelegate {
     return result;
   }
 
+  /**
+   * Whether the entity meets a JSON Logic rule as a Check Entity Attributes step judges it, so a
+   * check made outside a workflow run agrees with the run's own.
+   */
+  public static boolean meetsRules(String entityType, EntityInterface<?> entity, String rules) {
+    return Boolean.TRUE.equals(
+        RuleEngine.getInstance().apply(rules, attributesOf(entityType, entity)));
+  }
+
   /** The entity as the rules see it, including the counts a data product does not store. */
   public static Map<String, Object> attributesOf(String entityType, EntityInterface<?> entity) {
     Map<String, Object> entityMap = JsonUtils.getMap(entity);

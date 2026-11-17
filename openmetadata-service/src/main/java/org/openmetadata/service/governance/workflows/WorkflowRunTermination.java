@@ -53,8 +53,7 @@ public final class WorkflowRunTermination {
             });
   }
 
-  private static void terminateIfTaskClosed(
-      String mainWorkflowName, UUID taskId, UUID workflowInstanceId) {
+  static void terminateIfTaskClosed(String mainWorkflowName, UUID taskId, UUID workflowInstanceId) {
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     Task task = taskRepository.findCommittedTask(taskId);
     if (task != null && TaskRepository.isTerminalStatus(task.getStatus())) {

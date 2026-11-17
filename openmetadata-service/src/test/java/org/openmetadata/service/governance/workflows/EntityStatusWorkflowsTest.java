@@ -20,17 +20,19 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.governance.workflows.LifecycleConfiguration;
-import org.openmetadata.schema.governance.workflows.LifecycleExit;
-import org.openmetadata.schema.governance.workflows.LifecycleExitTrigger;
+import org.openmetadata.schema.governance.workflows.LifecycleTransition;
+import org.openmetadata.schema.governance.workflows.LifecycleTransitionTrigger;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 
 class EntityStatusWorkflowsTest {
+  private static final Predicate<String> ANY_CONDITIONS = conditions -> true;
   private static final String METRIC_APPROVAL_WORKFLOW =
       "/json/data/governance/workflows/MetricApprovalWorkflow.json";
   private static final Set<String> APPROVAL_STEPS =
@@ -213,29 +215,115 @@ class EntityStatusWorkflowsTest {
   }
 
   @Test
-  void onRequestExitsAreTheStagesAUserCanRequest() throws IOException {
+  void theStagesAUserCanRequestAreTheOnRequestTransitionsLeavingTheCurrentStage()
+      throws IOException {
+    WorkflowDefinition playbook = branchingPlaybook();
+
+    assertEquals(
+        List.of("Deprecated", "Rejected"),
+        EntityStatusWorkflows.onRequestTargets(playbook, "In Review", ANY_CONDITIONS));
+    assertEquals(
+        List.of("Deprecated", "Draft"),
+        EntityStatusWorkflows.onRequestTargets(playbook, "Rejected", ANY_CONDITIONS));
+    assertEquals(
+        List.of("Deprecated"),
+        EntityStatusWorkflows.onRequestTargets(playbook, "Draft", ANY_CONDITIONS));
+    assertEquals(
+        List.of(), EntityStatusWorkflows.onRequestTargets(playbook, "Deprecated", ANY_CONDITIONS));
+  }
+
+  @Test
+  void anOnRequestTransitionWhoseConditionsTheAssetDoesNotMeetIsNotOffered() throws IOException {
+    WorkflowDefinition playbook = playbook("MetricLifecycle");
+    String described = "{\"!!\":[{\"var\":\"description\"}]}";
+    playbook
+        .getConfig()
+        .getLifecycle()
+        .withTransitions(
+            List.of(
+                onRequest(EntityStatus.APPROVED, EntityStatus.IN_REVIEW).withConditions(described),
+                onRequest(EntityStatus.DEPRECATED)));
+
+    assertEquals(
+        List.of("Deprecated"),
+        EntityStatusWorkflows.onRequestTargets(playbook, "In Review", conditions -> false));
+    assertEquals(
+        List.of("Approved", "Deprecated"),
+        EntityStatusWorkflows.onRequestTargets(playbook, "In Review", ANY_CONDITIONS));
+    assertTrue(EntityStatusWorkflows.offersOnRequest(playbook, "In Review", "Approved"));
+  }
+
+  @Test
+  void anOnRequestTransitionIsFoundOnlyFromTheStagesItLeaves() throws IOException {
+    WorkflowDefinition playbook = branchingPlaybook();
+
+    assertTrue(
+        EntityStatusWorkflows.onRequestTransition(playbook, "In Review", "Rejected").isPresent());
+    assertTrue(
+        EntityStatusWorkflows.onRequestTransition(playbook, "Approved", "Rejected").isEmpty());
+    assertTrue(
+        EntityStatusWorkflows.onRequestTransition(playbook, "Approved", "Archived").isEmpty());
+  }
+
+  @Test
+  void onlyTheLifecyclesTransitionsCountAsTransitionsNotItsOnboardingPath() throws IOException {
+    WorkflowDefinition playbook = branchingPlaybook();
+
+    assertTrue(EntityStatusWorkflows.makesTransition(playbook, "In Review", "Rejected"));
+    assertTrue(EntityStatusWorkflows.makesTransition(playbook, "Approved", "Archived"));
+    assertFalse(EntityStatusWorkflows.makesTransition(playbook, "Draft", "In Review"));
+    assertFalse(EntityStatusWorkflows.makesTransition(playbook, "Archived", "Archived"));
+  }
+
+  @Test
+  void noTransitionMovesAnAssetToUnprocessed() throws IOException {
     WorkflowDefinition playbook = playbook("MetricLifecycle");
     playbook
         .getConfig()
         .getLifecycle()
-        .withExits(
-            List.of(
-                new LifecycleExit()
-                    .withStage(EntityStatus.DEPRECATED)
-                    .withTrigger(LifecycleExitTrigger.ON_REQUEST),
-                new LifecycleExit()
-                    .withStage(EntityStatus.ARCHIVED)
-                    .withTrigger(LifecycleExitTrigger.AUTOMATIC)
-                    .withConditions("{\"==\":[1,1]}")));
+        .withTransitions(List.of(onRequest(EntityStatus.UNPROCESSED)));
 
-    assertEquals(List.of("Deprecated"), EntityStatusWorkflows.onRequestStages(playbook));
+    assertEquals(
+        List.of(), EntityStatusWorkflows.onRequestTargets(playbook, "Approved", ANY_CONDITIONS));
+    assertFalse(EntityStatusWorkflows.makesTransition(playbook, "Approved", "Unprocessed"));
   }
 
   @Test
-  void aWorkflowWithoutLifecycleExitsHasNoRequestableStages() throws IOException {
-    assertEquals(List.of(), EntityStatusWorkflows.onRequestStages(playbook("MetricLifecycle")));
+  void aWorkflowWithoutLifecycleTransitionsHasNoRequestableStages() throws IOException {
     assertEquals(
-        List.of(), EntityStatusWorkflows.onRequestStages(workflow(metricApprovalWorkflow())));
+        List.of(),
+        EntityStatusWorkflows.onRequestTargets(
+            playbook("MetricLifecycle"), "Draft", ANY_CONDITIONS));
+    assertEquals(
+        List.of(),
+        EntityStatusWorkflows.onRequestTargets(
+            workflow(metricApprovalWorkflow()), "Draft", ANY_CONDITIONS));
+  }
+
+  // Any stage to Deprecated and In Review to Rejected on request, Rejected back to Draft on
+  // request, and any stage to Archived automatically.
+  private static WorkflowDefinition branchingPlaybook() throws IOException {
+    WorkflowDefinition playbook = playbook("MetricLifecycle");
+    playbook
+        .getConfig()
+        .getLifecycle()
+        .withTransitions(
+            List.of(
+                onRequest(EntityStatus.DEPRECATED),
+                onRequest(EntityStatus.REJECTED, EntityStatus.IN_REVIEW),
+                onRequest(EntityStatus.DRAFT, EntityStatus.REJECTED),
+                new LifecycleTransition()
+                    .withTo(EntityStatus.ARCHIVED)
+                    .withTrigger(LifecycleTransitionTrigger.AUTOMATIC)
+                    .withConditions("{\"==\":[1,1]}")));
+    return playbook;
+  }
+
+  private static LifecycleTransition onRequest(EntityStatus to, EntityStatus... from) {
+    return new LifecycleTransition()
+        .withFrom(Set.of(from))
+        .withTo(to)
+        .withTrigger(LifecycleTransitionTrigger.ON_REQUEST);
   }
 
   private static WorkflowDefinition playbook(String name) throws IOException {

@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -65,6 +66,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -498,7 +500,7 @@ public class CreateTask implements TaskListener {
     String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
     String workflowStageDisplayName =
         WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
-    LifecycleMove lifecycleMove = readLifecycleMove(delegateTask);
+    LifecycleMove lifecycleMove = withCurrentStage(readLifecycleMove(delegateTask), entity);
     TaskEntityStatus stageStatus = resolveStageStatus(delegateTask);
     List<TaskAvailableTransition> availableTransitions =
         TaskWorkflowLifecycleResolver.parseTransitions(
@@ -803,6 +805,7 @@ public class CreateTask implements TaskListener {
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
+        LifecycleMove move = withCurrentStage(readLifecycleMove(delegateTask), entity);
         List<Task> priors =
             reviewsStaleRevision(delegateTask)
                 ? List.of()
@@ -812,10 +815,11 @@ public class CreateTask implements TaskListener {
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
-                        prior,
-                        currentWorkflowDefinitionId,
-                        currentWorkflowInstanceId,
-                        requesterToMatch))
+                            prior,
+                            currentWorkflowDefinitionId,
+                            currentWorkflowInstanceId,
+                            requesterToMatch)
+                        && decidesSameMove(prior, move))
             .forEach(
                 prior ->
                     cancelAndTerminatePriorApproval(
@@ -870,6 +874,26 @@ public class CreateTask implements TaskListener {
       }
     }
     return priorPayload;
+  }
+
+  /**
+   * A lifecycle can ask for approval of several moves on one asset at once, such as its onboarding
+   * step and a transition to Deprecated, so a new approval replaces only an earlier one for the
+   * same move. An approval that gates no lifecycle move replaces any earlier one, as before.
+   */
+  static boolean decidesSameMove(Task prior, LifecycleMove move) {
+    boolean same = true;
+    if (move != null) {
+      // The task payload is free-form JSON shared by every task type, so it is read as a map.
+      Object priorMove = JsonUtils.getMap(prior.getPayload()).get(LIFECYCLE_MOVE_KEY);
+      LifecycleMove priorMoveValue =
+          priorMove == null ? null : JsonUtils.convertValue(priorMove, LifecycleMove.class);
+      same =
+          priorMoveValue != null
+              && Objects.equals(priorMoveValue.getStage(), move.getStage())
+              && Objects.equals(priorMoveValue.getTargetStage(), move.getTargetStage());
+    }
+    return same;
   }
 
   static boolean isSupersedablePriorApprovalTask(
@@ -1198,6 +1222,20 @@ public class CreateTask implements TaskListener {
     updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_KEY);
     updated.put(LIFECYCLE_MOVE_KEY, move);
     return updated;
+  }
+
+  /** A move made from any stage names the stage the asset is in when its approval is asked. */
+  static LifecycleMove withCurrentStage(LifecycleMove move, EntityInterface<?> entity) {
+    LifecycleMove resolved = move;
+    // The generated status enums print their value.
+    Object current = entity == null ? null : entity.getEntityStatus();
+    if (move != null && move.getStage() == null && current != null) {
+      resolved =
+          new LifecycleMove()
+              .withStage(EntityStatus.fromValue(current.toString()))
+              .withTargetStage(move.getTargetStage());
+    }
+    return resolved;
   }
 
   private LifecycleMove readLifecycleMove(DelegateTask delegateTask) {

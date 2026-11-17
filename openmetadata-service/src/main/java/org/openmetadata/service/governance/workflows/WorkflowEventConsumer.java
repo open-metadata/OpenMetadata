@@ -20,6 +20,7 @@ import java.util.Set;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.tuple.Pair;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.User;
@@ -226,6 +227,29 @@ public class WorkflowEventConsumer implements Destination<ChangeEvent> {
         : JsonUtils.readOrConvertValue(event.getEntity(), JsonNode.class)
             .path(PROVIDER_FIELD)
             .asText(null);
+  }
+
+  /**
+   * The variables a run of an entity's workflow starts with when no change event starts it, such as
+   * the lifecycle carrying on after an approved status request moved the entity.
+   */
+  public static Map<String, Object> runVariables(
+      String entityType, EntityInterface<?> entity, String updatedBy) {
+    Map<String, Object> variables = new HashMap<>();
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+        new MessageParser.EntityLink(entityType, entity.getFullyQualifiedName()).getLinkString());
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE),
+        entity.getId().toString());
+    variables.put(getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), updatedBy);
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+        entity.getVersion());
+    variables.put(
+        getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE),
+        EventType.ENTITY_UPDATED.value());
+    return variables;
   }
 
   public static Map<String, Object> defaultHandler(ChangeEvent event) {

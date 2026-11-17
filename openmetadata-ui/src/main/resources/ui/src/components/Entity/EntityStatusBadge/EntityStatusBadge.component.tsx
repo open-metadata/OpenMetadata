@@ -11,17 +11,19 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Button,
   Divider,
   Dropdown,
 } from '@openmetadata/ui-core-components';
+import { Clock } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PLACEHOLDER_TASK_ID, ROUTES } from '../../../constants/constants';
+import { STATUS_TYPE_TO_BADGE_COLOR } from '../../../constants/StatusBadge.constant';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import StatusBadge from '../../common/StatusBadge/StatusBadge.component';
-import { StatusType } from '../../common/StatusBadge/StatusBadge.interface';
+import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { EntityStageBadge } from './EntityStageBadge';
 import {
   STAGE_REQUESTED,
@@ -91,15 +93,22 @@ export const EntityStatusBadge = ({
             color="tertiary"
             data-testid="lifecycle-request-trigger"
             size="sm">
-            <StatusBadge
-              dataTestId="lifecycle-request-badge"
-              label={
-                STAGE_REQUESTED[requestedStage]
-                  ? t(STAGE_REQUESTED[requestedStage])
-                  : t('label.stage-requested', { stage: requestedStage })
+            {/* The target stage's own colour, with a clock for "not there yet". */}
+            <Badge
+              className="tw:gap-1"
+              color={
+                STATUS_TYPE_TO_BADGE_COLOR[getEntityStatusClass(requestedStage)]
               }
-              status={StatusType.Pending}
-            />
+              data-testid="lifecycle-request-badge"
+              size="sm"
+              type="color">
+              <Clock aria-hidden="true" className="tw:size-3.5 tw:shrink-0" />
+              <span className="tw:truncate">
+                {STAGE_REQUESTED[requestedStage]
+                  ? t(STAGE_REQUESTED[requestedStage])
+                  : t('label.stage-requested', { stage: requestedStage })}
+              </span>
+            </Badge>
           </Button>
           <Dropdown.Popover placement="bottom start">
             <Dropdown.Menu data-testid="lifecycle-request-menu">

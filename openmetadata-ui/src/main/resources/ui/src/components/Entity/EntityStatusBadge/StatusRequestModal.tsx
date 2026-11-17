@@ -22,7 +22,7 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import { STAGE_ACTION } from './EntityStageBadge.constants';
+import { getStageActionLabel } from './EntityStageBadge.utils';
 
 const MODAL_WIDTH = 480;
 
@@ -74,7 +74,7 @@ export const StatusRequestModal = ({
               data-testid="status-request-stage"
               items={stages.map((option) => ({
                 id: option,
-                label: STAGE_ACTION[option] ? t(STAGE_ACTION[option]) : option,
+                label: getStageActionLabel(t, option),
               }))}
               label={t('label.status')}
               selectedKey={stage}
