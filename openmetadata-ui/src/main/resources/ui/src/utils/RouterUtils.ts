@@ -653,7 +653,9 @@ export const getNotificationAlertDetailsPath = (fqn: string, tab?: string) => {
 export const getTagsDetailsPath = (entityFQN: string) => {
   let path = ROUTES.TAG_DETAILS;
   const classification = getPartialNameFromFQN(entityFQN, ['service']);
-  path = path.replace(PLACEHOLDER_ROUTE_FQN, classification);
+  path = path.replace(PLACEHOLDER_ROUTE_FQN, () =>
+    getEncodedFqn(classification)
+  );
 
   return path;
 };

@@ -305,13 +305,7 @@ export async function validateForm(page: Page) {
   await expect(page.getByText('Description is required')).toBeVisible();
 
   const nameTextbox = page.getByTestId('name').getByRole('textbox');
-
-  // whitespace-only validation
   await page.getByTestId('name').scrollIntoViewIfNeeded();
-  await nameTextbox.clear();
-  await nameTextbox.fill(TAG_INVALID_NAMES.MIN_LENGTH);
-
-  await expect(page.getByText('Name is required')).toBeVisible();
 
   // max length validation (> 256 characters)
   await nameTextbox.clear();
@@ -326,6 +320,12 @@ export async function validateForm(page: Page) {
   await nameTextbox.fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
 
   await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
+
+  // whitespace-only validation (after non-required errors so 'Name is required' freshly transitions in)
+  await nameTextbox.clear();
+  await nameTextbox.fill(TAG_INVALID_NAMES.MIN_LENGTH);
+
+  await expect(page.getByText('Name is required')).toBeVisible();
 }
 
 export const addTagToTableColumn = async (

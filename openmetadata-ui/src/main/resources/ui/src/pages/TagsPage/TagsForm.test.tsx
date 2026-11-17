@@ -12,13 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import {
-  Controller,
-  FormProvider,
-  RegisterOptions,
-  useForm,
-  useFormContext,
-} from 'react-hook-form';
+import { RegisterOptions, useForm } from 'react-hook-form';
 import TagsForm from './TagsForm';
 import { TagFormValues } from './TagsPage.interface';
 
@@ -331,10 +325,6 @@ const TestWrapper = ({
 describe('TagForm component', () => {
   beforeEach(() => {
     mockSubmit.mockClear();
-    // Silence unused-import warning if mocked above
-    void Controller;
-    void FormProvider;
-    void useFormContext;
   });
 
   it('Form component should render properly', async () => {

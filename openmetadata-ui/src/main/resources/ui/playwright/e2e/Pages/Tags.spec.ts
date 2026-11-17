@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Page, Response } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { DatabaseSchemaClass } from '../../support/entity/DatabaseSchemaClass';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
@@ -869,13 +869,23 @@ test('Should reject double-colon tag names and allow creating and editing colon-
 }) => {
   const { apiContext, afterAction } = await createNewPage(browser);
   const isolatedClassification = new ClassificationClass();
-  const colonTagName = `ABC:DEF:SC:${uuid()}`;
+  const colonTagName = `ABC:DEF/SC:${uuid()}`;
   const initialDescription = 'Initial description for colon-separated tag';
   const updatedDescription = 'Updated description for colon-separated tag';
 
   try {
     await isolatedClassification.create(apiContext);
     await isolatedClassification.visitPage(page);
+
+    const classificationName =
+      isolatedClassification.responseData.name ??
+      isolatedClassification.data.name;
+    const isClassificationTagsRefresh = (response: Response) =>
+      response.url().includes('/api/v1/tags') &&
+      response.request().method() === 'GET' &&
+      decodeURIComponent(response.url()).includes(
+        `parent=${classificationName}`
+      );
 
     const tagFormDrawer = page.getByTestId('tag-form-drawer');
     const nameInput = tagFormDrawer.getByTestId('name').getByRole('textbox');
@@ -904,15 +914,13 @@ test('Should reject double-colon tag names and allow creating and editing colon-
           response.request().method() === 'POST'
       );
       const refreshTagsResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/tags') &&
-          response.request().method() === 'GET'
+        isClassificationTagsRefresh
       );
       await submitForm(page);
 
       const createdResponse = await createTagResponse;
       expect(createdResponse.status()).toBe(201);
-      await refreshTagsResponse;
+      expect((await refreshTagsResponse).status()).toBe(200);
 
       await expect(tagFormDrawer).toBeHidden();
       await expect(
@@ -941,21 +949,44 @@ test('Should reject double-colon tag names and allow creating and editing colon-
           response.request().method() === 'PATCH'
       );
       const refreshTagsResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/tags') &&
-          response.request().method() === 'GET'
+        isClassificationTagsRefresh
       );
       await submitForm(page);
 
       const patchedResponse = await patchTagResponse;
       expect(patchedResponse.status()).toBe(200);
-      await refreshTagsResponse;
+      expect((await refreshTagsResponse).status()).toBe(200);
 
       await expect(tagFormDrawer).toBeHidden();
       await expect(tagRow).toContainText(updatedDescription);
     });
+
+    await test.step('Navigate to TagPage for the created tag and verify GET by encoded FQN succeeds', async () => {
+      const tagDetailResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags/name/') &&
+          response.request().method() === 'GET' &&
+          decodeURIComponent(response.url()).includes(colonTagName)
+      );
+      await page.getByTestId('table').getByTestId(colonTagName).click();
+
+      expect((await tagDetailResponse).status()).toBe(200);
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('entity-header-name')).toContainText(
+        colonTagName
+      );
+      await expect(page.getByTestId('viewer-container')).toContainText(
+        updatedDescription
+      );
+    });
   } finally {
-    await isolatedClassification.delete(apiContext);
-    await afterAction();
+    try {
+      if (isolatedClassification.responseData?.id) {
+        await isolatedClassification.delete(apiContext);
+      }
+    } finally {
+      await afterAction();
+    }
   }
 });
