@@ -12,6 +12,7 @@
  */
 import type { ColumnType } from './Table.interface';
 import {
+  flattenTreeRows,
   getColumnStickyStyle,
   getStickyBodyCellClass,
   resolveCellValue,
@@ -19,8 +20,102 @@ import {
 
 type Row = Record<string, unknown>;
 
+interface TreeNode {
+  key: string;
+  children?: TreeNode[];
+}
+
 const buildColumn = (partial: Partial<ColumnType<Row>>): ColumnType<Row> =>
   partial as ColumnType<Row>;
+
+describe('flattenTreeRows', () => {
+  const getKey = (row: TreeNode) => row.key;
+
+  it('deduplicates when an expanded child also appears later at root', () => {
+    const child: TreeNode = { key: 'G.Parent.Child' };
+    const sibling: TreeNode = { key: 'G.Parent.Sibling' };
+    const parent: TreeNode = {
+      key: 'G.Parent',
+      children: [child, sibling],
+    };
+    const duplicateRootChild: TreeNode = { key: 'G.Parent.Child' };
+
+    const collapsed = flattenTreeRows(
+      [parent, duplicateRootChild],
+      getKey,
+      new Set(),
+      undefined
+    );
+
+    expect(collapsed.map((r) => ({ key: r.rowKey, depth: r.depth }))).toEqual([
+      { key: 'G.Parent', depth: 0 },
+      { key: 'G.Parent.Child', depth: 0 },
+    ]);
+
+    const expanded = flattenTreeRows(
+      [parent, duplicateRootChild],
+      getKey,
+      new Set(['G.Parent']),
+      undefined
+    );
+
+    expect(expanded.map((r) => ({ key: r.rowKey, depth: r.depth }))).toEqual([
+      { key: 'G.Parent', depth: 0 },
+      { key: 'G.Parent.Child', depth: 1 },
+      { key: 'G.Parent.Sibling', depth: 1 },
+    ]);
+  });
+
+  it('preserves distinct synthetic load-more rows across multiple expanded parents', () => {
+    const parentOne: TreeNode = {
+      key: 'G.P1',
+      children: [{ key: 'G.P1.C1' }, { key: 'G.P1-load-more' }],
+    };
+    const parentTwo: TreeNode = {
+      key: 'G.P2',
+      children: [{ key: 'G.P2.C1' }, { key: 'G.P2-load-more' }],
+    };
+
+    const expanded = flattenTreeRows(
+      [parentOne, parentTwo],
+      getKey,
+      new Set(['G.P1', 'G.P2']),
+      undefined
+    );
+
+    expect(expanded.map((r) => r.rowKey)).toEqual([
+      'G.P1',
+      'G.P1.C1',
+      'G.P1-load-more',
+      'G.P2',
+      'G.P2.C1',
+      'G.P2-load-more',
+    ]);
+  });
+
+  it('terminates cleanly without stack overflow on cyclic children', () => {
+    const selfCycle: TreeNode = { key: 'G.Self' };
+    selfCycle.children = [selfCycle];
+
+    const mutualA: TreeNode = { key: 'G.A' };
+    const mutualB: TreeNode = { key: 'G.B' };
+    mutualA.children = [mutualB];
+    mutualB.children = [mutualA];
+
+    const flattened = flattenTreeRows(
+      [selfCycle, mutualA],
+      getKey,
+      new Set(['G.Self', 'G.A', 'G.B']),
+      undefined
+    );
+
+    expect(flattened.map((r) => ({ key: r.rowKey, depth: r.depth }))).toEqual([
+      { key: 'G.Self', depth: 0 },
+      { key: 'G.A', depth: 0 },
+      { key: 'G.B', depth: 1 },
+    ]);
+  });
+});
 
 describe('resolveCellValue rawValue branch', () => {
   it('walks a nested path when dataIndex is an array', () => {

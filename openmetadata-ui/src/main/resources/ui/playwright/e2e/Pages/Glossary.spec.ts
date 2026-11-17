@@ -2843,6 +2843,144 @@ test.describe('Glossary tests', () => {
     }
   });
 
+  test('Expanding a matching parent term in search results renders child term once without crashing', async ({
+    browser,
+  }) => {
+    const { page, afterAction, apiContext } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const runId = uuid();
+    const glossary = new Glossary(`PWGlossary37909_${runId}`);
+    const parentTerm = new GlossaryTerm(
+      glossary,
+      undefined,
+      `AcmeParent_${runId}`
+    );
+    parentTerm.data.displayName = 'Acme Platform';
+
+    let childTerm: GlossaryTerm | undefined;
+    let siblingTerm: GlossaryTerm | undefined;
+
+    try {
+      await glossary.create(apiContext);
+      await parentTerm.create(apiContext);
+
+      childTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `AcmeChild_${runId}`
+      );
+      childTerm.data.displayName = 'ACME:Platform data';
+      await childTerm.create(apiContext);
+
+      siblingTerm = new GlossaryTerm(
+        glossary,
+        parentTerm.responseData.fullyQualifiedName,
+        `PlatformMetrics_${runId}`
+      );
+      siblingTerm.data.displayName = 'Platform Metrics';
+      await siblingTerm.create(apiContext);
+
+      const parentFqn = parentTerm.responseData.fullyQualifiedName;
+      const childFqn = childTerm.responseData.fullyQualifiedName;
+      const siblingFqn = siblingTerm.responseData.fullyQualifiedName;
+
+      await test.step('Open glossary Terms tab and search for acme', async () => {
+        const initialTermsPromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === '/api/v1/glossaryTerms' &&
+            new URL(response.url()).searchParams.get('directChildrenOf') ===
+              glossary.responseData.fullyQualifiedName
+        );
+        await page.goto(
+          `/glossary/${encodeURIComponent(
+            glossary.responseData.fullyQualifiedName
+          )}`,
+          { waitUntil: 'domcontentloaded' }
+        );
+        const initialTermsRes = await initialTermsPromise;
+
+        expect(initialTermsRes.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+
+        const searchInput = page.getByTestId('search-glossary-terms-input');
+
+        await expect(searchInput).toBeVisible();
+
+        const searchResponsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname ===
+              '/api/v1/glossaryTerms/search' &&
+            new URL(response.url()).searchParams.get('q') === 'acme'
+        );
+        await searchInput.fill('acme');
+        const searchResponse = await searchResponsePromise;
+
+        expect(searchResponse.status()).toBe(200);
+
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      const parentRow = page.locator(
+        `[data-row-key=${JSON.stringify(parentFqn)}]`
+      );
+      const childRow = page.locator(
+        `[data-row-key=${JSON.stringify(childFqn)}]`
+      );
+      const siblingRow = page.locator(
+        `[data-row-key=${JSON.stringify(siblingFqn)}]`
+      );
+
+      await test.step('Verify both matching rows start at root level before expansion', async () => {
+        await expect(parentRow).toHaveCount(1);
+        await expect(parentRow).toHaveAttribute('data-level', '0');
+        await expect(childRow).toHaveCount(1);
+        await expect(childRow).toHaveAttribute('data-level', '0');
+      });
+
+      await test.step('Expand parent term and verify child term renders once at level 1', async () => {
+        const childrenResponsePromise = page.waitForResponse(
+          (response) =>
+            response.request().method() === 'GET' &&
+            new URL(response.url()).pathname === '/api/v1/glossaryTerms' &&
+            new URL(response.url()).searchParams.get('directChildrenOf') ===
+              parentFqn
+        );
+        await parentRow.getByTestId('expand-icon').click();
+        const childrenResponse = await childrenResponsePromise;
+
+        expect(childrenResponse.status()).toBe(200);
+
+        await expect(siblingRow).toHaveCount(1);
+        await expect(siblingRow).toHaveAttribute('data-level', '1');
+        await expect(childRow).toHaveCount(1);
+        await expect(childRow).toHaveAttribute('data-level', '1');
+        await expect(page.getByText('Something went wrong')).not.toBeVisible();
+      });
+
+      await test.step('Collapse parent term and verify child term returns to root level', async () => {
+        await parentRow.getByTestId('expand-icon').click();
+
+        await expect(siblingRow).toHaveCount(0);
+        await expect(childRow).toHaveCount(1);
+        await expect(childRow).toHaveAttribute('data-level', '0');
+      });
+    } finally {
+      if (siblingTerm) {
+        await siblingTerm.delete(apiContext);
+      }
+      if (childTerm) {
+        await childTerm.delete(apiContext);
+      }
+      await parentTerm.delete(apiContext);
+      await glossary.delete(apiContext);
+      await afterAction();
+    }
+  });
+
   test.afterAll(async ({ browser }) => {
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await user1.delete(apiContext);

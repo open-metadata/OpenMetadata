@@ -95,7 +95,6 @@ import {
   getFirstLevelGlossaryTermsPaginated,
   getGlossaryTermChildrenLazy,
   getGlossaryTerms,
-  GlossaryTermWithChildren,
   patchGlossaryTerm,
   searchGlossaryTermsPaginated,
 } from '../../../rest/glossaryAPI';
@@ -160,6 +159,8 @@ import {
   computeShowExpandTreeLoadMore,
   hasActiveSearchTerm,
   isStaleFetchResponse,
+  mergeChildTermsIntoHierarchy,
+  reconcileGlossaryTermHierarchy,
   resolveTotalTermsCount,
   shouldShowEmptyPlaceholder,
 } from './GlossaryTermTab.utils';
@@ -599,19 +600,18 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     useState<PendingGlossaryTermRejection>();
   const [rejectionComment, setRejectionComment] = useState('');
   const [isRejecting, setIsRejecting] = useState(false);
+  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
 
-  const glossaryTerms = useMemo(() => {
-    // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
-    // duplicate keys make the underlying collection unrepresentable (it throws
-    // "Invalid array length" while building rows). Guard here so no write path
-    // can ever hand the table colliding keys.
-    return uniqBy(
-      Array.isArray(glossaryChildTerms)
-        ? (glossaryChildTerms as ModifiedGlossaryTerm[])
-        : [],
-      'fullyQualifiedName'
-    );
-  }, [glossaryChildTerms]);
+  const glossaryTerms = useMemo(
+    () =>
+      reconcileGlossaryTermHierarchy(
+        Array.isArray(glossaryChildTerms)
+          ? (glossaryChildTerms as ModifiedGlossaryTerm[])
+          : [],
+        expandedRowKeys
+      ),
+    [glossaryChildTerms, expandedRowKeys]
+  );
 
   // The evidence behind the AI drafts among the loaded rows, for their status badges.
   const aiDraftIds = useMemo(
@@ -651,7 +651,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     useState<MoveGlossaryTermType>();
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [isTableLoading, setIsTableLoading] = useState(true);
-  const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [isStatusDropdownVisible, setIsStatusDropdownVisible] =
     useState<boolean>(false);
   const [statusDropdownSelection, setStatusDropdownSelection] = useState<
@@ -700,52 +699,62 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleSearch,
   ]);
 
+  const activeGlossaryFqnRef = useRef(activeGlossary?.fullyQualifiedName);
+  activeGlossaryFqnRef.current = activeGlossary?.fullyQualifiedName;
+
+  const getLiveGlossaryState = () => {
+    const storeState =
+      typeof useGlossaryStore.getState === 'function'
+        ? useGlossaryStore.getState()
+        : undefined;
+
+    return {
+      currentGlossaryFqn:
+        storeState?.activeGlossary?.fullyQualifiedName ??
+        activeGlossaryFqnRef.current,
+      currentTerms: storeState
+        ? storeState.glossaryChildTerms
+        : glossaryChildTerms,
+    };
+  };
+
   const fetchChildTerms = async (parentFQN: string, after?: string) => {
+    const fetchGlossaryFqn = activeGlossary?.fullyQualifiedName;
+    const fetchSearch = searchTermRef.current;
+    const fetchPageSeq = fetchRequestSeqRef.current;
+
+    const isStaleChildContext = () => {
+      const { currentGlossaryFqn } = getLiveGlossaryState();
+
+      return (
+        fetchPageSeq !== fetchRequestSeqRef.current ||
+        fetchGlossaryFqn !== currentGlossaryFqn ||
+        fetchSearch !== searchTermRef.current
+      );
+    };
+
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
     try {
       const response = await getGlossaryTermChildrenLazy(parentFQN, 50, after);
-      const { data, paging } = response;
+      const { currentTerms } = getLiveGlossaryState();
 
-      // Validate glossaryChildTerms is an array
-      if (!Array.isArray(glossaryChildTerms)) {
+      if (isStaleChildContext() || !Array.isArray(currentTerms)) {
         return;
       }
 
-      // Recursive function to update nested terms
-      const updateNestedTerms = (
-        terms: ModifiedGlossary[]
-      ): ModifiedGlossary[] => {
-        return terms.map((term) => {
-          if (term.fullyQualifiedName === parentFQN) {
-            const existingChildren = after ? term.children ?? [] : [];
-            const newChildren = data;
-
-            return {
-              ...term,
-              children: [...existingChildren, ...newChildren],
-              hasMoreChildren: !!paging?.after,
-              childrenPagingAfter: paging?.after,
-            };
-          }
-
-          // Check if this term has children and recursively update them
-          if (term.children && term.children.length > 0) {
-            return {
-              ...term,
-              children: updateNestedTerms(
-                term.children as ModifiedGlossary[]
-              ) as GlossaryTermWithChildren[],
-            };
-          }
-
-          return term;
-        });
-      };
-
-      const updatedTerms = updateNestedTerms(glossaryChildTerms);
-      setGlossaryChildTerms(updatedTerms);
+      setGlossaryChildTerms(
+        mergeChildTermsIntoHierarchy(
+          currentTerms,
+          parentFQN,
+          response.data,
+          response.paging?.after,
+          Boolean(after)
+        )
+      );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!isStaleChildContext()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
       setLoadingChildren((prev) => ({ ...prev, [parentFQN]: false }));
     }
@@ -773,7 +782,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         limit: pageSize,
         offset: options?.offset ?? 0,
         fields:
-          'children,relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
+          'relatedTerms,reviewers,owners,tags,usageCount,domains,extension,childrenCount',
         entityStatus: entityStatusParam,
       });
 

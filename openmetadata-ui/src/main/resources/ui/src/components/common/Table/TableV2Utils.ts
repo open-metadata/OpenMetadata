@@ -25,7 +25,8 @@ export function flattenTreeRows<T>(
   expandedKeys: Set<string>,
   rowExpandable: ((record: T) => boolean) | undefined,
   depth = 0,
-  startIdx = 0
+  startIdx = 0,
+  seenKeys: Set<string> = new Set()
 ): FlatRow<T>[] {
   const rows: FlatRow<T>[] = [];
   let nextIdx = startIdx;
@@ -33,6 +34,11 @@ export function flattenTreeRows<T>(
   for (const record of data) {
     const actualIndex = nextIdx++;
     const rowKey = getRowKey(record, actualIndex);
+    if (seenKeys.has(rowKey)) {
+      continue;
+    }
+    seenKeys.add(rowKey);
+
     const children = (record as Record<string, unknown>).children as
       | T[]
       | undefined;
@@ -45,14 +51,18 @@ export function flattenTreeRows<T>(
 
     rows.push({ record, depth, actualIndex, hasChildren, rowKey });
 
-    if (hasChildren && expandedKeys.has(rowKey) && children?.length) {
+    const shouldFlattenChildren =
+      hasChildren && expandedKeys.has(rowKey) && Boolean(children?.length);
+
+    if (shouldFlattenChildren && children) {
       const childRows = flattenTreeRows(
         children,
         getRowKey,
         expandedKeys,
         rowExpandable,
         depth + 1,
-        nextIdx
+        nextIdx,
+        seenKeys
       );
       rows.push(...childRows);
       nextIdx += childRows.length;
