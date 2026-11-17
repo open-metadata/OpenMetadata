@@ -1106,7 +1106,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                 new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS),
                 termContext)),
         AuthorizationLogic.ANY);
-    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+    BulkOperationResult result = repository.validateGlossaryTagsAddition(id, request);
+    return Response.ok()
+        .entity(repository.viewableRowsOnly(securityContext, viewPermissionFilter, result))
+        .build();
   }
 
   @PUT

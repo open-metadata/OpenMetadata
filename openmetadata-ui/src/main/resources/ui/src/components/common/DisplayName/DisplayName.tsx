@@ -18,10 +18,11 @@ import { isEmpty, isString } from 'lodash';
 import React, { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
-import CopyLinkButton from '../CopyLinkButton/CopyLinkButton';
+import CopyButton from '../CopyButton/CopyButton';
 import { DisplayNameProps } from './DisplayName.interface';
 
 interface DisplayNamePropsWithParent extends DisplayNameProps {
@@ -108,10 +109,12 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
           ) : null}
 
           {entityType && id && (
-            <CopyLinkButton
-              entityType={entityType}
-              fieldFqn={id}
+            <CopyButton
+              className="hover-cell-icon"
+              isDisabled={!id}
+              size="xs"
               testId="copy-column-link-button"
+              value={getEntityDetailsUrl(entityType, id ?? '')}
             />
           )}
         </div>

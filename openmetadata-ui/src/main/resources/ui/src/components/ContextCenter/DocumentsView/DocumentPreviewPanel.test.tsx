@@ -121,9 +121,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
 }));
 
-jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
-  jest.fn(({ url }: { url: string }) => (
-    <button data-testid="copy-link-btn" data-url={url}>
+jest.mock('../../common/CopyButton/CopyButton', () =>
+  jest.fn(({ value }: { value: string }) => (
+    <button data-testid="copy-link-btn" data-url={value}>
       copy
     </button>
   ))

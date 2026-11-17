@@ -2173,7 +2173,7 @@ public class SearchRepository {
           SearchIndex searchIndex =
               searchIndexFactory.buildIndex(
                   entityType, withFieldsLoadedOnWrite(entityType, entity));
-          doc = searchIndex.buildSearchIndexDoc();
+          doc = withRetiredFieldsRemoved(searchIndex, searchIndex.buildSearchIndexDoc());
           doc =
               SearchIndexUtils.stripDocMapIfOversized(
                   doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
@@ -2255,6 +2255,19 @@ public class SearchRepository {
         RequestLatencyContext.endSearchOperation(searchSample);
       }
     }
+  }
+
+  /**
+   * An update merges into the stored document, so a field the index retired is removed rather than
+   * left as an earlier release wrote it.
+   */
+  private static Map<String, Object> withRetiredFieldsRemoved(
+      SearchIndex searchIndex, Map<String, Object> doc) {
+    Set<String> retired = searchIndex.getRetiredFields();
+    if (!retired.isEmpty()) {
+      doc.put(SearchClient.FIELDS_TO_REMOVE, List.copyOf(retired));
+    }
+    return doc;
   }
 
   public void bulkIndexPipelineExecutions(

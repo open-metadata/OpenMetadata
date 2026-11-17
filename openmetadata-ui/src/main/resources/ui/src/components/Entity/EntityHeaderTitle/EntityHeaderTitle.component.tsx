@@ -13,12 +13,10 @@
 import {
   Badge,
   Button,
-  ButtonUtility,
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   ExclamationCircleFilled,
   LinkExternal01,
   Star01,
@@ -26,14 +24,14 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
-import { MouseEvent, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import './entity-header-title.less';
 import { EntityHeaderTitleProps } from './EntityHeaderTitle.interface';
 
@@ -81,19 +79,6 @@ const EntityHeaderTitle = ({
   entityUrl,
 }: EntityHeaderTitleProps) => {
   const { t } = useTranslation();
-  const [copyTooltip, setCopyTooltip] = useState<string>();
-  const { onCopyToClipBoard } = useClipboard(
-    entityUrl ?? globalThis.location.href
-  );
-
-  const handleShareButtonClick = async (e: MouseEvent<HTMLElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    await onCopyToClipBoard();
-    setCopyTooltip(t('message.link-copy-to-clipboard'));
-    setTimeout(() => setCopyTooltip(''), 2000);
-  };
-
   const formattedEntityType = useMemo(
     () => entityUtilClassBase.getFormattedEntityType(entityType as EntityType),
     [entityType]
@@ -256,16 +241,11 @@ const EntityHeaderTitle = ({
             <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
-          <ButtonUtility
-            data-testid="entity-header-copy-button"
-            icon={Copy01}
-            size="lg"
-            tooltip={
-              copyTooltip ||
-              t('label.copy-item', { item: t('label.url-uppercase') })
-            }
+          <CopyButton
+            testId="entity-header-copy-button"
+            tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
             tooltipPlacement="top right"
-            onClick={handleShareButtonClick}
+            value={entityUrl ?? globalThis.location.href}
           />
           {(isEmpty(displayName) || !showName) && suffix}
           {renderFollowButton()}

@@ -30,7 +30,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Eye,
   EyeOff,
   RefreshCw01,
@@ -71,6 +70,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import { getUserCreationErrorMessage } from '../../../../../../utils/UsersPureUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -222,14 +222,6 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
       setIsPasswordGenerating(false);
     }
   }, []);
-
-  const handleCopyPassword = async () => {
-    if (!generatedPassword) {
-      return;
-    }
-    await navigator.clipboard.writeText(generatedPassword);
-    showSuccessToast(t('message.copied-to-clipboard'));
-  };
 
   const fetchTeams = useCallback(async () => {
     try {
@@ -520,13 +512,13 @@ const MembersCreateUserForm: React.FC<MembersCreateUserFormProps> = ({
                                 tooltip={String(t('label.regenerate'))}
                                 onClick={generateRandomPassword}
                               />
-                              <ButtonUtility
+                              <CopyButton
                                 className="tw:h-full tw:rounded-none tw:border-l tw:border-primary tw:hover:bg-transparent"
-                                data-testid="copy-password"
-                                icon={Copy01}
+                                isDisabled={!generatedPassword}
                                 size="sm"
+                                testId="copy-password"
                                 tooltip={String(t('label.copy'))}
-                                onClick={handleCopyPassword}
+                                value={generatedPassword}
                               />
                             </Box>
                           }
