@@ -12,7 +12,10 @@
  */
 
 import { act, render, screen } from '@testing-library/react';
-import { mockIsIntersecting } from 'react-intersection-observer/test-utils';
+import {
+  mockAllIsIntersecting,
+  mockIsIntersecting,
+} from 'react-intersection-observer/test-utils';
 import { MemoryRouter } from 'react-router-dom';
 import {
   PAGE_SIZE_BASE,
@@ -207,5 +210,10 @@ describe('MyTaskWidget', () => {
 
     expect(screen.getByTestId('task-card-1')).toBeInTheDocument();
     expect(screen.queryByTestId('task-card-2')).not.toBeInTheDocument();
+
+    // Scrolling back out must not unmount it and rebuild its editors later.
+    act(() => mockAllIsIntersecting(false));
+
+    expect(screen.getByTestId('task-card-1')).toBeInTheDocument();
   });
 });
