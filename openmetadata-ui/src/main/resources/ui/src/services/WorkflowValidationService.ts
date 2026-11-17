@@ -17,6 +17,7 @@ import { omit } from 'lodash';
 import { Edge, Node } from 'reactflow';
 import {
   ScheduleConfig,
+  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
   WorkflowType,
 } from '../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
@@ -794,6 +795,29 @@ export const buildWorkflowForSave = async (
 
   const startNode = nodes.find((node) => node.type === NodeType.StartEvent);
   const startNodeConfig = (startNode?.data || {}) as NodeConfigWithMetadata;
+
+  if (
+    workflowDefinition?.name === TEST_CASE_RESOLUTION_WORKFLOW_NAME &&
+    getValidTriggerObject(workflowDefinition)?.type === Type.NoOp
+  ) {
+    // System incident stages are not round-trippable through the generic graph editor.
+    return {
+      name: workflowDefinition.name,
+      displayName: workflowDefinition.displayName,
+      description: workflowDefinition.description,
+      trigger: workflowDefinition.trigger,
+      nodes: workflowDefinition.nodes,
+      edges: workflowDefinition.edges,
+      owners: workflowDefinition.owners,
+      config: {
+        storeStageStatus: false,
+        ...workflowDefinition.config,
+        ...(startNodeConfig.autoAssignOwners !== undefined && {
+          autoAssignOwners: startNodeConfig.autoAssignOwners,
+        }),
+      },
+    };
+  }
 
   const currentNodeIds = new Set(nodes.map((n) => n.id));
   const validEdges = edges.filter(

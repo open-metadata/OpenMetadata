@@ -14,9 +14,13 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
+import {
+  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+  WorkflowType,
+} from '../../../../constants/WorkflowBuilder.constants';
 import { WorkflowModeProvider } from '../../../../contexts/WorkflowModeContext';
 import { ApprovalMode } from '../../../../generated/governance/workflows/elements/triggers/eventBasedEntityTrigger';
+import { Type } from '../../../../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 
 jest.mock('./TriggerConfigSection', () => ({
@@ -81,6 +85,7 @@ jest.mock('./ApprovalModeSection', () => ({
   ),
 }));
 
+import { FormActionButtons } from './FormActionButtons';
 import { WorkflowConfigFormV1 } from './WorkflowConfigFormV1';
 
 const noop = () => {
@@ -112,6 +117,73 @@ const renderWithWorkflowMode = (ui: React.ReactElement) =>
   );
 
 describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
+  it.each(['view', 'edit'])(
+    'offers incident configuration only in %s mode with matching save controls',
+    (mode) => {
+      const updateConfig = jest.fn();
+      render(
+        <MemoryRouter initialEntries={[`/?mode=${mode}`]}>
+          <WorkflowModeProvider
+            workflowDefinition={{
+              name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+              description: '',
+              trigger: { type: Type.NoOp, config: {} },
+            }}
+            workflowFqn={TEST_CASE_RESOLUTION_WORKFLOW_NAME}>
+            <WorkflowConfigFormV1
+              {...baseHandlers}
+              showAutoAssignOwners
+              allowFullStartNodeConfiguration={false}
+              allowScheduledTrigger={false}
+              allowStartNodeFilterScheduleAndBatchEdit={false}
+              availableDataAssets={[]}
+              availableEventTypes={[]}
+              availableExcludeFields={[]}
+              config={{
+                name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+                description: '',
+                triggerType: '',
+                eventType: [],
+                dataAssets: [],
+                dataAssetFilters: [],
+                autoAssignOwners: true,
+              }}
+              updateConfig={updateConfig}
+            />
+            <FormActionButtons onCancel={noop} onSave={noop} />
+          </WorkflowModeProvider>
+        </MemoryRouter>
+      );
+
+      const toggle = screen.getByRole('switch', {
+        name: /^label\.auto-assign-owners/,
+      });
+
+      expect(
+        screen.queryByTestId('trigger-config-section')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('data-asset-form-section-mock')
+      ).not.toBeInTheDocument();
+
+      if (mode === 'edit') {
+        expect(toggle).toBeEnabled();
+        expect(
+          screen.getByTestId('save-node-configuration-button')
+        ).toBeEnabled();
+
+        fireEvent.click(toggle);
+
+        expect(updateConfig).toHaveBeenCalledWith('autoAssignOwners', false);
+      } else {
+        expect(toggle).toBeDisabled();
+        expect(
+          screen.queryByTestId('save-node-configuration-button')
+        ).not.toBeInTheDocument();
+      }
+    }
+  );
+
   it('OSS: locks metadata, data assets, and trigger type but allows filters and periodic schedule/batch when allowStartNodeFilterScheduleAndBatchEdit', () => {
     const config: NodeConfig = {
       name: 'W',

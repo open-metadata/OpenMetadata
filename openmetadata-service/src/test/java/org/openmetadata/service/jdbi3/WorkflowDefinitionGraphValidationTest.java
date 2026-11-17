@@ -68,6 +68,14 @@ class WorkflowDefinitionGraphValidationTest {
     assertDoesNotThrow(() -> validateGraph(workflow));
   }
 
+  @Test
+  void incidentSeedLetsAssignedIncidentReturnToAcknowledged() throws Exception {
+    WorkflowDefinition workflow = loadWorkflow(INCIDENT_WORKFLOW);
+
+    assertEdge(workflow, "AssignedStage", "AckStage", "ack");
+    assertDoesNotThrow(() -> validateGraph(workflow));
+  }
+
   /**
    * A userApprovalTask node with expiryTimer.transitionId set emits an outgoing edge condition
    * named after that transitionId when the boundary timer fires. The validator must treat that

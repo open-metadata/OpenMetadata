@@ -216,7 +216,7 @@ public class Migration extends MigrationProcessImpl {
         IncidentWorkflowTransitionMigration.STEP_NAME,
         () -> {
           initializeWorkflowHandler();
-          IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+          IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnPostgres(handle);

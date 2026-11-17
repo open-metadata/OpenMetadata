@@ -205,7 +205,7 @@ describe('TestCaseStatusModal component', () => {
     expect(transitionIncident).not.toHaveBeenCalled();
   });
 
-  it('should offer Assigned, New and Resolved when the incident is Assigned', async () => {
+  it('should offer Assigned, New, Ack and Resolved when the incident is Assigned', async () => {
     render(
       <TestCaseStatusModal
         {...mockProps}
@@ -222,7 +222,7 @@ describe('TestCaseStatusModal component', () => {
 
     expect(
       screen.getAllByRole('option').map((option) => option.textContent)
-    ).toEqual(['label.assigned', 'label.new', 'label.resolved']);
+    ).toEqual(['label.assigned', 'label.new', 'label.ack', 'label.resolved']);
   });
 
   it('should require reason and comment to resolve, then send them', async () => {

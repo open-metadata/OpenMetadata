@@ -31,6 +31,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
@@ -170,6 +172,77 @@ public class AutoAssignIncidentIT {
     } finally {
       setWorkflowAutoAssignOwners(client, true);
     }
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = TestCaseResolutionStatusTypes.class,
+      names = {"New", "Ack"})
+  void returningOwnedIncidentToTriageClearsOwnerAndPreservesAssignmentHistory(
+      TestCaseResolutionStatusTypes target, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String id = ns.shortPrefix();
+    User owner = UserTestFactory.createUser(ns, "triage" + id);
+    TestCase testCase = createFailingTestCaseOwnedBy(client, ns, id, owner);
+    Task task = awaitIncidentTask(client, testCase);
+    assertEquals(ASSIGNED_STAGE_ID, task.getWorkflowStageId());
+    await()
+        .atMost(PIPELINE_TIMEOUT)
+        .until(
+            () ->
+                findTcrsOfType(client, task.getId(), TestCaseResolutionStatusTypes.Assigned)
+                    != null);
+    TestCaseResolutionStatus assignedHistory =
+        findTcrsOfType(client, task.getId(), TestCaseResolutionStatusTypes.Assigned);
+    assertEquals(
+        owner.getId(),
+        JsonUtils.convertValue(assignedHistory.getTestCaseResolutionStatusDetails(), Assigned.class)
+            .getAssignee()
+            .getId());
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(target));
+
+    await()
+        .atMost(PIPELINE_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              Task returned = client.tasks().get(task.getId().toString(), "assignees");
+              assertEquals(
+                  target == TestCaseResolutionStatusTypes.New ? NEW_STAGE_ID : "ack",
+                  returned.getWorkflowStageId());
+              assertTrue(returned.getAssignees() == null || returned.getAssignees().isEmpty());
+              assertNotNull(findTcrsOfType(client, task.getId(), target));
+            });
+    assertEquals(
+        assignedHistory,
+        listTcrsForStateId(client, task.getId()).stream()
+            .filter(record -> assignedHistory.getId().equals(record.getId()))
+            .findFirst()
+            .orElseThrow());
+
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Assigned)
+                .withTestCaseResolutionStatusDetails(
+                    new Assigned().withAssignee(owner.getEntityReference())));
+    await()
+        .atMost(PIPELINE_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              Task reassigned = client.tasks().get(task.getId().toString(), "assignees");
+              assertEquals(ASSIGNED_STAGE_ID, reassigned.getWorkflowStageId());
+              assertTrue(
+                  reassigned.getAssignees().stream()
+                      .anyMatch(assignee -> owner.getId().equals(assignee.getId())));
+            });
   }
 
   private CreateWorkflowDefinition incidentWorkflowRequest(OpenMetadataClient client) {

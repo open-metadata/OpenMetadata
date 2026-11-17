@@ -198,7 +198,7 @@ class IngestionPipelineMigrationEntryPointTest {
           workflowHandler, () -> WorkflowHandler.initialize(any(), eq(true)), times(2));
       initializedBeforeIncidentMigration.verify(
           incidentWorkflowMigration,
-          IncidentWorkflowTransitionMigration::addAssignedToNewTransition);
+          IncidentWorkflowTransitionMigration::addAssignedStatusTransitions);
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(

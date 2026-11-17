@@ -50,9 +50,10 @@ const WorkflowManageMenu: React.FC<WorkflowManageMenuProps> = ({
   isSuspended = false,
 }) => {
   const { t } = useTranslation();
-  const { showDeleteButton, showEditButton } = useWorkflowModeContext();
-  // Suspending is allowed wherever the workflow can be edited; deleting is a separate capability.
-  const onToggleSuspend = showEditButton ? handleToggleSuspend : undefined;
+  const { showDeleteButton, showEditButton, isNoOp } = useWorkflowModeContext();
+  // System workflows expose settings without allowing their lifecycle to be suspended.
+  const onToggleSuspend =
+    showEditButton && !isNoOp ? handleToggleSuspend : undefined;
   const onDelete = showDeleteButton ? handleDeleteWorkflow : undefined;
 
   if (!onToggleSuspend && !onDelete) {
@@ -232,7 +233,11 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
       isNoOp && (
         <Tooltip
           placement="top"
-          title={t('message.system-workflow-edit-restriction')}>
+          title={t(
+            showEditButton || showSaveButton
+              ? 'message.auto-assign-owners-help'
+              : 'message.system-workflow-edit-restriction'
+          )}>
           <TooltipTrigger>
             <Badge
               color="gray"
@@ -244,7 +249,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           </TooltipTrigger>
         </Tooltip>
       ),
-    [isNoOp, t]
+    [isNoOp, showEditButton, showSaveButton, t]
   );
 
   const editTitleButton = useMemo(

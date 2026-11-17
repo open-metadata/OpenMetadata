@@ -22,13 +22,15 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -74,14 +76,17 @@ public class IncidentWorkflowUpgradeIT {
   private static final String WORKFLOW_NAME = "TestCaseResolutionTaskWorkflow";
   private static final String ASSIGNED_STAGE = "AssignedStage";
   private static final String LEGACY_ASSIGNED_STAGE = "LegacyAssignedStage";
-  private static final String NEW_STAGE = "NewStage";
-  private static final String NEW_TRANSITION = "new";
+  private static final Set<String> RETURN_TRANSITIONS = Set.of("new", "ack");
   private static final String ASSIGNED_STAGE_ID = "assigned";
   private static final String NEW_STAGE_ID = "new";
   private static final Duration TIMEOUT = Duration.ofSeconds(120);
 
-  @Test
-  void failedProcessMigrationDoesNotAdvertiseNewOrClearAssignees(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = TestCaseResolutionStatusTypes.class,
+      names = {"New", "Ack"})
+  void failedProcessMigrationDoesNotAdvertiseTransitionsOrClearAssignees(
+      TestCaseResolutionStatusTypes target, TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     try {
       installPreUpgradeWorkflow();
@@ -99,13 +104,13 @@ public class IncidentWorkflowUpgradeIT {
                       new Assigned().withAssignee(SharedEntities.get().USER1_REF)));
       awaitStage(client, task.getId(), ASSIGNED_STAGE_ID);
       renameAssignedStage(LEGACY_ASSIGNED_STAGE, ASSIGNED_STAGE);
-      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
 
       Task unchanged =
           client.tasks().get(task.getId().toString(), "assignees,availableTransitions");
       assertFalse(
           unchanged.getAvailableTransitions().stream()
-              .anyMatch(t -> NEW_TRANSITION.equals(t.getId())));
+              .anyMatch(t -> RETURN_TRANSITIONS.contains(t.getId())));
       assertThrows(
           OpenMetadataException.class,
           () ->
@@ -114,18 +119,22 @@ public class IncidentWorkflowUpgradeIT {
                   .create(
                       new CreateTestCaseResolutionStatus()
                           .withTestCaseReference(testCase.getFullyQualifiedName())
-                          .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New)));
+                          .withTestCaseResolutionStatusType(target)));
       Task rejected = client.tasks().get(task.getId().toString(), "assignees");
       assertEquals(ASSIGNED_STAGE_ID, rejected.getWorkflowStageId());
       assertEquals(
           SharedEntities.get().USER1_REF.getId(), rejected.getAssignees().getFirst().getId());
     } finally {
-      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
     }
   }
 
-  @Test
-  void incidentAssignedBeforeTheUpgradeReturnsToNew(TestNamespace ns) {
+  @ParameterizedTest
+  @EnumSource(
+      value = TestCaseResolutionStatusTypes.class,
+      names = {"New", "Ack"})
+  void incidentAssignedBeforeTheUpgradeCanReturnToEarlierStage(
+      TestCaseResolutionStatusTypes target, TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     try {
       installPreUpgradeWorkflow();
@@ -142,9 +151,9 @@ public class IncidentWorkflowUpgradeIT {
                       new Assigned().withAssignee(SharedEntities.get().USER1_REF)));
       awaitStage(client, task.getId(), ASSIGNED_STAGE_ID);
 
-      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
       Double migratedVersion = client.tasks().get(task.getId().toString()).getVersion();
-      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
       assertEquals(
           migratedVersion,
           client.tasks().get(task.getId().toString()).getVersion(),
@@ -155,12 +164,16 @@ public class IncidentWorkflowUpgradeIT {
           .create(
               new CreateTestCaseResolutionStatus()
                   .withTestCaseReference(testCase.getFullyQualifiedName())
-                  .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.New));
-      awaitStage(client, task.getId(), NEW_STAGE_ID);
+                  .withTestCaseResolutionStatusType(target));
+      awaitStage(
+          client, task.getId(), target == TestCaseResolutionStatusTypes.New ? NEW_STAGE_ID : "ack");
       assertEquals(
-          TaskEntityStatus.Open, client.tasks().get(task.getId().toString(), "status").getStatus());
+          target == TestCaseResolutionStatusTypes.New
+              ? TaskEntityStatus.Open
+              : TaskEntityStatus.InProgress,
+          client.tasks().get(task.getId().toString(), "status").getStatus());
     } finally {
-      IncidentWorkflowTransitionMigration.addAssignedToNewTransition();
+      IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
     }
   }
 
@@ -190,18 +203,18 @@ public class IncidentWorkflowUpgradeIT {
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     WorkflowDefinition persisted = repository.findByNameOrNull(WORKFLOW_NAME, Include.NON_DELETED);
     ObjectNode definition = (ObjectNode) JsonUtils.readTree(JsonUtils.pojoToJson(persisted));
-    removeAssignedToNew(definition);
+    removeAssignedReturnTransitions(definition);
     WorkflowDefinition preUpgrade =
         JsonUtils.readValue(JsonUtils.pojoToJson(definition), WorkflowDefinition.class);
     repository.createOrUpdate(null, preUpgrade, Entity.ADMIN_USER_NAME);
   }
 
-  private static void removeAssignedToNew(ObjectNode definition) {
+  private static void removeAssignedReturnTransitions(ObjectNode definition) {
     for (JsonNode node : definition.path("nodes")) {
       if (ASSIGNED_STAGE.equals(node.path("name").asText())) {
         ArrayNode transitions = (ArrayNode) node.path("config").path("transitionMetadata");
         for (int index = transitions.size() - 1; index >= 0; index--) {
-          if (NEW_TRANSITION.equals(transitions.get(index).path("id").asText())) {
+          if (RETURN_TRANSITIONS.contains(transitions.get(index).path("id").asText())) {
             transitions.remove(index);
           }
         }
@@ -211,7 +224,7 @@ public class IncidentWorkflowUpgradeIT {
     for (int index = edges.size() - 1; index >= 0; index--) {
       JsonNode edge = edges.get(index);
       if (ASSIGNED_STAGE.equals(edge.path("from").asText())
-          && NEW_STAGE.equals(edge.path("to").asText())) {
+          && RETURN_TRANSITIONS.contains(edge.path("condition").asText())) {
         edges.remove(index);
       }
     }

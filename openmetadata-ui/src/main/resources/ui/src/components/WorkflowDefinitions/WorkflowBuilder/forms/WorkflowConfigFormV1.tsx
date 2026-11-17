@@ -15,6 +15,7 @@ import { Toggle } from '@openmetadata/ui-core-components';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
+import { useWorkflowModeContext } from '../../../../contexts/WorkflowModeContext';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
 import { ApprovalModeSection } from './ApprovalModeSection';
@@ -76,10 +77,28 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   showAutoAssignOwners = false,
 }) => {
   const { t } = useTranslation();
+  const { canSave, isNoOp } = useWorkflowModeContext();
   const lockCoreStartFields = !allowFullStartNodeConfiguration;
   const canEditFiltersAndPeriodicSchedule =
     allowFullStartNodeConfiguration || allowStartNodeFilterScheduleAndBatchEdit;
   const lockFilterSections = !canEditFiltersAndPeriodicSchedule;
+
+  const ownerAssignmentToggle = showAutoAssignOwners ? (
+    <Toggle
+      data-testid="auto-assign-owners-toggle"
+      hint={t('message.auto-assign-owners-help')}
+      isDisabled={!canSave}
+      isSelected={config.autoAssignOwners !== false}
+      label={t('label.auto-assign-owners')}
+      onChange={(isSelected: boolean) =>
+        updateConfig('autoAssignOwners', isSelected)
+      }
+    />
+  ) : null;
+
+  if (isNoOp) {
+    return ownerAssignmentToggle;
+  }
 
   return (
     <div data-testid="workflow-config-form-v1">
@@ -175,17 +194,7 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
         />
       )}
 
-      {showAutoAssignOwners && (
-        <Toggle
-          data-testid="auto-assign-owners-toggle"
-          hint={t('message.auto-assign-owners-help')}
-          isSelected={config.autoAssignOwners !== false}
-          label={t('label.auto-assign-owners')}
-          onChange={(isSelected: boolean) =>
-            updateConfig('autoAssignOwners', isSelected)
-          }
-        />
-      )}
+      {ownerAssignmentToggle}
     </div>
   );
 };

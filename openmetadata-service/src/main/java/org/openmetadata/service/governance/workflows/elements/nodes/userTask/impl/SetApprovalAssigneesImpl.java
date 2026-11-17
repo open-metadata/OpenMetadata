@@ -62,6 +62,14 @@ public class SetApprovalAssigneesImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     WorkflowVariableHandler varHandler = new WorkflowVariableHandler(execution);
     try {
+      // Returning an incident to triage must not immediately reassign its owner or candidates.
+      if (Boolean.TRUE.equals(
+          execution.getVariable(WorkflowStartVariables.INCIDENT_ASSIGNEES_CLEARED))) {
+        execution.setVariable(
+            assigneesVarNameExpr.getValue(execution).toString(), JsonUtils.pojoToJson(List.of()));
+        execution.setVariable("hasAssignees", true);
+        return;
+      }
       InputNamespaces inputNamespaces = InputNamespaces.from(inputNamespaceMapExpr, execution);
       Map<String, Object> assigneesConfig =
           JsonUtils.readOrConvertValue(assigneesExpr.getValue(execution), Map.class);

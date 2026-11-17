@@ -134,6 +134,12 @@
             "targetTaskStatus": "Open"
           },
           {
+            "id": "ack",
+            "label": "Acknowledge",
+            "targetStageId": "ack",
+            "targetTaskStatus": "InProgress"
+          },
+          {
             "id": "reassign",
             "label": "Reassign",
             "targetStageId": "assigned",
@@ -200,6 +206,11 @@
       "from": "AssignedStage",
       "to": "NewStage",
       "condition": "new"
+    },
+    {
+      "from": "AssignedStage",
+      "to": "AckStage",
+      "condition": "ack"
     },
     {
       "from": "AssignedStage",

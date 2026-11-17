@@ -493,7 +493,7 @@ describe('InlineTestCaseIncidentStatus', () => {
       );
     });
 
-    it('status menu of an assigned incident offers New and Resolved', async () => {
+    it('status menu of an assigned incident offers New, Ack and Resolved', async () => {
       renderComponent({
         testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
       });
@@ -508,7 +508,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       expect(
         screen.getAllByRole('menuitem').map((item) => item.textContent)
-      ).toEqual(['label.assigned', 'label.new', 'label.resolved']);
+      ).toEqual(['label.assigned', 'label.new', 'label.ack', 'label.resolved']);
     });
 
     it('selecting ACK submits directly via API', async () => {

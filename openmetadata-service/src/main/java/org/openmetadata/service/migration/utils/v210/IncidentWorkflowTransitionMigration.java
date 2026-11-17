@@ -43,23 +43,44 @@ import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 
 /**
- * Adds the Assigned-to-New transition and edge to the persisted incident workflow, then moves the
+ * Adds the Assigned-to-New and Assigned-to-Acknowledged transitions and edges to the persisted incident workflow, then moves the
  * running instances of the workflow onto its latest deployed version. Seed data is only inserted
  * for workflows that do not exist yet, so an upgraded install would otherwise keep the graph it
  * was seeded with. Only missing pieces are added, so a customised graph keeps its other transitions
  * and edges.
  *
  * <p>Redeploying alone does not change an instance that is already running: an incident in the
- * assigned stage keeps the process version it started on, which has no assigned-to-new edge. An
- * instance that cannot be migrated is logged and left on its version; a New request on it is then
+ * assigned stage keeps the process version it started on, which lacks the new outgoing edges. An
+ * instance that cannot be migrated is logged and left on its version; an unsupported transition request on it is then
  * refused with a clear error.
  */
 @Slf4j
 public final class IncidentWorkflowTransitionMigration {
-  public static final String STEP_NAME = "incidentAssignedToNewTransition";
+  public static final String STEP_NAME = "incidentAssignedStatusTransitions";
   private static final String INCIDENT_WORKFLOW_NAME = "TestCaseResolutionTaskWorkflow";
   private static final String ASSIGNED_NODE_NAME = "AssignedStage";
-  private static final String NEW_NODE_NAME = "NewStage";
+  private static final List<AssignedTransition> RETURN_TRANSITIONS =
+      List.of(
+          new AssignedTransition(
+              IncidentWorkflowStages.NEW_TRANSITION_ID,
+              "New",
+              "NewStage",
+              IncidentWorkflowStages.NEW_STAGE_ID,
+              TaskEntityStatus.Open),
+          new AssignedTransition(
+              IncidentWorkflowStages.ACK_TRANSITION_ID,
+              "Acknowledge",
+              "AckStage",
+              IncidentWorkflowStages.ACK_STAGE_ID,
+              TaskEntityStatus.InProgress));
+
+  private record AssignedTransition(
+      String id,
+      String label,
+      String targetNode,
+      String targetStage,
+      TaskEntityStatus taskStatus) {}
+
   private static final String NODES = "nodes";
   private static final String EDGES = "edges";
   private static final String CONFIG = "config";
@@ -71,7 +92,7 @@ public final class IncidentWorkflowTransitionMigration {
 
   private IncidentWorkflowTransitionMigration() {}
 
-  public static void addAssignedToNewTransition() {
+  public static void addAssignedStatusTransitions() {
     WorkflowDefinitionRepository repository =
         (WorkflowDefinitionRepository) Entity.getEntityRepository(Entity.WORKFLOW_DEFINITION);
     WorkflowDefinition persisted =
@@ -85,11 +106,11 @@ public final class IncidentWorkflowTransitionMigration {
       LOG.info("Leaving customized incident workflow '{}' unchanged", INCIDENT_WORKFLOW_NAME);
       return;
     }
-    if (addMissingAssignedToNewPieces(definition)) {
+    if (addMissingAssignedTransitions(definition)) {
       WorkflowDefinition upgraded =
           JsonUtils.readValue(JsonUtils.pojoToJson(definition), WorkflowDefinition.class);
       repository.createOrUpdate(null, upgraded, Entity.ADMIN_USER_NAME);
-      LOG.info("Added the Assigned-to-New transition to workflow '{}'", INCIDENT_WORKFLOW_NAME);
+      LOG.info("Added the Assigned return transitions to workflow '{}'", INCIDENT_WORKFLOW_NAME);
     } else {
       // A retry after storing the graph but before deployment must repair the deployed version.
       WorkflowHandler.getInstance().deploy(new Workflow(persisted));
@@ -212,24 +233,32 @@ public final class IncidentWorkflowTransitionMigration {
 
   private static boolean hasSupportedStages(ObjectNode definition) {
     JsonNode assigned = findNodeByName(definition.path(NODES), ASSIGNED_NODE_NAME);
-    JsonNode newStage = findNodeByName(definition.path(NODES), NEW_NODE_NAME);
     return assigned != null
-        && newStage != null
         && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(
             assigned.path(CONFIG).path("stageId").asText())
-        && IncidentWorkflowStages.NEW_STAGE_ID.equals(
-            newStage.path(CONFIG).path("stageId").asText())
         && assigned.path(CONFIG).path(TRANSITION_METADATA) instanceof ArrayNode
         && definition.path(EDGES) instanceof ArrayNode
-        && !hasConflictingNewTransition(assigned.path(CONFIG).path(TRANSITION_METADATA))
-        && !hasConflictingNewEdge(definition.path(EDGES));
+        && RETURN_TRANSITIONS.stream()
+            .allMatch(transition -> supportsTransition(definition, assigned, transition));
   }
 
-  private static boolean hasConflictingNewTransition(JsonNode transitions) {
+  private static boolean supportsTransition(
+      ObjectNode definition, JsonNode assigned, AssignedTransition expected) {
+    JsonNode target = findNodeByName(definition.path(NODES), expected.targetNode());
+    return target != null
+        && expected.targetStage().equals(target.path(CONFIG).path("stageId").asText())
+        && !hasConflictingTransition(assigned.path(CONFIG).path(TRANSITION_METADATA), expected)
+        && !hasConflictingEdge(definition.path(EDGES), expected);
+  }
+
+  private static boolean hasConflictingTransition(
+      JsonNode transitions, AssignedTransition expected) {
     for (JsonNode transition : transitions) {
-      if (IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transition.path(ID).asText())
-          && (!IncidentWorkflowStages.NEW_STAGE_ID.equals(transition.path("targetStageId").asText())
-              || !TaskEntityStatus.Open.value()
+      if (expected.id().equals(transition.path(ID).asText())
+          && (!expected.targetStage().equals(transition.path("targetStageId").asText())
+              || !expected
+                  .taskStatus()
+                  .value()
                   .equals(transition.path("targetTaskStatus").asText()))) {
         return true;
       }
@@ -237,41 +266,42 @@ public final class IncidentWorkflowTransitionMigration {
     return false;
   }
 
-  private static boolean hasConflictingNewEdge(JsonNode edges) {
+  private static boolean hasConflictingEdge(JsonNode edges, AssignedTransition expected) {
     for (JsonNode edge : edges) {
       if (ASSIGNED_NODE_NAME.equals(edge.path(FROM).asText())
-          && IncidentWorkflowStages.NEW_TRANSITION_ID.equals(edge.path(CONDITION).asText())
-          && !NEW_NODE_NAME.equals(edge.path(TO).asText())) {
+          && expected.id().equals(edge.path(CONDITION).asText())
+          && !expected.targetNode().equals(edge.path(TO).asText())) {
         return true;
       }
     }
     return false;
   }
 
-  static boolean addMissingAssignedToNewPieces(ObjectNode definition) {
+  static boolean addMissingAssignedTransitions(ObjectNode definition) {
     if (!hasSupportedStages(definition)) {
       return false;
     }
-    boolean transitionAdded = addNewTransitionToAssignedStage(definition.path(NODES));
-    boolean edgeAdded = addNewEdgeFromAssignedStage(definition.path(EDGES));
-    return transitionAdded || edgeAdded;
+    boolean updated = false;
+    for (AssignedTransition transition : RETURN_TRANSITIONS) {
+      updated |= addTransitionToAssignedStage(definition.path(NODES), transition);
+      updated |= addEdgeFromAssignedStage(definition.path(EDGES), transition);
+    }
+    return updated;
   }
 
-  private static boolean addNewTransitionToAssignedStage(JsonNode nodes) {
+  private static boolean addTransitionToAssignedStage(
+      JsonNode nodes, AssignedTransition transition) {
     JsonNode assignedNode = findNodeByName(nodes, ASSIGNED_NODE_NAME);
-    if (!(assignedNode != null
-        && assignedNode.path(CONFIG).path(TRANSITION_METADATA) instanceof ArrayNode transitions)) {
-      return false;
-    }
-    if (hasTransitionWithId(transitions, IncidentWorkflowStages.NEW_TRANSITION_ID)) {
+    ArrayNode transitions = (ArrayNode) assignedNode.path(CONFIG).path(TRANSITION_METADATA);
+    if (hasTransitionWithId(transitions, transition.id())) {
       return false;
     }
     transitions
         .addObject()
-        .put(ID, IncidentWorkflowStages.NEW_TRANSITION_ID)
-        .put("label", "New")
-        .put("targetStageId", IncidentWorkflowStages.NEW_STAGE_ID)
-        .put("targetTaskStatus", "Open");
+        .put(ID, transition.id())
+        .put("label", transition.label())
+        .put("targetStageId", transition.targetStage())
+        .put("targetTaskStatus", transition.taskStatus().value());
     return true;
   }
 
@@ -296,26 +326,19 @@ public final class IncidentWorkflowTransitionMigration {
     return false;
   }
 
-  private static boolean addNewEdgeFromAssignedStage(JsonNode edges) {
-    if (!(edges instanceof ArrayNode edgeArray)) {
-      return false;
-    }
+  private static boolean addEdgeFromAssignedStage(JsonNode edges, AssignedTransition transition) {
+    ArrayNode edgeArray = (ArrayNode) edges;
     for (JsonNode edge : edgeArray) {
-      if (isAssignedToNewEdge(edge)) {
+      if (ASSIGNED_NODE_NAME.equals(edge.path(FROM).asText())
+          && transition.id().equals(edge.path(CONDITION).asText())) {
         return false;
       }
     }
     edgeArray
         .addObject()
         .put(FROM, ASSIGNED_NODE_NAME)
-        .put(TO, NEW_NODE_NAME)
-        .put(CONDITION, IncidentWorkflowStages.NEW_TRANSITION_ID);
+        .put(TO, transition.targetNode())
+        .put(CONDITION, transition.id());
     return true;
-  }
-
-  private static boolean isAssignedToNewEdge(JsonNode edge) {
-    return ASSIGNED_NODE_NAME.equals(edge.path(FROM).asText())
-        && NEW_NODE_NAME.equals(edge.path(TO).asText())
-        && IncidentWorkflowStages.NEW_TRANSITION_ID.equals(edge.path(CONDITION).asText());
   }
 }

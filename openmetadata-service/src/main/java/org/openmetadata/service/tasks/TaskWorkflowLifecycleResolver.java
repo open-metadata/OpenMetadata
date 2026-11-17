@@ -603,6 +603,7 @@ public final class TaskWorkflowLifecycleResolver {
     public static final String TASK_REVIEWERS = "taskReviewers";
     public static final String TASK_ASSIGNEES = "taskAssignees";
     public static final String AUTO_ASSIGN_OWNERS = "autoAssignOwners";
+    public static final String INCIDENT_ASSIGNEES_CLEARED = "incidentAssigneesCleared";
 
     /**
      * Set only by an ontology release review whose frozen rule is AllReviewers. CreateTask raises

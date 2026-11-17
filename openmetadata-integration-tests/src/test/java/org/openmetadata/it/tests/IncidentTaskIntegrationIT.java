@@ -34,6 +34,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -607,6 +609,62 @@ public class IncidentTaskIntegrationIT {
     assertTrue(
         acknowledged.getAssignees() == null || acknowledged.getAssignees().isEmpty(),
         "a later stage must not restore the old process assignees");
+  }
+
+  @ParameterizedTest
+  @CsvSource({"task,New", "task,Ack", "status,New", "status,Ack", "bulk,New", "bulk,Ack"})
+  void testAssignedIncident_ReturnsUnassignedWithHistory(
+      String api, TestCaseResolutionStatusTypes target, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    TestCase testCase = createTestCase(client, ns, "assigned-return-" + api + target);
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    createTcrs(
+        client,
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(shared.USER1_REF));
+    awaitIncidentTask(
+        client, task.getId(), TaskEntityStatus.InProgress, "assigned", shared.USER1.getName());
+    assertLatestTcrsEventually(
+        client, task.getId(), TestCaseResolutionStatusTypes.Assigned, shared.USER1.getName());
+    List<TestCaseResolutionStatus> assignedHistory = tcrsTimeline(client, task.getId());
+    CreateTestCaseResolutionStatus statusChange =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(target);
+    String targetStage = target == TestCaseResolutionStatusTypes.New ? "new" : "ack";
+
+    switch (api) {
+      case "task" -> client
+          .tasks()
+          .resolve(task.getId().toString(), new ResolveTask().withTransitionId(targetStage));
+      case "status" -> client.testCaseResolutionStatuses().create(statusChange);
+      case "bulk" -> assertEquals(
+          1,
+          client
+              .testCaseResolutionStatuses()
+              .bulkCreate(List.of(statusChange))
+              .getNumberOfRowsPassed());
+      default -> throw new IllegalArgumentException(api);
+    }
+
+    Task returned =
+        awaitIncidentTask(
+            client,
+            task.getId(),
+            target == TestCaseResolutionStatusTypes.New
+                ? TaskEntityStatus.Open
+                : TaskEntityStatus.InProgress,
+            targetStage,
+            null);
+    assertEquals(task.getId(), returned.getId());
+    assertTrue(returned.getAssignees() == null || returned.getAssignees().isEmpty());
+    assertLatestTcrsEventually(client, task.getId(), target, null);
+    assertTrue(tcrsTimeline(client, task.getId()).containsAll(assignedHistory));
+    awaitTestCaseIncidentId(client, testCase, task.getId());
+    assertEquals(1, countIncidentTasksForTestCase(client, testCase));
   }
 
   @Test

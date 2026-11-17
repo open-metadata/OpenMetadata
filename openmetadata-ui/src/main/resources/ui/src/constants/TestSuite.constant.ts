@@ -84,6 +84,7 @@ export const TEST_CASE_STATUS: Record<
   ],
   [TestCaseResolutionStatusTypes.Assigned]: [
     TestCaseResolutionStatusTypes.New,
+    TestCaseResolutionStatusTypes.ACK,
     TestCaseResolutionStatusTypes.Resolved,
   ],
   [TestCaseResolutionStatusTypes.Resolved]: [],
@@ -104,7 +105,7 @@ const ALL_INCIDENT_STATUSES = Object.values(TestCaseResolutionStatusTypes);
 /**
  * Statuses an incident's status menu offers from each status: its own, plus
  * the edges `TestCaseResolutionTaskWorkflow` declares from that stage. An
- * assigned incident can go back to New, or be resolved. A resolved incident is
+ * assigned incident can go back to New or Ack, or be resolved. A resolved incident is
  * final: the only offer is New, which starts a separate incident.
  */
 export const INCIDENT_STATUS_MENU_OPTIONS: Record<
@@ -116,6 +117,7 @@ export const INCIDENT_STATUS_MENU_OPTIONS: Record<
   [TestCaseResolutionStatusTypes.Assigned]: [
     TestCaseResolutionStatusTypes.Assigned,
     TestCaseResolutionStatusTypes.New,
+    TestCaseResolutionStatusTypes.ACK,
     TestCaseResolutionStatusTypes.Resolved,
   ],
   [TestCaseResolutionStatusTypes.Resolved]: [TestCaseResolutionStatusTypes.New],

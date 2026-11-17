@@ -133,7 +133,11 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     allowFullStartNodeConfiguration,
     allowStartNodeFilterScheduleAndBatchEdit,
     allowScheduledTrigger,
+    isNoOp,
   } = useWorkflowModeContext();
+  const isIncidentWorkflow =
+    (workflowMetadata?.name ?? workflowDefinition?.name) ===
+    TEST_CASE_RESOLUTION_WORKFLOW_NAME;
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
     getBackendConfig(node)
@@ -460,7 +464,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       const isTriggerNode = isStartNode(node);
 
       // OSS keeps the description editable; name and trigger type are locked in the form.
-      if (isTriggerNode) {
+      if (isTriggerNode && !isNoOp) {
         updateWorkflowMetadata();
       }
 
@@ -483,6 +487,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     }
   }, [
     node,
+    isNoOp,
     updateWorkflowMetadata,
     buildTriggerConfiguration,
     buildTaskConfiguration,
@@ -495,18 +500,16 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
   }, [onClose]);
 
   const isWorkflowConfigValid = useMemo(
-    () => validateWorkflowConfig(effectiveConfig, isStartNode(node)),
-    [effectiveConfig, node]
+    () =>
+      (isNoOp && isIncidentWorkflow) ||
+      validateWorkflowConfig(effectiveConfig, isStartNode(node)),
+    [effectiveConfig, node, isNoOp, isIncidentWorkflow]
   );
 
   const renderFormContent = () => {
     if (!node || !isStartNode(node)) {
       return null;
     }
-
-    const isIncidentWorkflow =
-      (workflowMetadata?.name ?? workflowDefinition?.name) ===
-      TEST_CASE_RESOLUTION_WORKFLOW_NAME;
 
     return (
       <WorkflowConfigFormV1

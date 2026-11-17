@@ -37,41 +37,52 @@ class IncidentWorkflowTransitionMigrationTest {
   void addsTheMissingNewTransitionAndEdgeToAnUpgradedInstall() throws IOException {
     ObjectNode definition = seedWithoutAssignedToNew();
 
-    assertTrue(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertTrue(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
 
     assertEquals(1, countTransitions(definition, "AssignedStage", "new"));
     assertEquals(1, countEdges(definition, "AssignedStage", "NewStage", "new"));
   }
 
   @Test
+  void addsAcknowledgedToAnInstallThatAlreadySupportsNew() throws IOException {
+    ObjectNode definition = readSeed();
+    removeAssignedTransition(definition, "ack");
+
+    assertTrue(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
+    assertEquals(1, countTransitions(definition, "AssignedStage", "ack"));
+    assertEquals(1, countEdges(definition, "AssignedStage", "AckStage", "ack"));
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
+  }
+
+  @Test
   void leavesAWorkflowThatAlreadyHasTheTransitionAndEdgeUnchanged() throws IOException {
     ObjectNode definition = readSeed();
 
-    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
 
     assertEquals(1, countTransitions(definition, "AssignedStage", "new"));
     assertEquals(1, countEdges(definition, "AssignedStage", "NewStage", "new"));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"AssignedStage", "NewStage"})
+  @ValueSource(strings = {"AssignedStage", "NewStage", "AckStage"})
   void leavesCustomizedStageNamesUnchanged(String stageName) throws IOException {
     ObjectNode definition = seedWithoutAssignedToNew();
     ((ObjectNode) nodeNamed(definition, stageName)).put("name", "CustomStage");
     ObjectNode original = definition.deepCopy();
 
-    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
     assertEquals(original, definition);
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"AssignedStage", "NewStage"})
+  @ValueSource(strings = {"AssignedStage", "NewStage", "AckStage"})
   void leavesCustomizedStageIdsUnchanged(String stageName) throws IOException {
     ObjectNode definition = seedWithoutAssignedToNew();
     ((ObjectNode) nodeNamed(definition, stageName).path("config")).put("stageId", "custom");
     ObjectNode original = definition.deepCopy();
 
-    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
     assertEquals(original, definition);
   }
 
@@ -85,7 +96,7 @@ class IncidentWorkflowTransitionMigrationTest {
         .put("targetTaskStatus", "InProgress");
     ObjectNode original = definition.deepCopy();
 
-    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
     assertEquals(original, definition);
   }
 
@@ -99,16 +110,51 @@ class IncidentWorkflowTransitionMigrationTest {
         .put("condition", "new");
     ObjectNode original = definition.deepCopy();
 
-    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedToNewPieces(definition));
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
+    assertEquals(original, definition);
+  }
+
+  @Test
+  void leavesAConflictingAcknowledgedTransitionUnchanged() throws IOException {
+    ObjectNode definition = seedWithoutAssignedToNew();
+    removeAssignedTransition(definition, "ack");
+    ((ArrayNode) nodeNamed(definition, "AssignedStage").path("config").path("transitionMetadata"))
+        .addObject()
+        .put("id", "ack")
+        .put("targetStageId", "new")
+        .put("targetTaskStatus", "Open");
+    ObjectNode original = definition.deepCopy();
+
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
+    assertEquals(original, definition);
+  }
+
+  @Test
+  void leavesAConflictingAcknowledgedEdgeUnchanged() throws IOException {
+    ObjectNode definition = seedWithoutAssignedToNew();
+    removeAssignedTransition(definition, "ack");
+    ((ArrayNode) definition.path("edges"))
+        .addObject()
+        .put("from", "AssignedStage")
+        .put("to", "NewStage")
+        .put("condition", "ack");
+    ObjectNode original = definition.deepCopy();
+
+    assertFalse(IncidentWorkflowTransitionMigration.addMissingAssignedTransitions(definition));
     assertEquals(original, definition);
   }
 
   private static ObjectNode seedWithoutAssignedToNew() throws IOException {
     ObjectNode definition = readSeed();
+    removeAssignedTransition(definition, "new");
+    return definition;
+  }
+
+  private static void removeAssignedTransition(ObjectNode definition, String transitionId) {
     JsonNode assignedNode = nodeNamed(definition, "AssignedStage");
     ArrayNode transitions = (ArrayNode) assignedNode.path("config").path("transitionMetadata");
     for (int index = transitions.size() - 1; index >= 0; index--) {
-      if ("new".equals(transitions.get(index).path("id").asText())) {
+      if (transitionId.equals(transitions.get(index).path("id").asText())) {
         transitions.remove(index);
       }
     }
@@ -116,11 +162,10 @@ class IncidentWorkflowTransitionMigrationTest {
     for (int index = edges.size() - 1; index >= 0; index--) {
       JsonNode edge = edges.get(index);
       if ("AssignedStage".equals(edge.path("from").asText())
-          && "new".equals(edge.path("condition").asText())) {
+          && transitionId.equals(edge.path("condition").asText())) {
         edges.remove(index);
       }
     }
-    return definition;
   }
 
   private static JsonNode nodeNamed(ObjectNode definition, String name) {

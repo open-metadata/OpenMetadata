@@ -71,8 +71,17 @@ jest.mock('./forms/WorkflowConfigFormV1', () => ({
 }));
 
 jest.mock('./forms/FormActionButtons', () => ({
-  FormActionButtons: ({ onSave }: { onSave: () => void }) => (
-    <button data-testid="save-node-configuration-button" onClick={onSave}>
+  FormActionButtons: ({
+    onSave,
+    isDisabled,
+  }: {
+    onSave: () => void;
+    isDisabled?: boolean;
+  }) => (
+    <button
+      data-testid="save-node-configuration-button"
+      disabled={isDisabled}
+      onClick={onSave}>
       save
     </button>
   ),
@@ -182,6 +191,49 @@ describe('NodeConfigSidebar trigger of a workflow with a Git sink', () => {
 });
 
 describe('NodeConfigSidebar owner assignment', () => {
+  it('saves system incident settings without requiring trigger data assets', async () => {
+    mockUseWorkflowModeContext.mockReturnValue({
+      ...FULL_WORKFLOW_MODE,
+      isNoOp: true,
+    });
+    const onSave = jest.fn();
+    render(
+      <NodeConfigSidebar
+        isOpen
+        node={{
+          ...START_NODE,
+          data: {
+            name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+            dataAssets: [],
+            dataAssetFilters: [],
+          },
+        }}
+        triggerFieldsConfig={{ common: [], entitySpecific: {} }}
+        workflowDefinition={{
+          name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+          description: '',
+          config: { autoAssignOwners: true, storeStageStatus: true },
+        }}
+        onClose={jest.fn()}
+        onSave={onSave}
+        onWorkflowUpdate={jest.fn()}
+      />
+    );
+    await act(async () => undefined);
+
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'Auto-assign owners' })
+    );
+
+    expect(screen.getByTestId('save-node-configuration-button')).toBeEnabled();
+
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave.mock.calls[0][1].autoAssignOwners).toBe(false);
+
+    mockUseWorkflowModeContext.mockReturnValue(FULL_WORKFLOW_MODE);
+  });
+
   it.each([true, false])(
     'retains a toggle edit when reopening before saving the workflow (initially %s)',
     async (initialValue) => {
@@ -190,7 +242,7 @@ describe('NodeConfigSidebar owner assignment', () => {
         ...START_NODE,
         data: {
           ...START_NODE.data,
-          config: { autoAssignOwners: initialValue },
+          config: { autoAssignOwners: initialValue, storeStageStatus: true },
         },
       };
       const props = {
@@ -200,7 +252,7 @@ describe('NodeConfigSidebar owner assignment', () => {
         workflowDefinition: {
           name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
           description: '',
-          config: { autoAssignOwners: initialValue },
+          config: { autoAssignOwners: initialValue, storeStageStatus: true },
         },
         onClose: jest.fn(),
         onSave,

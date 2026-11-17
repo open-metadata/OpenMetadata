@@ -321,8 +321,8 @@ This section supersedes the conflicting parts of D5, the reopen behaviour, and t
 ### An open incident can return to New
 
 - New on an open incident is routed to the task workflow as the `new` transition. Ack and Assigned both have it.
-- `AssignedStage` gains a `new` transition and an `AssignedStage -> NewStage` edge in `TestCaseResolutionTaskWorkflow.json`.
-- Returning to New clears the task's assignees. `NewStage` then recomputes assignees from the workflow's assignee configuration.
+- `AssignedStage` gains `new` and `ack` transitions to `NewStage` and `AckStage` in `TestCaseResolutionTaskWorkflow.json`.
+- Returning to New or moving from Assigned to Ack clears the task's current assignees without immediately reassigning owners or candidates. Earlier Assigned records retain their assignee in the incident history; a later manual assignment still works.
 - The bulk path accepts New on an open incident. Only an entry that changes nothing is rejected.
 - Known limitation: an instance Flowable cannot move keeps its old version, and a New request on its incident is refused until the incident moves to another stage.
 - Persisted installs get the new transition and edge from the v2.1.0 data migration (`IncidentWorkflowTransitionMigration`). Startup seeding skips existing definitions, so the seed file alone does not reach them. The migration adds only missing pieces and leaves other customisations alone.

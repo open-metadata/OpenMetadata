@@ -957,13 +957,15 @@ public class TaskRepository extends EntityRepository<Task> {
       ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
-    boolean returningToNew =
+    boolean clearingIncidentAssignment =
         task.getType() == TaskEntityType.TestCaseResolution
-            && IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId);
+            && (IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId)
+                || (IncidentWorkflowStages.ACK_TRANSITION_ID.equals(transitionId)
+                    && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(task.getWorkflowStageId())));
     List<EntityReference> previousAssignees = List.of();
-    if (returningToNew) {
+    if (clearingIncidentAssignment) {
       Task current = get(null, task.getId(), getFields("*"));
-      requireIncidentReturnToNew(current, transitionId);
+      requireIncidentReturnTransition(current, transitionId);
       previousAssignees = listOrEmpty(current.getAssignees());
       ObjectNode payload =
           resolvedPayload == null
@@ -980,25 +982,34 @@ public class TaskRepository extends EntityRepository<Task> {
     } catch (RuntimeException failure) {
       // Both APIs clear assignment before Flowable computes the next stage's assignees. Restore
       // the prior assignment if the transition is refused, without undoing a committed stage move.
-      if (returningToNew) {
+      if (clearingIncidentAssignment) {
         Task current = get(null, task.getId(), getFields("*"));
         if (Objects.equals(current.getWorkflowStageId(), task.getWorkflowStageId())) {
           replaceAssignees(current, previousAssignees, user);
+          WorkflowHandler handler = WorkflowHandler.getInstance();
+          handler.setProcessVariable(
+              task.getId(),
+              WorkflowStartVariables.TASK_ASSIGNEES,
+              JsonUtils.pojoToJson(previousAssignees));
+          handler.setProcessVariable(
+              task.getId(),
+              WorkflowStartVariables.INCIDENT_ASSIGNEES_CLEARED,
+              previousAssignees.isEmpty());
         }
       }
       throw failure;
     }
   }
 
-  private static void requireIncidentReturnToNew(Task task, String transitionId) {
+  private static void requireIncidentReturnTransition(Task task, String transitionId) {
     if (isTerminalStatus(task.getStatus())) {
       rejectReopeningIncident(task);
     }
     if (TaskWorkflowLifecycleResolver.findTransition(task, transitionId) == null) {
       throw new IllegalArgumentException(
           String.format(
-              "Incident task %s cannot return to New from its current stage; its workflow predates the return-to-New transition",
-              task.getId()));
+              "Incident task %s cannot transition to %s from its current stage; its workflow does not support this transition",
+              task.getId(), transitionId));
     }
   }
 
