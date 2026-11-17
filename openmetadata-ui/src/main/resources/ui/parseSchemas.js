@@ -28,8 +28,6 @@ const schemaDir =
 const parserOptions = {
   parse: {
     json: {
-      order: 100,
-      canParse: '.json',
       parse: ({ data }) =>
         removeObjectByKey(JSON.parse(data.toString()), '$id'),
     },
@@ -78,18 +76,15 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
     }
     const api = await parser.bundle(parsedSchema, parserOptions);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
-    // `$id` and `$schema` are stripped for the same reason: what lands here is a
-    // dereferenced bundle, not the spec document it came from. Its `$id` no longer
-    // addresses anything, and a nested `$schema` is not even a keyword position.
-    // `$schema` matters more than tidiness though -- these bundles are fed to
+    // `$id` is already dropped at read time (parserOptions). `$schema` is stripped
+    // because what lands here is a dereferenced bundle, not the spec document it
+    // came from, where a nested `$schema` is not even a keyword position.
+    // It matters more than tidiness though -- these bundles are fed to
     // @rjsf/validator-ajv8, whose Ajv only carries the draft-07 meta-schema, and Ajv
     // fails closed on a dialect it does not know: one `no schema with key or ref ...`
     // error and every field silently stops being validated. Dropping the declaration
     // keeps Ajv on its default dialect, which is what these forms have always used.
-    const updatedAPIWithoutID = removeObjectByKey(
-      removeObjectByKey(api, '$id'),
-      '$schema'
-    );
+    const updatedAPIWithoutID = removeObjectByKey(api, '$schema');
 
     if (!fs.existsSync(dirname)) {
       try {
@@ -194,12 +189,8 @@ async function parseApplicationSchemas() {
         let parsedSchema = await parser.parse(file, parserOptions);
         parsedSchema = await parser.dereference(parsedSchema, parserOptions);
 
-        // Same as parseSchema above: dereferenced output, so `$id` no longer
-        // addresses anything and `$schema` would put Ajv on a dialect it cannot load.
-        const updatedSchema = removeObjectByKey(
-          removeObjectByKey(parsedSchema, '$id'),
-          '$schema'
-        );
+        // Same as parseSchema above: `$schema` would put Ajv on a dialect it cannot load.
+        const updatedSchema = removeObjectByKey(parsedSchema, '$schema');
 
         // Change back to original directory
         process.chdir(originalCwd);
