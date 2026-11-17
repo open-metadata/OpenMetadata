@@ -166,6 +166,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   private static final List<MetadataOperation> VIEW_BASIC_ONLY = List.of(VIEW_BASIC);
   private static final List<MetadataOperation> CUSTOM_PROPERTY_VALUES =
       List.of(MetadataOperation.VIEW_CUSTOM_FIELDS);
+  private static final String EXTENSION_PATH = "/" + Entity.FIELD_EXTENSION;
+  private static final String PATCH_OP = "op";
+  private static final String PATCH_PATH = "path";
+  private static final String PATCH_VALUE = "value";
 
   /** Pages a filtered listing reads to fill one page, the first included. */
   private static final int MAX_FILTERED_PAGE_READS = 5;
@@ -343,15 +347,70 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     }
   }
 
-  /** Decides on the context the read was authorized with, so the entity is not loaded again. */
-  private T hideCustomPropertyValues(
-      SecurityContext securityContext, ResourceContextInterface resourceContext, T entity) {
-    if (entity != null
-        && showsCustomPropertyValues(entity)
-        && customPropertyValuesHidden(securityContext, resourceContext)) {
+  private static <E extends EntityInterface<?>> E withoutValuesIf(boolean hideValues, E entity) {
+    if (hideValues && entity != null) {
       removeCustomPropertyValues(entity);
     }
     return entity;
+  }
+
+  /**
+   * The patch to write for a caller shown no values: an operation that writes the whole extension
+   * is written over the stored values and a remove of the whole extension is dropped, so a PATCH
+   * never deletes what the caller was not shown. Operations on one property run as sent.
+   */
+  private JsonPatch patchKeepingValues(boolean hideValues, JsonPatch patch, Supplier<T> stored) {
+    JsonArray operations = patch.toJsonArray();
+    if (!hideValues || operations.stream().noneMatch(EntityResource::writesWholeExtension)) {
+      return patch;
+    }
+    Object storedValues = stored.get().getExtension();
+    JsonArrayBuilder kept = Json.createArrayBuilder();
+    for (JsonValue operation : operations) {
+      String op =
+          writesWholeExtension(operation) ? operation.asJsonObject().getString(PATCH_OP) : "";
+      switch (op) {
+        case "add", "replace" -> kept.add(keptValues(operation.asJsonObject(), storedValues));
+        case "remove" -> {}
+        default -> kept.add(operation);
+      }
+    }
+    return Json.createPatch(kept.build());
+  }
+
+  private static boolean writesWholeExtension(JsonValue operation) {
+    return operation.getValueType() == JsonValue.ValueType.OBJECT
+        && EXTENSION_PATH.equals(operation.asJsonObject().getString(PATCH_PATH, null));
+  }
+
+  private static JsonObject keptValues(JsonObject operation, Object storedValues) {
+    Object sent = JsonUtils.readValue(operation.get(PATCH_VALUE).toString(), Object.class);
+    Object merged = EntityRepository.EntityUpdater.mergedOverStoredExtension(storedValues, sent);
+    return Json.createObjectBuilder(operation)
+        .add(PATCH_VALUE, JsonUtils.readJson(JsonUtils.pojoToJson(merged)))
+        .build();
+  }
+
+  /** A PUT from a caller shown no values writes its values over the stored ones. */
+  private void keepHiddenValues(boolean hideValues, T entity, T stored) {
+    if (hideValues && entity.getExtension() != null) {
+      Fields extension = repository.getFields(Entity.FIELD_EXTENSION);
+      Object storedValues =
+          repository.get(null, stored.getId(), extension, Include.ALL, false).getExtension();
+      entity.setExtension(
+          EntityRepository.EntityUpdater.mergedOverStoredExtension(
+              storedValues, entity.getExtension()));
+    }
+  }
+
+  /** The write response as a GET shows it; the written entity itself is left as it is. */
+  private Response withShownValues(boolean hideValues, Response response) {
+    if (!hideValues || !entityClass.isInstance(response.getEntity())) {
+      return response;
+    }
+    T shown = JsonUtils.deepCopy(entityClass.cast(response.getEntity()), entityClass);
+    removeCustomPropertyValues(shown);
+    return Response.fromResponse(response).entity(shown).build();
   }
 
   /**
@@ -1037,15 +1096,15 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    // Decided before the reuse below trims the entity the rules read (e.g. its owners).
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
     T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
     T entity =
         authorized != null
             ? authorized
             : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled());
-    return hideCustomPropertyValues(
-        securityContext,
-        resourceContext,
-        retainViewableReferences(securityContext, fields, addHref(uriInfo, entity)));
+    return withoutValuesIf(
+        hideValues, retainViewableReferences(securityContext, fields, addHref(uriInfo, entity)));
   }
 
   /**
@@ -1286,16 +1345,16 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    // Decided before the reuse below trims the entity the rules read (e.g. its owners).
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
     T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
     T entity =
         authorized != null
             ? authorized
             : repository.getByName(
                 uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled());
-    return hideCustomPropertyValues(
-        securityContext,
-        resourceContext,
-        retainViewableReferences(securityContext, fields, addHref(uriInfo, entity)));
+    return withoutValuesIf(
+        hideValues, retainViewableReferences(securityContext, fields, addHref(uriInfo, entity)));
   }
 
   /**
@@ -1386,11 +1445,14 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     authorizeUpdate(securityContext, entity, stored);
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
     keepHiddenReferences(securityContext, entity, stored);
+    keepHiddenValues(hideValues, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
-    return withViewableReferences(securityContext, response.toResponse());
+    return withShownValues(
+        hideValues, withViewableReferences(securityContext, response.toResponse()));
   }
 
   public Response createOrUpdate(
@@ -1423,11 +1485,14 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
     T stored = entityClass.cast(resourceContext.getEntity());
     authorizeUpdate(securityContext, entity, stored);
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
     keepHiddenReferences(securityContext, entity, stored);
+    keepHiddenValues(hideValues, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
-    return withViewableReferences(securityContext, response.toResponse());
+    return withShownValues(
+        hideValues, withViewableReferences(securityContext, response.toResponse()));
   }
 
   /** Deprecated: use method with changeContext
@@ -1462,22 +1527,24 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    ResourceContextInterface resourceContext =
+        getResourceContextById(id, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
+    Supplier<T> stored = () -> storedForPatch(id);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     PatchResponse<T> response =
         repository.patch(
             uriInfo,
             id,
             securityContext.getUserPrincipal().getName(),
-            patchAsShown(securityContext, patch, () -> storedForPatch(id)),
+            patchAsShown(securityContext, patchKeepingValues(hideValues, patch, stored), stored),
             changeSource,
             ifMatchHeader,
             impersonatedBy);
     addHref(uriInfo, response.entity());
-    return withViewableReferences(securityContext, response.toResponse());
+    return withShownValues(
+        hideValues, withViewableReferences(securityContext, response.toResponse()));
   }
 
   private T storedForPatch(UUID id) {
@@ -1498,6 +1565,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       UUID id,
       JsonPatch patch) {
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    boolean hideValues =
+        customPropertyValuesHidden(
+            securityContext, getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
+    Supplier<T> stored = () -> storedForPatch(id);
     String ifMatchHeader =
         org.openmetadata.service.resources.filters.ETagRequestFilter.getIfMatchHeader();
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
@@ -1506,12 +1577,13 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             uriInfo,
             id,
             securityContext.getUserPrincipal().getName(),
-            patchAsShown(securityContext, patch, () -> storedForPatch(id)),
+            patchAsShown(securityContext, patchKeepingValues(hideValues, patch, stored), stored),
             null,
             ifMatchHeader,
             impersonatedBy);
     addHref(uriInfo, response.entity());
-    return withViewableReferences(securityContext, response.toResponse());
+    return withShownValues(
+        hideValues, withViewableReferences(securityContext, response.toResponse()));
   }
 
   public Response patchInternal(
@@ -1539,10 +1611,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ChangeSource changeSource,
       String ifMatchHeader) {
     OperationContext operationContext = new OperationContext(entityType, patch);
-    authorizer.authorize(
-        securityContext,
-        operationContext,
-        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
+    ResourceContextInterface resourceContext =
+        getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     Supplier<T> stored =
         () ->
@@ -1553,12 +1625,13 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             uriInfo,
             fqn,
             securityContext.getUserPrincipal().getName(),
-            patchAsShown(securityContext, patch, stored),
+            patchAsShown(securityContext, patchKeepingValues(hideValues, patch, stored), stored),
             changeSource,
             ifMatchHeader,
             impersonatedBy);
     addHref(uriInfo, response.entity());
-    return withViewableReferences(securityContext, response.toResponse());
+    return withShownValues(
+        hideValues, withViewableReferences(securityContext, response.toResponse()));
   }
 
   public Response delete(
