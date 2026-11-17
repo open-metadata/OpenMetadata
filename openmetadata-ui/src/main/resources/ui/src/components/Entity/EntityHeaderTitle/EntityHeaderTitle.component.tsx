@@ -12,6 +12,7 @@
  */
 import {
   Badge,
+  Box,
   Button,
   Tooltip,
   Typography,
@@ -241,13 +242,18 @@ const EntityHeaderTitle = ({
             <LinkExternal01 className="tw:text-fg-quaternary" size={14} />
           )}
 
-          <CopyButton
-            testId="entity-header-copy-button"
-            tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
-            tooltipPlacement="top right"
-            value={entityUrl ?? globalThis.location.href}
-          />
-          {(isEmpty(displayName) || !showName) && suffix}
+          {/* Icon-only actions sit 4px apart; the row's 12px gap is for badges and Follow. */}
+          <Box align="center" gap={1}>
+            <CopyButton
+              testId="entity-header-copy-button"
+              tooltip={t('label.copy-item', {
+                item: t('label.url-uppercase'),
+              })}
+              tooltipPlacement="top right"
+              value={entityUrl ?? globalThis.location.href}
+            />
+            {(isEmpty(displayName) || !showName) && suffix}
+          </Box>
           {renderFollowButton()}
         </div>
       </div>

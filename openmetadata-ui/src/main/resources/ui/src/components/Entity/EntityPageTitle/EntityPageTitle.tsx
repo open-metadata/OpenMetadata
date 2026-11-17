@@ -94,12 +94,16 @@ export const EntityPageTitle = ({
               {t('label.deleted')}
             </Badge>
           )}
-          <CopyButton
-            testId="entity-header-copy-button"
-            tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
-            value={globalThis.location.href}
-          />
-          {actions}
+          <Box align="center" gap={1}>
+            <CopyButton
+              testId="entity-header-copy-button"
+              tooltip={t('label.copy-item', {
+                item: t('label.url-uppercase'),
+              })}
+              value={globalThis.location.href}
+            />
+            {actions}
+          </Box>
         </Box>
       </Box>
       <Box align="center" className="tw:h-8 tw:shrink-0 tw:self-start" gap={3}>
