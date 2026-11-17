@@ -176,7 +176,7 @@ public class CompiledRule extends Rule {
             policyContext.getRoleName(),
             policyContext.getPolicyName(),
             getName());
-        if (matchExpression(policyContext, subjectContext, resourceContext)) {
+        if (matchesDenyCondition(policyContext, subjectContext, resourceContext)) {
           throw new PolicyDeniedException(
               permissionDenied(
                   subjectContext.user().getName(),
@@ -187,6 +187,21 @@ public class CompiledRule extends Rule {
         }
       }
     }
+  }
+
+  /**
+   * A request about an entity type has no asset to evaluate a condition against, so only an
+   * unconditional deny applies there (e.g. {@code !matchTeam()} would otherwise deny everyone).
+   * Conditional denies are still enforced on every asset read.
+   */
+  private boolean matchesDenyCondition(
+      PolicyContext policyContext,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext) {
+    if (resourceContext != null && resourceContext.isEntityTypeLevel()) {
+      return getCondition() == null;
+    }
+    return matchExpression(policyContext, subjectContext, resourceContext);
   }
 
   private Access getAccess() {

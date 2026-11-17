@@ -321,12 +321,15 @@ def normalized(name: str) -> str:
     return re.sub(r"[\W_]+", "", name.casefold())
 
 
-def name_match(name: str, columns: set[str], ambiguous: set[str]) -> str | None:
+def name_match(name: str, columns: set[str], ambiguous: set[str], repeated: set[str]) -> str | None:
     """
     The one column a Data Import object is named after: the column of the same name, else the only
-    column whose normalized name is the object's. None when that is not a single column, or when
-    another object of the cube normalizes to the same name.
+    column whose normalized name is the object's. None when that is not a single column, when
+    another object of the cube has the same name (``repeated``, casefolded), or, for a normalized
+    match, when another object normalizes to the same name (``ambiguous``).
     """
+    if name.casefold() in repeated:
+        return None
     exact = {column for column in columns if column.casefold() == name.casefold()}
     if len(exact) == 1:
         return exact.pop()

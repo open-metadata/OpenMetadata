@@ -47,6 +47,14 @@ public interface ResourceContextInterface {
   List<EntityReference> getDomains();
 
   /**
+   * True when the request concerns the entity type itself rather than any asset of it, so no
+   * owners, domains or tags exist to evaluate conditions against.
+   */
+  default boolean isEntityTypeLevel() {
+    return false;
+  }
+
+  /**
    * The service that ingested this resource, or null when the resource is not backed by one.
    *
    * <p>{@link org.openmetadata.schema.EntityInterface#getService()} defaults to null, so entities

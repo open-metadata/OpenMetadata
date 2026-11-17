@@ -23,6 +23,8 @@ import org.openmetadata.service.search.SearchClient;
 public final class TestCaseSnapshotStore {
   public static final String COUNT_FIELD = "testCaseCount";
   public static final String HAS_TESTS_FIELD = "hasTestCases";
+  private static final String CHECKPOINT_INDEX = "di-test-case-snapshot-checkpoints";
+  private static final String INDEX_NOT_FOUND = "index_not_found_exception";
   private static final String ALL_SERVICES = "*";
   private static final int LOOKUP_BATCH_SIZE = 128;
   private final SearchClient client;
@@ -32,9 +34,11 @@ public final class TestCaseSnapshotStore {
   public TestCaseSnapshotStore(SearchClient client, String clusterAlias) {
     this.client = client;
     this.stream = DataInsightsApp.getDataStreamName(clusterAlias, Entity.TEST_CASE);
-    this.checkpoints =
-        DataInsightsSearchInterface.getStringWithClusterAlias(
-            clusterAlias, "di-test-case-snapshot-checkpoints");
+    this.checkpoints = checkpointIndex(clusterAlias);
+  }
+
+  public static String checkpointIndex(String clusterAlias) {
+    return DataInsightsSearchInterface.getStringWithClusterAlias(clusterAlias, CHECKPOINT_INDEX);
   }
 
   /** Remove only the legacy alias; deleting its target would destroy the live test index. */
@@ -139,23 +143,26 @@ public final class TestCaseSnapshotStore {
         days.stream()
             .flatMap(day -> scopes.stream().map(scope -> checkpointId(day, scope)))
             .toList();
-    final SearchClient.RawSearchResponse response =
-        client.rawSearchRequest(
-            "POST", "/" + checkpoints + "/_mget", JsonUtils.pojoToJson(Map.of("ids", ids)));
+    final JsonNode body = request("POST", "/" + checkpoints + "/_mget", Map.of("ids", ids));
     final Set<String> complete = new HashSet<>();
-    if (response.statusCode() != 404) {
-      final JsonNode body = checked(response);
-      for (JsonNode document : body.path("docs")) {
-        if (document.has("error")) {
-          throw new IOException(
-              "Could not read test case snapshot checkpoint: " + document.get("error"));
-        }
-        if (document.path("found").asBoolean()) {
-          complete.add(document.path("_id").asText());
-        }
+    for (JsonNode document : body.path("docs")) {
+      if (document.has("error") && !isMissingIndex(document)) {
+        throw new IOException(
+            "Could not read test case snapshot checkpoint: " + document.get("error"));
+      }
+      if (document.path("found").asBoolean()) {
+        complete.add(document.path("_id").asText());
       }
     }
     return complete;
+  }
+
+  /**
+   * The index is missing until the first capture creates it, and {@code _mget} reports that per
+   * document with HTTP 200 rather than as a 404.
+   */
+  private static boolean isMissingIndex(JsonNode document) {
+    return INDEX_NOT_FOUND.equals(document.path("error").path("type").asText());
   }
 
   private Map<TableDay, Long> countSnapshots(List<Table> tables, long start, long end)
