@@ -19,15 +19,14 @@ const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   const { t } = useTranslation();
 
   return (
-    <NodeViewWrapper as="pre" className="relative code-block">
+    <NodeViewWrapper as="pre" className="tw:group tw:relative code-block">
       <NodeViewContent<'code'> as="code" />
-      <span className="code-copy-button">
-        <CopyButton
-          testId="code-block-copy-icon"
-          tooltip={t('label.copy')}
-          value={node.textContent}
-        />
-      </span>
+      <CopyButton
+        className="tw:absolute tw:top-1.5 tw:right-1.5 tw:opacity-0 tw:group-hover:opacity-60 tw:hover:opacity-100 tw:focus-visible:opacity-100"
+        testId="code-block-copy-icon"
+        tooltip={t('label.copy')}
+        value={node.textContent}
+      />
     </NodeViewWrapper>
   );
 };

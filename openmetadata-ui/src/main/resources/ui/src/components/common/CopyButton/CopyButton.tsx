@@ -117,7 +117,7 @@ const CopyButton: FC<CopyButtonProps> = ({
     <ButtonUtility
       className={classNames(
         // Radius must animate with the colours, or the button flashes as a green square on reset.
-        'tw:transition-[background-color,border-radius,color,box-shadow] tw:duration-200 tw:ease-out tw:motion-reduce:transition-none',
+        'tw:transition-[background-color,border-radius,color,box-shadow,opacity] tw:duration-200 tw:ease-out tw:motion-reduce:transition-none',
         hasCopied ? 'tw:rounded-full' : 'tw:rounded-md',
         // Callers may restyle the shape (e.g. flush inside an input group), but the
         // copied colours must still win over their idle hover background.
