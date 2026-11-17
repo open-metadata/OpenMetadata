@@ -127,6 +127,8 @@ def test_parser_carries_the_original_definition():
         ("IDENTIFIER('orders') o", "orders o"),
         ("identifier( 'orders' )o", "orders o"),
         ("IDENTIFIER('orders') AS o", "orders AS o"),
+        ("IDENTIFIER /* source table */ ('orders') o", "orders o"),
+        ("IDENTIFIER -- source table\n ('orders') o", "orders o"),
         (
             "IDENTIFIER('my_db.my_schema.orders') o JOIN IDENTIFIER('my_db.my_schema.customers') c ON c.id = o.id",
             "my_db.my_schema.orders o JOIN my_db.my_schema.customers c ON c.id = o.id",
@@ -179,6 +181,19 @@ def test_failed_normalisation_keeps_native_parsing():
         parser = get_view_lineage_parser(VIEW_DEFINITION, Dialect.SNOWFLAKE)
     assert _sources(parser) == _sources(expected)
     assert parser.masked_query == expected.masked_query
+
+
+def test_failed_normalisation_logs_no_sql():
+    error = ParseError("Invalid expression. Line 1, Col: 40. WHERE api_key = 'my-secret-value'")
+    with (
+        patch.object(lineage_utils.sqlglot, "parse_one", side_effect=error),
+        patch.object(lineage_utils.logger, "warning") as warning,
+    ):
+        get_view_lineage_parser(VIEW_DEFINITION, Dialect.SNOWFLAKE)
+    warning.assert_called_once()
+    logged = warning.call_args.args[0] % warning.call_args.args[1:]
+    assert "ParseError" in logged
+    assert "my-secret-value" not in logged
 
 
 @pytest.mark.parametrize("from_clause", ["orders t", "IDENTIFIER('orders') t"])

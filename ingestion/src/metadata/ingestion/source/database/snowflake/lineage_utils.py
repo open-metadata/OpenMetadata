@@ -29,7 +29,7 @@ from metadata.utils.timeout import timeout
 
 logger = ingestion_logger()
 
-IDENTIFIER_CALL_PATTERN = re.compile(r"\bidentifier\s*\(", re.IGNORECASE)
+IDENTIFIER_TOKEN_PATTERN = re.compile(r"\bidentifier\b", re.IGNORECASE)
 
 
 def _literal_table_name(table: exp.Table) -> str | None:
@@ -70,7 +70,7 @@ def get_view_lineage_parser(
 ) -> LineageParser:
     """Parse a view with its `IDENTIFIER('<name>')` tables resolved to the tables they name."""
     original = LineageParser(query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
-    if not IDENTIFIER_CALL_PATTERN.search(query):
+    if not IDENTIFIER_TOKEN_PATTERN.search(query):
         return original
     try:
         resolved_query = timeout(timeout_seconds)(_resolve_identifier_tables)(query)
@@ -80,10 +80,11 @@ def get_view_lineage_parser(
         if parser.parser is None:
             return original
     except Exception as exc:
+        # A sqlglot error message quotes the SQL around the failure, unmasked.
         logger.warning(
             "[%s] Cannot resolve IDENTIFIER tables in Snowflake view; retaining native parsing: %s",
             original.query_hash,
-            exc,
+            type(exc).__name__,
         )
         return original
     # The graph uses the resolved DDL; lineage consumers must retain the original masked definition.
