@@ -77,7 +77,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   const userLabel = useUserLabel({
     userName,
     displayName,
-    enabled: showUserName && !children && !isTeam,
+    enabled: showUserName && !children && !isTeam && !displayName,
   });
   const label =
     isTeam && !displayName ? <TeamName teamName={userName} /> : userLabel;

@@ -13,8 +13,10 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { searchQuery } from '../../../../../../rest/searchAPI';
+import { getUserByName } from '../../../../../../rest/userAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import PersonaUsersTab from './PersonaUsersTab';
 
@@ -65,15 +67,9 @@ jest.mock(
   })
 );
 
-jest.mock('../../../../../common/PopOverCard/UserPopOverCard', () =>
-  jest.fn(
-    ({ displayName, userName }: { displayName?: string; userName: string }) => (
-      <span data-testid={`user-popover-${userName}`}>
-        {displayName || userName}
-      </span>
-    )
-  )
-);
+jest.mock('../../../../../../rest/userAPI', () => ({
+  getUserByName: jest.fn(),
+}));
 
 type Column = { id: string; label: string };
 
@@ -219,7 +215,8 @@ const renderTab = (
       users={USERS}
       onUsersChange={mockOnUsersChange}
       {...props}
-    />
+    />,
+    { wrapper: MemoryRouter }
   );
 
 describe('PersonaUsersTab', () => {
@@ -235,7 +232,9 @@ describe('PersonaUsersTab', () => {
 
     const names = await screen.findAllByTestId('persona-user-name');
 
-    expect(names.map((n) => n.textContent)).toEqual(['Alice', 'bob']);
+    expect(names).toHaveLength(2);
+    expect(names[0]).toHaveTextContent('Alice');
+    expect(names[1]).toHaveTextContent('bob');
     expect(searchQuery).toHaveBeenCalledTimes(1);
     expect(searchQuery).toHaveBeenCalledWith(
       expect.objectContaining({ pageSize: 2, searchIndex: 'user' })
@@ -243,12 +242,15 @@ describe('PersonaUsersTab', () => {
     expect(screen.getByText('Data')).toBeInTheDocument();
     expect(screen.getByText('DataSteward, DataConsumer')).toBeInTheDocument();
     expect(screen.getAllByText('--')).toHaveLength(2);
-    // Each name links to the user through the hover card, keyed by login.
-    expect(screen.getByTestId('user-popover-alice')).toBeInTheDocument();
-    // Email column: the email, or the login when the user has none.
+    expect(screen.getByTestId('alice')).toHaveTextContent('Alice');
+    expect(screen.getByTestId('alice')).toHaveAttribute(
+      'href',
+      expect.stringContaining('alice')
+    );
     expect(screen.getByText('alice@example.com')).toBeInTheDocument();
-    expect(screen.getByTestId('user-popover-bob')).toHaveTextContent('bob');
+    expect(screen.getByTestId('bob')).toHaveTextContent('bob');
     expect(screen.getAllByText('bob')).toHaveLength(2);
+    expect(getUserByName).not.toHaveBeenCalled();
   });
 
   it('skips users missing from the search index', async () => {
