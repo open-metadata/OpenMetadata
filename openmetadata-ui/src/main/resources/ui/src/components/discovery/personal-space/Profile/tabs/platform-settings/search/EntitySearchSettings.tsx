@@ -148,8 +148,12 @@ const EntitySearchSettings = ({
   }, []);
   useEffect(() => {
     if (!entityType) {
-      // A stale or mistyped link: back to the entity list.
-      onNavigate({ type: 'page', page: 'search', isEditing: false });
+      // A stale or mistyped link: back to the entity list, replacing it so
+      // Back does not land on it again.
+      onNavigate(
+        { type: 'page', page: 'search', isEditing: false },
+        { replace: true }
+      );
 
       return;
     }
@@ -470,7 +474,7 @@ const EntitySearchSettings = ({
           count={draft.termBoosts.length}
           testId="term-boosts"
           title={t('label.term-boost')}>
-          <Box direction="row" gap={3} justify="between" wrap="wrap">
+          <Box direction="row" gap={3} wrap="wrap">
             {draft.termBoosts.map((boost) => (
               <TermBoostCard
                 key={boost.value}

@@ -255,3 +255,75 @@ describe('mergeDomainEdits', () => {
     });
   });
 });
+
+describe('team tab sub-page header', () => {
+  const subPage = (fqn: string): MembersView => ({
+    type: 'team-tab-subpage',
+    fqn,
+    teamId: 't1',
+    key: 'sql-studio',
+    subPath: 'configure/trino',
+  });
+  const titled = { title: 'Configure trino', description: 'Authenticate' };
+
+  it('ends at the sub-page title, under a link back to its team', () => {
+    const { crumbsByType, titleByType, descByType } = buildMembersHeaderMaps(
+      subPage('Engineering'),
+      (key: string) => key,
+      'Engineering',
+      undefined,
+      titled
+    );
+
+    expect(
+      crumbsByType['team-tab-subpage'].map((c) => [c.id, c.label])
+    ).toEqual([
+      ['settings', 'label.setting-plural'],
+      ['members', 'label.member-plural'],
+      ['teams', 'label.organization'],
+      ['team', 'Engineering'],
+      ['current', 'Configure trino'],
+    ]);
+    expect(titleByType['team-tab-subpage']).toBe('Configure trino');
+    expect(descByType['team-tab-subpage']).toBe('Authenticate');
+  });
+
+  it('does not repeat Organization for the root team', () => {
+    const { crumbsByType } = buildMembersHeaderMaps(
+      subPage('Organization'),
+      (key: string) => key,
+      'Organization',
+      undefined,
+      titled
+    );
+
+    expect(crumbsByType['team-tab-subpage'].map((c) => c.label)).toEqual([
+      'label.setting-plural',
+      'label.member-plural',
+      'label.organization',
+      'Configure trino',
+    ]);
+  });
+
+  it('keeps the team as title when the sub-page names nothing', () => {
+    const { crumbsByType, titleByType } = buildMembersHeaderMaps(
+      subPage('Engineering'),
+      (key: string) => key,
+      'Engineering'
+    );
+
+    expect(titleByType['team-tab-subpage']).toBe('Engineering');
+    expect(crumbsByType['team-tab-subpage'].at(-1)?.label).toBe('Engineering');
+  });
+
+  it('opens the team when its crumb is clicked', () => {
+    const onNavigate = jest.fn();
+    makeBreadcrumbAction(onNavigate, subPage('Engineering'))('team');
+
+    expect(onNavigate).toHaveBeenCalledWith({
+      type: 'team-detail',
+      fqn: 'Engineering',
+      name: 'Engineering',
+    });
+  });
+});

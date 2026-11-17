@@ -241,12 +241,13 @@ describe('ProfileDetailsPanel', () => {
       'data-can-edit',
       'true'
     );
+    // Personas and domains get no override: only admins may change them, which
+    // is each row's own default (ADR:2026-11-03-only-admins-assign-personas,
+    // ADR:2026-10-21-only-admins-change-a-users-domains).
     expect(screen.getByTestId('persona-row')).toHaveAttribute(
       'data-can-edit',
-      'true'
+      'undefined'
     );
-    // Domains get no override: only admins may change a user's domains, which
-    // is the row's own default (ADR:2026-10-21-only-admins-change-a-users-domains).
     expect(screen.getByTestId('domains-row')).toHaveAttribute(
       'data-can-edit',
       'undefined'
@@ -267,7 +268,7 @@ describe('ProfileDetailsPanel', () => {
     );
     expect(screen.getByTestId('persona-row')).toHaveAttribute(
       'data-can-edit',
-      'false'
+      'undefined'
     );
   });
 

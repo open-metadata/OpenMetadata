@@ -27,6 +27,7 @@ import org.openmetadata.service.alerting.content.render.ChannelRenderer;
 import org.openmetadata.service.alerting.content.render.NotificationMessage;
 import org.openmetadata.service.alerting.content.template.HandlebarsNotificationTemplateProcessor;
 import org.openmetadata.service.alerting.content.template.NotificationTemplateProcessor;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateRefusedException;
 import org.openmetadata.service.util.email.EmailUtil;
 
 @Slf4j
@@ -45,11 +46,7 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
   @Override
   public NotificationMessage generateMessage(
       ChangeEvent event, EventSubscription subscription, ChannelRenderer renderer) {
-
-    // Resolve the template for this event
-    NotificationTemplate template = resolveTemplate(event, subscription);
-
-    return generateMessageWithTemplate(event, subscription, renderer, template);
+    return format(render(event, subscription), renderer);
   }
 
   @Override
@@ -63,7 +60,16 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
 
   /** The template that applies to the event, rendered to Markdown. No channel is involved yet. */
   public EventContent.Rendered render(ChangeEvent event, EventSubscription subscription) {
-    return renderWith(event, subscription, resolveTemplate(event, subscription));
+    NotificationTemplate template = resolveTemplate(event, subscription);
+    try {
+      return renderWith(event, subscription, template);
+    } catch (TemplateRefusedException e) {
+      LOG.warn(
+          "Notification template {} is not supported by the template sandbox, rendering the system template instead: {}",
+          template.getFullyQualifiedName(),
+          e.getMessage());
+      return renderWith(event, subscription, resolveSystemTemplate(event));
+    }
   }
 
   /** Markdown made once, in the format of the channel the renderer belongs to. */
@@ -144,6 +150,10 @@ public class HandlebarsNotificationMessageEngine implements NotificationMessageE
     }
 
     // 2. Fall back to system template resolution (existing logic)
+    return resolveSystemTemplate(event);
+  }
+
+  private NotificationTemplate resolveSystemTemplate(ChangeEvent event) {
     // Convert EventType to kebab-case for template naming
     // This handles multi-part camelCase: logicalTestCaseAdded -> logical-test-case-added
     String eventTypeKebab =

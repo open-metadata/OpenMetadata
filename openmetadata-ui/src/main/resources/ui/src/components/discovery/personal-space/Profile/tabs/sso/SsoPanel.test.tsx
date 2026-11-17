@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
+import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
@@ -58,6 +59,8 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+const mockTestLoginBack = jest.fn();
+
 // The form owns its own save flow (see SsoConfigureForm.test); here it only has to be routed to.
 jest.mock('./SsoConfigureForm', () =>
   jest.fn(
@@ -67,12 +70,17 @@ jest.mock('./SsoConfigureForm', () =>
       showHint,
       isReadOnly,
       managedPaths,
+      onSubPageChange,
     }: {
       selectedProvider?: string;
       securityConfig?: { authenticationConfiguration: { provider: string } };
       showHint: boolean;
       isReadOnly?: boolean;
       managedPaths?: Record<string, string[]>;
+      onSubPageChange?: (subPage?: {
+        label: string;
+        onBack: () => void;
+      }) => void;
     }) => (
       <div
         data-managed-paths={JSON.stringify(managedPaths)}
@@ -82,8 +90,18 @@ jest.mock('./SsoConfigureForm', () =>
         }
         data-read-only={String(Boolean(isReadOnly))}
         data-show-hint={String(showHint)}
-        data-testid="sso-configure-form"
-      />
+        data-testid="sso-configure-form">
+        <button
+          aria-label="label.test-login"
+          data-testid="mock-open-test-login"
+          onClick={() =>
+            onSubPageChange?.({
+              label: 'label.test-login',
+              onBack: mockTestLoginBack,
+            })
+          }
+        />
+      </div>
     )
   )
 );
@@ -140,7 +158,9 @@ describe('SsoPanel', () => {
 
     fireEvent.click(await screen.findByText('Google'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'new/google', undefined, {
+      push: true,
+    });
   });
 
   it('renders the setup form with the provider in the header and a hint toggle', async () => {
@@ -222,15 +242,66 @@ describe('SsoPanel', () => {
     renderHeaderActions();
     fireEvent.click(screen.getByTestId('change-provider-button'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers');
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers', undefined, {
+      push: false,
+    });
   });
 
-  it('switches tabs through the hash', async () => {
+  it('asks before Change provider drops edits on the Configure tab', async () => {
+    mockSubPath = 'configure';
+    await renderPanel(OKTA_CONFIG);
+    await screen.findByTestId('sso-configure-form');
+    // A dirty form registers the modal exit guard, which holds the exit.
+    const guard = jest.fn().mockReturnValue(true);
+    usePersonalSpaceStore.getState().setExitGuard(guard);
+
+    renderHeaderActions();
+    fireEvent.click(screen.getByTestId('change-provider-button'));
+
+    expect(guard).toHaveBeenCalledTimes(1);
+    expect(mockSetHash).not.toHaveBeenCalledWith(
+      'sso',
+      'providers',
+      undefined,
+      expect.anything()
+    );
+
+    usePersonalSpaceStore.getState().setExitGuard(null);
+  });
+
+  it('shows the Overview / Configure tabs in the header and switches them through the hash', async () => {
+    await renderPanel(OKTA_CONFIG);
+    await waitFor(() => expect(lastHeader().tabs).toBeDefined());
+
+    render(<>{lastHeader().tabs}</>);
+    fireEvent.click(screen.getByTestId('sso-tab-configure'));
+
+    expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure', undefined, {
+      push: true,
+    });
+  });
+
+  it('shows Test Login as a sub page in the breadcrumb, without tabs or actions', async () => {
+    mockSubPath = 'configure';
     await renderPanel(OKTA_CONFIG);
 
-    fireEvent.click(await screen.findByTestId('sso-tab-configure'));
+    fireEvent.click(await screen.findByTestId('mock-open-test-login'));
 
-    expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure');
+    await waitFor(() =>
+      expect(lastHeader().breadcrumbs).toEqual([
+        { id: 'settings', label: 'label.setting-plural' },
+        { id: 'sso', label: 'label.single-sign-on' },
+        { id: 'provider', label: 'Okta' },
+        { id: 'current', label: 'label.test-login' },
+      ])
+    );
+
+    expect(lastHeader().tabs).toBeUndefined();
+    expect(lastHeader().actions).toBeUndefined();
+
+    lastHeader().onBreadcrumbAction?.('provider');
+
+    expect(mockTestLoginBack).toHaveBeenCalled();
   });
 
   describe('when the deployment owns part of the configuration', () => {

@@ -10,17 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 
-import {
-  Box,
-  FeaturedIcon,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Customize, Hint } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import type { Key, ReactNode } from 'react';
 import React, {
+  FC,
   useCallback,
   useEffect,
   useMemo,
@@ -28,18 +25,23 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ENTITY_ICON_MAPPER } from '../../../../../../constants/Assets.constants';
 import { ENTITY_PATH } from '../../../../../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../../../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
-import { getEntityIconWithBg } from '../../../../../../utils/Assets/AssetsUtils';
 import globalSettingsClassBase from '../../../../../../utils/GlobalSettingsClassBase';
 import { SettingMenuItem } from '../../../../../../utils/GlobalSettingsUtils';
-import { userPermissions } from '../../../../../../utils/PermissionsUtils';
+import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  userPermissions,
+} from '../../../../../../utils/PermissionsUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import CustomPropertiesAddPage from './CustomPropertiesAddPage';
@@ -49,6 +51,7 @@ import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
 import { CRUMB } from './CustomPropertiesPanel.constants';
 import { CustomPropertiesSubView } from './CustomPropertiesPanel.types';
 import {
+  entityTypeDetailSubPath,
   getBreadcrumbItems,
   getPageTitle,
   parseCustomPropertiesHash,
@@ -65,7 +68,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   onHeaderChange,
 }) => {
   const { t } = useTranslation();
-  const { permissions } = usePermissionProvider();
+  const { permissions, getEntityPermission } = usePermissionProvider();
   const { state: hashState, setHash } = useSettingsHash();
 
   // Only interpret the sub-path when the hash tab is ours — a transient
@@ -79,98 +82,151 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
     [hashState.tab, hashState.subPath]
   );
 
-  const [subView, setSubView] = useState<CustomPropertiesSubView>({
-    type: 'landing',
-  });
+  const [entityType, setEntityType] = useState<Type>();
+  const [typePermission, setTypePermission] = useState<OperationPermission>();
   const [showHint, setShowHint] = useState(false);
   const [detailActions, setDetailActions] = useState<ReactNode>();
   const resolvedFqnRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!parsedHash.entityFqn) {
-      setSubView({ type: 'landing' });
-      resolvedFqnRef.current = null;
-
-      return;
-    }
-
-    if (parsedHash.entityFqn === resolvedFqnRef.current) {
-      return;
-    }
-
     const requestedFqn = parsedHash.entityFqn;
+    if (requestedFqn === resolvedFqnRef.current) {
+      return;
+    }
     resolvedFqnRef.current = requestedFqn;
+    setEntityType(undefined);
+    setTypePermission(undefined);
+    if (!requestedFqn) {
+      return;
+    }
+
     getTypeByFQN(requestedFqn)
-      .then((entityType) => {
-        if (resolvedFqnRef.current !== requestedFqn) {
-          return;
+      .then(async (type) => {
+        const permission = await getEntityPermission(
+          ResourceEntity.TYPE,
+          type.id ?? ''
+        ).catch((err: AxiosError) => {
+          showErrorToast(err);
+
+          return DEFAULT_ENTITY_PERMISSION;
+        });
+        if (resolvedFqnRef.current === requestedFqn) {
+          setTypePermission(permission);
+          setEntityType(type);
         }
-        setSubView({ type: 'detail', entityType });
       })
       .catch((err: AxiosError) => {
         showErrorToast(err);
         setHash(HASH_TAB);
       });
-  }, [parsedHash, setHash]);
+  }, [parsedHash.entityFqn, getEntityPermission, setHash]);
+
+  const { canCreate, canEditAll } = getDerivedPermissionFlags(
+    typePermission ?? DEFAULT_ENTITY_PERMISSION
+  );
+
+  // The hash is the source of truth, so add/edit links open the form directly,
+  // gated on the same permissions as the buttons that lead there.
+  const subView = useMemo<CustomPropertiesSubView>(() => {
+    if (
+      !entityType ||
+      !typePermission ||
+      entityType.fullyQualifiedName !== parsedHash.entityFqn
+    ) {
+      return { type: 'landing' };
+    }
+    if (parsedHash.action === 'add' && canCreate) {
+      return { type: 'add', entityType };
+    }
+    const property = entityType.customProperties?.find(
+      ({ name }) => name === parsedHash.propertyName
+    );
+    if (parsedHash.action === 'edit' && canEditAll && property) {
+      return { type: 'edit', entityType, property };
+    }
+
+    return { type: 'detail', entityType };
+  }, [entityType, typePermission, canCreate, canEditAll, parsedHash]);
+
+  // An add/edit link the user cannot act on, or to a property that no longer
+  // exists, falls back to the list.
+  useEffect(() => {
+    if (parsedHash.action !== 'detail' && subView.type === 'detail') {
+      setHash(HASH_TAB, viewToSubPath(subView));
+    }
+  }, [parsedHash.action, subView, setHash]);
 
   const handleSelectEntityType = useCallback(
-    (entityType: Type) => {
-      setHash(HASH_TAB, viewToSubPath({ type: 'detail', entityType }));
+    (entityTypeFqn: string) => {
+      setHash(
+        HASH_TAB,
+        entityTypeDetailSubPath(entityTypeFqn),
+        undefined,
+        settingsHashOptions(subView, { type: 'detail' })
+      );
     },
-    [setHash]
+    [setHash, subView]
   );
 
   const handleAddProperty = useCallback(() => {
-    setSubView((prev) => {
-      if (prev.type === 'detail') {
-        const next: CustomPropertiesSubView = {
-          type: 'add',
-          entityType: prev.entityType,
-        };
-        setHash(HASH_TAB, viewToSubPath(next));
-
-        return next;
-      }
-
-      return prev;
-    });
-  }, [setHash]);
+    if (entityType) {
+      setHash(
+        HASH_TAB,
+        viewToSubPath({ type: 'add', entityType }),
+        undefined,
+        settingsHashOptions(subView, { type: 'add' })
+      );
+    }
+  }, [entityType, setHash, subView]);
 
   const handleEditProperty = useCallback(
     (property: CustomProperty) => {
-      setSubView((prev) => {
-        if (prev.type === 'detail') {
-          const next: CustomPropertiesSubView = {
-            type: 'edit',
-            entityType: prev.entityType,
-            property,
-          };
-          setHash(HASH_TAB, viewToSubPath(next));
-
-          return next;
-        }
-
-        return prev;
-      });
+      if (entityType) {
+        setHash(
+          HASH_TAB,
+          viewToSubPath({ type: 'edit', entityType, property }),
+          undefined,
+          settingsHashOptions(subView, { type: 'edit' })
+        );
+      }
     },
-    [setHash]
+    [entityType, setHash, subView]
   );
 
   const handleBackToDetail = useCallback(() => {
-    setSubView((prev) => {
-      if (prev.type === 'add' || prev.type === 'edit') {
-        const next: CustomPropertiesSubView = {
-          type: 'detail',
-          entityType: prev.entityType,
-        };
-        setHash(HASH_TAB, viewToSubPath(next));
+    if (entityType) {
+      setHash(
+        HASH_TAB,
+        viewToSubPath({ type: 'detail', entityType }),
+        undefined,
+        settingsHashOptions(subView, { type: 'detail' })
+      );
+    }
+  }, [entityType, setHash, subView]);
 
-        return next;
+  const handleSaved = useCallback(async () => {
+    const fqn = entityType?.fullyQualifiedName;
+    if (!fqn) {
+      return;
+    }
+    let type: Type | undefined;
+    try {
+      type = await getTypeByFQN(fqn);
+    } catch (err) {
+      // Stays silent when the user has already moved to another entity type.
+      if (resolvedFqnRef.current === fqn) {
+        showErrorToast(err as AxiosError);
       }
-
-      return prev;
-    });
-  }, [setHash]);
+    }
+    // The user may have moved to another entity type while this loaded.
+    if (resolvedFqnRef.current !== fqn) {
+      return;
+    }
+    if (type) {
+      setEntityType(type);
+    }
+    handleBackToDetail();
+  }, [entityType?.fullyQualifiedName, handleBackToDetail]);
 
   const hasTypeViewPermission = userPermissions.hasViewPermissions(
     ResourceEntity.TYPE,
@@ -241,43 +297,33 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   const handleBreadcrumbAction = useCallback(
     (id: Key) => {
       if (id === CRUMB.WORKSPACE || id === CRUMB.LANDING) {
-        setHash(HASH_TAB);
-      } else if (
-        id === CRUMB.DETAIL &&
-        (subView.type === 'add' || subView.type === 'edit')
-      ) {
-        const next: CustomPropertiesSubView = {
-          type: 'detail',
-          entityType: subView.entityType,
-        };
-        setSubView(next);
-        setHash(HASH_TAB, viewToSubPath(next));
+        setHash(
+          HASH_TAB,
+          undefined,
+          undefined,
+          settingsHashOptions(subView, { type: 'landing' })
+        );
+      } else if (id === CRUMB.DETAIL) {
+        handleBackToDetail();
       }
     },
-    [subView, setHash]
+    [handleBackToDetail, setHash, subView]
   );
 
   // Push dynamic header state (breadcrumbs, icon, actions) up to ProfilePage
   // so ProfileContentHeader reflects the current subView without this panel
   // needing to render its own header.
   useEffect(() => {
-    const iconNode =
-      subView.type === 'landing' ? (
-        <FeaturedIcon
-          className="tw:rounded-xl"
-          color="brand"
-          icon={Customize}
-          shape="square"
-          size="md"
-          theme="dark"
-        />
-      ) : (
-        getEntityIconWithBg(
-          subView.entityType.fullyQualifiedName ?? '',
-          { className: 'tw:h-10 tw:w-10 tw:rounded-lg' },
-          { size: 25 }
-        )
-      );
+    // Same solid header tile as every other page; an entity view shows its
+    // entity's icon in it. The mapper types its icons as React.ElementType, but
+    // every entry is an icon component that takes `className`.
+    const icon =
+      subView.type === 'landing'
+        ? Customize
+        : ((
+            ENTITY_ICON_MAPPER[subView.entityType.fullyQualifiedName ?? ''] ??
+            ENTITY_ICON_MAPPER.default
+          ).icon as FC<{ className?: string }>);
 
     const isFormView = subView.type === 'add' || subView.type === 'edit';
     const actions = isFormView ? (
@@ -297,7 +343,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
       description: pageDescription,
       breadcrumbs: breadcrumbItems,
       onBreadcrumbAction: handleBreadcrumbAction,
-      iconNode,
+      icon,
       actions,
     });
   }, [
@@ -330,8 +376,10 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
         {subView.type === 'detail' && (
           <CustomPropertiesDetailPage
             entityType={subView.entityType}
+            permission={typePermission ?? DEFAULT_ENTITY_PERMISSION}
             onAddProperty={handleAddProperty}
             onEditProperty={handleEditProperty}
+            onEntityTypeChange={setEntityType}
             onSetHeaderActions={setDetailActions}
           />
         )}
@@ -340,7 +388,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
             entityType={subView.entityType}
             showHint={showHint}
             onCancel={handleBackToDetail}
-            onSuccess={handleBackToDetail}
+            onSuccess={handleSaved}
           />
         )}
         {subView.type === 'edit' && (
@@ -349,7 +397,7 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
             property={subView.property}
             showHint={showHint}
             onCancel={handleBackToDetail}
-            onSuccess={handleBackToDetail}
+            onSuccess={handleSaved}
           />
         )}
       </div>

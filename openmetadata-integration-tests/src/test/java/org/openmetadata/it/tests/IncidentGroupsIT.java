@@ -1859,7 +1859,23 @@ public class IncidentGroupsIT {
         statement.addBatch();
       }
       statement.executeBatch();
+      linkToTestCase(testCase, records);
       syncIncidentSummary(connection, postgres);
+    }
+  }
+
+  // The write path links every record to its test case with a parentOf row, and the 2.1.0
+  // backfill skips incidents without one as left behind by a hard-deleted test case.
+  private void linkToTestCase(TestCase testCase, List<TestCaseResolutionStatus> records) {
+    for (TestCaseResolutionStatus record : records) {
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              testCase.getId(),
+              record.getId(),
+              Entity.TEST_CASE,
+              Entity.TEST_CASE_RESOLUTION_STATUS,
+              Relationship.PARENT_OF.ordinal());
     }
   }
 

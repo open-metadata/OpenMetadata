@@ -566,6 +566,58 @@ describe('BulkEntityImportPage', () => {
       );
     });
 
+    it('shows exported formula cells in the grid without the escape quote', async () => {
+      const { useFqn } = require('../../../hooks/useFqn');
+      const { useRequiredParams } = require('../../../utils/useRequiredParams');
+      useFqn.mockReturnValue({ fqn: '*' });
+      useRequiredParams.mockReturnValue({ entityType: EntityType.METRIC });
+      mockLocation.pathname = '/metric/*/import';
+
+      renderComponent('/metric/*/import');
+
+      await uploadCsv();
+      await startPreview();
+
+      await act(async () => {
+        const socketCallback = mockSocket.on.mock.calls.find(
+          (call) => call[0] === 'csvImportChannel'
+        )?.[1];
+
+        socketCallback?.(
+          JSON.stringify({
+            jobId: 'test-job-id',
+            status: 'STARTED',
+            error: null,
+          })
+        );
+        socketCallback?.(JSON.stringify(mockWebSocketResponse));
+      });
+
+      await act(async () => {
+        mockReadString.mock.calls[0]?.[1]?.complete({
+          data: [
+            ['name', 'description'],
+            ['row1', `'=HYPERLINK("x")`],
+            ['row2', "'- bullet"],
+            ['row3', "''=kept quote"],
+          ],
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('bulk-edit-entity')).toBeInTheDocument();
+      });
+
+      expect(mockGetEntityColumnsAndDataSourceFromCSV.mock.calls[0][0]).toEqual(
+        [
+          ['name', 'description'],
+          ['row1', '=HYPERLINK("x")'],
+          ['row2', '- bullet'],
+          ['row3', "'=kept quote"],
+        ]
+      );
+    });
+
     it('should hydrate wildcard metric bulk edit from listing API route scope', async () => {
       const { useFqn } = require('../../../hooks/useFqn');
       const { useRequiredParams } = require('../../../utils/useRequiredParams');

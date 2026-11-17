@@ -86,4 +86,25 @@ describe('useConnectionsViewMode', () => {
       connectionsViewMode: 'list',
     });
   });
+
+  it('drops the paging params so the new view starts at its own saved size', () => {
+    const { result } = renderHook(() => useConnectionsViewMode());
+
+    act(() => result.current.setViewMode('grid'));
+
+    const [updater] = mockSetSearchParams.mock.calls[0];
+    const next = updater(
+      new URLSearchParams(
+        'category=all&pageSize=50&currentPage=3&cursorType=after&cursorValue=abc'
+      )
+    );
+
+    // A list link's 50 must not come back when the user returns to the list.
+    expect(next.get('pageSize')).toBeNull();
+    expect(next.get('currentPage')).toBeNull();
+    expect(next.get('cursorType')).toBeNull();
+    expect(next.get('cursorValue')).toBeNull();
+    expect(next.get('category')).toBe('all');
+    expect(next.get('viewMode')).toBe('grid');
+  });
 });

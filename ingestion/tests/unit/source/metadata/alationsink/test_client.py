@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Unit tests for Alation Sink writes: batching and waiting on Alation's background jobs."""
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import requests
@@ -26,6 +27,12 @@ from metadata.ingestion.source.metadata.alationsink.models import (
 )
 
 CLIENT_MODULE = "metadata.ingestion.source.metadata.alationsink.client"
+
+
+def _fake_clock(*ticks: float):
+    """Patch the client module's `time` binding, not `time.monotonic` itself: the global attribute
+    is shared by every thread, and a background thread from another test would consume the ticks"""
+    return patch(f"{CLIENT_MODULE}.time", SimpleNamespace(monotonic=iter(ticks).__next__))
 
 
 def _client(*jobs: dict) -> AlationSinkClient:
@@ -87,11 +94,9 @@ def test_job_still_running_at_timeout_is_a_failure():
 def test_no_poll_starts_after_the_deadline():
     client = _client({"status": "running"}, {"status": "successful", "result": []})
     # deadline = 0 + 10; first check passes at 0, the post-sleep check lands past the deadline
-    clock = iter([0, 0, 9.8, 11])
-
     with (
         patch(f"{CLIENT_MODULE}.JOB_TIMEOUT_SECONDS", 10),
-        patch(f"{CLIENT_MODULE}.time.monotonic", lambda: next(clock)),
+        _fake_clock(0, 0, 9.8, 11),
     ):
         errors = client.write_entities(39, _columns(3))
 
@@ -132,11 +137,9 @@ def test_permanent_poll_failure_stops_polling():
 
 def test_timeout_reports_the_last_poll_error():
     client = _client(_http_error(503), _http_error(502))
-    clock = iter([0, 0, 1, 1, 1, 11])
-
     with (
         patch(f"{CLIENT_MODULE}.JOB_TIMEOUT_SECONDS", 10),
-        patch(f"{CLIENT_MODULE}.time.monotonic", lambda: next(clock)),
+        _fake_clock(0, 0, 1, 1, 1, 11),
     ):
         errors = client.write_entities(39, _columns(3))
 

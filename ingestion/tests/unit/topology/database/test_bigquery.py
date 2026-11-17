@@ -412,8 +412,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
-    def __init__(self, methodName, get_connection, set_project_id, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, get_connection, set_project_id, test_connection) -> None:
         get_connection.return_value = Mock()
         test_connection.return_value = False
         set_project_id.return_value = "random-project-id"
@@ -465,6 +464,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.get_schema_description")
     def test_yield_database_schema(self, get_schema_description):
         get_schema_description.return_value = "Some description with it's own\nnew line"
+        self.bq_source.context.get().__dict__["database"] = MOCK_DB_NAME
         assert EXPTECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.bq_source.yield_database_schema(schema_name=MOCK_DATABASE_SCHEMA.name.root)
         ]
@@ -752,14 +752,7 @@ class BigqueryLineageSourceTest(TestCase):
     @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection._get_client")
     @patch("metadata.ingestion.source.database.bigquery.connection.BigQueryConnection.test_connection")
     @patch("metadata.ingestion.source.database.bigquery.query_parser.BigqueryQueryParserSource.set_project_id")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        set_project_id_lineage,  # pylint: disable=unused-argument
-        test_connection,  # pylint: disable=unused-argument
-        get_connection,  # pylint: disable=unused-argument
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, set_project_id_lineage, test_connection, get_connection) -> None:
 
         mock_credentials_path_bq_config = deepcopy(mock_bq_config)
         mock_credentials_path_bq_config["source"]["serviceConnection"]["config"]["credentials"]["gcpConfig"] = {
@@ -1307,6 +1300,7 @@ class TestBigqueryDeltaLakeDetection:
 
     def setup_method(self):
         self._patchers = [
+            patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.list_all_entities", return_value=[]),
             patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection"),
             patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id"),
             patch(

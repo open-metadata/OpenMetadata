@@ -17,13 +17,15 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Map01,
+  Maximize02,
+  ZoomIn,
+  ZoomOut,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactFlowInstance, useViewport } from 'reactflow';
-import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as MapIcon } from '../../../../assets/svg/ic-map.svg';
-import { ReactComponent as ZoomInIcon } from '../../../../assets/svg/ic-zoom-in.svg';
-import { ReactComponent as ZoomOutIcon } from '../../../../assets/svg/ic-zoom-out.svg';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 
 type IconComponent = FC<{ className?: string }>;
@@ -33,11 +35,14 @@ const LineageControlButtons: FC<{
   miniMapVisible?: boolean;
   reactFlowInstance?: ReactFlowInstance;
   onFitView?: () => void;
+  // Replaces the default zoom-out, so a caller can turn it into a level change.
+  onZoomOut?: () => void;
 }> = ({
   onToggleMiniMap,
   miniMapVisible = false,
   reactFlowInstance: controlledReactFlowInstance,
   onFitView,
+  onZoomOut,
 }) => {
   const { t } = useTranslation();
   const providerReactFlowInstance = useLineageStore((s) => s.reactFlowInstance);
@@ -49,8 +54,13 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleZoomOut = useCallback(() => {
+    if (onZoomOut) {
+      onZoomOut();
+
+      return;
+    }
     reactFlowInstance?.zoomOut();
-  }, [reactFlowInstance]);
+  }, [onZoomOut, reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
     if (onFitView) {
@@ -73,20 +83,18 @@ const LineageControlButtons: FC<{
                 ? 'tw:text-link tw:hover:text-link tw:hover:bg-primary_hover'
                 : ''
             }
-            color="tertiary"
             data-testid="toggle-mind-map"
-            icon={MapIcon as IconComponent}
-            size="xs"
+            icon={Map01 as IconComponent}
+            size="lg"
             tooltip={t('label.mind-map')}
             onClick={onToggleMiniMap}
           />
           <Divider orientation="vertical" />
           <ButtonUtility
             aria-label={t('label.zoom-in')}
-            color="tertiary"
             data-testid="zoom-in"
-            icon={ZoomInIcon as IconComponent}
-            size="xs"
+            icon={ZoomIn as IconComponent}
+            size="lg"
             tooltip={t('label.zoom-in')}
             onClick={handleZoomIn}
           />
@@ -99,20 +107,18 @@ const LineageControlButtons: FC<{
           </Typography>
           <ButtonUtility
             aria-label={t('label.zoom-out')}
-            color="tertiary"
             data-testid="zoom-out"
-            icon={ZoomOutIcon as IconComponent}
-            size="xs"
+            icon={ZoomOut as IconComponent}
+            size="lg"
             tooltip={t('label.zoom-out')}
             onClick={handleZoomOut}
           />
           <Divider orientation="vertical" />
           <ButtonUtility
             aria-label={t('label.fit-to-screen')}
-            color="tertiary"
             data-testid="fit-screen"
-            icon={FitScreenIcon as IconComponent}
-            size="xs"
+            icon={Maximize02 as IconComponent}
+            size="lg"
             tooltip={t('label.fit-to-screen')}
             onClick={handleFitView}
           />

@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -21,7 +22,6 @@ import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
@@ -696,9 +696,11 @@ const StoredProcedurePage = () => {
               <Tabs.List
                 actions={
                   isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
+                    <ButtonUtility
+                      data-testid="tab-expand-button"
+                      icon={isTabExpanded ? Collapse : Expand}
+                      size="lg"
+                      tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')
                       }
                       onClick={toggleTabExpanded}

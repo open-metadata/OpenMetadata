@@ -100,7 +100,7 @@ def _workflow_source(source_class, workgroup, result_limit):
                 "type": "Athena",
                 "awsConfig": {"awsRegion": "us-east-1", "awsAccessKeyId": "key", "awsSecretAccessKey": "secret"},
                 "s3StagingDir": "s3://bucket/staging/",
-                "workgroup": workgroup,
+                **({"workgroup": workgroup} if workgroup is not None else {}),
             }
         },
         "sourceConfig": {
@@ -146,7 +146,9 @@ class TestWorkgroupScope:
         assert client.paginated_work_groups == ["workgroup_a"]
         assert client.list_work_groups_calls == 0
 
-    def test_every_enabled_workgroup_is_read_when_none_is_configured(self, build_source):
+    # "" is what API/YAML configs held while the UI still required the field
+    @pytest.mark.parametrize("workgroup", [None, ""])
+    def test_every_enabled_workgroup_is_read_when_none_is_configured(self, build_source, workgroup):
         client = FakeAthenaClient(
             history={
                 "workgroup_a": _user_queries("a", 2),
@@ -155,7 +157,7 @@ class TestWorkgroupScope:
             },
             enabled_work_groups=["workgroup_a", "workgroup_b"],
         )
-        source = build_source(AthenaLineageSource, client, workgroup="")
+        source = build_source(AthenaLineageSource, client, workgroup=workgroup)
 
         assert _lineage_queries(source) == [
             "SELECT * FROM a_0",
@@ -171,7 +173,7 @@ class TestWorkgroupScope:
             history={None: _user_queries("primary", 2), "workgroup_b": _user_queries("b", 2)},
             list_work_groups_error=access_denied,
         )
-        source = build_source(AthenaLineageSource, client, workgroup="")
+        source = build_source(AthenaLineageSource, client, workgroup=None)
 
         assert _lineage_queries(source) == ["SELECT * FROM primary_0", "SELECT * FROM primary_1"]
         assert client.paginated_work_groups == [None]
@@ -183,7 +185,7 @@ class TestResultLimit:
             history={"workgroup_a": _user_queries("a", 80), "workgroup_b": _user_queries("b", 80)},
             enabled_work_groups=["workgroup_a", "workgroup_b"],
         )
-        source = build_source(AthenaLineageSource, client, workgroup="", result_limit=100)
+        source = build_source(AthenaLineageSource, client, workgroup=None, result_limit=100)
 
         queries = _lineage_queries(source)
 
@@ -231,10 +233,10 @@ class TestUsageAndLineageContract:
     def test_usage_and_lineage_emit_the_same_queries(self, build_source):
         work_groups = ["workgroup_a", "workgroup_b"]
         usage = build_source(
-            AthenaUsageSource, FakeAthenaClient(self._mixed_history(), work_groups), workgroup="", result_limit=45
+            AthenaUsageSource, FakeAthenaClient(self._mixed_history(), work_groups), workgroup=None, result_limit=45
         )
         lineage = build_source(
-            AthenaLineageSource, FakeAthenaClient(self._mixed_history(), work_groups), workgroup="", result_limit=45
+            AthenaLineageSource, FakeAthenaClient(self._mixed_history(), work_groups), workgroup=None, result_limit=45
         )
 
         usage_queries = _usage_queries(usage)

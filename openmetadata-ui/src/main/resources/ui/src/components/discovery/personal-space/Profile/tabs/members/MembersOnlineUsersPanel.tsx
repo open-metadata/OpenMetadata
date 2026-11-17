@@ -18,33 +18,41 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
+  pagingObject,
 } from '../../../../../../constants/constants';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import type { User } from '../../../../../../generated/entity/teams/user';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { Paging } from '../../../../../../generated/type/paging';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
   getOnlineUsers,
   OnlineUsersQueryParams,
 } from '../../../../../../rest/userAPI';
 import { formatDateTime } from '../../../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import {
+  PageCursor,
+  useCursorPageJump,
+} from '../../../../../../hooks/paging/useCursorPageJump';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
+import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
@@ -61,65 +69,114 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const [timeWindow, setTimeWindow] = useState<number>(DEFAULT_TIME_WINDOW);
   const { goTo } = useSettingsHash();
 
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
-    paging,
-    handlePagingChange,
-    currentPage,
-    handlePageChange,
-    pageSize,
-    handlePageSizeChange,
-    showPagination,
-  } = usePaging();
+    page: currentPage,
+    resolvedPageSize: pageSize,
+    savePageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination = shouldShowPager(users);
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      savePageSize(size);
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size);
+    },
+    [savePageSize, setHashPage]
+  );
+
+  const listParams = useMemo<OnlineUsersQueryParams>(
+    () => ({
+      // 0 means "All time" — a valid server value; `|| undefined` dropped it
+      // and the backend silently fell back to its 5-minute default.
+      timeWindow,
+      fields: USER_FIELDS,
+      limit: pageSize,
+    }),
+    [timeWindow, pageSize]
+  );
+  const fetchPaging = useCallback(
+    // A walk keeps only the cursors, so it skips the row fields.
+    async (after: string) =>
+      (await getOnlineUsers({ ...listParams, fields: undefined, after }))
+        .paging,
+    [listParams]
+  );
+  const {
+    cursorFor,
+    remember: rememberPage,
+    reset: resetPages,
+  } = useCursorPageJump(fetchPaging);
+
+  // Only the latest list or search load may fill the table: the pager stays
+  // clickable while a page loads.
+  const latestLoadIdRef = useRef(0);
 
   const fetchOnlineUsers = useCallback(
-    async (params?: { after?: string; before?: string }) => {
+    async (params?: PageCursor, page = INITIAL_PAGING_VALUE) => {
+      const loadId = ++latestLoadIdRef.current;
       setLoading(true);
 
       try {
-        const queryParams: OnlineUsersQueryParams = {
-          // 0 means "All time" — a valid server value; `|| undefined` dropped it
-          // and the backend silently fell back to its 5-minute default.
-          timeWindow,
-          fields: USER_FIELDS,
-          limit: pageSize,
-          ...params,
-        };
-
-        const response = await getOnlineUsers(queryParams);
+        const response = await getOnlineUsers({ ...listParams, ...params });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
+        // Page 1 is a fresh load (window, size, search cleared), so older
+        // cursors may no longer line up.
+        if (page === INITIAL_PAGING_VALUE) {
+          resetPages();
+        }
+        rememberPage(page, response.paging);
 
         setUsers(response.data);
-        handlePagingChange(response.paging);
+        setPaging(response.paging);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setLoading(false);
+        }
       }
     },
-    [timeWindow, pageSize, handlePagingChange]
+    [listParams, rememberPage, resetPages, setPaging]
   );
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage || searchText) {
+  const handlePageNavigation = async (newPage: number) => {
+    // Search results are filtered client-side into a single page.
+    if (searchText) {
       return;
     }
+    let cursor: PageCursor | undefined;
+    try {
+      cursor = await cursorFor(newPage, currentPage);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
 
-    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
-    const cursorType =
-      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
-    const cursor = paging[cursorType];
-
-    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
       return;
     }
-
+    if (!cursor) {
+      return;
+    }
     handlePageChange(newPage);
-    void fetchOnlineUsers({ [cursorType]: cursor });
+    void fetchOnlineUsers(cursor, newPage);
   };
 
   const handleSearch = useCallback(
     async (query: string) => {
       setSearchText(query);
+      // Drops a page jump still walking, so it cannot replace the results.
+      resetPages();
 
       if (!query.trim()) {
         handlePageChange(INITIAL_PAGING_VALUE);
@@ -128,16 +185,20 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         return;
       }
 
+      const loadId = ++latestLoadIdRef.current;
       setLoading(true);
 
       try {
         const response = await searchQuery({
-          query,
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
           searchIndex: SearchIndex.USER,
           pageSize,
           pageNumber: INITIAL_PAGING_VALUE,
           queryFilter: getTermQuery({ isBot: 'false' }),
         });
+        if (loadId !== latestLoadIdRef.current) {
+          return;
+        }
 
         const now = Date.now();
         const windowMs = timeWindow * 60 * 1000;
@@ -153,23 +214,28 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           });
 
         setUsers(filtered);
-        handlePagingChange({
+        setPaging({
           total: filtered.length,
         });
         handlePageChange(INITIAL_PAGING_VALUE);
       } catch (error) {
-        showErrorToast(error as AxiosError);
-        setUsers([]);
+        if (loadId === latestLoadIdRef.current) {
+          showErrorToast(error as AxiosError);
+          setUsers([]);
+        }
       } finally {
-        setLoading(false);
+        if (loadId === latestLoadIdRef.current) {
+          setLoading(false);
+        }
       }
     },
     [
       timeWindow,
       pageSize,
-      handlePagingChange,
+      setPaging,
       handlePageChange,
       fetchOnlineUsers,
+      resetPages,
     ]
   );
 
@@ -183,7 +249,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   // re-firing on every keystroke.
   const refetchOnlineUsers = useRef<() => void>(() => undefined);
   refetchOnlineUsers.current = () => {
-    handlePageChange(INITIAL_PAGING_VALUE);
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
     if (searchText) {
       void handleSearch(searchText);
     } else {
@@ -198,21 +266,21 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const columns = useMemo(
     (): ColumnsType<User> => [
       {
-        title: t('label.username'),
+        title: t('label.name'),
         dataIndex: 'name',
-        key: 'username',
+        key: 'name',
         ellipsis: true,
         render: (_: string, record: User) => (
           <UserNameCell goTo={goTo} record={record} />
         ),
       },
       {
-        title: t('label.name'),
-        dataIndex: 'displayName',
-        key: 'name',
+        title: t('label.email'),
+        dataIndex: 'email',
+        key: 'email',
         ellipsis: true,
         render: (_: string, record: User) => (
-          <Typography size="text-sm">{getEntityName(record)}</Typography>
+          <Typography size="text-sm">{getUserIdentifier(record)}</Typography>
         ),
       },
       {
@@ -268,8 +336,6 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [t, goTo]
   );
 
-  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
-
   return (
     <Box
       className="tw:px-8 tw:pb-8 tw:pt-1"
@@ -311,6 +377,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
                 className="tw:min-h-32 tw:relative"
                 justify="center">
                 <NoDataPlaceholder
+                  icon={<User01 />}
                   title={t('label.no-entity-found', {
                     entity: t('label.online-user-plural'),
                   })}
@@ -335,15 +402,12 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
         {showPagination && (
           <PaginationCardWithControls
+            // Same compact pager as the Teams list.
             minimal
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={[
-              PAGE_SIZE_BASE,
-              PAGE_SIZE_MEDIUM,
-              PAGE_SIZE_LARGE,
-            ]}
-            total={totalPages}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
             onPageChange={handlePageNavigation}
             onPageSizeChange={handlePageSizeChange}
           />

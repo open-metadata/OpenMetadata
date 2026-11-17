@@ -20,7 +20,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyPropertyRules;
-import org.openmetadata.service.ontology.OntologyReleaseManifest;
+import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -83,7 +83,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         OntologyProperty.class,
         Entity.getCollectionDAO().ontologyPropertyDAO(),
         COLLECTION_PATH,
-        "ontology,iri,kind,domain,range,enumValues,unit,isIdentifier,inverse,characteristics,propertyChain,disjointWith,deprecated,replacedBy");
+        "ontology,iri,kind,domain,range,enumValues,unit,isIdentifier,inverse,characteristics,propertyChain,disjointWith,superProperties,deprecated,replacedBy");
   }
 
   @Override
@@ -229,7 +229,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         iris.add(assertion.inverse());
       }
     }
-    final int limit = OntologyReleaseManifest.MAX_MEMBERS + 1;
+    final int limit = OntologyWriteClosureLimits.PROPERTY_NEIGHBOURHOOD + 1;
     final var properties = daoCollection.ontologyPropertyDAO();
     final List<String> declared =
         properties.findDeclarations(
@@ -249,7 +249,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     if (declared.size() >= limit || pointing.size() >= limit) {
       throw new BadRequestException(
           "Ontology validation exceeds the "
-              + OntologyReleaseManifest.MAX_MEMBERS
+              + OntologyWriteClosureLimits.PROPERTY_NEIGHBOURHOOD
               + " reference limit");
     }
     final Map<String, OntologyProperty> rows = new LinkedHashMap<>();

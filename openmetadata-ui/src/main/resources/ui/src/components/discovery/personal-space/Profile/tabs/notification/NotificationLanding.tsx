@@ -88,7 +88,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`notification-card-${card.id}`}
@@ -111,7 +111,7 @@ const NotificationLanding: FC<NotificationLandingProps> = ({ onNavigate }) => {
                       {card.title}
                     </Typography>
                     {card.isBeta && (
-                      <Badge color="gray" size="sm" type="pill-color">
+                      <Badge color="brand" size="sm" type="pill-color">
                         {t('label.beta')}
                       </Badge>
                     )}

@@ -47,10 +47,8 @@ const MembersTeamDescription: FC<MembersTeamDescriptionProps> = ({
             </Typography>
             {canEditDescInline && !isDescEditing && (
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-description-btn"
                 icon={Edit01}
-                size="xs"
                 tooltip={String(
                   t('label.edit-entity', { entity: t('label.description') })
                 )}

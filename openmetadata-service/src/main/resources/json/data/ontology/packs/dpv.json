@@ -1,0 +1,46 @@
+{
+  "abbreviation": "DPV",
+  "attribution": "Data Privacy Vocabulary (DPV) 2.3, W3C Data Privacy Vocabularies and Controls Community Group. Copyright W3C. Used under the W3C Software and Document License. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C community vocabulary for personal data processing: purposes, processing, legal bases, data subjects and technical measures, plus the personal-data categories extension. Published verbatim.",
+  "id": "dpv",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "W3C Software and Document License",
+  "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+  "modules": [
+    {
+      "conceptCount": 973,
+      "dependencies": [],
+      "description": "Core concepts for personal data handling, purposes, processing, legal bases and measures.",
+      "format": "turtle",
+      "id": "dpv",
+      "name": "DPV core",
+      "relationshipCount": 1084,
+      "resourcePath": "rdf/ontology-packs/dpv/dpv.ttl",
+      "selectedByDefault": true,
+      "sha256": "af2aa4776ac7afe4c6c66b310fe4b7cbb4ef12bddfc2092cf30c9ebf524112a5",
+      "sourceUrl": "https://w3c-cg.github.io/dpv/2.3/dpv/dpv-owl.ttl"
+    },
+    {
+      "conceptCount": 231,
+      "dependencies": [
+        "dpv"
+      ],
+      "description": "The personal-data extension: categories of personal data such as identifiers, contact details and financial data.",
+      "format": "turtle",
+      "id": "personal-data",
+      "name": "Personal data categories",
+      "relationshipCount": 266,
+      "resourcePath": "rdf/ontology-packs/dpv/personal-data.ttl",
+      "selectedByDefault": true,
+      "sha256": "99308e733f9f4825ddc3783a973e94c8e005faa12bf644f103d03443126aa12a",
+      "sourceUrl": "https://w3c-cg.github.io/dpv/2.3/pd/pd-owl.ttl"
+    }
+  ],
+  "name": "Data Privacy Vocabulary",
+  "publisher": "W3C Data Privacy Vocabularies and Controls Community Group",
+  "sourceUrl": "https://w3c.github.io/dpv/2.3/dpv/",
+  "standard": "Data Privacy Vocabulary (DPV) 2.3",
+  "version": "2.3"
+}

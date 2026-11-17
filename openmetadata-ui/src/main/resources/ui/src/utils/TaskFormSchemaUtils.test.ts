@@ -127,7 +127,7 @@ describe('TaskFormSchemaUtils', () => {
       status: TaskEntityStatus.Open,
       priority: TaskPriority.Medium,
       payload: {
-        field: 'description',
+        fieldPath: 'description',
         currentValue: 'Current description',
         suggestedValue: 'Suggested description',
       },

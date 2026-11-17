@@ -245,10 +245,23 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   protected void postDelete(Role entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeFromCondition(
-                condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
+    // Users and teams holding this role resolve it into their policies.
+    SubjectCache.invalidateAll();
+    // A soft-deleted role already drops out of every user's roles, so conditions naming it match
+    // nothing until a restore brings it back; only a hard delete rewrites them
+    // (ADR:2026-10-30-deleted-policy-condition-references-become-false).
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeFromCondition(
+                  condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
+    }
+  }
+
+  @Override
+  protected void postRestore(Role entity) {
+    super.postRestore(entity);
+    SubjectCache.invalidateAll();
   }
 
   /** Handles entity updated from PUT and POST operation. */

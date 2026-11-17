@@ -14,9 +14,11 @@
 import { Box, Button } from '@openmetadata/ui-core-components';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { getAppCronExpression } from '../../../../../../utils/ApplicationUtils';
 import { useAppScheduleOptions } from '../../../../../Settings/Applications/AppSchedule/useAppScheduleOptions';
 import ScheduleInterval from '../../../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { AppFooter } from './AppFooter';
 import type { AppScheduleEditProps } from './Applications.types';
 
@@ -33,10 +35,13 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
     getAppCronExpression(appData.appSchedule)
   );
   const [isScheduleValid, setIsScheduleValid] = useState(true);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    scheduleValue !== getAppCronExpression(appData.appSchedule)
+  );
 
   return (
     <Box
-      className="tw:mx-auto tw:w-3/5"
+      className="tw:mx-auto tw:w-full tw:max-w-[50%]"
       data-testid="update-schedule-form"
       direction="col">
       <ScheduleInterval
@@ -51,9 +56,10 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
           color="tertiary"
           data-testid="cancel-button"
           isDisabled={isSaving}
-          onPress={onCancel}>
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="save-button"

@@ -14,10 +14,14 @@ Define Concat function
 """
 # Keep SQA docs style defining custom constructs
 
+from typing import Any
+
 from sqlalchemy.ext.compiler import compiles
+from sqlalchemy.sql.compiler import SQLCompiler
 from sqlalchemy.sql.functions import FunctionElement
 
 from metadata.profiler.metrics.core import CACHE
+from metadata.profiler.orm.registry import PythonDialects
 from metadata.utils.logger import profiler_logger
 
 logger = profiler_logger()
@@ -30,3 +34,8 @@ class Substr(FunctionElement):
 @compiles(Substr)
 def _(element, compiler, **kw):
     return f"SUBSTRING({compiler.process(element.clauses, **kw)})"
+
+
+@compiles(Substr, PythonDialects.Oracle.value)
+def _(element: Substr, compiler: SQLCompiler, **kw: Any) -> str:
+    return f"SUBSTR({compiler.process(element.clauses, **kw)})"

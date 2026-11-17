@@ -16,8 +16,8 @@ import {
   Input,
   Select,
   SelectPopover,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Search, XCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { debounce, isEmpty, isString } from 'lodash';
 import Qs from 'qs';
@@ -33,10 +33,8 @@ import { useInteractOutside } from 'react-aria';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as IconCloseCircleOutlined } from '../../assets/svg/close-circle-outlined.svg';
 import { ReactComponent as IconSuggestionsActive } from '../../assets/svg/ic-suggestions-active.svg';
 import { ReactComponent as IconSuggestionsBlue } from '../../assets/svg/ic-suggestions-blue.svg';
-import { ReactComponent as IconSearch } from '../../assets/svg/search.svg';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useSearchStore } from '../../hooks/useSearchStore';
@@ -196,21 +194,17 @@ export const GlobalSearchBar = () => {
 
     return (
       <>
-        <Tooltip
-          arrow
-          title={
+        <ButtonUtility
+          data-testid="nlp-suggestions-button"
+          icon={isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue}
+          size="xs"
+          tooltip={
             isNLPActive
               ? t('message.natural-language-search-active')
               : t('label.use-natural-language-search')
-          }>
-          <ButtonUtility
-            color="tertiary"
-            data-testid="nlp-suggestions-button"
-            icon={isNLPActive ? IconSuggestionsActive : IconSuggestionsBlue}
-            size="xs"
-            onClick={() => setNLPActive(!isNLPActive)}
-          />
-        </Tooltip>
+          }
+          onClick={() => setNLPActive(!isNLPActive)}
+        />
         <Divider
           className="h-5 tw:mx-2 tw:self-center"
           orientation="vertical"
@@ -252,26 +246,28 @@ export const GlobalSearchBar = () => {
       />
     );
 
+  const searchIconClassName = classNames({
+    'tw:*:data-icon:text-utility-brand-600': !isSearchBlur,
+  });
+
   const renderSearchIcon = () =>
     searchValue ? (
-      <IconCloseCircleOutlined
-        aria-label="icon-cancel"
-        className={classNames('tw:align-middle tw:size-4 tw:shrink-0', {
-          'tw:text-brand-secondary': !isSearchBlur,
-        })}
+      <ButtonUtility
+        className={searchIconClassName}
         data-testid="cancel-icon"
-        role="img"
+        icon={XCircle}
+        size="xs"
+        tooltip={t('label.clear')}
         onClick={handleClear}
       />
     ) : (
-      <IconSearch
-        aria-label="icon-search"
-        className={classNames('tw:align-middle tw:size-4 tw:shrink-0', {
-          'tw:text-brand-secondary': !isSearchBlur,
-        })}
+      <ButtonUtility
+        className={searchIconClassName}
         data-testid="search-icon"
-        role="img"
-        onClick={(e: React.MouseEvent<SVGSVGElement>) => {
+        icon={Search}
+        size="sm"
+        tooltip={t('label.search')}
+        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.preventDefault();
           e.stopPropagation();
           handleOnClick();

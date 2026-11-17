@@ -16,15 +16,17 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Announcement02 } from '@openmetadata/ui-core-components/icons';
+import {
+  Announcement02,
+  Edit01,
+  Restore,
+  Settings01,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-settings-primery.svg';
 import { DISPLAY_NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
 import { useAsyncDeleteProvider } from '../../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
@@ -182,7 +184,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                       description={t('message.restore-action-description', {
                         entityType,
                       })}
-                      icon={IconRestore}
+                      icon={Restore}
                       id="restore-button"
                       name={t('label.restore')}
                     />
@@ -226,7 +228,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                   description={t('message.update-displayName-entity', {
                     entity: entityName,
                   })}
-                  icon={EditIcon}
+                  icon={Edit01}
                   id="rename-button"
                   name={t('label.rename')}
                 />
@@ -248,7 +250,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                     deleteButtonDescription ??
                     t('message.update-profiler-settings')
                   }
-                  icon={IconSetting}
+                  icon={Settings01}
                   id="profiler-setting-button"
                   name={t('label.profiler-setting-plural')}
                 />
@@ -271,7 +273,7 @@ const ManageButton: FC<ManageButtonProps> = ({
                       entityType,
                     })
                   }
-                  icon={IconDelete}
+                  icon={Trash01}
                   id="delete-button"
                   name={t('label.delete')}
                 />
@@ -407,7 +409,7 @@ const ManageButton: FC<ManageButtonProps> = ({
             isOkLoading={isEntityRestoring}
             okText={t('label.restore')}
             title={t('label.restore-entity', {
-              entity: entityType,
+              entity: formattedEntityType,
             })}
             onCancel={() => setShowReactiveModal(false)}
             onOk={handleRestore}>

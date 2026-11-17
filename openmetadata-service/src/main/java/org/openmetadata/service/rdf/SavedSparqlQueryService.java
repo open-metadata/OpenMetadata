@@ -90,7 +90,8 @@ public final class SavedSparqlQueryService {
         .withQuery(body)
         .withFormat(query.getFormat())
         .withInference(query.getInference())
-        .withSavedAt(query.getSavedAt());
+        .withSavedAt(query.getSavedAt())
+        .withOntologyId(query.getOntologyId());
   }
 
   private static String normalizedText(String value) {

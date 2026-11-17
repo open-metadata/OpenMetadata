@@ -69,7 +69,7 @@ export const TableRowActionsDropdown = () => {
 /**
  * `compact` matches the density of the AntD tables this component replaces —
  * entity pages show 20+ rows at a time and the `sm`/`md` heights push a third of
- * them below the fold. See docs/antd-migration/table.md.
+ * them below the fold.
  */
 type TableSize = 'compact' | 'sm' | 'md';
 
@@ -159,7 +159,7 @@ export type TableCardVariant = 'default' | 'muted';
  */
 export const MUTED_TABLE_SURFACE_CLASSES = [
   'tw:dark:[&_table:not(table_table)]:bg-primary_alt',
-  'tw:[&_tbody:not(table_table_tbody)>tr:hover>td]:bg-primary_hover',
+  'tw:[&_tbody:not(table_table_tbody):not([data-empty])>tr:hover>td]:bg-primary_hover',
   'tw:dark:[&_tbody:not(table_table_tbody)]:[--markdown-clamp-fade-color:var(--tw-color-bg-secondary)]!',
   'tw:dark:[&_tbody:not(table_table_tbody)>tr:hover]:[--markdown-clamp-fade-color:color-mix(in_srgb,var(--tw-color-bg-secondary),white_6%)]!',
 ].join(' ');
@@ -382,16 +382,25 @@ interface TableHeadProps
   extends AriaColumnProps,
     Omit<
       ThHTMLAttributes<HTMLTableCellElement>,
-      'children' | 'className' | 'style' | 'id'
+      'children' | 'className' | 'style' | 'id' | 'align'
     > {
   label?: string;
   tooltip?: string;
+  /** Aligns the header content, e.g. `center` over a column of centred icons. @default 'start' */
+  align?: 'start' | 'center' | 'end';
 }
+
+const HEAD_ALIGN_CLASS = {
+  start: '',
+  center: 'tw:justify-center',
+  end: 'tw:justify-end',
+};
 
 const TableHead = ({
   className,
   tooltip,
   label,
+  align = 'start',
   children,
   ...props
 }: TableHeadProps) => {
@@ -418,7 +427,11 @@ const TableHead = ({
         // Layout only — a real Group (role="group") here makes Chromium
         // compute an EMPTY accessible name for the columnheader, breaking
         // every getByRole('columnheader', { name }) locator.
-        <div className="tw:flex tw:items-center tw:gap-1">
+        <div
+          className={cx(
+            'tw:flex tw:items-center tw:gap-1',
+            HEAD_ALIGN_CLASS[align]
+          )}>
           <div className="tw:flex tw:items-center tw:gap-1">
             {label && (
               <span className="tw:text-xs tw:font-semibold tw:whitespace-nowrap tw:text-quaternary">

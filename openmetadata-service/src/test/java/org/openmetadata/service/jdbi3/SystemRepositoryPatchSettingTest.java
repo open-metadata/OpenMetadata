@@ -22,6 +22,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.client.OidcClientConfig;
@@ -46,6 +47,13 @@ class SystemRepositoryPatchSettingTest {
   private static final String SMTP_PASSWORD = "smtp-secret";
   private static final String ORIGINAL_SENDER = "before@example.com";
   private static final String UPDATED_SENDER = "after@example.com";
+  private static final String RULES_SETTING_NAME = SettingsType.ENTITY_RULES_SETTINGS.value();
+  private static final String RULES_JSON =
+      """
+      {"entitySemantics": [
+        {"name": "First", "description": "d", "rule": "{}", "enabled": false},
+        {"name": "Second", "description": "d", "rule": "{}", "enabled": false}
+      ]}""";
 
   private MockedStatic<Entity> entityMock;
   private MockedStatic<MigrationValidationClient> migrationMock;
@@ -146,6 +154,45 @@ class SystemRepositoryPatchSettingTest {
     assertEquals(
         Response.Status.PRECONDITION_FAILED.getStatusCode(), failure.getResponse().getStatus());
     settingsCacheMock.verifyNoInteractions();
+  }
+
+  @Test
+  void patchSettingItemWritesTheNamedItemAgainstTheRowItRead() {
+    when(systemDAO.getConfigJsonWithKey(RULES_SETTING_NAME)).thenReturn(RULES_JSON);
+    when(systemDAO.updateSettingsIfCurrent(eq(RULES_SETTING_NAME), eq(RULES_JSON), anyString()))
+        .thenReturn(1);
+
+    systemRepository.patchSettingItem(
+        SettingsType.ENTITY_RULES_SETTINGS, "/entitySemantics", "Second", enableRulePatch());
+
+    ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
+    verify(systemDAO)
+        .updateSettingsIfCurrent(eq(RULES_SETTING_NAME), eq(RULES_JSON), updatedJson.capture());
+    EntityRulesSettings updated =
+        JsonUtils.readValue(updatedJson.getValue(), EntityRulesSettings.class);
+    assertEquals(false, updated.getEntitySemantics().getFirst().getEnabled());
+    assertEquals(true, updated.getEntitySemantics().getLast().getEnabled());
+  }
+
+  @Test
+  void patchSettingItemRejectsAConcurrentChangeWith412() {
+    when(systemDAO.getConfigJsonWithKey(RULES_SETTING_NAME)).thenReturn(RULES_JSON);
+    when(systemDAO.updateSettingsIfCurrent(eq(RULES_SETTING_NAME), eq(RULES_JSON), anyString()))
+        .thenReturn(0);
+
+    assertThrows(
+        PreconditionFailedException.class,
+        () ->
+            systemRepository.patchSettingItem(
+                SettingsType.ENTITY_RULES_SETTINGS,
+                "/entitySemantics",
+                "Second",
+                enableRulePatch()));
+    settingsCacheMock.verifyNoInteractions();
+  }
+
+  private static JsonPatch enableRulePatch() {
+    return Json.createPatchBuilder().replace("/enabled", true).build();
   }
 
   @Test
