@@ -179,20 +179,20 @@ public class ConversationRepository {
       Authorizer authorizer,
       ResultList<Conversation> page,
       ConversationFilter.Sql countSql) {
-    if (getSubjectContext(securityContext).isAdmin()) {
-      return page;
+    if (!getSubjectContext(securityContext).isAdmin()) {
+      keepViewable(securityContext, new ViewPermissionFilter(authorizer), page, countSql);
     }
-    ViewPermissionFilter viewFilter = new ViewPermissionFilter(authorizer);
+    return page;
+  }
+
+  /** Leaves out the page's rows the caller may not view and recounts its total without them. */
+  private void keepViewable(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      ResultList<Conversation> page,
+      ConversationFilter.Sql countSql) {
     Predicate<String> mayHide = typesThatMayHide(securityContext);
-    List<EntityReference> toCheck =
-        page.getData().stream()
-            .map(Conversation::getEntityRef)
-            .filter(about -> about != null && mayHide.test(about.getType()))
-            .toList();
-    Set<UUID> viewable =
-        toCheck.isEmpty() ? Set.of() : viewFilter.viewableIds(securityContext, toCheck);
-    List<Conversation> visible =
-        page.getData().stream().filter(c -> isShown(c.getEntityRef(), mayHide, viewable)).toList();
+    List<Conversation> visible = viewableRows(securityContext, viewFilter, mayHide, page.getData());
     page.getPaging()
         .setTotal(
             viewableTotal(
@@ -200,7 +200,29 @@ public class ConversationRepository {
                 visible.size(),
                 () -> viewableCount(securityContext, viewFilter, mayHide, countSql)));
     page.setData(visible);
-    return page;
+  }
+
+  /** The {@code conversations} about entities the caller may view. */
+  private static List<Conversation> viewableRows(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      Predicate<String> mayHide,
+      List<Conversation> conversations) {
+    List<EntityReference> toCheck = entitiesToCheck(conversations, mayHide);
+    Set<UUID> viewable =
+        toCheck.isEmpty() ? Set.of() : viewFilter.viewableIds(securityContext, toCheck);
+    return conversations.stream()
+        .filter(c -> isShown(c.getEntityRef(), mayHide, viewable))
+        .toList();
+  }
+
+  /** The entities the conversations are about whose type a rule could hide. */
+  private static List<EntityReference> entitiesToCheck(
+      List<Conversation> conversations, Predicate<String> mayHide) {
+    return conversations.stream()
+        .map(Conversation::getEntityRef)
+        .filter(about -> about != null && mayHide.test(about.getType()))
+        .toList();
   }
 
   /**

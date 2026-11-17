@@ -46,6 +46,7 @@ import org.openmetadata.service.context.center.MemorySourceSharing;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
+import org.openmetadata.service.jdbi3.KnowledgeAssetDAOs.ContextFileDAO.FolderCount;
 import org.openmetadata.service.jdbi3.KnowledgeAssetDAOs.ContextFileDAO.FolderFile;
 import org.openmetadata.service.resources.drive.ContextFileResource;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
@@ -231,24 +232,38 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   private Map<UUID, Integer> countSharedByFolder(
       List<String> folderIds, SecurityContext securityContext) {
     int contains = Relationship.CONTAINS.ordinal();
-    int owns = Relationship.OWNS.ordinal();
     String userId = callerId(securityContext);
     Map<UUID, Integer> counts = new HashMap<>();
-    contextFileDAO
-        .countOpenFilesByFolder(folderIds, contains)
-        .forEach(count -> counts.merge(count.folderId(), count.count(), Integer::sum));
-    contextFileDAO
-        .countOwnedRestrictedFilesByFolder(folderIds, contains, userId, owns)
-        .forEach(count -> counts.merge(count.folderId(), count.count(), Integer::sum));
+    addCounts(counts, contextFileDAO.countOpenFilesByFolder(folderIds, contains));
+    addCounts(
+        counts,
+        contextFileDAO.countOwnedRestrictedFilesByFolder(
+            folderIds, contains, userId, Relationship.OWNS.ordinal()));
+    foldersOfFilesSharedWithCaller(folderIds, userId, securityContext)
+        .forEach(folderId -> counts.merge(folderId, 1, Integer::sum));
+    return counts;
+  }
+
+  private static void addCounts(Map<UUID, Integer> counts, List<FolderCount> byFolder) {
+    byFolder.forEach(count -> counts.merge(count.folderId(), count.count(), Integer::sum));
+  }
+
+  /**
+   * The folder of each Shared file in {@code folderIds} that the caller does not own and whose
+   * sharing names them, once per file.
+   */
+  private List<UUID> foldersOfFilesSharedWithCaller(
+      List<String> folderIds, String userId, SecurityContext securityContext) {
     List<FolderFile> shared =
-        contextFileDAO.listSharedFilesNotOwnedByFolder(folderIds, contains, userId, owns);
+        contextFileDAO.listSharedFilesNotOwnedByFolder(
+            folderIds, Relationship.CONTAINS.ordinal(), userId, Relationship.OWNS.ordinal());
     Set<UUID> visible =
         sharedWithCaller(
             shared.stream().map(FolderFile::fileId).toList(), Include.ALL, securityContext);
-    shared.stream()
+    return shared.stream()
         .filter(file -> visible.contains(file.fileId()))
-        .forEach(file -> counts.merge(file.folderId(), 1, Integer::sum));
-    return counts;
+        .map(FolderFile::folderId)
+        .toList();
   }
 
   private Map<UUID, Integer> countCheckedByFolder(

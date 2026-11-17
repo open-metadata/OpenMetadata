@@ -1933,27 +1933,42 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       SecurityContext securityContext,
       ViewPermissionFilter viewFilter,
       BulkOperationResult result) {
-    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
-      return result;
-    }
+    return DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()
+        ? result
+        : withRowsKept(result, viewableAmong(securityContext, viewFilter, rowsOf(result)));
+  }
+
+  private static List<BulkResponse> rowsOf(BulkOperationResult result) {
     List<BulkResponse> rows = new ArrayList<>(listOrEmpty(result.getSuccessRequest()));
     rows.addAll(listOrEmpty(result.getFailedRequest()));
+    return rows;
+  }
+
+  /** Which of {@code rows} the caller may view, their assets checked in one batch. */
+  private static Predicate<BulkResponse> viewableAmong(
+      SecurityContext securityContext, ViewPermissionFilter viewFilter, List<BulkResponse> rows) {
     Map<String, EntityReference> tables = tablesOfColumns(rows);
     List<EntityReference> targets =
         rows.stream().map(row -> viewTarget(row, tables)).filter(Objects::nonNull).toList();
     Set<UUID> viewable = viewFilter.viewableIds(securityContext, targets);
     // A row without an asset (e.g. "Nothing to Validate.") names nothing, so it stays.
-    Predicate<BulkResponse> isViewable =
-        row ->
-            row.getRequest() == null
-                || Optional.ofNullable(viewTarget(row, tables))
-                    .map(target -> viewable.contains(target.getId()))
-                    .orElse(false);
+    return row ->
+        row.getRequest() == null
+            || Optional.ofNullable(viewTarget(row, tables))
+                .map(target -> viewable.contains(target.getId()))
+                .orElse(false);
+  }
+
+  private static BulkOperationResult withRowsKept(
+      BulkOperationResult result, Predicate<BulkResponse> isViewable) {
     return result
-        .withSuccessRequest(
-            listOrEmpty(result.getSuccessRequest()).stream().filter(isViewable).toList())
-        .withFailedRequest(
-            listOrEmpty(result.getFailedRequest()).stream().filter(isViewable).toList());
+        .withSuccessRequest(rowsKept(result.getSuccessRequest(), isViewable))
+        .withFailedRequest(rowsKept(result.getFailedRequest(), isViewable));
+  }
+
+  private static List<BulkResponse> rowsKept(
+      List<BulkResponse> rows, Predicate<BulkResponse> isViewable) {
+    return listOrEmpty(rows).stream().filter(isViewable).toList();
   }
 
   /** The entity whose view permission decides a row: the asset, or a column's table. */
@@ -1967,17 +1982,21 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
   /** The tables of the column rows, loaded in one batch and keyed by table FQN. */
   private static Map<String, EntityReference> tablesOfColumns(List<BulkResponse> rows) {
-    List<String> tableFqns =
-        rows.stream()
-            .map(GlossaryTermRepository::assetOf)
-            .filter(asset -> asset != null && Entity.TABLE_COLUMN.equals(asset.getType()))
-            .map(asset -> tableFqnOf(asset.getFullyQualifiedName()))
-            .filter(Objects::nonNull)
-            .distinct()
-            .toList();
-    if (tableFqns.isEmpty()) {
-      return Map.of();
-    }
+    List<String> tableFqns = tableFqnsOfColumns(rows);
+    return tableFqns.isEmpty() ? Map.of() : tablesByFqn(tableFqns);
+  }
+
+  private static List<String> tableFqnsOfColumns(List<BulkResponse> rows) {
+    return rows.stream()
+        .map(GlossaryTermRepository::assetOf)
+        .filter(asset -> asset != null && Entity.TABLE_COLUMN.equals(asset.getType()))
+        .map(asset -> tableFqnOf(asset.getFullyQualifiedName()))
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+  }
+
+  private static Map<String, EntityReference> tablesByFqn(List<String> tableFqns) {
     return Entity.getEntityRepository(Entity.TABLE).findByNames(tableFqns, Include.ALL).stream()
         .collect(
             Collectors.toMap(
