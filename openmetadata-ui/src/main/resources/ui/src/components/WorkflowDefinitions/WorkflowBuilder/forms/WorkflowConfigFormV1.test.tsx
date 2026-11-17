@@ -117,9 +117,14 @@ const renderWithWorkflowMode = (ui: React.ReactElement) =>
   );
 
 describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
-  it.each(['view', 'edit'])(
-    'offers incident configuration only in %s mode with matching save controls',
-    (mode) => {
+  it.each([
+    { mode: 'view', autoAssignOwners: true },
+    { mode: 'view', autoAssignOwners: false },
+    { mode: 'edit', autoAssignOwners: true },
+    { mode: 'edit', autoAssignOwners: false },
+  ])(
+    'allows changing owner assignment in $mode mode from $autoAssignOwners while showing the other configuration fields',
+    ({ mode, autoAssignOwners }) => {
       const updateConfig = jest.fn();
       render(
         <MemoryRouter initialEntries={[`/?mode=${mode}`]}>
@@ -146,7 +151,7 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
                 eventType: [],
                 dataAssets: [],
                 dataAssetFilters: [],
-                autoAssignOwners: true,
+                autoAssignOwners,
               }}
               updateConfig={updateConfig}
             />
@@ -159,28 +164,34 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
         name: /^label\.auto-assign-owners/,
       });
 
+      expect(screen.getByTestId('trigger-config-section')).toBeInTheDocument();
       expect(
-        screen.queryByTestId('trigger-config-section')
-      ).not.toBeInTheDocument();
+        screen.getByTestId('data-asset-form-section-mock')
+      ).toBeInTheDocument();
       expect(
-        screen.queryByTestId('data-asset-form-section-mock')
-      ).not.toBeInTheDocument();
+        screen.getByTestId('metadata-form-section-mock')
+      ).toBeInTheDocument();
+      expect(toggle).toBeEnabled();
 
       if (mode === 'edit') {
-        expect(toggle).toBeEnabled();
         expect(
           screen.getByTestId('save-node-configuration-button')
         ).toBeEnabled();
-
-        fireEvent.click(toggle);
-
-        expect(updateConfig).toHaveBeenCalledWith('autoAssignOwners', false);
       } else {
-        expect(toggle).toBeDisabled();
         expect(
           screen.queryByTestId('save-node-configuration-button')
         ).not.toBeInTheDocument();
       }
+
+      fireEvent.click(toggle);
+
+      expect(updateConfig).toHaveBeenCalledWith(
+        'autoAssignOwners',
+        !autoAssignOwners
+      );
+      expect(
+        screen.getByTestId('save-node-configuration-button')
+      ).toBeEnabled();
     }
   );
 

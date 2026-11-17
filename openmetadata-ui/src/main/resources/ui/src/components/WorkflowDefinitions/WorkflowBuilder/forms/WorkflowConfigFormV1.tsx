@@ -77,7 +77,9 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   showAutoAssignOwners = false,
 }) => {
   const { t } = useTranslation();
-  const { canSave, isNoOp } = useWorkflowModeContext();
+  const { canSave, isNoOp, showEditButton, enterEditMode } =
+    useWorkflowModeContext();
+  const canStartIncidentSettingsEdit = isNoOp && showEditButton;
   const lockCoreStartFields = !allowFullStartNodeConfiguration;
   const canEditFiltersAndPeriodicSchedule =
     allowFullStartNodeConfiguration || allowStartNodeFilterScheduleAndBatchEdit;
@@ -87,18 +89,17 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
     <Toggle
       data-testid="auto-assign-owners-toggle"
       hint={t('message.auto-assign-owners-help')}
-      isDisabled={!canSave}
+      isDisabled={!canSave && !canStartIncidentSettingsEdit}
       isSelected={config.autoAssignOwners !== false}
       label={t('label.auto-assign-owners')}
-      onChange={(isSelected: boolean) =>
-        updateConfig('autoAssignOwners', isSelected)
-      }
+      onChange={(isSelected: boolean) => {
+        if (canStartIncidentSettingsEdit) {
+          enterEditMode();
+        }
+        updateConfig('autoAssignOwners', isSelected);
+      }}
     />
   ) : null;
-
-  if (isNoOp) {
-    return ownerAssignmentToggle;
-  }
 
   return (
     <div data-testid="workflow-config-form-v1">
