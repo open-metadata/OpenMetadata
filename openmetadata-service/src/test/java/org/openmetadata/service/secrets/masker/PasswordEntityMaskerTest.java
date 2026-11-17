@@ -1,19 +1,25 @@
 package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.security.credentials.GCPValues;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
+import org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig;
 import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection;
+import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
+import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
+import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
@@ -21,7 +27,6 @@ import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -30,6 +35,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String BETA_KEY = "beta-api-key";
   private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
   private static final String NESTED_SECRET = "openmetadata-nested-secret";
+  private static final String GCP_PRIVATE_KEY = "openmetadata-gcp-private-key";
 
   public PasswordEntityMaskerTest() {
     CONFIG.setMaskPasswordsAPI(true);
@@ -202,7 +208,11 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 "prefixConfig",
                 Map.of("bucketName", "bucket")));
 
-    assertNestedSecretMasked(serialized, "PowerBI", ServiceType.DASHBOARD);
+    PowerBIConnection masked =
+        (PowerBIConnection) mask(serialized, "PowerBI", ServiceType.DASHBOARD);
+
+    GCSConfig gcs = (GCSConfig) masked.getPbitFilesSource();
+    assertEquals(getMaskedPassword(), gcpValues(gcs.getSecurityConfig()).getPrivateKey());
   }
 
   @Test
@@ -226,7 +236,12 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 "sslConfig",
                 Map.of("caCertificate", NESTED_SECRET)));
 
-    assertNestedSecretMasked(serialized, "Superset", ServiceType.DASHBOARD);
+    SupersetConnection masked =
+        (SupersetConnection) mask(serialized, "Superset", ServiceType.DASHBOARD);
+
+    SupersetApiConnection api = (SupersetApiConnection) masked.getConnection();
+    assertEquals(
+        getMaskedPassword(), ((ValidateSSLClientConfig) api.getSslConfig()).getCaCertificate());
   }
 
   @Test
@@ -248,18 +263,22 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 "gcpConfig",
                 Map.of("gcpConfig", gcpServiceAccount())));
 
-    assertNestedSecretMasked(serialized, "Mysql", ServiceType.DATABASE);
+    MysqlConnection masked = (MysqlConnection) mask(serialized, "Mysql", ServiceType.DATABASE);
+
+    GcpCloudSqlConfig cloudSql = (GcpCloudSqlConfig) masked.getAuthType();
+    assertEquals(getMaskedPassword(), cloudSql.getPassword());
+    assertEquals(getMaskedPassword(), gcpValues(cloudSql.getGcpConfig()).getPrivateKey());
   }
 
-  private void assertNestedSecretMasked(
+  /** Masks a config shaped as it is stored: nested auth objects arrive as plain maps. */
+  private Object mask(
       Map<String, Object> serialized, String connectionType, ServiceType serviceType) {
-    Object masked =
-        EntityMaskerFactory.createEntityMasker()
-            .maskServiceConnectionConfig(serialized, connectionType, serviceType);
+    return EntityMaskerFactory.createEntityMasker()
+        .maskServiceConnectionConfig(serialized, connectionType, serviceType);
+  }
 
-    String json = JsonUtils.pojoToJson(masked);
-    assertFalse(json.contains(NESTED_SECRET), json);
-    assertTrue(json.contains(getMaskedPassword()), json);
+  private static GCPValues gcpValues(GCPCredentials credentials) {
+    return (GCPValues) credentials.getGcpConfig();
   }
 
   private static Map<String, Object> gcpServiceAccount() {
@@ -271,7 +290,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
         "privateKeyId",
         "key-id",
         "privateKey",
-        NESTED_SECRET,
+        GCP_PRIVATE_KEY,
         "clientEmail",
         "sa@project.iam.gserviceaccount.com",
         "clientId",

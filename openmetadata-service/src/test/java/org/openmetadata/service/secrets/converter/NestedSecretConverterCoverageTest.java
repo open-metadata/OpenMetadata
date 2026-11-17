@@ -6,6 +6,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.github.classgraph.ClassGraph;
 import io.github.classgraph.Resource;
 import io.github.classgraph.ScanResult;
+import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -18,6 +19,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.util.ReflectionUtil;
 
@@ -339,14 +341,18 @@ class NestedSecretConverterCoverageTest {
     Map<String, JsonNode> schemas = new TreeMap<>();
     try (ScanResult scan = new ClassGraph().acceptPaths(SCHEMA_ROOT).scan()) {
       for (Resource resource : scan.getResourcesWithExtension("json")) {
-        try {
-          schemas.put(resource.getPath(), JsonUtils.readTree(resource.getContentAsString()));
-        } catch (Exception ignored) {
-          // Not every JSON under json/schema parses as a schema; those cannot declare secrets.
-        }
+        schemas.put(resource.getPath(), read(resource));
       }
     }
     return schemas;
+  }
+
+  private static JsonNode read(final Resource resource) {
+    try {
+      return JsonUtils.readTree(resource.getContentAsString());
+    } catch (IOException | JsonParsingException e) {
+      throw new IllegalStateException("Cannot read schema " + resource.getPath(), e);
+    }
   }
 
   private static <T> Iterable<T> iterable(java.util.Iterator<T> iterator) {
