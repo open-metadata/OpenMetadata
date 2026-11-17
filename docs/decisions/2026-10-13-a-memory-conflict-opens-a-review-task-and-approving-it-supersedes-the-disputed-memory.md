@@ -128,15 +128,17 @@ question. Approving the first supersedes it, so the second's dispute names a ret
 approving the second superseded nothing and left two values Approved.
 
 Approving a review now follows each disputed memory another decision superseded to the Approved
-memory holding its claim now (`MemoryConflictDecision.laterValues`, through at most ten
-replacements, never the reviewed memory itself, whose own retry is item 5's), and refuses the
-decision with 412. When the resolver may read that memory, the review is first pointed at it,
-keeping the dispute's reason, written as the resolver impersonated by `governance-bot`, so the
-reviewer compares it; the dispute may name a memory some of the review's readers cannot open, as any
-dispute can. Otherwise nothing is written, and an admin or a requeue takes it from there. The chain
-is followed through the Archive: a later value archived with its document makes the decision wait
-(409), as a disputed memory in the Archive does, and one a person deleted is gone. Rejecting is
-unaffected.
+memory holding its claim now (`MemoryConflictDecision.laterValues`, never the reviewed memory
+itself, whose own retry is item 5's), and refuses the decision with 412. When the resolver may read
+that memory, the review is first pointed at it, keeping the dispute's reason, written as the
+resolver impersonated by `governance-bot`, so the reviewer compares it; the dispute may name a
+memory some of the review's readers cannot open, as any dispute can. Otherwise nothing is written,
+and an admin or a requeue takes it from there. A chain is followed through at most ten
+replacements; one still replaced after the tenth refuses the decision with 412 too, and the memory
+needs a requeue. The chain is followed through the Archive: a later value archived with its document
+makes the decision wait (409), as a disputed memory in the Archive does, and a later value a person
+deleted is gone. The chain starts at every disputed memory still stored, one a person deleted
+included: deleting a value another decision replaced takes nothing back. Rejecting is unaffected.
 
 This supersedes "Writers link only memories the same audience may read; Collate links same-audience
 pairs only" in the Consequences. A re-point can name a memory of another audience that its resolver

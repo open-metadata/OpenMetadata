@@ -58,6 +58,9 @@ final class MemoryConflictDecision {
   static final String REPLACED_OUT_OF_SIGHT =
       "Another decision replaced a memory this review disputes with one this review cannot name;"
           + " requeue this memory so it is reviewed again";
+  static final String REPLACED_TOO_OFTEN =
+      "A memory this review disputes was replaced more times than a decision follows; requeue this"
+          + " memory so it is reviewed again";
 
   /** How many replacements a disputed claim is followed through to the value holding it now. */
   private static final int MAX_REPLACEMENTS = 10;
@@ -82,7 +85,10 @@ final class MemoryConflictDecision {
     return later;
   }
 
-  /** The reviewed memory replacing it is this decision retried, not a later value. */
+  /**
+   * The reviewed memory replacing it is this decision retried, not a later value. A chain still
+   * replaced after the last replacement followed is refused rather than read as ending there.
+   */
   private static Optional<ContextMemory> valueReplacing(
       ContextMemory disputed, UUID reviewedId, Function<UUID, Optional<ContextMemory>> stored) {
     Optional<ContextMemory> current = Optional.of(disputed);
@@ -92,6 +98,9 @@ final class MemoryConflictDecision {
         replacements++) {
       UUID successorId = current.get().getSupersededBy().getId();
       current = successorId.equals(reviewedId) ? Optional.empty() : stored.apply(successorId);
+    }
+    if (current.filter(MemoryConflictDecision::isReplaced).isPresent()) {
+      throw new PreconditionFailedException(REPLACED_TOO_OFTEN);
     }
     return current.filter(value -> value != disputed && isApproved(value));
   }

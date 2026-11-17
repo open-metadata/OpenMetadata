@@ -306,6 +306,45 @@ class MemoryConflictDecisionTest {
             .isEmpty());
   }
 
+  /**
+   * Ten replacements are followed to the value holding the claim. A chain still replaced after the
+   * tenth refuses the decision, so a cut walk never reads as no later value.
+   */
+  @Test
+  void aChainLongerThanTenReplacementsRefusesTheDecision() {
+    List<ContextMemory> followed = chainOf(10);
+    assertEquals(
+        Map.of(followed.getFirst().getId(), followed.getLast()),
+        MemoryConflictDecision.laterValues(
+            reviewed("reviewed", followed.getFirst()),
+            byId(followed.getFirst()),
+            stored(followed.toArray(ContextMemory[]::new))));
+
+    List<ContextMemory> cut = chainOf(11);
+    PreconditionFailedException refused =
+        assertThrows(
+            PreconditionFailedException.class,
+            () ->
+                MemoryConflictDecision.laterValues(
+                    reviewed("reviewed", cut.getFirst()),
+                    byId(cut.getFirst()),
+                    stored(cut.toArray(ContextMemory[]::new))));
+    assertEquals(MemoryConflictDecision.REPLACED_TOO_OFTEN, refused.getMessage());
+  }
+
+  /** An original replaced {@code replacements} times, through to the Approved value at the end. */
+  private static List<ContextMemory> chainOf(int replacements) {
+    List<ContextMemory> chain = new ArrayList<>();
+    ContextMemory next =
+        memory("value-" + replacements, ContextMemoryStatus.APPROVED, 100L + replacements);
+    chain.add(next);
+    for (int step = replacements - 1; step >= 0; step--) {
+      next = replacedBy(memory("value-" + step, null, 100L + step), next);
+      chain.addFirst(next);
+    }
+    return chain;
+  }
+
   /** A replacement since archived or deleted is followed to the value replacing it in turn. */
   @Test
   void aDeletedReplacementInTheChainIsFollowed() {
