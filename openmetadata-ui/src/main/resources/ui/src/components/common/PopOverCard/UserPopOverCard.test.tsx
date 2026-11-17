@@ -259,7 +259,11 @@ describe('UserPopOverCard Component', () => {
 
   it('should not fetch the user when a display name is passed', () => {
     render(
-      <UserPopOverCard showUserName displayName="Test User" userName="testUser" />
+      <UserPopOverCard
+        showUserName
+        displayName="Test User"
+        userName="testUser"
+      />
     );
 
     expect(mockUseUserProfile).toHaveBeenCalledWith(
