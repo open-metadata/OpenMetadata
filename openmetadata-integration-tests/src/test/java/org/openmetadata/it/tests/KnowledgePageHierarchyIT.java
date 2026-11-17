@@ -77,7 +77,7 @@ public class KnowledgePageHierarchyIT {
   @ValueSource(strings = {Entity.PAGE, "knowledge_page_search_index"})
   void testPageSearchMatchesQuestionAndPreservesLuceneSyntax(String index, TestNamespace ns)
       throws Exception {
-    String topic = ns.prefix("vacation");
+    String topic = ns.prefix("vacation_" + index);
     String question = "What are the " + topic + " options?";
     Page page =
         createPage(RestClient.admin(), buildCreateRequest(topic, null).withDisplayName(question));
