@@ -39,6 +39,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.governance.CreateWorkflowDefinition;
+import org.openmetadata.schema.api.governance.WorkflowConfiguration;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
@@ -171,10 +172,20 @@ public class AutoAssignIncidentIT {
     }
   }
 
+  private CreateWorkflowDefinition incidentWorkflowRequest(OpenMetadataClient client) {
+    var workflow = client.workflowDefinitions().getByName(WORKFLOW_NAME);
+    return new CreateWorkflowDefinition()
+        .withName(workflow.getName())
+        .withDisplayName(workflow.getDisplayName())
+        .withDescription(workflow.getDescription())
+        .withTrigger(workflow.getTrigger())
+        .withNodes(workflow.getNodes())
+        .withEdges(workflow.getEdges())
+        .withConfig(JsonUtils.convertValue(workflow.getConfig(), WorkflowConfiguration.class));
+  }
+
   private void setWorkflowAutoAssignOwners(OpenMetadataClient client, boolean enabled) {
-    CreateWorkflowDefinition request =
-        JsonUtils.convertValue(
-            client.workflowDefinitions().getByName(WORKFLOW_NAME), CreateWorkflowDefinition.class);
+    CreateWorkflowDefinition request = incidentWorkflowRequest(client);
     request.getConfig().setAutoAssignOwners(enabled);
     assertEquals(
         enabled, client.workflowDefinitions().upsert(request).getConfig().getAutoAssignOwners());
@@ -183,9 +194,7 @@ public class AutoAssignIncidentIT {
   @Test
   void workflowCreateAndUpdatePreserveOwnerAutoAssignment(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
-    CreateWorkflowDefinition request =
-        JsonUtils.convertValue(
-            client.workflowDefinitions().getByName(WORKFLOW_NAME), CreateWorkflowDefinition.class);
+    CreateWorkflowDefinition request = incidentWorkflowRequest(client);
     request.setName("ownerConfig" + ns.shortPrefix());
     request.getConfig().setAutoAssignOwners(false);
     var created = client.workflowDefinitions().create(request);
