@@ -53,15 +53,6 @@ class TestCaseSnapshotStoreTest {
 
   @Test
   void deploymentsWithoutCheckpointsLeaveCoverageUnknown() throws IOException {
-    final SearchClient client = mock(SearchClient.class);
-    when(client.rawSearchRequest(any(), any(), any()))
-        .thenReturn(new SearchClient.RawSearchResponse(404, "missing"));
-    final TestCaseSnapshotStore store = new TestCaseSnapshotStore(client, "");
-    assertEquals(Map.of(), store.loadCoverage(List.of(table()), 0, 1).counts());
-  }
-
-  @Test
-  void checkpointIndexNotCreatedYetLeavesCoverageUnknown() throws IOException {
     final TestCaseSnapshotStore store =
         new TestCaseSnapshotStore(checkpointLookup("index_not_found_exception"), "");
     assertEquals(Map.of(), store.loadCoverage(List.of(table()), 0, 1).counts());

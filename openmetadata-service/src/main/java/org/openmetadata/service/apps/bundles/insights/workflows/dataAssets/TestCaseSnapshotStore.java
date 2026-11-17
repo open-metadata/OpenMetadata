@@ -143,20 +143,15 @@ public final class TestCaseSnapshotStore {
         days.stream()
             .flatMap(day -> scopes.stream().map(scope -> checkpointId(day, scope)))
             .toList();
-    final SearchClient.RawSearchResponse response =
-        client.rawSearchRequest(
-            "POST", "/" + checkpoints + "/_mget", JsonUtils.pojoToJson(Map.of("ids", ids)));
+    final JsonNode body = request("POST", "/" + checkpoints + "/_mget", Map.of("ids", ids));
     final Set<String> complete = new HashSet<>();
-    if (response.statusCode() != 404) {
-      final JsonNode body = checked(response);
-      for (JsonNode document : body.path("docs")) {
-        if (document.has("error") && !isMissingIndex(document)) {
-          throw new IOException(
-              "Could not read test case snapshot checkpoint: " + document.get("error"));
-        }
-        if (document.path("found").asBoolean()) {
-          complete.add(document.path("_id").asText());
-        }
+    for (JsonNode document : body.path("docs")) {
+      if (document.has("error") && !isMissingIndex(document)) {
+        throw new IOException(
+            "Could not read test case snapshot checkpoint: " + document.get("error"));
+      }
+      if (document.path("found").asBoolean()) {
+        complete.add(document.path("_id").asText());
       }
     }
     return complete;
