@@ -33,7 +33,6 @@ import {
   TestConnectionStepResult,
 } from '../../../../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../../../../generated/entity/services/connections/testConnectionDefinition';
-import { useClipboard } from '../../../../hooks/useClipBoard';
 import { formatDuration } from '../../../../utils/date-time/DateTimeUtils';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import {
@@ -318,7 +317,6 @@ const TestConnectionModal = ({
     [testConnectionStepResult]
   );
 
-  const { onCopyToClipBoard } = useClipboard(rawLog);
   const rawLogLineCount = getRawLogLineCount(rawLog);
 
   const serviceLogo = useMemo(
@@ -509,7 +507,6 @@ const TestConnectionModal = ({
               t={t}
               onCancel={onCancel}
               onConfirm={onConfirm}
-              onCopyToClipBoard={() => onCopyToClipBoard()}
               onTestConnection={onTestConnection}
             />
           </div>
