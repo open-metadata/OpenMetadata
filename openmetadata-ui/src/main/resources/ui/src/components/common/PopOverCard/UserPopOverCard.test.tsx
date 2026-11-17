@@ -20,10 +20,17 @@ const mockStoreState: { userProfilePics: Record<string, User> } = {
   userProfilePics: {},
 };
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest
-    .fn()
-    .mockImplementation((selector) => selector(mockStoreState)),
+const mockUseUserProfile = jest.fn(
+  ({ name }: { name: string; permission: boolean }) => [
+    null,
+    false,
+    mockStoreState.userProfilePics[name],
+  ]
+);
+
+jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
+  useUserProfile: (args: { name: string; permission: boolean }) =>
+    mockUseUserProfile(args),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -64,6 +71,7 @@ jest.mock('./TeamPopoverTitle.component', () => ({
 describe('UserPopOverCard Component', () => {
   afterEach(() => {
     mockStoreState.userProfilePics = {};
+    mockUseUserProfile.mockClear();
   });
 
   it('should render with default props', () => {
@@ -197,5 +205,42 @@ describe('UserPopOverCard Component', () => {
 
     expect(screen.getByText('Custom Child')).toBeInTheDocument();
     expect(screen.queryByText('Test User')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to the stored name when displayName is empty', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Test User' } as User,
+    };
+
+    render(<UserPopOverCard showUserName displayName="" userName="testUser" />);
+
+    expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
+  });
+
+  it('should resolve the user even when no avatar is shown', () => {
+    mockStoreState.userProfilePics = {
+      testUser: { name: 'testUser', displayName: 'Test User' } as User,
+    };
+
+    render(
+      <UserPopOverCard
+        showUserName
+        showUserProfile={false}
+        userName="testUser"
+      />
+    );
+
+    expect(mockUseUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'testUser', permission: true })
+    );
+    expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
+  });
+
+  it('should not fetch the user when it only renders an avatar', () => {
+    render(<UserPopOverCard userName="testUser" />);
+
+    expect(mockUseUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ permission: false })
+    );
   });
 });

@@ -16,7 +16,7 @@ import classNames from 'classnames';
 import { FC, MouseEvent, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { OwnerType } from '../../../enums/user.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   getTeamAndUserDetailsPath,
@@ -29,6 +29,63 @@ import { PopoverTitle } from './PopoverTitle.component';
 import { TeamPopoverContent } from './TeamPopoverContent.component';
 import { TeamPopoverTitle } from './TeamPopoverTitle.component';
 import { UserPopOverCardProps } from './UserPopOverCard.interface';
+
+const getUserPopoverPath = (isTeam: boolean, userName: string) =>
+  getSettingsLink(
+    isTeam ? getTeamAndUserDetailsPath(userName) : getUserPath(userName)
+  );
+
+// Resolves the user even when no avatar is shown. It shares the avatar's cache, so a card that
+// also renders ProfilePicture makes no extra request. An empty displayName falls back too.
+const useUserLabel = ({
+  userName,
+  displayName,
+  isTeam,
+  enabled,
+}: {
+  userName: string;
+  displayName?: ReactNode;
+  isTeam: boolean;
+  enabled: boolean;
+}) => {
+  const [, , storedUser] = useUserProfile({
+    permission: enabled && !isTeam,
+    name: userName,
+    isTeam,
+  });
+
+  if (displayName) {
+    return displayName;
+  }
+
+  return isTeam ? userName : getEntityName(storedUser) || userName;
+};
+
+const UserPopoverBody: FC<{
+  profilePicture: JSX.Element;
+  type: OwnerType;
+  userName: string;
+  onTitleClick?: () => void;
+}> = ({ profilePicture, type, userName, onTitleClick }) => (
+  <div className="tw:flex tw:flex-col tw:gap-3" data-testid="user-popover-card">
+    {type === OwnerType.TEAM ? (
+      <>
+        <TeamPopoverTitle profilePicture={profilePicture} teamName={userName} />
+        <TeamPopoverContent teamName={userName} />
+      </>
+    ) : (
+      <>
+        <PopoverTitle
+          profilePicture={profilePicture}
+          type={type}
+          userName={userName}
+          onTitleClick={onTitleClick}
+        />
+        <PopoverContent type={type} userName={userName} />
+      </>
+    )}
+  </div>
+);
 
 const UserPopOverCard: FC<UserPopOverCardProps> = ({
   userName,
@@ -43,12 +100,12 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   onTitleClick,
 }) => {
   const isTeam = type === OwnerType.TEAM;
-  const storedName = useApplicationStore((state) =>
-    isTeam
-      ? userName
-      : getEntityName(state.userProfilePics[userName]) || userName
-  );
-  const userLabel = displayName ?? storedName;
+  const userLabel = useUserLabel({
+    userName,
+    displayName,
+    isTeam,
+    enabled: showUserName && !children,
+  });
   const handleTitleClick = (event: MouseEvent) => {
     if (onTitleClick) {
       event.preventDefault();
@@ -67,28 +124,12 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   return (
     <HoverCard
       content={
-        <div
-          className="tw:flex tw:flex-col tw:gap-3"
-          data-testid="user-popover-card">
-          {isTeam ? (
-            <TeamPopoverTitle
-              profilePicture={profilePicture}
-              teamName={userName}
-            />
-          ) : (
-            <PopoverTitle
-              profilePicture={profilePicture}
-              type={type}
-              userName={userName}
-              onTitleClick={onTitleClick}
-            />
-          )}
-          {isTeam ? (
-            <TeamPopoverContent teamName={userName} />
-          ) : (
-            <PopoverContent type={type} userName={userName} />
-          )}
-        </div>
+        <UserPopoverBody
+          profilePicture={profilePicture}
+          type={type}
+          userName={userName}
+          onTitleClick={onTitleClick}
+        />
       }>
       {(children as ReactNode) ?? (
         <Link
@@ -100,12 +141,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
             className
           )}
           data-testid={userName}
-          to={
-            to ??
-            (type === OwnerType.TEAM
-              ? getSettingsLink(getTeamAndUserDetailsPath(userName))
-              : getSettingsLink(getUserPath(userName)))
-          }
+          to={to ?? getUserPopoverPath(isTeam, userName)}
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
           {showUserName ? <span className="truncate">{userLabel}</span> : null}

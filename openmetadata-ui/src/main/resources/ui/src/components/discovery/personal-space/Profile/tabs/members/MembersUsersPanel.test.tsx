@@ -53,16 +53,21 @@ jest.mock('../../../../../../rest/miscAPI', () => ({
   deleteEntity: (...args: unknown[]) => mockDeleteEntity(...args),
 }));
 
-jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: (selector?: (state: unknown) => unknown) => {
-    const state = {
-      currentUser: { id: 'me', name: 'admin' },
-      userProfilePics: { user1: { name: 'user1', displayName: 'User One' } },
-    };
+jest.mock('../../../../../../hooks/useApplicationStore', () => {
+  const state = {
+    currentUser: { id: 'me', name: 'admin' },
+    userProfilePics: { user1: { name: 'user1', displayName: 'User One' } },
+    updateUserProfilePics: jest.fn(),
+  };
 
-    return selector ? selector(state) : state;
-  },
-}));
+  return {
+    useApplicationStore: Object.assign(
+      (selector?: (s: unknown) => unknown) =>
+        selector ? selector(state) : state,
+      { getState: () => state }
+    ),
+  };
+});
 
 jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),

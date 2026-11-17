@@ -109,10 +109,9 @@ const ActorInfo = ({
         <UserPopOverCard
           showUserName
           className="text-grey-900 actor-username"
-          displayName={changedBy}
           profileWidth={16}
           showUserProfile={false}
-          userName={changedBy || '-'}
+          userName={changedBy}
         />
       </span>
     </span>

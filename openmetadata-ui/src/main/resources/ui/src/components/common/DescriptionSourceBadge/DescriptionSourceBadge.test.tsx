@@ -45,8 +45,8 @@ jest.mock('../../../assets/svg/ic-check-circle.svg', () => ({
 
 jest.mock('../PopOverCard/UserPopOverCard', () => ({
   __esModule: true,
-  default: ({ displayName }: { displayName: string }) => (
-    <span data-testid="user-popover">{displayName}</span>
+  default: ({ userName }: { userName: string }) => (
+    <span data-testid="user-popover">{userName}</span>
   ),
 }));
 
