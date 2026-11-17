@@ -195,6 +195,10 @@ class OperationMetricsState(metaclass=Singleton):
             _create_category_dict
         )
         self._lock = threading.Lock()
+        # Bumped under `_lock` on every metrics reset. Queued items carry the generation they were
+        # recorded in, and one from an earlier generation is dropped instead of leaking into the
+        # new run (ADR:2026-11-16-operation-metrics-record-and-merge-under-one-lock)
+        self._generation = 0
 
         # Async processing queue and worker
         self._async_queue: Queue = Queue()
@@ -228,8 +232,7 @@ class OperationMetricsState(metaclass=Singleton):
             try:
                 if item is None:  # Shutdown signal
                     break
-                category, operation, duration_ms, entity_type = item
-                self._record_sync(category, operation, duration_ms, entity_type)
+                self._record_sync(*item)
             except Exception:
                 # Don't let worker crash on errors
                 pass
@@ -259,11 +262,11 @@ class OperationMetricsState(metaclass=Singleton):
         """
         # Reset metrics when starting a new run
         if self._run_id != run_id:
-            # Discard the old run's pending items, and let the worker finish the one it
-            # holds so it is not recorded after the reset, into the new run
+            # Discard the old run's pending items. One the worker already holds is dropped
+            # when it is recorded, because the generation has moved on.
             self._clear_async_queue()
-            self._wait_for_worker()
             with self._lock:
+                self._generation += 1
                 self._global_metrics = _create_category_dict()
                 self._thread_metrics = defaultdict(_create_category_dict)
         with self._lock:
@@ -283,8 +286,7 @@ class OperationMetricsState(metaclass=Singleton):
                 return
             try:
                 if record and item is not None:
-                    category, operation, duration_ms, entity_type = item
-                    self._record_sync(category, operation, duration_ms, entity_type)
+                    self._record_sync(*item)
             finally:
                 self._async_queue.task_done()
 
@@ -315,7 +317,7 @@ class OperationMetricsState(metaclass=Singleton):
             entity_type: Optional entity type (Table, Dashboard, etc.)
         """
         if self._async_enabled and self._worker_is_alive():
-            self._async_queue.put((category, operation, duration_ms, entity_type))
+            self._async_queue.put((category, operation, duration_ms, entity_type, self._generation))
         else:
             self._record_sync(category, operation, duration_ms, entity_type)
 
@@ -325,17 +327,21 @@ class OperationMetricsState(metaclass=Singleton):
         operation: str,
         duration_ms: float,
         entity_type: str | None = None,
+        generation: int | None = None,
     ) -> None:
         """
         Record an operation metric synchronously (used by worker thread).
 
         Updates running statistics in O(1) time and space. Holds the lock so a
-        merge cannot take this thread's metrics away while they are written.
+        merge cannot take this thread's metrics away while they are written, and
+        drops an item queued before the last reset (`generation` is stale).
         """
         thread_id = threading.get_ident()
         entity_key = entity_type or "_default"
 
         with self._lock:
+            if generation is not None and generation != self._generation:
+                return
             self._thread_metrics[thread_id][category][operation][entity_key].add(duration_ms)
 
     def merge_thread_metrics(self, thread_id: int | None = None) -> None:
@@ -490,10 +496,6 @@ class OperationMetricsState(metaclass=Singleton):
         summary read before it lands would miss that operation.
         """
         self._drain_async_queue(record=True)
-        self._wait_for_worker()
-
-    def _wait_for_worker(self) -> None:
-        """Wait, at most FLUSH_TIMEOUT_SECONDS, for the worker to finish the items it has taken."""
         if not self._worker_is_alive():
             return
         # Bounded, unlike `Queue.join`: a status read must never stall ingestion while
@@ -506,6 +508,7 @@ class OperationMetricsState(metaclass=Singleton):
         """Reset all metrics and run context"""
         self._flush_async_queue()
         with self._lock:
+            self._generation += 1
             self._global_metrics = _create_category_dict()
             self._thread_metrics = defaultdict(_create_category_dict)
             self._run_id = None

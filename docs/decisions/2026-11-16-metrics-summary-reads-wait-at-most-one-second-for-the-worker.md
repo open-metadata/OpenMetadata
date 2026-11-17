@@ -1,7 +1,7 @@
 # A metrics summary read waits at most one second for the worker's in-flight items
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-17 (the one-second bound covers only the wait) · v3 2026-11-17 (a new run waits too)
+- **Revisions:** v1 2026-11-16 (initial) · v2 2026-11-17 (the one-second bound covers only the wait)
 - **Deciders:** Ingestion team
 - **Guard:** `test_operation_metrics.py` (`test_summary_waits_for_the_item_the_worker_is_recording`)
 - **Related:** open-metadata/OpenMetadata#37889, open-metadata/OpenMetadata#37890
@@ -33,8 +33,3 @@ taken before the read started.
 v2 2026-11-17: v1 said a read never blocks longer than one second. Only the wait for unfinished
 items is bounded; the drain of a large backlog before it and the merge after it are not, so a whole
 read can take longer than that.
-
-v3 2026-11-17: `set_run_context` also waits, under the same bound, when the run id changes. It
-discards the old run's queued items, then waits for the item the worker holds before resetting the
-metrics, so that item is not recorded into the new run. Guard:
-`test_new_run_drops_the_item_the_worker_is_recording`.
