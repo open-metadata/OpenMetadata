@@ -10,38 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Tooltip } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
 import { NodeViewContent, NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { FC, useCallback, useState } from 'react';
+import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClipboard } from '../../../../hooks/useClipBoard';
+import CopyButton from '../../../common/CopyButton/CopyButton';
 
 const CodeBlockComponent: FC<NodeViewProps> = ({ node }) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-  const [isTooltipOpen, setIsTooltipOpen] = useState(false);
-
-  const handleCopy = useCallback(async () => {
-    await onCopyToClipBoard(node.textContent);
-  }, [node, onCopyToClipBoard]);
 
   return (
     <NodeViewWrapper as="pre" className="relative code-block">
       <NodeViewContent<'code'> as="code" />
-      <span className="code-copy-button" data-copied={hasCopied}>
-        <Tooltip
-          isOpen={hasCopied || isTooltipOpen}
-          title={hasCopied ? t('label.copied') : t('label.copy')}
-          onOpenChange={setIsTooltipOpen}>
-          <ButtonUtility
-            aria-label={t('label.copy')}
-            data-testid="code-block-copy-icon"
-            icon={Copy01}
-            size="lg"
-            onClick={handleCopy}
-          />
-        </Tooltip>
+      <span className="code-copy-button">
+        <CopyButton
+          testId="code-block-copy-icon"
+          tooltip={t('label.copy')}
+          value={node.textContent}
+        />
       </span>
     </NodeViewWrapper>
   );
