@@ -703,6 +703,8 @@ public final class SearchUtils {
           Entity.FILE,
           "context_file_search_index",
           Entity.CONTEXT_FILE,
+          "knowledge_page_search_index",
+          Entity.PAGE,
           "metric_search_index",
           Entity.METRIC -> true;
       default -> false;
@@ -806,6 +808,7 @@ public final class SearchUtils {
       case "worksheet_search_index", Entity.WORKSHEET -> Entity.WORKSHEET;
       case "spreadsheet_search_index", Entity.SPREADSHEET -> Entity.SPREADSHEET;
       case "context_file_search_index", Entity.CONTEXT_FILE -> Entity.CONTEXT_FILE;
+      case "knowledge_page_search_index", Entity.PAGE -> Entity.PAGE;
       case "column_search_index", Entity.TABLE_COLUMN -> Entity.TABLE_COLUMN;
       case "dataAsset" -> "dataAsset";
       default -> "dataAsset";
