@@ -479,6 +479,10 @@ df.write.format("snowflake").option("dbtable", f"CONTRACT_{{table}}").save()
             pytest.param('opts = ["KNOWN"]; opts.extend(["MARKET"])', [], id="extend"),
             pytest.param('opts = ["KNOWN"]; opts.insert(1, "MARKET")', [], id="insert"),
             pytest.param('opts = ["KNOWN"]; alias = opts; alias.append("MARKET")', [], id="alias_append"),
+            pytest.param('opts = ["KNOWN"]; alias = opts; alias += ["MARKET"]', [], id="alias_iadd"),
+            pytest.param('original = ["KNOWN"]; opts = original; original += ["MARKET"]', [], id="source_iadd"),
+            pytest.param('opts = ["KNOWN", "MARKET"]; alias = opts; alias *= 0', [], id="alias_imul"),
+            pytest.param('original = ["KNOWN", "MARKET"]; opts = original; original *= 0', [], id="source_imul"),
             pytest.param(
                 'opts = ["KNOWN"]; alias = opts; nested = alias; nested.extend(["MARKET"])',
                 [],
@@ -510,6 +514,16 @@ df.write.format("snowflake").option("dbtable", f"CONTRACT_{{market}}").save()
 
         assert targets == expected_targets
         assert parse_glue_script(script, context=ctx).snowflake_targets == expected_targets
+
+    def test_augmented_assignment_to_options_dict_does_not_crash(self):
+        script = """
+options = {"dbtable": "ORDERS"}
+alias = options
+alias += {}
+df.write.format("snowflake").options(**options).save()
+"""
+
+        assert parse_snowflake_refs(script) == ([], [])
 
     @pytest.mark.parametrize(
         ("argv_statement", "expected_targets"),

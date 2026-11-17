@@ -99,6 +99,7 @@ UNKNOWN = _Unknown()
 ABSENT = object()
 # an expansion whose keys cannot be listed (**get_options()): it may set any key
 OPAQUE = object()
+SEQUENCE_MUTATION = object()
 
 
 @dataclass(frozen=True)
@@ -337,10 +338,14 @@ class _Bindings:
 
     def _index_change(self, node: ast.AST) -> None:
         """d["k"] = v, del d["k"], d |= {...}, d.update(...), d.pop("k")..."""
+        unknown_key = OPAQUE
         if isinstance(node, ast.Subscript) and not isinstance(node.ctx, ast.Load):
             target, keys = node.value, [node.slice]
         elif isinstance(node, ast.AugAssign) and isinstance(node.op, ast.BitOr):
             target, keys = node.target, _changed_keys(node.value)
+        elif isinstance(node, ast.AugAssign) and isinstance(node.op, (ast.Add, ast.Mult)):
+            target, keys = node.target, [None]
+            unknown_key = SEQUENCE_MUTATION
         elif (
             isinstance(node, ast.Call)
             and isinstance(node.func, ast.Attribute)
@@ -352,7 +357,7 @@ class _Bindings:
         if isinstance(target, ast.Name) and not self._is_shadowed(target):
             owner = self._owner(self._scope_of(target), target.id)
             self._changes.setdefault((owner, target.id), []).extend(
-                (text, UNKNOWN) if (text := _literal_str(key)) else (OPAQUE, None) for key in keys
+                (text, UNKNOWN) if (text := _literal_str(key)) else (unknown_key, None) for key in keys
             )
 
     # --- scopes
@@ -781,7 +786,10 @@ class _ScriptReader:
                 resolved: list[tuple] = [(OPAQUE, None)]
             else:
                 merged = _merge_settings([self.settings(value) for value in resolution.values])
-                changes = [(OPAQUE, None) if k is OPAQUE else (k.lower(), v) for k, v in resolution.changes]
+                changes = [
+                    (OPAQUE, None) if k is OPAQUE or k is SEQUENCE_MUTATION else (k.lower(), v)
+                    for k, v in resolution.changes
+                ]
                 resolved = merged + changes
         finally:
             self._resolving.discard(node)
@@ -874,13 +882,20 @@ class _ScriptReader:
                 val = UNKNOWN
             else:
                 candidates = [self._eval(expr) for expr in resolution.values]
+                # Lists and tuples share a static representation; scalar augmented assignments only rebind names.
+                sequence_candidate = any(isinstance(candidate, tuple) for candidate in candidates)
+                changes = [
+                    (OPAQUE, value) if key is SEQUENCE_MUTATION else (key, value)
+                    for key, value in resolution.changes
+                    if key is not SEQUENCE_MUTATION or sequence_candidate
+                ]
                 if any(isinstance(c, _DictValue) for c in candidates):
                     dict_cands = [
                         c if isinstance(c, _DictValue) else _DictValue(entries={}, opaque=True) for c in candidates
                     ]
                     merged = _merge_dict_values(dict_cands)
-                    val = _apply_dict_changes(merged, resolution.changes) if resolution.changes else merged
-                elif resolution.changes:
+                    val = _apply_dict_changes(merged, changes) if changes else merged
+                elif changes:
                     val = UNKNOWN
                 else:
                     first = candidates[0]
