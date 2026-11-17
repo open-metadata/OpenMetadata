@@ -328,6 +328,10 @@ describe('MembersUsersPanel', () => {
 
     expect(screen.getByText('page-three-user')).toBeInTheDocument();
     expect(screen.queryByText('page-two-user')).not.toBeInTheDocument();
+    // The walk to page 3 asks only for cursors, not the row fields.
+    expect(mockGetUsers).toHaveBeenCalledWith(
+      expect.objectContaining({ after: 'cursor-2', fields: undefined })
+    );
   });
 
   it('renders the users list container', async () => {

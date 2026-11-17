@@ -22,6 +22,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Category, Type } from '../../../../../../generated/entity/type';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import {
   addPropertyToEntity,
   getTypeListByCategory,
@@ -30,7 +31,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import {
   AddCustomPropertyFormValues,
   CustomPropertiesAddPageProps,
@@ -64,7 +65,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
       multiSelect: false,
     },
   });
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     form.formState.isDirty
   );
 
@@ -154,7 +155,7 @@ const CustomPropertiesAddPage: React.FC<CustomPropertiesAddPageProps> = ({
           onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="custom-property-save"

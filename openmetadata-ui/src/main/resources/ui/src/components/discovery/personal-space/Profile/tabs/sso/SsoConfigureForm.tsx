@@ -32,6 +32,7 @@ import { useTranslation } from 'react-i18next';
 import { DEPRECATED_SSO_PROPERTIES } from '../../../../../../constants/Services.constant';
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import { useSsoFormDirty } from '../../../../../../hooks/discovery/personal-space/useSsoFormDirty';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import type { SecurityConfiguration } from '../../../../../../rest/securityConfigAPI';
 import { FormHintDoc } from '../../../../../common/atoms/drawer/formHint/FormHintDoc';
@@ -43,7 +44,7 @@ import SsoRolesSelectField from '../../../../../SettingsSso/SSOConfigurationForm
 import { PROVIDER_FILE_MAP } from '../../../../../SettingsSso/SSODocPanel/SSODocPanel.constants';
 import { SsoTestLoginContent } from '../../../../../SettingsSso/SsoTestLogin/SsoTestLoginModal';
 import { useSsoConfiguration } from '../../../../../SettingsSso/useSsoConfiguration';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
 import { getFieldDocsByName, toCoreUiSchema } from './SsoConfigureForm.utils';
 
@@ -283,7 +284,7 @@ const SsoConfigureForm = ({
     errorSelector: `[data-testid="${FORM_BODY_TEST_ID}"] [aria-invalid="true"]`,
   });
 
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     useSsoFormDirty({
       hasExistingConfig,
       internalData,
@@ -475,7 +476,7 @@ const SsoConfigureForm = ({
         onTestLogin={handleTestLogin}
       />
 
-      {prompt}
+      <UnsavedChangesPrompt {...promptProps} />
     </Box>
   );
 };

@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { pushesSettingsView } from './SettingsHistory.utils';
+import {
+  pushesSettingsView,
+  settingsHashOptions,
+} from './SettingsHistory.utils';
 
 describe('pushesSettingsView', () => {
   it('pushes a view the user opens from a list or detail', () => {
@@ -44,5 +47,26 @@ describe('pushesSettingsView', () => {
     expect(pushesSettingsView({ type: 'address-book' }, { type: 'list' })).toBe(
       true
     );
+  });
+});
+
+describe('settingsHashOptions', () => {
+  it('follows the push rule by default', () => {
+    expect(settingsHashOptions({ type: 'list' }, { type: 'detail' })).toEqual({
+      push: true,
+    });
+    expect(settingsHashOptions({ type: 'edit' }, { type: 'detail' })).toEqual({
+      push: false,
+    });
+  });
+
+  it('replaces when asked, e.g. returning to the list after a delete', () => {
+    expect(
+      settingsHashOptions(
+        { type: 'detail' },
+        { type: 'list' },
+        { replace: true }
+      )
+    ).toEqual({ push: false });
   });
 });

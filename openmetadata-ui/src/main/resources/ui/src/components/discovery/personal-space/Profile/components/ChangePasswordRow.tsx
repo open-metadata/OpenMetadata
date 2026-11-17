@@ -17,6 +17,7 @@ import { isEqual, omit } from 'lodash';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RequestType } from '../../../../../generated/auth/changePasswordRequest';
+import { useUnsavedChangesPrompt } from '../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { changePassword } from '../../../../../rest/auth-API';
 import {
   showErrorToast,
@@ -27,7 +28,7 @@ import { isPasswordValid } from './PasswordStrength.utils';
 import PasswordStrengthMeter, {
   PASSWORD_FIELD_WIDTH_CLASS,
 } from './PasswordStrengthMeter';
-import { useUnsavedChangesPrompt } from './useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from './UnsavedChangesPrompt';
 
 interface ChangePasswordRowProps {
   /** `User.name` of the user whose password is being changed. */
@@ -65,7 +66,7 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
     () => isEditing && !isEqual(form, EMPTY_FORM),
     [isEditing, form]
   );
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isDirty);
 
   const isMismatch = useMemo(
     () =>
@@ -202,7 +203,7 @@ const ChangePasswordRow: React.FC<ChangePasswordRowProps> = ({
                 onClick={() => runGuarded(closeForm)}>
                 {t('label.cancel')}
               </Button>
-              {prompt}
+              <UnsavedChangesPrompt {...promptProps} />
             </Box>
           </Box>
         </form>

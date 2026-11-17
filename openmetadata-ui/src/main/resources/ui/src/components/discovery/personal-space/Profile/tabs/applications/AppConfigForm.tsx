@@ -37,13 +37,14 @@ import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { formatFormDataForSubmit } from '../../../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {
@@ -197,7 +198,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
       currentFormData !== undefined && !isEqual(currentFormData, savedFormData),
     [currentFormData, savedFormData]
   );
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     !isReadOnly && isDirty
   );
 
@@ -230,7 +231,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
               {cancelLabel ?? t('label.cancel')}
             </Button>
           )}
-          {prompt}
+          <UnsavedChangesPrompt {...promptProps} />
           <Button
             color="primary"
             data-testid="save-button"

@@ -27,7 +27,10 @@ import type {
   TabContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
-import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { useApplicationsProvider } from '../../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -92,10 +95,13 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: MembersView) => {
-      setHash('members', viewToSubPath(nextView), undefined, {
-        push: pushesSettingsView(view, nextView),
-      });
+    (nextView: MembersView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'members',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
     [setHash, view]
   );

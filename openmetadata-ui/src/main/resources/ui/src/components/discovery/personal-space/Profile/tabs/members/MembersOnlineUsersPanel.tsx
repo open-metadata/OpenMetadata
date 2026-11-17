@@ -103,8 +103,10 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [timeWindow, pageSize]
   );
   const fetchPaging = useCallback(
+    // A walk keeps only the cursors, so it skips the row fields.
     async (after: string) =>
-      (await getOnlineUsers({ ...listParams, after })).paging,
+      (await getOnlineUsers({ ...listParams, fields: undefined, after }))
+        .paging,
     [listParams]
   );
   const {

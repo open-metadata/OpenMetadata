@@ -64,10 +64,19 @@ export const useUnsavedExitGuard = (isDirty: boolean) => {
     [guardExit]
   );
 
+  // The store has one guard slot: clear it only while it still holds this
+  // editor's guard, so one editor unmounting never drops another's.
   useEffect(() => {
-    setExitGuard(isDirty ? guardExit : null);
+    if (!isDirty) {
+      return;
+    }
+    setExitGuard(guardExit);
 
-    return () => setExitGuard(null);
+    return () => {
+      if (usePersonalSpaceStore.getState().exitGuard === guardExit) {
+        setExitGuard(null);
+      }
+    };
   }, [isDirty, guardExit, setExitGuard]);
 
   const confirmExit = useCallback(() => {
@@ -88,14 +97,18 @@ export const useUnsavedExitGuard = (isDirty: boolean) => {
 };
 
 /**
+ * Runs `go` unless a dirty editor holds it behind the unsaved-changes prompt,
+ * for exits the modal shell does not own (header tabs and actions).
+ */
+export const runUnderExitGuard = (go: () => void) => {
+  if (!usePersonalSpaceStore.getState().exitGuard?.(go)) {
+    go();
+  }
+};
+
+/**
  * A breadcrumb action that asks first when an editor has unsaved changes, as
  * the sidebar does. Undefined when the panel has no breadcrumb action.
  */
 export const guardBreadcrumbAction = <K>(action?: (id: K) => void) =>
-  action &&
-  ((id: K) => {
-    const go = () => action(id);
-    if (!usePersonalSpaceStore.getState().exitGuard?.(go)) {
-      go();
-    }
-  });
+  action && ((id: K) => runUnderExitGuard(() => action(id)));

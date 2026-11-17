@@ -20,7 +20,10 @@ import { useTranslation } from 'react-i18next';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
-import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import BotAddForm from './BotAddForm';
 import BotDetailPanel from './BotDetailPanel';
@@ -72,9 +75,9 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
   }, [hashState.tab, hashState.subPath]);
 
   const onNavigate = useCallback(
-    (nextView: BotsView) => {
+    (nextView: BotsView, navOptions?: SettingsNavigateOptions) => {
       setView(nextView);
-      const options = { push: pushesSettingsView(view, nextView) };
+      const options = settingsHashOptions(view, nextView, navOptions);
 
       if (nextView.type === 'detail') {
         setHash('bots', encodeURIComponent(nextView.fqn), undefined, options);

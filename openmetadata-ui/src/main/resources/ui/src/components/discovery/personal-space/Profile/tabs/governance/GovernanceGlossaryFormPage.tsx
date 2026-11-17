@@ -18,6 +18,7 @@ import { isEqual } from 'lodash';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import RelationshipTypeForm from '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeForm';
 import {
   DEFAULT_RELATIONSHIP_TYPE_FORM,
@@ -35,7 +36,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { GovernanceView } from './Governance.types';
 
 interface GovernanceGlossaryFormPageProps {
@@ -61,7 +62,7 @@ const GovernanceGlossaryFormPage: FC<GovernanceGlossaryFormPageProps> = ({
   );
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   // Compared with what the form opened with: the saved type, or the defaults.
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     !isEqual(
       formValues,
       existing
@@ -168,7 +169,7 @@ const GovernanceGlossaryFormPage: FC<GovernanceGlossaryFormPageProps> = ({
           }>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="glossary-form-save"

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import type { TFunction } from 'i18next';
 import type { ComponentType, FC } from 'react';
@@ -83,7 +84,7 @@ export type PlatformSettingsPageContribution = Pick<
  */
 export type PlatformSettingsNavigate = (
   view: PlatformSettingsView,
-  options?: { replace?: boolean }
+  options?: SettingsNavigateOptions
 ) => void;
 
 /** Shared by every platform-settings page: report back to the panel. */

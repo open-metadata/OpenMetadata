@@ -21,6 +21,7 @@ import {
   IntakeForm,
   TargetEntityType,
 } from '../../../../../../generated/governance/intakeForm';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import IntakeFormDesignerBody, {
   IntakeFormDesignerBodyHandle,
 } from '../../../../../../pages/IntakeForms/IntakeFormDesignerBody';
@@ -34,7 +35,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { GovernanceView } from './Governance.types';
 
 const INTAKE_FORM_ENTITY = 'label.intake-form';
@@ -57,7 +58,7 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
   const bodyRef = useRef<IntakeFormDesignerBodyHandle>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isDirty);
   const [isLoadingExisting, setIsLoadingExisting] = useState(false);
   const [existing, setExisting] = useState<IntakeForm | null>(null);
   const [resolvedEntityType, setResolvedEntityType] = useState<
@@ -154,7 +155,7 @@ const GovernanceIntakeFormPage: FC<GovernanceIntakeFormPageProps> = ({
           }>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="intake-form-submit"

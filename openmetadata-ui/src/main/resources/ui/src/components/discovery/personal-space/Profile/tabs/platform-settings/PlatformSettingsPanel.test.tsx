@@ -433,13 +433,14 @@ describe('PlatformSettingsPanel', () => {
       { push: false }
     );
 
+    // The mocked hash still holds the editor, so the root crumb leaves it too.
     lastHeader().onBreadcrumbAction('platform-settings');
 
     expect(mockSetHash).toHaveBeenLastCalledWith(
       'platform-settings',
       undefined,
       undefined,
-      { push: true }
+      { push: false }
     );
   });
 

@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
+import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import {
   getSecurityConfiguration,
   patchSecurityConfiguration,
@@ -244,6 +245,28 @@ describe('SsoPanel', () => {
     expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers', undefined, {
       push: false,
     });
+  });
+
+  it('asks before Change provider drops edits on the Configure tab', async () => {
+    mockSubPath = 'configure';
+    await renderPanel(OKTA_CONFIG);
+    await screen.findByTestId('sso-configure-form');
+    // A dirty form registers the modal exit guard, which holds the exit.
+    const guard = jest.fn().mockReturnValue(true);
+    usePersonalSpaceStore.getState().setExitGuard(guard);
+
+    renderHeaderActions();
+    fireEvent.click(screen.getByTestId('change-provider-button'));
+
+    expect(guard).toHaveBeenCalledTimes(1);
+    expect(mockSetHash).not.toHaveBeenCalledWith(
+      'sso',
+      'providers',
+      undefined,
+      expect.anything()
+    );
+
+    usePersonalSpaceStore.getState().setExitGuard(null);
   });
 
   it('shows the Overview / Configure tabs in the header and switches them through the hash', async () => {

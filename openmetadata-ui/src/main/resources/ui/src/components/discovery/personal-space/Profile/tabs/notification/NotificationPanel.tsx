@@ -37,7 +37,10 @@ import {
   NotificationSectionContribution,
 } from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
-import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -101,10 +104,13 @@ const NotificationPanel: FC<NotificationPanelProps> = ({ onHeaderChange }) => {
   );
 
   const onNavigate = useCallback(
-    (nextView: NotificationView) => {
-      setHash('notification', viewToSubPath(nextView), undefined, {
-        push: pushesSettingsView(view, nextView),
-      });
+    (nextView: NotificationView, options?: SettingsNavigateOptions) => {
+      setHash(
+        'notification',
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
     [setHash, view]
   );

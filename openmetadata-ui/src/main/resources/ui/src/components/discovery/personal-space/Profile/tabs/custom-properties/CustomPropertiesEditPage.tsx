@@ -15,6 +15,7 @@ import { Box, Button } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import {
   CustomPropertyChanges,
   updateCustomPropertyByName,
@@ -24,7 +25,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import CustomPropertyEditForm from '../../../../../Settings/CustomProperty/CustomPropertyEditForm/CustomPropertyEditForm';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { CustomPropertiesEditPageProps } from './CustomPropertiesPanel.types';
 
 const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
@@ -37,7 +38,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
   const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(isDirty);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isDirty);
 
   const handleSubmit = useCallback(
     async (changes: CustomPropertyChanges) => {
@@ -109,7 +110,7 @@ const CustomPropertiesEditPage: React.FC<CustomPropertiesEditPageProps> = ({
           onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="edit-custom-property-save"

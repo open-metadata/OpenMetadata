@@ -22,12 +22,13 @@ import classNames from 'classnames';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../../../generated/entity/feed/announcement';
+import { useUnsavedChangesPrompt } from '../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useSaveSystemAnnouncement } from '../../../../../hooks/platform/useSystemAnnouncements';
 import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { CUSTOM_TYPE_NAME_MAX_LENGTH } from '../../../../../utils/AnnouncementsUtils';
 import { isDescriptionContentEmpty } from '../../../../../utils/BlockEditorPureUtils';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
-import { useUnsavedChangesPrompt } from '../../../../discovery/personal-space/Profile/components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../../../discovery/personal-space/Profile/components/UnsavedChangesPrompt';
 import {
   AnnouncementDateField,
   AnnouncementFieldError,
@@ -79,7 +80,7 @@ const SystemAnnouncementForm = ({
   const values = useWatch({ control: form.control }) as AnnouncementFormValues;
   const isCustom = values.type === AnnouncementType.Custom;
   const saveMutation = useSaveSystemAnnouncement(onSaved);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     form.formState.isDirty
   );
 
@@ -336,7 +337,7 @@ const SystemAnnouncementForm = ({
           onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="announcement-submit"

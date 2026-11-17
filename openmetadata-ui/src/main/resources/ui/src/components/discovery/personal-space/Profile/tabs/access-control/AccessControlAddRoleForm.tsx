@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { ERROR_MESSAGE } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -43,7 +44,7 @@ import {
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { AccessControlView } from './AccessControl.types';
 
 interface FormValues {
@@ -86,7 +87,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
   // The description editor holds its value outside the form, so it counts
   // as an edit too.
   const [hasDescription, setHasDescription] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     form.formState.isDirty || hasDescription
   );
   const [isLoadingPolicies, setIsLoadingPolicies] = useState(false);
@@ -262,7 +263,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
           onPress={() => runGuarded(() => onNavigate({ type: 'roles' }))}>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"

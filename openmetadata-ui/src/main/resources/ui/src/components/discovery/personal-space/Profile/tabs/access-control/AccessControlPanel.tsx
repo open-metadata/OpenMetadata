@@ -30,7 +30,10 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
-import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
+import {
+  settingsHashOptions,
+  SettingsNavigateOptions,
+} from '../../../../../../utils/SettingsHistory.utils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { AccessControlView } from './AccessControl.types';
@@ -92,10 +95,13 @@ const AccessControlPanel: FC<AccessControlPanelProps> = ({
   );
 
   const onNavigate = useCallback(
-    (nextView: AccessControlView) => {
-      setHash(HASH_TAB, viewToSubPath(nextView), undefined, {
-        push: pushesSettingsView(view, nextView),
-      });
+    (nextView: AccessControlView, options?: SettingsNavigateOptions) => {
+      setHash(
+        HASH_TAB,
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView, options)
+      );
     },
     [setHash, view]
   );

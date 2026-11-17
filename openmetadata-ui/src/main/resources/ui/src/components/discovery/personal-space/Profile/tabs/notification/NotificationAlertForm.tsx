@@ -33,6 +33,7 @@ import {
   EventSubscription,
   ProviderType,
 } from '../../../../../../generated/events/eventSubscription';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useAlertSelection } from '../../../../../../hooks/useAlertSelection';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import {
@@ -56,7 +57,7 @@ import {
   ALERT_AI_DEFAULT_CONNECTION_TIMEOUT,
   ALERT_AI_FORM_MODAL_ID,
 } from '../../../../../observability/Alerts/AlertAiFormFields.constants';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type {
   ModifiedCreateEventSubscription,
   ModifiedEventSubscription,
@@ -130,7 +131,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
   );
 
   const isEditMode = Boolean(fqn);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     !isEqual(formData, loadedFormData)
   );
 
@@ -308,7 +309,7 @@ const NotificationAlertForm: React.FC<NotificationAlertFormProps> = ({
           }>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="save-btn"

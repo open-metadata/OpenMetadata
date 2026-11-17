@@ -547,8 +547,24 @@ test.describe('AI Profile Members - Users pagination', () => {
     await navigateToMembersPanel(page);
     await openUsersPanel(page);
     const usersList = page.getByTestId('users-list-container');
-    await usersList.getByTestId('rows-per-page-dropdown').click();
-    await page.getByTestId('rows-per-page-option-15').click();
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
+    const sizePicker = usersList.getByTestId('rows-per-page-dropdown');
+    // Paging before the page-size reload lands would step from the old
+    // size's cursors; a size already at 15 starts no reload.
+    if ((await sizePicker.textContent())?.trim() !== '15') {
+      const reloaded = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith('/api/v1/users') &&
+          url.searchParams.get('limit') === '15' &&
+          !url.searchParams.has('after')
+        );
+      });
+      await sizePicker.click();
+      await page.getByTestId('rows-per-page-option-15').click();
+      await reloaded;
+    }
     await expect(
       usersList.getByText(/^Page 1 of ([3-9]|\d{2,})$/)
     ).toBeVisible();

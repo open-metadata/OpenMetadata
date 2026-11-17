@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import { Box, Toggle, Typography } from '@openmetadata/ui-core-components';
 import { Customize, Hint } from '@openmetadata/ui-core-components/icons';
@@ -157,20 +158,26 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
 
   const handleSelectEntityType = useCallback(
     (entityTypeFqn: string) => {
-      setHash(HASH_TAB, entityTypeDetailSubPath(entityTypeFqn), undefined, {
-        push: true,
-      });
+      setHash(
+        HASH_TAB,
+        entityTypeDetailSubPath(entityTypeFqn),
+        undefined,
+        settingsHashOptions(subView, { type: 'detail' })
+      );
     },
-    [setHash]
+    [setHash, subView]
   );
 
   const handleAddProperty = useCallback(() => {
     if (entityType) {
-      setHash(HASH_TAB, viewToSubPath({ type: 'add', entityType }), undefined, {
-        push: true,
-      });
+      setHash(
+        HASH_TAB,
+        viewToSubPath({ type: 'add', entityType }),
+        undefined,
+        settingsHashOptions(subView, { type: 'add' })
+      );
     }
-  }, [entityType, setHash]);
+  }, [entityType, setHash, subView]);
 
   const handleEditProperty = useCallback(
     (property: CustomProperty) => {
@@ -179,18 +186,23 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
           HASH_TAB,
           viewToSubPath({ type: 'edit', entityType, property }),
           undefined,
-          { push: true }
+          settingsHashOptions(subView, { type: 'edit' })
         );
       }
     },
-    [entityType, setHash]
+    [entityType, setHash, subView]
   );
 
   const handleBackToDetail = useCallback(() => {
     if (entityType) {
-      setHash(HASH_TAB, viewToSubPath({ type: 'detail', entityType }));
+      setHash(
+        HASH_TAB,
+        viewToSubPath({ type: 'detail', entityType }),
+        undefined,
+        settingsHashOptions(subView, { type: 'detail' })
+      );
     }
-  }, [entityType, setHash]);
+  }, [entityType, setHash, subView]);
 
   const handleSaved = useCallback(async () => {
     const fqn = entityType?.fullyQualifiedName;
@@ -285,12 +297,17 @@ const CustomPropertiesPanel: React.FC<CustomPropertiesPanelProps> = ({
   const handleBreadcrumbAction = useCallback(
     (id: Key) => {
       if (id === CRUMB.WORKSPACE || id === CRUMB.LANDING) {
-        setHash(HASH_TAB);
+        setHash(
+          HASH_TAB,
+          undefined,
+          undefined,
+          settingsHashOptions(subView, { type: 'landing' })
+        );
       } else if (id === CRUMB.DETAIL) {
         handleBackToDetail();
       }
     },
-    [handleBackToDetail, setHash]
+    [handleBackToDetail, setHash, subView]
   );
 
   // Push dynamic header state (breadcrumbs, icon, actions) up to ProfilePage

@@ -30,6 +30,7 @@ import {
   CreatePolicy,
   Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -39,7 +40,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
@@ -82,7 +83,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
   // The description editor holds its value outside the form, so it counts
   // as an edit too.
   const [hasDescription, setHasDescription] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     form.formState.isDirty || ruleForm.formState.isDirty || hasDescription
   );
 
@@ -198,7 +199,7 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
           onPress={() => runGuarded(() => onNavigate({ type: 'policies' }))}>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"

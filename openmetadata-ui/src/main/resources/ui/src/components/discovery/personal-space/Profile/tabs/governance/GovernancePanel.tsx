@@ -21,7 +21,7 @@ import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
-import { pushesSettingsView } from '../../../../../../utils/SettingsHistory.utils';
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 import DeprecatedFeatureBadge from '../../../../../common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { GovernanceView } from './Governance.types';
@@ -54,9 +54,12 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
 
   const onNavigate = useCallback(
     (nextView: GovernanceView) => {
-      setHash(HASH_TAB, viewToSubPath(nextView), undefined, {
-        push: pushesSettingsView(view, nextView),
-      });
+      setHash(
+        HASH_TAB,
+        viewToSubPath(nextView),
+        undefined,
+        settingsHashOptions(view, nextView)
+      );
     },
     [setHash, view]
   );

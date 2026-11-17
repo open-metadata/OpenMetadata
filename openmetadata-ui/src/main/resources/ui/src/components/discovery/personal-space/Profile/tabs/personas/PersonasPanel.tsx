@@ -24,7 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useUnsavedExitGuard } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
@@ -85,23 +85,15 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
   const isEditorDirty =
     view.type === 'customize' && Boolean(editorActions?.canSave);
-  const {
-    isPromptOpen,
-    anchorRef: exitAnchorRef,
-    runGuarded,
-    confirmExit: handleDiscardExit,
-    cancelExit,
-  } = useUnsavedExitGuard(isEditorDirty);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    isEditorDirty,
+    editorActions?.onSave
+  );
 
   const navigateGuarded = useCallback(
     (nextView: PersonaView) => runGuarded(() => onNavigate(nextView)),
     [runGuarded, onNavigate]
   );
-
-  const handleSaveExit = useCallback(async () => {
-    await editorActions?.onSave();
-    handleDiscardExit();
-  }, [editorActions, handleDiscardExit]);
 
   const onTabChange = useCallback(
     (tab: PersonaDetailTab) => updateParams({ tab }),
@@ -381,13 +373,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           onHeaderActionsChange={setCustomizeActions}
           onRename={setResolvedName}
         />
-        <UnsavedChangesPrompt
-          isOpen={isPromptOpen}
-          triggerRef={exitAnchorRef}
-          onCancel={cancelExit}
-          onDiscard={handleDiscardExit}
-          onSave={handleSaveExit}
-        />
+        <UnsavedChangesPrompt {...promptProps} />
       </>
     );
   }

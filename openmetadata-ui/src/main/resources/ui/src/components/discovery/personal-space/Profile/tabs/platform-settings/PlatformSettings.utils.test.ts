@@ -13,15 +13,16 @@
 
 import { AuthProvider } from '../../../../../../generated/settings/settings';
 import profilerConfigurationClassBase from '../../../../../../pages/ProfilerConfigurationPage/ProfilerConfigurationClassBase';
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type { PlatformSettingsPage } from './PlatformSettings.types';
 import {
   getPageHeader,
   getVisiblePlatformSettingsPages,
   hashSubPathToView,
-  isLeavingEditor,
   nonNegativeNumberRules,
   toOptionalNumber,
+  toSettingsHistoryView,
   viewToSubPath,
 } from './PlatformSettings.utils';
 
@@ -215,22 +216,36 @@ describe('PlatformSettings.utils', () => {
     });
   });
 
-  describe('isLeavingEditor', () => {
-    const editing = { type: 'page', page: 'lineage', isEditing: true } as const;
+  describe('toSettingsHistoryView', () => {
     const viewing = {
       type: 'page',
       page: 'lineage',
       isEditing: false,
     } as const;
+    const editing = { ...viewing, isEditing: true } as const;
 
-    it('is true only for an editor returning to its own page view', () => {
-      expect(isLeavingEditor(editing, viewing)).toBe(true);
-      expect(isLeavingEditor(viewing, editing)).toBe(false);
-      expect(isLeavingEditor(editing, { ...viewing, page: 'email' })).toBe(
-        false
-      );
-      expect(isLeavingEditor(editing, { type: 'landing' })).toBe(false);
-      expect(isLeavingEditor({ type: 'landing' }, viewing)).toBe(false);
+    it('treats only an open editor as a form view', () => {
+      expect(toSettingsHistoryView(editing)).toEqual({ type: 'edit' });
+      expect(toSettingsHistoryView(viewing)).toEqual({ type: 'page' });
+      expect(toSettingsHistoryView({ type: 'landing' })).toEqual({
+        type: 'landing',
+      });
+    });
+
+    it('pushes opening an editor and replaces leaving it', () => {
+      const push = (
+        from: Parameters<typeof toSettingsHistoryView>[0],
+        to: Parameters<typeof toSettingsHistoryView>[0]
+      ) =>
+        settingsHashOptions(
+          toSettingsHistoryView(from),
+          toSettingsHistoryView(to)
+        ).push;
+
+      expect(push(viewing, editing)).toBe(true);
+      expect(push(editing, viewing)).toBe(false);
+      expect(push(editing, { type: 'landing' })).toBe(false);
+      expect(push({ type: 'landing' }, viewing)).toBe(true);
     });
   });
 });

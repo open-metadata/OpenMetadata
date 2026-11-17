@@ -37,3 +37,20 @@ export const pushesSettingsView = (
   current: SettingsHistoryView,
   next: SettingsHistoryView
 ): boolean => !isSettingsFormView(current) || isSettingsFormView(next);
+
+/**
+ * `replace` is for redirects and for returning to a list after a delete: Back
+ * must not land on a view that no longer resolves.
+ */
+export interface SettingsNavigateOptions {
+  replace?: boolean;
+}
+
+/** The `setHash` options for moving from `current` to `next`. */
+export const settingsHashOptions = (
+  current: SettingsHistoryView,
+  next: SettingsHistoryView,
+  options?: SettingsNavigateOptions
+) => ({
+  push: !options?.replace && pushesSettingsView(current, next),
+});

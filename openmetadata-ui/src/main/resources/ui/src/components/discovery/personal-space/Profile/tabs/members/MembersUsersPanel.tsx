@@ -144,7 +144,9 @@ const MembersUsersPanel: React.FC<MembersUsersPanelProps> = ({
     [pageSize, isAdmin, showDeleted]
   );
   const fetchPaging = useCallback(
-    async (after: string) => (await getUsers({ ...listParams, after })).paging,
+    // A walk keeps only the cursors, so it skips the row fields.
+    async (after: string) =>
+      (await getUsers({ ...listParams, fields: undefined, after })).paging,
     [listParams]
   );
   const {

@@ -29,6 +29,7 @@ import { EMAIL_REG_EX } from '../../../../../../constants/regex.constants';
 import { AuthType } from '../../../../../../generated/api/teams/createUser';
 import { JWTTokenExpiry } from '../../../../../../generated/entity/teams/user';
 import { useAuth } from '../../../../../../hooks/authHooks';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { createBot } from '../../../../../../rest/botsAPI';
 import { createUserWithPut } from '../../../../../../rest/userAPI';
 import {
@@ -37,7 +38,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
-import { useUnsavedChangesPrompt } from '../../components/useUnsavedChangesPrompt';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { BotsView } from './BotsPanel.types';
 import { TOKEN_EXPIRY_OPTIONS } from './BotToken.constants';
 
@@ -69,7 +70,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
   // The description editor holds its value outside the form, so it counts
   // as an edit too.
   const [hasDescription, setHasDescription] = useState(false);
-  const { runGuarded, prompt } = useUnsavedChangesPrompt(
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
     form.formState.isDirty || hasDescription
   );
 
@@ -248,7 +249,7 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
           onPress={() => runGuarded(() => onNavigate({ type: 'list' }))}>
           {t('label.cancel')}
         </Button>
-        {prompt}
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"
