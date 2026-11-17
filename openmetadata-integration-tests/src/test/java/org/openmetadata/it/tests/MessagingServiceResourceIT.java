@@ -493,6 +493,22 @@ public class MessagingServiceResourceIT
   }
 
   @Test
+  void natsAnonymousAuthenticationCanBeSaved(TestNamespace ns) {
+    NatsConnection connection =
+        new NatsConnection().withNatsServers("nats://localhost:4222").withAuthType(Map.of());
+    MessagingService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withServiceType(MessagingServiceType.Nats)
+                .withConnection(new MessagingConnection().withConfig(connection)));
+
+    assertEquals(
+        JsonUtils.readTree("{}"),
+        JsonUtils.valueToTree(getEntity(service.getId().toString()))
+            .at("/connection/config/authType"));
+  }
+
+  @Test
   void natsPasswordIsEncryptedAndMasked(TestNamespace ns) {
     String secret = "nats-secret-" + UUID.randomUUID();
     NatsConnection connection =

@@ -72,6 +72,35 @@ class SecretConversionBoundaryTest {
   }
 
   @Test
+  void anonymousNatsAuthenticationCanBeEncrypted() {
+    Object encrypted =
+        manager.encryptServiceConnectionConfig(
+            nats(Map.of()), "Nats", "anonymous-nats", ServiceType.MESSAGING);
+
+    assertEquals(JsonUtils.readTree("{}"), JsonUtils.valueToTree(encrypted).get("authType"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"username\":\"user\"}",
+        "{\"password\":\"secret\"}",
+        "{\"token\":null}",
+        "{\"nkeySeed\":null}",
+        "{\"unexpected\":true}"
+      })
+  void nonemptyInvalidNatsAuthenticationIsRejected(String auth) {
+    assertThrows(
+        InvalidServiceConnectionException.class,
+        () ->
+            manager.encryptServiceConnectionConfig(
+                nats(JsonUtils.readValue(auth, Map.class)),
+                "Nats",
+                "invalid-nats",
+                ServiceType.MESSAGING));
+  }
+
+  @Test
   void newCredentialRejectsUnknownFieldsEvenWhenRequiredFieldsExist() {
     InvalidServiceConnectionException error =
         assertThrows(

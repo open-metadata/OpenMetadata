@@ -10997,6 +10997,11 @@
                             "Nats"
                           ],
                           "default": "Nats"
+                        },
+                        "anonymousAuth": {
+                          "title": "AnonymousAuth",
+                          "type": "object",
+                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -11075,6 +11080,10 @@
                                 "nkeySeed"
                               ],
                               "additionalProperties": false
+                            },
+                            {
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/anonymousAuth",
+                              "title": "Anonymous"
                             }
                           ]
                         },

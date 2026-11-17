@@ -11,6 +11,11 @@
         "Nats"
       ],
       "default": "Nats"
+    },
+    "anonymousAuth": {
+      "title": "AnonymousAuth",
+      "type": "object",
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -91,6 +96,11 @@
           "required": [
             "nkeySeed"
           ],
+          "additionalProperties": false
+        },
+        {
+          "title": "Anonymous",
+          "type": "object",
           "additionalProperties": false
         }
       ]
