@@ -479,7 +479,10 @@ class MicrostrategySource(DashboardServiceSource):
         if not reads:
             return []
         table_entity = self._with_columns(table_entity)
-        data_import = self.client.get_dataset_subtype(project_id, dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
+        data_import = (
+            self.client.get_dataset_subtype(project_id, self.client.cube_behind(dataset.id))
+            in DATA_IMPORT_CUBE_SUBTYPES
+        )
         targets = self._data_model_columns(dataset, datamodel_entity)
         # A dataset may list one object more than once; it is still one data model column.
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}

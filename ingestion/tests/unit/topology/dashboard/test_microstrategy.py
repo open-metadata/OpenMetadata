@@ -443,21 +443,63 @@ class TestClient:
         with pytest.raises(MicroStrategyApiError, match="ERR001"):
             client.get_dashboard_details(TUTORIAL["id"], "D1")
 
-    def test_a_report_used_as_a_dataset_has_no_sql_and_is_not_requested_again(self, server, client, caplog):
-        server.overrides["/v2/cubes/R1/sqlView"] = lambda: (
-            400,
-            {
-                "code": "ERR006",
-                "message": "Cannot get the SQL view of object 'R1'. Only cube is supported to get SQL view.",
-                "ticketId": "7f7c105f64bb4bc9b004791abfbb480f",
-            },
-        )
+    @pytest.mark.parametrize(
+        ("prompts", "warning"),
+        [
+            ([], "Dataset R1 is a report on warehouse tables, not on an Intelligent Cube"),
+            ([{"key": "P1", "required": True}], "Dataset R1 is a prompted report on warehouse tables"),
+        ],
+    )
+    def test_a_report_on_warehouse_tables_has_no_sql_and_is_not_requested_again(
+        self, server, client, caplog, prompts, warning
+    ):
+        _report_route(server, "R1", source=None)
+        server.overrides["/reports/R1/prompts"] = lambda: (200, prompts)
 
         assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
         assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
 
         assert len(server.requests_to("/v2/cubes/R1")) == 1
-        assert "Dataset R1 is a report, not an Intelligent Cube" in caplog.text
+        assert len(server.requests_to("/v2/reports/R1")) == 1
+        assert warning in caplog.text
+
+    def test_a_report_on_an_intelligent_cube_reads_the_cube_sql_once(self, server, client):
+        _report_route(server, "R1", source="C9")
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CUBE_STATEMENT
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CUBE_STATEMENT
+        # Another dossier using the cube itself reads it from the cache.
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C9") == CUBE_STATEMENT
+
+        assert len(server.requests_to("/v2/reports/R1")) == 1
+        assert len(server.requests_to("/v2/cubes/C9/sqlView")) == 1
+        assert client.cube_behind("R1") == "C9"
+        assert client.cube_behind("C9") == "C9"
+
+    def test_a_live_cube_has_no_sql_and_says_why(self, server, client, caplog):
+        server.overrides["/v2/cubes/L1/sqlView"] = lambda: (
+            400,
+            {
+                "code": "ERR010",
+                "message": "(SQLEngine got an Exception from DFC: DE93362; Live Intelligent Cubes cannot be published.)",
+            },
+        )
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "L1") is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], "L1") is None
+
+        assert len(server.requests_to("/v2/cubes/L1")) == 1
+        assert server.requests_to("/v2/reports/") == []
+        assert "Dataset L1 is a Live Intelligent Cube" in caplog.text
+
+    def test_a_report_whose_source_cannot_be_read_has_no_sql(self, server, client, caplog):
+        _report_route(server, "R1", source=None)
+        server.overrides["/v2/reports/R1"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") is None
+
+        assert "Could not read the source of report R1" in caplog.text
+        assert "warehouse tables" not in caplog.text
 
     @pytest.mark.parametrize(
         "sql, expected",
@@ -950,6 +992,22 @@ MODEL_ATTRIBUTES = {
 }
 
 
+def _report_route(server: FakeMicroStrategy, report_id: str, source: str | None) -> None:
+    """A dataset that is a report: the SQL view refuses it, and its definition names its cube"""
+    server.overrides[f"/v2/cubes/{report_id}/sqlView"] = lambda: (
+        400,
+        {
+            "code": "ERR006",
+            "message": f"Cannot get the SQL view of object '{report_id}'. Only cube is supported to get SQL view.",
+            "ticketId": "7f7c105f64bb4bc9b004791abfbb480f",
+        },
+    )
+    server.overrides[f"/v2/reports/{report_id}"] = lambda: (
+        200,
+        {"id": report_id, "name": "report", "source": {"id": source, "name": "cube"} if source else None},
+    )
+
+
 def _model_routes(server: FakeMicroStrategy, cube_subtypes: dict[str, int]) -> None:
     for cube, subtype in cube_subtypes.items():
         server.overrides[f"/objects/{cube}"] = lambda subtype=subtype: (200, {"type": 3, "subtype": subtype})
@@ -1417,13 +1475,16 @@ class TestColumnLineage:
         assert len(server.requests_to("/model/attributes/")) == 2
         assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
 
-    def test_the_lineage_edge_carries_the_column_pairs(self, server, client):
-        _model_routes(server, {IMPORT_CUBE: 779})
+    # A report built on the Data Import cube is matched like the cube: on names.
+    @pytest.mark.parametrize("dataset_id", [IMPORT_CUBE, "R1"])
+    def test_the_lineage_edge_carries_the_column_pairs(self, server, client, dataset_id):
+        _model_routes(server, {IMPORT_CUBE: 779, "R1": 768})
+        _report_route(server, "R1", source=IMPORT_CUBE)
         server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
         source = _source(client)
         source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
         source.get_query_parser_type = MagicMock(return_value=None)
-        dataset = _dataset(IMPORT_CUBE, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
+        dataset = _dataset(dataset_id, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
         details = _details(source, OFFICE_ROYALE).model_copy(update={"datasets": [dataset]})
         service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
         model = _data_model(source, dataset)
@@ -1434,7 +1495,7 @@ class TestColumnLineage:
         full = _table("order_items", ["order_item_id", "order_id", "unit_price"])
 
         def get_by_name(entity, fqn, **_):
-            return {"bq": service, f"mstr.model.{IMPORT_CUBE}": model, full.fullyQualifiedName.root: full}.get(fqn)
+            return {"bq": service, f"mstr.model.{dataset_id}": model, full.fullyQualifiedName.root: full}.get(fqn)
 
         source.metadata.get_by_name.side_effect = get_by_name
         source.metadata.list_all_entities.return_value = [SimpleNamespace(name=SimpleNamespace(root="project-x"))]
@@ -1446,4 +1507,4 @@ class TestColumnLineage:
 
         assert [either.left for either in results if either.left] == []
         (edge,) = [either.right for either in results]
-        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{IMPORT_CUBE}.Order Id")]
+        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{dataset_id}.Order Id")]
