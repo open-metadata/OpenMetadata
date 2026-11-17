@@ -100,6 +100,17 @@ class IngestionPipelineBuilderTest {
         BadRequestException.class, () -> IngestionPipelineBuilder.addDefinedConfig(updated));
   }
 
+  /** A PUT or PATCH that keeps the stored source is unmasked strictly before any re-store. */
+  @Test
+  void aStoredManifestMatchingNoSourceSchemaIsStillRefusedWhenAUserWritesItUnchanged() {
+    IngestionPipeline stored = storagePipeline(manifestSource(true));
+    IngestionPipeline written = JsonUtils.deepCopy(stored, IngestionPipeline.class);
+
+    assertThrows(
+        BadRequestException.class,
+        () -> EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(written, stored));
+  }
+
   private static IngestionPipeline storagePipeline(Map<String, Object> manifestSource) {
     Map<String, Object> config = new HashMap<>();
     config.put("type", "StorageMetadata");

@@ -61,7 +61,9 @@ public final class IngestionPipelineBuilder {
    * Prepares {@code updated} for a write over {@code stored}. A write that carries the stored source
    * config unchanged, such as a restore or a soft delete, re-stores what the store already holds,
    * so its config is converted as {@link #addDefinedConfigForRead} converts it. A config the caller
-   * changes is left to the write-time check of {@link #addDefinedConfig}.
+   * changes is left to the write-time check of {@link #addDefinedConfig}. User writes never get here
+   * unchecked: the masker converts them strictly first.
+   * ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
    */
   public static void addDefinedConfigForRewrite(
       IngestionPipeline stored, IngestionPipeline updated) {
