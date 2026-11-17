@@ -15,7 +15,6 @@ import static org.openmetadata.service.governance.workflows.elements.TriggerFact
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -64,7 +63,10 @@ import org.flowable.engine.runtime.Execution;
 import org.flowable.engine.runtime.NativeProcessInstanceQuery;
 import org.flowable.engine.runtime.ProcessInstance;
 import org.flowable.job.api.Job;
+import org.flowable.job.service.impl.asyncexecutor.AbstractAsyncExecutor;
+import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.flowable.task.api.Task;
+import org.flowable.task.api.TaskQuery;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -290,12 +292,31 @@ public class WorkflowHandler {
     if (previousEngine == null || previousEngine == newEngine) {
       return;
     }
+    keepOwnedJobsLocked(previousEngine.getProcessEngineConfiguration().getAsyncExecutor());
+    keepOwnedJobsLocked(previousEngine.getProcessEngineConfiguration().getAsyncHistoryExecutor());
     try {
       previousEngine.close();
     } catch (Exception e) {
       LOG.warn("Failed to close the previous Flowable process engine cleanly", e);
     }
     ProcessEngines.registerProcessEngine(newEngine);
+  }
+
+  /**
+   * Stops a retiring executor from releasing its jobs when it shuts down. The executor runs its jobs
+   * on the engine's shared thread pool, so its shutdown does not wait for them: it clears the lock
+   * on every job it owns at once, including jobs still running. Another server or the new engine
+   * then acquires such a job and runs it a second time while the first run continues. A job left
+   * locked here finishes on the retiring engine's threads, and the close waits for it, since clearing
+   * the process-instance locks blocks on the rows the job holds. Server shutdown keeps the default,
+   * so a stopping server still hands its jobs to the others.
+   */
+  static void keepOwnedJobsLocked(AsyncExecutor asyncExecutor) {
+    // AsyncExecutor exposes no executor configuration; Flowable's own executors extend
+    // AbstractAsyncExecutor, which holds the unlockOwnedJobs flag in a per-engine configuration.
+    if (asyncExecutor instanceof AbstractAsyncExecutor executor) {
+      executor.getConfiguration().setUnlockOwnedJobs(false);
+    }
   }
 
   private void closeMigrationPool() {
@@ -927,6 +948,12 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * Not wired, deliberately. Added by #20421 to free, on startup, the jobs of a server that died
+   * mid-job once their lock time was raised to 15 days; #20984 removed the call. It clears the lock
+   * of every job in the cluster, including jobs running right now on healthy servers, which another
+   * server then runs a second time. Wiring it needs it narrowed to the locks of servers known dead.
+   */
   private void unlockJobsOnStartup() {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     ManagementService managementService = processEngine.getManagementService();
@@ -1020,13 +1047,39 @@ public class WorkflowHandler {
     return task == null ? null : getParentActivityId(task.getExecutionId());
   }
 
+  /**
+   * The Flowable tasks of an OpenMetadata task, matched by its customTaskId process variable.
+   * ACT_RU_VARIABLE has no index on NAME_ or TEXT_, so that match alone scans the whole table on
+   * every lookup. The OpenMetadata task's run is the business key of the process holding its
+   * Flowable task, and narrowing by it uses ACT_IDX_EXEC_BUSKEY. A task without a recorded run, or
+   * whose process carries no business key, is found by the variable match alone.
+   */
+  private List<Task> findFlowableTasks(UUID customTaskId) {
+    UUID workflowInstanceId =
+        ((TaskRepository) Entity.getEntityRepository(Entity.TASK))
+            .findWorkflowInstanceId(customTaskId);
+    List<Task> tasks = List.of();
+    if (workflowInstanceId != null) {
+      tasks =
+          customTaskIdQuery(customTaskId)
+              .processInstanceBusinessKey(workflowInstanceId.toString())
+              .list();
+    }
+    if (tasks.isEmpty()) {
+      tasks = customTaskIdQuery(customTaskId).list();
+    }
+    return tasks;
+  }
+
+  private TaskQuery customTaskIdQuery(UUID customTaskId) {
+    return processEngine
+        .getTaskService()
+        .createTaskQuery()
+        .processVariableValueEquals("customTaskId", customTaskId.toString());
+  }
+
   private Task getTaskFromCustomTaskId(UUID customTaskId) {
-    TaskService taskService = processEngine.getTaskService();
-    List<Task> tasks =
-        taskService
-            .createTaskQuery()
-            .processVariableValueEquals("customTaskId", customTaskId.toString())
-            .list();
+    List<Task> tasks = findFlowableTasks(customTaskId);
 
     if (tasks.isEmpty()) {
       return null;
@@ -1772,14 +1825,9 @@ public class WorkflowHandler {
   }
 
   public void terminateTaskProcessInstance(UUID customTaskId, String reason) {
-    TaskService taskService = processEngine.getTaskService();
     RuntimeService runtimeService = processEngine.getRuntimeService();
     try {
-      List<Task> tasks =
-          taskService
-              .createTaskQuery()
-              .processVariableValueEquals("customTaskId", customTaskId.toString())
-              .list();
+      List<Task> tasks = findFlowableTasks(customTaskId);
       for (Task task : tasks) {
         terminateTask(runtimeService, task, customTaskId);
       }
@@ -1924,8 +1972,35 @@ public class WorkflowHandler {
     }
   }
 
+  /**
+   * The key of a deployed process definition, which is the workflow or trigger name. Flowable builds
+   * the id as {@code key:version:generatedId}, but when that is longer than 64 characters, as for a
+   * long workflow name, the id is the generated part alone and carries no key, so the key is read
+   * from the deployed definition. Flowable caches deployed definitions, so that read rarely reaches
+   * the database.
+   */
   public static String getProcessDefinitionKeyFromId(String processDefinitionId) {
-    return Arrays.stream(processDefinitionId.split(":")).toList().get(0);
+    int separator = processDefinitionId.indexOf(':');
+    return separator >= 0
+        ? processDefinitionId.substring(0, separator)
+        : findDeployedProcessDefinitionKey(processDefinitionId);
+  }
+
+  private static String findDeployedProcessDefinitionKey(String processDefinitionId) {
+    String key = processDefinitionId;
+    if (initialized && instance.processEngine != null) {
+      try {
+        key =
+            instance
+                .processEngine
+                .getRepositoryService()
+                .getProcessDefinition(processDefinitionId)
+                .getKey();
+      } catch (FlowableObjectNotFoundException e) {
+        LOG.debug("No deployed process definition with id {}", processDefinitionId);
+      }
+    }
+    return key;
   }
 
   /**

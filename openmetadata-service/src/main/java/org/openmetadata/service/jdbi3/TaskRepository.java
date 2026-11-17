@@ -41,6 +41,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
@@ -1039,6 +1040,40 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
+   * Close a task on a user's request and end the workflow run waiting on it, recorded as
+   * CANCELLED. Not for a close made from inside a running workflow command, where terminating the
+   * process would end the command that is executing.
+   */
+  public Task closeTaskAndCancelWorkflowRun(Task task, String user, String comment) {
+    Task closed = closeTask(task, user, comment);
+    if (closed.getWorkflowInstanceId() != null) {
+      cancelWorkflowRun(closed, user);
+    }
+    return closed;
+  }
+
+  /**
+   * The run is recorded as CANCELLED before its process is terminated, so the termination keeps
+   * that status. Best effort: the task is already closed, so a failure leaves the process running
+   * and is logged rather than failing the close.
+   */
+  private static void cancelWorkflowRun(Task closed, String user) {
+    String reason = "Task %s closed by %s".formatted(closed.getId(), user);
+    WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
+    workflowHandler.endWorkflowInstance(
+        closed.getWorkflowInstanceId(), WorkflowInstance.WorkflowStatus.CANCELLED, reason);
+    try {
+      workflowHandler.terminateTaskProcessInstance(closed.getId(), reason);
+    } catch (RuntimeException e) {
+      LOG.warn(
+          "Closed task {} but could not terminate its workflow process: {}",
+          closed.getId(),
+          e.getMessage(),
+          e);
+    }
+  }
+
+  /**
    * Authorize a user to resolve or close a task.
    *
    * <p>Delegates to the policy engine using the {@code ResolveTask} or {@code CloseTask}
@@ -1639,6 +1674,12 @@ public class TaskRepository extends EntityRepository<Task> {
     } catch (EntityNotFoundException e) {
       return null;
     }
+  }
+
+  /** The run managing a task, or null for an unknown task or one no run manages. */
+  public UUID findWorkflowInstanceId(UUID taskId) {
+    Task task = findCommittedTask(taskId);
+    return task == null ? null : task.getWorkflowInstanceId();
   }
 
   public List<Task> listNonTerminalTasksByEntityAndCategory(

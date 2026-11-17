@@ -63,6 +63,7 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 import org.awaitility.core.ConditionTimeoutException;
 import org.flowable.bpmn.model.FieldExtension;
 import org.flowable.bpmn.model.ServiceTask;
@@ -1496,6 +1497,9 @@ public class WorkflowDefinitionResourceIT {
             assertEquals(BATCH_DESCRIPTION, updated.getDescription(), table.getName());
             assertNotNull(updated.getCertification(), table.getName());
             assertEquals(GOLD_CERTIFICATION, updated.getCertification().getTagLabel().getTagFQN());
+            // The certification is the run's last write; governance-bot as its impersonator is what
+            // keeps the event consumer from starting the table's workflows again for it.
+            assertEquals("governance-bot", updated.getImpersonatedBy(), table.getName());
           }
           assertEquals(fullyQualifiedNames(tables), Set.copyOf(sink.writtenFqns()));
         });
@@ -6315,54 +6319,7 @@ public class WorkflowDefinitionResourceIT {
     ensureWorkflowEventConsumerIsActive(client);
 
     String workflowName = "ownerAssignedTagApproval_" + UUID.randomUUID();
-    String workflowJson =
-        """
-            {
-              "name": "%s",
-              "displayName": "Owner Assigned Tag Approval",
-              "description": "Approval task assigned to owners, triggered on tag creation only",
-              "trigger": {
-                "type": "eventBasedEntity",
-                "config": {
-                  "entityTypes": ["tag"],
-                  "events": ["Created"]
-                },
-                "output": ["relatedEntity", "updatedBy"]
-              },
-              "nodes": [
-                {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
-                {
-                  "name": "ApproveTag",
-                  "displayName": "Approve Tag",
-                  "type": "userTask",
-                  "subType": "userApprovalTask",
-                  "config": {
-                    "assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
-                    "approvalThreshold": 1,
-                    "rejectionThreshold": 1,
-                    "stageId": "review",
-                    "stageDisplayName": "Review",
-                    "taskStatus": "Open",
-                    "assigneeStrategy": "reviewers-and-assignees",
-                    "transitionMetadata": [
-                      {"id": "approve", "label": "Approve", "targetStageId": "approved", "targetTaskStatus": "Approved", "resolutionType": "Approved", "formRef": "approve", "requiresComment": false},
-                      {"id": "reject", "label": "Reject", "targetStageId": "rejected", "targetTaskStatus": "Rejected", "resolutionType": "Rejected", "formRef": "reject", "requiresComment": true}
-                    ]
-                  },
-                  "inputNamespaceMap": {"relatedEntity": "global"}
-                },
-                {"name": "endApproved", "displayName": "End Approved", "type": "endEvent", "subType": "endEvent"},
-                {"name": "endRejected", "displayName": "End Rejected", "type": "endEvent", "subType": "endEvent"}
-              ],
-              "edges": [
-                {"from": "start", "to": "ApproveTag"},
-                {"from": "ApproveTag", "to": "endApproved", "condition": "approve"},
-                {"from": "ApproveTag", "to": "endRejected", "condition": "reject"}
-              ],
-              "config": {"storeStageStatus": true}
-            }
-            """
-            .formatted(workflowName);
+    String workflowJson = OWNER_APPROVAL_TAG_WORKFLOW.formatted(workflowName);
 
     String createResponse =
         client
@@ -6399,6 +6356,10 @@ public class WorkflowDefinitionResourceIT {
 
     Task task =
         awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), shared.USER1.getId());
+    // With this name Flowable's key:version:id is longer than 64 characters, so the process
+    // definition id carries no key; the task must still belong to this workflow and to its run.
+    assertEquals(UUID.fromString(created.get("id").asText()), task.getWorkflowDefinitionId());
+    assertNotNull(task.getWorkflowInstanceId(), "The approval task must belong to a run");
     Set<UUID> assignees = assigneeIds(task);
     assertTrue(
         assignees.contains(shared.USER1.getId()),
@@ -6434,6 +6395,136 @@ public class WorkflowDefinitionResourceIT {
         "Reviewers must not leak into an owners-only task, assignees=" + afterAssignees);
 
     LOG.info("test_reviewerChangeDoesNotOverwriteOwnerAssignedApprovalTask completed successfully");
+  }
+
+  /** An approval of every created tag, asked of the tag's owners; takes the workflow name. */
+  private static final String OWNER_APPROVAL_TAG_WORKFLOW =
+      """
+      {
+        "name": "%s",
+        "displayName": "Owner Assigned Tag Approval",
+        "description": "Approval task assigned to owners, triggered on tag creation only",
+        "trigger": {
+          "type": "eventBasedEntity",
+          "config": {
+            "entityTypes": ["tag"],
+            "events": ["Created"]
+          },
+          "output": ["relatedEntity", "updatedBy"]
+        },
+        "nodes": [
+          {"name": "start", "displayName": "Start", "type": "startEvent", "subType": "startEvent"},
+          {
+            "name": "ApproveTag",
+            "displayName": "Approve Tag",
+            "type": "userTask",
+            "subType": "userApprovalTask",
+            "config": {
+              "assignees": {"addReviewers": false, "addOwners": true, "candidates": []},
+              "approvalThreshold": 1,
+              "rejectionThreshold": 1,
+              "stageId": "review",
+              "stageDisplayName": "Review",
+              "taskStatus": "Open",
+              "assigneeStrategy": "reviewers-and-assignees",
+              "transitionMetadata": [
+                {"id": "approve", "label": "Approve", "targetStageId": "approved", "targetTaskStatus": "Approved", "resolutionType": "Approved", "formRef": "approve", "requiresComment": false},
+                {"id": "reject", "label": "Reject", "targetStageId": "rejected", "targetTaskStatus": "Rejected", "resolutionType": "Rejected", "formRef": "reject", "requiresComment": true}
+              ]
+            },
+            "inputNamespaceMap": {"relatedEntity": "global"}
+          },
+          {"name": "endApproved", "displayName": "End Approved", "type": "endEvent", "subType": "endEvent"},
+          {"name": "endRejected", "displayName": "End Rejected", "type": "endEvent", "subType": "endEvent"}
+        ],
+        "edges": [
+          {"from": "start", "to": "ApproveTag"},
+          {"from": "ApproveTag", "to": "endApproved", "condition": "approve"},
+          {"from": "ApproveTag", "to": "endRejected", "condition": "reject"}
+        ],
+        "config": {"storeStageStatus": true}
+      }
+      """;
+
+  /**
+   * Closing a workflow-managed approval task through the API ends the run waiting on it: the run is
+   * recorded as CANCELLED and no Flowable process is left for it, so the run neither waits forever
+   * nor takes its approve or reject branch.
+   */
+  @Test
+  void test_closingApprovalTaskCancelsItsWorkflowRun(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    ensureWorkflowEventConsumerIsActive(client);
+    String workflowName = "closeTaskApproval" + UUID.randomUUID().toString().substring(0, 8);
+    JsonNode created =
+        MAPPER.readTree(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                BASE_PATH,
+                MAPPER.readValue(
+                    OWNER_APPROVAL_TAG_WORKFLOW.formatted(workflowName),
+                    CreateWorkflowDefinition.class)));
+    trackWorkflowFromJson(created);
+    waitForWorkflowDeployment(client, workflowName);
+    ensureWorkflowEventConsumerIsActive(client);
+    Classification classification =
+        client
+            .classifications()
+            .create(
+                new CreateClassification()
+                    .withName(
+                        ns.prefix("closeTask")
+                            .substring(0, Math.min(25, ns.prefix("closeTask").length())))
+                    .withDescription("Classification for closing an approval task"));
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("closedTaskTag")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("Tag whose approval task is closed")
+                    .withOwners(List.of(shared.USER1_REF)));
+    Task task =
+        awaitOpenApprovalTaskAssignedTo(client, tag.getFullyQualifiedName(), shared.USER1.getId());
+    String workflowInstanceId = task.getWorkflowInstanceId().toString();
+    assertFalse(processInstanceIdsForBusinessKey(workflowInstanceId).isEmpty());
+    // The run's business key alone narrows the lookup to this task, so finding it never falls back
+    // to the unindexed match on the customTaskId variable.
+    assertEquals(
+        1,
+        WorkflowHandler.getInstance()
+            .getProcessEngineConfiguration()
+            .getTaskService()
+            .createTaskQuery()
+            .processVariableValueEquals("customTaskId", task.getId().toString())
+            .processInstanceBusinessKey(workflowInstanceId)
+            .count());
+    EntityStatus tagStatusBeforeClose = client.tags().get(tag.getId().toString()).getEntityStatus();
+
+    Task closed =
+        MAPPER.readValue(
+            executeWorkflowRequest(
+                client,
+                HttpMethod.POST,
+                "/v1/tasks/%s/close?comment=no-longer-needed".formatted(task.getId()),
+                null),
+            Task.class);
+
+    assertEquals(TaskEntityStatus.Cancelled, closed.getStatus());
+    assertTrue(processInstanceIdsForBusinessKey(workflowInstanceId).isEmpty());
+    JsonNode instance =
+        StreamSupport.stream(workflowInstances(client, workflowName).spliterator(), false)
+            .filter(run -> workflowInstanceId.equals(run.path("id").asText()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals(
+        WorkflowInstance.WorkflowStatus.CANCELLED.value(),
+        instance.path("status").asText(),
+        instance.toString());
+    assertEquals(tagStatusBeforeClose, client.tags().get(tag.getId().toString()).getEntityStatus());
   }
 
   @RetryingTest(2)
