@@ -65,6 +65,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.csv.CsvImportProgressCallback;
@@ -75,9 +76,11 @@ import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
@@ -161,6 +164,8 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected final ViewPermissionFilter viewPermissionFilter;
 
   private static final List<MetadataOperation> VIEW_BASIC_ONLY = List.of(VIEW_BASIC);
+  private static final List<MetadataOperation> CUSTOM_PROPERTY_VALUES =
+      List.of(MetadataOperation.VIEW_CUSTOM_FIELDS);
 
   /** Pages a filtered listing reads to fill one page, the first included. */
   private static final int MAX_FILTERED_PAGE_READS = 5;
@@ -296,6 +301,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             ? readableRowsPage(uriInfo, securityContext, page)
             : readPage(uriInfo, page, page.before(), page.after());
     retainViewableReferences(securityContext, page.fields(), resultList.getData());
+    hideCustomPropertyValues(securityContext, resultList.getData());
     return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
@@ -335,6 +341,80 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     if (!hidden.isEmpty()) {
       entities.forEach(entity -> ShownReferenceLists.removeHidden(entity, requested, hidden));
     }
+  }
+
+  /** Decides on the context the read was authorized with, so the entity is not loaded again. */
+  private T hideCustomPropertyValues(
+      SecurityContext securityContext, ResourceContextInterface resourceContext, T entity) {
+    if (entity != null
+        && showsCustomPropertyValues(entity)
+        && customPropertyValuesHidden(securityContext, resourceContext)) {
+      removeCustomPropertyValues(entity);
+    }
+    return entity;
+  }
+
+  /**
+   * Leaves custom property values, and the change entries that carry them, out of the entities whose
+   * ViewCustomFields the caller lacks; the entity itself stays readable
+   * (ADR:2026-11-17-custom-property-values-need-view-custom-fields).
+   */
+  private void hideCustomPropertyValues(SecurityContext securityContext, List<T> entities) {
+    List<T> showing =
+        entities == null
+            ? List.of()
+            : entities.stream().filter(EntityResource::showsCustomPropertyValues).toList();
+    if (showing.isEmpty()
+        || !RowDecisionGate.mayDiffer(
+            getSubjectContext(securityContext), entityType, CUSTOM_PROPERTY_VALUES)) {
+      return;
+    }
+    Set<UUID> viewable =
+        readableRows(securityContext, showing, CUSTOM_PROPERTY_VALUES).stream()
+            .map(EntityInterface::getId)
+            .collect(Collectors.toSet());
+    showing.stream()
+        .filter(entity -> !viewable.contains(entity.getId()))
+        .forEach(EntityResource::removeCustomPropertyValues);
+  }
+
+  private static boolean showsCustomPropertyValues(EntityInterface<?> entity) {
+    return entity.getExtension() != null
+        || carriesCustomPropertyChange(entity.getChangeDescription())
+        || carriesCustomPropertyChange(entity.getIncrementalChangeDescription());
+  }
+
+  private static void removeCustomPropertyValues(EntityInterface<?> entity) {
+    entity.setExtension(null);
+    removeCustomPropertyChanges(entity.getChangeDescription());
+    removeCustomPropertyChanges(entity.getIncrementalChangeDescription());
+  }
+
+  private static boolean carriesCustomPropertyChange(ChangeDescription change) {
+    return change != null
+        && Stream.of(change.getFieldsAdded(), change.getFieldsUpdated(), change.getFieldsDeleted())
+            .flatMap(fieldChanges -> listOrEmpty(fieldChanges).stream())
+            .anyMatch(EntityResource::isCustomPropertyChange);
+  }
+
+  private static void removeCustomPropertyChanges(ChangeDescription change) {
+    if (change != null) {
+      change.setFieldsAdded(withoutCustomPropertyChanges(change.getFieldsAdded()));
+      change.setFieldsUpdated(withoutCustomPropertyChanges(change.getFieldsUpdated()));
+      change.setFieldsDeleted(withoutCustomPropertyChanges(change.getFieldsDeleted()));
+    }
+  }
+
+  private static List<FieldChange> withoutCustomPropertyChanges(List<FieldChange> fieldChanges) {
+    return listOrEmpty(fieldChanges).stream()
+        .filter(fieldChange -> !isCustomPropertyChange(fieldChange))
+        .collect(Collectors.toCollection(ArrayList::new));
+  }
+
+  private static boolean isCustomPropertyChange(FieldChange fieldChange) {
+    String name = fieldChange.getName();
+    return Entity.FIELD_EXTENSION.equals(name)
+        || (name != null && name.startsWith(Entity.FIELD_EXTENSION + "."));
   }
 
   /**
@@ -852,6 +932,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     ResultList<T> resultList =
         repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
     retainReadableRows(securityContext, fields, resultList);
+    hideCustomPropertyValues(securityContext, resultList.getData());
     return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
@@ -895,6 +976,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             queryString,
             securityContext);
     retainReadableRows(securityContext, fields, resultList);
+    hideCustomPropertyValues(securityContext, resultList.getData());
     return addPermissions(uriInfo, securityContext, resultList);
   }
 
@@ -956,15 +1038,14 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
-    return retainViewableReferences(
+    T entity =
+        authorized != null
+            ? authorized
+            : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled());
+    return hideCustomPropertyValues(
         securityContext,
-        fields,
-        addHref(
-            uriInfo,
-            authorized != null
-                ? authorized
-                : repository.get(
-                    uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled())));
+        resourceContext,
+        retainViewableReferences(securityContext, fields, addHref(uriInfo, entity)));
   }
 
   /**
@@ -1032,6 +1113,9 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     T stored = repository.getVersion(id, version);
+    if (customPropertyValuesHidden(securityContext, resourceContext)) {
+      removeCustomPropertyValues(stored);
+    }
     return snapshotRedaction(securityContext)
         .map(redaction -> redaction.apply(stored))
         .orElse(stored);
@@ -1072,19 +1156,33 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityHistory history = repository.listVersions(id);
-    snapshotRedaction(securityContext)
-        .ifPresent(
-            redaction ->
-                history.setVersions(
-                    history.getVersions().stream()
-                        .map(
-                            version ->
-                                (Object)
-                                    JsonUtils.pojoToJson(
-                                        redaction.apply(
-                                            JsonUtils.readValue((String) version, entityClass))))
-                        .collect(Collectors.toList())));
+    boolean hideValues = customPropertyValuesHidden(securityContext, resourceContext);
+    Optional<UnaryOperator<T>> redaction = snapshotRedaction(securityContext);
+    if (hideValues || redaction.isPresent()) {
+      UnaryOperator<T> redact = redaction.orElse(UnaryOperator.identity());
+      history.setVersions(
+          history.getVersions().stream()
+              .map(version -> (Object) redactedVersion((String) version, hideValues, redact))
+              .collect(Collectors.toList()));
+    }
     return history;
+  }
+
+  private String redactedVersion(String version, boolean hideValues, UnaryOperator<T> redact) {
+    T snapshot = JsonUtils.readValue(version, entityClass);
+    if (hideValues) {
+      removeCustomPropertyValues(snapshot);
+    }
+    return JsonUtils.pojoToJson(redact.apply(snapshot));
+  }
+
+  /** Whether the caller, already allowed to read this entity, may not see its custom values. */
+  private boolean customPropertyValuesHidden(
+      SecurityContext securityContext, ResourceContextInterface resourceContext) {
+    return RowDecisionGate.mayDiffer(
+            getSubjectContext(securityContext), entityType, CUSTOM_PROPERTY_VALUES)
+        && !viewPermissionFilter.isPermitted(
+            securityContext, entityType, CUSTOM_PROPERTY_VALUES, resourceContext);
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
@@ -1102,6 +1200,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
     history.setData(
         retainReadableHistory(securityContext, readableSnapshots(securityContext, history)));
+    hideCustomPropertyValues(securityContext, history.getData());
     snapshotRedaction(securityContext)
         .ifPresent(
             redaction ->
@@ -1188,15 +1287,15 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
-    return retainViewableReferences(
+    T entity =
+        authorized != null
+            ? authorized
+            : repository.getByName(
+                uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled());
+    return hideCustomPropertyValues(
         securityContext,
-        fields,
-        addHref(
-            uriInfo,
-            authorized != null
-                ? authorized
-                : repository.getByName(
-                    uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled())));
+        resourceContext,
+        retainViewableReferences(securityContext, fields, addHref(uriInfo, entity)));
   }
 
   /**
