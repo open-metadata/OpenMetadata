@@ -33,8 +33,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * <p>Migrations run before the server's own tables of later versions exist, while every entity
  * type of the running build is already registered. A table the database reports as missing holds
  * no entity yet. Any other failure is reported as a holder, so a caller never takes a name it could
- * not check as free. Table and column names come from the registered DAOs, never from input, since
- * SQL cannot bind them.
+ * not check as free (ADR:2026-11-17-a-migration-entity-lookup-treats-only-a-missing-table-as-empty).
+ * Table and column names come from the registered DAOs, never from input, since SQL cannot bind them.
  */
 @Slf4j
 public final class EntityFqnHolders {
@@ -76,16 +76,16 @@ public final class EntityFqnHolders {
 
   /** The table of every registered entity type. Time series types have no FQN of their own. */
   public static List<EntityTable> registeredTables() {
-    List<EntityTable> tables = new ArrayList<>();
-    for (String entityType : new TreeSet<>(Entity.getEntityList())) {
+    final List<EntityTable> tables = new ArrayList<>();
+    for (final String entityType : new TreeSet<>(Entity.getEntityList())) {
       try {
-        EntityDAO<?> dao = Entity.getEntityRepository(entityType).getDao();
+        final EntityDAO<?> dao = Entity.getEntityRepository(entityType).getDao();
         tables.add(new EntityTable(entityType, dao.getTableName(), dao.getNameHashColumn()));
       } catch (EntityNotFoundException e) {
         LOG.debug("Entity type {} has no table of its own", entityType);
       }
     }
-    return tables;
+    return List.copyOf(tables);
   }
 
   public static EntityFqnHolders in(final Handle handle, final List<EntityTable> tables) {
@@ -93,14 +93,14 @@ public final class EntityFqnHolders {
   }
 
   public List<Holder> holding(final String fqn) {
-    String nameHash = FullyQualifiedName.buildHash(fqn);
-    List<Holder> holders = new ArrayList<>();
-    for (EntityTable table : tables) {
+    final String nameHash = FullyQualifiedName.buildHash(fqn);
+    final List<Holder> holders = new ArrayList<>();
+    for (final EntityTable table : tables) {
       if (!missingTables.contains(table.tableName())) {
         holders.addAll(holdingIn(table, nameHash));
       }
     }
-    return holders;
+    return List.copyOf(holders);
   }
 
   private List<Holder> holdingIn(final EntityTable table, final String nameHash) {

@@ -113,7 +113,8 @@ public final class ContextFileFqnRepair {
     if (pending.isEmpty()) {
       return 0;
     }
-    EntityFqnHolders holders = EntityFqnHolders.in(handle, EntityFqnHolders.registeredTables());
+    final EntityFqnHolders holders =
+        EntityFqnHolders.in(handle, EntityFqnHolders.registeredTables());
     int repaired = 0;
     int repairedInPass;
     do {
@@ -227,7 +228,8 @@ public final class ContextFileFqnRepair {
       if (otherHolder(handle, misnamed).isPresent()) {
         return Outcome.HELD_BY_ANOTHER_FILE;
       }
-      List<Holder> sharing = movesTags(misnamed) ? entitiesSharing(holders, misnamed) : List.of();
+      final List<Holder> sharing =
+          movesTags(misnamed) ? entitiesSharing(holders, misnamed) : List.of();
       Optional<ContextFile> repaired =
           handle.inTransaction(
               transaction ->
