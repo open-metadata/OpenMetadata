@@ -45,6 +45,7 @@ import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v210.ConsumerIdMigration;
+import org.openmetadata.service.migration.utils.v210.ContextFileFqnRepair;
 import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
@@ -169,19 +170,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
-    // New writes encrypt each webhook secret for the alert destination or profile webhook that
-    // holds it; this does the same for what is already stored. Each destination's id owns its
-    // secrets, so this runs after the destination id step. Idempotent.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WebhookSecretsMigration.PROFILE_STEP_NAME,
-        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, POSTGRES));
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        WebhookSecretsMigration.ALERT_STEP_NAME,
-        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, POSTGRES));
+    // New writes encrypt each webhook secret with the configured Fernet keys; these do the same
+    // for what is already stored. A value a 2.1 pre-release encrypted with a key derived from its
+    // destination's id is encrypted again, so they run after the destination id step. Each runs
+    // once, in one transaction with the marker that records it.
+    WebhookSecretsMigration.encryptProfileWebhookSecrets(handle, getVersion(), POSTGRES);
+    WebhookSecretsMigration.encryptAlertDestinationSecrets(handle, getVersion(), POSTGRES);
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.
@@ -223,5 +217,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         OntologyRolesMigration.STEP_NAME,
         () -> OntologyRolesMigration.attachOntologyPoliciesToDataSteward(collectionDAO));
+    // Released versions stored a Context Center file edited inside a folder under its bare name;
+    // each such file is given the FQN its folder derives again.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ContextFileFqnRepair.STEP_NAME,
+        () -> ContextFileFqnRepair.repairAll(handle, POSTGRES));
   }
 }

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 
+import jakarta.ws.rs.ClientErrorException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
@@ -165,6 +166,47 @@ class OntologyWorkingStateTest {
             assertEquals(current, dao.ontologyEntityDAO().findEntityById(current.getId()));
             assertEquals(1L, dao.ontologyStateDAO().get(current.getId()).getWorkingRevision());
           }
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void recreatingADefinitionAnotherRequestRestoredConflictsInsteadOfOverwritingIt(
+      final ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrate(handle, dialect);
+          final CollectionDAO dao = handle.attach(CollectionDAO.class);
+          final Ontology deleted = definition().withDeleted(true);
+          final Ontology restored =
+              JsonUtils.deepCopy(deleted, Ontology.class).withDeleted(false).withUpdatedAt(2L);
+          dao.ontologyEntityDAO().insert(restored, restored.getFullyQualifiedName());
+          dao.ontologyStateDAO().initialize(restored.getId());
+          final OntologyWorkingState state = new OntologyWorkingState(dao);
+
+          final ClientErrorException conflict =
+              assertThrows(
+                  ClientErrorException.class,
+                  () ->
+                      dao.inTransaction(
+                          ignored ->
+                              state.mutate(
+                                  dao.ontologyEntityDAO(),
+                                  List.of(deleted),
+                                  () -> {
+                                    dao.ontologyEntityDAO()
+                                        .update(
+                                            deleted
+                                                .withDeleted(false)
+                                                .withDescription("Re-created"));
+                                    return null;
+                                  })));
+
+          assertEquals(409, conflict.getResponse().getStatus());
+          assertEquals(restored, dao.ontologyEntityDAO().findEntityById(restored.getId()));
         });
   }
 

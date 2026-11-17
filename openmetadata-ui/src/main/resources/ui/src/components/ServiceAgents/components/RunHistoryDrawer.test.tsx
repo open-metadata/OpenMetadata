@@ -25,7 +25,15 @@ jest.mock('./RunStepRow.component', () =>
   jest.fn().mockImplementation(() => <p>RunStepRow</p>)
 );
 
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) =>
+      options ? `${key}:${JSON.stringify(options)}` : key,
+  }),
+}));
+
 jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
   getUtcOffsetLabel: jest.fn().mockReturnValue('UTC+05:30'),
 }));
 
@@ -43,7 +51,7 @@ const mockRuns: AgentRun[] = [
     id: 'run-oldest',
     status: 'partial',
     startedAt: 'May 25, 2026 · 08:10',
-    duration: 4.1,
+    durationMs: 9_936_000,
     totals: emptyTotals,
     steps: [],
   },
@@ -52,7 +60,7 @@ const mockRuns: AgentRun[] = [
     runId: 'run-middle',
     status: 'failed',
     startedAt: 'May 26, 2026 · 08:10',
-    duration: 0.7,
+    durationMs: 42_000,
     totals: emptyTotals,
     steps: [],
   },
@@ -60,7 +68,7 @@ const mockRuns: AgentRun[] = [
     id: 'run-latest',
     status: 'success',
     startedAt: 'May 27, 2026 · 08:10',
-    duration: 3.8,
+    durationMs: 228_000,
     totals: emptyTotals,
     steps: [],
   },
@@ -165,6 +173,18 @@ describe('RunHistoryDrawer', () => {
 
     expect(
       screen.getByText(/May 26, 2026 · 08:10 \(UTC\+05:30\)/)
+    ).toBeInTheDocument();
+  });
+
+  it('should show run durations in hours and minutes', () => {
+    renderDrawer('run-oldest');
+
+    const [oldest, middle] = screen.getAllByTestId('run-history-item');
+
+    expect(oldest).toHaveTextContent('08:10 · 2h 45m');
+    expect(middle).toHaveTextContent('08:10 · 42.0s');
+    expect(
+      screen.getByText(/message\.ran-for-duration:\{"duration":"2h 45m"\}/)
     ).toBeInTheDocument();
   });
 
@@ -358,6 +378,38 @@ describe('RunHistoryDrawer', () => {
       expect(link).toHaveAttribute('href', agentLinkProps.href);
       expect(link).toHaveAttribute('target', '_blank');
       expect(link).toHaveTextContent(agentLinkProps.label);
+    });
+  });
+
+  describe('unfinished run', () => {
+    afterEach(() => {
+      (useAgentRuns as jest.Mock).mockImplementation(() => ({
+        runs: mockRuns,
+        isLoading: false,
+      }));
+    });
+
+    it('should omit the duration when the run has no end time', () => {
+      (useAgentRuns as jest.Mock).mockReturnValue({
+        runs: [
+          {
+            ...mockRuns[2],
+            status: 'running',
+            durationMs: undefined,
+          },
+        ],
+        isLoading: false,
+      });
+
+      renderDrawer();
+
+      expect(screen.getByTestId('run-history-item')).toHaveTextContent(
+        /08:10$/
+      );
+      expect(
+        screen.queryByText(/message\.ran-for-duration/)
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/<1ms/)).not.toBeInTheDocument();
     });
   });
 

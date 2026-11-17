@@ -17,9 +17,9 @@ failure means, and an empty list read as "nothing exists" would drive stale dele
 
 from __future__ import annotations
 
-import re
 import traceback
 from collections import OrderedDict
+from collections.abc import Hashable
 from typing import TYPE_CHECKING, Any, TypeVar
 from urllib.parse import quote
 
@@ -51,24 +51,54 @@ AUTH_TOKEN_HEADER = "X-MSTR-AuthToken"
 PROJECT_HEADER = "X-MSTR-ProjectID"
 APPLICATION_TYPE = 35
 DOSSIER_TYPE = 55
+REPORT_TYPE = 3
+# Report subtypes of Data Import (EMMA) cubes, whose objects the modeling API does not serve
+DATA_IMPORT_CUBE_SUBTYPES = frozenset({779, 780})
 # ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged
 SEARCH_PAGE_SIZE = 500
 CACHE_SIZE = 512
 LOGIN_TIMEOUT = (10, 60)
 # The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
 # fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
-ENGINE_STEPS_TRAILER = re.compile(r"^\[Analytical engine calculation steps:.*", re.MULTILINE | re.DOTALL)
+ENGINE_STEPS_TRAILER = "[Analytical engine calculation steps:"
+# The sqlView endpoint's answer for a dataset that is a report rather than an Intelligent Cube
+NOT_A_CUBE = "Only cube is supported to get SQL view"
 
 T = TypeVar("T")
+K = TypeVar("K", bound=Hashable)
 
 
 def strip_engine_steps(sql: str | None) -> str | None:
     """The cube SQL without the Analytical engine calculation steps that follow the statement"""
-    return ENGINE_STEPS_TRAILER.sub("", sql).rstrip() if sql else sql
+    return sql.split(ENGINE_STEPS_TRAILER, 1)[0].rstrip() if sql else sql
+
+
+def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None], what: str) -> T | None:
+    """
+    Read through a bounded LRU cache. A failure is logged and cached as None, so a value that
+    cannot be read is not requested again for every dossier that uses it.
+    """
+    if key in cache:
+        cache.move_to_end(key)
+        return cache[key]
+    try:
+        value = fetch()
+    except Exception as exc:
+        logger.debug(traceback.format_exc())
+        logger.warning("Could not read %s: %s", what, exc)
+        value = None
+    cache[key] = value
+    if len(cache) > CACHE_SIZE:
+        cache.popitem(last=False)
+    return value
 
 
 class MicroStrategyApiError(Exception):
     """A MicroStrategy REST call failed or answered with an unexpected body"""
+
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 class MicroStrategyClient:
@@ -93,6 +123,12 @@ class MicroStrategyClient:
         self._api_version = f"{library_path}/api"
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
+        self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
+        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
+        self._attribute_failure_reported = False
+        self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
+        # Reading schema objects needs modeling privileges; their absence is reported once.
+        self.modeling_denied = False
         # Objects dropped for not matching the expected shape. The source reads it to tell a
         # complete listing from a partial one, since a dropped dossier would look deleted.
         self.skipped_objects = 0
@@ -158,13 +194,13 @@ class MicroStrategyClient:
             response = self.client.get(path, data=params, headers=dict(headers))
         except APIError as exc:
             if exc.status_code != 401:
-                raise MicroStrategyApiError(f"GET {path} failed: {exc}") from exc
+                raise MicroStrategyApiError(f"GET {path} failed: {exc}", exc.status_code) from exc
             logger.info("MicroStrategy session expired, logging in again")
             self.client = self._login()
             try:
                 response = self.client.get(path, data=params, headers=dict(headers))
             except APIError as retry_exc:
-                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}") from retry_exc
+                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}", retry_exc.status_code) from retry_exc
         if response is None:
             raise MicroStrategyApiError(f"GET {path} returned no response")
         return response
@@ -242,14 +278,132 @@ class MicroStrategyClient:
         Get the SQL of a cube, cached for the dossiers that share it. A cube whose SQL cannot be
         read is cached as None too, so it is not requested again for every dossier using it.
         """
-        return self._cached(
-            self._cube_sql,
-            cube_id,
-            lambda: strip_engine_steps(
-                self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id).get("sqlStatement")
+
+        def fetch() -> str | None:
+            try:
+                response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
+            except MicroStrategyApiError as exc:
+                if NOT_A_CUBE not in str(exc):
+                    raise
+                # A dataset can be a report rather than an Intelligent Cube, and the SQL view
+                # serves cubes only.
+                logger.warning(
+                    "Dataset %s is a report, not an Intelligent Cube: its SQL cannot be read, so it has no lineage",
+                    cube_id,
+                )
+                return None
+            return strip_engine_steps(response.get("sqlStatement"))
+
+        return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
+
+    def get_dataset_subtype(self, project_id: str, dataset_id: str) -> int | None:
+        """The subtype of the report object behind a dossier dataset, e.g. 776 for an Intelligent Cube"""
+        return cached(
+            self._dataset_subtypes,
+            dataset_id,
+            lambda: self._get(f"/objects/{dataset_id}", params={"type": REPORT_TYPE}, project_id=project_id).get(
+                "subtype"
             ),
-            f"the SQL of cube {cube_id}",
+            f"the type of dataset {dataset_id}",
         )
+
+    def get_attribute_form_columns(
+        self, project_id: str, attribute_id: str
+    ) -> dict[str, frozenset[tuple[str, str]]] | None:
+        """
+        For each form of a schema attribute, the (physical table, column) pairs its expressions read,
+        lowercased. None when the attribute cannot be read, for instance without modeling privileges.
+        """
+        if attribute_id in self._form_columns:
+            self._form_columns.move_to_end(attribute_id)
+            return self._form_columns[attribute_id]
+        if self.modeling_denied:
+            return None
+        try:
+            attribute = self._get(
+                f"/model/attributes/{attribute_id}", params={"showExpressionAs": "tree"}, project_id=project_id
+            )
+            forms = {
+                form["id"]: frozenset(self._form_expression_columns(project_id, form)) for form in attribute["forms"]
+            }
+        except MicroStrategyApiError as exc:
+            if exc.status_code == 403:
+                self._deny_modeling(exc)
+                return None
+            self._attribute_failed(attribute_id, exc)
+            forms = None
+        except Exception as exc:
+            self._attribute_failed(attribute_id, exc)
+            forms = None
+        if self.modeling_denied:
+            # A table read was refused while reading the forms: what was read is incomplete.
+            return None
+        self._form_columns[attribute_id] = forms
+        if len(self._form_columns) > CACHE_SIZE:
+            self._form_columns.popitem(last=False)
+        return forms
+
+    def _deny_modeling(self, exc: MicroStrategyApiError) -> None:
+        """Without the privilege every schema object is refused alike, so none is asked for again"""
+        if self.modeling_denied:
+            return
+        logger.warning(
+            "Schema cubes get table-level lineage only: column-level lineage needs the service account "
+            "to read schema objects (Architect privileges): %s",
+            exc,
+        )
+        self.modeling_denied = True
+
+    def _attribute_failed(self, attribute_id: str, exc: Exception) -> None:
+        """One warning for the run, so a server refusing many attributes does not flood the log"""
+        logger.debug(traceback.format_exc())
+        if self._attribute_failure_reported:
+            logger.debug("Could not read schema attribute %s: %s", attribute_id, exc)
+            return
+        self._attribute_failure_reported = True
+        logger.warning(
+            "Could not read schema attribute %s, so its columns get no column-level lineage; further attributes "
+            "that cannot be read are logged at debug level: %s",
+            attribute_id,
+            exc,
+        )
+
+    def _form_expression_columns(self, project_id: str, form: dict[str, Any]) -> Iterable[tuple[str, str]]:
+        for expression in form.get("expressions") or []:
+            column = (expression.get("expression") or {}).get("tree", {}).get("columnName")
+            if not column:
+                continue
+            for table in expression.get("tables") or []:
+                physical = self.get_physical_table(project_id, table["objectId"])
+                if physical:
+                    yield physical, column.lower()
+
+    def get_physical_table(self, project_id: str, logical_table_id: str) -> str | None:
+        """
+        The name the SQL gives the physical table behind a logical table, lowercased: its table
+        prefix when one is set (that is what MicroStrategy writes into the SQL), else its namespace,
+        then the table name.
+        """
+
+        if self.modeling_denied:
+            return None
+
+        def fetch() -> str | None:
+            try:
+                table = self._get(f"/model/tables/{logical_table_id}", project_id=project_id)
+            except MicroStrategyApiError as exc:
+                if exc.status_code != 403:
+                    raise
+                self._deny_modeling(exc)
+                return None
+            physical = table.get("physicalTable") or {}
+            name = physical.get("tableName")
+            if not name:
+                return None
+            qualifier = (physical.get("tablePrefix") or "").strip(".") or physical.get("namespace") or ""
+            return ".".join(part for part in (qualifier, name) if part).lower()
+
+        return cached(self._physical_tables, logical_table_id, fetch, f"the physical table of {logical_table_id}")
 
     def get_owner_email(self, owner_id: str) -> str | None:
         """The default email address of a user, when the session may read it"""
@@ -260,23 +414,7 @@ class MicroStrategyClient:
             default = next((a for a in emails if a.get("isDefault")), emails[0] if emails else None)
             return default["value"] if default else None
 
-        return self._cached(self._owner_emails, owner_id, fetch, f"the email of user {owner_id}")
-
-    @staticmethod
-    def _cached(cache: OrderedDict[str, T | None], key: str, fetch: Callable[[], T | None], what: str) -> T | None:
-        if key in cache:
-            cache.move_to_end(key)
-            return cache[key]
-        try:
-            value = fetch()
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning("Could not read %s: %s", what, exc)
-            value = None
-        cache[key] = value
-        if len(cache) > CACHE_SIZE:
-            cache.popitem(last=False)
-        return value
+        return cached(self._owner_emails, owner_id, fetch, f"the email of user {owner_id}")
 
     def _validate_each(self, items: list[Any], model: type[T], what: str) -> list[T]:
         """Validate items one by one, so one malformed object does not drop its siblings"""

@@ -2,12 +2,14 @@ package org.openmetadata.service.resources.ontology;
 
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
+import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
@@ -16,9 +18,11 @@ import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.OntologyEntityRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -30,6 +34,52 @@ final class OntologyResourceAccess {
   private static final Set<String> CONTENT_FIELDS = Set.of("description", "tags");
 
   private OntologyResourceAccess() {}
+
+  /**
+   * A name held only by a soft-deleted definition is re-created through PUT, so the write is
+   * authorized as an edit of that stored definition rather than as a create.
+   * ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
+   */
+  static <T extends OntologyDefinition> Response createOrRecreate(
+      final OntologyEntityRepository<T> repository,
+      final T entity,
+      final Supplier<Response> create,
+      final Supplier<Response> recreate) {
+    repository.setFullyQualifiedName(entity);
+    return repository.findByNameOrNull(entity.getFullyQualifiedName(), Include.DELETED) == null
+        ? create.get()
+        : repository.recreating(recreate);
+  }
+
+  /**
+   * The Studio's Undo restores the id it deleted. Re-creating the name in between already brought
+   * that id back, so a restore of a live definition, authorized as the restore itself is, still
+   * brings back its deleted children and succeeds with the definition as it stands.
+   */
+  static Response restoreOrKeepLive(
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final EntityRepository<?> repository,
+      final UUID id,
+      final Supplier<Response> restore) {
+    final boolean deleted = Boolean.TRUE.equals(repository.find(id, Include.ALL).getDeleted());
+    return deleted ? restore.get() : restoreChildrenOfLive(authorizer, context, repository, id);
+  }
+
+  private static Response restoreChildrenOfLive(
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final EntityRepository<?> repository,
+      final UUID id) {
+    final String type = repository.getEntityType();
+    authorizer.authorize(
+        context,
+        new OperationContext(type, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(type, id, null));
+    repository.validateRestore(id);
+    repository.restoreEntity(context.getUserPrincipal().getName(), id);
+    return Response.ok(repository.find(id, Include.NON_DELETED)).build();
+  }
 
   /**
    * A library install writes definitions through the job's own repository calls, so the caller

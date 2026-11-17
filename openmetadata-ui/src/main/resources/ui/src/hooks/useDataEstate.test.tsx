@@ -77,23 +77,30 @@ describe('useDataEstate', () => {
     mockSearchData.mockResolvedValue(serviceTypeBuckets());
   });
 
-  it('totals the newest day and ranks connectors by size', async () => {
+  // The header used to print the Data Insights total above a bar that summed
+  // to something else; it is now the bar's own sum, and only the movement
+  // badge still reads Data Insights.
+  it('totals the connector counts, and measures movement from Data Insights', async () => {
     mockGetCharts.mockResolvedValue(
       chartsResponse(
         [
-          { count: 10, day: DAY_ONE, group: 'Snowflake' },
-          { count: 100, day: DAY_TWO, group: 'Snowflake' },
-          { count: 250, day: DAY_TWO, group: 'Redshift' },
+          { count: 10, day: DAY_ONE, group: 'table' },
+          { count: 100, day: DAY_TWO, group: 'table' },
+          { count: 250, day: DAY_TWO, group: 'glossaryTerm' },
         ],
         []
       )
+    );
+    mockSearchData.mockResolvedValue(
+      serviceTypeBuckets(['Snowflake', 40], ['BigQuery', 60])
     );
 
     const { result } = renderHook(() => useDataEstate(), { wrapper });
 
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
-    expect(result.current.totalAssets).toBe(350);
+    expect(result.current.totalAssets).toBe(100);
+    expect(result.current.totalDelta).toBe(340);
   });
 
   // The card says "by connector", and the chart's groups are entity types
@@ -312,6 +319,24 @@ describe('useDataEstate', () => {
     );
   });
 
+  // Columns live in the data-asset alias with their table's serviceType; left
+  // in, a connector's segment dwarfed the header total it is meant to split.
+  it('leaves columns out of the per-connector counts', async () => {
+    mockGetCharts.mockResolvedValue(chartsResponse([], []));
+
+    const { result } = renderHook(() => useDataEstate(), { wrapper });
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    const { query } = mockSearchData.mock.calls[0][0];
+
+    expect(JSON.parse(query ?? '{}')).toEqual({
+      query: {
+        bool: { must_not: [{ term: { entityType: 'tableColumn' } }] },
+      },
+    });
+  });
+
   it('folds the tail into one Other segment without losing its assets', async () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     const buckets = Array.from(
@@ -333,9 +358,9 @@ describe('useDataEstate', () => {
     expect(connectors.reduce((sum, c) => sum + c.count, 0)).toBe(total);
   });
 
-  // Data Insights has no rows until its pipeline runs; the header used to
-  // print 0 next to a populated breakdown.
-  it('falls back to the live connector sum when Data Insights has no rows', async () => {
+  // Data Insights has no rows until its pipeline runs; the header must not
+  // wait on it, and with no baseline there is no movement to report.
+  it('totals the connectors and reports no movement when Data Insights has no rows', async () => {
     mockGetCharts.mockResolvedValue(chartsResponse([], []));
     mockSearchData.mockResolvedValue(
       serviceTypeBuckets(['Snowflake', 100], ['BigQuery', 250])
@@ -353,7 +378,13 @@ describe('useDataEstate', () => {
   // back to its first-load skeleton and unmounted the filter just used.
   it('keeps the previous window on screen while the next one loads', async () => {
     mockGetCharts.mockResolvedValueOnce(
-      chartsResponse([{ count: 350, day: DAY_TWO, group: 'table' }], [])
+      chartsResponse(
+        [
+          { count: 300, day: DAY_ONE, group: 'table' },
+          { count: 350, day: DAY_TWO, group: 'table' },
+        ],
+        []
+      )
     );
 
     const { result, rerender } = renderHook(
@@ -369,7 +400,7 @@ describe('useDataEstate', () => {
     await waitFor(() => expect(result.current.isFetching).toBe(true));
 
     expect(result.current.isLoading).toBe(false);
-    expect(result.current.totalAssets).toBe(350);
+    expect(result.current.totalDelta).toBe(50);
     // The label must still describe the figures shown, not the new range.
     expect(result.current.windowDays).toBe(7);
   });
