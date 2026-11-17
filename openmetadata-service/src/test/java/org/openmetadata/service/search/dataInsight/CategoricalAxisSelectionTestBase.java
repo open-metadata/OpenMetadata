@@ -15,10 +15,19 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.dataInsight.custom.Function;
+import org.openmetadata.schema.dataInsight.custom.LineChart;
+import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.DataInsightSystemChartRepository;
 import org.openmetadata.service.search.SearchRepository;
 
 /**
@@ -30,11 +39,11 @@ import org.openmetadata.service.search.SearchRepository;
  * request never built fails the whole search, and ordering by a metric value floats the categories
  * that matched nothing to the top. Only an engine can answer those.
  *
- * <p>The fixture is built so that ranking is the difference between a correct chart and an empty
- * one: {@value #NOISE_SERVICES} services hold nothing but dashboards, and only {@value
- * #DATA_SERVICES} hold tables, each with fewer documents than any noise service. A terms axis
- * ordered by raw document count therefore fills all {@value #AXIS_SIZE} slots with dashboard
- * services and drops every service the chart is about.
+ * <p>The fixture is built so that picking categories from the wrong documents is the difference
+ * between a correct chart and an empty one: {@value #NOISE_SERVICES} services hold nothing but
+ * dashboards, and only {@value #DATA_SERVICES} hold tables, each with fewer documents than any noise
+ * service. A terms axis built over every document and ordered by raw document count therefore fills
+ * all {@value #AXIS_SIZE} slots with dashboard services and drops every service the chart is about.
  */
 public abstract class CategoricalAxisSelectionTestBase {
 
@@ -42,6 +51,8 @@ public abstract class CategoricalAxisSelectionTestBase {
   protected static final String X_AXIS_FIELD = "service.name.keyword";
   protected static final String TABLE_FILTER =
       "{\"query\":{\"term\":{\"entityType.keyword\":\"table\"}}}";
+  protected static final String DASHBOARD_FILTER =
+      "{\"query\":{\"term\":{\"entityType.keyword\":\"dashboard\"}}}";
 
   /** Services holding only dashboards. Above the axis size, so they can fill it on their own. */
   private static final int NOISE_SERVICES = 110;
@@ -62,8 +73,8 @@ public abstract class CategoricalAxisSelectionTestBase {
   /** Base URL of the running engine, e.g. {@code http://localhost:32769}. */
   protected abstract String engineUrl();
 
-  /** The chart request under test, serialized exactly as the aggregator would send it. */
-  protected abstract String rankedRequest();
+  /** The request the aggregator under test builds for this chart, serialized as it is sent. */
+  protected abstract String requestFor(LineChart lineChart);
 
   @BeforeAll
   static void stubTheSearchRepository() {
@@ -144,35 +155,109 @@ public abstract class CategoricalAxisSelectionTestBase {
   }
 
   @Test
-  void theRankedAxisSelectsTheServicesThatHaveDataAndStillReportsTheEmptyOnes() throws Exception {
-    JsonNode buckets = search(rankedRequest());
-    Set<String> selected = keysOf(buckets);
+  void theAxisHoldsExactlyTheServicesTheChartCounts() throws Exception {
+    // A dashboard-only service is not part of a tables-per-service chart, so it gets no bucket
+    // rather than a zero bar.
+    JsonNode buckets = search(requestFor(tablesPerService()));
 
-    assertEquals(AXIS_SIZE, selected.size(), "the axis is still full");
-    for (int svc = 0; svc < DATA_SERVICES; svc++) {
-      String service = dataService(svc);
-      assertTrue(selected.contains(service), service + " must be selected: " + selected);
+    assertEquals(dataServices(), new TreeSet<>(keysOf(buckets)), "only services holding tables");
+    for (String service : dataServices()) {
       assertEquals(
           TABLES_PER_DATA_SERVICE, metricValue(buckets, service), service + " counts its tables");
     }
-    assertTrue(
-        selected.stream().anyMatch(key -> key.startsWith("noise-")),
-        "a service with no tables must still be reported, at zero: " + selected);
-    assertEquals(
-        0,
-        metricValue(
-            buckets,
-            selected.stream().filter(k -> k.startsWith("noise-")).findFirst().orElseThrow()),
-        "and it must report zero rather than being dropped");
   }
 
   @Test
-  void theRankedRequestIsNotNarrowedSoTheEmptyCategoriesSurvive() throws Exception {
-    // Narrowing the request with the metric filter would leave only the ten table services in the
-    // index the axis sees, and min_doc_count 1 would drop the other hundred entirely.
-    assertTrue(
-        MAPPER.readTree(rankedRequest()).path("query").isMissingNode(),
-        "the request must stay wide: " + rankedRequest());
+  void aServiceTheChartCountsKeepsItsBucketWhenTheMetricFindsNothingThere() throws Exception {
+    // The population stops at the metric filter, never at a term's own q=: no table is INCOMPLETE,
+    // and each data service must still say so with a zero.
+    LineChart incompleteTablesPerService =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withName("incomplete")
+                        .withFormula("count(k='id.keyword',q='descriptionStatus: INCOMPLETE')")
+                        .withFilter(TABLE_FILTER)))
+            .withxAxisField(X_AXIS_FIELD);
+    JsonNode buckets = search(requestFor(incompleteTablesPerService));
+
+    assertEquals(dataServices(), new TreeSet<>(keysOf(buckets)));
+    for (String service : dataServices()) {
+      assertEquals(0, metricValue(buckets, service), service + " holds no incomplete table");
+    }
+  }
+
+  @Test
+  void aMetricReportsZeroForAServiceOnlyAnotherMetricCounts() throws Exception {
+    // With two metrics the population is every document either counts, so a noise service is in
+    // the chart through its dashboards and the tables metric must say it holds none.
+    LineChart tablesAndDashboardsPerService =
+        new LineChart()
+            .withMetrics(
+                List.of(countOf("tables", TABLE_FILTER), countOf("dashboards", DASHBOARD_FILTER)))
+            .withxAxisField(X_AXIS_FIELD);
+    JsonNode tables = search(requestFor(tablesAndDashboardsPerService), "tables");
+
+    for (String service : dataServices()) {
+      assertEquals(TABLES_PER_DATA_SERVICE, metricValue(tables, service), service);
+    }
+    String noiseService =
+        keysOf(tables).stream()
+            .filter(key -> key.startsWith("noise-"))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError("no dashboard service in " + tables));
+    assertEquals(0, metricValue(tables, noiseService), noiseService + " holds no tables");
+  }
+
+  @Test
+  void aGroupedChartListsOnlyTheGroupsItsMetricCounts() throws Exception {
+    LineChart tablesPerServiceByType = tablesPerService().withGroupBy("entityType.keyword");
+    JsonNode groups = search(requestFor(tablesPerServiceByType), "term_0");
+
+    assertEquals(Set.of("table"), keysOf(groups), "a dashboard group is outside the chart");
+    JsonNode services = groups.path(0).path("tables").path("buckets");
+    assertEquals(dataServices(), new TreeSet<>(keysOf(services)));
+  }
+
+  @Test
+  void aBuiltInChartReadForOneServiceListsOnlyThatService() throws Exception {
+    // Built-in charts declare no filter: the repository merges the caller's into every metric.
+    String service = dataService(0);
+    String serviceFilter = "{\"query\":{\"match\":{\"" + X_AXIS_FIELD + "\":\"" + service + "\"}}}";
+    LineChart completeAssetsPerService =
+        new LineChart()
+            .withMetrics(
+                List.of(
+                    new LineChartMetric()
+                        .withFormula("count(k='id.keyword',q='descriptionStatus: COMPLETE')")
+                        .withFilter(
+                            DataInsightSystemChartRepository.combineFilters(null, serviceFilter))))
+            .withxAxisField(X_AXIS_FIELD);
+    JsonNode buckets = search(requestFor(completeAssetsPerService));
+
+    assertEquals(Set.of(service), keysOf(buckets), "not the other services at zero");
+    assertEquals(TABLES_PER_DATA_SERVICE, metricValue(buckets, service));
+  }
+
+  private static LineChart tablesPerService() {
+    return new LineChart()
+        .withMetrics(List.of(countOf("tables", TABLE_FILTER)))
+        .withxAxisField(X_AXIS_FIELD);
+  }
+
+  private static LineChartMetric countOf(String name, String filter) {
+    return new LineChartMetric()
+        .withName(name)
+        .withFunction(Function.COUNT)
+        .withField("id.keyword")
+        .withFilter(filter);
+  }
+
+  private static Set<String> dataServices() {
+    return IntStream.range(0, DATA_SERVICES)
+        .mapToObj(CategoricalAxisSelectionTestBase::dataService)
+        .collect(Collectors.toCollection(TreeSet::new));
   }
 
   /** Bucket keys in the order the engine returned them. */
@@ -183,35 +268,57 @@ public abstract class CategoricalAxisSelectionTestBase {
   }
 
   /**
-   * The number the chart plots for a category: the leaf metric inside the filter wrapper, or the
-   * bare leaf when the metric carries no filter.
+   * The number the chart plots for a category: the leaf metric inside whichever filter wrapper the
+   * metric was built with ({@code filter}, or {@code filter<index>} for a formula term), or the bare
+   * leaf when the metric carries no filter.
    */
   private static long metricValue(JsonNode buckets, String key) {
-    for (JsonNode bucket : buckets) {
-      if (key.equals(bucket.path("key").asText())) {
-        JsonNode wrapper = bucket.has("filter") ? bucket.get("filter") : bucket;
-        for (Iterator<String> it = wrapper.fieldNames(); it.hasNext(); ) {
-          String field = it.next();
-          if (wrapper.path(field).has("value")) {
-            return wrapper.path(field).path("value").asLong();
-          }
-        }
+    JsonNode bucket = null;
+    for (JsonNode candidate : buckets) {
+      if (key.equals(candidate.path("key").asText())) {
+        bucket = candidate;
       }
     }
-    throw new AssertionError("no bucket for " + key + " in " + buckets);
+    if (bucket == null) {
+      throw new AssertionError("no bucket for " + key + " in " + buckets);
+    }
+    JsonNode found = bucket;
+    return leafValue(bucket).orElseThrow(() -> new AssertionError("no metric value in " + found));
   }
 
+  private static Optional<Long> leafValue(JsonNode node) {
+    Optional<Long> value =
+        node.has("value") ? Optional.of(node.path("value").asLong()) : Optional.empty();
+    for (Iterator<JsonNode> children = node.elements(); value.isEmpty() && children.hasNext(); ) {
+      JsonNode child = children.next();
+      value = child.isObject() ? leafValue(child) : Optional.empty();
+    }
+    return value;
+  }
+
+  /** Buckets of the one aggregation a single-metric chart builds. */
   private JsonNode search(String body) throws Exception {
-    JsonNode response = MAPPER.readTree(post(INDEX + "/_search", body));
-    assertEquals(0, response.path("_shards").path("failed").asInt(), "shard failures: " + response);
-    JsonNode aggregations = response.path("aggregations");
+    JsonNode aggregations = aggregationsOf(body);
     for (Iterator<String> it = aggregations.fieldNames(); it.hasNext(); ) {
       JsonNode agg = aggregations.path(it.next());
       if (agg.has("buckets")) {
         return agg.path("buckets");
       }
     }
-    throw new AssertionError("no bucketed aggregation in " + response);
+    throw new AssertionError("no bucketed aggregation in " + aggregations);
+  }
+
+  /** Buckets of the aggregation a chart builds for the metric with this name. */
+  private JsonNode search(String body, String metricName) throws Exception {
+    JsonNode buckets = aggregationsOf(body).path(metricName).path("buckets");
+    assertTrue(buckets.isArray(), "no aggregation named " + metricName + " in " + body);
+    return buckets;
+  }
+
+  private JsonNode aggregationsOf(String body) throws Exception {
+    JsonNode response = MAPPER.readTree(post(INDEX + "/_search", body));
+    assertEquals(0, response.path("_shards").path("failed").asInt(), "shard failures: " + response);
+    return response.path("aggregations");
   }
 
   private String post(String path, String body) throws IOException, InterruptedException {

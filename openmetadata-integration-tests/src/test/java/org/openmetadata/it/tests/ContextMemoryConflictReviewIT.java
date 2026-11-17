@@ -266,6 +266,23 @@ public class ContextMemoryConflictReviewIT {
     assertTrue(listOrEmpty(admin().get(idOf(conflict.reviewed())).getDisputes()).isEmpty());
   }
 
+  /**
+   * A memory a person deleted is not archived with its sources, so no restore brings it back: a
+   * review disputing it is decided without it, and the deleted memory is left as it is.
+   */
+  @Test
+  void aReviewIsDecidedWithoutADisputedMemoryAPersonDeleted(TestNamespace ns) {
+    Conflict conflict = conflict(ns, "person-deleted");
+    Task task = openTask(conflict.reviewed());
+    admin().delete(idOf(conflict.disputed()));
+
+    Task resolved = resolve(SdkClients.adminClient(), task, "approve", TaskResolutionType.Approved);
+
+    assertEquals(TaskEntityStatus.Approved, resolved.getStatus());
+    assertEquals(
+        ContextMemoryStatus.APPROVED, admin().get(idOf(conflict.reviewed())).getEntityStatus());
+  }
+
   /** Only the open review guards its memory: the one the delete cancelled stays deletable. */
   @Test
   void deletingAMemoryInReviewClosesItsTaskAndRestoringItReopensOne(TestNamespace ns) {

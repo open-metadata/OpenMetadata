@@ -365,6 +365,7 @@ public final class ApprovalGate {
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
       rejectMutuallyExclusiveTags(edited.published(), edited.changed());
+      rejectUnapprovedGlossaryTerms(entityType, edited);
       rejectStageMoveOutsideLifecycle(
           entityType, edited.original(), edited.published(), edited.changed());
       final GatedBy review = gating.get(0);
@@ -593,6 +594,13 @@ public final class ApprovalGate {
       EntityStatusAdapter<?> statuses = repository.getEntityLifecycle().adapter();
       repository.validateEntityStatusMove(statuses.read(original), statuses.read(updated));
     }
+  }
+
+  // Not narrowed to changed `tags`: a field's labels change under its container (`columns`, ...),
+  // so a workflow gating that container would otherwise hold a term the write would refuse.
+  private static void rejectUnapprovedGlossaryTerms(String entityType, Edited edited) {
+    Entity.getEntityRepository(entityType)
+        .checkNewlyAppliedGlossaryTermsApproved(edited.original(), edited.published());
   }
 
   private static void rejectMutuallyExclusiveTags(EntityInterface updated, Set<String> changed) {

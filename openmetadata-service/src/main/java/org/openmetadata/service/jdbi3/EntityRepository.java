@@ -3580,11 +3580,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Stamp who created the entity and when, derived from updatedAt/updatedBy so a freshly created
    * entity satisfies createdAt == updatedAt and createdBy == updatedBy.
    *
-   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: PUT reaches
-   * the create path through {@code EntityResource.createOrUpdate}, which calls
-   * {@code prepareInternal(entity, true)}, so a prepare-time hook would skip every entity created
-   * by ingestion. createNewEntity is the one funnel all create paths share, and by then the
-   * late updatedBy override in {@code createInternal} has already been applied.
+   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: {@link
+   * #createOrUpdate} creates a missing entity through createNewEntity without a prepare pass, so a
+   * prepare-time hook would skip every entity created that way. createNewEntity is the one funnel
+   * all create paths share, and by then the late updatedBy override in {@code createInternal} has
+   * already been applied.
    *
    * <p>Entities whose schema does not declare these fields fall through to the no-op
    * EntityInterface defaults.
@@ -5165,15 +5165,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
   }
 
   /**
@@ -5243,15 +5244,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
+  }
+
+  /**
+   * Answers a PATCH with the tags a read of the same entity returns. {@code prepareInternal} drops
+   * the DERIVED labels it is given, since none is stored, so the patched entity carries only its
+   * own tags and the ones they imply, while a read also merges in the tags it inherits from its
+   * parents. A client that renders the response would otherwise show the inherited tags as removed
+   * until it reads the entity again. A held change answers with the entity as it was read, which
+   * already carries them.
+   */
+  private PatchResponse<T> withInheritedTags(final PatchResponse<T> response) {
+    // ADR:2026-11-14-a-patch-answers-with-the-tags-a-read-returns
+    if (supportsTags && response.status() == Status.OK && response.entity() != null) {
+      setInheritedFields(response.entity(), getFields(FIELD_TAGS));
+    }
+    return response;
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -6415,6 +6433,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
   }
 
+  /**
+   * Rejects a glossary term that is not Approved and that {@code updated} newly applies to the
+   * entity or one of its fields. Edits an approval workflow holds are checked when they are staged,
+   * so a term is rejected before a change request is opened for it, not when the request is
+   * approved.
+   */
+  public final void checkNewlyAppliedGlossaryTermsApproved(
+      final EntityInterface original, final EntityInterface updated) {
+    final T stored = entityClass.cast(original);
+    final T edited = entityClass.cast(updated);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        ApprovedGlossaryTermGuard.tagsByStoredTarget(
+            new ApprovedGlossaryTermGuard.TaggedEntity(edited, taggedFieldContainers(edited)),
+            new ApprovedGlossaryTermGuard.TaggedEntity(stored, taggedFieldContainers(stored))),
+        glossaryTagsByTarget(stored));
+  }
+
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
   final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
     return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
@@ -7228,7 +7263,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return JsonUtils.treeToValue(jsonNode, Object.class);
   }
 
-  private void validateExtension(T entity, boolean update) {
+  protected void validateExtension(T entity, boolean update) {
     // Validate complete extension field only on POST
     if (entity.getExtension() == null || update) {
       return;
@@ -7932,7 +7967,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * #applyCertification} in tolerating a certification with no usable tag rather than failing the
    * create — that shape is already a no-op downstream.
    */
-  private void prepareCertification(T entity) {
+  protected void prepareCertification(T entity) {
     if (!supportsCertification || entity.getCertification() == null) {
       return;
     }
@@ -11247,12 +11282,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Runs before any write, and before consolidation rebases `original` onto the pre-session
     // version, so the baseline is the stored entity this request changes.
     private void checkNewlyAppliedGlossaryTermsApproved() {
-      ApprovedGlossaryTermGuard.checkNewlyApplied(
-          ApprovedGlossaryTermGuard.tagsByStoredTarget(
-              new ApprovedGlossaryTermGuard.TaggedEntity(updated, taggedFieldContainers(updated)),
-              new ApprovedGlossaryTermGuard.TaggedEntity(
-                  original, taggedFieldContainers(original))),
-          glossaryTagsByTarget(original));
+      EntityRepository.this.checkNewlyAppliedGlossaryTermsApproved(original, updated);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {

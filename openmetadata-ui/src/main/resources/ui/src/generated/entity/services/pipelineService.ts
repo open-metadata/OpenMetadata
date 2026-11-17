@@ -603,9 +603,15 @@ export interface AirflowConnectionObject {
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
      * {"S3_Connector": "my-s3-service"}
      */
-    serviceMapping?:            string;
+    serviceMapping?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
     supportsLineageExtraction?: boolean;
-    supportsUsageExtraction?:   boolean;
+    /**
+     * Supports Usage Extraction.
+     */
+    supportsUsageExtraction?: boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
@@ -698,6 +704,9 @@ export interface PurpleAuthentication {
  * Basic Auth Credentials
  *
  * Access Token Auth Credentials
+ *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
  */
 export interface Authentication {
     /**
@@ -708,6 +717,8 @@ export interface Authentication {
     /**
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
+     *
+     * Client ID of the Tableau connected app.
      */
     clientId?: string;
     /**
@@ -750,6 +761,9 @@ export interface Authentication {
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
      */
     username?: string;
     /**
@@ -760,6 +774,14 @@ export interface Authentication {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
 }
 
 /**

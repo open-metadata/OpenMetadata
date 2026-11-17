@@ -31,6 +31,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
@@ -106,6 +107,23 @@ class ContextMemoryRepositoryTest {
   @AfterEach
   void tearDown() {
     Entity.cleanup();
+  }
+
+  /**
+   * A delete or restore of the memory by any path clears the mark its sources' archive left, so a
+   * memory a person deletes later is never restored with one of its sources.
+   */
+  @Test
+  void aDeleteOrRestoreOfTheMemoryClearsTheMarkItsSourcesArchiveLeft() {
+    CollectionDAO.EntityExtensionDAO extensions = mock(CollectionDAO.EntityExtensionDAO.class);
+    when(daoCollection.entityExtensionDAO()).thenReturn(extensions);
+    ContextMemory memory = new ContextMemory().withId(UUID.randomUUID()).withName("archived");
+
+    repository.postDelete(memory, false);
+    verify(extensions).delete(memory.getId(), "contextMemory.archivedWithSources");
+
+    repository.postRestore(memory);
+    verify(extensions, times(2)).delete(memory.getId(), "contextMemory.archivedWithSources");
   }
 
   @Test

@@ -41,6 +41,8 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.context.center.MemoryExtractionState;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
+import org.openmetadata.service.context.center.MemorySourceSharing;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
@@ -60,6 +62,8 @@ import org.openmetadata.service.util.RestUtil;
 @Repository(name = "ContextFileRepository")
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
+  // The folder is kept out of the stored JSON, so a patch loads it to derive the file's FQN.
+  private static final String PATCH_FIELDS = "folder";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
   private static final String ARCHIVED_FILE_NAME_MESSAGE =
@@ -78,7 +82,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
         CONTEXT_FILE_ENTITY,
         ContextFile.class,
         jdbi.onDemand(CollectionDAO.class).contextFileDAO(),
-        "",
+        PATCH_FIELDS,
         "");
     supportsSearch = true;
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
@@ -414,24 +418,33 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
   }
 
-  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
-  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
-  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
-  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
+  // Memory cleanup runs in these hooks while the file -> memory MENTIONED_IN edges still exist; a
+  // hard delete's cleanup() removes them before postDelete. Archiving keeps the memories, restoring
+  // brings them back, and a permanent delete releases them.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    memorySourceLifecycle().archiveExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    memorySourceLifecycle().releaseExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
-  private ContextMemoryRepository contextMemoryRepository() {
+  // Runs for a single restore and for each file of a restored folder, once the file is live again.
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID fileId, String restoredBy) {
+    memorySourceLifecycle().restoreExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  private MemorySourceLifecycle memorySourceLifecycle() {
+    return new MemorySourceLifecycle(memoryRepository());
+  }
+
+  private static ContextMemoryRepository memoryRepository() {
     return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
@@ -498,6 +511,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   public class ContextFileUpdater extends EntityUpdater {
+    // Captured before consolidation can rebase original or hand a pass the previous version.
+    private final ContextFile requested;
+    private final boolean wasOrgWide;
+    private boolean sharingFollowed;
+
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
       keepStoredContent(original, updated);
@@ -505,11 +523,18 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
       }
+      requested = updated;
+      wasOrgWide = ContextFileVisibility.isOrgWide(original);
     }
 
     private static void keepStoredContent(ContextFile original, ContextFile updated) {
       updated.setAssetId(original.getAssetId());
       updated.setHeadContentId(original.getHeadContentId());
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      sharingFollowed = false;
     }
 
     @Override
@@ -523,7 +548,25 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
+      followSharing();
       updateFolder();
+    }
+
+    /**
+     * Once per attempt, inside this write: when the file turns restricted or org-wide, its memories
+     * follow (ADR:2026-09-29-context-file-memory-reuse). Other share edits leave them as they are.
+     */
+    private void followSharing() {
+      boolean orgWide = ContextFileVisibility.isOrgWide(requested);
+      if (!sharingFollowed && orgWide != wasOrgWide) {
+        sharingFollowed = true;
+        MemorySourceSharing sharing = new MemorySourceSharing(memoryRepository());
+        if (orgWide) {
+          sharing.followSourceOpening(requested);
+        } else {
+          sharing.followSourceRestriction(requested);
+        }
+      }
     }
 
     private void updateFolder() {

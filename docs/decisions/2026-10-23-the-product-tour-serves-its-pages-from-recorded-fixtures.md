@@ -1,7 +1,7 @@
 # The product tour walks the real pages and serves them from recorded fixtures
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo; starting a tour drops server data cached before it) · v3 2026-10-27 (in AI mode, /tour starts a fresh route cache)
+- **Status:** Superseded by ADR:2026-11-13-the-product-tour-is-a-storylane-demo
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (no recorder or seed script in the repo; starting a tour drops server data cached before it) · v3 2026-10-27 (in AI mode, /tour starts a fresh route cache) · v4 2026-11-13 (superseded; the tour and the guards named below were removed)
 - **Deciders:** UI team
 - **Guard:** `openmetadata-ui/src/main/resources/ui/playwright/e2e/Flow/ProductTour.spec.ts` (no tour page request reaches the server),
   `openmetadata-ui/src/main/resources/ui/src/components/platform/ai-shell/AppModeRoutes/AppModeRoutes.tour.test.tsx` (the tour opens without the pages, or the data, from before it),

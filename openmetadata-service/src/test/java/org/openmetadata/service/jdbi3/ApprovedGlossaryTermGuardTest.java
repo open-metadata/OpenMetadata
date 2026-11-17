@@ -129,6 +129,38 @@ class ApprovedGlossaryTermGuardTest {
         Map.of(COLUMN_A, List.of(label(DEPRECATED))), Map.of());
   }
 
+  // Every held edit and every write runs the guard, so an edit that keeps its terms must cost
+  // nothing.
+  @Test
+  void anEditApplyingNoNewTermLooksNothingUp() {
+    List<TagLabel> held = List.of(label(DEPRECATED), label(APPROVED));
+
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        Map.of(TABLE_FQN, held, COLUMN_A, held), Map.of(TABLE_FQN, held, COLUMN_A, held));
+
+    entity.verify(
+        () ->
+            Entity.getEntityByNames(
+                eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)),
+        never());
+    verify(tagUsageDAO, never()).getTagsByTargetFQNHashes(anyList());
+  }
+
+  @Test
+  void onlyTheNewlyAppliedTermIsLookedUp() {
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        Map.of(COLUMN_A, List.of(label(DEPRECATED), label(APPROVED))),
+        Map.of(COLUMN_A, List.of(label(DEPRECATED))));
+
+    entity.verify(
+        () ->
+            Entity.getEntityByNames(
+                Entity.GLOSSARY_TERM,
+                List.of(APPROVED.getFullyQualifiedName()),
+                "",
+                Include.NON_DELETED));
+  }
+
   @Test
   void approvedTermsNeverReadStoredTags() {
     ApprovedGlossaryTermGuard.checkNewlyApplied(

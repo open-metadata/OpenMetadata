@@ -20,6 +20,7 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperText
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Rule } from '../../../../../../generated/api/policies/createPolicy';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getPolicyByName,
@@ -31,6 +32,7 @@ import {
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
 import Loader from '../../../../../common/Loader/Loader';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
@@ -55,6 +57,9 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const ruleForm = useForm<Rule>({ defaultValues: INITIAL_RULE });
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    ruleForm.formState.isDirty
+  );
   // A rule link can be opened directly, past the detail page's edit gate.
   const { canEditAll, isLoading: isPermissionLoading } = useEntityPermissions(
     ResourceEntity.POLICY,
@@ -179,9 +184,13 @@ const AccessControlRuleFormPage: FC<AccessControlRuleFormPageProps> = ({
         direction="row"
         gap={3}
         justify="end">
-        <Button color="tertiary" data-testid="cancel-btn" onPress={goBack}>
+        <Button
+          color="tertiary"
+          data-testid="cancel-btn"
+          onPress={() => runGuarded(goBack)}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"
