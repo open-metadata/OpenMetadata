@@ -257,6 +257,54 @@ class OntologyAiServiceTest {
   }
 
   @Test
+  void keepsAnEmojiWholeWhenTruncatingADomainConceptRationale() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical",
+                "Clinical",
+                "Clinical concepts",
+                null,
+                0.9D,
+                "x".repeat(1999) + "\uD83E\uDDEA"));
+
+    final var rationale =
+        service
+            .generateDomainDraft(domainRequest())
+            .getDraft()
+            .getOperations()
+            .getFirst()
+            .getRationale();
+
+    assertEquals("x".repeat(1999), rationale);
+  }
+
+  @Test
+  void rejectsDomainConceptWithoutConfidence() {
+    gateway.domainCompletion =
+        completion(
+            new OntologyAiCompletionGateway.DomainConceptCandidate(
+                "clinical", "Clinical", "Clinical concepts", null, null, "Top-level area"));
+
+    assertThrows(
+        OntologyAiProviderException.class, () -> service.generateDomainDraft(domainRequest()));
+  }
+
+  @Test
+  void rejectsRelationshipWithoutConfidence() {
+    gateway.relationshipCompletion =
+        new OntologyAiCompletionGateway.Completion<>(
+            "test-model",
+            List.of(
+                new OntologyAiCompletionGateway.RelationshipCandidate(
+                    source.getId(), target.getId(), relationshipType.getId(), null, "No score")));
+
+    assertThrows(
+        OntologyAiProviderException.class,
+        () -> service.suggestRelationships(relationshipRequest()));
+  }
+
+  @Test
   void rejectsDomainConceptWithoutRationale() {
     gateway.domainCompletion =
         completion(

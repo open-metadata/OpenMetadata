@@ -98,11 +98,20 @@ final class OntologyAiDomainDraftFactory {
         .withOperationType(OntologyChangeOperationType.CREATE_TERM)
         .withTerm(term)
         .withConfidence(candidate.confidence())
-        .withRationale(
-            candidate
-                .rationale()
-                .substring(0, Math.min(candidate.rationale().length(), MAX_RATIONALE_LENGTH)))
+        .withRationale(truncateRationale(candidate.rationale()))
         .withState(OntologyChangeOperationState.ACTIVE);
+  }
+
+  private static String truncateRationale(final String rationale) {
+    if (rationale.length() <= MAX_RATIONALE_LENGTH) {
+      return rationale;
+    }
+    // Cutting between the two halves of a surrogate pair would leave an invalid character.
+    final int end =
+        Character.isHighSurrogate(rationale.charAt(MAX_RATIONALE_LENGTH - 1))
+            ? MAX_RATIONALE_LENGTH - 1
+            : MAX_RATIONALE_LENGTH;
+    return rationale.substring(0, end);
   }
 
   private static GlossaryTerm term(
