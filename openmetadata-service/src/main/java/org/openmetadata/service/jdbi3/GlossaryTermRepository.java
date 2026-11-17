@@ -48,6 +48,7 @@ import jakarta.json.JsonArrayBuilder;
 import jakarta.json.JsonObjectBuilder;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -143,7 +144,9 @@ import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedField
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
@@ -1920,6 +1923,79 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             result.getNumberOfRowsPassed(), result.getNumberOfRowsProcessed()));
 
     return result;
+  }
+
+  /**
+   * Keeps the result rows about assets the caller may view; the counts and status still cover every
+   * asset, so the caller learns the outcome without the details of assets they cannot open.
+   */
+  public BulkOperationResult viewableRowsOnly(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      BulkOperationResult result) {
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return result;
+    }
+    List<BulkResponse> rows = new ArrayList<>(listOrEmpty(result.getSuccessRequest()));
+    rows.addAll(listOrEmpty(result.getFailedRequest()));
+    Map<String, EntityReference> tables = tablesOfColumns(rows);
+    List<EntityReference> targets =
+        rows.stream().map(row -> viewTarget(row, tables)).filter(Objects::nonNull).toList();
+    Set<UUID> viewable = viewFilter.viewableIds(securityContext, targets);
+    // A row without an asset (e.g. "Nothing to Validate.") names nothing, so it stays.
+    Predicate<BulkResponse> isViewable =
+        row ->
+            row.getRequest() == null
+                || Optional.ofNullable(viewTarget(row, tables))
+                    .map(target -> viewable.contains(target.getId()))
+                    .orElse(false);
+    return result
+        .withSuccessRequest(
+            listOrEmpty(result.getSuccessRequest()).stream().filter(isViewable).toList())
+        .withFailedRequest(
+            listOrEmpty(result.getFailedRequest()).stream().filter(isViewable).toList());
+  }
+
+  /** The entity whose view permission decides a row: the asset, or a column's table. */
+  private static EntityReference viewTarget(BulkResponse row, Map<String, EntityReference> tables) {
+    EntityReference asset = assetOf(row);
+    if (asset == null || !Entity.TABLE_COLUMN.equals(asset.getType())) {
+      return asset;
+    }
+    return tables.get(tableFqnOf(asset.getFullyQualifiedName()));
+  }
+
+  /** The tables of the column rows, loaded in one batch and keyed by table FQN. */
+  private static Map<String, EntityReference> tablesOfColumns(List<BulkResponse> rows) {
+    List<String> tableFqns =
+        rows.stream()
+            .map(GlossaryTermRepository::assetOf)
+            .filter(asset -> asset != null && Entity.TABLE_COLUMN.equals(asset.getType()))
+            .map(asset -> tableFqnOf(asset.getFullyQualifiedName()))
+            .filter(Objects::nonNull)
+            .distinct()
+            .toList();
+    if (tableFqns.isEmpty()) {
+      return Map.of();
+    }
+    return Entity.getEntityRepository(Entity.TABLE).findByNames(tableFqns, Include.ALL).stream()
+        .collect(
+            Collectors.toMap(
+                EntityInterface::getFullyQualifiedName,
+                EntityInterface::getEntityReference,
+                (first, second) -> first));
+  }
+
+  private static String tableFqnOf(String columnFqn) {
+    try {
+      return columnFqn == null ? null : FullyQualifiedName.getTableFQN(columnFqn);
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
+  }
+
+  private static EntityReference assetOf(BulkResponse row) {
+    return row.getRequest() instanceof EntityReference ref && ref.getId() != null ? ref : null;
   }
 
   protected Map<String, EntityReference> getGlossaryUsageFromES(
