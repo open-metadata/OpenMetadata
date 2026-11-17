@@ -24,12 +24,12 @@ import {
   Dot,
   Dropdown,
   FeaturedIcon,
+  HoverCard,
   Input,
   Modal,
   ModalOverlay,
   PageLayout,
   Skeleton,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -58,7 +58,7 @@ import {
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import type { ChangeEvent, Key, SyntheticEvent } from 'react';
+import type { ChangeEvent, Key, KeyboardEvent, SyntheticEvent } from 'react';
 import {
   ReactNode,
   useCallback,
@@ -254,9 +254,16 @@ const MAX_VISIBLE_BADGES = 2;
 // link inside a cell must stop these events or the row navigates instead (TableV2 does the same
 // for its filter trigger).
 const stopRowAction = (event: SyntheticEvent) => event.stopPropagation();
+// Escape never presses the row, and stopping it would also stop the native event at the React
+// root, so HoverCard's document listener could not close the "+N" card.
+const stopRowKey = (event: KeyboardEvent<HTMLElement>) => {
+  if (event.key !== 'Escape') {
+    event.stopPropagation();
+  }
+};
 const ROW_ACTION_GUARD = {
   onClick: stopRowAction,
-  onKeyDown: stopRowAction,
+  onKeyDown: stopRowKey,
   onMouseDown: stopRowAction,
   onPointerDown: stopRowAction,
 };
@@ -700,6 +707,16 @@ const MetricListPage = () => {
     [loadingGroupIds, loadingParentIds]
   );
 
+  // A focusable trigger so the hidden items open on hover and on keyboard focus;
+  // the react-aria press handling keeps a click on "+N" from opening the metric row.
+  const renderOverflow = (count: number, content: ReactNode) => (
+    <HoverCard className="tw:p-3" content={content}>
+      <Button color="link-gray" data-testid="metric-overflow-trigger" size="sm">
+        +{count}
+      </Button>
+    </HoverCard>
+  );
+
   // Table cells stay on one line; narrow cards must wrap or the overflow is clipped.
   // Each badge links to its own page; a plain badge let the click fall through to the row,
   // which opened the metric instead.
@@ -722,17 +739,24 @@ const MetricListPage = () => {
             </Badge>
           </Link>
         ))}
-        {tags.length > MAX_VISIBLE_BADGES && (
-          <Tooltip
-            title={tags
-              .slice(MAX_VISIBLE_BADGES)
-              .map((tag) => tag.name ?? tag.tagFQN)
-              .join(', ')}>
-            <Typography as="span" className="tw:text-tertiary" size="text-xs">
-              +{tags.length - MAX_VISIBLE_BADGES}
-            </Typography>
-          </Tooltip>
-        )}
+        {tags.length > MAX_VISIBLE_BADGES &&
+          renderOverflow(
+            tags.length - MAX_VISIBLE_BADGES,
+            <Box className="tw:max-w-72" direction="col" gap={1}>
+              {tags.slice(MAX_VISIBLE_BADGES).map((tag) => (
+                <Link
+                  {...ROW_ACTION_GUARD}
+                  className="tw:min-w-0 tw:no-underline"
+                  data-testid={`metric-tag-link-${tag.tagFQN}`}
+                  key={tag.tagFQN}
+                  to={getTagPath(tag.tagFQN)}>
+                  <Badge color="blue" size="sm">
+                    {tag.name ?? tag.tagFQN}
+                  </Badge>
+                </Link>
+              ))}
+            </Box>
+          )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>
@@ -756,11 +780,32 @@ const MetricListPage = () => {
             />
           </Link>
         ))}
-        {owners.length > 3 && (
-          <Typography as="span" className="tw:text-tertiary" size="text-xs">
-            +{owners.length - 3}
-          </Typography>
-        )}
+        {owners.length > 3 &&
+          renderOverflow(
+            owners.length - 3,
+            <Box direction="col" gap={2}>
+              {owners.slice(3).map((owner) => (
+                <Link
+                  {...ROW_ACTION_GUARD}
+                  className="tw:no-underline"
+                  data-testid={`metric-owner-link-${owner.id}`}
+                  key={owner.id}
+                  to={getOwnerPath(owner)}>
+                  <Box align="center" gap={2}>
+                    <ProfilePicture
+                      displayName={owner.displayName}
+                      isTeam={owner.type === EntityType.TEAM}
+                      name={owner.name ?? ''}
+                      size="xs"
+                    />
+                    <Typography as="span" size="text-sm">
+                      {getEntityName(owner)}
+                    </Typography>
+                  </Box>
+                </Link>
+              ))}
+            </Box>
+          )}
       </Box>
     ) : (
       <span className="tw:text-tertiary">{t('label.empty-dash')}</span>

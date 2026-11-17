@@ -78,6 +78,11 @@ public abstract class ServiceEntityResource<
         (ServiceEntityRepository<T, S>) Entity.getServiceEntityRepository(serviceType);
   }
 
+  @Override
+  protected List<MetadataOperation> getEntitySpecificOperations() {
+    return List.of(MetadataOperation.TRIGGER);
+  }
+
   protected T decryptOrNullify(SecurityContext securityContext, T service) {
     // Filter first: the connection branch below returns early for a caller who cannot edit the
     // service, and the pipelines list must be filtered on every path.
@@ -295,7 +300,9 @@ public abstract class ServiceEntityResource<
         repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
     try {
-      if (originalService != null && originalService.getConnection() != null) {
+      if (originalService != null
+          && originalService.getConnection() != null
+          && service.getConnection() != null) {
         Object serviceConnectionConfig =
             EntityMaskerFactory.getEntityMasker()
                 .unmaskServiceConnectionConfig(

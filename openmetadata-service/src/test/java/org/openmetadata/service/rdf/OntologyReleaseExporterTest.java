@@ -267,7 +267,7 @@ class OntologyReleaseExporterTest {
 
   private static OntologyReleaseDAO storedMembers() {
     final OntologyReleaseDAO dao = mock(OntologyReleaseDAO.class);
-    when(dao.listMembers(eq(SEALED.release().getId()), anyString(), eq(""), eq(100)))
+    when(dao.listMembers(eq(SEALED.release().getId()), anyString(), eq(""), eq(1_000)))
         .thenAnswer(
             invocation ->
                 SEALED.members().stream()

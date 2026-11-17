@@ -23,6 +23,7 @@ const PageHeader = ({
   titleProps,
   subHeaderProps,
   isBeta,
+  badge,
   learningPageId,
   title,
 }: HeaderProps) => {
@@ -57,6 +58,7 @@ const PageHeader = ({
             </Badge>
           )}
         </Typography>
+        {badge}
         {learningPageId && (
           <LearningIcon pageId={learningPageId} size="xs" title={title} />
         )}

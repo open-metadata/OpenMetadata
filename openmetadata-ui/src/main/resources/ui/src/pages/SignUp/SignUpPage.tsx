@@ -105,8 +105,11 @@ const SignUp = () => {
     setLoading(true);
 
     try {
+      // Form values also carry IdP profile data (e.g. picture); CreateUser rejects unknown fields.
       const res = await createUser({
-        ...data,
+        name: data.name,
+        displayName: data.displayName,
+        email: data.email,
         teams: (data.teams as EntityReference[])?.map((t) => t.id),
         profile: {
           images: getImages(data.picture ?? ''),

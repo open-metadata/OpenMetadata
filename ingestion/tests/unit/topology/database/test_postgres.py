@@ -322,8 +322,7 @@ EXPECTED_COLUMN_VALUE = [
 
 class PostgresUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_postgres_config)
         self.postgres_source = PostgresSource.create(

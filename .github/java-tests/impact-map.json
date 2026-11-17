@@ -83,6 +83,7 @@
         "module": "openmetadata-spec",
         "inputs": [
           "openmetadata-spec/src/main/resources/json/schema",
+          "openmetadata-spec/scripts/prepare_model_schemas.py",
           "common/src/main/java/org/openmetadata/annotations",
           "openmetadata-spec/pom.xml",
           "pom.xml"
@@ -744,6 +745,8 @@
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyPartialImportIT.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyPartialImportPropertyIT.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/rdf/NativeOntologyImportItemsTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/rdf/UpstreamOntologyImportTest.java",
+        "openmetadata-service/src/test/resources/ontology/upstream/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/ontology/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseValidationTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyStructureValidatorTest.java",
@@ -752,7 +755,19 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptQueryServiceTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseReviewListTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java"
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackSlicePlanTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseManifestTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyReleaseReaderTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseDAOTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseCaptureTest.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyCapacityPerfIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyEveryPackInstallIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/RdfLibraryPackActivationIT.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackModelsTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackInstallationsTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyChangeApplicationServiceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/rdf/SafeRdfModelParserTest.java"
       ],
       "tests": [
         "*Ontology*IT",
@@ -886,7 +901,9 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContract*",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/dataContracts/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/OD*Converter*",
-        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**"
+        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**",
+        "openmetadata-spec/src/main/resources/odcs/**",
+        "openmetadata-spec/scripts/**"
       ],
       "tests": [
         "*DataContract*IT",

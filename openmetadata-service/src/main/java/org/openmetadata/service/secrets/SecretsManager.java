@@ -989,7 +989,7 @@ public abstract class SecretsManager {
     IngestionPipeline typed = JsonUtils.deepCopy(pipeline, IngestionPipeline.class);
     IngestionPipelineBuilder.addDefinedConfigForRead(typed);
     typed.setOpenMetadataServerConnection(null);
-    return secretInventory(typed, buildSecretId(true, "pipeline", pipeline.getName()));
+    return secretInventory(typed, buildSecretId(true, "pipeline", pipeline.getId().toString()));
   }
 
   /** Local inventory only: reference targets are never fetched to establish ownership. */

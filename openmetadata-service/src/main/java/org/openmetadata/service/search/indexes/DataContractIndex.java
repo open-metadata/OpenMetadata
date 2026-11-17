@@ -14,6 +14,7 @@ public record DataContractIndex(DataContract dataContract) implements SearchInde
           "qualityExpectations",
           "odcsQualityRules",
           "odcsElementExtensions",
+          "odcsPreservedFields",
           "contractUpdates",
           "sla",
           "security",

@@ -113,20 +113,36 @@ const getTaskCreatedBy = (task: Task): Task['createdBy'] | undefined => {
   return undefined;
 };
 
+// Suggestion producers send the proposed tags as a JSON string in suggestedValue.
+const parseSuggestedTags = (value: unknown): TagLabel[] | undefined => {
+  try {
+    const tags = JSON.parse(value as string);
+
+    return Array.isArray(tags) ? tags : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 const taskToSuggestion = (task: Task): Suggestion => {
   const payload = task.payload;
+  const type = mapSuggestionTypeFromPayload(
+    payload as Record<string, unknown> | undefined
+  );
 
   return {
     id: task.id,
     entityLink: buildEntityLink(task),
-    type: mapSuggestionTypeFromPayload(
-      payload as Record<string, unknown> | undefined
-    ),
+    type,
     status: mapTaskStatusToSuggestionStatus(task.status),
     description: (payload?.newDescription ?? payload?.suggestedValue) as
       | string
       | undefined,
-    tagLabels: (payload?.tagsToAdd as TagLabel[] | undefined) ?? undefined,
+    tagLabels:
+      (payload?.tagsToAdd as TagLabel[] | undefined) ??
+      (type === SuggestionType.SuggestTagLabel
+        ? parseSuggestedTags(payload?.suggestedValue)
+        : undefined),
     createdBy: getTaskCreatedBy(task),
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,

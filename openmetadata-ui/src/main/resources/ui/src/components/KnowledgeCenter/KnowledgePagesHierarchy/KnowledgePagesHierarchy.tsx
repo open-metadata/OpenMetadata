@@ -658,16 +658,17 @@ const KnowledgePagesHierarchy = forwardRef<
           return;
         }
 
-        if (sourceKey === targetKey) {
+        // Pages have no sibling order, so only a drop onto a row moves; root moves use onItemRootDrop.
+        if (sourceKey === targetKey || dropPosition !== 'on') {
           return;
         }
 
-        const isDropOnNode = dropPosition === 'on';
-        const targetNode = isDropOnNode
-          ? findPageInTreeData(knowledgePageHierarchy, targetKey as string)
-          : undefined;
+        const targetNode = findPageInTreeData(
+          knowledgePageHierarchy,
+          targetKey as string
+        );
 
-        if (isDropOnNode && !targetNode) {
+        if (!targetNode) {
           return;
         }
 
@@ -681,9 +682,9 @@ const KnowledgePagesHierarchy = forwardRef<
           return;
         }
 
-        const isAlreadyChild =
-          targetNode &&
-          (targetNode.children ?? []).some((c) => c.id === sourceNode.id);
+        const isAlreadyChild = (targetNode.children ?? []).some(
+          (c) => c.id === sourceNode.id
+        );
 
         if (isAlreadyChild) {
           return;

@@ -16,10 +16,13 @@ package org.openmetadata.service.context.review;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -44,7 +47,8 @@ import org.openmetadata.service.security.AuthorizationException;
  * Only the pills the person was shown are approved, and only as they were read. A pill asking the
  * question of another Unprocessed, Draft or Approved pill with a different answer is a second value,
  * and one re-extraction would hold beside a decided pill may be that decision reworded: both stay
- * pending.
+ * pending. A pill several documents share has one review, so what any of them leaves pending stays
+ * pending from the others, and so does a value a decision in another document holds.
  */
 @Slf4j
 public final class ExtractedMemoryApprover {
@@ -57,9 +61,13 @@ public final class ExtractedMemoryApprover {
           ContextMemoryStatus.UNPROCESSED, ContextMemoryStatus.DRAFT, ContextMemoryStatus.APPROVED);
 
   private final ContextMemoryRepository repository;
+  private final Predicate<ContextMemory> heldByADecision;
 
-  public ExtractedMemoryApprover(ContextMemoryRepository repository) {
+  /** {@code heldByADecision}: whether, read now, a memory a person decided holds a pending pill. */
+  public ExtractedMemoryApprover(
+      ContextMemoryRepository repository, Predicate<ContextMemory> heldByADecision) {
     this.repository = repository;
+    this.heldByADecision = heldByADecision;
   }
 
   /** The pills approval may take, and those it leaves for a person to decide. */
@@ -106,18 +114,54 @@ public final class ExtractedMemoryApprover {
   }
 
   private Plan visiblePlan(EntityReference source, String user, boolean isAdmin) {
-    Plan plan = plan(extractedFrom(source));
+    List<ContextMemory> memories = extractedFrom(source);
+    Set<UUID> heldInLinkedDocuments = heldInOtherDocuments(memories, source);
+    Plan plan =
+        plan(
+            memories,
+            pill -> heldInLinkedDocuments.contains(pill.getId()) || heldByADecision.test(pill));
     return new Plan(
         ContextMemoryVisibility.filterByVisibility(plan.approvable(), user, isAdmin),
         ContextMemoryVisibility.filterByVisibility(plan.needsDecision(), user, isAdmin));
   }
 
   static Plan plan(List<ContextMemory> memories) {
+    return plan(memories, pill -> false);
+  }
+
+  /** {@code heldElsewhere}: whether a memory outside the document leaves a pill for a decision. */
+  static Plan plan(List<ContextMemory> memories, Predicate<ContextMemory> heldElsewhere) {
     Map<Boolean, List<ContextMemory>> contested =
         memories.stream()
             .filter(ExtractedMemoryApprover::awaitsApproval)
-            .collect(Collectors.partitioningBy(memory -> isContested(memory, memories)));
+            .collect(
+                Collectors.partitioningBy(
+                    memory -> isContested(memory, memories) || heldElsewhere.test(memory)));
     return new Plan(contested.get(false), contested.get(true));
+  }
+
+  /** What the other documents this document's pending pills are linked to leave for a decision. */
+  private Set<UUID> heldInOtherDocuments(List<ContextMemory> memories, EntityReference source) {
+    return otherDocuments(memories, source).stream()
+        .flatMap(document -> plan(extractedFrom(document)).needsDecision().stream())
+        .map(ContextMemory::getId)
+        .collect(Collectors.toSet());
+  }
+
+  /** One read for every pending pill of the document. */
+  private Collection<EntityReference> otherDocuments(
+      List<ContextMemory> memories, EntityReference source) {
+    List<UUID> pending =
+        memories.stream()
+            .filter(ExtractedMemoryApprover::awaitsApproval)
+            .map(ContextMemory::getId)
+            .toList();
+    return repository.listExtractedSources(pending).values().stream()
+        .flatMap(List::stream)
+        .filter(document -> !document.getId().equals(source.getId()))
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (first, second) -> first))
+        .values();
   }
 
   /**
