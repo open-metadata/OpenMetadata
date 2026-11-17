@@ -73,6 +73,9 @@ public final class MemoryConflictResolution {
       "User '%s' may not supersede a disputed memory they cannot read";
   static final String DISPUTED_IN_THE_ARCHIVE =
       "A memory this review disputes is in the Archive; restore its document to decide the review";
+  static final String REPLACED_IN_THE_ARCHIVE =
+      "A memory that replaced one this review disputes is in the Archive; restore its document to"
+          + " decide the review";
   private static final String DISPUTED_FIELDS =
       ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "owners");
 
@@ -222,10 +225,6 @@ public final class MemoryConflictResolution {
   }
 
   /**
-   * The dispute is written as the person deciding, so they must be able to read the value it
-   * names; its other readers see that it exists, as for any dispute.
-   */
-  /**
    * The later values a decision must weigh. One a person deleted is gone, as a disputed memory a
    * person deleted is; one archived with its document comes back in its stage when the document is
    * restored, so the decision waits, as it does for a disputed memory in the Archive.
@@ -233,10 +232,16 @@ public final class MemoryConflictResolution {
   static Map<UUID, ContextMemory> laterValuesInUse(
       Map<UUID, ContextMemory> later, Predicate<UUID> archivedWithSources) {
     Map<UUID, ContextMemory> kept = stillDisputed(later, archivedWithSources);
-    requireNoneArchived(kept.values());
+    if (kept.values().stream().anyMatch(value -> Boolean.TRUE.equals(value.getDeleted()))) {
+      throw TaskStateConflictException.of(REPLACED_IN_THE_ARCHIVE);
+    }
     return kept;
   }
 
+  /**
+   * The dispute is written as the person deciding, so they must be able to read the value it
+   * names; its other readers see its title, as for any dispute.
+   */
   private static boolean mayBeNamedBy(ContextMemory value, String user) {
     return ContextMemoryVisibility.isVisibleToUser(
         value, user, SubjectContext.getSubjectContext(user).isAdmin());

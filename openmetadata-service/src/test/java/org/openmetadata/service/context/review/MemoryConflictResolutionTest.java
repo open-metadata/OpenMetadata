@@ -134,6 +134,7 @@ class MemoryConflictResolutionTest {
                     Map.of(disputedId, archived), archived.getId()::equals));
 
     assertEquals(409, refused.getResponse().getStatus());
+    assertEquals(MemoryConflictResolution.REPLACED_IN_THE_ARCHIVE, refused.getMessage());
     assertTrue(
         MemoryConflictResolution.laterValuesInUse(Map.of(disputedId, archived), id -> false)
             .isEmpty(),

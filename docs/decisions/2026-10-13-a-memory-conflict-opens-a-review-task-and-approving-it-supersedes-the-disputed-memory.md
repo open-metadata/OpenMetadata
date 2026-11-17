@@ -142,4 +142,4 @@ This supersedes "Writers link only memories the same audience may read; Collate 
 pairs only" in the Consequences. A re-point can name a memory of another audience that its resolver
 can read, and Collate's Memory Reconciliation now names a contradicting memory of any audience,
 written as an admin, with a fixed reason when the two memories have different readers
-(openmetadata-collate's record `2026-11-17-reconciliation-compares-a-memory-with-similar-memories-anywhere`).
+(ADR:openmetadata-collate/2026-11-17-reconciliation-compares-a-memory-with-similar-memories-anywhere).
