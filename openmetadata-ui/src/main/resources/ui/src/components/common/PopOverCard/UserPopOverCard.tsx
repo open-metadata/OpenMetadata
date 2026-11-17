@@ -47,7 +47,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
   const cachedUser = useApplicationStore((state) =>
     isTeam ? undefined : state.userProfilePics[userName]
   );
-  const label = displayName ?? cachedUser?.displayName ?? userName;
+  const label = displayName ?? (cachedUser?.displayName || userName);
   const handleTitleClick = (event: MouseEvent) => {
     if (onTitleClick) {
       event.preventDefault();
@@ -107,9 +107,7 @@ const UserPopOverCard: FC<UserPopOverCardProps> = ({
           }
           onClick={handleTitleClick}>
           {showUserProfile ? profilePicture : null}
-          {showUserName ? (
-            <span className="truncate">{label}</span>
-          ) : null}
+          {showUserName ? <span className="truncate">{label}</span> : null}
         </Link>
       )}
     </HoverCard>

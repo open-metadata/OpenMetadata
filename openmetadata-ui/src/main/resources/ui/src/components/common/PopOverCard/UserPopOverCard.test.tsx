@@ -134,6 +134,25 @@ describe('UserPopOverCard Component', () => {
     useApplicationStore.setState({ userProfilePics: {} });
   });
 
+  it('should fall back to the login when the fetched display name is empty', () => {
+    useApplicationStore.setState({
+      userProfilePics: {
+        blankUser: {
+          id: 'u2',
+          name: 'blankUser',
+          displayName: '',
+          email: 'blank@example.com',
+        } as User,
+      },
+    });
+
+    render(<UserPopOverCard showUserName userName="blankUser" />);
+
+    expect(screen.getByTestId('blankUser')).toHaveTextContent('blankUser');
+
+    useApplicationStore.setState({ userProfilePics: {} });
+  });
+
   it('should fall back to the login when the user is not fetched', () => {
     render(<UserPopOverCard showUserName userName="otherUser" />);
 
