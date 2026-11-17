@@ -185,6 +185,37 @@ describe('useKnowledgeGraphExplorer', () => {
     expect(result.current.result.unfiltered).toBe(unfiltered);
   });
 
+  it('re-explores a bound native concept by its own type and keeps its asset binding', async () => {
+    const concept = 'https://open-metadata.org/entity/ontologyConcept/c1';
+    const bound = {
+      nodes: [
+        node(ROOT, 'customers', 'table'),
+        node(concept, 'Patient', 'ontologyConcept'),
+      ],
+      edges: [
+        {
+          from: concept,
+          to: ROOT,
+          label: 'Bound asset',
+          relationType: 'boundAsset',
+        },
+      ],
+    };
+    fetchGraph.mockResolvedValue(bound);
+    const { result } = renderExplorer({ mode: 'ontology' });
+    await waitFor(() => expect(result.current.result.loading).toBe(false));
+
+    expect(fetchGraph).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityId: 'c1',
+        entityType: 'ontologyConcept',
+      }),
+      expect.anything()
+    );
+    expect(result.current.ontology.concept?.id).toBe(concept);
+    expect(result.current.result.data?.edges).toEqual(bound.edges);
+  });
+
   it('draws one edge per repeated predicate and keeps every returned statement', async () => {
     const { result } = renderExplorer();
     await waitFor(() => expect(result.current.result.loading).toBe(false));
