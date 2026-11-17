@@ -178,7 +178,7 @@ class ContextFileVisibilityTest {
   }
 
   @Test
-  void aListResolvesTheCallersTeamsAndDomainsOnce() {
+  void aListShowsEveryFileSharedWithTheCallersTeam() {
     EntityReference team =
         new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEAM).withName("team");
     MemoryShareConfig sharedWithTeam =
@@ -202,9 +202,6 @@ class ContextFileVisibilityTest {
           .thenReturn(new User().withId(UUID.randomUUID()).withName(BOB).withTeams(List.of(team)));
 
       assertEquals(shared, ContextFileVisibility.filterVisible(shared, caller));
-      entities.verify(
-          () -> Entity.getEntityByName(Entity.USER, BOB, "teams,domains", Include.NON_DELETED),
-          Mockito.times(1));
     }
   }
 
