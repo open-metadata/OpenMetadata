@@ -257,6 +257,7 @@ public class ContextMemoryConflictReviewIT {
                     SdkClients.adminClient(), secondTask, "approve", TaskResolutionType.Approved));
 
     assertTrue(refused.getMessage().contains("Another decision replaced"), refused.getMessage());
+    assertEquals(412, refused.getStatusCode());
     ContextMemory repointed = admin().get(idOf(heldSecond));
     assertEquals(ContextMemoryStatus.DRAFT, repointed.getEntityStatus());
     assertEquals(
@@ -274,7 +275,10 @@ public class ContextMemoryConflictReviewIT {
     assertEquals(heldSecond.getId(), replaced.getSupersededBy().getId());
   }
 
-  /** Two values of one table's fact: the second review is pointed at the first once approved. */
+  /**
+   * Two values of one table's fact: the second review is pointed at the first once approved, also
+   * when its owner, no admin, decides it.
+   */
   @Test
   void aReviewOfAnAnchoredValueIsPointedAtTheValueThatReplacedItsDispute(TestNamespace ns) {
     EntityReference table = anchor(ns);
@@ -289,11 +293,12 @@ public class ContextMemoryConflictReviewIT {
             OpenMetadataException.class,
             () ->
                 resolve(
-                    SdkClients.adminClient(),
+                    SdkClients.user2Client(),
                     openTask(second),
                     "approve",
                     TaskResolutionType.Approved));
 
+    assertEquals(412, refused.getStatusCode());
     assertTrue(
         refused.getMessage().contains("the review now disputes the memory that replaced it"),
         refused.getMessage());
@@ -324,6 +329,7 @@ public class ContextMemoryConflictReviewIT {
                     "approve",
                     TaskResolutionType.Approved));
 
+    assertEquals(412, refused.getStatusCode());
     assertTrue(
         refused.getMessage().contains("the review now disputes the memory that replaced it"),
         refused.getMessage());
@@ -364,6 +370,7 @@ public class ContextMemoryConflictReviewIT {
                     "approve",
                     TaskResolutionType.Approved));
 
+    assertEquals(412, refused.getStatusCode());
     assertTrue(
         refused.getMessage().contains("with one this review cannot name"), refused.getMessage());
     assertEquals(List.of(original.getId()), disputedIds(admin().get(idOf(second))));

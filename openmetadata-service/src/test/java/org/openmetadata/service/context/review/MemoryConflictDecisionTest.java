@@ -34,6 +34,7 @@ import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MemoryConflictReviewResolution;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 
@@ -287,15 +288,35 @@ class MemoryConflictDecisionTest {
     assertEquals(Map.of(original.getId(), latest), later);
   }
 
-  /** The reviewed memory replacing the disputed one is this decision retried: nothing later. */
+  /**
+   * The reviewed memory replacing the disputed one is this decision retried, even once its own
+   * approval committed after the review was read: nothing later.
+   */
   @Test
   void theReviewedMemoryReplacingADisputedOneIsNoLaterValue() {
     ContextMemory original = memory("original", null, 100L);
     ContextMemory reviewed = reviewed("reviewed", original);
     replacedBy(original, reviewed);
+    ContextMemory approvedSince =
+        JsonUtils.deepCopy(reviewed, ContextMemory.class)
+            .withEntityStatus(ContextMemoryStatus.APPROVED);
 
     assertTrue(
-        MemoryConflictDecision.laterValues(reviewed, byId(original), stored(reviewed)).isEmpty());
+        MemoryConflictDecision.laterValues(reviewed, byId(original), stored(approvedSince))
+            .isEmpty());
+  }
+
+  /** A replacement since archived or deleted is followed to the value replacing it in turn. */
+  @Test
+  void aDeletedReplacementInTheChainIsFollowed() {
+    ContextMemory latest = memory("latest", ContextMemoryStatus.APPROVED, 170L);
+    ContextMemory archived = replacedBy(memory("archived", null, 150L), latest).withDeleted(true);
+    ContextMemory original = replacedBy(memory("original", null, 100L), archived);
+
+    assertEquals(
+        Map.of(original.getId(), latest),
+        MemoryConflictDecision.laterValues(
+            reviewed("reviewed", original), byId(original), stored(archived, latest)));
   }
 
   /** A replacement since rejected or deleted, or a dispute still Approved, holds no later value. */

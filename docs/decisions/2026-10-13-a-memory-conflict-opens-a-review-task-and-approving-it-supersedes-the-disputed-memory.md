@@ -133,5 +133,7 @@ replacements, never the reviewed memory itself, whose own retry is item 5's), an
 decision with 412. When the resolver may read that memory, the review is first pointed at it,
 keeping the dispute's reason, written as the resolver impersonated by `governance-bot`, so the
 reviewer compares it; the dispute may name a memory some of the review's readers cannot open, as any
-dispute can. Otherwise nothing is written, and an admin or a requeue takes it from there. Rejecting
-is unaffected.
+dispute can. Otherwise nothing is written, and an admin or a requeue takes it from there. The chain
+is followed through the Archive: a later value archived with its document makes the decision wait
+(409), as a disputed memory in the Archive does, and one a person deleted is gone. Rejecting is
+unaffected.

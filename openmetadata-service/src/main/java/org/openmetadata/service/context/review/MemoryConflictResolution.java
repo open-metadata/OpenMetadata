@@ -54,8 +54,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * Applies the decision of a memory conflict review task, as the person who decided it. Being able
  * to resolve the task authorizes the decision about the reviewed memory; superseding a disputed
  * memory additionally needs the right to read and supersede it directly. Every check runs before
- * the first write, so a refusal leaves both memories as they were and the task open; a write that
- * fails later leaves the task open for a retry, which converges.
+ * the first write, so a refusal leaves both memories as they were and the task open, except one:
+ * an approval refused because another decision replaced a disputed memory first points the review
+ * at the replacing memory. A write that fails later leaves the task open for a retry, which
+ * converges.
  */
 @Slf4j
 public final class MemoryConflictResolution {
@@ -202,7 +204,10 @@ public final class MemoryConflictResolution {
       String user) {
     Map<UUID, ContextMemory> later =
         reviewed.getEntityStatus() == ContextMemoryStatus.DRAFT
-            ? MemoryConflictDecision.laterValues(reviewed, disputed, MemoryConflictResolution::live)
+            ? laterValuesInUse(
+                MemoryConflictDecision.laterValues(
+                    reviewed, disputed, MemoryConflictResolution::live),
+                archivedWithSources()::isMarked)
             : Map.of();
     if (!later.isEmpty()) {
       boolean nameable = later.values().stream().allMatch(value -> mayBeNamedBy(value, user));
@@ -220,6 +225,18 @@ public final class MemoryConflictResolution {
    * The dispute is written as the person deciding, so they must be able to read the value it
    * names; its other readers see that it exists, as for any dispute.
    */
+  /**
+   * The later values a decision must weigh. One a person deleted is gone, as a disputed memory a
+   * person deleted is; one archived with its document comes back in its stage when the document is
+   * restored, so the decision waits, as it does for a disputed memory in the Archive.
+   */
+  static Map<UUID, ContextMemory> laterValuesInUse(
+      Map<UUID, ContextMemory> later, Predicate<UUID> archivedWithSources) {
+    Map<UUID, ContextMemory> kept = stillDisputed(later, archivedWithSources);
+    requireNoneArchived(kept.values());
+    return kept;
+  }
+
   private static boolean mayBeNamedBy(ContextMemory value, String user) {
     return ContextMemoryVisibility.isVisibleToUser(
         value, user, SubjectContext.getSubjectContext(user).isAdmin());
@@ -236,13 +253,13 @@ public final class MemoryConflictResolution {
     return System.currentTimeMillis();
   }
 
+  /** Archived ones included, so a replacement chain is followed through the Archive. */
   private static Optional<ContextMemory> live(UUID memoryId) {
     Optional<ContextMemory> memory = Optional.empty();
     try {
       memory =
           Optional.of(
-              Entity.getEntity(
-                  Entity.CONTEXT_MEMORY, memoryId, DISPUTED_FIELDS, Include.NON_DELETED));
+              Entity.getEntity(Entity.CONTEXT_MEMORY, memoryId, DISPUTED_FIELDS, Include.ALL));
     } catch (EntityNotFoundException deleted) {
       LOG.debug("[MemoryConflictReview] replacing memory {} is gone", memoryId, deleted);
     }
