@@ -1,9 +1,9 @@
 # Nested configuration conversion is schema-driven and fails closed for secret-bearing oneOf values
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-01 (initial); v2 2026-11-03 (branch selection, undeclared fields, pipeline configs, labels); v3 2026-11-04 (typed branches and required fields); v4 2026-11-14 (strict writes, lossless reads, one converter, generated class identities)
+- **Revisions:** v1 2026-11-01 (initial); v2 2026-11-03 (branch selection, undeclared fields, pipeline configs, labels); v3 2026-11-04 (typed branches and required fields); v4 2026-11-14 (strict writes, lossless reads, one converter, generated class identities); v5 2026-11-17 (NATS anonymous authentication)
 - **Deciders:** Harsha
-- **Guard:** `NestedSecretConverterCoverageTest`, `JsonSchemaRepositoryTest`, `SecretConversionBoundaryTest`, `DBSecretsManagerTest`, `PasswordEntityMaskerTest`, `ClassConverterFactoryTest`, `IngestionPipelineBuilderTest`
+- **Guard:** `NestedSecretConverterCoverageTest`, `JsonSchemaRepositoryTest`, `SecretConversionBoundaryTest`, `DBSecretsManagerTest`, `PasswordEntityMaskerTest`, `ClassConverterFactoryTest`, `IngestionPipelineBuilderTest`, `MessagingServiceResourceIT`, `test_nats.py`
 - **Related:** #28299, #33193, ANT-2026-5GKK8L41
 
 ## Context
@@ -69,6 +69,16 @@ The undeclared-field fallback in decision 3 applies only when every required pro
 branch has a non-null value. Complete stored configurations may retain compatibility with obsolete
 fields; incomplete credentials are rejected. `SchemaClassConverterTest` and `DBSecretsManagerTest`
 enforce these rules.
+
+## Amendment v5 (2026-11-17): NATS anonymous authentication
+
+Anonymous NATS authentication accepts an absent or null `authType`, or `{}` through the closed
+`#/definitions/anonymousAuth` definition in `natsConnection.json`. Any non-empty `authType` must fully
+match the basic, token, or NKey branch. Writes reject partial or unknown credentials and never treat
+them as anonymous. The anonymous choice remains a referenced, closed definition so its generated
+Python model also rejects non-empty objects.
+
+Guards: `SecretConversionBoundaryTest`, `MessagingServiceResourceIT`, `test_nats.py`.
 
 ## Python alias removal
 
