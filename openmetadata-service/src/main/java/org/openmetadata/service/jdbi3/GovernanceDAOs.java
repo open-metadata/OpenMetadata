@@ -391,6 +391,10 @@ public interface GovernanceDAOs {
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findByTaskId(@BindUUID("taskId") UUID taskId);
 
+    @SqlQuery("SELECT * FROM change_request WHERE taskId IN (<taskIds>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByTaskIds(@BindList("taskIds") List<String> taskIds);
+
     @SqlQuery("SELECT COUNT(*) FROM change_request WHERE status = :status")
     int countByStatus(@Bind("status") String status);
 

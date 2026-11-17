@@ -50,6 +50,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -92,6 +93,7 @@ import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.context.review.MemoryConflictResolution;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
+import org.openmetadata.service.governance.approval.ChangeRequestVisibility;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -360,9 +362,36 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskSearch(filter, q);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return retainVisible(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+  }
+
+  // An entity's task counts leave out the review tasks of change requests the caller may not read,
+  // as its task list does.
+  private static String withoutTasks(String condition, Map<String, String> params, Set<UUID> ids) {
+    String narrowed = condition;
+    if (!ids.isEmpty()) {
+      List<String> names = new ArrayList<>();
+      for (UUID id : ids) {
+        String name = "hiddenTask" + names.size();
+        params.put(name, id.toString());
+        names.add(":" + name);
+      }
+      String exclusion = "id NOT IN (%s)".formatted(String.join(", ", names));
+      narrowed =
+          nullOrEmpty(condition)
+              ? "WHERE " + exclusion
+              : "%s AND %s".formatted(condition, exclusion);
+    }
+    return narrowed;
+  }
+
+  // Tasks about entities the caller may not view, and review tasks of change requests the caller
+  // may not read, are left out.
+  private ResultList<Task> retainVisible(SecurityContext securityContext, ResultList<Task> page) {
+    return ChangeRequestVisibility.retainVisibleTasks(
+        authorizer, securityContext, aboutVisibility.retainViewable(securityContext, page));
   }
 
   private void applyTaskSearch(ListFilter filter, String q) {
@@ -430,11 +459,20 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             view);
     repository.applyTaskDomainFilter(baseFilter);
 
+    String condition = baseFilter.getCondition();
+    Map<String, String> params = new HashMap<>(baseFilter.getQueryParams());
+    if (aboutEntity != null) {
+      condition =
+          withoutTasks(
+              condition,
+              params,
+              ChangeRequestVisibility.hiddenTaskIds(
+                  authorizer,
+                  securityContext,
+                  repository.getDaoCollection().taskDAO().listTaskIds(condition, params)));
+    }
     CollectionDAO.TaskDAO.TaskCountSummary countSummary =
-        repository
-            .getDaoCollection()
-            .taskDAO()
-            .getTaskCountSummary(baseFilter.getCondition(), baseFilter.getQueryParams());
+        repository.getDaoCollection().taskDAO().getTaskCountSummary(condition, params);
 
     TaskCount response =
         new TaskCount()
@@ -613,7 +651,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    return aboutVisibility.retainViewable(
+    return retainVisible(
         securityContext,
         repository.listDataAccessRequests(uriInfo, fields, filter, limitParam, offset, sortOrder));
   }
@@ -687,7 +725,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return retainVisible(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -762,7 +800,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return retainVisible(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -848,7 +886,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return retainVisible(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -923,7 +961,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     applyTaskTimeRange(filter, startTs, endTs);
 
     TaskListOrder.fromParam(sortOrder).applyTo(filter);
-    return aboutVisibility.retainViewable(
+    return retainVisible(
         securityContext,
         listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
   }
@@ -958,6 +996,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     Task task = getInternal(uriInfo, securityContext, id, fieldsParam, include);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
     return task;
   }
 
@@ -991,6 +1030,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           Include include) {
     Task task = getByNameInternal(uriInfo, securityContext, taskId, fieldsParam, include);
     authorizeViewOnAboutEntity(securityContext, aboutOf(task.getId()));
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, task.getId());
     return task;
   }
 
@@ -1016,6 +1056,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           UUID id) {
     EntityHistory history = super.listVersionsInternal(securityContext, id);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
     return history;
   }
 
@@ -1048,6 +1089,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String version) {
     Task task = super.getVersionInternal(securityContext, id, version);
     authorizeViewOnAboutEntity(securityContext, aboutOf(id));
+    ChangeRequestVisibility.requireTaskVisible(authorizer, securityContext, id);
     return task;
   }
 

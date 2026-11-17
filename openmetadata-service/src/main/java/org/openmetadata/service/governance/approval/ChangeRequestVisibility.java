@@ -16,18 +16,23 @@ package org.openmetadata.service.governance.approval;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.changeRequest.ChangeRequest;
 import org.openmetadata.schema.governance.changeRequest.ChangeRevision;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -81,6 +86,97 @@ public final class ChangeRequestVisibility {
       throw new ForbiddenException(
           "You cannot view change requests made by other users on this asset");
     }
+  }
+
+  /**
+   * Throws unless the caller may read the change request the task reviews. A task that reviews no
+   * change request is left to the task's own checks.
+   */
+  public static void requireTaskVisible(
+      Authorizer authorizer, SecurityContext securityContext, UUID taskId) {
+    ChangeRequest request = ChangeRequestService.dao().changeRequestDAO().findByTaskId(taskId);
+    if (request != null) {
+      requireVisible(authorizer, securityContext, request);
+    }
+  }
+
+  /**
+   * The page without the review tasks of change requests the caller may not read, so a task shows
+   * a pending change to the same users its change request does. It is not refilled, so it can come
+   * back short.
+   */
+  public static ResultList<Task> retainVisibleTasks(
+      Authorizer authorizer, SecurityContext securityContext, ResultList<Task> page) {
+    List<Task> tasks = page.getData() == null ? List.of() : page.getData();
+    if (!tasks.isEmpty()) {
+      Set<UUID> hidden =
+          hiddenTaskIds(
+              authorizer,
+              securityContext,
+              tasks.stream().map(task -> task.getId().toString()).toList());
+      if (!hidden.isEmpty()) {
+        page.setData(
+            tasks.stream()
+                .filter(task -> !hidden.contains(task.getId()))
+                .collect(Collectors.toCollection(ArrayList::new)));
+      }
+    }
+    return page;
+  }
+
+  /**
+   * Which of {@code taskIds} review a change request the caller may not read: another user's
+   * request on an entity the caller neither owns nor reviews, whose task the caller may not
+   * resolve.
+   */
+  public static Set<UUID> hiddenTaskIds(
+      Authorizer authorizer, SecurityContext securityContext, List<String> taskIds) {
+    String caller = securityContext.getUserPrincipal().getName();
+    Set<UUID> hidden = Set.of();
+    if (!taskIds.isEmpty() && !SubjectContext.getSubjectContext(caller).isAdmin()) {
+      hidden =
+          hiddenTasks(
+              authorizer,
+              securityContext,
+              caller,
+              ChangeRequestService.dao().changeRequestDAO().listByTaskIds(taskIds));
+    }
+    return hidden;
+  }
+
+  private static Set<UUID> hiddenTasks(
+      Authorizer authorizer,
+      SecurityContext securityContext,
+      String caller,
+      List<ChangeRequest> requests) {
+    Map<UUID, Boolean> seesAllByEntity = new HashMap<>();
+    List<ChangeRequest> others =
+        requests.stream()
+            .filter(request -> !caller.equals(request.getRequestedBy()))
+            .filter(
+                request ->
+                    !seesAllByEntity.computeIfAbsent(
+                        request.getEntityId(), id -> seesAllOn(caller, request)))
+            .toList();
+    Set<UUID> reviewable =
+        others.isEmpty() ? Set.of() : reviewableTasks(authorizer, securityContext, others);
+    return others.stream()
+        .map(ChangeRequest::getTaskId)
+        .filter(taskId -> !reviewable.contains(taskId))
+        .collect(Collectors.toSet());
+  }
+
+  // An entity that can no longer be read has no owners or reviewers to grant the view.
+  private static boolean seesAllOn(String caller, ChangeRequest request) {
+    boolean seesAll;
+    try {
+      seesAll =
+          seesAll(
+              caller, new ResourceContext<>(request.getEntityType(), request.getEntityId(), null));
+    } catch (EntityNotFoundException missing) {
+      seesAll = false;
+    }
+    return seesAll;
   }
 
   private static List<ChangeRequest> listForEntity(

@@ -374,6 +374,10 @@ public interface FeedDAOs {
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
 
+    @SqlQuery("SELECT id FROM task_entity <condition>")
+    List<String> listTaskIds(
+        @Define("condition") String condition, @BindMap Map<String, String> params);
+
     @SqlQuery(
         "SELECT json FROM task_entity <cond> "
             + "ORDER BY createdAt <sortOrder>, id <sortOrder> "

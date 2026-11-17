@@ -8971,6 +8971,53 @@ public class WorkflowDefinitionResourceIT {
         Set.of(shared.USER1.getName(), shared.USER3.getName()), Set.copyOf(outcome.getDecidedBy()));
   }
 
+  @Test
+  void test_taskReadsShowAPendingEditOnlyToWhoMaySeeItsChangeRequest(TestNamespace ns)
+      throws Exception {
+    SharedEntities shared = SharedEntities.get();
+    Glossary glossary =
+        SdkClients.adminClient()
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.prefix("taskReadVisibility"))
+                    .withDescription(PUBLISHED_DESCRIPTION)
+                    .withReviewers(List.of(shared.USER1_REF)));
+    deployDescriptionGate(glossary, 1, true);
+    Task task = awaitRequestTask(submitDescription(glossary, "held proposal"), glossary);
+    String taskPath = "/v1/tasks/" + task.getId();
+    String entityTasksPath =
+        "/v1/tasks?statusGroup=open&limit=100&aboutEntity="
+            + URLEncoder.encode(glossary.getFullyQualifiedName(), StandardCharsets.UTF_8);
+
+    // USER3 neither made the edit nor owns, reviews or may resolve its task.
+    OpenMetadataClient reader = SdkClients.user3Client();
+    OpenMetadataException hidden =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> reader.getHttpClient().executeForString(HttpMethod.GET, taskPath, null));
+    assertEquals(403, hidden.getStatusCode(), hidden.getMessage());
+    assertFalse(
+        reader
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, entityTasksPath, null)
+            .contains(task.getId().toString()));
+
+    // The requester and the reviewer the task is assigned to still read it.
+    for (OpenMetadataClient allowed : List.of(SdkClients.user2Client(), SdkClients.user1Client())) {
+      assertTrue(
+          allowed
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, taskPath, null)
+              .contains("held proposal"));
+      assertTrue(
+          allowed
+              .getHttpClient()
+              .executeForString(HttpMethod.GET, entityTasksPath, null)
+              .contains(task.getId().toString()));
+    }
+  }
+
   @RetryingTest(2)
   void test_runRecordsAChangeRequestApprovedOnlyInPart(TestNamespace ns) throws Exception {
     Glossary glossary =
