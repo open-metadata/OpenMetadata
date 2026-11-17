@@ -1951,9 +1951,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     List<EntityReference> targets =
         rows.stream().map(row -> viewTarget(row, tables)).filter(Objects::nonNull).toList();
     Set<UUID> viewable = viewFilter.viewableIds(securityContext, targets);
-    // A row without an asset (e.g. "Nothing to Validate.") names nothing, so it stays.
     return row ->
-        row.getRequest() == null
+        namesNoAsset(row)
             || Optional.ofNullable(viewTarget(row, tables))
                 .map(target -> viewable.contains(target.getId()))
                 .orElse(false);
@@ -2011,6 +2010,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     } catch (IllegalArgumentException e) {
       return null;
     }
+  }
+
+  /**
+   * A row that names no asset stays (e.g. "Nothing to Validate.", or an asset search has no
+   * document for, which carries only an FQN hash).
+   */
+  private static boolean namesNoAsset(BulkResponse row) {
+    return row.getRequest() == null
+        || (row.getRequest() instanceof EntityReference ref
+            && ref.getId() == null
+            && "unknown".equals(ref.getType()));
   }
 
   private static EntityReference assetOf(BulkResponse row) {

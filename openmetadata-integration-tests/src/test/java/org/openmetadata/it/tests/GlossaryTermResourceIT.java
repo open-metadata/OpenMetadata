@@ -4430,6 +4430,52 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   }
 
   @Test
+  void test_validateGlossaryTagsAddition_keepsRowsOfAssetsSearchHasNoDocumentFor(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_nodoc");
+    org.openmetadata.schema.entity.data.Topic topic =
+        org.openmetadata.it.factories.TopicTestFactory.createSimple(ns);
+    org.openmetadata.schema.entity.data.Topic fetched =
+        admin.topics().get(topic.getId().toString(), "tags");
+    fetched
+        .getMessageSchema()
+        .getSchemaFields()
+        .getFirst()
+        .setTags(
+            List.of(
+                new TagLabel()
+                    .withTagFQN(setup.term.getFullyQualifiedName())
+                    .withSource(TagLabel.TagSource.GLOSSARY)
+                    .withLabelType(TagLabel.LabelType.MANUAL)
+                    .withState(TagLabel.State.CONFIRMED)));
+    admin.topics().update(topic.getId().toString(), fetched);
+
+    ValidateGlossaryTagsRequest validate =
+        new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/tags/validate";
+    BulkOperationResult asAdmin =
+        admin.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+    OpenMetadataClient user =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("validate_nodoc"),
+            Entity.TABLE,
+            MetadataOperation.VIEW_BASIC,
+            "isOwner()");
+    BulkOperationResult asConsumer =
+        user.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+
+    assertEquals(1, asAdmin.getNumberOfRowsProcessed(), asAdmin.toString());
+    assertEquals(
+        rowCount(asAdmin), rowCount(asConsumer), "admin=" + asAdmin + " consumer=" + asConsumer);
+  }
+
+  private static int rowCount(BulkOperationResult result) {
+    return org.openmetadata.common.utils.CommonUtil.listOrEmpty(result.getSuccessRequest()).size()
+        + org.openmetadata.common.utils.CommonUtil.listOrEmpty(result.getFailedRequest()).size();
+  }
+
+  @Test
   void test_bulkAddGlossaryToAssets_nonDryRun_passBeforeFail_appliesOneTagAndReportsPartialSuccess(
       TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
