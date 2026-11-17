@@ -79,6 +79,13 @@ const NodeChildren = ({
     [node]
   );
 
+  // A metric is its own single endpoint and has no footer to turn this filter
+  // off, so the filter would hide the endpoint, and the column menu that adds
+  // its first column lineage, until it already had some.
+  const isLineageFilterActive =
+    isOnlyShowColumnsWithLineageFilterActive &&
+    entityType !== EntityType.METRIC;
+
   const currentNodeColumnsWithLineage = useMemo(() => {
     const filtered = entityChildren.filter((column) =>
       columnsHavingLineage.get(node.id)?.has(column.fullyQualifiedName ?? '')
@@ -98,7 +105,7 @@ const NodeChildren = ({
   }, [currentNodeColumnsWithLineage]);
 
   const filteredColumns = useMemo(() => {
-    const columnsToSearch = isOnlyShowColumnsWithLineageFilterActive
+    const columnsToSearch = isLineageFilterActive
       ? stableColumnsWithLineage
       : entityChildren;
     const query = searchValue.trim().toLowerCase();
@@ -113,14 +120,14 @@ const NodeChildren = ({
 
     // With the lineage filter on, a column without lineage would be
     // unfindable, so fall back to searching every column of the node.
-    return matches.length === 0 && isOnlyShowColumnsWithLineageFilterActive
+    return matches.length === 0 && isLineageFilterActive
       ? findMatches(entityChildren)
       : matches;
   }, [
     entityChildren,
     searchValue,
     stableColumnsWithLineage,
-    isOnlyShowColumnsWithLineageFilterActive,
+    isLineageFilterActive,
   ]);
 
   const fetchTestSuiteSummary = useCallback(
@@ -148,10 +155,10 @@ const NodeChildren = ({
   }, [fetchTestSuiteSummary, node, showDataObservabilitySummary, summary]);
 
   const pageSize = useMemo(() => {
-    return isOnlyShowColumnsWithLineageFilterActive
+    return isLineageFilterActive
       ? filteredColumns.length
       : LINEAGE_CHILD_ITEMS_PER_PAGE;
-  }, [isOnlyShowColumnsWithLineageFilterActive, filteredColumns.length]);
+  }, [isLineageFilterActive, filteredColumns.length]);
 
   // No need to render if there's no children
   if (entityChildren.length === 0) {

@@ -1,9 +1,9 @@
 # Ontology Studio bounds tree windows and count workers
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-24 (initial) · v2 2026-11-06 (the model loader follows the 50,000-member release cap) · v3 2026-11-13 (a large window mounts only the rows on screen) · v4 2026-11-15 (UI guards moved to Collate)
+- **Revisions:** v1 2026-10-24 (initial) · v2 2026-11-06 (the model loader follows the 50,000-member release cap) · v3 2026-11-13 (a large window mounts only the rows on screen) · v4 2026-11-15 (UI guards moved to Collate) · v5 2026-11-16 (the tree guards moved too)
 - **Deciders:** Ontology Studio implementation review
-- **Guard:** `OntologyStudio.utils.test.ts`, `OntologyTreeView.test.tsx` (incl. "mounts only the rows on screen once a window is large"), `useOntologyUnpublishedCount.test.tsx` *(openmetadata-collate)*, `useOntologyStudioModel.test.tsx` *(openmetadata-collate)*
+- **Guard:** `OntologyStudio.utils.test.ts` *(openmetadata-collate)*, `OntologyTreeView.test.tsx` *(openmetadata-collate)* (incl. "mounts only the rows on screen once a window is large"), `useOntologyUnpublishedCount.test.tsx` *(openmetadata-collate)*, `useOntologyStudioModel.test.tsx` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-19-ontology-studio-opens-native-models-by-default
 
 ## Context

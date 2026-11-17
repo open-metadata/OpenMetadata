@@ -43,7 +43,7 @@ import {
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';
-import { createIconWithStroke } from '../utils/IconUtils';
+import { createIconWithStroke, OntologyStudioIcon } from '../utils/IconUtils';
 import { ENTITY_PATH, PLACEHOLDER_ROUTE_TAB, ROUTES } from './constants';
 
 type UntitledIconType = React.ComponentType<{
@@ -58,6 +58,7 @@ const DataProductIcon = createIconWithStroke(
 );
 
 export const SIDEBAR_NESTED_KEYS = {
+  [ROUTES.ONTOLOGY_EXPLORER]: ROUTES.ONTOLOGY_EXPLORER,
   [ROUTES.OBSERVABILITY_ALERTS]: ROUTES.OBSERVABILITY_ALERTS,
   [ROUTES.CONTEXT_CENTER_OVERVIEW]: ROUTES.CONTEXT_CENTER,
   [ROUTES.CONTEXT_CENTER_ARTICLES]: ROUTES.CONTEXT_CENTER,
@@ -185,6 +186,13 @@ export const SIDEBAR_LIST: Array<LeftSidebarItem> = [
         redirect_url: ROUTES.GLOSSARY,
         icon: Glossary,
         dataTestId: `app-bar-item-${SidebarItem.GLOSSARY}`,
+      },
+      {
+        key: ROUTES.ONTOLOGY_EXPLORER,
+        title: 'label.ontology-explorer',
+        redirect_url: ROUTES.ONTOLOGY_EXPLORER,
+        icon: OntologyStudioIcon,
+        dataTestId: `app-bar-item-${SidebarItem.ONTOLOGY_EXPLORER}`,
       },
       {
         key: ROUTES.TAGS,

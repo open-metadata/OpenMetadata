@@ -31,6 +31,7 @@ import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.security.KeyFactory;
+import java.security.PublicKey;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
 import java.security.interfaces.RSAPrivateKey;
@@ -79,11 +80,30 @@ public class JWTTokenGenerator {
           + "jwtTokenConfiguration.rsapublicKeyFilePath, "
           + "jwtTokenConfiguration.jwtissuer, and jwtTokenConfiguration.keyId";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
+
+  /**
+   * What OpenMetadata signs its own tokens with, its key being RSA. tokenValidationAlgorithm is the
+   * identity provider's algorithm, so changing it must leave every bot, personal access and session
+   * token we issued valid (ADR:2026-11-12-openmetadata-signs-its-own-tokens-with-rs256).
+   */
+  public static final AuthenticationConfiguration.TokenValidationAlgorithm SIGNING_ALGORITHM =
+      AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
+
+  /**
+   * The algorithms a token carrying our key id may name. Releases before the ADR above signed with
+   * the configured tokenValidationAlgorithm, so tokens they issued under RS384 or RS512 stay valid.
+   * Only RSA signatures verify against our key; an HMAC or unsigned token is refused.
+   */
+  private static final Set<String> OWN_TOKEN_ALGORITHMS =
+      Set.of(
+          AuthenticationConfiguration.TokenValidationAlgorithm.RS_256.value(),
+          AuthenticationConfiguration.TokenValidationAlgorithm.RS_384.value(),
+          AuthenticationConfiguration.TokenValidationAlgorithm.RS_512.value());
+
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
   @Getter private String issuer;
   @Getter private String kid;
-  private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
   private List<String> principalClaims = List.of();
   private Map<String, String> principalClaimsMapping = Map.of();
   private String emailClaim;
@@ -98,17 +118,31 @@ public class JWTTokenGenerator {
 
   Algorithm internalSigningAlgorithm() {
     requireInitialized();
-    return getAlgorithm(tokenValidationAlgorithm, null, privateKey);
+    return getAlgorithm(SIGNING_ALGORITHM, null, privateKey);
   }
 
   Algorithm internalVerificationAlgorithm() {
     requireInitialized();
-    return getAlgorithm(tokenValidationAlgorithm, publicKey, null);
+    return getAlgorithm(SIGNING_ALGORITHM, publicKey, null);
+  }
+
+  /**
+   * The algorithm that verifies a token carrying our key id against {@code ownPublicKey}: the RSA
+   * algorithm its header names, if it is one we have signed with.
+   */
+  public static Algorithm ownTokenVerificationAlgorithm(
+      String headerAlgorithm, PublicKey ownPublicKey) {
+    if (headerAlgorithm == null || !OWN_TOKEN_ALGORITHMS.contains(headerAlgorithm)) {
+      throw AuthenticationException.getInvalidTokenException(
+          "Invalid token. Unsupported signing algorithm.");
+    }
+    return getAlgorithmFromPublicKey(
+        AuthenticationConfiguration.TokenValidationAlgorithm.fromValue(headerAlgorithm),
+        ownPublicKey);
   }
 
   private void requireInitialized() {
-    if (tokenValidationAlgorithm == null
-        || privateKey == null
+    if (privateKey == null
         || publicKey == null
         || nullOrEmpty(issuer)
         || issuer.isBlank()
@@ -126,8 +160,6 @@ public class JWTTokenGenerator {
     principalClaimsMapping =
         buildPrincipalClaimsMapping(authenticationConfiguration.getJwtPrincipalClaimsMapping());
     emailClaim = authenticationConfiguration.getEmailClaim();
-    AuthenticationConfiguration.TokenValidationAlgorithm algorithm =
-        authenticationConfiguration.getTokenValidationAlgorithm();
     try {
       if (jwtTokenConfiguration.getRsaprivateKeyFilePath() != null
           && !jwtTokenConfiguration.getRsaprivateKeyFilePath().isEmpty()
@@ -145,7 +177,6 @@ public class JWTTokenGenerator {
         publicKey = (RSAPublicKey) kf.generatePublic(spec);
         issuer = jwtTokenConfiguration.getJwtissuer();
         kid = jwtTokenConfiguration.getKeyId();
-        tokenValidationAlgorithm = algorithm;
       }
     } catch (Exception ex) {
       LOG.error("Failed to initialize JWTTokenGenerator ", ex);
@@ -316,7 +347,7 @@ public class JWTTokenGenerator {
         }
       }
       JWTAuthMechanism jwtAuthMechanism = new JWTAuthMechanism().withJWTTokenExpiry(expiry);
-      Algorithm algorithm = getAlgorithm(tokenValidationAlgorithm, null, privateKey);
+      Algorithm algorithm = getAlgorithm(SIGNING_ALGORITHM, null, privateKey);
       JWTCreator.Builder tokenBuilder = JWT.create();
       identityClaims(userName, email).forEach(tokenBuilder::withClaim);
       tokenBuilder

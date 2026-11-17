@@ -1,9 +1,9 @@
 # Ontology releases use the existing approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model); v14 2026-11-12 (`allAssignees` threshold capped at the user entry count); v15 2026-11-15 (UI guards moved to Collate)
+- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model); v14 2026-11-12 (`allAssignees` threshold capped at the user entry count); v15 2026-11-15 (UI guards moved to Collate); v16 2026-11-16 (the review panel moved to Collate)
 - **Deciders:** Harsha
-- **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `CreateTaskTest`, `TaskWorkflowHandlerTest`, `TaskReviewVotesTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `IndependentOntologyReviewRuleIT`, `IndependentOntologyReleaseIT`, `OntologyReviewPanel.test.tsx`, `OntologyReview.spec.ts` *(openmetadata-collate)*
+- **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `CreateTaskTest`, `TaskWorkflowHandlerTest`, `TaskReviewVotesTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `IndependentOntologyReviewRuleIT`, `IndependentOntologyReleaseIT`, `OntologyReviewPanel.test.tsx` *(openmetadata-collate)*, `OntologyReview.spec.ts` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
 
 ## Context

@@ -184,6 +184,35 @@ class SystemRepositorySecuritySettingsTest {
     assertEquals(7, storedAuthentication().getMaxActiveSessionsPerUser());
   }
 
+  /**
+   * Secrets are encrypted afresh on every write, so only the JSON a write returns matches what it
+   * stored: putting the previous configuration back compares with it and undoes only that write.
+   */
+  @Test
+  void aWriteReturnsWhatItStoredSoItCanBePutBackOverExactlyThat() {
+    repository.createOrUpdate(authenticationSettings(authentication(5)));
+    rows.put(AUTHZ, JsonUtils.pojoToJson(authorizer()));
+    StoredSecurityConfiguration before = repository.getStoredSecurityConfiguration();
+
+    StoredSecurityConfiguration written =
+        repository.updateSecurityConfigurationIfCurrent(securityWith(authentication(7)), before);
+
+    assertEquals(rows.get(AUTH), written.authenticationJson());
+    assertEquals(rows.get(AUTHZ), written.authorizerJson());
+    repository.updateSecurityConfigurationIfCurrent(before.configuration(), written);
+    assertEquals(5, storedAuthentication().getMaxActiveSessionsPerUser());
+  }
+
+  @Test
+  void storingWithoutRowsToCompareWithWritesBothAndReturnsThem() {
+    StoredSecurityConfiguration written =
+        repository.storeSecurityConfiguration(securityWith(authentication(7)));
+
+    assertEquals(rows.get(AUTH), written.authenticationJson());
+    assertEquals(rows.get(AUTHZ), written.authorizerJson());
+    assertEquals(7, storedAuthentication().getMaxActiveSessionsPerUser());
+  }
+
   @Test
   void envModeRejectionsReachTheCallerInsteadOfAnErrorResponse() throws Exception {
     repository.createOrUpdate(authenticationSettings(authentication(5)));
