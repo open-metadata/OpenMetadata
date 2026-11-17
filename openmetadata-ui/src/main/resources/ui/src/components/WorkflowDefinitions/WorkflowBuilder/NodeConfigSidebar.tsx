@@ -61,6 +61,7 @@ const resolveAutoAssignOwners = (
   node: Node,
   workflowDefinition: NodeConfigSidebarProps['workflowDefinition']
 ): boolean =>
+  node.data?.autoAssignOwners ??
   (node.data?.config as NodeConfig | undefined)?.autoAssignOwners ??
   workflowDefinition?.config?.autoAssignOwners ??
   true;

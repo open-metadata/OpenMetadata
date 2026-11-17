@@ -14,7 +14,10 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { Node } from 'reactflow';
-import { WorkflowType } from '../../../constants/WorkflowBuilder.constants';
+import {
+  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+  WorkflowType,
+} from '../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
 import { NodeConfig } from '../../../interface/workflow-builder-components.interface';
@@ -42,9 +45,15 @@ jest.mock('./forms/WorkflowConfigFormV1', () => ({
     updateConfig,
   }: {
     config: NodeConfig;
-    updateConfig: (key: keyof NodeConfig, value: string) => void;
+    updateConfig: (key: keyof NodeConfig, value: string | boolean) => void;
   }) => (
     <div>
+      <input
+        aria-label="Auto-assign owners"
+        checked={config.autoAssignOwners !== false}
+        type="checkbox"
+        onChange={(e) => updateConfig('autoAssignOwners', e.target.checked)}
+      />
       <textarea
         aria-label="description"
         data-testid="workflow-description-input"
@@ -170,6 +179,63 @@ describe('NodeConfigSidebar trigger of a workflow with a Git sink', () => {
       })
     );
   });
+});
+
+describe('NodeConfigSidebar owner assignment', () => {
+  it.each([true, false])(
+    'retains a toggle edit when reopening before saving the workflow (initially %s)',
+    async (initialValue) => {
+      const onSave = jest.fn();
+      const node = {
+        ...START_NODE,
+        data: {
+          ...START_NODE.data,
+          config: { autoAssignOwners: initialValue },
+        },
+      };
+      const props = {
+        isOpen: true,
+        node,
+        triggerFieldsConfig: { common: [], entitySpecific: {} },
+        workflowDefinition: {
+          name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
+          description: '',
+          config: { autoAssignOwners: initialValue },
+        },
+        onClose: jest.fn(),
+        onSave,
+        onWorkflowUpdate: jest.fn(),
+      };
+      const { rerender } = render(<NodeConfigSidebar {...props} />);
+      await act(async () => undefined);
+
+      fireEvent.click(
+        screen.getByRole('checkbox', { name: 'Auto-assign owners' })
+      );
+      fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+      const savedConfig = onSave.mock.calls[0][1];
+
+      expect(savedConfig.autoAssignOwners).toBe(!initialValue);
+
+      rerender(<></>);
+      rerender(
+        <NodeConfigSidebar
+          {...props}
+          node={{ ...node, data: { ...node.data, ...savedConfig } }}
+        />
+      );
+      await act(async () => undefined);
+
+      expect(
+        screen.getByRole('checkbox', { name: 'Auto-assign owners' })
+      ).toHaveProperty('checked', !initialValue);
+
+      fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+      expect(onSave.mock.calls[1][1].autoAssignOwners).toBe(!initialValue);
+    }
+  );
 });
 
 describe('NodeConfigSidebar start node description', () => {
