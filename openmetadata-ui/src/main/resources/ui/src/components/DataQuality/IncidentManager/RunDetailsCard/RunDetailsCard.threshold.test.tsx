@@ -291,6 +291,60 @@ describe('RunDetailsCard threshold and scope', () => {
     );
   });
 
+  it.each(['true', 'false'])(
+    'preserves an applied in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      renderCard(
+        rowRun(TestCaseStatus.Success, 30, 970, {
+          ...percentage(5),
+          applied: true,
+        }),
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ])
+      );
+
+      expect(screen.getByTestId('run-details-threshold')).toHaveTextContent(
+        '5% of rows'
+      );
+      expect(screen.getByTestId('run-details-failed')).toHaveTextContent(
+        '3.00% (30 row(s))'
+      );
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'hides an unapplied in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      renderCard(
+        rowRun(TestCaseStatus.Success, 30, 970, { applied: false }),
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ])
+      );
+
+      expect(
+        screen.queryByTestId('run-details-threshold-section')
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'shows an unknown historical in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      renderCard(
+        withoutThreshold(rowRun(TestCaseStatus.Success, 30, 970)),
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ])
+      );
+
+      expect(screen.getByTestId('run-details-threshold')).toHaveTextContent(
+        'Unavailable'
+      );
+    }
+  );
+
   it('shows no threshold beside a test that reads none', () => {
     renderCard(
       {

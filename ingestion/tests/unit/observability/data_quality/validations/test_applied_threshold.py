@@ -25,6 +25,9 @@ import pytest
 from metadata.data_quality.validations.column.sqlalchemy.columnValueMeanToBeBetween import (
     ColumnValueMeanToBeBetweenValidator,
 )
+from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeInSet import (
+    ColumnValuesToBeInSetValidator,
+)
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeNotNull import (
     ColumnValuesToBeNotNullValidator,
 )
@@ -198,3 +201,45 @@ def test_every_dimension_of_a_statistical_run_keeps_the_configured_window(create
 
     assert result.dimensionResults
     assert all((dim.configuredMinBound, dim.configuredMaxBound) == (27, 33) for dim in result.dimensionResults)
+
+
+@pytest.mark.parametrize(
+    "parameter,configured,effective",
+    [
+        ("maxValueForMeanInCol", (None, 110), (None, pytest.approx(115.5))),
+        ("minValueForMeanInCol", (90, None), (pytest.approx(85.5), None)),
+    ],
+)
+def test_dimensions_preserve_one_sided_configured_bounds(create_sqlite_table, parameter, configured, effective):
+    bound = next(value for value in configured if value is not None)
+    test_case = build_test_case(
+        [TestCaseParameterValue(name=parameter, value=str(bound)), *threshold_params(5, "PERCENTAGE")],
+        dimension_columns=("name",),
+    )
+
+    result = ColumnValueMeanToBeBetweenValidator(create_sqlite_table, test_case, EXECUTION_DATE).run_validation()
+
+    assert result.testCaseStatus is not TestCaseStatus.Aborted
+    assert (result.configuredMinBound, result.configuredMaxBound) == configured
+    assert result.dimensionResults
+    for dimension in result.dimensionResults:
+        assert (dimension.minBound, dimension.maxBound) == effective
+        assert (dimension.configuredMinBound, dimension.configuredMaxBound) == configured
+
+
+@pytest.mark.parametrize("match_enum", [True, False, None])
+def test_in_set_records_whether_the_run_applied_a_tolerance(create_sqlite_table, match_enum):
+    params = [TestCaseParameterValue(name="allowedValues", value="[30]"), *threshold_params(5, "PERCENTAGE")]
+    if match_enum is not None:
+        params.append(TestCaseParameterValue(name="matchEnum", value=str(match_enum).lower()))
+    test_case = build_test_case(params, dimension_columns=("name",))
+
+    result = ColumnValuesToBeInSetValidator(create_sqlite_table, test_case, EXECUTION_DATE).run_validation()
+
+    assert result.testCaseStatus is (TestCaseStatus.Failed if match_enum else TestCaseStatus.Success)
+    assert getattr(result.appliedThreshold, "applied", None) is bool(match_enum)
+    if match_enum:
+        assert result.appliedThreshold.value == 5
+        assert result.appliedThreshold.unit is ThresholdUnit.PERCENTAGE
+    assert result.dimensionResults
+    assert all(dimension.appliedThreshold == result.appliedThreshold for dimension in result.dimensionResults)

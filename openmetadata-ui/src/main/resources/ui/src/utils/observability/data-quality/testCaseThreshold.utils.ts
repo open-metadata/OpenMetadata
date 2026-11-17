@@ -826,16 +826,18 @@ const getStatisticalRun = (
  * an earlier run tolerated.
  */
 export const getRunThresholdData = (
-  testCase: Pick<TestCase, 'parameterValues' | 'testDefinition'>,
+  testCase: Pick<TestCase, 'testDefinition'>,
   result: RunThresholdResult
 ): RunThresholdData | undefined => {
-  if (!COMPLETED_RUN_STATUSES.has(result.testCaseStatus)) {
+  if (
+    !COMPLETED_RUN_STATUSES.has(result.testCaseStatus) ||
+    result.appliedThreshold?.applied === false
+  ) {
     return undefined;
   }
 
   const definitionName = testCase.testDefinition?.name ?? '';
-  const params = getTestCaseParams(testCase);
-  const { semantic } = getEffectiveSemantic(definitionName, params);
+  const semantic = getThresholdTestSemantic(definitionName);
 
   if (
     semantic !== ThresholdTestSemantic.RowCountable &&

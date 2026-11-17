@@ -1472,7 +1472,8 @@ class BaseTestValidator(ABC):
         for these bounds there is none to report.
         """
         widening = self._bound_widening
-        if widening and widening[0] == effective_bounds:
+        # Dimension results serialize unbounded sides as None rather than infinity.
+        if widening and tuple(map(reportable_bound, widening[0])) == tuple(map(reportable_bound, effective_bounds)):
             return widening[1]
         return effective_bounds
 

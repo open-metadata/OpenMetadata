@@ -989,8 +989,6 @@ describe('getRunThresholdData', () => {
   it.each([
     ['tableCustomSQLQuery', []],
     ['tableDiff', []],
-    // In-set only applies the threshold once Match enum is on.
-    ['columnValuesToBeInSet', [{ name: 'threshold', value: '5' }]],
   ])(
     'says nothing for %s, which reads no failure tolerance',
     (name, params) => {
@@ -999,6 +997,61 @@ describe('getRunThresholdData', () => {
           testCaseStatus: TestCaseStatus.Failed,
         })
       ).toBeUndefined();
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'uses the recorded in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      const data = getRunThresholdData(
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ]),
+        {
+          testCaseStatus: TestCaseStatus.Success,
+          passedRows: 970,
+          failedRows: 30,
+          appliedThreshold: {
+            applied: true,
+            value: 5,
+            unit: ThresholdUnit.Percentage,
+          },
+        }
+      );
+
+      expect(data).toMatchObject({ threshold: 5, failedPercentage: 3 });
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'does not invent an in-set tolerance when current matchEnum is %s',
+    (matchEnum) => {
+      expect(
+        getRunThresholdData(
+          testCaseOf('columnValuesToBeInSet', [
+            { name: 'matchEnum', value: matchEnum },
+          ]),
+          {
+            testCaseStatus: TestCaseStatus.Success,
+            appliedThreshold: { applied: false },
+          }
+        )
+      ).toBeUndefined();
+    }
+  );
+
+  it.each(['true', 'false'])(
+    'keeps an unrecorded in-set tolerance unknown when current matchEnum is %s',
+    (matchEnum) => {
+      const data = getRunThresholdData(
+        testCaseOf('columnValuesToBeInSet', [
+          { name: 'matchEnum', value: matchEnum },
+        ]),
+        { testCaseStatus: TestCaseStatus.Success }
+      );
+
+      expect(data).toBeDefined();
+      expect(data?.threshold).toBeUndefined();
     }
   );
 });

@@ -109,7 +109,13 @@ export interface CreateTestCaseResult {
  * dimension of a run shares it.
  */
 export interface TestCaseAppliedThreshold {
-    unit?: ThresholdUnit;
+    /**
+     * Whether this run used a failure tolerance. False when the execution mode did not apply
+     * one, such as columnValuesToBeInSet with matchEnum disabled. When false, value and unit do
+     * not explain the verdict. An absent snapshot means applicability is unknown.
+     */
+    applied?: boolean;
+    unit?:    ThresholdUnit;
     /**
      * Deviation the run tolerated before it was reported as failed. `0` tolerated nothing.
      */
