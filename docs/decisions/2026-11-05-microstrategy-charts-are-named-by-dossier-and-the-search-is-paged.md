@@ -135,7 +135,7 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
   matched on its name, which the import derives from the column (`Order Id` ↔ `order_id`): the
   column of the same name, else the only column whose name matches once case, spaces and punctuation
   are dropped (letters of every script are kept). No column edge when that is not one column, when
-  two objects of the cube match alike, or when the object was renamed.
+  two objects of the cube share the name or match alike, or when the object was renamed.
 - **Columns resolve within their own SELECT**: a nested query's aliases never resolve an outer
   column, and a pass that opens with comments is still read. A CTE, derived table, UNNEST or VALUES
   source is never read as a warehouse table (a CTE only where it is visible: in a non-recursive WITH,
