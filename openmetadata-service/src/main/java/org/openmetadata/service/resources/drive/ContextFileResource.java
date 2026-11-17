@@ -215,10 +215,12 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (updatedBy != null && !updatedBy.isBlank()) {
       filter.addQueryParam("updatedBy", updatedBy);
     }
+    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     if (orderBy == null || orderBy.isBlank()) {
       return visibleOnly(
           securityContext,
           filter,
+          fields,
           super.listInternal(
               uriInfo,
               securityContext,
@@ -230,7 +232,6 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
 
     RestUtil.validateCursors(before, after);
-    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
@@ -247,6 +248,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     return visibleOnly(
         securityContext,
         filter,
+        fields,
         addHref(uriInfo, readableOnly(securityContext, fields, resultList)));
   }
 
@@ -273,7 +275,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
    * Center memories do (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
   private ResultList<ContextFile> visibleOnly(
-      SecurityContext securityContext, ListFilter filter, ResultList<ContextFile> files) {
+      SecurityContext securityContext,
+      ListFilter filter,
+      Fields fields,
+      ResultList<ContextFile> files) {
     ResultList<ContextFile> visible =
         ContextFileVisibility.filterByVisibility(files, securityContext);
     Paging paging = visible.getPaging();
@@ -284,17 +289,16 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           ContextMemoryResource.listedTotal(
               paging.getTotal(),
               visible.getData().size(),
-              () -> visibleCount(securityContext, filter)));
+              () -> visibleCount(securityContext, filter, fields)));
     }
     return visible;
   }
 
   /**
    * How many files under {@code filter} the caller may see, passing the same row and sharing checks
-   * as a listed page.
+   * as a page listed with {@code fields}: a field that needs ViewAll makes the count need it too.
    */
-  private int visibleCount(SecurityContext securityContext, ListFilter filter) {
-    Fields fields = getFields(ContextFileVisibility.guardFields(null));
+  private int visibleCount(SecurityContext securityContext, ListFilter filter, Fields fields) {
     return repository.countVisible(
         filter, securityContext, viewPermissionFilter, rowAuthorization(fields).operations());
   }

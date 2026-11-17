@@ -34,6 +34,8 @@ import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.api.tests.CreateLogicalTestCases;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -46,7 +48,9 @@ import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.Column;
@@ -59,6 +63,7 @@ import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.drives.FolderService;
 import org.openmetadata.service.Entity;
 
@@ -139,6 +144,45 @@ public class ListRowAuthorizationIT {
             restricted,
             "/v1/contextCenter/drive/folders/" + folder.getId() + "?fields=childrenCount");
     assertEquals(1, badge.path("childrenCount").asInt(), badge.toString());
+  }
+
+  /**
+   * A file listing counts the files it lists under any policy. With ViewBasic on every file but
+   * ViewAll only on untagged ones, a page asking for a field that needs ViewAll leaves the tagged
+   * file out, and so must its total. The caller is a bot: a user also holds the organization's
+   * unconditional ViewAll through their team, while a bot holds only its own roles.
+   */
+  @Test
+  void aFileListingNeedingViewAllCountsOnlyTheFilesAConditionalViewAllLists(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String secret = secretTag(ns, "viewAll");
+    OpenMetadataClient restricted = botViewingAllOnlyUntagged(ns, secret);
+    Folder folder =
+        new FolderService(admin.getHttpClient())
+            .create(new CreateFolder().withName(ns.prefix("lraViewAll")));
+    admin
+        .contextFiles()
+        .create(
+            new CreateContextFile()
+                .withName(ns.prefix("hiddenFile"))
+                .withFolder(folder.getFullyQualifiedName())
+                .withTags(List.of(tag(secret))));
+    ContextFile visible =
+        admin
+            .contextFiles()
+            .create(
+                new CreateContextFile()
+                    .withName(ns.prefix("visibleFile"))
+                    .withFolder(folder.getFullyQualifiedName()));
+
+    String files =
+        "/v1/contextCenter/drive/files?limit=10&fields=memoryCount&folderId=" + folder.getId();
+    for (String listing : List.of(files, files + "&orderBy=DESC")) {
+      JsonNode page = list(restricted, listing);
+      assertEquals(List.of(visible.getName()), names(page), listing);
+      assertEquals(1, page.path("paging").path("total").asInt(), listing + " " + page);
+    }
   }
 
   @Test
@@ -448,6 +492,77 @@ public class ListRowAuthorizationIT {
             .create(
                 new CreateUser().withName(name).withEmail(email).withRoles(List.of(role.getId()))));
     return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /**
+   * A bot whose only role grants ViewBasic on every file and ViewAll on files without {@code
+   * secretTag}. A bot is created with the default bot role, which grants ViewAll on everything, so
+   * its roles are replaced by this one afterwards.
+   */
+  private static OpenMetadataClient botViewingAllOnlyUntagged(TestNamespace ns, String secretTag)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.prefix("viewAllUntagged"))
+                    .withDescription("ViewBasic on every file, ViewAll on untagged ones")
+                    .withRules(
+                        List.of(
+                            fileRule("viewBasic", MetadataOperation.VIEW_BASIC, null),
+                            fileRule(
+                                "viewAllUntagged",
+                                MetadataOperation.VIEW_ALL,
+                                "!matchAnyTag('" + secretTag + "')"))));
+    ns.trackRoot(Entity.POLICY, policy);
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("viewAllUntaggedRole"))
+                    .withDescription("Role viewing all of untagged files only")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    ns.trackRoot(Entity.ROLE, role);
+    String name = "lra_bot_" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@test.openmetadata.org";
+    User bot =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(name)
+                    .withEmail(email)
+                    .withIsBot(true)
+                    .withAuthenticationMechanism(
+                        new AuthenticationMechanism()
+                            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                            .withConfig(
+                                new JWTAuthMechanism()
+                                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited)))
+                    .withRoles(List.of(role.getId())));
+    ns.trackRoot(Entity.USER, bot.getId());
+    admin
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PATCH,
+            "/v1/users/" + bot.getId(),
+            "[{\"op\":\"replace\",\"path\":\"/roles\",\"value\":[{\"id\":\""
+                + role.getId()
+                + "\",\"type\":\"role\"}]}]",
+            RequestOptions.builder().header("Content-Type", "application/json-patch+json").build());
+    return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  private static Rule fileRule(String name, MetadataOperation operation, String condition) {
+    return new Rule()
+        .withName(name)
+        .withResources(List.of(Entity.CONTEXT_FILE))
+        .withOperations(List.of(operation))
+        .withEffect(Rule.Effect.ALLOW)
+        .withCondition(condition);
   }
 
   private static Table createTable(
