@@ -4,7 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 
+import java.sql.SQLException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import org.jdbi.v3.core.statement.SqlLogger;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -39,19 +43,33 @@ class EntityFqnHoldersIT {
         List.of(
             new EntityTable(NOT_CREATED_YET, "not_created_yet_entity", "nameHash"), folderTable());
 
-    List<Holder> holders =
-        TestSuiteBootstrap.getJdbi()
-            .withHandle(
-                handle -> {
-                  EntityFqnHolders lookup = EntityFqnHolders.in(handle, tables);
-                  lookup.holding(ns.shortPrefix("another"));
-                  return lookup.holding(folder.getFullyQualifiedName());
-                });
+    List<Holder> holders = holding(tables, folder.getFullyQualifiedName());
 
-    assertEquals(
-        List.of(FOLDER_ENTITY + " " + folder.getId()),
-        descriptions(holders),
-        "a table found missing on one lookup stays missing on the next");
+    assertEquals(List.of(FOLDER_ENTITY + " " + folder.getId()), descriptions(holders));
+  }
+
+  @Test
+  void aMissingTableIsQueriedOncePerRun(TestNamespace ns) {
+    List<EntityTable> tables =
+        List.of(new EntityTable(NOT_CREATED_YET, "not_created_yet_entity", "nameHash"));
+    AtomicInteger failedQueries = new AtomicInteger();
+
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              handle.setSqlLogger(
+                  new SqlLogger() {
+                    @Override
+                    public void logException(StatementContext context, SQLException ex) {
+                      failedQueries.incrementAndGet();
+                    }
+                  });
+              EntityFqnHolders lookup = EntityFqnHolders.in(handle, tables);
+              lookup.holding(ns.shortPrefix("first"));
+              lookup.holding(ns.shortPrefix("second"));
+            });
+
+    assertEquals(1, failedQueries.get(), "the second lookup does not query the missing table");
   }
 
   @Test
