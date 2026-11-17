@@ -29,12 +29,10 @@ import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperText
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
-import { getUserWithImage } from '../../../../../../utils/UserDataUtils';
 import { getUserIdentifier } from '../../../../../../utils/UsersPureUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import UserPopOverCard from '../../../../../common/PopOverCard/UserPopOverCard';
@@ -72,9 +70,6 @@ const PersonaUsersTab = ({
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
   const [userDetails, setUserDetails] = useState<User[]>([]);
-  const updateUserProfilePics = useApplicationStore(
-    (state) => state.updateUserProfilePics
-  );
 
   const handleRemove = useCallback(
     (id: string) => onUsersChange(users.filter((u) => u.id !== id)),
@@ -123,14 +118,6 @@ const PersonaUsersTab = ({
         if (active) {
           const fetched =
             response?.hits.hits.map((hit) => hit._source as User) ?? [];
-          // The search already returned each user, so seed the shared profile cache: the row's
-          // name and avatar then read it instead of fetching every user again.
-          fetched.forEach((user) =>
-            updateUserProfilePics({
-              id: user.name,
-              user: getUserWithImage(user),
-            })
-          );
           setUserDetails(fetched);
         }
       } catch (error) {
@@ -150,7 +137,7 @@ const PersonaUsersTab = ({
     return () => {
       active = false;
     };
-  }, [users, updateUserProfilePics]);
+  }, [users]);
 
   const renderCell = (user: User, colId: UserColumnId) => {
     switch (colId) {
@@ -160,6 +147,7 @@ const PersonaUsersTab = ({
             <UserPopOverCard
               showUserName
               className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:font-medium"
+              displayName={getEntityName(user)}
               profileWidth={16}
               userName={user.name}
             />
