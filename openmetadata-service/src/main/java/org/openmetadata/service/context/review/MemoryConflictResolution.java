@@ -309,7 +309,8 @@ public final class MemoryConflictResolution {
     if (about == null || !Entity.CONTEXT_MEMORY.equals(about.getType())) {
       throw new BadRequestException(NOT_A_MEMORY);
     }
-    return Entity.getEntity(Entity.CONTEXT_MEMORY, about.getId(), "owners", Include.NON_DELETED);
+    return Entity.getEntity(
+        Entity.CONTEXT_MEMORY, about.getId(), DISPUTED_FIELDS, Include.NON_DELETED);
   }
 
   private static Map<UUID, ContextMemory> disputedMemories(List<MemoryDispute> disputes) {

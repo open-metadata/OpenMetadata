@@ -145,6 +145,10 @@ neither was held, and Collate's reconciliation approved both. An Approved memory
   rewording; within one document extraction still keeps the first, and the same rule decides
   approval's within-document holds.
 
+- A held value re-derived in other words keeps its hold: re-extraction asks the same question of its
+  changed claim before giving it the stage it was derived in.
+
 The check is best effort, as reuse is: two documents extracted at once each plan before the other
-writes, and a value ranked outside the twenty keyword hits is missed. Memories approved side by side
-before this change are not revisited.
+writes; extraction reads the five best candidates of the merged vector and keyword rankings, and
+approval the holding memories among the twenty keyword hits, so a value ranked below those is
+missed. Memories approved side by side before this change are not revisited.

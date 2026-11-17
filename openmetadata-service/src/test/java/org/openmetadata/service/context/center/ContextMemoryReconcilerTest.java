@@ -1422,6 +1422,50 @@ class ContextMemoryReconcilerTest {
     assertEquals(created, captor.getValue().getEntityStatus());
   }
 
+  /**
+   * A value another document holds, re-derived in other words, keeps its hold: claiming the held
+   * pill must not give it the Approved stage OSS derives. Without a hold it takes that stage.
+   */
+  @ParameterizedTest
+  @CsvSource({"true, UNPROCESSED", "false, APPROVED"})
+  void aHeldValueRewordedOnReExtractionKeepsItsHold(
+      boolean heldElsewhere, ContextMemoryStatus stage) {
+    ContextMemory held =
+        pill(
+            "Who signs the lease?",
+            "Finance signs it.",
+            ContextMemorySourceType.PAGE_EXTRACTION,
+            ContextMemoryStatus.UNPROCESSED);
+    existing(held);
+    List<ContextMemory> asked = new ArrayList<>();
+    ContextMemoryReconciler.DuplicateFinder finder =
+        new ContextMemoryReconciler.DuplicateFinder() {
+          @Override
+          public DuplicateMatch findMatch(ContextMemory derived) {
+            return new DuplicateMatch.None();
+          }
+
+          @Override
+          public boolean isHeldAcrossDocuments(ContextMemory memory) {
+            asked.add(memory);
+            return heldElsewhere;
+          }
+        };
+
+    new ContextMemoryReconciler(memoryRepository, finder)
+        .reconcile(
+            source,
+            Entity.PAGE,
+            List.of(derived("Who signs the lease?", "The finance team signs it.")));
+
+    ArgumentCaptor<ContextMemory> captor = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository)
+        .updateIfCurrent(isNull(), eq(held), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+    assertEquals(stage, captor.getValue().getEntityStatus());
+    assertEquals(held.getId(), asked.getFirst().getId());
+    assertEquals("The finance team signs it.", asked.getFirst().getAnswer());
+  }
+
   private static final String HERONFIELD_HOURS = "What are the Heronfield support desk hours?";
 
   /** Unprocessed for a person, with no dispute or reason that could name the other document. */

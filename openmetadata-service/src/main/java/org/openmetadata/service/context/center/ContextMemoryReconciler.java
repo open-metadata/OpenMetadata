@@ -55,6 +55,11 @@ public class ContextMemoryReconciler {
   @FunctionalInterface
   public interface DuplicateFinder {
     DuplicateMatch findMatch(ContextMemory derived);
+
+    /** Whether, read now, another document holds this stored memory's claim for a person. */
+    default boolean isHeldAcrossDocuments(ContextMemory memory) {
+      return false;
+    }
   }
 
   public ContextMemoryReconciler(ContextMemoryRepository memoryRepository) {
@@ -342,7 +347,7 @@ public class ContextMemoryReconciler {
       if (!sameClaim(existing, derived) && derived.getEntityStatus() != null) {
         // A reviewing provider derives Unprocessed, so a changed claim is reviewed again; a
         // reworded title or summary is the same claim and keeps the stage it was reviewed in.
-        updated.setEntityStatus(derived.getEntityStatus());
+        updated.setEntityStatus(changedClaimStage(existing, derived, plan));
       }
       updated.setTitle(derived.getTitle());
       updated.setQuestion(derived.getQuestion());
@@ -363,6 +368,26 @@ public class ContextMemoryReconciler {
       plan.changingIds.add(existing.getId());
     }
     return changed;
+  }
+
+  /**
+   * A changed claim takes the stage it was derived in, unless another document holds it: a held
+   * value reworded by re-extraction must not come out Approved beside the other document's.
+   */
+  private ContextMemoryStatus changedClaimStage(
+      ContextMemory existing, ContextMemory derived, ReconciliationPlan plan) {
+    boolean held =
+        derived.getEntityStatus() != ContextMemoryStatus.UNPROCESSED
+            && (isHeldByAReleasedValue(derived, plan)
+                || duplicateFinder.isHeldAcrossDocuments(claimOf(existing, derived)));
+    return held ? ContextMemoryStatus.UNPROCESSED : derived.getEntityStatus();
+  }
+
+  /** The stored pill stating the derived claim: its documents are the ones it is linked to. */
+  private static ContextMemory claimOf(ContextMemory existing, ContextMemory derived) {
+    return JsonUtils.deepCopy(existing, ContextMemory.class)
+        .withQuestion(derived.getQuestion())
+        .withAnswer(derived.getAnswer());
   }
 
   /**

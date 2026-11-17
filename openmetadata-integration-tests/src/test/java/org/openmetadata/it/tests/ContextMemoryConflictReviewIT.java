@@ -24,6 +24,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.SharedEntities;
+import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -42,6 +44,7 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
@@ -58,6 +61,7 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
+import org.openmetadata.service.Entity;
 
 /**
  * A Draft memory with disputes opens a review task whose decision supersedes or rejects
@@ -268,6 +272,84 @@ public class ContextMemoryConflictReviewIT {
     ContextMemory replaced = admin().get(idOf(first.reviewed()));
     assertEquals(ContextMemoryStatus.SUPERSEDED, replaced.getEntityStatus());
     assertEquals(heldSecond.getId(), replaced.getSupersededBy().getId());
+  }
+
+  /** Two values of one table's fact: the second review is pointed at the first once approved. */
+  @Test
+  void aReviewOfAnAnchoredValueIsPointedAtTheValueThatReplacedItsDispute(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "anchored-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory first = heldAgainst(ns, "anchored-eight", table, original);
+    ContextMemory second = heldAgainst(ns, "anchored-seven", table, original);
+    resolve(SdkClients.adminClient(), openTask(first), "approve", TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(),
+                    openTask(second),
+                    "approve",
+                    TaskResolutionType.Approved));
+
+    assertTrue(
+        refused.getMessage().contains("the review now disputes the memory that replaced it"),
+        refused.getMessage());
+    assertEquals(List.of(first.getId()), disputedIds(admin().get(idOf(second))));
+  }
+
+  /** A value on another table is not named to this review's readers: refused, nothing written. */
+  @Test
+  void aReviewIsNeverPointedAtAValueOnAnotherAnchor(TestNamespace ns) {
+    EntityReference table = anchor(ns);
+    EntityReference otherTable = anchor(ns);
+    ContextMemory original =
+        admin().create(memory(ns, "other-five", shared().USER3_REF).withPrimaryEntity(table));
+    ContextMemory elsewhere = heldAgainst(ns, "other-eight", otherTable, original);
+    ContextMemory second = heldAgainst(ns, "other-seven", table, original);
+    resolve(SdkClients.adminClient(), openTask(elsewhere), "approve", TaskResolutionType.Approved);
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                resolve(
+                    SdkClients.adminClient(),
+                    openTask(second),
+                    "approve",
+                    TaskResolutionType.Approved));
+
+    assertTrue(
+        refused.getMessage().contains("with one this review cannot name"), refused.getMessage());
+    assertEquals(List.of(original.getId()), disputedIds(admin().get(idOf(second))));
+  }
+
+  private static EntityReference anchor(TestNamespace ns) {
+    Table table = ShortStackFactory.table(ns);
+    return new EntityReference().withId(table.getId()).withType(Entity.TABLE);
+  }
+
+  /** A pending value on {@code anchor} held for review against {@code disputed}. */
+  private static ContextMemory heldAgainst(
+      TestNamespace ns, String name, EntityReference anchor, ContextMemory disputed) {
+    ContextMemory pending =
+        admin()
+            .create(
+                memory(ns, name, shared().USER2_REF)
+                    .withPrimaryEntity(anchor)
+                    .withEntityStatus(ContextMemoryStatus.UNPROCESSED));
+    return admin()
+        .patch(
+            idOf(pending),
+            JsonUtils.readTree(HOLD_FOR_REVIEW.formatted(disputed.getId(), THRESHOLD_REASON)));
+  }
+
+  private static List<UUID> disputedIds(ContextMemory memory) {
+    return listOrEmpty(memory.getDisputes()).stream()
+        .map(dispute -> dispute.getMemory().getId())
+        .toList();
   }
 
   @Test

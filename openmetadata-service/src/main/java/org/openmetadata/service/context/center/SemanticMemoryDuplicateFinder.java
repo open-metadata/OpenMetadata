@@ -203,6 +203,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
    * another value it gives for the same question. Approving its document leaves it to an admin,
    * and Collate's reconciliation holds it. One lookup: nothing it finds is ever named.
    */
+  @Override
   public boolean isHeldAcrossDocuments(ContextMemory pending) {
     return !keywordCandidates(persisted(pending), ANY_STAGE, other -> holds(other, pending))
         .isEmpty();
