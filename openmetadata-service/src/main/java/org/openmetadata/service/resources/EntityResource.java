@@ -1238,10 +1238,17 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   /** Whether the caller, already allowed to read this entity, may not see its custom values. */
   private boolean customPropertyValuesHidden(
       SecurityContext securityContext, ResourceContextInterface resourceContext) {
-    return RowDecisionGate.mayDiffer(
+    return supportsCustomProperties()
+        && RowDecisionGate.mayDiffer(
             getSubjectContext(securityContext), entityType, CUSTOM_PROPERTY_VALUES)
         && !viewPermissionFilter.isPermitted(
             securityContext, entityType, CUSTOM_PROPERTY_VALUES, resourceContext);
+  }
+
+  /** An entity type without an extension field has no custom property values to hide. */
+  private boolean supportsCustomProperties() {
+    Set<String> allowedFields = repository.getAllowedFields();
+    return allowedFields != null && allowedFields.contains(Entity.FIELD_EXTENSION);
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
