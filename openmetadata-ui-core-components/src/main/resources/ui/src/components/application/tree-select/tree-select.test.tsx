@@ -863,6 +863,52 @@ describe('TreeSelect disabled nodes', () => {
 
   // Enter is the row's action key. Space is react-aria's selection key, and the
   // tree has no selection mode, so Space never toggled a row.
+  it.each(['staged', 'immediate'] as const)(
+    'keeps a locked radio sibling selected when another is picked (%s)',
+    async (commitMode) => {
+      const user = userEvent.setup();
+      const onChange = vi.fn();
+      render(
+        <TreeSelect
+          isOpen
+          multiple
+          commitMode={commitMode}
+          defaultExpandedKeys={['PII']}
+          fetchData={vi.fn().mockResolvedValue({
+            nodes: [
+              {
+                id: 'PII',
+                label: 'PII',
+                value: 'PII',
+                children: [{ ...PII_EMAIL, disabled: true }, PII_SSN],
+              },
+            ],
+          })}
+          renderTrigger={() => <span>trigger</span>}
+          value={[PII_EMAIL]}
+          onChange={onChange}
+        />
+      );
+      await screen.findByTestId('tree-node-PII.SSN');
+      rowOf(PII_SSN.id).focus();
+      await user.keyboard('{Enter}');
+
+      expect(screen.getByTestId('tree-node-PII.Email')).toHaveAttribute(
+        'data-selected',
+        'true'
+      );
+      expect(screen.getByTestId('tree-node-PII.SSN')).toHaveAttribute(
+        'data-selected',
+        'false'
+      );
+      expect(onChange).not.toHaveBeenCalled();
+      if (commitMode === 'staged') {
+        fireEvent.click(screen.getByTestId('update-btn'));
+        expect(emittedIds(onChange, 0)).toEqual([PII_EMAIL.id]);
+      }
+    }
+  );
+
   it('ignores Enter on a disabled row, ticked or not', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
