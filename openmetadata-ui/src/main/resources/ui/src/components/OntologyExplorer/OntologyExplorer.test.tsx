@@ -578,6 +578,25 @@ describe('OntologyExplorer legacy surfaces remain distinct from native placement
     expect(screen.getByTestId(testId)).toBeVisible();
   });
 
+  it('keeps the layer switch when the data layer has no linked assets', () => {
+    const state = createExplorerState({
+      explorationMode: 'data',
+      graphDataToShow: { nodes: [], edges: [] },
+      combinedGraphData: { nodes: [], edges: [] },
+    });
+    mockUseOntologyExplorer.mockReturnValue(state);
+    render(<OntologyExplorer scope="global" />);
+
+    expect(screen.getByTestId('ontology-data-empty')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-graph-onboarding')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.model' }));
+
+    expect(state.handleModeChange).toHaveBeenCalledWith('model');
+  });
+
   it('changes a Data exploration back to Model and reflects an external search', () => {
     const state = createExplorerState({ explorationMode: 'data' });
     mockUseOntologyExplorer.mockReturnValue(state);

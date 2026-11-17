@@ -16,10 +16,10 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { okJson } from '../../../utils/apiResponse';
 import {
   clickIgnoringToasts,
-  fillDescriptionBox,
   getApiContext,
   getAuthContext,
   redirectToHomePage,
+  resolveDescriptionBox,
   uuid,
 } from '../../../utils/common';
 import { assignTag, waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -241,9 +241,15 @@ const editDescription = async (
   description: string,
   status: 200 | 202
 ) => {
+  const current = await publishedDescription(page, glossary);
   await visitGlossary(page, glossary);
   await page.getByTestId('edit-description').click();
-  await fillDescriptionBox(page, description);
+  const editor = await resolveDescriptionBox(page);
+  // The editor loads the current text on a timer after it mounts; filling before
+  // that lands merges the two texts and leaves focus in the editor, so Save never fires.
+  await expect(editor).toContainText(current);
+  await editor.fill(description);
+  await expect(editor).toHaveText(description);
   const saved = waitForResponseWithStatus(
     page,
     isGlossaryPatch(glossary),
