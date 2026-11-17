@@ -285,7 +285,7 @@ describe('RunDetailsCard threshold and scope', () => {
     );
     expect(
       screen.getByTestId('run-details-configured-range')
-    ).toHaveTextContent('—');
+    ).toHaveTextContent('Unavailable');
     expect(screen.getByTestId('run-details-effective-range')).toHaveTextContent(
       '85.5 – 115.5'
     );
@@ -295,10 +295,7 @@ describe('RunDetailsCard threshold and scope', () => {
     'preserves an applied in-set tolerance when current matchEnum is %s',
     (matchEnum) => {
       renderCard(
-        rowRun(TestCaseStatus.Success, 30, 970, {
-          ...percentage(5),
-          applied: true,
-        }),
+        rowRun(TestCaseStatus.Success, 30, 970, percentage(5)),
         testCaseOf('columnValuesToBeInSet', [
           { name: 'matchEnum', value: matchEnum },
         ])

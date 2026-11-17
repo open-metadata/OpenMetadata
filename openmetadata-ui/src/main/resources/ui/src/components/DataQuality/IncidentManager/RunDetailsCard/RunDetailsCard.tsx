@@ -244,12 +244,13 @@ const knownOrQuiet = (
   labelKey: string,
   testId: string,
   value: string | undefined,
-  className = PRIMARY_VALUE
+  className = PRIMARY_VALUE,
+  unknownValue = NO_VALUE
 ): DetailCell => ({
   className: quietWhenUnknown(value ?? NO_VALUE, className),
   labelKey,
   testId,
-  value: value ?? NO_VALUE,
+  value: value ?? unknownValue,
 });
 
 /** "1.20% (120 row(s))", led by the threshold's own unit so the two read alike. */
@@ -294,16 +295,17 @@ const getRowCountableCells = (
   ];
 };
 
-const getStatisticalCells = ({
-  threshold,
-  configuredRange,
-  effectiveRange,
-}: RunThresholdData): DetailCell[] => {
+const getStatisticalCells = (
+  { threshold, configuredRange, effectiveRange }: RunThresholdData,
+  t: TFunction
+): DetailCell[] => {
   const cells = [
     knownOrQuiet(
       'label.configured-range',
       'run-details-configured-range',
-      configuredRange
+      configuredRange,
+      PRIMARY_VALUE,
+      t('label.unavailable')
     ),
   ];
   // Without a tolerance the effective range is the configured one. A run that
@@ -376,7 +378,7 @@ const RunThreshold = ({
     },
     ...(semantic === ThresholdTestSemantic.RowCountable
       ? getRowCountableCells(data, valueClassName, t)
-      : getStatisticalCells(data)),
+      : getStatisticalCells(data, t)),
   ];
 
   return (

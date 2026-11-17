@@ -23,6 +23,7 @@ import {
   TestCaseEvaluationScope,
   TestCaseResult,
   TestCaseStatus,
+  ThresholdUnit,
 } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { unwrapSelectValue } from '../../ParameterForm/ParameterFieldsUtils';
@@ -40,10 +41,7 @@ const MATCH_ENUM_PARAM = 'matchEnum';
 const TABLE_CUSTOM_SQL_QUERY = 'tableCustomSQLQuery';
 const COLUMN_VALUES_TO_BE_IN_SET = 'columnValuesToBeInSet';
 
-export enum ThresholdUnit {
-  Absolute = 'ABSOLUTE',
-  Percentage = 'PERCENTAGE',
-}
+export { ThresholdUnit };
 
 export enum CustomSqlStrategy {
   Rows = 'ROWS',
