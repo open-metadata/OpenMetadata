@@ -1,6 +1,9 @@
 package org.openmetadata.mcp.tools;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +47,36 @@ public final class McpResponseUtils {
           "votes",
           "sourceHash");
 
+  private static final Set<String> BULK_STRUCTURAL_FIELDS =
+      Set.of(
+          "columns",
+          "tableConstraints",
+          "joins",
+          "schemaDefinition",
+          "viewDefinition",
+          "dataModel",
+          "tasks",
+          "features",
+          "mlFeatures",
+          "children",
+          "charts",
+          "dataModels",
+          "sampleData",
+          "tableProfilerConfig",
+          "customMetrics",
+          "fields",
+          "messageSchema",
+          "requestSchema",
+          "responseSchema");
+
+  private static final String ID_KEY = "id";
+  private static final String NAME_KEY = "name";
+  private static final String DISPLAY_NAME_KEY = "displayName";
+  private static final String FQN_KEY = "fullyQualifiedName";
+  private static final String ENTITY_TYPE_KEY = "entityType";
+  private static final String ENTITY_STATUS_KEY = "entityStatus";
+  private static final String UPDATED_AT_KEY = "updatedAt";
+  private static final String EXTENSION_KEY = "extension";
   private static final String CREATED = "created";
   private static final String VERSION_KEY = "version";
   private static final String CHANGED_KEY = "changed";
@@ -52,6 +85,37 @@ public final class McpResponseUtils {
   private static final String DELETED_KEY = "deleted";
   private static final String PENDING_APPROVAL = "pendingApproval";
   private static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
+
+  private static final List<String> IDENTITY_KEYS =
+      List.of(ID_KEY, NAME_KEY, DISPLAY_NAME_KEY, FQN_KEY, ENTITY_STATUS_KEY);
+
+  private static final Set<String> IDENTITY_KEY_SET = Set.copyOf(IDENTITY_KEYS);
+
+  /**
+   * Describes how {@link PatchEntityTool} wants a patched entity projected onto the MCP wire.
+   * ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
+   */
+  public record PatchProjectionSpec(
+      String entityType,
+      boolean fullResponse,
+      Set<String> touchedFields,
+      Set<String> touchedExtensionKeys,
+      boolean replaceWholeExtension) {
+    public PatchProjectionSpec {
+      touchedFields = touchedFields == null ? Set.of() : Set.copyOf(touchedFields);
+      touchedExtensionKeys =
+          touchedExtensionKeys == null ? Set.of() : Set.copyOf(touchedExtensionKeys);
+    }
+
+    public static PatchProjectionSpec compact(
+        final String entityType, final Set<String> touchedFields) {
+      return new PatchProjectionSpec(entityType, false, touchedFields, Set.of(), false);
+    }
+
+    public static PatchProjectionSpec full(final String entityType) {
+      return new PatchProjectionSpec(entityType, true, Set.of(), Set.of(), false);
+    }
+  }
 
   private McpResponseUtils() {}
 
@@ -71,10 +135,10 @@ public final class McpResponseUtils {
    * runs on a copy, so the entity the repository returned keeps its values.
    * ADR:2026-10-20-mcp-responses-mask-stored-credentials
    */
-  public static EntityInterface<?> maskSecrets(EntityInterface<?> entity) {
+  public static EntityInterface<?> maskSecrets(final EntityInterface<?> entity) {
     // MCP tools read and write entities by a runtime entityType string, so the concrete type is
     // only known from the instance.
-    EntityMasker masker = EntityMaskerFactory.getEntityMasker();
+    final EntityMasker masker = EntityMaskerFactory.getEntityMasker();
     return switch (entity) {
       case McpServer server -> maskedCopy(server, McpServerMasker::mask);
       case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
@@ -91,14 +155,14 @@ public final class McpResponseUtils {
   }
 
   private static EntityInterface<?> maskConnection(
-      ServiceEntityInterface service, EntityMasker masker) {
+      final ServiceEntityInterface service, final EntityMasker masker) {
     EntityInterface<?> masked = service;
     // TestSuite implements ServiceEntityInterface with a placeholder connection and has no service
     // repository; it holds nothing to mask.
     if (service.getConnection() != null
         && Entity.getEntityRepository(Entity.getEntityTypeFromObject(service))
             instanceof ServiceEntityRepository<?, ?> repository) {
-      ServiceType serviceType = repository.getServiceType();
+      final ServiceType serviceType = repository.getServiceType();
       masked =
           maskedCopy(
               service,
@@ -113,19 +177,21 @@ public final class McpResponseUtils {
     return masked;
   }
 
-  private static EventSubscription maskWebhookSecrets(EventSubscription subscription) {
+  private static EventSubscription maskWebhookSecrets(final EventSubscription subscription) {
     return DestinationSecrets.mask(subscription);
   }
 
   @SuppressWarnings("unchecked")
-  private static <T extends EntityInterface<?>> T maskedCopy(T entity, Consumer<T> mask) {
-    T copy = (T) JsonUtils.deepCopy(entity, entity.getClass());
+  private static <T extends EntityInterface<?>> T maskedCopy(
+      final T entity, final Consumer<T> mask) {
+    final T copy = (T) JsonUtils.deepCopy(entity, entity.getClass());
     mask.accept(copy);
     return copy;
   }
 
-  public static Map<String, Object> compact(EntityInterface<?> entity, EventType changeType) {
-    Map<String, Object> doc = JsonUtils.getMap(maskSecrets(entity));
+  public static Map<String, Object> compact(
+      final EntityInterface<?> entity, final EventType changeType) {
+    final Map<String, Object> doc = new LinkedHashMap<>(safeEntityMap(entity));
     NOISE_FIELDS.forEach(doc::remove);
     if (Boolean.FALSE.equals(doc.get(DELETED_KEY))) {
       doc.remove(DELETED_KEY);
@@ -134,22 +200,58 @@ public final class McpResponseUtils {
     return doc;
   }
 
+  public static Map<String, Object> projectPatch(
+      final EntityInterface<?> entity, final EventType changeType, final PatchProjectionSpec spec) {
+    return spec.fullResponse()
+        ? fullPatch(entity, spec.entityType(), changeType)
+        : compactPatch(entity, changeType, spec);
+  }
+
   /**
-   * {@link #compact} plus the two things only an update can answer: the new version, and which
-   * fields actually changed.
-   *
-   * <p>{@link #compact} strips {@code changeDescription} because it is noise on a create - nothing
-   * changed, the entity is new. On a patch it is the confirmation the caller wrote for. Only the
-   * field names are kept: the full object carries old and new values for every field, far more than
-   * "did my change land" needs.
+   * Projects a patched entity into a compact confirmation carrying identity fields, version,
+   * updatedAt, operation, changed field names, and touched non-bulk metadata.
+   * ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
    */
-  public static Map<String, Object> compactPatch(EntityInterface<?> entity, EventType changeType) {
-    Map<String, Object> doc = compact(entity, changeType);
-    doc.put(VERSION_KEY, entity.getVersion());
-    List<String> changed = changedFields(entity.getChangeDescription());
-    if (!changed.isEmpty()) {
-      doc.put(CHANGED_KEY, changed);
+  public static Map<String, Object> compactPatch(
+      final EntityInterface<?> entity, final EventType changeType) {
+    // Used by Collate extensions and unit tests that invoke compactPatch without a JsonPatch.
+    return compactPatch(entity, changeType, PatchProjectionSpec.compact(null, Set.of()));
+  }
+
+  public static Map<String, Object> compactPatch(
+      final EntityInterface<?> entity,
+      final String entityType,
+      final EventType changeType,
+      final Set<String> touchedFields) {
+    return compactPatch(entity, changeType, PatchProjectionSpec.compact(entityType, touchedFields));
+  }
+
+  public static Map<String, Object> compactPatch(
+      final EntityInterface<?> entity, final EventType changeType, final PatchProjectionSpec spec) {
+    final Map<String, Object> fullMap = safeEntityMap(entity);
+    final Map<String, Object> doc = new LinkedHashMap<>();
+    copyIdentityEnvelope(fullMap, doc, entity, spec.entityType());
+    final List<String> changed = effectiveChangedFields(entity, changeType);
+    copyTouchedMetadata(fullMap, doc, spec, changed);
+    appendConfirmationMetadata(doc, entity, changeType, changed);
+    return doc;
+  }
+
+  /**
+   * Returns the full secret-masked entity plus {@code entityType}, {@code version}, {@code
+   * updatedAt}, {@code _operation}, and {@code changed} when {@code response="full"} is requested.
+   * ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
+   */
+  public static Map<String, Object> fullPatch(
+      final EntityInterface<?> entity, final String entityType, final EventType changeType) {
+    final Map<String, Object> doc = new LinkedHashMap<>(safeEntityMap(entity));
+    NOISE_FIELDS.forEach(doc::remove);
+    if (Boolean.FALSE.equals(doc.get(DELETED_KEY))) {
+      doc.remove(DELETED_KEY);
     }
+    putIfPresent(doc, ENTITY_TYPE_KEY, resolveEntityType(entity, entityType));
+    final List<String> changed = effectiveChangedFields(entity, changeType);
+    appendConfirmationMetadata(doc, entity, changeType, changed);
     return doc;
   }
 
@@ -159,7 +261,8 @@ public final class McpResponseUtils {
    * so "updated" and its last change's field list would report a write that has not happened.
    * ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
    */
-  public static Map<String, Object> markHeld(Map<String, Object> doc, UUID changeRequestId) {
+  public static Map<String, Object> markHeld(
+      final Map<String, Object> doc, final UUID changeRequestId) {
     if (changeRequestId != null) {
       doc.put(OPERATION_KEY, PENDING_APPROVAL);
       doc.put(CHANGE_REQUEST_ID_KEY, changeRequestId.toString());
@@ -168,8 +271,142 @@ public final class McpResponseUtils {
     return doc;
   }
 
-  private static List<String> changedFields(ChangeDescription change) {
-    Set<String> names = new LinkedHashSet<>();
+  private static Map<String, Object> safeEntityMap(final EntityInterface<?> entity) {
+    final Map<String, Object> mapped =
+        entity == null ? null : JsonUtils.getMap(maskSecrets(entity));
+    return mapped == null ? Map.of() : mapped;
+  }
+
+  private static void copyIdentityEnvelope(
+      final Map<String, Object> fullMap,
+      final Map<String, Object> doc,
+      final EntityInterface<?> entity,
+      final String explicitEntityType) {
+    for (final String key : IDENTITY_KEYS) {
+      putIfPresent(doc, key, fullMap.get(key));
+    }
+    putIfPresent(doc, ENTITY_TYPE_KEY, resolveEntityType(entity, explicitEntityType));
+    if (Boolean.TRUE.equals(fullMap.get(DELETED_KEY))) {
+      doc.put(DELETED_KEY, Boolean.TRUE);
+    }
+  }
+
+  private static void copyTouchedMetadata(
+      final Map<String, Object> fullMap,
+      final Map<String, Object> doc,
+      final PatchProjectionSpec spec,
+      final List<String> changed) {
+    for (final String field : candidateEchoFields(spec, changed)) {
+      if (isEchoableField(field)) {
+        copySingleField(fullMap, doc, field, spec);
+      }
+    }
+  }
+
+  private static Set<String> candidateEchoFields(
+      final PatchProjectionSpec spec, final List<String> changed) {
+    final Set<String> candidates = new LinkedHashSet<>(spec.touchedFields());
+    for (final String name : changed) {
+      if (name != null && !name.contains(".")) {
+        candidates.add(name);
+      }
+    }
+    return candidates;
+  }
+
+  private static boolean isEchoableField(final String field) {
+    return !IDENTITY_KEY_SET.contains(field)
+        && !ENTITY_TYPE_KEY.equals(field)
+        && !DELETED_KEY.equals(field)
+        && !BULK_STRUCTURAL_FIELDS.contains(field)
+        && !NOISE_FIELDS.contains(field);
+  }
+
+  private static void copySingleField(
+      final Map<String, Object> fullMap,
+      final Map<String, Object> doc,
+      final String field,
+      final PatchProjectionSpec spec) {
+    if (EXTENSION_KEY.equals(field)) {
+      copyExtensionField(fullMap, doc, spec);
+    } else {
+      putIfPresent(doc, field, fullMap.get(field));
+    }
+  }
+
+  private static void copyExtensionField(
+      final Map<String, Object> fullMap,
+      final Map<String, Object> doc,
+      final PatchProjectionSpec spec) {
+    final Object rawExtension = fullMap.get(EXTENSION_KEY);
+    if (!spec.replaceWholeExtension()
+        && !spec.touchedExtensionKeys().isEmpty()
+        && rawExtension instanceof Map<?, ?> extensionMap) {
+      final Map<String, Object> filtered =
+          filterExtensionEntries(extensionMap, spec.touchedExtensionKeys());
+      if (!filtered.isEmpty()) {
+        doc.put(EXTENSION_KEY, filtered);
+      }
+    } else {
+      putIfPresent(doc, EXTENSION_KEY, rawExtension);
+    }
+  }
+
+  private static Map<String, Object> filterExtensionEntries(
+      final Map<?, ?> extensionMap, final Set<String> touchedKeys) {
+    final Map<String, Object> filtered = new LinkedHashMap<>();
+    for (final String key : touchedKeys) {
+      final Object value = extensionMap.get(key);
+      if (value != null) {
+        filtered.put(key, value);
+      }
+    }
+    return filtered;
+  }
+
+  private static void appendConfirmationMetadata(
+      final Map<String, Object> doc,
+      final EntityInterface<?> entity,
+      final EventType changeType,
+      final List<String> changed) {
+    if (entity != null) {
+      putIfPresent(doc, VERSION_KEY, entity.getVersion());
+      putIfPresent(doc, UPDATED_AT_KEY, entity.getUpdatedAt());
+    }
+    doc.put(OPERATION_KEY, EventType.ENTITY_CREATED.equals(changeType) ? CREATED : UPDATED);
+    if (!changed.isEmpty()) {
+      doc.put(CHANGED_KEY, changed);
+    }
+  }
+
+  private static String resolveEntityType(
+      final EntityInterface<?> entity, final String explicitEntityType) {
+    if (!nullOrEmpty(explicitEntityType)) {
+      return explicitEntityType;
+    }
+    final String registered = entity == null ? null : Entity.getEntityTypeFromObject(entity);
+    if (!nullOrEmpty(registered)) {
+      return registered;
+    }
+    return entity == null ? null : fallbackEntityTypeFromClass(entity.getClass());
+  }
+
+  private static String fallbackEntityTypeFromClass(final Class<?> entityClass) {
+    final String simpleName = entityClass.getSimpleName();
+    return entityClass.isSynthetic() || simpleName.isEmpty()
+        ? null
+        : Character.toLowerCase(simpleName.charAt(0)) + simpleName.substring(1);
+  }
+
+  private static List<String> effectiveChangedFields(
+      final EntityInterface<?> entity, final EventType changeType) {
+    return entity == null || EventType.ENTITY_NO_CHANGE.equals(changeType)
+        ? List.of()
+        : changedFields(entity.getChangeDescription());
+  }
+
+  private static List<String> changedFields(final ChangeDescription change) {
+    final Set<String> names = new LinkedHashSet<>();
     if (change != null) {
       collectNames(change.getFieldsAdded(), names);
       collectNames(change.getFieldsUpdated(), names);
@@ -178,9 +415,16 @@ public final class McpResponseUtils {
     return new ArrayList<>(names);
   }
 
-  private static void collectNames(List<FieldChange> changes, Set<String> names) {
+  private static void collectNames(final List<FieldChange> changes, final Set<String> names) {
     if (changes != null) {
       changes.stream().map(FieldChange::getName).filter(Objects::nonNull).forEach(names::add);
+    }
+  }
+
+  private static void putIfPresent(
+      final Map<String, Object> target, final String key, final Object value) {
+    if (value != null) {
+      target.put(key, value);
     }
   }
 }
