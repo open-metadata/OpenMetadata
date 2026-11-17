@@ -55,6 +55,8 @@ class DremioSource(CommonDbSourceService, MultiDBSource):
     ):
         super().__init__(config, metadata)
         self.database = None
+        # Dremio path of each schema of the current database, by schema name
+        self.schema_paths: dict[str, str] = {}
 
     @classmethod
     def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None) -> "DremioSource":
@@ -118,10 +120,23 @@ class DremioSource(CommonDbSourceService, MultiDBSource):
         else:
             schemas = self.inspector.get_schema_names()
 
-        for schema_name in schemas:
-            cleaned_schema_name = self._remove_database_from_schema_name(schema_name)
-
-            yield cleaned_schema_name
+        self.schema_paths = {}
+        for schema_path in schemas:
+            schema_name = self._remove_database_from_schema_name(schema_path)
+            if schema_name == self.database and schema_path != self.database:
+                # A folder named like its database: the objects at the root
+                # already have that name, so the folder keeps its full path.
+                schema_name = schema_path
+            if schema_name in self.schema_paths:
+                logger.warning(
+                    "Dremio schema %s is skipped: its name %s is already used by %s",
+                    schema_path,
+                    schema_name,
+                    self.schema_paths[schema_name],
+                )
+                continue
+            self.schema_paths[schema_name] = schema_path
+            yield schema_name
 
     def _remove_database_from_schema_name(self, schema_name: str) -> str:
         """
@@ -133,6 +148,8 @@ class DremioSource(CommonDbSourceService, MultiDBSource):
         return schema_name
 
     def _add_database_to_schema_name(self, schema_name: str) -> str:
+        if schema_name in self.schema_paths:
+            return self.schema_paths[schema_name]
         if self.database is not None:
             if schema_name is None or schema_name.strip() == "" or schema_name == self.database:
                 return self.database

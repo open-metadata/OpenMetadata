@@ -31,6 +31,7 @@ MODULE = "metadata.ingestion.source.database.dremio.metadata"
 def dremio_source(database=None, configured_database=None) -> DremioSource:
     source = DremioSource.__new__(DremioSource)
     source.database = database
+    source.schema_paths = {}
     source.service_connection = MagicMock(database=configured_database)
     source.source_config = MagicMock(databaseFilterPattern=None, useFqnForFiltering=False)
     source.status = MagicMock()
