@@ -39,6 +39,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
@@ -168,6 +169,9 @@ public final class MemoryConflictResolution {
     List<MemoryDispute> disputes = disputesOf(task, reviewed);
     Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
     requireNoneArchived(disputed.values());
+    if (verdict == Verdict.APPROVE) {
+      requireNoLaterValue(reviewed, disputes, disputed, decision.user());
+    }
     MemoryConflictDecision.requireComparedAsIs(decision.comparison(), reviewed, disputes, disputed);
     List<MemoryChange> changes =
         verdict == Verdict.APPROVE
@@ -183,6 +187,66 @@ public final class MemoryConflictResolution {
         decision.user(),
         verdict,
         reviewed.getId());
+  }
+
+  /**
+   * Approving over a claim another decision replaced since detection would leave two values
+   * Approved, so the decision is refused. When the person deciding may read the value that replaced
+   * it, the review is first pointed at it, written as that person, so they compare it; otherwise
+   * nothing is written and the memory needs a requeue.
+   */
+  private static void requireNoLaterValue(
+      ContextMemory reviewed,
+      List<MemoryDispute> disputes,
+      Map<UUID, ContextMemory> disputed,
+      String user) {
+    Map<UUID, ContextMemory> later =
+        reviewed.getEntityStatus() == ContextMemoryStatus.DRAFT
+            ? MemoryConflictDecision.laterValues(reviewed, disputed, MemoryConflictResolution::live)
+            : Map.of();
+    if (!later.isEmpty()) {
+      boolean nameable = later.values().stream().allMatch(value -> mayBeNamedBy(value, user));
+      if (nameable) {
+        repoint(reviewed, MemoryConflictDecision.repointed(disputes, later, now()), user);
+      }
+      throw new PreconditionFailedException(
+          nameable
+              ? MemoryConflictDecision.REPLACED_SINCE_DETECTION
+              : MemoryConflictDecision.REPLACED_OUT_OF_SIGHT);
+    }
+  }
+
+  /**
+   * The dispute is written as the person deciding, so they must be able to read the value it
+   * names; its other readers see that it exists, as for any dispute.
+   */
+  private static boolean mayBeNamedBy(ContextMemory value, String user) {
+    return ContextMemoryVisibility.isVisibleToUser(
+        value, user, SubjectContext.getSubjectContext(user).isAdmin());
+  }
+
+  private static void repoint(ContextMemory reviewed, List<MemoryDispute> disputes, String user) {
+    write(
+        new MemoryChange(
+            reviewed, JsonUtils.deepCopy(reviewed, ContextMemory.class).withDisputes(disputes)),
+        user);
+  }
+
+  private static long now() {
+    return System.currentTimeMillis();
+  }
+
+  private static Optional<ContextMemory> live(UUID memoryId) {
+    Optional<ContextMemory> memory = Optional.empty();
+    try {
+      memory =
+          Optional.of(
+              Entity.getEntity(
+                  Entity.CONTEXT_MEMORY, memoryId, DISPUTED_FIELDS, Include.NON_DELETED));
+    } catch (EntityNotFoundException deleted) {
+      LOG.debug("[MemoryConflictReview] replacing memory {} is gone", memoryId, deleted);
+    }
+    return memory;
   }
 
   /**
@@ -262,7 +326,8 @@ public final class MemoryConflictResolution {
     if (about == null || !Entity.CONTEXT_MEMORY.equals(about.getType())) {
       throw new BadRequestException(NOT_A_MEMORY);
     }
-    return Entity.getEntity(Entity.CONTEXT_MEMORY, about.getId(), "owners", Include.NON_DELETED);
+    return Entity.getEntity(
+        Entity.CONTEXT_MEMORY, about.getId(), DISPUTED_FIELDS, Include.NON_DELETED);
   }
 
   /** Archived ones included; a permanently deleted one is gone, and the decision skips it. */

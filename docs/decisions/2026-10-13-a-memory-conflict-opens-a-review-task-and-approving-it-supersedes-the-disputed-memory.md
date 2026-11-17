@@ -1,7 +1,7 @@
 # A memory conflict opens a review task, and approving it supersedes the disputed memory
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction) · v4 2026-11-03 (only automation records disputes)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction) · v4 2026-11-03 (only automation records disputes) · v5 2026-11-17 (a dispute follows the value that replaced it)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryLifecycleTest`, `MemoryConflictDecisionTest`,
   `MemoryConflictReviewTasksTest`, `MemoryConflictResolutionTest`, `ContextMemoryLifecycleIT`,
@@ -120,3 +120,18 @@ Item 1's editability rule is necessary but no longer sufficient: only an admin, 
 writing for a user records disputes, on create or update (403 otherwise), so a non-admin cannot
 open a review over their own memory and approve it there
 (ADR:2026-10-09-data-consumers-create-context-memories v3).
+
+## Amendment — 2026-11-17: a dispute follows the value that replaced it
+
+Two memories can dispute one Approved value, such as two other values documents give for one
+question. Approving the first supersedes it, so the second's dispute names a retired value, and
+approving the second superseded nothing and left two values Approved.
+
+Approving a review now follows each disputed memory another decision superseded to the Approved
+memory holding its claim now (`MemoryConflictDecision.laterValues`, through at most ten
+replacements, never the reviewed memory itself, whose own retry is item 5's), and refuses the
+decision with 412. When the resolver may read that memory, the review is first pointed at it,
+keeping the dispute's reason, written as the resolver impersonated by `governance-bot`, so the
+reviewer compares it; the dispute may name a memory some of the review's readers cannot open, as any
+dispute can. Otherwise nothing is written, and an admin or a requeue takes it from there. Rejecting
+is unaffected.
