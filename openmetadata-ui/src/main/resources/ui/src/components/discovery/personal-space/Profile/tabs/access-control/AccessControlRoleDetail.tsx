@@ -27,7 +27,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   Edit01 as Edit,
   Policy as PolicyIcon,
   Teams,
@@ -57,7 +56,6 @@ import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { Role } from '../../../../../../generated/entity/teams/role';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { useAuth } from '../../../../../../hooks/authHooks';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
   getPolicies,
@@ -77,6 +75,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../../common/Loader/Loader';
@@ -415,7 +414,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
   onSetHeaderTitleSuffix,
 }) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard(window.location.href);
   const { isAdminUser } = useAuth();
   const { getEntityPermissionByFqn } = usePermissionProvider();
   const { contains } = useFilter({ sensitivity: 'base' });
@@ -541,17 +539,11 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
             setIsRenameOpen(true);
           }}
         />
-        <ButtonUtility
-          data-testid="copy-link-btn"
-          icon={Copy01}
-          size="lg"
-          tooltip={String(
-            hasCopied
-              ? t('message.link-copy-to-clipboard')
-              : t('label.copy-item', { item: t('label.url-uppercase') })
-          )}
+        <CopyButton
+          testId="copy-link-btn"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
           tooltipPlacement="right"
-          onPress={() => onCopyToClipBoard()}
+          value={window.location.href}
         />
       </Box>
     );
@@ -590,8 +582,6 @@ const AccessControlRoleDetail: React.FC<AccessControlRoleDetailProps> = ({
     handleSaveRename,
     handleAfterDeleteRole,
     t,
-    hasCopied,
-    onCopyToClipBoard,
     onSetHeaderActions,
     onSetHeaderTitleInput,
     onSetHeaderTitleSuffix,

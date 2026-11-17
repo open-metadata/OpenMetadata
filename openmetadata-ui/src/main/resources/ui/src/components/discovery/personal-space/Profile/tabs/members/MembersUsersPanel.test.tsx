@@ -53,9 +53,21 @@ jest.mock('../../../../../../rest/miscAPI', () => ({
   deleteEntity: (...args: unknown[]) => mockDeleteEntity(...args),
 }));
 
-jest.mock('../../../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'me', name: 'admin' } }),
-}));
+jest.mock('../../../../../../hooks/useApplicationStore', () => {
+  const state = {
+    currentUser: { id: 'me', name: 'admin' },
+    userProfilePics: { user1: { name: 'user1', displayName: 'User One' } },
+    updateUserProfilePics: jest.fn(),
+  };
+
+  return {
+    useApplicationStore: Object.assign(
+      (selector?: (s: unknown) => unknown) =>
+        selector ? selector(state) : state,
+      { getState: () => state }
+    ),
+  };
+});
 
 jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
   useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
@@ -137,6 +149,7 @@ const renderComponent = (isAdmin = false) =>
 describe('MembersUsersPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockGetUsers.mockResolvedValue(usersPage({ total: 1 }));
     mockDeleteEntity.mockResolvedValue({ status: 200, data: {} });
   });
 
@@ -311,14 +324,14 @@ describe('MembersUsersPanel', () => {
       );
     });
     renderComponent();
-    await screen.findByText('page-one-user');
+    await screen.findByTestId('page-one-user');
 
     // Next stays clickable while page 2 loads, so page 3 is reached by walking.
     fireEvent.click(screen.getByTestId('next'));
     await waitFor(() => expect(pageTwoCalls).toBe(1));
     fireEvent.click(screen.getByTestId('next'));
 
-    expect(await screen.findByText('page-three-user')).toBeInTheDocument();
+    expect(await screen.findByTestId('page-three-user')).toBeInTheDocument();
 
     await act(async () =>
       heldPageTwo.forEach((resolve) =>
@@ -326,8 +339,8 @@ describe('MembersUsersPanel', () => {
       )
     );
 
-    expect(screen.getByText('page-three-user')).toBeInTheDocument();
-    expect(screen.queryByText('page-two-user')).not.toBeInTheDocument();
+    expect(screen.getByTestId('page-three-user')).toBeInTheDocument();
+    expect(screen.queryByTestId('page-two-user')).not.toBeInTheDocument();
     // The walk to page 3 asks only for cursors, not the row fields.
     expect(mockGetUsers).toHaveBeenCalledWith(
       expect.objectContaining({ after: 'cursor-2', fields: undefined })
@@ -356,6 +369,16 @@ describe('MembersUsersPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('users-list-table')).toBeInTheDocument();
     });
+  });
+
+  it('shows the display name in the name column and the email beside it', async () => {
+    renderComponent();
+
+    const nameCell = await screen.findByTestId('user1');
+
+    expect(nameCell).toHaveTextContent('User One');
+    expect(screen.getByText('label.email')).toBeInTheDocument();
+    expect(screen.queryByText('label.username')).not.toBeInTheDocument();
   });
 
   // Regression: the add-user button is published as a header action and the
