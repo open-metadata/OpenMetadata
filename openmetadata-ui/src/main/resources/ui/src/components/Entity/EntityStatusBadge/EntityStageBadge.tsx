@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
 import { lazy, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { icons } from '../../../constants/StatusBadge.constant';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
@@ -24,8 +24,10 @@ import {
   STAGE_MENU_CLASS,
   STAGE_MENU_HEADER_CLASS,
   STAGE_TRIGGER_CLASS,
+  STAGE_MENU_BADGE_CLASS,
 } from './EntityStageBadge.constants';
 import { getStageActionLabel } from './EntityStageBadge.utils';
+import { StagePill } from './StagePill';
 import { StatusRequestModal } from './StatusRequestModal';
 
 // The tooltip mounts these only while it is open, so the lookup and its chunk load on hover.
@@ -114,9 +116,12 @@ export const EntityStageBadge = ({
             className={STAGE_TRIGGER_CLASS}
             color="tertiary"
             data-testid="entity-status-request-trigger"
-            iconTrailing={ChevronDown}
             size="sm">
-            {badge}
+            <StagePill
+              icon={icons[status]}
+              status={getEntityStatusClass(status)}>
+              {status}
+            </StagePill>
           </Button>
         )}
         <Dropdown.Popover className={STAGE_MENU_CLASS} placement="bottom start">
@@ -141,7 +146,7 @@ export const EntityStageBadge = ({
                     <span className="tw:flex tw:items-center tw:justify-between tw:gap-2">
                       <span className="tw:truncate">{actionLabel}</span>
                       <StatusBadge
-                        className="tw:shrink-0"
+                        className={STAGE_MENU_BADGE_CLASS}
                         dataTestId={`request-${stageKey(stage)}-stage-badge`}
                         label={stage}
                         status={getEntityStatusClass(stage)}

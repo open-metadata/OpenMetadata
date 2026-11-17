@@ -22,6 +22,10 @@ export const STAGE_ACTION: Partial<Record<EntityStatus, string>> = {
 export const STAGE_TRIGGER_CLASS =
   'tw:h-auto tw:min-h-0 tw:gap-0.5 tw:p-0 tw:shadow-none tw:after:outline-0 tw:bg-transparent';
 
+// Every stage badge in the menu has one width, so the column reads as a list: wide enough for the
+// longest stage name ("Unprocessed") with its icon.
+export const STAGE_MENU_BADGE_CLASS = 'tw:w-30 tw:shrink-0 tw:justify-center';
+
 // Wide enough for "Move to <stage>" plus the stage's badge on one line.
 export const STAGE_MENU_CLASS = 'tw:w-auto tw:min-w-62';
 

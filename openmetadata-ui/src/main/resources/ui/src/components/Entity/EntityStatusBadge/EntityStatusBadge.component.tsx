@@ -25,6 +25,7 @@ import { STATUS_TYPE_TO_BADGE_COLOR } from '../../../constants/StatusBadge.const
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { EntityStageBadge } from './EntityStageBadge';
+import { StagePill } from './StagePill';
 import {
   STAGE_REQUESTED,
   STAGE_TRIGGER_CLASS,
@@ -94,21 +95,14 @@ export const EntityStatusBadge = ({
             data-testid="lifecycle-request-trigger"
             size="sm">
             {/* The target stage's own colour, with a clock for "not there yet". */}
-            <Badge
-              className="tw:gap-1"
-              color={
-                STATUS_TYPE_TO_BADGE_COLOR[getEntityStatusClass(requestedStage)]
-              }
-              data-testid="lifecycle-request-badge"
-              size="sm"
-              type="color">
-              <Clock aria-hidden="true" className="tw:size-3.5 tw:shrink-0" />
-              <span className="tw:truncate">
-                {STAGE_REQUESTED[requestedStage]
-                  ? t(STAGE_REQUESTED[requestedStage])
-                  : t('label.stage-requested', { stage: requestedStage })}
-              </span>
-            </Badge>
+            <StagePill
+              dataTestId="lifecycle-request-badge"
+              icon={Clock}
+              status={getEntityStatusClass(requestedStage)}>
+              {STAGE_REQUESTED[requestedStage]
+                ? t(STAGE_REQUESTED[requestedStage])
+                : t('label.stage-requested', { stage: requestedStage })}
+            </StagePill>
           </Button>
           <Dropdown.Popover placement="bottom start">
             <Dropdown.Menu data-testid="lifecycle-request-menu">
