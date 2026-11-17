@@ -21,6 +21,8 @@ from unittest.mock import MagicMock
 from uuid import uuid4
 
 import pytest
+from pandas import DataFrame
+from sqlalchemy import text
 
 from metadata.data_quality.validations.column.sqlalchemy.columnValueMeanToBeBetween import (
     ColumnValueMeanToBeBetweenValidator,
@@ -31,22 +33,35 @@ from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeInSet i
 from metadata.data_quality.validations.column.sqlalchemy.columnValuesToBeNotNull import (
     ColumnValuesToBeNotNullValidator,
 )
+from metadata.data_quality.validations.table.pandas.tableColumnCountToBeBetween import (
+    TableColumnCountToBeBetweenValidator as PandasColumnCountValidator,
+)
+from metadata.data_quality.validations.table.pandas.tableRowInsertedCountToBeBetween import (
+    TableRowInsertedCountToBeBetweenValidator as PandasInsertedCountValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableColumnCountToBeBetween import (
+    TableColumnCountToBeBetweenValidator as SQLColumnCountValidator,
+)
 from metadata.data_quality.validations.table.sqlalchemy.tableCustomSQLQuery import (
     TableCustomSQLQueryValidator,
+)
+from metadata.data_quality.validations.table.sqlalchemy.tableRowInsertedCountToBeBetween import (
+    TableRowInsertedCountToBeBetweenValidator as SQLInsertedCountValidator,
 )
 from metadata.generated.schema.tests.basic import TestCaseStatus, ThresholdUnit
 from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.profiler.metrics.registry import Metrics
+from metadata.profiler.processor.runner import PandasRunner
 
 EXECUTION_DATE = int(datetime(2021, 7, 3, tzinfo=timezone.utc).timestamp() * 1000)
 ENTITY_LINK_AGE = "<#E::table::service.db.users::columns::age>"
 
 
-def build_test_case(parameter_values, dimension_columns=None):
+def build_test_case(parameter_values, dimension_columns=None, entity_link=ENTITY_LINK_AGE):
     return TestCase(
         name="my_test_case",
-        entityLink=ENTITY_LINK_AGE,
+        entityLink=entity_link,
         testSuite=EntityReference(id=uuid4(), type="TestSuite"),  # type: ignore
         testDefinition=EntityReference(id=uuid4(), type="TestDefinition"),  # type: ignore
         parameterValues=parameter_values,
@@ -243,3 +258,55 @@ def test_in_set_records_whether_the_run_applied_a_tolerance(create_sqlite_table,
         assert result.appliedThreshold.unit is ThresholdUnit.PERCENTAGE
     assert result.dimensionResults
     assert all(dimension.appliedThreshold == result.appliedThreshold for dimension in result.dimensionResults)
+
+
+@pytest.mark.parametrize("backend", ["sqlalchemy", "pandas"])
+@pytest.mark.parametrize("count_kind", ["columns", "inserted_rows"])
+@pytest.mark.parametrize(
+    "configured,threshold,unit,effective,status",
+    [
+        ((9, 10), 20, "PERCENTAGE", (pytest.approx(7.2), 12), TestCaseStatus.Success),
+        ((9, 10), 0, "ABSOLUTE", (9, 10), TestCaseStatus.Failed),
+        ((None, 10), 1, "ABSOLUTE", (None, 11), TestCaseStatus.Success),
+        ((12, None), 20, "PERCENTAGE", (pytest.approx(9.6), None), TestCaseStatus.Success),
+    ],
+)
+def test_table_count_runs_preserve_configured_and_effective_bounds(
+    request, backend, count_kind, configured, threshold, unit, effective, status
+):
+    if backend == "sqlalchemy":
+        runner = request.getfixturevalue("create_sqlite_table")
+        runner.session.execute(text("DELETE FROM users WHERE id > 11"))
+        runner.session.commit()
+        validator_class = SQLColumnCountValidator if count_kind == "columns" else SQLInsertedCountValidator
+    else:
+        data = {f"column_{index}": list(range(11)) for index in range(10)}
+        data["inserted_date"] = [int(datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S"))] * 11
+        runner = PandasRunner.from_dataframe(DataFrame(data))
+        validator_class = PandasColumnCountValidator if count_kind == "columns" else PandasInsertedCountValidator
+
+    min_param, max_param = ("minColValue", "maxColValue") if count_kind == "columns" else ("min", "max")
+    params = [
+        TestCaseParameterValue(name=name, value=str(bound))
+        for name, bound in zip((min_param, max_param), configured, strict=True)
+        if bound is not None
+    ]
+    params.extend(threshold_params(threshold, unit))
+    if count_kind == "inserted_rows":
+        params.extend(
+            [
+                TestCaseParameterValue(name="columnName", value="inserted_date"),
+                TestCaseParameterValue(name="rangeType", value="DAY"),
+                TestCaseParameterValue(name="rangeInterval", value="365"),
+            ]
+        )
+    test_case = build_test_case(params, entity_link="<#E::table::service.db.users>")
+
+    result = validator_class(runner, test_case, EXECUTION_DATE).run_validation()
+
+    assert result.testCaseStatus is status
+    assert result.testResultValue[0].value == "11"
+    assert (result.minBound, result.maxBound) == effective
+    assert (result.configuredMinBound, result.configuredMaxBound) == configured
+    assert result.appliedThreshold.value == threshold
+    assert result.appliedThreshold.unit is ThresholdUnit(unit)
