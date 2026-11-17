@@ -17,8 +17,8 @@ import { TestCase } from '../../../generated/tests/testCase';
 import { EntityLineageResponse } from '../../../interface/lineage.interface';
 
 /**
- * Fields the page fetches by name that a PATCH response leaves out. Only these
- * are carried over: any other key a response omits was removed by the patch.
+ * Fields the page fetches by name that PATCH and restore responses leave out.
+ * Only these are carried over: any other key a response omits was removed.
  */
 const FETCHED_ONLY_FIELDS = [
   'testCaseResult',
@@ -28,8 +28,8 @@ const FETCHED_ONLY_FIELDS = [
 
 export const keepFetchedOnlyFields = (
   loaded: TestCase | undefined,
-  patched: TestCase
-): TestCase => ({ ...pick(loaded, FETCHED_ONLY_FIELDS), ...patched });
+  response: TestCase
+): TestCase => ({ ...pick(loaded, FETCHED_ONLY_FIELDS), ...response });
 
 export interface UseTestCaseStoreInterface {
   testCase: TestCase | undefined;
