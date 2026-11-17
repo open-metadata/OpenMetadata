@@ -176,7 +176,7 @@ const SelectServiceType = ({
             <Card
               isClickable
               className={classNames(
-                'tw:h-[100px] tw:w-full tw:flex-col tw:px-2.5 tw:py-4',
+                'tw:min-h-[100px] tw:w-full tw:flex-col tw:px-2.5 tw:py-4',
                 'tw:hover:bg-utility-brand-50 tw:hover:border-utility-brand-300'
               )}
               data-testid={type}
@@ -195,13 +195,20 @@ const SelectServiceType = ({
                   </div>
                 </div>
                 <Box align="center" gap={2} justify="center">
-                  <Typography size="text-xs" weight="semibold">
+                  <Typography
+                    className="tw:min-w-0 tw:text-center"
+                    size="text-xs"
+                    weight="semibold">
                     {getServiceName(type)}
                   </Typography>
                   {BETA_SERVICES.includes(
                     type as DatabaseServiceType | PipelineServiceType
                   ) ? (
-                    <Badge color="brand" size="xs" type="pill-color">
+                    <Badge
+                      className="tw:shrink-0"
+                      color="brand"
+                      size="xs"
+                      type="pill-color">
                       {t('label.beta')}
                     </Badge>
                   ) : null}

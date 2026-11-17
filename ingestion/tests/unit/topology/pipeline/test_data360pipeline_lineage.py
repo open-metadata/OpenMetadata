@@ -66,7 +66,7 @@ def _build_source(**connection_overrides) -> Data360PipelineLineageSource:
     config_dict = copy.deepcopy(MOCK_CONFIG)
     config_dict["source"]["serviceConnection"]["config"].update(connection_overrides)
     with (
-        patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+        patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(config_dict)
@@ -110,6 +110,16 @@ class TestLineageConfiguration:
         source = _build_source()
         parser = source._get_lineage_parser(query="SELECT a FROM account_dlm", name="revenue_cio")
         assert parser.source_tables
+
+
+class TestLineageSourceDoesNotDelete:
+    def test_stale_pipelines_are_left_to_the_metadata_agent(self):
+        # The lineage bot may not delete pipelines, so trying failed every lineage run.
+        source = _build_source()
+        source.pipeline_source_state = set()
+        with patch("metadata.ingestion.source.pipeline.pipeline_service.delete_entity_from_source") as mock_delete:
+            assert list(source.mark_pipelines_as_deleted()) == []
+        mock_delete.assert_not_called()
 
 
 class TestAdvancedAttributes:

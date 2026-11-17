@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Tabs,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
   FilterFunnel01,
@@ -27,6 +32,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -90,6 +96,14 @@ const TASK_LIMIT = 25;
 // list scans at most this many tasks; a server-side type/status filter lifts it.
 const MAX_NARROWED_SCAN = 200;
 const SEARCH_DEBOUNCE_MS = 300;
+
+// Reading ahead stops at the server's last page, at the scan cap, or once a
+// page fails.
+const isReadAheadDone = (
+  hasMore: boolean,
+  loadedCount: number,
+  isLoadMoreError: boolean
+) => !hasMore || loadedCount >= MAX_NARROWED_SCAN || isLoadMoreError;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
@@ -335,6 +349,9 @@ interface TasksTabBodyProps {
   // Shown when no task matches: in place of the detail, or in the list while a
   // kept selection holds the detail pane.
   emptyState?: ReactNode;
+  // The empty state is a search or filter matching nothing, so it belongs
+  // beside the controls that cause it, in the list.
+  isNoMatch?: boolean;
   // A failed load with nothing listed leaves nothing to filter, so the
   // placeholder takes the whole tab.
   isLoadFailed?: boolean;
@@ -343,6 +360,12 @@ interface TasksTabBodyProps {
   tasks: Task[];
   // Set when grouped by type; the list renders these instead of `tasks`.
   groups?: TaskTypeGroup[];
+  // Pages are still unread, so a group's count is only a floor.
+  isPartial?: boolean;
+  // The last page failed. Neither the read-ahead nor a list too short to
+  // scroll would ask again, so the list offers its own retry.
+  isLoadMoreError?: boolean;
+  onRetryLoadMore: () => void;
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
@@ -353,6 +376,7 @@ interface TasksTabBodyProps {
   handleCommentsChanged: (updated: Task) => void;
   handleResolved: (resolved: Task) => void;
   handleTaskUpdated: () => void;
+  handleTaskLoaded: (loaded: Task) => void;
 }
 
 type TasksDetailPaneProps = Pick<
@@ -364,6 +388,7 @@ type TasksDetailPaneProps = Pick<
   | 'handleCommentsChanged'
   | 'handleResolved'
   | 'handleTaskUpdated'
+  | 'handleTaskLoaded'
 >;
 
 // The selected task beside the list, or why there is none.
@@ -375,6 +400,7 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }) => {
   const { t } = useTranslation();
 
@@ -384,6 +410,7 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
       key={selectedTaskId}
       taskId={selectedTaskId}
       onCommentsChanged={handleCommentsChanged}
+      onLoaded={handleTaskLoaded}
       onResolved={handleResolved}
       onTaskUpdated={handleTaskUpdated}
     />
@@ -416,23 +443,58 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
 
 // Without a free detail pane — none in the list-only layout, or a kept
 // selection holding it — the list is where "nothing here" shows, so its
-// "Clear all", "Load more" and retry stay reachable.
+// "Clear all", "Load more" and retry stay reachable. A no-match shows there
+// too, under the search and filters it answers.
 const getListEmptyState = (
   emptyState: ReactNode,
   onOpenTask: TasksTabBodyProps['onOpenTask'],
-  selectedTaskId: TasksTabBodyProps['selectedTaskId']
-): ReactNode => (onOpenTask || selectedTaskId ? emptyState : undefined);
+  selectedTaskId: TasksTabBodyProps['selectedTaskId'],
+  isNoMatch: boolean
+): ReactNode =>
+  onOpenTask || selectedTaskId || isNoMatch ? emptyState : undefined;
+
+// A failed later page, with a way to ask for it again.
+const LoadMoreRetry = ({
+  isLoadMoreError,
+  isLoadingMore,
+  onRetry,
+}: {
+  isLoadMoreError?: boolean;
+  isLoadingMore: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return isLoadMoreError && !isLoadingMore ? (
+    <Box
+      align="center"
+      className="tw:justify-center tw:py-4"
+      data-testid="inbox-tasks-load-more-error"
+      gap={3}>
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t('server.entity-fetch-error', { entity: t('label.task-plural') })}
+      </Typography>
+      <Button color="secondary" size="xs" onClick={onRetry}>
+        {t('label.retry')}
+      </Button>
+    </Box>
+  ) : null;
+};
 
 // The two panes: the list column (its controls over the grouped rows) and the
 // selected task's detail, each scrolling on its own.
 const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   toolbar,
   emptyState,
+  isNoMatch = false,
   isLoadFailed = false,
   isLoading,
   isLoadingMore,
   tasks,
   groups,
+  isPartial = false,
+  isLoadMoreError,
+  onRetryLoadMore,
   selectedTaskId,
   scrollRef,
   sentinelRef,
@@ -442,6 +504,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }) => {
   const { t } = useTranslation();
   const { isScrolled: isListScrolled, onScroll: onListScroll } =
@@ -465,7 +528,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     );
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
-  // not by type, so a later page can reopen a group that already appeared.
+  // not by type, so a grouped list reads on to its scan cap (see TasksTab).
   const groupedList = groups?.map((group) => {
     // Every task in a group reads the same, so its first one names it.
     const badge = getTaskTypeBadge(group.items[0], t);
@@ -490,7 +553,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
             {badge.label}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">
-            {group.count}
+            {isPartial ? `${group.count}+` : group.count}
           </Typography>
         </Box>
         {group.items.map(renderRow)}
@@ -522,7 +585,12 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
           <InboxTaskListSkeleton />
         ) : (
           <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
-            {getListEmptyState(emptyState, onOpenTask, selectedTaskId) ||
+            {getListEmptyState(
+              emptyState,
+              onOpenTask,
+              selectedTaskId,
+              isNoMatch
+            ) ||
               (groupedList ?? tasks.map(renderRow))}
           </div>
         )}
@@ -533,6 +601,11 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
             <Loader />
           </div>
         )}
+        <LoadMoreRetry
+          isLoadMoreError={isLoadMoreError}
+          isLoadingMore={isLoadingMore}
+          onRetry={onRetryLoadMore}
+        />
       </div>
     </Box>
   );
@@ -556,9 +629,10 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
       {listColumn}
 
       <TasksDetailPane
-        emptyState={emptyState}
+        emptyState={isNoMatch ? undefined : emptyState}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
         isLoading={isLoading}
         selectedTaskId={selectedTaskId}
@@ -584,6 +658,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
     linkedTaskId
   );
+  // A new link followed while the tab stays mounted opens its task too.
+  useEffect(() => {
+    if (linkedTaskId) {
+      setSelectedTaskId(linkedTaskId);
+    }
+  }, [linkedTaskId]);
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -606,6 +686,25 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setStatus(next);
     setStatusFilter([]);
   }, []);
+
+  // A link to a closed task lands on the Closed tab, where its row is listed.
+  // Only each link's first load decides: the viewer may then move to any tab.
+  // ADR:2026-11-16-a-link-to-a-closed-inbox-task-opens-the-closed-tab
+  const settledLinkedTaskIdRef = useRef<string>();
+  const handleTaskLoaded = useCallback(
+    (loaded: Task) => {
+      const isFirstLinkedLoad =
+        loaded.id === linkedTaskId &&
+        settledLinkedTaskIdRef.current !== linkedTaskId;
+      if (isFirstLinkedLoad) {
+        settledLinkedTaskIdRef.current = linkedTaskId;
+        if (status === 'open' && !isTaskOpen(loaded)) {
+          handleStatusChange('closed');
+        }
+      }
+    },
+    [linkedTaskId, status, handleStatusChange]
+  );
 
   // Per-status totals for the All / Open / Closed badges, fetched cheaply
   // (limit=1, server paging.total) and cached by React Query keyed on the active
@@ -722,6 +821,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     sentinelRef,
     setItems,
     setTotal,
+    loadMore,
+    isLoadMoreError,
   } = useInboxInfiniteList<Task>(
     [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text, sortOrder],
     fetchPage,
@@ -732,6 +833,22 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // (say, assigned to the user after it loaded as one they created) can land
   // on two of them.
   const tasks = useMemo(() => uniqBy(loadedTasks, 'id'), [loadedTasks]);
+
+  // Type groups sort by urgency, so one built from the newest page alone hides
+  // an older incident until the list is scrolled to its end. A grouped list
+  // reads on by itself, as far as a narrowed scan would
+  // (ADR:2026-11-16-a-grouped-inbox-task-list-reads-ahead-to-the-scan-cap). A
+  // failed page stops it; scrolling to the end retries.
+  const isGroupScanDone = isReadAheadDone(
+    hasMore,
+    tasks.length,
+    isLoadMoreError
+  );
+  useEffect(() => {
+    if (grouping === 'type' && !isGroupScanDone) {
+      loadMore();
+    }
+  }, [grouping, isGroupScanDone, loadMore]);
 
   useEffect(() => {
     onCountChange?.(total);
@@ -919,10 +1036,14 @@ const TasksTab: React.FC<TasksTabProps> = ({
         groups={taskGroups}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
         isLoadFailed={isWholeTabLoadFailed(error, tasks, isNarrowed)}
+        isLoadMoreError={isLoadMoreError}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
+        isNoMatch={showEmptyState && isNarrowed}
+        isPartial={hasMore}
         scrollRef={scrollRef}
         selectedTaskId={selectedTaskId}
         sentinelRef={sentinelRef}
@@ -933,6 +1054,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
           <InboxTaskListToolbar
             grouping={grouping}
             inline={Boolean(onOpenTask)}
+            isPartial={hasMore}
             search={search}
             sortOrder={sortOrder}
             statusFilter={statusFilter}
@@ -948,6 +1070,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
           />
         }
         onOpenTask={onOpenTask}
+        onRetryLoadMore={loadMore}
       />
     </Box>
   );

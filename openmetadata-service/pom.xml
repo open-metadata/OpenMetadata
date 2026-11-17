@@ -692,7 +692,7 @@
     <dependency>
       <groupId>org.json</groupId>
       <artifactId>json</artifactId>
-      <version>20240303</version>
+      <version>20260719</version>
     </dependency>
     
     <dependency>
@@ -964,11 +964,6 @@
       <groupId>io.github.jamsesso</groupId>
       <artifactId>json-logic-java</artifactId>
       <version>1.0.7</version>
-    </dependency>
-    <!-- ################ -->
-    <dependency>
-      <groupId>com.microsoft.azure</groupId>
-      <artifactId>msal4j</artifactId>
     </dependency>
     <!-- AWS SDK Core (if not already included) -->
     <dependency>

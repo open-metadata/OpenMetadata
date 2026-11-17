@@ -255,4 +255,27 @@ describe('DataAssetsCoveragePieChartWidget', () => {
       expect.anything()
     );
   });
+
+  it('should use the exact table count from fetchTotalEntityCount as the coverage denominator', async () => {
+    (fetchEntityCoveredWithDQ as jest.Mock).mockResolvedValue({
+      data: [{ originEntityFQN: '404' }],
+    });
+    (fetchTotalEntityCount as jest.Mock).mockResolvedValue({
+      data: [{ fullyQualifiedName: '10233' }],
+    });
+
+    renderWithQueryClient(<DataAssetsCoveragePieChartWidget />);
+
+    await screen.findByText('CustomPieChart.component');
+
+    expect(CustomPieChart).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({ value: 404 }),
+          expect.objectContaining({ value: 9829 }),
+        ],
+      }),
+      expect.anything()
+    );
+  });
 });

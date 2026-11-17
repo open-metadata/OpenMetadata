@@ -1169,6 +1169,14 @@ public class TestCaseResolutionStatusRepository
     }
   }
 
+  // A domain filter covers the domain and its sub-domains, as the navbar pick does.
+  public static String resolveDomainFilterIds(String domain) {
+    return nullOrEmpty(domain)
+        ? null
+        : EntityUtil.domainAndSubDomainIds(
+            getEntityReferenceByName(Entity.DOMAIN, domain, Include.NON_DELETED));
+  }
+
   public static UUID resolveFilterEntityId(String entityType, String name) {
     UUID entityId = null;
     if (!nullOrEmpty(name)) {
