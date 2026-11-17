@@ -36,6 +36,10 @@ const mockListConversations = jest.fn();
 const mockUseRequiredParams = jest.fn();
 const mockFetchEntityActivity = jest.fn();
 const mockFetchUserActivity = jest.fn();
+const mockSetActiveThread = jest.fn();
+const mockSetActiveTask = jest.fn();
+const mockSetActiveActivity = jest.fn();
+const mockRefreshActivityFeed = jest.fn();
 let mockActivityEvents: { id: string; timestamp: number }[] = [];
 let mockConversationCount = 0;
 let mockActivityCount = 0;
@@ -87,7 +91,7 @@ jest.mock('../../../hooks/useElementInView', () => ({
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => ({
     selectedThread: null,
-    setActiveThread: jest.fn(),
+    setActiveThread: mockSetActiveThread,
     entityThread: [],
     getFeedData: mockGetFeedData,
     getTaskData: mockGetTaskData,
@@ -96,14 +100,15 @@ jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
     entityPaging: mockEntityPaging,
     tasks: mockTasks,
     selectedTask: null,
-    setActiveTask: jest.fn(),
+    setActiveTask: mockSetActiveTask,
     activityEvents: mockActivityEvents,
     isActivityLoading: false,
     fetchEntityActivity: mockFetchEntityActivity,
     fetchUserActivity: mockFetchUserActivity,
     userId: '',
     selectedActivity: null,
-    setActiveActivity: jest.fn(),
+    setActiveActivity: mockSetActiveActivity,
+    refreshActivityFeed: mockRefreshActivityFeed,
   }),
 }));
 
@@ -133,7 +138,11 @@ jest.mock('../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../utils/EntityUtilClassBase', () => ({
-  default: { getActivityFeedTabs: jest.fn().mockReturnValue([]) },
+  __esModule: true,
+  default: {
+    getActivityFeedTabs: jest.fn().mockReturnValue([]),
+    getEntityLink: jest.fn().mockReturnValue('/entity'),
+  },
 }));
 
 jest.mock('../ActivityFeedList/ActivityFeedListV1New.component', () =>
@@ -259,6 +268,35 @@ describe('ActivityFeedTab', () => {
       expect(tasks.getAttribute('aria-current')).toBe(
         current === 'Tasks' ? 'page' : null
       );
+    });
+  });
+
+  describe('Sub-tab change clears the previous selection', () => {
+    it.each([
+      [ActivityFeedTabs.ALL, 'activity-feed-left-panel-tasks'],
+      [ActivityFeedTabs.TASKS, 'mentions-toggle'],
+      [ActivityFeedTabs.MENTIONS, 'my-tasks-toggle'],
+    ])('leaving %s via %s', async (subTab, testId) => {
+      renderComponent(subTab);
+
+      fireEvent.click(await screen.findByTestId(testId));
+
+      expect(mockRefreshActivityFeed).toHaveBeenCalledWith([]);
+      expect(mockSetActiveThread).toHaveBeenCalledWith();
+      expect(mockSetActiveTask).toHaveBeenCalledWith();
+      expect(mockSetActiveActivity).toHaveBeenCalledWith(undefined);
+    });
+
+    it('keeps the list when the current sub-tab is clicked again', async () => {
+      renderComponent(ActivityFeedTabs.ALL);
+
+      fireEvent.click(
+        await screen.findByTestId('activity-feed-left-panel-all')
+      );
+
+      expect(mockRefreshActivityFeed).not.toHaveBeenCalled();
+      expect(mockSetActiveThread).not.toHaveBeenCalled();
+      expect(mockSetActiveActivity).not.toHaveBeenCalled();
     });
   });
 

@@ -42,7 +42,6 @@ import { KnowledgePage } from '../../interface/knowledge-center.interface';
 import { getListKnowledgePages } from '../../rest/knowledgeCenterAPI';
 import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { Transi18next } from '../../utils/i18next/LocalUtil';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
@@ -240,17 +239,11 @@ const KnowledgeCenterFilterPage = () => {
     return (
       <div className="tw:relative tw:flex-1 tw:h-[calc(100vh-80px)]">
         <PermissionPlaceholder
-          description={
-            <Transi18next
-              i18nKey="message.no-access-placeholder"
-              renderElement={<b />}
-              values={{
-                entity: t('label.view-entity', {
-                  entity: t('label.context-center'),
-                }),
-              }}
-            />
-          }
+          description={t('message.no-access-placeholder', {
+            entity: t('label.view-entity', {
+              entity: t('label.context-center'),
+            }),
+          })}
           icon={<Lock01 />}
           title={t('label.access-denied')}
         />

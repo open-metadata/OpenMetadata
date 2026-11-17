@@ -18,6 +18,18 @@ class SafeRdfModelParserTest {
   private final SafeRdfModelParser parser = new SafeRdfModelParser();
 
   @Test
+  void reportsATurtleSyntaxErrorInUserTerms() {
+    final BadRequestException exception =
+        assertThrows(
+            BadRequestException.class,
+            () ->
+                parser.parse(
+                    "<https://example.org/C> a owl:Class .", RdfSerializationFormat.TURTLE));
+    assertTrue(exception.getMessage().startsWith("The file is not valid RDF: "));
+    assertTrue(exception.getMessage().contains("owl"));
+  }
+
+  @Test
   void rejectsRelativeJsonLdIdEvenWhenAnotherNodeIsValid() {
     assertThrows(
         BadRequestException.class,

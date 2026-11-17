@@ -52,6 +52,7 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.ingestion.source.pipeline.tableaupipeline.client import PAGE_SIZE
 from metadata.workflow.metadata import MetadataWorkflow
 
 TABLEAU_HOST = "tableau-it.example.com"
@@ -121,15 +122,35 @@ def _flow_lineage(
     outputs: list[dict],
     steps: tuple[tuple[str, str], ...] = (),
     next_flows: tuple[tuple[str, str], ...] = (),
+    columns: int = 1,
 ) -> dict:
+    """A flow as the fake site stores it, with one field per column of each
+    table; `_paged_flow` answers the fields a page at a time."""
     return {
-        "upstreamTables": inputs,
-        "upstreamDatasources": [],
+        "inputFields": [{"column": {"table": table}} for table in inputs for _ in range(columns)],
         "outputSteps": [{"id": step_id, "name": name} for step_id, name in steps],
-        "downstreamTables": outputs,
-        "downstreamDatasources": [],
+        "outputFields": [{"column": {"table": table}} for table in outputs for _ in range(columns)],
         "nextDownstreamFlows": [{"luid": luid, "name": name} for luid, name in next_flows],
     }
+
+
+def _paged_flow(lineage: dict, query: str) -> dict:
+    """The flow with its input and output fields cut to the page the query asks
+    for, as `inputFieldsConnection` and `outputFieldsConnection`. Tableau ends a
+    side with endCursor null."""
+    flow = {key: value for key, value in lineage.items() if key not in ("inputFields", "outputFields")}
+    for side in ("inputFields", "outputFields"):
+        page = re.search(rf'{side}Connection\(first: (\d+), after: (null|"\d+")\)', query)
+        assert page, f"The flow query asks for no page of {side}"
+        start = int(json.loads(page.group(2)) or 0)
+        nodes = lineage[side][start : start + int(page.group(1))]
+        end = start + len(nodes)
+        has_next_page = end < len(lineage[side])
+        flow[f"{side}Connection"] = {
+            "nodes": nodes,
+            "pageInfo": {"hasNextPage": has_next_page, "endCursor": str(end) if has_next_page else None},
+        }
+    return flow
 
 
 def _output_field(source: str, target: str) -> dict:
@@ -145,8 +166,9 @@ def _output_field(source: str, target: str) -> dict:
 # which the flow `Ops` reads next. `Sales` is listed first, so its edge to `Ops`
 # can only be drawn after `Ops` is ingested. `Split` runs two branches, orders
 # into orders_clean and customers into customers_clean, which only its field
-# lineage tells apart. `Files` reads an Excel sheet named like the table
-# `customers`.
+# lineage tells apart; each of its tables has a page of columns, so `customers`
+# and `customers_clean` come only on the second page of its fields. `Files`
+# reads an Excel sheet named like the table `customers`.
 FLOW_LINEAGE = {
     "flow-sales": _flow_lineage(
         [_table("t-orders", "orders")],
@@ -159,6 +181,7 @@ FLOW_LINEAGE = {
         [_table("t-orders", "orders"), _table("t-customers", "customers")],
         [_table("t-orders-clean", "orders_clean"), _table("t-customers-clean", "customers_clean")],
         steps=(("out-orders", "Clean orders"), ("out-customers", "Clean customers")),
+        columns=PAGE_SIZE,
     ),
     "flow-files": _flow_lineage(
         [_excel_sheet("t-sheet-customers", "Customers", "Sample - Superstore.xls")],
@@ -271,11 +294,11 @@ class FakeTableauSite:
             return {"data": {"flowsConnection": {"nodes": [{"id": "gql-flow-sales"}]}}}
         if "publishedDatasources" in query:
             return {"data": {"publishedDatasources": [{"id": "gql-ds-sales"}]}}
-        if "outputFields" in query and luid:
+        if "outputSteps {\n      outputFields" in query and luid:
             return {"data": {"flows": [{"outputSteps": [{"outputFields": OUTPUT_FIELDS.get(luid.group(1), [])}]}]}}
         if "flows(filter" in query and luid:
             lineage = FLOW_LINEAGE.get(luid.group(1))
-            return {"data": {"flows": [lineage] if lineage else []}}
+            return {"data": {"flows": [_paged_flow(lineage, query)] if lineage else []}}
         return {"data": {}}
 
 

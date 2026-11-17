@@ -36,6 +36,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.teams.TeamGrantAuthorizer;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -77,6 +78,7 @@ public class CreateEntityTool implements McpTool {
       Map<String, Object> params) {
     String entityType = CommonUtils.requireNonBlank(params.get("entityType"), "entityType");
     EntityCreationSpec type = EntityCreationSpec.resolve(entityType);
+    CommonUtils.refuseImpersonatedGrantWrite(securityContext, entityType);
     String userName = CommonUtils.principal(securityContext);
     EntityInterface<?> entity = buildEntity(type, params, userName);
     Boolean requestedMutuallyExclusive = requestedMutuallyExclusive(entity);
@@ -106,6 +108,7 @@ public class CreateEntityTool implements McpTool {
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, resourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeTeamGrants(authorizer, securityContext, entity);
     // As TeamResource.create: the persona a Group hands its members is admin only, and never set
     // while impersonating, since it outlives the request.
     if (entity instanceof Team team && team.getDefaultPersona() != null) {
@@ -114,6 +117,17 @@ public class CreateEntityTool implements McpTool {
             "Impersonated requests cannot set a team's default persona");
       }
       authorizer.authorizeAdmin(securityContext);
+    }
+  }
+
+  /**
+   * As TeamResource.create: a new team has nothing stored, so every role, policy and parent it
+   * carries is a grant to its members, and only who REST lets add them may.
+   */
+  private static void authorizeTeamGrants(
+      Authorizer authorizer, CatalogSecurityContext securityContext, EntityInterface<?> entity) {
+    if (entity instanceof Team team) {
+      TeamGrantAuthorizer.authorize(authorizer, securityContext, new Team(), team);
     }
   }
 

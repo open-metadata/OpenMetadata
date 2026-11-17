@@ -36,7 +36,10 @@ import {
   tableQueryFn,
   tableQueryKey,
 } from '../../../../rest/queries/tableQuery';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  formatDuration,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getRunScopeBadges,
@@ -60,7 +63,6 @@ import {
 } from './RunDetailsCard.constants';
 import {
   ComparisonBar,
-  formatRunDuration,
   getRunDetails,
   getSelectedRun,
   isTimeoutError,
@@ -81,7 +83,7 @@ const RunDuration = ({
 }) => {
   const { t } = useTranslation();
   // The slot stays for a run with no duration yet, a queued one, as in the mock.
-  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
+  const text = isUndefined(duration) ? NO_VALUE : formatDuration(duration);
 
   return (
     <Box

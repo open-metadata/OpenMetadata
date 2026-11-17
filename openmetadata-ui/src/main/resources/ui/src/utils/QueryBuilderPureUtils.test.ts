@@ -148,6 +148,24 @@ describe('getJsonTreePropertyFromQueryFilter – multi-value negated select', ()
   });
 });
 
+// The API may write a wildcard in its shorthand form, which the query builder never does.
+describe('getJsonTreePropertyFromQueryFilter – shorthand wildcard', () => {
+  it('reloads it as a Contains rule', () => {
+    const rule = Object.values(
+      getJsonTreePropertyFromQueryFilter(
+        [],
+        [{ wildcard: { 'name.keyword': '*orders*' } } as QueryFieldInterface]
+      )
+    )[0] as { properties: { field: string; operator: string; value: unknown } };
+
+    expect(rule.properties).toMatchObject({
+      field: 'name.keyword',
+      operator: 'like',
+      value: ['orders'],
+    });
+  });
+});
+
 // The backend stores `queryFilter` as a free-form JSON object and embeds the
 // DSL `query` node verbatim — it never requires `bool.must`. Rules created via
 // the REST API (which never populates `filterJsonTree`) use `should`, `filter`,
@@ -368,6 +386,35 @@ describe('isQueryFilterFullyRepresentable', () => {
     ['bool.must_not', { query: { bool: { must_not: [tier1, pii] } } }],
     ['bare query.term', { query: tier1 }],
     ['match_all', { query: { match_all: {} } }],
+    [
+      'a nested group of text rules the builder writes',
+      {
+        query: {
+          bool: {
+            must: [
+              tier1,
+              {
+                bool: {
+                  must: [
+                    {
+                      regexp: {
+                        name: { value: '.*o.*', case_insensitive: true },
+                      },
+                    },
+                    { match_phrase: { description: 'orders' } },
+                    {
+                      bool: {
+                        must_not: { wildcard: { name: { value: '*o*' } } },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
   ])('is true for %s', (_, filter) => {
     expect(
       isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
@@ -412,6 +459,85 @@ describe('isQueryFilterFullyRepresentable', () => {
       { query: { terms: { 'tier.tagFQN': ['Tier.Tier1'] } } },
     ],
     ['an empty query', { query: {} }],
+    [
+      'a case-sensitive regexp clause',
+      {
+        query: {
+          bool: { filter: [{ regexp: { name: { value: 'Orders.*' } } }] },
+        },
+      },
+    ],
+    [
+      'a regexp clause with flags',
+      {
+        query: {
+          bool: {
+            filter: [
+              {
+                regexp: {
+                  name: {
+                    value: 'Orders.*',
+                    case_insensitive: true,
+                    flags: 'ALL',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
+      'a nested group with a clause the builder does not read',
+      {
+        query: {
+          bool: {
+            must: [
+              tier1,
+              {
+                bool: {
+                  must: [pii, { range: { updatedAt: { gte: 1 } } }],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
+      'a prefix wildcard clause',
+      {
+        query: {
+          bool: { filter: [{ wildcard: { name: { value: 'orders*' } } }] },
+        },
+      },
+    ],
+    [
+      'a case-insensitive wildcard clause',
+      {
+        query: {
+          bool: {
+            filter: [
+              {
+                wildcard: {
+                  name: { value: '*Orders*', case_insensitive: true },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
+      'a match_phrase clause in query form',
+      {
+        query: {
+          bool: {
+            filter: [{ match_phrase: { description: { query: 'orders' } } }],
+          },
+        },
+      },
+    ],
   ])('is false for %s', (_, filter) => {
     expect(
       isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)

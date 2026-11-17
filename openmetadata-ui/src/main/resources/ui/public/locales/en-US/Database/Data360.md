@@ -7,7 +7,7 @@ Salesforce Data 360 (formerly DataCloud) is a unified data platform that unifies
 ## Requirements
 
 - A Salesforce Connected App with OAuth 2.0 Client Credentials flow enabled.
-- The connected app must have the **Manage Data Cloud** and **Access Data Cloud APIs** OAuth scopes.
+- The connected app must have the Data 360 OAuth scopes `cdp_query_api` and `cdp_profile_api`.
 - The integration user must have the **Data Cloud Admin** or equivalent permission set.
 
 You can find further information on the Salesforce Data 360 connector in the <a href="https://docs.getcollate.io/connectors/database/data360" target="_blank">docs</a>.
@@ -35,7 +35,7 @@ $$
 $$section
 ### Salesforce Domain $(id="salesforceDomain")
 
-The login domain for your Salesforce org. Use `login` for production, `test` for sandboxes, or your custom **My Domain** subdomain (e.g. `mycompany.my` for `mycompany.my.salesforce.com`).
+Your org's **My Domain**, without `.salesforce.com` (e.g. `mycompany.my` for `mycompany.my.salesforce.com`). The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test` with `invalid_grant: request not supported on this domain`.
 $$
 
 $$section

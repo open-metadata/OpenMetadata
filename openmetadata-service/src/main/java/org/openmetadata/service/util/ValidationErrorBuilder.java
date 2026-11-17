@@ -40,6 +40,8 @@ public class ValidationErrorBuilder {
         "authenticationConfiguration.oidcConfiguration.callbackUrl";
     public static final String OIDC_TENANT = "authenticationConfiguration.oidcConfiguration.tenant";
     public static final String OIDC_PROMPT = "authenticationConfiguration.oidcConfiguration.prompt";
+    public static final String OIDC_CLIENT_AUTHENTICATION_METHOD =
+        "authenticationConfiguration.oidcConfiguration.clientAuthenticationMethod";
 
     // LDAP Configuration
     public static final String LDAP_HOST = "authenticationConfiguration.ldapConfiguration.host";

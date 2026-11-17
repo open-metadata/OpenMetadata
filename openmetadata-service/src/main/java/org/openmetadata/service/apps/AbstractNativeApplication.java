@@ -6,8 +6,10 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.JOB_LISTE
 import static org.openmetadata.service.exception.CatalogExceptionMessage.NO_MANUAL_TRIGGER_ERR;
 import static org.openmetadata.service.resources.apps.AppResource.SCHEDULED_TYPES;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
@@ -117,8 +119,10 @@ public class AbstractNativeApplication implements NativeApplication {
         .contains(app.getScheduleType())) {
       AppRuntime runtime = getAppRuntime(app);
       validateServerExecutableApp(runtime);
-      // Trigger the application with the provided configuration payload
-      Map<String, Object> appConfig = JsonUtils.getMap(app.getAppConfiguration());
+      // Trigger the application with the provided configuration payload. Some apps, such as
+      // DataContractValidationApplication, store no configuration to merge it into.
+      Map<String, Object> appConfig = new HashMap<>();
+      Optional.ofNullable(JsonUtils.getMap(app.getAppConfiguration())).ifPresent(appConfig::putAll);
       if (config != null) {
         appConfig.putAll(config);
       }

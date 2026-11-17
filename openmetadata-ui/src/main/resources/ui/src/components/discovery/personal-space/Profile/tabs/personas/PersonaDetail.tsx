@@ -254,7 +254,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="tertiary"
           isDisabled={isSavingRename}
-          size="sm"
+          size="xs"
           onPress={() => {
             setIsRenameOpen(false);
             setRenameValue('');
@@ -265,7 +265,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           color="primary"
           isDisabled={!renameValue.trim()}
           isLoading={isSavingRename}
-          size="sm"
+          size="xs"
           onPress={handleSaveRename}>
           {t('label.save')}
         </Button>
@@ -330,7 +330,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
-          size="sm"
+          size="xs"
           onPress={handleToggleDefault}>
           {persona.default
             ? t('label.remove-default')

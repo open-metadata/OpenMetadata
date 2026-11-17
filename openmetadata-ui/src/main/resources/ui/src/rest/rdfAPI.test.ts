@@ -11,10 +11,13 @@
  *  limitations under the License.
  */
 
+import { isEqual } from 'lodash';
 import { ProjectionState } from '../generated/api/rdf/rdfStatus';
 import APIClient from './axiosClient';
 import {
   fetchRdfConfig,
+  getSparqlQueryTemplates,
+  replaceSavedSparqlQueries,
   runGlossarySparqlQuery,
   runSparqlQuery,
 } from './rdfAPI';
@@ -22,6 +25,7 @@ import {
 jest.mock('./axiosClient', () => ({
   get: jest.fn(),
   post: jest.fn(),
+  put: jest.fn(),
 }));
 
 const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
@@ -77,5 +81,46 @@ describe('rdfAPI SPARQL routing', () => {
 
     expect(mockedApiClient.get).toHaveBeenCalledWith('/rdf/status');
     expect(result).toEqual(status);
+  });
+});
+
+describe('rdfAPI saved queries', () => {
+  it('keeps the ontology a saved query belongs to through a library save', async () => {
+    const scoped = {
+      id: 'scoped',
+      name: 'Scoped',
+      query: QUERY,
+      format: 'json' as const,
+      inference: 'none' as const,
+      savedAt: 1,
+      ontologyId: 'ontology-id',
+    };
+    mockedApiClient.put.mockResolvedValue({ data: { queries: [scoped] } });
+
+    const stored = await replaceSavedSparqlQueries([scoped]);
+
+    expect(mockedApiClient.put).toHaveBeenCalledWith('/rdf/queries/saved', {
+      queries: [scoped],
+    });
+    expect(stored[0].ontologyId).toBe('ontology-id');
+  });
+
+  it('returns an unscoped template equal to what the server stored', async () => {
+    const template = {
+      id: 'template',
+      name: 'Template',
+      query: QUERY,
+      format: 'json',
+      inference: 'none',
+      savedAt: 0,
+    };
+    mockedApiClient.get.mockResolvedValue({
+      data: { queryTemplates: [template] },
+    });
+
+    const [stored] = await getSparqlQueryTemplates();
+
+    expect(stored).not.toHaveProperty('ontologyId');
+    expect(isEqual(stored, template)).toBe(true);
   });
 });
