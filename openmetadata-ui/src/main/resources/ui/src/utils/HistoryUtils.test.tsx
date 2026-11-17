@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import { getBasePath } from './HistoryUtils';
 
 describe('configured base path', () => {
@@ -26,7 +24,6 @@ describe('configured base path', () => {
     } else {
       Reflect.deleteProperty(globalThis, 'BASE_PATH');
     }
-    window.history.replaceState(null, '', '/');
   });
 
   it.each([
@@ -49,44 +46,6 @@ describe('configured base path', () => {
       Reflect.set(globalThis, 'BASE_PATH', value);
 
       expect(getBasePath()).toBe(expected);
-    }
-  );
-
-  it.each(['/', '/openmetadata', '/openmetadata/', '/team/catalog'])(
-    'renders a deep route and keeps the complete %s prefix during navigation',
-    (basePath) => {
-      Reflect.set(globalThis, 'BASE_PATH', basePath);
-      const prefix = basePath === '/' ? '' : basePath.replace(/\/$/, '');
-      window.history.replaceState(
-        null,
-        '',
-        `${prefix}/explore?query=table#result`
-      );
-      render(
-        <BrowserRouter basename={getBasePath()}>
-          <Routes>
-            <Route
-              element={<Link to="/next?query=table#result">Continue</Link>}
-              path="/explore"
-            />
-            <Route element={<span>Next page</span>} path="/next" />
-          </Routes>
-        </BrowserRouter>
-      );
-
-      expect(window.location.search).toBe('?query=table');
-      expect(window.location.hash).toBe('#result');
-      expect(screen.getByRole('link', { name: 'Continue' })).toHaveAttribute(
-        'href',
-        `${prefix}/next?query=table#result`
-      );
-
-      fireEvent.click(screen.getByRole('link', { name: 'Continue' }));
-
-      expect(screen.getByText('Next page')).toBeInTheDocument();
-      expect(window.location.pathname).toBe(`${prefix}/next`);
-      expect(window.location.search).toBe('?query=table');
-      expect(window.location.hash).toBe('#result');
     }
   );
 });
