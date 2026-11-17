@@ -307,8 +307,8 @@ public final class ContextFileFqnRepair {
   }
 
   /**
-   * Every other entity, live or soft-deleted, whose FQN is the file's stored FQN. A type that
-   * cannot be looked up is listed too, so its rows are never taken from it.
+   * Every other entity, live or soft-deleted, whose FQN is the file's stored FQN. A type whose table
+   * exists but cannot be searched is listed too, so its rows are never taken from it.
    */
   private static List<Holder> entitiesSharing(
       final EntityFqnHolders holders, final Misnamed misnamed) {
