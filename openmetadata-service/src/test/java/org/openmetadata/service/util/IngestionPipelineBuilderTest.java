@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -74,6 +75,29 @@ class IngestionPipelineBuilderTest {
         assertInstanceOf(
             StorageServiceMetadataPipeline.class, pipeline.getSourceConfig().getConfig());
     assertInstanceOf(StorageMetadataS3Config.class, config.getStorageMetadataConfigSource());
+  }
+
+  /** Restore and soft delete write the stored row back; that must not fail on the stored source. */
+  @Test
+  void aStoredManifestMatchingNoSourceSchemaIsRewrittenWithoutItsCredentials() {
+    IngestionPipeline stored = storagePipeline(manifestSource(true));
+    IngestionPipeline rewritten = JsonUtils.deepCopy(stored, IngestionPipeline.class);
+
+    IngestionPipelineBuilder.addDefinedConfigForRewrite(stored, rewritten);
+
+    assertDoesNotThrow(() -> IngestionPipelineBuilder.addDefinedConfig(rewritten));
+    assertFalse(JsonUtils.pojoToJson(rewritten).contains(SECRET));
+  }
+
+  @Test
+  void aChangedManifestMatchingNoSourceSchemaIsStillRefusedWhenRewritten() {
+    IngestionPipeline stored = storagePipeline(manifestSource(false));
+    IngestionPipeline updated = storagePipeline(manifestSource(true));
+
+    IngestionPipelineBuilder.addDefinedConfigForRewrite(stored, updated);
+
+    assertThrows(
+        BadRequestException.class, () -> IngestionPipelineBuilder.addDefinedConfig(updated));
   }
 
   private static IngestionPipeline storagePipeline(Map<String, Object> manifestSource) {
