@@ -36,6 +36,7 @@ import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
@@ -73,15 +74,15 @@ public interface KnowledgeAssetDAOs {
     }
   }
 
-  interface ContextFileDAO extends EntityDAO<org.openmetadata.schema.entity.data.ContextFile> {
+  interface ContextFileDAO extends EntityDAO<ContextFile> {
     @Override
     default String getTableName() {
       return "context_file";
     }
 
     @Override
-    default Class<org.openmetadata.schema.entity.data.ContextFile> getEntityClass() {
-      return org.openmetadata.schema.entity.data.ContextFile.class;
+    default Class<ContextFile> getEntityClass() {
+      return ContextFile.class;
     }
 
     @Override
@@ -138,8 +139,7 @@ public interface KnowledgeAssetDAOs {
     List<EntityIdJsonPair> findByIdsWithoutExtractedText(
         @BindList("ids") List<String> ids, @Define("cond") String cond);
 
-    default List<org.openmetadata.schema.entity.data.ContextFile> findEntitiesWithoutExtractedText(
-        List<UUID> ids, Include include) {
+    default List<ContextFile> findEntitiesWithoutExtractedText(List<UUID> ids, Include include) {
       List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
       return distinctIds.isEmpty()
           ? List.of()
