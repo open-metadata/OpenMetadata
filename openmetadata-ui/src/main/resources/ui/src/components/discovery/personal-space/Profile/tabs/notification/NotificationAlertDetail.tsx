@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Box,
@@ -78,7 +79,10 @@ import NotificationRecentEvents from './NotificationRecentEvents';
 
 interface NotificationAlertDetailProps {
   fqn: string;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onNameResolved?: (name: string) => void;
   onSetHeaderActions?: (node: React.ReactNode) => void;
 }
@@ -232,7 +236,10 @@ function buildHeaderActions({
   handleSync: () => void;
   isSystemProvider: boolean;
   isSyncing: boolean;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   t: ReturnType<typeof useTranslation>['t'];
 }): React.ReactNode {
   return (
@@ -415,7 +422,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
   }, [fqn, t]);
 
   const handleAfterDelete = useCallback(
-    () => onNavigate({ type: 'list' }),
+    () => onNavigate({ type: 'list' }, { replace: true }),
     [onNavigate]
   );
 

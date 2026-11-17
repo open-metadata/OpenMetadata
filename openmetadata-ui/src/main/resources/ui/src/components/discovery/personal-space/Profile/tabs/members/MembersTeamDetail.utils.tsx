@@ -19,6 +19,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import type { TFunction } from 'i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -314,7 +315,8 @@ export const getEntityRefColumns = (
     title: t('label.description'),
     dataIndex: 'description',
     key: 'description',
-    render: (_: unknown, record: EntityReference) => record.description || '--',
+    render: (_: unknown, record: EntityReference) =>
+      record.description || NO_DATA_PLACEHOLDER,
   },
   ...(canEditAll
     ? [

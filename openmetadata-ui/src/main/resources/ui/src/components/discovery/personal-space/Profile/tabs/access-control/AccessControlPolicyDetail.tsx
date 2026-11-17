@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Box,
@@ -537,7 +538,10 @@ const usePolicyDetail = (fqn: string) => {
 
 interface AccessControlPolicyDetailProps {
   fqn: string;
-  onNavigate: (view: AccessControlView) => void;
+  onNavigate: (
+    view: AccessControlView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onRename?: (newDisplayName: string) => void;
   onSetHeaderActions?: (actions: React.ReactNode) => void;
   onSetHeaderTitleInput?: (titleInput: React.ReactNode) => void;
@@ -617,7 +621,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
   }, [policy, renameValue, fetchPolicy, t, onRename]);
 
   const handleAfterDeletePolicy = useCallback(
-    () => onNavigate({ type: 'policies' }),
+    () => onNavigate({ type: 'policies' }, { replace: true }),
     [onNavigate]
   );
 

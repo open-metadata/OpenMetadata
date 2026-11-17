@@ -350,7 +350,10 @@ describe('AppDetail', () => {
 
     expect(uninstallApp).toHaveBeenCalledWith('DataInsightsApplication', true);
     expect(mockGetResourceLimit).toHaveBeenCalledWith('app', true, true);
-    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(onNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: true }
+    );
   });
 
   it('treats the uninstall as done when only the usage-count refresh fails', async () => {
@@ -367,7 +370,10 @@ describe('AppDetail', () => {
 
     expect(uninstallApp).toHaveBeenCalledTimes(1);
     expect(showErrorToast).not.toHaveBeenCalled();
-    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(onNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: true }
+    );
   });
 
   it('keeps the confirmation open when uninstall fails', async () => {
@@ -417,7 +423,10 @@ describe('AppDetail', () => {
     });
 
     expect(restoreApp).toHaveBeenCalledWith('app-1');
-    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(onNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: false }
+    );
   });
 
   it('hides the three-dot menu without delete permission', async () => {

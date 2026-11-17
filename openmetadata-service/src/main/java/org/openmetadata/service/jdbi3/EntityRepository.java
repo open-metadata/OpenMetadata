@@ -5165,15 +5165,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
   }
 
   /**
@@ -5243,15 +5244,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
+  }
+
+  /**
+   * Answers a PATCH with the tags a read of the same entity returns. {@code prepareInternal} drops
+   * the DERIVED labels it is given, since none is stored, so the patched entity carries only its
+   * own tags and the ones they imply, while a read also merges in the tags it inherits from its
+   * parents. A client that renders the response would otherwise show the inherited tags as removed
+   * until it reads the entity again. A held change answers with the entity as it was read, which
+   * already carries them.
+   */
+  private PatchResponse<T> withInheritedTags(final PatchResponse<T> response) {
+    // ADR:2026-11-14-a-patch-answers-with-the-tags-a-read-returns
+    if (supportsTags && response.status() == Status.OK && response.entity() != null) {
+      setInheritedFields(response.entity(), getFields(FIELD_TAGS));
+    }
+    return response;
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(

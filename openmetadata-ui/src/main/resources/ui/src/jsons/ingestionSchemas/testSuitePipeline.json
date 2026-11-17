@@ -14667,11 +14667,16 @@
                         },
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                          "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
+                          "description": "Supports Lineage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "supportsUsageExtraction": {
                           "title": "Supports Operational data Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                          "description": "Supports Usage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "additionalProperties": false,

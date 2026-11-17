@@ -603,9 +603,15 @@ export interface AirflowConnectionObject {
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
      * {"S3_Connector": "my-s3-service"}
      */
-    serviceMapping?:            string;
+    serviceMapping?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
     supportsLineageExtraction?: boolean;
-    supportsUsageExtraction?:   boolean;
+    /**
+     * Supports Usage Extraction.
+     */
+    supportsUsageExtraction?: boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
