@@ -44,6 +44,8 @@ export interface Suggestion {
   request: ChangeRequest;
   field: string;
   ops: MutationOp[];
+  /** Set when the suggestion reads element by element, such as a column edit. */
+  changes?: ElementChange[];
 }
 
 /** The suggestions on one field, with the field's published value when it is known. */
@@ -166,12 +168,20 @@ export const elementLabel = (op: MutationOp): string => {
 
 export const valueText = (json?: string) => textOf(parse(json));
 
-/** A changed property of one element of a list of named elements, such as a column. */
-export interface ElementChange {
-  element: string;
+export interface PropertyChange {
   property: string;
   before: string;
   after: string;
+}
+
+/**
+ * One element of a list of named elements, such as a column, that a change adds, removes or edits,
+ * with the properties it changes. An added element carries only its description.
+ */
+export interface ElementChange {
+  element: string;
+  status: 'added' | 'removed' | 'changed';
+  properties: PropertyChange[];
 }
 
 type NamedElement = Record<string, unknown> & { name: string };
@@ -225,69 +235,70 @@ const namedListChanges = (
   const afterNames = new Set(after.map((element) => element.name));
   const removed = before
     .filter((element) => !afterNames.has(element.name))
-    .map((element) => ({
-      element: [...path, element.name].join('.'),
-      property: 'name',
-      before: element.name,
-      after: '',
-    }));
+    .map(
+      (element): ElementChange => ({
+        element: [...path, element.name].join('.'),
+        status: 'removed',
+        properties: [],
+      })
+    );
 
   return after
-    .flatMap((element) => {
+    .flatMap((element): ElementChange[] => {
       const name = [...path, element.name];
       const previous = beforeByName.get(element.name);
-      const base = previous ?? { name: element.name };
-      const added = previous
-        ? []
-        : [
-            {
-              element: name.join('.'),
-              property: 'name',
-              before: '',
-              after: element.name,
-            },
-          ];
+      if (!previous) {
+        const description = textOf(element.description);
 
-      return added.concat(
-        [...new Set([...Object.keys(base), ...Object.keys(element)])]
-          .filter((property) => !isEqual(base[property], element[property]))
-          .flatMap((property) => {
-            // Only nested columns are elements; any other list, such as a column's tags, is a
-            // value of its element and reads as one change.
-            const lists =
-              property === CHILDREN_PROPERTY
-                ? nestedLists(base[property], element[property])
-                : undefined;
+        return [
+          {
+            element: name.join('.'),
+            status: 'added',
+            properties: description
+              ? [{ property: 'description', before: '', after: description }]
+              : [],
+          },
+        ];
+      }
+      const changed = [
+        ...new Set([...Object.keys(previous), ...Object.keys(element)]),
+      ].filter((property) => !isEqual(previous[property], element[property]));
+      // Only nested columns are elements; any other list, such as a column's tags, is a value of
+      // its element and reads as one change.
+      const lists = changed.includes(CHILDREN_PROPERTY)
+        ? nestedLists(previous[CHILDREN_PROPERTY], element[CHILDREN_PROPERTY])
+        : undefined;
+      const properties = changed
+        .filter((property) => !(lists && property === CHILDREN_PROPERTY))
+        .map((property) => ({
+          property,
+          before: textOf(previous[property]),
+          after: textOf(element[property]),
+        }));
+      const own: ElementChange[] = properties.length
+        ? [{ element: name.join('.'), status: 'changed', properties }]
+        : [];
 
-            return lists
-              ? namedListChanges(lists[0], lists[1], name)
-              : [
-                  {
-                    element: name.join('.'),
-                    property,
-                    before: textOf(base[property]),
-                    after: textOf(element[property]),
-                  },
-                ];
-          })
-      );
+      return lists
+        ? own.concat(namedListChanges(lists[0], lists[1], name))
+        : own;
     })
     .concat(removed);
 };
 
 /**
  * A list of named elements, as a table's columns and their nested children, is set whole; a
- * reviewer reads which elements change and how. Undefined for any other change.
+ * reviewer reads which elements change and how. Undefined for any other change, and for a change
+ * that names no element change, such as a reorder.
  */
 export const elementChanges = (op: MutationOp): ElementChange[] | undefined => {
-  const before = parse(op.baseValue);
-  const after = parse(op.value);
+  if (op.op !== MutationOpType.Set || op.baseValue === undefined) {
+    return undefined;
+  }
+  const lists = nestedLists(parse(op.baseValue), parse(op.value));
+  const changes = lists ? namedListChanges(lists[0], lists[1], []) : [];
 
-  return op.op === MutationOpType.Set &&
-    isNamedList(before) &&
-    isNamedList(after)
-    ? namedListChanges(before, after, [])
-    : undefined;
+  return changes.length ? changes : undefined;
 };
 
 /** How many elements a list suggestion adds and removes. */
@@ -316,6 +327,7 @@ export const groupSuggestions = (
       request,
       field,
       ops,
+      changes: ops.length === 1 ? elementChanges(ops[0]) : undefined,
     }))
   );
 
@@ -325,10 +337,11 @@ export const groupSuggestions = (
         .flatMap((s) => s.ops)
         .find((op) => op.baseValue !== undefined)?.baseValue;
       let current: string | undefined;
-      // A list of named elements shows its current value element by element, beside each change.
-      if (base !== undefined && !isNamedList(parse(base))) {
+      // Suggestions read element by element show the current value beside each change.
+      const elementWise = items.every((s) => s.changes);
+      if (!elementWise && base !== undefined) {
         current = valueText(base);
-      } else if (base === undefined && published) {
+      } else if (!elementWise && published) {
         current = textOf(published[field]);
       }
 
