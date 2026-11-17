@@ -679,7 +679,7 @@ const TagPage = () => {
                   handleClosePanel={() => setPreviewAsset(undefined)}
                 />
               ),
-              ...COMMON_RESIZABLE_PANEL_CONFIG.RIGHT_PANEL,
+              ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
               className:
                 'entity-summary-resizable-right-panel-container tag-resizable-panel-container',
             }}
