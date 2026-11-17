@@ -259,8 +259,10 @@ class OperationMetricsState(metaclass=Singleton):
         """
         # Reset metrics when starting a new run
         if self._run_id != run_id:
-            # Clear the async queue first to discard any pending items from old run
+            # Discard the old run's pending items, and let the worker finish the one it
+            # holds so it is not recorded after the reset, into the new run
             self._clear_async_queue()
+            self._wait_for_worker()
             with self._lock:
                 self._global_metrics = _create_category_dict()
                 self._thread_metrics = defaultdict(_create_category_dict)
@@ -488,6 +490,10 @@ class OperationMetricsState(metaclass=Singleton):
         summary read before it lands would miss that operation.
         """
         self._drain_async_queue(record=True)
+        self._wait_for_worker()
+
+    def _wait_for_worker(self) -> None:
+        """Wait, at most FLUSH_TIMEOUT_SECONDS, for the worker to finish the items it has taken."""
         if not self._worker_is_alive():
             return
         # Bounded, unlike `Queue.join`: a status read must never stall ingestion while

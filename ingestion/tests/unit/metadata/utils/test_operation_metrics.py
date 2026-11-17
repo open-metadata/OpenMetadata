@@ -488,6 +488,35 @@ class TestMultiThreadedOperations:
 
         assert summary["db_queries"]["SELECT"]["_default"]["count"] == 1
 
+    def test_new_run_drops_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        metrics.set_run_context(run_id="run-1")
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        class ReleaseOnWait(threading.Condition):
+            # The worker is let go only once the new run is waiting for it
+            def wait(self, timeout=None):
+                release.set()
+                return super().wait(timeout)
+
+        queue = metrics._async_queue
+        queue.all_tasks_done = ReleaseOnWait(queue.mutex)
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        # The queue is now empty while the worker still holds the run-1 item
+        assert taken.wait(timeout=5)
+
+        metrics.set_run_context(run_id="run-2")
+
+        assert metrics.get_summary() == {}
+
     def test_multiple_operations_per_thread(self) -> None:
         metrics = OperationMetricsState()
 
