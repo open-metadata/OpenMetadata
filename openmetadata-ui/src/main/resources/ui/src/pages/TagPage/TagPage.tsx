@@ -74,6 +74,7 @@ import IconColorModal from '../../components/Modals/IconColorModal/IconColorModa
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   CERTIFICATION_CATEGORY,
+  MAX_NAME_LENGTH,
   ROUTES,
   TIER_CATEGORY,
 } from '../../constants/constants';
@@ -978,11 +979,11 @@ const TagPage = () => {
         nameValidationRules={[
           {
             min: 1,
-            max: 128,
+            max: MAX_NAME_LENGTH,
             message: t('message.entity-size-in-between', {
               entity: t('label.name'),
               min: 1,
-              max: 128,
+              max: MAX_NAME_LENGTH,
             }),
           },
         ]}

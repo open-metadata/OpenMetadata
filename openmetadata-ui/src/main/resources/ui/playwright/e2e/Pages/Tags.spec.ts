@@ -24,6 +24,8 @@ import {
   clickOutside,
   createNewPage,
   fillDescriptionBox,
+  getDescriptionBox,
+  NAME_VALIDATION_ERROR,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -857,6 +859,103 @@ test('Adds one tag and removes another in the same save preserves appliedBy on t
   } finally {
     await addedTag.delete(apiContext);
     await fixtureTable.delete(apiContext);
+    await afterAction();
+  }
+});
+
+test('Should reject double-colon tag names and allow creating and editing colon-separated tag names (#37908)', async ({
+  browser,
+  page,
+}) => {
+  const { apiContext, afterAction } = await createNewPage(browser);
+  const isolatedClassification = new ClassificationClass();
+  const colonTagName = `ABC:DEF:SC:${uuid()}`;
+  const initialDescription = 'Initial description for colon-separated tag';
+  const updatedDescription = 'Updated description for colon-separated tag';
+
+  try {
+    await isolatedClassification.create(apiContext);
+    await isolatedClassification.visitPage(page);
+
+    const tagFormDrawer = page.getByTestId('tag-form-drawer');
+    const nameInput = tagFormDrawer.getByTestId('name').getByRole('textbox');
+
+    await test.step('Reject double-colon tag name on Add Tag form', async () => {
+      await page.getByTestId('add-new-tag-button').click();
+      await expect(tagFormDrawer).toBeVisible();
+
+      await nameInput.fill('ABC::DEF');
+      await fillDescriptionBox(tagFormDrawer, initialDescription);
+      await submitForm(page);
+
+      await expect(
+        tagFormDrawer.getByText(NAME_VALIDATION_ERROR)
+      ).toBeVisible();
+      await expect(tagFormDrawer).toBeVisible();
+    });
+
+    await test.step('Create colon-separated tag name via Add Tag form', async () => {
+      await nameInput.clear();
+      await nameInput.fill(colonTagName);
+
+      const createTagResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags') &&
+          response.request().method() === 'POST'
+      );
+      const refreshTagsResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags') &&
+          response.request().method() === 'GET'
+      );
+      await submitForm(page);
+
+      const createdResponse = await createTagResponse;
+      expect(createdResponse.status()).toBe(201);
+      await refreshTagsResponse;
+
+      await expect(tagFormDrawer).toBeHidden();
+      await expect(
+        page.getByTestId('table').getByTestId(colonTagName)
+      ).toBeVisible();
+    });
+
+    await test.step('Edit colon-separated tag description via TagFormDrawer', async () => {
+      const tagRow = page
+        .getByTestId('table')
+        .locator('tbody tr')
+        .filter({ has: page.getByTestId(colonTagName) });
+
+      await tagRow.getByTestId('edit-button').click();
+      await expect(tagFormDrawer).toBeVisible();
+      await expect(nameInput).toHaveValue(colonTagName);
+
+      const editor = getDescriptionBox(tagFormDrawer);
+      await expect(editor).toHaveCount(1);
+      await editor.clear();
+      await editor.fill(updatedDescription);
+
+      const patchTagResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags/') &&
+          response.request().method() === 'PATCH'
+      );
+      const refreshTagsResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/tags') &&
+          response.request().method() === 'GET'
+      );
+      await submitForm(page);
+
+      const patchedResponse = await patchTagResponse;
+      expect(patchedResponse.status()).toBe(200);
+      await refreshTagsResponse;
+
+      await expect(tagFormDrawer).toBeHidden();
+      await expect(tagRow).toContainText(updatedDescription);
+    });
+  } finally {
+    await isolatedClassification.delete(apiContext);
     await afterAction();
   }
 });
