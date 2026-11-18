@@ -139,7 +139,7 @@ export const useAssetSelectionState = ({
   const [selectedItems, setSelectedItems] =
     useState<Map<string, EntityDetailUnion>>();
   const [isLoading, setIsLoading] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<SearchIndex>(
+  const [activeFilter] = useState<SearchIndex>(
     [
       AssetsOfEntity.GLOSSARY,
       AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
