@@ -18,6 +18,31 @@ RUN mkdir -p /opt/openmetadata && \
     tar zxvf openmetadata-*.tar.gz -C /opt/openmetadata --strip-components 1 && \
     rm openmetadata-*.tar.gz
 
+# Amazon Corretto 21's Alpine build, from its official image: Alpine's openjdk21 package does
+# not have OpenJDK's November 2026 security release yet. Only the jlinked runtime leaves this stage.
+FROM amazoncorretto:21-alpine AS jre-builder
+
+# --strip-java-debug-attributes, not --strip-debug: Corretto ships its native libraries
+# stripped, and --strip-debug would need objcopy for nothing.
+# alsa-lib (1 High, no Alpine fix): the window and sound libraries are dropped, since they link
+# X11 and alsa-lib and a server uses neither. The three that work without a display stay:
+# liblcms (colour profiles, such as the ones PNG images carry), libfontmanager (text layout)
+# and libjavajpeg (JPEG). Corretto bundles what those three link against. Of the launchers,
+# java, keytool and the diagnostic tools stay.
+RUN jlink \
+      --add-modules ALL-MODULE-PATH \
+      --strip-java-debug-attributes \
+      --no-man-pages \
+      --no-header-files \
+      --compress=zip-6 \
+      --output /javaruntime && \
+    rm -f /javaruntime/lib/libawt_xawt.so /javaruntime/lib/libjawt.so \
+      /javaruntime/lib/libsplashscreen.so /javaruntime/lib/libjsound.so && \
+    find /javaruntime/bin -type f \
+      ! -name java ! -name jcmd ! -name jstack ! -name jmap \
+      ! -name jinfo ! -name jps ! -name jstat ! -name jfr ! -name keytool \
+      -delete
+
 # Final stage
 FROM alpine:3
 
@@ -25,31 +50,23 @@ EXPOSE 8585
 
 # '!ssl_client' removes busybox wget's HTTPS helper (CVE-2025-60876) and keeps it out: it
 # auto-installs with busybox + libssl3, so a plain `apk del` leaves it in place.
+# java-cacerts builds Java's trust store from Alpine's CA store, as with the openjdk21 package,
+# and rebuilds it on update-ca-certificates.
 RUN adduser -D openmetadata && \
     apk update && \
     apk upgrade && \
-    apk add --update --no-cache bash openjdk21-jre-headless lcms2 libjpeg-turbo freetype '!ssl_client'
+    apk add --update --no-cache bash java-cacerts '!ssl_client'
 
-# alsa-lib (1 High, no Alpine fix): Alpine's openjdk21-jre is the headless JRE plus seven desktop
-# libraries, and its sound library needs alsa-lib (its window ones need X11). A server uses
-# neither, so install the headless JRE and copy in only the three desktop libraries that work
-# without a display, from openjdk21-jre of the same build: liblcms (colour profiles, such
-# as the ones PNG images carry), libfontmanager (text layout) and libjavajpeg (JPEG). lcms2,
-# libjpeg-turbo and freetype are what those three link against. The build fails if alsa-lib is
-# ever pulled back in.
+# Laid out as Alpine's openjdk21 package was: default-jvm, java-21-openjdk, the launchers in
+# /usr/bin, and cacerts linked to the store java-cacerts writes. The build fails if alsa-lib
+# comes back.
+COPY --from=jre-builder /javaruntime /usr/lib/jvm/java-21-amazon-corretto
 RUN set -eu; \
-    jre=$(apk info -ev openjdk21-jre-headless); \
-    apk="openjdk21-jre-${jre#openjdk21-jre-headless-}.apk"; \
-    cd /tmp; \
-    apk fetch --no-cache openjdk21-jre; \
-    if [ ! -f "$apk" ]; then \
-      echo "openjdk21-jre is not the same build as $jre" >&2; exit 1; \
-    fi; \
-    tar -xzf "$apk" -C / \
-      usr/lib/jvm/java-21-openjdk/lib/liblcms.so \
-      usr/lib/jvm/java-21-openjdk/lib/libfontmanager.so \
-      usr/lib/jvm/java-21-openjdk/lib/libjavajpeg.so; \
-    rm "$apk"; \
+    cd /usr/lib/jvm; \
+    ln -s java-21-amazon-corretto default-jvm; \
+    ln -s java-21-amazon-corretto java-21-openjdk; \
+    ln -sf /etc/ssl/certs/java/cacerts default-jvm/lib/security/cacerts; \
+    for tool in default-jvm/bin/*; do ln -s "../lib/jvm/$tool" /usr/bin/; done; \
     if apk info -e alsa-lib >/dev/null; then \
       echo "alsa-lib is installed again" >&2; exit 1; \
     fi

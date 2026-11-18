@@ -10,8 +10,28 @@ RUN wget -q https://archive.apache.org/dist/jena/binaries/apache-jena-fuseki-${F
     tar -xzf apache-jena-fuseki-${FUSEKI_VERSION}.tar.gz && \
     mv apache-jena-fuseki-${FUSEKI_VERSION} /fuseki-dist
 
-# Runtime: eclipse-temurin replaces the deprecated openjdk Docker Hub images.
-FROM eclipse-temurin:21-jre-jammy
+# Amazon Corretto 21's generic Linux build, from its official image: Temurin has not published
+# OpenJDK's November 2026 security release yet. Only the jlinked runtime leaves this stage, not
+# the image's Amazon Linux 2 base.
+FROM amazoncorretto:21-al2-generic AS jre-builder
+
+# --strip-java-debug-attributes, not --strip-debug: Corretto ships its native libraries
+# stripped, and --strip-debug would need objcopy for nothing.
+RUN jlink \
+      --add-modules ALL-MODULE-PATH \
+      --strip-java-debug-attributes \
+      --no-man-pages \
+      --no-header-files \
+      --compress=zip-6 \
+      --output /javaruntime
+
+FROM ubuntu:22.04
+
+ENV JAVA_HOME=/opt/java/openjdk
+ENV PATH="${JAVA_HOME}/bin:${PATH}"
+# C.UTF-8 ships with glibc, so the JVM gets UTF-8 without the locales package.
+ENV LANG=C.UTF-8
+COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 
 ENV FUSEKI_HOME=/fuseki
 ENV FUSEKI_BASE=/fuseki
