@@ -308,6 +308,13 @@ repeatedly add the following.
   - Predicates on `entity_extension` must be index-usable; `LIKE 'app.version.%'` scans the table.
   - Scope catch-up sweeps to rows created after the previous upgrade: a missing target row can mean
     it was deleted on purpose.
+- **Migration queries on large, growing tables must not scan the whole table.** Check that each
+  such query's `WHERE` or `JOIN` is backed by an index, and that the index already exists when the
+  query runs: an index created in a later version, or present only on `main`, does not help an
+  earlier version. Check a backport on the target branch itself; do not assume an index, column or
+  other change from `main` came with it. A test on an empty database will not show a scan. (The
+  2.0.8 `audit_log_event` cleanup ran for hours on large deployments because only 2.1.0 indexed
+  `entity_type`.)
 - **Earlier releases' stored data.**
   - A new schema `maximum` (Pydantic `le=`) must not reject saved configs; ship a clamping migration.
   - Class names persisted by Quartz or `ServiceLoader` keep resolving.
