@@ -178,6 +178,7 @@ public class GlossaryRdfImporter {
   private final Map<String, RelationshipType> restorableByPredicate = new HashMap<>();
   // Soft-deleted types the import leaves deleted; a new type may not take one's name.
   private List<RelationshipType> remainingSoftDeleted = List.of();
+  private final Set<String> skippedRelationTypes = new HashSet<>();
   private final Map<String, EntityReference> termRefByIri = new HashMap<>();
   private final Map<String, String> termFqnByIri = new HashMap<>();
   private final Map<String, String> iriByFqn = new HashMap<>();
@@ -1243,6 +1244,7 @@ public class GlossaryRdfImporter {
 
   private boolean skipIfInvalid(RelationshipType type, String reason) {
     if (reason != null) {
+      skippedRelationTypes.add(type.getName());
       addMessage("Relationship type '" + type.getName() + "' skipped: " + reason);
     }
     return reason != null;
@@ -1631,12 +1633,25 @@ public class GlossaryRdfImporter {
     for (TermIntent intent : intents) {
       for (RelationIntent relation : intent.relations) {
         if (knownIris.contains(relation.targetIri())
+            && !skipRelationOfSkippedType(relation)
             && registerableTypes.contains(registeredRelationType(relation))) {
           total++;
         }
       }
     }
     result.setRelationsAdded(result.getRelationsAdded() + total);
+  }
+
+  private boolean skipRelationOfSkippedType(RelationIntent relation) {
+    String type = registeredRelationType(relation);
+    if (!skippedRelationTypes.contains(type)) {
+      return false;
+    }
+    addMessage(
+        String.format(
+            "Relation %s skipped: its relationship type '%s' was skipped as invalid",
+            relation.relationshipType(), type));
+    return true;
   }
 
   private String registeredRelationType(RelationIntent relation) {
@@ -1658,7 +1673,7 @@ public class GlossaryRdfImporter {
   private void addTermRelation(
       GlossaryTermRepository repository, EntityReference fromRef, RelationIntent relation) {
     EntityReference toRef = termRefByIri.get(relation.targetIri());
-    if (toRef != null) {
+    if (toRef != null && !skipRelationOfSkippedType(relation)) {
       try {
         TermRelation termRelation =
             new TermRelation()
