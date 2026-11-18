@@ -134,7 +134,63 @@ class ServiceVersionSecretsMaskingTest {
         unchanged(
             id,
             "databaseService.version.0.2",
-            service("Mysql", "{\"authType\":{\"password\":\"" + FERNET + "\"}}")));
+            service("Mysql", "{\"authType\":{\"password\":\"" + FERNET + "\"}}")),
+        version(
+            id,
+            "messagingService.version.0.1",
+            service("Kafka", kafka(PLAIN, PLAIN)),
+            service("Kafka", kafka(MASK, MASK))),
+        version(id, "mcpService.version.0.1", mcp(PLAIN), mcp(MASK)),
+        version(
+            id,
+            "llmService.version.0.1",
+            service("VertexAI", "{\"credentials\":\"" + PLAIN + "\"}"),
+            service("VertexAI", "{\"credentials\":\"" + MASK + "\"}")),
+        unchanged(
+            id,
+            "mlmodelService.version.0.1",
+            service("VertexAI", "{\"credentials\":\"" + PLAIN + "\"}")),
+        version(
+            id,
+            "workflow.version.0.1",
+            testConnection("Pipeline", databricks("token", PLAIN)),
+            testConnection("Pipeline", databricks("token", MASK))),
+        unchanged(
+            id, "workflow.version.0.2", testConnection("Dashboard", databricks("token", PLAIN))));
+  }
+
+  /** {@code consumerConfig} is a map whose every value is a secret. */
+  private static String kafka(String password, String consumerValue) {
+    return "{\"saslPassword\":\""
+        + password
+        + "\",\"consumerConfig\":{\"sasl.password\":\""
+        + consumerValue
+        + "\",\"client.id\":\""
+        + consumerValue
+        + "\"}}";
+  }
+
+  /** Each server of the array has its own key; an encrypted one stays as it is. */
+  private static String mcp(String value) {
+    return service(
+        "Mcp",
+        "{\"servers\":[{\"name\":\"a\",\"apiKey\":\""
+            + value
+            + "\"},{\"name\":\"b\",\"apiKey\":\""
+            + FERNET
+            + "\"}]}");
+  }
+
+  /** A Test Connection workflow version, which holds a service's connection in its request. */
+  private static String testConnection(String serviceType, String serviceVersion) {
+    JsonNode service = JsonUtils.readTree(serviceVersion);
+    return "{\"name\":\"test-connection\",\"request\":{\"serviceType\":\""
+        + serviceType
+        + "\",\"connectionType\":\""
+        + service.path("serviceType").asText()
+        + "\",\"connection\":"
+        + service.path("connection")
+        + "}}";
   }
 
   private static Row version(String id, String extension, String before, String after) {
