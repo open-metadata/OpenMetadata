@@ -49,7 +49,8 @@ a recursive one two more before its cascade, and descendants that remove their o
 batch of 50. A new type whose FQN can nest under an unrelated FQN must override
 `nestsUnderUnrelatedFqns()`. If its entities are also the cascade-covered descendants of a parent
 type, it names that type in `fqnParentType()`; without it, deleting such a parent still removes the
-right rows, one descendant at a time. One case remains: an FQN derived from its parents can still
-equal another entity's field when names repeat across types at several levels (schema `X.a.b` and
-the task `b` of pipeline `X.a`), and deleting it removes that field's rows. Recording the target's
-entity type on each row would make all of this exact, but that schema change is still deferred.
+right rows, one descendant at a time. One case remains: an FQN built from its parents can still
+equal another entity's field, and deleting it removes that field's rows. Examples are a test case or
+child container named like a column of its parent, and schema `X.a.b` against the task `b` of
+pipeline `X.a`. Recording the target's entity type on each row would make all of this exact, but
+that schema change is still deferred.
