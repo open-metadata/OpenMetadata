@@ -21,9 +21,11 @@ from typing import Any, Callable, Dict, Iterable, List, Optional  # noqa: UP035
 from pyspark.sql.utils import AnalysisException, ParseException
 
 from metadata.generated.schema.entity.data.table import Column, TableType
+from metadata.generated.schema.entity.services.connections.database.deltalake.metastore.dbConnection import (
+    HiveMetastoreDatabase as MetastoreDbConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
     MetastoreConfig,
-    MetastoreDbConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,

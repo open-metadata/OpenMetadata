@@ -16,6 +16,7 @@ package org.openmetadata.service.secrets.converter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -24,6 +25,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -55,6 +57,7 @@ import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.CockroachConnection;
+import org.openmetadata.schema.services.connections.database.DataStorageConfig;
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.DatalakeConnection;
 import org.openmetadata.schema.services.connections.database.Db2Connection;
@@ -73,6 +76,7 @@ import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.QuestDBConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
 import org.openmetadata.schema.services.connections.database.SalesforceConnection;
+import org.openmetadata.schema.services.connections.database.SampleDataStorageConfig;
 import org.openmetadata.schema.services.connections.database.SapErpConnection;
 import org.openmetadata.schema.services.connections.database.SapHanaConnection;
 import org.openmetadata.schema.services.connections.database.SapSuccessFactorsConnection;
@@ -86,7 +90,11 @@ import org.openmetadata.schema.services.connections.database.databricks.AzureADS
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreDbConnection;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreFilePathConnection;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreHostPortConnection;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -126,6 +134,8 @@ public final class ClassConverterFactory {
 
   @Getter private static final Map<Class<?>, ClassConverter> converterMap;
 
+  private static final Map<Class<?>, Boolean> SAMPLE_DATA_HOLDERS = new ConcurrentHashMap<>();
+
   /**
    * Connections whose {@code Object} properties -- the ones a JSON Schema {@code oneOf} produces --
    * only need to be re-typed so the password masker and the secrets manager can walk into them. See
@@ -133,6 +143,25 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
+          Map.entry(
+              MetastoreConfig.class,
+              new NestedConfigClassConverter(
+                  MetastoreConfig.class,
+                  Map.of(
+                      "connection",
+                      List.of(
+                          MetastoreHostPortConnection.class,
+                          MetastoreDbConnection.class,
+                          MetastoreFilePathConnection.class)))),
+          Map.entry(
+              SampleDataStorageConfig.class,
+              new NestedConfigClassConverter(
+                  SampleDataStorageConfig.class,
+                  Map.of("config", List.of(DataStorageConfig.class)))),
+          Map.entry(
+              DataStorageConfig.class,
+              new NestedConfigClassConverter(
+                  DataStorageConfig.class, Map.of("storageConfig", List.of(AWSCredentials.class)))),
           // GCPCredentials is typed, but its gcpConfig is a oneOf the credentials converter types.
           Map.entry(
               GcpCloudSqlConfig.class,
@@ -379,6 +408,11 @@ public final class ClassConverterFactory {
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
-    return converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
+    ClassConverter converter =
+        converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
+    return SAMPLE_DATA_HOLDERS.computeIfAbsent(
+            clazz, SampleDataStorageConfigClassConverter::holdsSampleDataStorageConfig)
+        ? new SampleDataStorageConfigClassConverter(clazz, converter)
+        : converter;
   }
 }

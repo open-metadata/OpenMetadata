@@ -51,8 +51,7 @@ class NestedSecretConverterCoverageTest {
    * sampleDataStorageConfig} on every database connection has no converter, so its S3 credentials
    * are never typed. The property no longer exists on main.
    */
-  private static final Set<String> KNOWN_UNCONVERTIBLE =
-      Set.of("MetastoreConfig.connection", "SampleDataStorageConfig.config");
+  private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of();
 
   private final Set<String> allowlistHits = new HashSet<>();
 

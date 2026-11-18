@@ -1,0 +1,15 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/deltalake/metastore/filePathConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hive Metastore File Path",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreFilePathConnection",
+  "properties": {
+    "metastoreFilePath": {
+      "title": "Hive Metastore File Path",
+      "description": "Local path for the local file with metastore data. E.g., /tmp/metastore.db",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

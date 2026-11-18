@@ -22,7 +22,7 @@ from sqlalchemy import Column, select, text
 from sqlalchemy.orm.util import AliasedClass
 
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+from metadata.generated.schema.entity.services.connections.dataStorageConfig import (
     DataStorageConfig,
 )
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (

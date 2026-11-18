@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
+import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
@@ -21,13 +22,20 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
 import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
+import org.openmetadata.schema.services.connections.database.DataStorageConfig;
+import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
 import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
+import org.openmetadata.schema.services.connections.database.datalake.S3Config;
+import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreDbConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
@@ -433,6 +441,101 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     assertEquals(
         getMaskedPassword(), ((SapS4HanaOAuthCredentials) masked.getAuthType()).getClientSecret());
+  }
+
+  @Test
+  void testSampleDataStorageS3KeyFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "Postgres",
+            "hostPort",
+            "postgres:5432",
+            "username",
+            "admin",
+            "database",
+            "db",
+            "sampleDataStorageConfig",
+            Map.of(
+                "config",
+                Map.of(
+                    "bucketName",
+                    "samples",
+                    "storageConfig",
+                    Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", NESTED_SECRET))));
+
+    PostgresConnection masked =
+        (PostgresConnection) mask(serialized, "Postgres", ServiceType.DATABASE);
+
+    DataStorageConfig config = (DataStorageConfig) masked.getSampleDataStorageConfig().getConfig();
+    assertEquals(
+        getMaskedPassword(), ((AWSCredentials) config.getStorageConfig()).getAwsSecretAccessKey());
+  }
+
+  @Test
+  void testEmptySampleDataStorageConfigStaysEmpty() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "Postgres",
+            "hostPort",
+            "postgres:5432",
+            "username",
+            "admin",
+            "database",
+            "db",
+            "sampleDataStorageConfig",
+            Map.of("config", Map.of()));
+
+    PostgresConnection masked =
+        (PostgresConnection) mask(serialized, "Postgres", ServiceType.DATABASE);
+
+    assertEquals(Map.of(), masked.getSampleDataStorageConfig().getConfig());
+  }
+
+  @Test
+  void testDeltaLakeMetastoreDbPasswordFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "DeltaLake",
+            "configSource",
+            Map.of(
+                "connection",
+                Map.of(
+                    "metastoreDb",
+                    "jdbc:mysql://metastore:3306/db",
+                    "username",
+                    "hive",
+                    "password",
+                    NESTED_SECRET)));
+
+    DeltaLakeConnection masked =
+        (DeltaLakeConnection) mask(serialized, "DeltaLake", ServiceType.DATABASE);
+
+    MetastoreConfig metastore = (MetastoreConfig) masked.getConfigSource();
+    assertEquals(
+        getMaskedPassword(), ((MetastoreDbConnection) metastore.getConnection()).getPassword());
+  }
+
+  @Test
+  void testDeltaLakeStorageS3KeyFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "DeltaLake",
+            "configSource",
+            Map.of(
+                "connection",
+                Map.of(
+                    "securityConfig",
+                    Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", NESTED_SECRET))));
+
+    DeltaLakeConnection masked =
+        (DeltaLakeConnection) mask(serialized, "DeltaLake", ServiceType.DATABASE);
+
+    S3Config s3 = (S3Config) ((StorageConfig) masked.getConfigSource()).getConnection();
+    assertEquals(getMaskedPassword(), s3.getSecurityConfig().getAwsSecretAccessKey());
   }
 
   private Object mask(

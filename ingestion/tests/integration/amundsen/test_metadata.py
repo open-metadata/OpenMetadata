@@ -8,9 +8,11 @@ from unittest.mock import patch
 
 from pydantic import AnyUrl
 
+from metadata.generated.schema.entity.services.connections.database.deltalake.metastore.hostPortConnection import (
+    HiveMetastoreService as MetastoreHostPortConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.deltalake.metastoreConfig import (
     MetastoreConfig,
-    MetastoreHostPortConnection,
 )
 from metadata.generated.schema.entity.services.connections.database.deltaLakeConnection import (
     DeltaLakeConnection,

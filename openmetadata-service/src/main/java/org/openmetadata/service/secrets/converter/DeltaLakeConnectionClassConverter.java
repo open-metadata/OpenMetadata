@@ -22,8 +22,11 @@ import org.openmetadata.schema.utils.JsonUtils;
 /** Converter class to get an `DeltaLakeConnection` object. */
 public class DeltaLakeConnectionClassConverter extends ClassConverter {
 
+  // StorageConfig first: both accept a "connection", but only StorageConfig's converter rejects a
+  // connection of the other kind, so trying MetastoreConfig first would take an S3 config as a
+  // metastore one and leave its credentials untyped.
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
-      List.of(MetastoreConfig.class, StorageConfig.class);
+      List.of(StorageConfig.class, MetastoreConfig.class);
 
   public DeltaLakeConnectionClassConverter() {
     super(DeltaLakeConnection.class);

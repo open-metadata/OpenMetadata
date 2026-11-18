@@ -21,7 +21,7 @@ from typing import Optional
 
 from metadata.clients.aws_client import AWSClient
 from metadata.generated.schema.entity.data.table import Table, TableData
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
+from metadata.generated.schema.entity.services.connections.dataStorageConfig import (
     DataStorageConfig,
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
