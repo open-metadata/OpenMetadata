@@ -877,6 +877,8 @@ test.describe('Profile — Profile security', PROFILE_TAGS, () => {
 
     await test.step('Cancelling discards what was typed', async () => {
       await page.getByTestId('cancel-change-password-button').click();
+      await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+      await page.getByTestId('unsaved-changes-popover-confirm').click();
       await openChangePasswordForm(page);
       await expect(
         page.getByTestId('new-password-input').locator('input')
