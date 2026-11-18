@@ -637,6 +637,22 @@ describe('getTrimmedHtmlContent', () => {
     expect(getTrimmedHtmlContent(html, 5)).toBe('<p>Hello...</p>');
   });
 
+  it('should keep at most three blocks in the preview', () => {
+    const html = formatClientContent(
+      '- item one\n- item two\n- item three\n- item four\n- item five'
+    );
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(
+      '<ul>\n<li>item one</li>\n<li>item two</li>\n<li>item three...</li></ul>'
+    );
+  });
+
+  it('should not count whitespace between blocks against the limit', () => {
+    const html = formatClientContent('First paragraph\n\nSecond paragraph');
+
+    expect(getTrimmedHtmlContent(html, 15)).toBe('<p>First paragraph...</p>');
+  });
+
   it('should drop every block after the cut', () => {
     const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
 

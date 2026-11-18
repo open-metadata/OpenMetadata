@@ -207,6 +207,11 @@ export const getHtmlStringFromMarkdownString = (content: string) => {
 const MENTION_OR_HASHTAG_SELECTOR =
   'a[data-type="mention"], a[data-type="hashtag"]';
 
+const PREVIEW_BLOCK_SELECTOR =
+  'p, li, h1, h2, h3, h4, h5, h6, pre, blockquote, tr';
+
+const MAX_PREVIEW_BLOCKS = 3;
+
 export const formatClientContent = (content: string) => {
   const parser = new DOMParser();
 
@@ -264,28 +269,59 @@ const cutTextNode = (node: Text, remaining: number): Node => {
   return node;
 };
 
-export const getTrimmedHtmlContent = (html: string, limit: number) => {
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-
-  if ((doc.body.textContent ?? '').length <= limit) {
-    return html;
-  }
-
-  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+const findPreviewCut = (body: HTMLElement, limit: number) => {
+  const walker = body.ownerDocument.createTreeWalker(
+    body,
+    NodeFilter.SHOW_TEXT,
+    (node) =>
+      node.textContent?.trim()
+        ? NodeFilter.FILTER_ACCEPT
+        : NodeFilter.FILTER_SKIP
+  );
   let remaining = limit;
+  let blockCount = 0;
+  let currentBlock: Element | null = null;
+  let previous: Text | null = null;
   let node = walker.nextNode() as Text | null;
 
-  while (node && node.data.length < remaining) {
+  while (node) {
+    const next = walker.nextNode() as Text | null;
+    const block = node.parentElement?.closest(PREVIEW_BLOCK_SELECTOR) ?? null;
+
+    if (block !== currentBlock) {
+      currentBlock = block;
+      blockCount++;
+    }
+
+    if (blockCount > MAX_PREVIEW_BLOCKS && previous) {
+      return { node: previous, remaining: previous.data.length };
+    }
+
+    if (
+      node.data.length > remaining ||
+      (node.data.length === remaining && next)
+    ) {
+      return { node, remaining };
+    }
+
     remaining -= node.data.length;
-    node = walker.nextNode() as Text | null;
+    previous = node;
+    node = next;
   }
 
-  if (!node) {
+  return undefined;
+};
+
+export const getTrimmedHtmlContent = (html: string, limit: number) => {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const cut = findPreviewCut(doc.body, limit);
+
+  if (!cut) {
     return html;
   }
 
   const range = doc.createRange();
-  range.setStartAfter(cutTextNode(node, remaining));
+  range.setStartAfter(cutTextNode(cut.node, cut.remaining));
   range.setEnd(doc.body, doc.body.childNodes.length);
   range.deleteContents();
 
