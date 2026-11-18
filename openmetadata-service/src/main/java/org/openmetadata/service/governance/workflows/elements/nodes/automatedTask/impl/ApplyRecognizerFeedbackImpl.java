@@ -34,6 +34,7 @@ public class ApplyRecognizerFeedbackImpl implements JavaDelegate {
               varHandler.getNamespacedVariable(
                   inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
+      WorkflowVariableHandler.requireRecognizerFeedback(feedback, execution);
 
       String updatedByNamespace = inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE);
       String reviewedBy = "governance-bot";

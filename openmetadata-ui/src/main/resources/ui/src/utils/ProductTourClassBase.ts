@@ -12,10 +12,9 @@
  */
 
 // The interactive Storylane demo Help > Tour and the Welcome screen open.
-// Placeholder: Collate's demo, until an OpenMetadata demo is published.
 // ADR:2026-11-13-the-product-tour-is-a-storylane-demo
 export const PRODUCT_TOUR_URL =
-  'https://collate.storylane.io/demo/6dgboeceyjwe';
+  'https://collate.storylane.io/demo/nntngy8bwrqj';
 
 /**
  * The product tour: a Storylane demo, shown in a full-screen modal.

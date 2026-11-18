@@ -75,7 +75,9 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
     });
   });
 
-  test('serves the AI My Data page at the /my-data path in AI mode', async ({
+  // My Data is modal-only in AI mode; like classic, /my-data renders the home
+  // landing page, so a history entry left by classic mode still lands on home.
+  test('serves the home landing page at /my-data in AI mode', async ({
     page,
   }) => {
     await enableAiAppMode(page);
@@ -85,9 +87,13 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
       await waitForAllLoadersToDisappear(page);
     });
 
-    await test.step('The AI My Data page renders in the AI shell at /my-data', async () => {
+    await test.step('The home landing page renders in the AI shell at /my-data', async () => {
       await expect(page).toHaveURL(/\/my-data$/);
       await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+      await expect(page.getByTestId('home-landing-page')).toBeVisible();
+      await expect(page.getByTestId('ask-nav-item-home')).toHaveClass(
+        /ask-nav-item--active/
+      );
     });
   });
 
@@ -170,8 +176,7 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
     }
   });
 
-  // /my-data is the personal-space My Data page in AI mode; the home landing
-  // page only renders at /, so the sidebar Home item has to point there.
+  // The home landing page renders at /, so the sidebar Home item points there.
   test('opens the home landing page from the sidebar Home item in AI mode', async ({
     page,
   }) => {
@@ -190,14 +195,6 @@ test.describe('AppMode — URL handling', { tag: ['@Platform'] }, () => {
       await expect(page).toHaveURL((url) => url.pathname === '/');
       await expect(page.getByTestId('home-landing-page')).toBeVisible();
       await expect(homeNavItem).toHaveClass(/ask-nav-item--active/);
-    });
-
-    await test.step('Home is not highlighted on the personal-space /my-data page', async () => {
-      await page.goto('/my-data', { waitUntil: 'domcontentloaded' });
-      await waitForAllLoadersToDisappear(page);
-
-      await expect(page).toHaveURL(/\/my-data$/);
-      await expect(homeNavItem).not.toHaveClass(/ask-nav-item--active/);
     });
   });
 
