@@ -19,41 +19,20 @@ import type {
 } from './Table.interface';
 import type { FlatRow } from './TableV2.interface';
 
-const isCyclicTreeRow = <T>(
-  record: T,
-  rowKey: string,
-  ancestorRecords: ReadonlySet<T>,
-  ancestorKeys: ReadonlySet<string>
-): boolean => ancestorRecords.has(record) || ancestorKeys.has(rowKey);
-
-const hasExpandedChildRows = <T>(
-  hasChildren: boolean,
-  expandedKeys: Set<string>,
-  rowKey: string,
-  children: T[] | undefined
-): children is T[] =>
-  hasChildren && expandedKeys.has(rowKey) && Boolean(children?.length);
-
 export function flattenTreeRows<T>(
   data: T[],
   getRowKey: (r: T, i: number) => string,
   expandedKeys: Set<string>,
   rowExpandable: ((record: T) => boolean) | undefined,
   depth = 0,
-  startIdx = 0,
-  ancestorRecords: ReadonlySet<T> = new Set(),
-  ancestorKeys: ReadonlySet<string> = new Set()
+  startIdx = 0
 ): FlatRow<T>[] {
   const rows: FlatRow<T>[] = [];
   let nextIdx = startIdx;
 
   for (const record of data) {
-    const rowKey = getRowKey(record, nextIdx);
-    if (isCyclicTreeRow(record, rowKey, ancestorRecords, ancestorKeys)) {
-      continue;
-    }
-
     const actualIndex = nextIdx++;
+    const rowKey = getRowKey(record, actualIndex);
     const children = (record as Record<string, unknown>).children as
       | T[]
       | undefined;
@@ -66,21 +45,14 @@ export function flattenTreeRows<T>(
 
     rows.push({ record, depth, actualIndex, hasChildren, rowKey });
 
-    if (hasExpandedChildRows(hasChildren, expandedKeys, rowKey, children)) {
-      const nextAncestorRecords = new Set(ancestorRecords);
-      nextAncestorRecords.add(record);
-      const nextAncestorKeys = new Set(ancestorKeys);
-      nextAncestorKeys.add(rowKey);
-
+    if (hasChildren && expandedKeys.has(rowKey) && children?.length) {
       const childRows = flattenTreeRows(
         children,
         getRowKey,
         expandedKeys,
         rowExpandable,
         depth + 1,
-        nextIdx,
-        nextAncestorRecords,
-        nextAncestorKeys
+        nextIdx
       );
       rows.push(...childRows);
       nextIdx += childRows.length;

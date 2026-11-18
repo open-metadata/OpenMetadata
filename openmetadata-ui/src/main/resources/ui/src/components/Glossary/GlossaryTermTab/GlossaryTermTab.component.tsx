@@ -700,25 +700,6 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleSearch,
   ]);
 
-  const activeGlossaryFqnRef = useRef(activeGlossary?.fullyQualifiedName);
-  activeGlossaryFqnRef.current = activeGlossary?.fullyQualifiedName;
-
-  const getLiveGlossaryState = () => {
-    const storeState =
-      typeof useGlossaryStore.getState === 'function'
-        ? useGlossaryStore.getState()
-        : undefined;
-
-    return {
-      currentGlossaryFqn:
-        storeState?.activeGlossary?.fullyQualifiedName ??
-        activeGlossaryFqnRef.current,
-      currentTerms: storeState
-        ? storeState.glossaryChildTerms
-        : glossaryChildTerms,
-    };
-  };
-
   const fetchChildTerms = async (parentFQN: string, after?: string) => {
     const childReqSeq = (childFetchSeqRef.current[parentFQN] ?? 0) + 1;
     childFetchSeqRef.current[parentFQN] = childReqSeq;
@@ -726,21 +707,19 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     const fetchSearch = searchTermRef.current;
     const fetchPageSeq = fetchRequestSeqRef.current;
 
-    const isStaleChildContext = () => {
-      const { currentGlossaryFqn } = getLiveGlossaryState();
-
-      return (
-        childFetchSeqRef.current[parentFQN] !== childReqSeq ||
-        fetchPageSeq !== fetchRequestSeqRef.current ||
-        fetchGlossaryFqn !== currentGlossaryFqn ||
-        fetchSearch !== searchTermRef.current
-      );
-    };
+    // Read the store live: the render closure is stale once the request
+    // resolves, and a concurrent expand of another parent may have written.
+    const isStaleChildContext = () =>
+      childFetchSeqRef.current[parentFQN] !== childReqSeq ||
+      fetchPageSeq !== fetchRequestSeqRef.current ||
+      fetchGlossaryFqn !==
+        useGlossaryStore.getState().activeGlossary?.fullyQualifiedName ||
+      fetchSearch !== searchTermRef.current;
 
     setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
     try {
       const response = await getGlossaryTermChildrenLazy(parentFQN, 50, after);
-      const { currentTerms } = getLiveGlossaryState();
+      const currentTerms = useGlossaryStore.getState().glossaryChildTerms;
 
       if (isStaleChildContext() || !Array.isArray(currentTerms)) {
         return;
