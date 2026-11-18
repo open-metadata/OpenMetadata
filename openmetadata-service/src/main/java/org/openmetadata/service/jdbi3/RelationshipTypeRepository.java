@@ -150,11 +150,11 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
       return reference;
     }
     if (fqn.equals(selfFqn)) {
-      return reference.withId(selfId);
+      return reference.withId(selfId).withName(selfFqn);
     }
     final RelationshipType resolved = findByNameOrNull(fqn, Include.ALL);
     if (resolved != null) {
-      return reference.withId(resolved.getId());
+      return reference.withId(resolved.getId()).withName(resolved.getName());
     }
     return reference;
   }

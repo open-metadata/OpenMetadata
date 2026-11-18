@@ -26,6 +26,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -41,14 +42,18 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateRelationshipType;
 import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.OntologyGraphTruncationReason;
 import org.openmetadata.schema.api.data.UpdateTermRelation;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.schema.type.RelationshipPaletteKey;
+import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 
@@ -67,6 +72,7 @@ public class GlossaryTermRelationEdgeIT {
 
   private OpenMetadataClient client;
   private Glossary glossary;
+  private final List<UUID> relationshipTypeIds = new ArrayList<>();
 
   @BeforeEach
   void setup(TestNamespace ns) throws Exception {
@@ -78,6 +84,9 @@ public class GlossaryTermRelationEdgeIT {
   @AfterEach
   void cleanup(TestNamespace ns) {
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+    for (UUID id : relationshipTypeIds) {
+      client.relationshipTypes().delete(id.toString(), true);
+    }
   }
 
   @Test
@@ -348,6 +357,66 @@ public class GlossaryTermRelationEdgeIT {
                 .filter(r -> r.getTerm() != null && termA.getId().equals(r.getTerm().getId()))
                 .count();
     assertEquals(1, countBtoA, "B should have exactly one relation to A, not a duplicate");
+  }
+
+  @Test
+  void restCreatedInversePairPreservesBothPerspectives(TestNamespace ns) throws Exception {
+    // #38113: exercise the UI's POST, POST, PUT flow instead of the seeded inverse pairs.
+    CreateRelationshipType inverseRequest = relationshipTypeRequest("inverse" + ns.uniqueShortId());
+    RelationshipType inverse = client.relationshipTypes().create(inverseRequest);
+    relationshipTypeIds.add(inverse.getId());
+    assertNull(inverse.getInverse());
+    RelationshipType forward =
+        client
+            .relationshipTypes()
+            .create(
+                relationshipTypeRequest("forward" + ns.uniqueShortId())
+                    .withInverse(inverse.getName()));
+    relationshipTypeIds.add(forward.getId());
+    inverse = client.relationshipTypes().upsert(inverseRequest.withInverse(forward.getName()));
+
+    // A directed cycle necessarily exercises both UUID orderings in canonical edge storage.
+    List<GlossaryTerm> terms =
+        List.of(createTerm("RestInverseA"), createTerm("RestInverseB"), createTerm("RestInverseC"));
+    for (int index = 0; index < terms.size(); index++) {
+      GlossaryTerm source = terms.get(index);
+      GlossaryTerm target = terms.get((index + 1) % terms.size());
+      postRelation(source.getId(), target.getId(), forward.getName(), RelationProvenance.MANUAL);
+    }
+    for (int index = 0; index < terms.size(); index++) {
+      GlossaryTerm source = terms.get(index);
+      GlossaryTerm target = terms.get((index + 1) % terms.size());
+      assertRelationPerspective(source, target, forward);
+      assertRelationPerspective(target, source, inverse);
+    }
+    assertEquals(inverse.getName(), forward.getInverse().getName());
+    assertEquals(forward.getName(), inverse.getInverse().getName());
+    assertEquals(inverse.getId(), forward.getInverse().getId());
+    assertEquals(forward.getId(), inverse.getInverse().getId());
+    assertEquals(inverse.getFullyQualifiedName(), forward.getInverse().getFullyQualifiedName());
+    assertEquals(forward.getFullyQualifiedName(), inverse.getInverse().getFullyQualifiedName());
+  }
+
+  private static CreateRelationshipType relationshipTypeRequest(String name) {
+    return new CreateRelationshipType()
+        .withName(name)
+        .withDisplayName(name)
+        .withDescription("REST inverse pair regression")
+        .withRdfPredicate(URI.create("https://example.org/relationships/" + name))
+        .withCategory(RelationshipTypeCategory.CUSTOM)
+        .withPaletteKey(RelationshipPaletteKey.BLUE);
+  }
+
+  private void assertRelationPerspective(
+      GlossaryTerm source, GlossaryTerm target, RelationshipType expected) throws Exception {
+    TermRelation edge = findEdge(source, target.getId());
+    assertNotNull(edge);
+    assertEquals(expected.getName(), edge.getRelationType());
+    assertNotNull(edge.getRelationshipType());
+    assertEquals(expected.getId(), edge.getRelationshipType().getId());
+    assertEquals(expected.getName(), edge.getRelationshipType().getName());
+    assertEquals(
+        expected.getFullyQualifiedName(), edge.getRelationshipType().getFullyQualifiedName());
   }
 
   private GlossaryTerm createTerm(String prefix) throws Exception {

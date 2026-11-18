@@ -20,6 +20,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
@@ -159,5 +160,23 @@ public class RelationshipTypeResourceIT
 
   private static RelationshipTypeService service() {
     return SdkClients.adminClient().relationshipTypes();
+  }
+
+  @Test
+  void explicitSymmetricInverseIncludesItsName(TestNamespace ns) {
+    String name = ns.prefix("symmetricInverse");
+    RelationshipType created =
+        createEntity(
+            request(name)
+                .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC))
+                .withInverse(name));
+    try {
+      RelationshipType reloaded = getEntity(created.getId().toString());
+      assertEquals(created.getId(), reloaded.getInverse().getId());
+      assertEquals(name, reloaded.getInverse().getName());
+      assertEquals(created.getFullyQualifiedName(), reloaded.getInverse().getFullyQualifiedName());
+    } finally {
+      hardDeleteEntity(created.getId().toString());
+    }
   }
 }
