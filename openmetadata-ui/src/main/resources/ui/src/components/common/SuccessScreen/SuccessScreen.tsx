@@ -157,7 +157,7 @@ const SuccessScreen = ({
         )}
       </div>
 
-      <div className="mt-7 text-center">
+      <Box className="tw:mt-7" gap={2} justify="center" wrap="wrap">
         <Button
           color="secondary-brand"
           data-testid="view-service-button"
@@ -189,7 +189,7 @@ const SuccessScreen = ({
             <Typography>{t('label.deploy')}</Typography>
           </Button>
         )}
-      </div>
+      </Box>
     </div>
   );
 };
