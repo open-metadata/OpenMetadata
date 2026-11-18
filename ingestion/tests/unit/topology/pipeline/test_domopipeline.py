@@ -12,6 +12,7 @@ from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequ
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
+    StatusType,
     Task,
     TaskStatus,
 )
@@ -30,6 +31,10 @@ from metadata.ingestion.source.pipeline.domopipeline.metadata import Domopipelin
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_dataset.json"
 with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
+
+failed_runs_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_failed_dataset.json"
+with open(failed_runs_file_path, encoding="UTF-8") as file:  # noqa: PTH123
+    failed_mock_data: list = json.load(file)
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
@@ -268,3 +273,80 @@ class DomoPipelineUnitTest(TestCase):
 
         for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)):  # noqa: B905
             self.assertEqual(expected, original)
+
+    @patch("metadata.clients.domo_client.DomoClient.get_runs")
+    def test_yield_pipeline_status_failed(self, get_runs):
+        """A failed Domo DataFlow run (state=FAILED_DATA_FLOW, failed=true)
+        is ingested with executionStatus=Failed on both TaskStatus and
+        PipelineStatus -- not Pending, which is the silent fallback the old
+        Dagster-derived STATUS_MAP produced. A still-in-flight run
+        (state=RUNNING, failed=false) is ingested as Pending."""
+        get_runs.return_value = failed_mock_data
+        results = list(self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS))
+
+        statuses = [result.right for result in results if isinstance(result.right, OMetaPipelineStatus)]
+        self.assertEqual(len(statuses), len(failed_mock_data))
+
+        # The failed run must surface as Failed on both the task and the pipeline.
+        self.assertEqual(statuses[0].pipeline_status.executionStatus, StatusType.Failed)
+        self.assertEqual(statuses[0].pipeline_status.taskStatus[0].executionStatus, StatusType.Failed)
+        self.assertEqual(statuses[0].pipeline_status.taskStatus[0].name, "1")
+        self.assertEqual(statuses[0].pipeline_status.timestamp.root, 1665563192000)
+        self.assertEqual(statuses[0].pipeline_fqn, "domopipeline_source_test.do_it_all_with_default_config")
+
+        # The in-flight run must surface as Pending, not Failed.
+        self.assertEqual(statuses[1].pipeline_status.executionStatus, StatusType.Pending)
+        self.assertEqual(statuses[1].pipeline_status.taskStatus[0].executionStatus, StatusType.Pending)
+        self.assertEqual(statuses[1].pipeline_status.timestamp.root, 1665649592000)
+
+    @patch("metadata.clients.domo_client.DomoClient.get_runs")
+    def test_yield_pipeline_status_state_mapping(self, get_runs):
+        """Every observed Domo state, plus the `failed` boolean safety net,
+        maps to the expected OpenMetadata executionStatus. An unrecognized
+        state without failed=true stays Pending (seeing a state we don't
+        understand is not evidence the run failed). With failed=true it
+        becomes Failed -- the safety net that ensures a failure the API
+        surfaces with an unanticipated state value can never silently fall
+        through to Pending."""
+        cases = [
+            # (state, failed_bool, expected_status)
+            ("SUCCESS", False, StatusType.Successful),
+            ("success", False, StatusType.Successful),  # state is `.lower()`-ed before lookup
+            ("FAILED_DATA_FLOW", False, StatusType.Failed),  # state alone catches the failure
+            ("CREATED", False, StatusType.Pending),  # in-flight
+            ("RUNNING", False, StatusType.Pending),  # in-flight
+            # An unknown state without failed=true is Pending, not Failed.
+            ("SOME_UNDOCUMENTED_STATE", False, StatusType.Pending),
+            # failed=true overrides an unknown state to Failed -- the safety net.
+            ("SOME_UNDOCUMENTED_STATE", True, StatusType.Failed),
+            # Defensive against a missing/None state on the run record.
+            (None, False, StatusType.Pending),
+            # failed-bool safety net with no state at all.
+            (None, True, StatusType.Failed),
+        ]
+
+        for state, failed, expected in cases:
+            run = {
+                "id": 1,
+                "beginTime": 1665476783000,
+                "endTime": 1665476792000,
+                "failed": failed,
+            }
+            if state is not None:
+                run["state"] = state
+            get_runs.return_value = [run]
+
+            results = list(self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS))
+            statuses = [result.right for result in results if isinstance(result.right, OMetaPipelineStatus)]
+
+            self.assertEqual(len(statuses), 1, f"unexpected result count for state={state!r} failed={failed}")
+            self.assertEqual(
+                statuses[0].pipeline_status.executionStatus,
+                expected,
+                f"pipeline executionStatus for state={state!r} failed={failed}",
+            )
+            self.assertEqual(
+                statuses[0].pipeline_status.taskStatus[0].executionStatus,
+                expected,
+                f"task executionStatus for state={state!r} failed={failed}",
+            )
