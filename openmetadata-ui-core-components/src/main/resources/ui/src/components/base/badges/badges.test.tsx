@@ -57,7 +57,7 @@ describe('Badge solid variant', () => {
     expect(badge).not.toHaveClass('tw:bg-utility-error-50', 'tw:outline-1');
   });
 
-  it('keeps a dark-enough fill for a color without a semantic solid role', () => {
+  it('uses the theme-aware utility step for a color without a semantic solid role', () => {
     render(
       <Badge color="indigo" data-testid="badge" variant="solid">
         10
@@ -66,7 +66,10 @@ describe('Badge solid variant', () => {
 
     const badge = screen.getByTestId('badge');
 
-    expect(badge).toHaveClass('tw:bg-indigo-600', 'tw:text-primary_on-brand');
+    expect(badge).toHaveClass(
+      'tw:bg-utility-indigo-600',
+      'tw:text-primary_on-brand'
+    );
     expect(badge).not.toHaveClass('tw:bg-utility-indigo-50');
   });
 });

@@ -112,23 +112,22 @@ const addonOnlyColors = Object.fromEntries(
   ])
 ) as Record<BadgeColors, { root: string; addon: string }>;
 
-// A solid fill keeps the 600 step in both themes, like the `bg-*-solid` roles:
-// `utility-*-600` lightens to the 400 step in dark mode, which would wash out
-// the on-solid text. Colors without a semantic solid role use the raw step.
+// Status colors use their semantic `bg-*-solid` roles; the rest use the
+// theme-aware `utility-*-600` step. Both carry light and dark values.
 const solidColors: Record<BadgeColors, string> = {
-  gray: 'tw:bg-gray-600',
+  gray: 'tw:bg-utility-gray-600',
   brand: 'tw:bg-brand-solid',
   error: 'tw:bg-error-solid',
   warning: 'tw:bg-warning-solid',
   success: 'tw:bg-success-solid',
-  'gray-blue': 'tw:bg-gray-blue-600',
-  'blue-light': 'tw:bg-blue-light-600',
-  blue: 'tw:bg-blue-600',
-  indigo: 'tw:bg-indigo-600',
-  purple: 'tw:bg-purple-600',
-  pink: 'tw:bg-pink-600',
-  orange: 'tw:bg-orange-600',
-  'blue-dark': 'tw:bg-blue-dark-600',
+  'gray-blue': 'tw:bg-utility-gray-blue-600',
+  'blue-light': 'tw:bg-utility-blue-light-600',
+  blue: 'tw:bg-utility-blue-600',
+  indigo: 'tw:bg-utility-indigo-600',
+  purple: 'tw:bg-utility-purple-600',
+  pink: 'tw:bg-utility-pink-600',
+  orange: 'tw:bg-utility-orange-600',
+  'blue-dark': 'tw:bg-utility-blue-dark-600',
 };
 
 const withPillTypes = {
