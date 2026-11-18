@@ -116,6 +116,7 @@ def distribution_source():
     with patch.object(GreenplumSource, "test_connection"):
         source = GreenplumSource.create(mock_greenplum_config["source"], MagicMock())
     with patch.object(GreenplumSource, "connection", new_callable=PropertyMock) as connection:
+        connection.return_value.dialect.server_version_info = (9, 4, 26)
         try:
             yield source, connection.return_value
         finally:
@@ -156,3 +157,21 @@ def test_distribution_lookup_failure_is_not_an_empty_policy(distribution_source)
             foreign_columns=[],
             columns=[Column(name="id", dataType=DataType.INT)],
         )
+
+
+def test_greenplum_5_preserves_constraints_without_distribution_catalog(distribution_source):
+    source, connection = distribution_source
+    connection.dialect.server_version_info = (8, 3, 23)
+    connection.execute.side_effect = SQLAlchemyError("distribution catalog columns unavailable")
+    unique = TableConstraint(constraintType=ConstraintType.UNIQUE, columns=["id", "region"])
+
+    constraints = source.update_table_constraints(
+        table_name="my_table",
+        schema_name="my_schema",
+        db_name="demo_db",
+        table_constraints=[unique],
+        foreign_columns=[],
+        columns=[Column(name=name, dataType=DataType.INT) for name in ("id", "region")],
+    )
+
+    assert constraints == [unique]

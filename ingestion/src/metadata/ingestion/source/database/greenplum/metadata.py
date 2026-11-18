@@ -15,6 +15,7 @@ Greenplum source module
 import traceback
 from collections import namedtuple
 from collections.abc import Iterable
+from typing import cast
 
 from sqlalchemy import sql, text
 from sqlalchemy.dialects.postgresql.base import PGDialect
@@ -197,17 +198,19 @@ class GreenplumSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
     ) -> list[TableConstraint]:
         """Include Greenplum distribution columns in the table constraints."""
         table_constraints = table_constraints or []
-        distribution_columns = [
-            row[0]
-            for row in self.connection.execute(
-                text(GREENPLUM_DISTRIBUTION_KEYS),
-                {"schema_name": schema_name, "table_name": table_name},
-            )
-        ]
-        if distribution_columns:
-            table_constraints.append(
-                TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=distribution_columns)
-            )
+        # The cached dialect version is PostgreSQL's base: GP5 uses 8.3, GP6 uses 9.4.
+        if cast("tuple[int, ...]", self.connection.dialect.server_version_info) >= (9, 4):
+            distribution_columns = [
+                row[0]
+                for row in self.connection.execute(
+                    text(GREENPLUM_DISTRIBUTION_KEYS),
+                    {"schema_name": schema_name, "table_name": table_name},
+                )
+            ]
+            if distribution_columns:
+                table_constraints.append(
+                    TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=distribution_columns)
+                )
         return super().update_table_constraints(
             table_name, schema_name, db_name, table_constraints, foreign_columns, columns
         )
