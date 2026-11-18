@@ -58,12 +58,14 @@ class JobRecoveryManagerTest {
   @Mock private SearchIndexJobDAO jobDAO;
   @Mock private SearchIndexPartitionDAO partitionDAO;
   @Mock private SearchReindexLockDAO lockDAO;
+  @Mock private CollectionDAO.AppExtensionTimeSeries appRuns;
 
   private JobRecoveryManager recoveryManager;
   private MockedStatic<ServerIdentityResolver> serverIdentityMock;
   private ServerIdentityResolver mockServerIdentityResolver;
 
   private static final String TEST_SERVER_ID = "test-server-1";
+  private static final String ABANDONED_JOB_ERROR = "Job abandoned due to server crash or shutdown";
 
   @BeforeEach
   void setUp() {
@@ -78,6 +80,7 @@ class JobRecoveryManagerTest {
     when(collectionDAO.searchIndexJobDAO()).thenReturn(jobDAO);
     when(collectionDAO.searchIndexPartitionDAO()).thenReturn(partitionDAO);
     when(collectionDAO.searchReindexLockDAO()).thenReturn(lockDAO);
+    when(collectionDAO.appExtensionTimeSeriesDao()).thenReturn(appRuns);
 
     recoveryManager = new JobRecoveryManager(collectionDAO);
   }
@@ -154,6 +157,9 @@ class JobRecoveryManagerTest {
 
     when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
     when(lockDAO.getLockInfo(anyString())).thenReturn(null);
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    stubFailIfUnchanged(1);
 
     AggregatedStatsRecord stats = new AggregatedStatsRecord(10000, 5000, 4900, 100, 2, 1, 1, 0, 0);
     when(partitionDAO.getAggregatedStats(jobId.toString())).thenReturn(stats);
@@ -165,17 +171,17 @@ class JobRecoveryManagerTest {
     assertEquals(1, result.jobsMarkedFailed());
 
     verify(jobDAO)
-        .update(
+        .failIfUnchanged(
             eq(jobId.toString()),
-            eq(IndexJobStatus.FAILED.name()),
+            eq(IndexJobStatus.RUNNING.name()),
+            eq(jobRecord.updatedAt()),
+            eq(5000L),
+            eq(4900L),
+            eq(100L),
             anyLong(),
-            anyLong(),
-            anyLong(),
-            any(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyString());
+            eq(ABANDONED_JOB_ERROR));
+    verify(partitionDAO).cancelPendingPartitions(jobId.toString());
+    verify(lockDAO).releaseLock("SEARCH_REINDEX_LOCK", jobId.toString());
   }
 
   @Test
@@ -218,18 +224,7 @@ class JobRecoveryManagerTest {
             anyLong(),
             anyLong(),
             any());
-    verify(jobDAO, never())
-        .update(
-            eq(jobId.toString()),
-            eq(IndexJobStatus.FAILED.name()),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            any(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            any());
+    verifyNeverFailed();
   }
 
   @Test
@@ -276,8 +271,12 @@ class JobRecoveryManagerTest {
     when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
     when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
 
+    // No lock at all: the coordinator that was building this job's partitions has stopped.
     when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
     when(lockDAO.getLockInfo(anyString())).thenReturn(null);
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    stubFailIfUnchanged(1);
 
     AggregatedStatsRecord stats = new AggregatedStatsRecord(0, 0, 0, 0, 0, 0, 0, 0, 0);
     when(partitionDAO.getAggregatedStats(jobId.toString())).thenReturn(stats);
@@ -287,6 +286,53 @@ class JobRecoveryManagerTest {
     assertEquals(1, result.orphanedJobsFound());
     assertEquals(0, result.jobsRecovered());
     assertEquals(1, result.jobsMarkedFailed());
+  }
+
+  @Test
+  void testStartupRecovery_DoesNotFailJobWrittenAfterTheSweepReadIt() {
+    // Between this sweep's read and its write, the job's coordinator, a worker or another server
+    // wrote the row. The compare-and-swap misses, and nothing else is torn down: no partitions
+    // cancelled and no app run ended.
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.INITIALIZING);
+    when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
+    when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    when(lockDAO.getLockInfo(anyString())).thenReturn(null);
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    stubFailIfUnchanged(0);
+
+    JobRecoveryManager.RecoveryResult result = recoveryManager.performStartupRecovery();
+
+    assertEquals(1, result.orphanedJobsFound());
+    assertEquals(0, result.jobsMarkedFailed());
+    verify(partitionDAO, never()).cancelPendingPartitions(anyString());
+    verify(appRuns, never())
+        .markRunningEntriesInterrupted(any(), anyString(), anyLong(), anyLong());
+    verify(lockDAO).releaseLock("SEARCH_REINDEX_LOCK", jobId.toString());
+  }
+
+  @Test
+  void testStartupRecovery_EndsOnlyAppRunsThatStartedBeforeTheAbandonedJob() {
+    // The run that created the job started before it. A run that started afterwards, such as the
+    // one whose start ran this sweep, is not the abandoned one and keeps running.
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.INITIALIZING);
+    when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
+    when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
+    when(lockDAO.getLockInfo(anyString())).thenReturn(null);
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    stubFailIfUnchanged(1);
+
+    recoveryManager.performStartupRecovery();
+
+    verify(appRuns)
+        .markRunningEntriesInterrupted(
+            eq(List.of("SearchIndexingApplication")),
+            anyString(),
+            anyLong(),
+            eq(jobRecord.createdAt()));
   }
 
   @Test
@@ -399,23 +445,41 @@ class JobRecoveryManagerTest {
     when(jobDAO.findByStatusesWithLimit(any(), eq(1))).thenReturn(List.of(jobRecord));
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(100, 40, 35, 5, 1, 0, 0, 0, 0));
+    stubFailIfUnchanged(1);
 
     Optional<SearchIndexJob> result = recoveryManager.checkForBlockingJob();
 
     assertFalse(result.isPresent());
     verify(jobDAO)
-        .update(
+        .failIfUnchanged(
             eq(jobId.toString()),
-            eq(IndexJobStatus.FAILED.name()),
+            eq(IndexJobStatus.STOPPING.name()),
+            eq(staleUpdateTime),
             eq(40L),
             eq(35L),
             eq(5L),
-            any(),
-            anyLong(),
-            anyLong(),
             anyLong(),
             eq("Force-completed: stuck in STOPPING state"));
     verify(lockDAO).releaseLock("SEARCH_REINDEX_LOCK", jobId.toString());
+  }
+
+  @Test
+  void testCheckForBlockingJob_StoppingJobThatFinishedMeanwhileKeepsItsOutcome() {
+    // The coordinator finished stopping after this check read the job. The force-complete write
+    // misses, so neither the job's outcome nor its lock is touched.
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJobRecord jobRecord =
+        createJobRecordWithUpdateTime(
+            jobId,
+            IndexJobStatus.STOPPING,
+            System.currentTimeMillis() - TimeUnit.MINUTES.toMillis(1));
+    when(jobDAO.findByStatusesWithLimit(any(), eq(1))).thenReturn(List.of(jobRecord));
+    stubFailIfUnchanged(0);
+
+    recoveryManager.checkForBlockingJob();
+
+    verify(partitionDAO, never()).cancelPendingPartitions(anyString());
+    verify(lockDAO, never()).releaseLock(anyString(), anyString());
   }
 
   @Test
@@ -440,18 +504,7 @@ class JobRecoveryManagerTest {
 
     assertTrue(result.isPresent());
     assertEquals(jobId, result.get().getId());
-    verify(jobDAO, never())
-        .update(
-            eq(jobId.toString()),
-            eq(IndexJobStatus.FAILED.name()),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            any(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyString());
+    verifyNeverFailed();
   }
 
   @Test
@@ -478,9 +531,14 @@ class JobRecoveryManagerTest {
   }
 
   @Test
-  void testStartupRecovery_FailsJobWhenLockBelongsToDifferentJob() {
+  void testStartupRecovery_LeavesStaleJobAloneWhileALiveLockItCannotAttributeIsHeld() {
+    // Regression for #38016. A coordinator building a job's partitions held the reindex lock under
+    // a placeholder id the sweep cannot tie to the job, and nothing touched the job's updatedAt
+    // until it finished, so after 10 minutes the sweep failed the live job as "abandoned due to
+    // server crash or shutdown". A live lock the sweep cannot take may be that coordinator's, so
+    // the job is left for a later sweep.
     UUID jobId = UUID.randomUUID();
-    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.RUNNING);
+    SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.INITIALIZING);
     long now = System.currentTimeMillis();
 
     when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
@@ -490,21 +548,21 @@ class JobRecoveryManagerTest {
             new SearchReindexLockDAO.LockInfo(
                 "SEARCH_REINDEX_LOCK",
                 UUID.randomUUID().toString(),
-                "other-server",
-                now - TimeUnit.MINUTES.toMillis(5),
-                now - 1000,
-                now + TimeUnit.MINUTES.toMillis(5)));
-    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
-        .thenReturn(List.of());
-    when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
-        .thenReturn(List.of());
-    when(partitionDAO.getAggregatedStats(jobId.toString()))
-        .thenReturn(new AggregatedStatsRecord(100, 80, 70, 10, 1, 1, 0, 0, 0));
+                "coordinator-server",
+                now - TimeUnit.MINUTES.toMillis(4),
+                now - TimeUnit.MINUTES.toMillis(4),
+                now + TimeUnit.MINUTES.toMillis(1)));
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(false);
 
     JobRecoveryManager.RecoveryResult result = recoveryManager.performStartupRecovery();
 
     assertEquals(1, result.orphanedJobsFound());
-    assertEquals(1, result.jobsMarkedFailed());
+    assertEquals(0, result.jobsMarkedFailed());
+    verifyNeverFailed();
+    verify(partitionDAO, never()).cancelPendingPartitions(anyString());
+    verify(appRuns, never())
+        .markRunningEntriesInterrupted(any(), anyString(), anyLong(), anyLong());
   }
 
   @Test
@@ -561,6 +619,9 @@ class JobRecoveryManagerTest {
                 now - TimeUnit.MINUTES.toMillis(20),
                 now - TimeUnit.MINUTES.toMillis(16),
                 now - TimeUnit.MINUTES.toMillis(11)));
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    stubFailIfUnchanged(1);
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PENDING.name()))
         .thenReturn(List.of());
     when(partitionDAO.findByJobIdAndStatus(jobId.toString(), PartitionStatus.PROCESSING.name()))
@@ -663,6 +724,9 @@ class JobRecoveryManagerTest {
     when(jobDAO.findByStatusesWithLimit(any(), eq(10))).thenReturn(List.of(jobRecord));
     when(lockDAO.cleanupExpiredLocks(anyLong())).thenReturn(0);
     when(lockDAO.getLockInfo(anyString())).thenReturn(null);
+    when(lockDAO.tryAcquireLock(anyString(), anyString(), anyString(), anyLong(), anyLong()))
+        .thenReturn(true);
+    stubFailIfUnchanged(1);
     when(partitionDAO.getAggregatedStats(jobId.toString()))
         .thenReturn(new AggregatedStatsRecord(50, 10, 8, 2, 1, 0, 0, 0, 0));
 
@@ -714,14 +778,29 @@ class JobRecoveryManagerTest {
     assertEquals(1, result.jobsRecovered());
     assertEquals(0, result.jobsMarkedFailed());
 
+    verifyNeverFailed();
+  }
+
+  private void stubFailIfUnchanged(int rowsUpdated) {
+    when(jobDAO.failIfUnchanged(
+            anyString(),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            anyString()))
+        .thenReturn(rowsUpdated);
+  }
+
+  private void verifyNeverFailed() {
     verify(jobDAO, never())
-        .update(
-            eq(jobId.toString()),
-            eq(IndexJobStatus.FAILED.name()),
+        .failIfUnchanged(
+            anyString(),
+            anyString(),
             anyLong(),
             anyLong(),
-            anyLong(),
-            any(),
             anyLong(),
             anyLong(),
             anyLong(),

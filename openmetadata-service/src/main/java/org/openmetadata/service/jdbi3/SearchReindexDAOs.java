@@ -119,6 +119,43 @@ public interface SearchReindexDAOs {
         @Bind("updatedAt") long updatedAt,
         @Bind("errorMessage") String errorMessage);
 
+    /**
+     * Fails a job only if nothing has written it since the caller read it: its status and updatedAt
+     * must still be the ones the caller saw. Returns 0 otherwise, so a sweep acting on an old read
+     * cannot overwrite a job that a coordinator, a worker or another server has moved on.
+     */
+    @SqlUpdate(
+        "UPDATE search_index_job SET status = 'FAILED', processedRecords = :processedRecords, "
+            + "successRecords = :successRecords, failedRecords = :failedRecords, stats = NULL, "
+            + "completedAt = :now, updatedAt = :now, errorMessage = :errorMessage "
+            + "WHERE id = :id AND status = :readStatus AND updatedAt = :readUpdatedAt")
+    int failIfUnchanged(
+        @Bind("id") String id,
+        @Bind("readStatus") String readStatus,
+        @Bind("readUpdatedAt") long readUpdatedAt,
+        @Bind("processedRecords") long processedRecords,
+        @Bind("successRecords") long successRecords,
+        @Bind("failedRecords") long failedRecords,
+        @Bind("now") long now,
+        @Bind("errorMessage") String errorMessage);
+
+    /**
+     * Moves a job from INITIALIZING to READY. Returns 0 when the job stopped being INITIALIZING
+     * while its partitions were built, so a job failed in the meantime stays failed.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE search_index_job SET status = 'READY', stats = :stats, updatedAt = :updatedAt "
+                + "WHERE id = :id AND status = 'INITIALIZING'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE search_index_job SET status = 'READY', stats = :stats::jsonb, updatedAt = :updatedAt "
+                + "WHERE id = :id AND status = 'INITIALIZING'",
+        connectionType = POSTGRES)
+    int markReadyIfInitializing(
+        @Bind("id") String id, @BindJson("stats") String stats, @Bind("updatedAt") long updatedAt);
+
     @SqlQuery("SELECT * FROM search_index_job WHERE id = :id")
     @RegisterRowMapper(SearchIndexJobMapper.class)
     SearchIndexJobRecord findById(@Bind("id") String id);
