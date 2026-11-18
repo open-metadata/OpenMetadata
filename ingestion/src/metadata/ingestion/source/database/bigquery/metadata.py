@@ -137,7 +137,9 @@ from metadata.utils.sqlalchemy_utils import is_complex_type
 # being processed concurrently and must be keyed by the fully qualified name.
 DATASET_OBJ_CACHE_SIZE = 512
 TABLE_OBJ_CACHE_SIZE = 2048
-TABLE_DDL_CACHE_SIZE = 2048
+# One entry per dataset holding every table's DDL. Keep it well above the schema thread
+# count; an evicted dataset is re-fetched on the next read, never served as missing.
+DATASET_DDL_CACHE_SIZE = 64
 
 # google-cloud-bigquery has no ExternalSourceFormat member for this and the REST reference
 # for externalDataConfiguration.sourceFormat omits it, so it has to be a literal.
@@ -294,7 +296,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
-        self._table_ddl_cache: LRUCache = LRUCache(capacity=TABLE_DDL_CACHE_SIZE)
+        self._table_ddl_cache: LRUCache = LRUCache(capacity=DATASET_DDL_CACHE_SIZE)
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
@@ -879,8 +881,23 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
         if not self.source_config.includeDDL:
             return
-
         database = self.context.get().database
+        # Keyed by project.dataset: the databaseSchema node runs multi-threaded on one
+        # shared source instance, so each dataset's DDLs must live under their own key.
+        self._table_ddl_cache.put(f"{database}.{schema_name}", self._fetch_table_ddls(database, schema_name))
+
+    def _get_table_ddls(self, schema_name: str) -> dict[str, str]:
+        """Return the dataset's DDLs, re-fetching them if the entry was evicted."""
+        database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
+        try:
+            return self._table_ddl_cache.get(f"{database}.{schema_name}")
+        except KeyError:
+            ddls = self._fetch_table_ddls(database, schema_name)
+            self._table_ddl_cache.put(f"{database}.{schema_name}", ddls)
+            return ddls
+
+    def _fetch_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
+        """Fetch every table's DDL in the dataset; an empty dict when the query fails."""
 
         try:
             dataset_obj = self.get_dataset_obj(schema_name)
@@ -908,14 +925,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             )
         )
 
+        ddls: dict[str, str] = {}
         try:
             with self.engine.connect() as conn:
                 results = conn.execute(text(query)).all()
-            # Key by fully qualified name (project.dataset.table): the databaseSchema
-            # node runs multi-threaded on one shared source instance, so a bare-name
-            # key would let a concurrent dataset's prefetch clobber this one's DDLs.
-            for row in results:
-                self._table_ddl_cache.put(f"{database}.{schema_name}.{row.table_name}", row.ddl)
+            ddls = {row.table_name: row.ddl for row in results}
         except Exception as exc:
             logger.warning(
                 "Error pre-fetching table DDLs for '%s.%s': %s",
@@ -924,6 +938,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 exc,
             )
             logger.debug(traceback.format_exc())
+        return ddls
 
     def _register_tag(
         self,
@@ -1331,13 +1346,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     )
                     values = self._sharded_table_metadata(query, table_name)
                     return values["ddl"] if values else None
-                # Read by fully qualified name so concurrent datasets on the same
-                # shared source instance cannot return each other's DDLs.
-                ddl_key = f"{self.context.get().database}.{schema_name}.{table_name}"  # pyright: ignore[reportAttributeAccessIssue]
-                try:
-                    return self._table_ddl_cache.get(ddl_key)
-                except KeyError:
-                    return None
+                return self._get_table_ddls(schema_name).get(table_name)
         except NotImplementedError:
             logger.warning(f"Schema definition not implemented for {schema_name}.{table_name}")
         except Exception as exc:
