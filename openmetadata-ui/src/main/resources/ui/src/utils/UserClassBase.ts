@@ -22,6 +22,7 @@ class UserClassBase {
   }
 
   // An icon component wins over a logo URL: it follows the theme and needs no fetch.
+  // ADR:2026-11-18-a-bot-avatar-icon-is-a-user-class-base-hook
   public getBotIcon(botName: string): BotIcon | undefined {
     return this.botIcons[botName];
   }
