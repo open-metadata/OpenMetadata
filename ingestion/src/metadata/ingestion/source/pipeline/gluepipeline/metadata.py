@@ -10,12 +10,12 @@
 #  limitations under the License.
 
 """
-Glue pipeline source to extract metadata
+Glue pipeline source to extract metadata and lineage.
 """
 
 import re
 import traceback
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 from urllib.parse import urlparse
 
@@ -55,12 +55,20 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.pipeline.gluepipeline.context_builder import (
+    GRAPH,
+    JOB_TYPE,
+    MAX_INSPECTED_RUNS,
+    NAME,
+    NODES,
+    WorkflowSnapshot,
+    build_parameter_contexts,
+)
 from metadata.ingestion.source.pipeline.gluepipeline.models import (
     AmazonRedshift,
     CatalogSource,
     JDBCSource,
     JobNodeResponse,
-    JobNodes,
     S3Source,
     S3Target,
     SnowflakeNode,
@@ -68,10 +76,16 @@ from metadata.ingestion.source.pipeline.gluepipeline.models import (
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
     CatalogRef,
     JDBCRef,
+    LineageGroup,
     ParameterContext,
+    Resolved,
+    S3Ref,
     ScriptLineageResult,
+    ScriptRef,
+    Side,
     SnowflakeRef,
     parse_glue_script_slices,
+    parse_script_lineage_groups,
 )
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -80,17 +94,10 @@ from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
-GRAPH = "Graph"
-NODES = "Nodes"
-NAME = "Name"
-JOB_TYPE = "JOB"
-TRIGGER_TYPE = "TRIGGER"
-
-# Cap inspected workflow/job runs and cache entries per ADR:2026-11-13-glue-parameterized-lineage-evaluates-per-run-context
-MAX_INSPECTED_RUNS = 10
 GLUE_CONNECTION_CACHE_SIZE = 256
 JOB_RUNS_CACHE_SIZE = 256
 SCRIPT_CACHE_SIZE = 128
+RESOLUTION_CACHE_SIZE = 512
 
 STATUS_MAP = {
     "cancelled": StatusType.Failed,
@@ -126,10 +133,72 @@ STORAGE_MODEL_MAP = {
 }
 
 
-def _clean_str_dict(raw: Any) -> dict[str, str]:
-    if not isinstance(raw, dict):
-        return {}
-    return {str(k): str(v) for k, v in raw.items() if k is not None and v is not None}
+def _append_unique_edge(
+    requests: list[AddLineageRequest],
+    seen_edges: set[tuple[str, str]],
+    from_ref: EntityReference,
+    to_ref: EntityReference,
+    details: LineageDetails,
+) -> None:
+    edge_key = (model_str(from_ref.id), model_str(to_ref.id))
+    if edge_key in seen_edges:
+        return
+    seen_edges.add(edge_key)
+    requests.append(AddLineageRequest(edge=EntitiesEdge(fromEntity=from_ref, toEntity=to_ref, lineageDetails=details)))
+
+
+def _plan_two_sided_group_edges(
+    groups: Sequence[LineageGroup[EntityReference]],
+    pipeline_ref: EntityReference,
+    requests: list[AddLineageRequest],
+    seen_edges: set[tuple[str, str]],
+) -> tuple[set[str], set[str]]:
+    table_lineage_details = LineageDetails(
+        pipeline=pipeline_ref,
+        source=LineageSource.PipelineLineage,
+    )
+    linked_sources: set[str] = set()
+    linked_targets: set[str] = set()
+    for group in groups:
+        if not (isinstance(group.sources, Resolved) and isinstance(group.targets, Resolved)):
+            continue
+        for source in group.sources.refs:
+            for target in group.targets.refs:
+                if model_str(source.id) == model_str(target.id):
+                    continue
+                linked_sources.add(model_str(source.id))
+                linked_targets.add(model_str(target.id))
+                _append_unique_edge(requests, seen_edges, source, target, table_lineage_details)
+    return linked_sources, linked_targets
+
+
+def plan_lineage_edges(
+    groups: Sequence[LineageGroup[EntityReference]],
+    pipeline_ref: EntityReference,
+) -> list[AddLineageRequest]:
+    """
+    Pure edge planner over typed `LineageGroup[EntityReference]` contracts:
+    - Either side `"unresolved"` -> skip group.
+    - Both sides `Resolved` -> `Table -> Table` edges carrying `pipeline_ref`.
+    - `sources == "absent"`, `targets` `Resolved` -> `Pipeline -> Table` edges (unless target already linked).
+    - `targets == "absent"`, `sources` `Resolved` -> `Table -> Pipeline` edges (unless source already linked).
+    """
+    direct_lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
+    seen_edges: set[tuple[str, str]] = set()
+    requests: list[AddLineageRequest] = []
+    linked_sources, linked_targets = _plan_two_sided_group_edges(groups, pipeline_ref, requests, seen_edges)
+
+    for group in groups:
+        if group.sources == "absent" and isinstance(group.targets, Resolved):
+            for target in group.targets.refs:
+                if model_str(target.id) not in linked_targets:
+                    _append_unique_edge(requests, seen_edges, pipeline_ref, target, direct_lineage_details)
+        elif group.targets == "absent" and isinstance(group.sources, Resolved):
+            for source in group.sources.refs:
+                if model_str(source.id) not in linked_sources:
+                    _append_unique_edge(requests, seen_edges, source, pipeline_ref, direct_lineage_details)
+
+    return requests
 
 
 class GluepipelineSource(PipelineServiceSource):
@@ -222,49 +291,78 @@ class GluepipelineSource(PipelineServiceSource):
         """
         aggregated: dict[str, list[EntityReference]] = {"sources": [], "targets": []}
         seen_ids: dict[str, set[str]] = {"sources": set(), "targets": set()}
-        for group in self._get_job_lineage_groups(job, workflow_details):
-            for direction in ("sources", "targets"):
-                for ref in group[direction]:
+        snapshot_holder: list[WorkflowSnapshot] = []
+        for group in self._get_job_lineage_groups(job, workflow_details, snapshot_holder=snapshot_holder):
+            if isinstance(group.sources, Resolved):
+                for ref in group.sources.refs:
                     ref_id = model_str(ref.id)
-                    if ref_id not in seen_ids[direction]:
-                        seen_ids[direction].add(ref_id)
-                        aggregated[direction].append(ref)
+                    if ref_id not in seen_ids["sources"]:
+                        seen_ids["sources"].add(ref_id)
+                        aggregated["sources"].append(ref)
+            if isinstance(group.targets, Resolved):
+                for ref in group.targets.refs:
+                    ref_id = model_str(ref.id)
+                    if ref_id not in seen_ids["targets"]:
+                        seen_ids["targets"].add(ref_id)
+                        aggregated["targets"].append(ref)
         return aggregated
+
+    def _collect_workflow_snapshot(self, workflow_details: dict | None) -> WorkflowSnapshot:
+        runs, fetch_ok = self._get_workflow_runs_for_lineage(workflow_details)
+        return WorkflowSnapshot.from_workflow_details(workflow_details, runs, runs_fetch_ok=fetch_ok)
 
     def _get_job_lineage_groups(
         self,
         job: str,
         workflow_details: dict | None = None,
-    ) -> list[dict[str, Any]]:
-        """
-        Resolve `(sources, targets)` groups per parameter context and per loop slice
-        so multi-run jobs never cross-link sources from one run with targets from another.
-        Each group also records `declared_sources`/`declared_targets`: whether the slice
-        declares that side at all, so a two-sided slice that resolves only one side is
-        skipped instead of degraded to a one-sided pipeline edge.
-        """
+        *,
+        snapshot_holder: list[WorkflowSnapshot] | None = None,
+    ) -> list[LineageGroup[EntityReference]]:
         try:
             job_details = JobNodeResponse.model_validate(self.glue.get_job(JobName=job)).Job
             if job_details and job_details.config_nodes:
                 lineage_details: dict[str, list[EntityReference]] = {"sources": [], "targets": []}
                 declared_flags: dict[str, bool] = {"declared_sources": False, "declared_targets": False}
                 self._extract_visual_etl_lineage(job_details.config_nodes, lineage_details, declared_flags)
-                group: dict[str, Any] = {**lineage_details, **declared_flags}
-                if (
-                    lineage_details["sources"]
-                    or lineage_details["targets"]
-                    or declared_flags["declared_sources"]
-                    or declared_flags["declared_targets"]
-                ):
-                    return [group]
-                return []
+                sources = self._entity_side(lineage_details["sources"], declared=declared_flags["declared_sources"])
+                targets = self._entity_side(lineage_details["targets"], declared=declared_flags["declared_targets"])
+                if sources == "absent" and targets == "absent":
+                    return []
+                return [
+                    LineageGroup(
+                        execution_id=f"{job}:visual_etl",
+                        dependency_id="visual_etl",
+                        sources=sources,
+                        targets=targets,
+                    )
+                ]
             if job_details and job_details.command and job_details.command.ScriptLocation:
-                contexts = self._build_parameter_contexts(job, job_details, workflow_details)
+                if snapshot_holder is not None:
+                    if not snapshot_holder:
+                        snapshot_holder.append(self._collect_workflow_snapshot(workflow_details))
+                    snapshot = snapshot_holder[0]
+                else:
+                    snapshot = self._collect_workflow_snapshot(workflow_details)
+                job_runs = self._get_job_runs_for_lineage(job)
+                contexts = build_parameter_contexts(job, job_details, snapshot, job_runs)
                 return self._extract_script_lineage_groups(job_details.command.ScriptLocation, contexts)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to get lineage details for job : %s due to : %s", job, exc)
         return []
+
+    @staticmethod
+    def _entity_side(entities: Sequence[EntityReference], *, declared: bool) -> Side[EntityReference]:
+        deduped: list[EntityReference] = []
+        seen: set[tuple[str | None, str]] = set()
+        for entity in entities:
+            key = (entity.type, model_str(entity.id))
+            if key not in seen:
+                seen.add(key)
+                deduped.append(entity)
+        if deduped:
+            return Resolved(tuple(deduped))
+        return "unresolved" if declared else "absent"
 
     def _get_job_runs(self, job_name: str) -> list[dict]:
         if job_name in self._job_runs_cache:
@@ -311,242 +409,6 @@ class GluepipelineSource(PipelineServiceSource):
                 runs.append(last_run)
         return runs[:MAX_INSPECTED_RUNS], fetch_ok
 
-    @staticmethod
-    def _extract_trigger_arguments(
-        job_name: str, workflow_details: dict | None
-    ) -> tuple[dict[str, dict[str, str]], list[dict[str, str]]]:
-        """
-        Trigger arguments kept per trigger, never merged across triggers: a run started by
-        one trigger must not inherit another trigger's arguments. Returns the arguments by
-        trigger name plus one deduplicated argument dict per trigger, in trigger order.
-        """
-        by_trigger: dict[str, dict[str, str]] = {}
-        ordered_sets: list[dict[str, str]] = []
-        if not isinstance(workflow_details, dict):
-            return by_trigger, ordered_sets
-        graph = workflow_details.get(GRAPH)
-        nodes = graph.get(NODES, []) if isinstance(graph, dict) else []
-        if not isinstance(nodes, list):
-            return by_trigger, ordered_sets
-        for node in nodes:
-            if not isinstance(node, dict) or node.get("Type") != TRIGGER_TYPE:
-                continue
-            trigger_details = node.get("TriggerDetails")
-            trigger = trigger_details.get("Trigger") if isinstance(trigger_details, dict) else None
-            if not isinstance(trigger, dict):
-                continue
-            trigger_name = trigger.get("Name") or node.get(NAME)
-            actions = trigger.get("Actions", [])
-            if not isinstance(actions, list):
-                continue
-            trigger_args: dict[str, str] = {}
-            has_matching_action = False
-            for action in actions:
-                if isinstance(action, dict) and action.get("JobName") == job_name:
-                    has_matching_action = True
-                    trigger_args.update(_clean_str_dict(action.get("Arguments")))
-            if not has_matching_action:
-                continue
-            if isinstance(trigger_name, str) and trigger_name:
-                if trigger_name in by_trigger:
-                    by_trigger[trigger_name].update(trigger_args)
-                else:
-                    by_trigger[trigger_name] = trigger_args
-                    ordered_sets.append(trigger_args)
-            else:
-                ordered_sets.append(trigger_args)
-        deduped_sets: list[dict[str, str]] = []
-        seen_sets: set[tuple[tuple[str, str], ...]] = set()
-        for arg_set in ordered_sets:
-            set_key = tuple(sorted(arg_set.items()))
-            if set_key not in seen_sets:
-                seen_sets.add(set_key)
-                deduped_sets.append(dict(arg_set))
-        return by_trigger, deduped_sets
-
-    @staticmethod
-    def _extract_workflow_run_job_runs(wf_run: dict, job_name: str) -> list[dict]:
-        graph = wf_run.get(GRAPH)
-        nodes = graph.get(NODES, []) if isinstance(graph, dict) else []
-        if not isinstance(nodes, list):
-            return []
-        matched: list[dict] = []
-        for node in nodes:
-            if not isinstance(node, dict) or node.get("Type") != JOB_TYPE or node.get(NAME) != job_name:
-                continue
-            job_details = node.get("JobDetails")
-            jr_list = job_details.get("JobRuns", []) if isinstance(job_details, dict) else []
-            if isinstance(jr_list, list):
-                matched.extend(jr for jr in jr_list if isinstance(jr, dict))
-        return matched
-
-    @staticmethod
-    def _synthetic_workflow_args(workflow_name: Any, wf_run_id: Any) -> dict[str, str]:
-        synthetic_args: dict[str, str] = {}
-        if isinstance(workflow_name, str) and workflow_name:
-            synthetic_args["--WORKFLOW_NAME"] = workflow_name
-        if isinstance(wf_run_id, str) and wf_run_id:
-            synthetic_args["--WORKFLOW_RUN_ID"] = wf_run_id
-        return synthetic_args
-
-    def _build_parameter_contexts(
-        self,
-        job_name: str,
-        job_details: JobNodes,
-        workflow_details: dict | None,
-    ) -> list[ParameterContext]:
-        default_job_args = _clean_str_dict(job_details.default_arguments)
-        non_overridable_args = _clean_str_dict(job_details.non_overridable_arguments)
-        trigger_args_by_name, trigger_arg_sets = self._extract_trigger_arguments(job_name, workflow_details)
-
-        default_run_props = (
-            _clean_str_dict(workflow_details.get("DefaultRunProperties")) if isinstance(workflow_details, dict) else {}
-        )
-        workflow_name = workflow_details.get(NAME) if isinstance(workflow_details, dict) else None
-
-        wf_runs, wf_runs_fetch_ok = self._get_workflow_runs_for_lineage(workflow_details)
-        job_runs = self._get_job_runs_for_lineage(job_name)
-
-        job_runs_by_id = {jr["Id"]: jr for jr in job_runs if isinstance(jr.get("Id"), str)}
-        job_runs_by_wf_run: dict[str, list[dict]] = {}
-        for jr in job_runs:
-            jr_args = _clean_str_dict(jr.get("Arguments"))
-            wf_id = jr_args.get("--WORKFLOW_RUN_ID") or jr_args.get("WORKFLOW_RUN_ID")
-            if wf_id:
-                job_runs_by_wf_run.setdefault(wf_id, []).append(jr)
-
-        contexts: list[ParameterContext] = []
-        seen: set[ParameterContext] = set()
-        matched_jr_ids: set[str] = set()
-
-        def add_ctx(j_args: dict[str, str], r_props: dict[str, str], *, run_props_opaque: bool = False) -> None:
-            if len(contexts) >= MAX_INSPECTED_RUNS:
-                return
-            # every context path ends here, so NonOverridableArguments win over run arguments in all of them
-            ctx = ParameterContext.from_mappings(
-                job_args={**j_args, **non_overridable_args},
-                run_props=r_props,
-                run_props_opaque=run_props_opaque,
-            )
-            if ctx not in seen:
-                seen.add(ctx)
-                contexts.append(ctx)
-
-        for wf_run in wf_runs:
-            wf_run_id = wf_run.get("WorkflowRunId")
-            wf_run_props = wf_run.get("WorkflowRunProperties") or wf_run.get("RunProperties")
-            wf_props = {
-                **default_run_props,
-                **_clean_str_dict(wf_run_props),
-            }
-            wf_run_props_opaque = not wf_runs_fetch_ok and not isinstance(wf_run_props, dict)
-            synthetic_args = self._synthetic_workflow_args(workflow_name, wf_run_id)
-
-            graph_jrs = self._extract_workflow_run_job_runs(wf_run, job_name)
-            linked_jrs = graph_jrs or (job_runs_by_wf_run.get(wf_run_id, []) if isinstance(wf_run_id, str) else [])
-
-            if not linked_jrs and isinstance(wf_run.get(GRAPH), dict):
-                # The run graph shows this job produced no job run in this workflow run,
-                # so pairing its run properties with trigger arguments would fabricate lineage.
-                continue
-
-            if linked_jrs:
-                for jr in linked_jrs[:MAX_INSPECTED_RUNS]:
-                    jr_id = jr.get("Id")
-                    full_jr = job_runs_by_id.get(jr_id, {}) if isinstance(jr_id, str) else {}
-                    if isinstance(jr_id, str):
-                        matched_jr_ids.add(jr_id)
-                    trig_name = jr.get("TriggerName") or full_jr.get("TriggerName")
-                    trig_args = trigger_args_by_name.get(trig_name, {}) if isinstance(trig_name, str) else {}
-                    jr_args = {**_clean_str_dict(full_jr.get("Arguments")), **_clean_str_dict(jr.get("Arguments"))}
-                    effective_args = {**synthetic_args, **default_job_args, **trig_args, **jr_args}
-                    add_ctx(
-                        effective_args,
-                        wf_props,
-                        run_props_opaque=wf_run_props_opaque,
-                    )
-            else:
-                for trig_args in trigger_arg_sets or [{}]:
-                    effective_args = {**synthetic_args, **default_job_args, **trig_args}
-                    add_ctx(
-                        effective_args,
-                        wf_props,
-                        run_props_opaque=wf_run_props_opaque,
-                    )
-
-        self._add_unmatched_job_run_contexts(
-            add_ctx,
-            job_runs,
-            matched_jr_ids,
-            default_job_args,
-            default_run_props,
-            trigger_args_by_name,
-            workflow_name,
-            wf_runs_fetch_ok,
-        )
-
-        if not contexts:
-            for trig_args in trigger_arg_sets or [{}]:
-                add_ctx(
-                    {**default_job_args, **trig_args},
-                    default_run_props,
-                    run_props_opaque=not wf_runs_fetch_ok,
-                )
-
-        return contexts
-
-    @staticmethod
-    def _is_other_workflow_job_run(
-        jr_workflow_name: str | None,
-        trig_name: Any,
-        trigger_args_by_name: dict[str, dict[str, str]],
-        workflow_name: str | None,
-    ) -> bool:
-        """A job shared across workflows: runs of another workflow (or of an unknown trigger
-        outside this workflow) must not leak into this pipeline's lineage."""
-        if not (isinstance(workflow_name, str) and workflow_name):
-            return False
-        if jr_workflow_name and jr_workflow_name != workflow_name:
-            return True
-        return bool(
-            isinstance(trig_name, str)
-            and trig_name
-            and trigger_args_by_name
-            and trig_name not in trigger_args_by_name
-            and jr_workflow_name != workflow_name
-        )
-
-    def _add_unmatched_job_run_contexts(
-        self,
-        add_ctx: Callable[..., None],
-        job_runs: list[dict],
-        matched_jr_ids: set[str],
-        default_job_args: dict[str, str],
-        default_run_props: dict[str, str],
-        trigger_args_by_name: dict[str, dict[str, str]],
-        workflow_name: str | None,
-        wf_runs_fetch_ok: bool,
-    ) -> None:
-        """Contexts for inspected job runs not linked to an inspected workflow run."""
-        for jr in job_runs:
-            jr_id = jr.get("Id")
-            if isinstance(jr_id, str) and jr_id in matched_jr_ids:
-                continue
-            jr_args = _clean_str_dict(jr.get("Arguments"))
-            jr_workflow_name = jr_args.get("--WORKFLOW_NAME") or jr_args.get("WORKFLOW_NAME")
-            jr_workflow_run_id = jr_args.get("--WORKFLOW_RUN_ID") or jr_args.get("WORKFLOW_RUN_ID")
-            trig_name = jr.get("TriggerName")
-            if self._is_other_workflow_job_run(jr_workflow_name, trig_name, trigger_args_by_name, workflow_name):
-                continue
-            trig_args = trigger_args_by_name.get(trig_name, {}) if isinstance(trig_name, str) else {}
-            effective_args = {**default_job_args, **trig_args, **jr_args}
-            if jr_workflow_run_id:
-                # The workflow run aged out of the inspected runs: its run properties are
-                # unknown, so they stay opaque instead of falling back to the defaults.
-                add_ctx(effective_args, {}, run_props_opaque=True)
-            else:
-                add_ctx(effective_args, default_run_props, run_props_opaque=not wf_runs_fetch_ok)
-
     def _extract_visual_etl_lineage(
         self, config_nodes: dict, lineage_details: dict, declared_flags: dict[str, bool] | None = None
     ):
@@ -589,12 +451,10 @@ class GluepipelineSource(PipelineServiceSource):
         table_model: AmazonRedshift | JDBCSource | CatalogSource | SnowflakeNode,
         lineage_details: dict,
     ):
-        # a Snowflake source of type "query" carries no table: nothing to link
         if not table_model.table_name:
             return
         direction = "sources" if key.endswith("Source") else "targets"
         if isinstance(table_model, SnowflakeNode):
-            # same resolver as script refs: every configured service, unique match only
             table_entity = self._resolve_snowflake_ref(
                 SnowflakeRef(
                     table=table_model.table_name,
@@ -634,56 +494,84 @@ class GluepipelineSource(PipelineServiceSource):
             logger.debug("No lineage found in script: %s", script_location)
             return
 
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] = {}
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] = LRUCache(maxsize=RESOLUTION_CACHE_SIZE)
         for slice_result in slices:
             self._resolve_slice_entities(slice_result, lineage_details, resolution_cache)
 
     def _extract_script_lineage_groups(
         self,
         script_location: str,
-        contexts: list[ParameterContext],
-    ) -> list[dict[str, Any]]:
+        contexts: Sequence[ParameterContext],
+    ) -> list[LineageGroup[EntityReference]]:
         script_content = self._download_s3_script(script_location)
         if not script_content:
             return []
 
-        groups: list[dict[str, Any]] = []
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] = {}
+        groups: list[LineageGroup[EntityReference]] = []
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] = LRUCache(maxsize=RESOLUTION_CACHE_SIZE)
         for ctx in contexts:
-            for slice_result in parse_glue_script_slices(script_content, context=ctx):
-                details: dict[str, list[EntityReference]] = {"sources": [], "targets": []}
-                self._resolve_slice_entities(slice_result, details, resolution_cache)
-                declared_sources = slice_result.has_source_calls or bool(
-                    slice_result.s3_sources
-                    or slice_result.catalog_sources
-                    or slice_result.jdbc_sources
-                    or slice_result.snowflake_sources
+            groups.extend(
+                LineageGroup(
+                    execution_id=raw_group.execution_id,
+                    dependency_id=raw_group.dependency_id,
+                    sources=self._resolve_script_side(raw_group.sources, resolution_cache),
+                    targets=self._resolve_script_side(raw_group.targets, resolution_cache),
                 )
-                declared_targets = slice_result.has_target_calls or bool(
-                    slice_result.s3_targets
-                    or slice_result.catalog_targets
-                    or slice_result.jdbc_targets
-                    or slice_result.snowflake_targets
-                )
-                if details["sources"] or details["targets"] or declared_sources or declared_targets:
-                    groups.append(
-                        {
-                            "sources": details["sources"],
-                            "targets": details["targets"],
-                            "declared_sources": declared_sources,
-                            "declared_targets": declared_targets,
-                        }
-                    )
+                for raw_group in parse_script_lineage_groups(script_content, context=ctx)
+            )
 
         if not groups:
             logger.debug("No lineage found in script: %s", script_location)
         return groups
 
+    def _resolve_script_side(
+        self,
+        side: Side[ScriptRef],
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None],
+    ) -> Side[EntityReference]:
+        if side == "absent":
+            return "absent"
+        if side == "unresolved":
+            return "unresolved"
+        resolved_entities: list[EntityReference] = []
+        for ref in side.refs:
+            entity = self._resolve_script_ref(ref, resolution_cache)
+            if entity is not None:
+                resolved_entities.append(entity)
+        return self._entity_side(resolved_entities, declared=True)
+
+    def _resolve_script_ref(
+        self,
+        ref: ScriptRef,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None = None,
+    ) -> EntityReference | None:
+        if isinstance(ref, S3Ref):
+            return self._resolve_cached(
+                resolution_cache, ("s3", ref.path), lambda s3_path=ref.path: self._resolve_s3_path(s3_path)
+            )
+        if isinstance(ref, CatalogRef):
+            return self._resolve_cached(
+                resolution_cache,
+                ("catalog", ref.database, ref.table),
+                lambda catalog_ref=ref: self._resolve_catalog_ref(catalog_ref),
+            )
+        if isinstance(ref, JDBCRef):
+            return self._resolve_cached(
+                resolution_cache,
+                ("jdbc", ref.connection_name, ref.jdbc_url, ref.database, ref.table),
+                lambda jdbc_ref=ref: self._resolve_jdbc_ref(jdbc_ref),
+            )
+        return self._resolve_cached(
+            resolution_cache,
+            ("snowflake", ref.table, ref.database, ref.schema),
+            lambda snowflake_ref=ref: self._resolve_snowflake_ref(snowflake_ref),
+        )
+
     def _resolve_slice_entities(
         self,
         result: ScriptLineageResult,
         lineage_details: dict,
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] | None = None,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None = None,
     ) -> None:
         self._resolve_s3_entities(result.s3_sources, lineage_details, "sources", resolution_cache)
         self._resolve_s3_entities(result.s3_targets, lineage_details, "targets", resolution_cache)
@@ -725,7 +613,7 @@ class GluepipelineSource(PipelineServiceSource):
 
     @staticmethod
     def _resolve_cached(
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] | None,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None,
         cache_key: tuple[Any, ...],
         resolver: Callable[[], EntityReference | None],
     ) -> EntityReference | None:
@@ -740,7 +628,7 @@ class GluepipelineSource(PipelineServiceSource):
         paths: list[str],
         lineage_details: dict,
         direction: str,
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] | None = None,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None = None,
     ):
         for path in paths:
             storage_entity = self._resolve_cached(
@@ -750,7 +638,6 @@ class GluepipelineSource(PipelineServiceSource):
 
     def _resolve_s3_path(self, path: str) -> EntityReference | None:
         try:
-            # Normalize: try both with and without trailing slash
             normalized = path.rstrip("/")
             container = self.metadata.es_search_container_by_path(full_path=normalized)
             if not container or not container[0]:
@@ -775,7 +662,7 @@ class GluepipelineSource(PipelineServiceSource):
         refs: list,
         lineage_details: dict,
         direction: str,
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] | None = None,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None = None,
     ):
         for ref in refs:
             table_entity = self._resolve_cached(
@@ -814,7 +701,7 @@ class GluepipelineSource(PipelineServiceSource):
         refs: list,
         lineage_details: dict,
         direction: str,
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] | None = None,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None = None,
     ):
         for ref in refs:
             table_entity = self._resolve_cached(
@@ -866,7 +753,7 @@ class GluepipelineSource(PipelineServiceSource):
         refs: list,
         lineage_details: dict,
         direction: str,
-        resolution_cache: dict[tuple[Any, ...], EntityReference | None] | None = None,
+        resolution_cache: LRUCache[tuple[Any, ...], EntityReference | None] | None = None,
     ):
         """
         Snowflake refs carry database and schema, so the first attempt is exact.
@@ -909,7 +796,6 @@ class GluepipelineSource(PipelineServiceSource):
 
     @staticmethod
     def _snowflake_lookup_attempts(ref: SnowflakeRef) -> list[tuple[str | None, str | None]]:
-        """Ordered (database, schema) pairs to try, most specific first, without repeats."""
         attempts = [(ref.database, ref.schema)]
         if ref.schema:
             attempts.append((None, ref.schema))
@@ -924,14 +810,6 @@ class GluepipelineSource(PipelineServiceSource):
     def _search_tables(
         self, table_name: str, database_name: str | None, schema_name: str | None
     ) -> dict[str, EntityReference]:
-        """
-        Existing tables matching the name in every configured service, by FQN.
-        The matches of every configured service are collected before deciding, so the
-        same table ingested from two Snowflake services is ambiguous rather than
-        resolved to whichever service is listed first. Each name is confirmed to
-        exist: when the search misses, fqn.build returns a name built from the
-        parts, which must not count as a second match.
-        """
         table_fqns: set[str] = set()
         for db_service_name in self.get_db_service_names() or ["*"]:
             try:
@@ -1022,8 +900,8 @@ class GluepipelineSource(PipelineServiceSource):
 
     def yield_pipeline_lineage_details(self, pipeline_details: Any) -> Iterable[Either[AddLineageRequest]]:
         """
-        Get lineage between pipeline and data sources, correlating sources and targets
-        per run context and supporting one-sided source->pipeline / pipeline->target jobs.
+        Emit correlated pipeline lineage edges across all jobs in `pipeline_details`,
+        collecting the workflow snapshot at most once per workflow.
         """
         try:
             pipeline_fqn = fqn.build(
@@ -1038,25 +916,13 @@ class GluepipelineSource(PipelineServiceSource):
                 return
 
             pipeline_ref = EntityReference(id=pipeline_entity.id, type="pipeline")
-            table_lineage_details = LineageDetails(
-                pipeline=pipeline_ref,
-                source=LineageSource.PipelineLineage,
-            )
-            direct_lineage_details = LineageDetails(source=LineageSource.PipelineLineage)
-            seen_edges: set[tuple[str, str]] = set()
-
-            all_groups: list[dict[str, Any]] = []
+            snapshot_holder: list[WorkflowSnapshot] = []
+            all_groups: list[LineageGroup[EntityReference]] = []
             for job in sorted(self.job_name_list):
-                all_groups.extend(self._get_job_lineage_groups(job, pipeline_details))
+                all_groups.extend(self._get_job_lineage_groups(job, pipeline_details, snapshot_holder=snapshot_holder))
 
-            linked_sources: set[str] = set()
-            linked_targets: set[str] = set()
-            yield from self._yield_two_sided_edges(
-                all_groups, seen_edges, table_lineage_details, linked_sources, linked_targets
-            )
-            yield from self._yield_one_sided_edges(
-                all_groups, seen_edges, pipeline_ref, direct_lineage_details, linked_sources, linked_targets
-            )
+            for request in plan_lineage_edges(all_groups, pipeline_ref):
+                yield Either(left=None, right=request)
 
         except Exception as exc:
             err_name = (
@@ -1072,78 +938,3 @@ class GluepipelineSource(PipelineServiceSource):
                 ),
                 right=None,
             )
-
-    @staticmethod
-    def _yield_lineage_edge(
-        seen_edges: set[tuple[str, str]],
-        from_ref: EntityReference,
-        to_ref: EntityReference,
-        details: LineageDetails,
-    ) -> Iterable[Either[AddLineageRequest]]:
-        edge_key = (model_str(from_ref.id), model_str(to_ref.id))
-        if edge_key in seen_edges:
-            return
-        seen_edges.add(edge_key)
-        yield Either(
-            left=None,
-            right=AddLineageRequest(edge=EntitiesEdge(fromEntity=from_ref, toEntity=to_ref, lineageDetails=details)),
-        )
-
-    @staticmethod
-    def _declared_sides(group: dict[str, Any], sources: list, targets: list) -> tuple[bool, bool]:
-        return (
-            bool(group.get("declared_sources", bool(sources))),
-            bool(group.get("declared_targets", bool(targets))),
-        )
-
-    def _yield_two_sided_edges(
-        self,
-        all_groups: list[dict[str, Any]],
-        seen_edges: set[tuple[str, str]],
-        table_lineage_details: LineageDetails,
-        linked_sources: set[str],
-        linked_targets: set[str],
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Two-sided slices first: both sides must resolve, otherwise the slice is skipped
-        rather than degraded to a fabricated one-sided pipeline edge."""
-        for group in all_groups:
-            sources: list[EntityReference] = group.get("sources") or []
-            targets: list[EntityReference] = group.get("targets") or []
-            declared_sources, declared_targets = self._declared_sides(group, sources, targets)
-            if not (declared_sources and declared_targets):
-                continue
-            if not sources or not targets:
-                continue
-            for source in sources:
-                for target in targets:
-                    if model_str(source.id) == model_str(target.id):
-                        continue
-                    linked_sources.add(model_str(source.id))
-                    linked_targets.add(model_str(target.id))
-                    yield from self._yield_lineage_edge(seen_edges, source, target, table_lineage_details)
-
-    def _yield_one_sided_edges(
-        self,
-        all_groups: list[dict[str, Any]],
-        seen_edges: set[tuple[str, str]],
-        pipeline_ref: EntityReference,
-        direct_lineage_details: LineageDetails,
-        linked_sources: set[str],
-        linked_targets: set[str],
-    ) -> Iterable[Either[AddLineageRequest]]:
-        """Genuinely one-sided slices link through the pipeline, unless the table is already
-        linked by a two-sided slice of this workflow."""
-        for group in all_groups:
-            sources: list[EntityReference] = group.get("sources") or []
-            targets: list[EntityReference] = group.get("targets") or []
-            declared_sources, declared_targets = self._declared_sides(group, sources, targets)
-            if declared_sources and declared_targets:
-                continue
-            if not declared_sources:
-                for target in targets:
-                    if model_str(target.id) not in linked_targets:
-                        yield from self._yield_lineage_edge(seen_edges, pipeline_ref, target, direct_lineage_details)
-            if not declared_targets:
-                for source in sources:
-                    if model_str(source.id) not in linked_sources:
-                        yield from self._yield_lineage_edge(seen_edges, source, pipeline_ref, direct_lineage_details)

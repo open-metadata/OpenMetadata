@@ -10,9 +10,11 @@
 #  limitations under the License.
 """Tests for parameterized AWS Glue script lineage (job arguments, workflow run properties, loops)."""
 
+import ast
 import datetime
 import logging
 import tracemalloc
+from pathlib import Path
 from typing import Any, cast
 from unittest.mock import MagicMock, patch
 from uuid import UUID, uuid4
@@ -29,17 +31,33 @@ from metadata.generated.schema.type.basic import EntityName, Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.source.pipeline.gluepipeline import script_parser as script_parser_module
+from metadata.ingestion.source.pipeline.gluepipeline.context_builder import (
+    WorkflowSnapshot,
+    build_parameter_contexts,
+)
 from metadata.ingestion.source.pipeline.gluepipeline.metadata import (
     MAX_INSPECTED_RUNS,
     GluepipelineSource,
+    plan_lineage_edges,
+)
+from metadata.ingestion.source.pipeline.gluepipeline.models import JobNodes
+from metadata.ingestion.source.pipeline.gluepipeline.script_evaluator import (
+    LineageGroup,
+    Resolved,
+    ScriptReader,
+    build_execution_slices,
+    parse_python_script,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
     CatalogRef,
     JDBCRef,
     ParameterContext,
+    S3Ref,
     SnowflakeRef,
     parse_glue_script,
     parse_glue_script_slices,
+    parse_script_lineage_groups,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.snowflake_parser import (
     MAX_EXPR_DEPTH,
@@ -405,7 +423,7 @@ df.write.format("snowflake").option("dbtable", f"CONTRACT_{mkt}").save()
     def test_workflow_run_properties_access_patterns(
         self, snippet: str, run_props: dict[str, str], expected_table: str
     ):
-        ctx = ParameterContext.from_mappings(run_props=run_props)
+        ctx = ParameterContext.from_mappings(run_props=run_props, workflow_name="wf", workflow_run_id="r1")
         _, targets = parse_snowflake_refs(snippet, context=ctx)
 
         assert targets == [SnowflakeRef(table=expected_table)]
@@ -862,8 +880,8 @@ import boto3
 from awsglue.utils import getResolvedOptions
 
 glue = boto3.client("glue")
-args = getResolvedOptions(sys.argv, ["env"])
-props = glue.get_workflow_run_properties(Name="wf", RunId="r0")["RunProperties"]
+args = getResolvedOptions(sys.argv, ["env", "WORKFLOW_NAME", "WORKFLOW_RUN_ID"])
+props = glue.get_workflow_run_properties(Name=args["WORKFLOW_NAME"], RunId=args["WORKFLOW_RUN_ID"])["RunProperties"]
 df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema", "CURATED").option(
     "dbtable", f"CONTRACT_{props['MARKET']}_{args['env'].upper()}"
 ).save()
@@ -1669,8 +1687,8 @@ from awsglue.utils import getResolvedOptions
 
 glue = boto3.client("glue")
 sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED"}
-args = getResolvedOptions(sys.argv, ["MARKET"])
-props = glue.get_workflow_run_properties(Name="wf", RunId="r0")["RunProperties"]
+args = getResolvedOptions(sys.argv, ["MARKET", "WORKFLOW_NAME", "WORKFLOW_RUN_ID"])
+props = glue.get_workflow_run_properties(Name=args["WORKFLOW_NAME"], RunId=args["WORKFLOW_RUN_ID"])["RunProperties"]
 
 df.write.format("snowflake").options(**sf_options).option("dbtable", f"PROP_{props.get('MARKET', 'US')}").save()
 df.write.format("snowflake").options(**sf_options).option("dbtable", f"ARG_{args.get('MARKET', 'SANDBOX')}").save()
@@ -2097,3 +2115,501 @@ df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema",
         assert sources == []
         assert targets == []
         assert peak < 262144
+
+
+class TestReviewerRegressions:
+    def test_unmatched_workflow_run_properties_lookup_stays_unresolved(self, glue_source: Any):
+        script = """
+import boto3
+
+glue = boto3.client("glue")
+props = glue.get_workflow_run_properties(Name="other_workflow", RunId="other_run")["RunProperties"]
+market = props.get("MARKET", "FALLBACK")
+df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema", "CURATED").option(
+    "dbtable", f"my_table_{market}"
+).save()
+"""
+        table_refs = {name: _make_table_ref(name) for name in ("my_table_DE", "my_table_FR", "my_table_FALLBACK")}
+        workflow_details = {
+            "Name": "market_workflow",
+            "DefaultRunProperties": {"MARKET": "DE"},
+            "Graph": {"Nodes": [{"Type": "JOB", "Name": "load_job", "UniqueId": "j1"}], "Edges": []},
+        }
+        glue_source.job_name_list = {"load_job"}
+        glue_source.glue.get_job.return_value = {
+            "Job": {"Command": {"ScriptLocation": "s3://glue-scripts/load_job.py"}}
+        }
+        glue_source.glue.get_workflow_runs.return_value = {
+            "Runs": [{"WorkflowRunId": "current_run", "WorkflowRunProperties": {"MARKET": "DE"}}]
+        }
+        glue_source.glue.get_job_runs.return_value = {"JobRuns": []}
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(script)
+
+        with _wire_table_catalog(glue_source, table_refs):
+            edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
+
+        assert edges == []
+
+    def test_sibling_loops_read_then_write_emit_direct_table_to_table_edge(self, glue_source: Any):
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED"}
+for item in ["only"]:
+    df = spark.read.format("snowflake").options(**sf_options).option("dbtable", "my_source").load()
+
+for item in ["only"]:
+    df.write.format("snowflake").options(**sf_options).option("dbtable", "my_target").save()
+"""
+        my_source = _make_table_ref("my_source")
+        my_target = _make_table_ref("my_target")
+        workflow_details = {"Name": "sibling_loop_wf", "DefaultRunProperties": {}}
+        glue_source.job_name_list = {"sibling_loop_job"}
+        glue_source.glue.get_job.return_value = {
+            "Job": {"Command": {"ScriptLocation": "s3://glue-scripts/sibling_loop.py"}}
+        }
+        glue_source.glue.get_workflow_runs.return_value = {"Runs": []}
+        glue_source.glue.get_job_runs.return_value = {"JobRuns": []}
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(script)
+
+        with _wire_table_catalog(glue_source, {"my_source": my_source, "my_target": my_target}):
+            edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
+
+        assert len(edges) == 1
+        assert model_str(edges[0].fromEntity.id) == model_str(my_source.id)
+        assert model_str(edges[0].toEntity.id) == model_str(my_target.id)
+
+    def test_loop_overrides_preserve_integer_scalar_type_for_format_specs(self):
+        script = """
+for idx in [1, 2]:
+    df.write.format("snowflake").option("dbtable", f"my_table_{idx:02d}").save()
+"""
+        _, targets = parse_snowflake_refs(script)
+        assert [ref.table for ref in targets] == ["my_table_01", "my_table_02"]
+
+    def test_tuple_alias_augmented_assignment_preserves_original_tuple_loop(self):
+        script = """
+markets = ("DE", "FR")
+expanded = markets
+expanded += ("ES",)
+for market in markets:
+    df.write.format("snowflake").option("dbtable", f"CONTRACT_{market}").save()
+"""
+        _, targets = parse_snowflake_refs(script)
+        assert [ref.table for ref in targets] == ["CONTRACT_DE", "CONTRACT_FR"]
+
+    def test_workflow_with_twenty_scripted_jobs_fetches_workflow_runs_once(self, glue_source: Any):
+        job_names = {f"job_{i:02d}" for i in range(20)}
+        table_refs = {"CONTRACT_DE": _make_table_ref("CONTRACT_DE")}
+        workflow_details = {
+            "Name": "twenty_job_wf",
+            "DefaultRunProperties": {},
+            "Graph": {
+                "Nodes": [{"Type": "JOB", "Name": name, "UniqueId": name} for name in sorted(job_names)],
+                "Edges": [],
+            },
+        }
+        glue_source.job_name_list = job_names
+        glue_source.glue.get_job.return_value = {"Job": {"Command": {"ScriptLocation": "s3://glue-scripts/shared.py"}}}
+        glue_source.glue.get_workflow_runs.return_value = {
+            "Runs": [{"WorkflowRunId": "wr_1", "WorkflowRunProperties": {"MARKET": "DE"}}]
+        }
+        glue_source.glue.get_job_runs.return_value = {"JobRuns": []}
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(ISSUE_37597_SCRIPT)
+
+        with _wire_table_catalog(glue_source, table_refs):
+            edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
+
+        assert len(edges) == 1
+        assert glue_source.glue.get_workflow_runs.call_count == 1
+
+    @pytest.mark.parametrize(
+        ("lookup_expr", "context", "expected"),
+        [
+            pytest.param(
+                'glue.get_workflow_run_properties(Name="other_workflow", RunId="other_run")["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "DE"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [],
+                id="mismatched_workflow_and_run",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties(Name="my_workflow", RunId="other_run")["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "DE"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [],
+                id="mismatched_run_id_only",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties(Name="other_workflow", RunId="my_run")["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "DE"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [],
+                id="mismatched_workflow_name_only",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties(Name="my_workflow", RunId="my_run")["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(run_props={"MARKET": "DE"}),
+                [],
+                id="context_without_run_identity_fails_closed",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties(Name=unknown_fn(), RunId="my_run")["RunProperties"].get("MARKET", "US")',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "DE"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [],
+                id="unknown_workflow_name_arg",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties("my_workflow", "my_run")["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "DE"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [],
+                id="positional_args_rejected",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties(Name="my_workflow")["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "DE"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [],
+                id="missing_run_id_rejected",
+            ),
+            pytest.param(
+                'glue.get_workflow_run_properties(**{"Name": "my_workflow", "RunId": "my_run"})["RunProperties"]["MARKET"]',
+                ParameterContext.from_mappings(
+                    run_props={"MARKET": "FR"}, workflow_name="my_workflow", workflow_run_id="my_run"
+                ),
+                [SnowflakeRef(table="my_table_FR")],
+                id="matching_kwargs_unpack_resolves",
+            ),
+        ],
+    )
+    def test_workflow_run_properties_identity_matching_variants(
+        self, lookup_expr: str, context: ParameterContext, expected: list[SnowflakeRef]
+    ):
+        script = f"""
+market = {lookup_expr}
+df.write.format("snowflake").option("dbtable", f"my_table_{{market}}").save()
+"""
+        _, targets = parse_snowflake_refs(script, context=context)
+        assert targets == expected
+
+    def test_specific_run_lookup_resolves_only_matching_run_never_sibling_run(self, glue_source: Any):
+        script = """
+import boto3
+
+glue = boto3.client("glue")
+props = glue.get_workflow_run_properties(Name="market_workflow", RunId="other_run")["RunProperties"]
+df.write.format("snowflake").option("sfDatabase", "SALES_DB").option("sfSchema", "CURATED").option(
+    "dbtable", f"my_table_{props['MARKET']}"
+).save()
+"""
+        table_refs = {"my_table_DE": _make_table_ref("my_table_DE"), "my_table_FR": _make_table_ref("my_table_FR")}
+        workflow_details = {
+            "Name": "market_workflow",
+            "DefaultRunProperties": {},
+            "Graph": {"Nodes": [{"Type": "JOB", "Name": "pin_run_job", "UniqueId": "j1"}], "Edges": []},
+        }
+        glue_source.job_name_list = {"pin_run_job"}
+        glue_source.glue.get_job.return_value = {"Job": {"Command": {"ScriptLocation": "s3://glue-scripts/pin_run.py"}}}
+        glue_source.glue.get_workflow_runs.return_value = {
+            "Runs": [
+                {"WorkflowRunId": "current_run", "WorkflowRunProperties": {"MARKET": "DE"}},
+                {"WorkflowRunId": "other_run", "WorkflowRunProperties": {"MARKET": "FR"}},
+            ]
+        }
+        glue_source.glue.get_job_runs.return_value = {"JobRuns": []}
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(script)
+
+        with _wire_table_catalog(glue_source, table_refs):
+            edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
+
+        id_to_name = {model_str(ref.id): name for name, ref in table_refs.items()}
+        assert [id_to_name[model_str(e.toEntity.id)] for e in edges] == ["my_table_FR"]
+
+    def test_default_workflow_fallback_token_never_leaks_fake_run_id_into_table_names(self):
+        script = """
+import sys
+import boto3
+from awsglue.utils import getResolvedOptions
+
+glue = boto3.client("glue")
+args = getResolvedOptions(sys.argv, ["WORKFLOW_NAME", "WORKFLOW_RUN_ID"])
+props = glue.get_workflow_run_properties(Name=args["WORKFLOW_NAME"], RunId=args["WORKFLOW_RUN_ID"])["RunProperties"]
+df.write.format("snowflake").option("dbtable", f"CONTRACT_{props['MARKET']}").save()
+df.write.format("snowflake").option("dbtable", f"STAGING_{args['WORKFLOW_RUN_ID']}").save()
+"""
+        snapshot = WorkflowSnapshot.from_workflow_details(
+            {"Name": "never_ran_wf", "DefaultRunProperties": {"MARKET": "DE"}},
+            runs=(),
+        )
+        contexts = build_parameter_contexts("job_1", JobNodes(), snapshot)
+        assert len(contexts) == 1
+        _, targets = parse_snowflake_refs(script, context=contexts[0])
+        assert targets == [SnowflakeRef(table="CONTRACT_DE")]
+
+    def test_sibling_loops_fan_in_keyed_dict_sql_view_helper_fn_and_unresolved_safety(self):
+        # 1. Fan-in list accumulation -> union -> fan-out write loop
+        fan_script = """
+frames = []
+for mkt in ["DE", "FR"]:
+    frames.append(spark.read.format("snowflake").option("dbtable", f"RAW_{mkt}").load())
+combined = frames[0].unionByName(frames[1])
+for tier in ["SUMMARY", "DETAIL"]:
+    combined.write.format("snowflake").option("dbtable", f"REPORT_{tier}").save()
+"""
+        fan_groups = parse_script_lineage_groups(fan_script)
+        assert len(fan_groups) == 2
+        assert fan_groups[0].sources == Resolved((SnowflakeRef(table="RAW_DE"), SnowflakeRef(table="RAW_FR")))
+        assert fan_groups[0].targets == Resolved((SnowflakeRef(table="REPORT_SUMMARY"),))
+        assert fan_groups[1].sources == Resolved((SnowflakeRef(table="RAW_DE"), SnowflakeRef(table="RAW_FR")))
+        assert fan_groups[1].targets == Resolved((SnowflakeRef(table="REPORT_DETAIL"),))
+
+        # 2. Keyed dict across sibling loops correlates 1-to-1 per key without cross-market pollution
+        keyed_script = """
+frames = {}
+for mkt in ["DE", "FR"]:
+    frames[mkt] = spark.read.format("snowflake").option("dbtable", f"RAW_{mkt}").load()
+for mkt in ["DE", "FR"]:
+    frames[mkt].write.format("snowflake").option("dbtable", f"CONTRACT_{mkt}").save()
+"""
+        keyed_groups = parse_script_lineage_groups(keyed_script)
+        assert [(g.sources, g.targets) for g in keyed_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_DE"),)), Resolved((SnowflakeRef(table="CONTRACT_DE"),))),
+            (Resolved((SnowflakeRef(table="RAW_FR"),)), Resolved((SnowflakeRef(table="CONTRACT_FR"),))),
+        ]
+
+        # 3. Top-level dimension + sibling fact loop + sibling write loop combines both sources
+        dim_fact_script = """
+dim = spark.read.format("snowflake").option("dbtable", "DIM_COUNTRY").load()
+for item in ["only"]:
+    fact = spark.read.format("snowflake").option("dbtable", "FACT_SALES").load()
+for item in ["only"]:
+    fact.join(dim, "country").write.format("snowflake").option("dbtable", "CURATED_SALES").save()
+"""
+        dim_fact_groups = parse_script_lineage_groups(dim_fact_script)
+        assert len(dim_fact_groups) == 1
+        assert dim_fact_groups[0].sources == Resolved(
+            (SnowflakeRef(table="DIM_COUNTRY"), SnowflakeRef(table="FACT_SALES"))
+        )
+        assert dim_fact_groups[0].targets == Resolved((SnowflakeRef(table="CURATED_SALES"),))
+
+        # 4. Spark SQL temp view across sibling loops + helper functions defined out of order
+        sql_fn_script = """
+def write_outputs():
+    for out in ["GOLD"]:
+        spark.sql("SELECT * FROM stg_orders").write.format("snowflake").option("dbtable", f"ORDERS_{out}").save()
+
+def register_inputs():
+    for src in ["RAW_ORDERS"]:
+        spark.read.format("snowflake").option("dbtable", src).load().createOrReplaceTempView("stg_orders")
+
+register_inputs()
+write_outputs()
+"""
+        sql_fn_groups = parse_script_lineage_groups(sql_fn_script)
+        assert len(sql_fn_groups) == 1
+        assert sql_fn_groups[0].sources == Resolved((SnowflakeRef(table="RAW_ORDERS"),))
+        assert sql_fn_groups[0].targets == Resolved((SnowflakeRef(table="ORDERS_GOLD"),))
+
+        # 5. Unresolved read in Loop 1 + resolved write in Loop 2 marks sources="unresolved" (skipped by planner)
+        unresolved_sibling_script = """
+for item in ["only"]:
+    df = spark.read.format("snowflake").option("dbtable", f"RAW_{unknown_fn()}").load()
+for item in ["only"]:
+    df.write.format("snowflake").option("dbtable", "MY_TARGET").save()
+"""
+        unresolved_groups = parse_script_lineage_groups(unresolved_sibling_script)
+        assert len(unresolved_groups) == 1
+        assert unresolved_groups[0].sources == "unresolved"
+        assert unresolved_groups[0].targets == Resolved((SnowflakeRef(table="MY_TARGET"),))
+
+        # 6. Nested sibling loops inside an outer market loop stay isolated per market
+        nested_sibling_script = """
+for mkt in ["DE", "FR"]:
+    for part in ["A", "B"]:
+        df = spark.read.format("snowflake").option("dbtable", f"RAW_{mkt}_{part}").load()
+        acc.append(df)
+    merged = union_all(acc)
+    for tier in ["GOLD"]:
+        merged.write.format("snowflake").option("dbtable", f"CUR_{mkt}_{tier}").save()
+"""
+        nested_groups = parse_script_lineage_groups(nested_sibling_script)
+        assert [(g.sources, g.targets) for g in nested_groups] == [
+            (
+                Resolved((SnowflakeRef(table="RAW_DE_A"), SnowflakeRef(table="RAW_DE_B"))),
+                Resolved((SnowflakeRef(table="CUR_DE_GOLD"),)),
+            ),
+            (
+                Resolved((SnowflakeRef(table="RAW_FR_A"), SnowflakeRef(table="RAW_FR_B"))),
+                Resolved((SnowflakeRef(table="CUR_FR_GOLD"),)),
+            ),
+        ]
+
+    def test_scalar_loop_overrides_cover_format_percent_range_dict_values_and_indexing(self):
+        script = """
+tables = ("ZERO", "ONE", "TWO")
+partitions = {"p1": 1, "p2": 2}
+indices = (1, 2)
+
+for idx in indices:
+    spark.read.format("snowflake").option("dbtable", "FMT_{:02d}".format(idx)).load()
+
+for idx in partitions.values():
+    spark.read.format("snowflake").option("dbtable", "PCT_%02d" % idx).load()
+
+for idx in range(1, 3):
+    df.write.format("snowflake").option("dbtable", f"IDX_{tables[idx]}_{idx:03d}").save()
+"""
+        sources, targets = parse_snowflake_refs(script)
+        assert [ref.table for ref in sources] == ["FMT_01", "FMT_02", "PCT_01", "PCT_02"]
+        assert [ref.table for ref in targets] == ["IDX_ONE_001", "IDX_TWO_002"]
+
+    def test_tuple_concatenation_vs_mutable_list_alias_in_loops(self):
+        tuple_concat_script = """
+markets = ("DE", "FR")
+expanded = markets + ("ES",)
+for m in expanded:
+    df.write.format("snowflake").option("dbtable", f"TUP_{m}").save()
+"""
+        _, tuple_targets = parse_snowflake_refs(tuple_concat_script)
+        assert [ref.table for ref in tuple_targets] == ["TUP_DE", "TUP_FR", "TUP_ES"]
+
+        # Mutable list alias augmented assignment mutates `markets` in place in Python -> stays unresolved
+        list_alias_script = """
+markets = ["DE", "FR"]
+expanded = markets
+expanded += ["ES"]
+for m in markets:
+    df.write.format("snowflake").option("dbtable", f"LST_{m}").save()
+"""
+        assert parse_snowflake_refs(list_alias_script) == ([], [])
+
+    def test_neutral_script_evaluator_api_and_module_boundary(self):
+        parser_source = Path(script_parser_module.__file__).read_text(encoding="utf-8")
+        tree = ast.parse(parser_source)
+        private_cross_imports = [
+            (node.module, alias.name)
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ImportFrom) and node.module and "gluepipeline" in node.module
+            for alias in node.names
+            if alias.name.startswith("_")
+        ]
+        assert private_cross_imports == []
+
+        parsed = parse_python_script('bucket = "lake"\npath = f"s3://{bucket}/orders/"\n')
+        assert parsed is not None
+        slices = build_execution_slices(parsed.tree, bindings=parsed.bindings)
+        assert len(slices) == 1
+        reader = ScriptReader(parsed.tree, bindings=parsed.bindings)
+        path_assign = parsed.tree.body[1]
+        assert isinstance(path_assign, ast.Assign)
+        assert reader.string(path_assign.value) == "s3://lake/orders/"
+
+        with pytest.raises(ValueError, match="non-empty"):
+            Resolved(())
+
+    def test_pure_context_builder_and_typed_edge_planner_contracts(self):
+        # 1. Pure build_parameter_contexts without GluepipelineSource
+        snapshot = WorkflowSnapshot.from_workflow_details(
+            {
+                "Name": "pure_wf",
+                "DefaultRunProperties": {"CHANNEL": "B2B", "MARKET": "DE"},
+                "LastRun": {"WorkflowRunId": "wr_last", "WorkflowRunProperties": {"MARKET": "IT"}},
+                "Graph": {
+                    "Nodes": [
+                        {
+                            "Type": "TRIGGER",
+                            "Name": "trig_main",
+                            "TriggerDetails": {
+                                "Trigger": {
+                                    "Name": "trig_main",
+                                    "Actions": [{"JobName": "etl_job", "Arguments": {"--env": "staging"}}],
+                                }
+                            },
+                        }
+                    ]
+                },
+            },
+            runs=[
+                {
+                    "WorkflowRunId": "wr_1",
+                    "WorkflowRunProperties": {"MARKET": "FR"},
+                    "Graph": {
+                        "Nodes": [
+                            {
+                                "Type": "JOB",
+                                "Name": "etl_job",
+                                "JobDetails": {
+                                    "JobRuns": [
+                                        {
+                                            "Id": "jr_1",
+                                            "TriggerName": "trig_main",
+                                            "Arguments": {"--env": "prod"},
+                                        }
+                                    ]
+                                },
+                            }
+                        ]
+                    },
+                }
+            ],
+        )
+        job_nodes = JobNodes(
+            DefaultArguments={"--env": "dev", "--region": "eu"},
+            NonOverridableArguments={"--region": "locked-eu"},
+        )
+        contexts = build_parameter_contexts("etl_job", job_nodes, snapshot)
+        assert len(contexts) == 2
+        first_args = dict(contexts[0].job_args)
+        assert first_args["--env"] == "prod"
+        assert first_args["--region"] == "locked-eu"
+        assert dict(contexts[0].run_props) == {"CHANNEL": "B2B", "MARKET": "FR"}
+        assert contexts[0].workflow_name == "pure_wf"
+        assert contexts[0].workflow_run_id == "wr_1"
+        assert contexts[0].job_run_id == "jr_1"
+
+        assert contexts[1].workflow_run_id == "wr_last"
+        assert dict(contexts[1].run_props) == {"CHANNEL": "B2B", "MARKET": "IT"}
+
+        # 2. Pure plan_lineage_edges over typed LineageGroup[EntityReference]
+        pipeline_ref = EntityReference(id=Uuid(UUID(PIPELINE_UUID)), type="pipeline", name="pure_wf")
+        raw_tbl = _make_table_ref("RAW")
+        cur_tbl = _make_table_ref("CURATED")
+        only_tgt = _make_table_ref("STANDALONE_OUT")
+        only_src = _make_table_ref("STANDALONE_IN")
+        skipped_tbl = _make_table_ref("SKIPPED")
+
+        groups = [
+            # Both resolved -> Table -> Table
+            LineageGroup("exec_1", "dep_1", Resolved((raw_tbl,)), Resolved((cur_tbl,))),
+            # Sources absent -> Pipeline -> Table (suppressed for cur_tbl, emitted for only_tgt)
+            LineageGroup("exec_1", "dep_2", "absent", Resolved((cur_tbl, only_tgt))),
+            # Targets absent -> Table -> Pipeline (suppressed for raw_tbl, emitted for only_src)
+            LineageGroup("exec_1", "dep_3", Resolved((raw_tbl, only_src)), "absent"),
+            # Either side unresolved -> skipped
+            LineageGroup("exec_1", "dep_4", "unresolved", Resolved((skipped_tbl,))),
+            LineageGroup("exec_1", "dep_5", Resolved((skipped_tbl,)), "unresolved"),
+        ]
+        planned = plan_lineage_edges(groups, pipeline_ref)
+        pairs = {(model_str(r.edge.fromEntity.id), model_str(r.edge.toEntity.id)) for r in planned}
+        assert pairs == {
+            (model_str(raw_tbl.id), model_str(cur_tbl.id)),
+            (PIPELINE_UUID, model_str(only_tgt.id)),
+            (model_str(only_src.id), PIPELINE_UUID),
+        }
+
+        # Verify S3Ref is also emitted in typed script groups
+        s3_groups = parse_script_lineage_groups('df.write.parquet("s3://lake/out/")\n')
+        assert s3_groups == [
+            LineageGroup(
+                execution_id="default",
+                dependency_id="slice_0",
+                sources="absent",
+                targets=Resolved((S3Ref(path="s3://lake/out/"),)),
+            )
+        ]
