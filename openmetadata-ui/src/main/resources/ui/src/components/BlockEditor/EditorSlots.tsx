@@ -29,7 +29,7 @@ const openMentionLink = (target: HTMLElement) => {
   const href = target.getAttribute('href');
   const linkTarget = target.getAttribute('target');
   if (href && linkTarget && !getSettingsHashForHref(href)) {
-    window.open(href, linkTarget);
+    window.open(href, linkTarget, 'noopener,noreferrer');
   }
 };
 

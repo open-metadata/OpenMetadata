@@ -1,4 +1,5 @@
 import math
+import time
 import unittest
 from unittest.mock import patch
 
@@ -41,6 +42,28 @@ def worker_id(request):
     if hasattr(request.config, "workerinput"):
         return request.config.workerinput["workerid"]
     return "master"
+
+
+@fixture
+def local_tz(monkeypatch):
+    """Set the process-local timezone that a naive ``datetime.timestamp()`` reads.
+
+    A naive-vs-aware UTC bug is numerically invisible on a UTC host, so tests
+    pinning one must run under a non-UTC zone.
+    """
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is unavailable on this platform")
+
+    def _set(tz_name: str) -> None:
+        monkeypatch.setenv("TZ", tz_name)
+        time.tzset()
+        # tzset silently falls back to UTC when the zone can't be loaded, which
+        # would let a timezone regression test pass without the fix.
+        assert time.timezone != 0, f"TZ={tz_name} did not load; is tzdata installed?"
+
+    yield _set
+    monkeypatch.undo()
+    time.tzset()
 
 
 @fixture(scope="session", autouse=True)

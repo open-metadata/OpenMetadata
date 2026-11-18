@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -242,6 +243,9 @@ public final class ContextFileFqnRepair {
       }
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.storedFqn());
       EntityRepository.invalidateCacheForEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
+      // A lookup of the derived FQN before the repair left a not-found marker that the entity
+      // cache helper above does not clear.
+      CacheBundle.invalidateEntity(CONTEXT_FILE, misnamed.id(), misnamed.derivedFqn());
       reindex(repaired.get());
       if (!sharing.isEmpty()) {
         LOG.warn(

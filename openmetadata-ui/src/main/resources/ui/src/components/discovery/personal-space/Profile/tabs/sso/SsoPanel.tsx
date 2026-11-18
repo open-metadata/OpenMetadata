@@ -54,6 +54,9 @@ import {
 import SsoProviderGrid from './SsoProviderGrid';
 
 const CRUMB_PROVIDER = 'provider';
+// The provider crumb (shown only on a sub page) returns to the form, as Back
+// does, so it is not an exit the unsaved-changes guard should hold.
+const IN_EDITOR_CRUMBS = [CRUMB_PROVIDER];
 
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -296,6 +299,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       iconNode: headerProvider ? (
         <ProviderLogo provider={headerProvider} />
       ) : undefined,
+      inEditorBreadcrumbIds: IN_EDITOR_CRUMBS,
       onBreadcrumbAction: (id: Key) => {
         if (id === SSO_HASH_TAB) {
           onNavigate({ type: 'overview' });
