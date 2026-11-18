@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.management.MemoryUsage;
 import java.time.Duration;
+import java.util.Arrays;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -26,29 +27,33 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class HeapBackpressureTest {
 
-  /** Production poll/escape-valve constants (kept in sync with {@code HeapBackpressure}). */
+  /** Production poll/escape-valve/pace constants (kept in sync with {@code HeapBackpressure}). */
   private static final long PROD_POLL_MS = 250L;
 
   private static final long PROD_MAX_WAIT_MS = 30_000L;
 
+  private static final long PROD_RELEASE_PACE_MS = 1_000L;
+
   /**
    * The shared gate state of {@link HeapBackpressure} is JVM-wide. JUnit runs tests in a class
-   * sequentially, so we just reset before each test. We also shrink the poll interval and the
-   * escape valve so the drain loop runs on sub-millisecond budgets and the deadline-related tests
-   * don't have to wait 30 seconds. Tests that need a larger escape-valve window call
-   * {@link HeapBackpressure#setMaxWaitMsForTest(long)} themselves.
+   * sequentially, so we just reset before each test. We also shrink the poll interval, the escape
+   * valve, and the admission pace so the drain loop, deadline, and paced handoff run on
+   * sub-second budgets and the tests don't have to wait through production timeouts. Tests that
+   * need a larger window call the corresponding {@code set...ForTest} helpers themselves.
    */
   @BeforeEach
   void resetGateState() {
     HeapBackpressure.resetGateStateForTest();
     HeapBackpressure.setPollMsForTest(10L);
     HeapBackpressure.setMaxWaitMsForTest(2_000L);
+    HeapBackpressure.setReleasePaceMsForTest(50L);
   }
 
   // ---------------------------------------------------------------------------
@@ -307,37 +312,158 @@ class HeapBackpressureTest {
    * After a successful drain (headroom observed), the gate state must be cleared so a subsequent
    * pressure wave installs a fresh deadline rather than reusing a stale one. This guards against
    * the deadline silently shrinking to zero across episodes.
+   *
+   * <p>The assertion captures the freshly installed deadline <i>while the second pressure wave is
+   * waiting in the drain loop</i> (from inside the heap-usage supplier, which runs under the gate
+   * lock), and verifies it is a real, future-at-install-time deadline — not the stale {@code 0}
+   * left over from the first call's clear. Without this capture the test would pass trivially
+   * even if the second call were a no-op, because the post-call state ({@code engaged=false},
+   * {@code deadline=0}) is identical to a no-op's result.
    */
   @Test
   void awaitHeadroom_afterDrainCompleted_newEngagementInstallsFreshDeadline() {
     HeapBackpressure.setMaxWaitMsForTest(1_500L);
+    AtomicBoolean secondCall = new AtomicBoolean(false);
+    AtomicLong capturedDeadline = new AtomicLong(0L);
+    AtomicLong capturedAt = new AtomicLong(0L);
     AtomicInteger call = new AtomicInteger(0);
     Supplier<MemoryUsage> pressureThenHeadroom =
-        () -> new MemoryUsage(0L, call.incrementAndGet() < 4 ? 85L : 60L, 100L, 100L);
+        () -> {
+          int c = call.incrementAndGet();
+          // Capture the largest in-flight deadline observed under the lock during the second
+          // call, along with the wall-clock moment we observed it. The fast-path call (before
+          // the lock is acquired) does not see the lock held and is excluded.
+          if (secondCall.get() && HeapBackpressure.gateLockHeldByCurrentThread()) {
+            long d = HeapBackpressure.gateDeadlineMs();
+            if (d > capturedDeadline.get()) {
+              capturedDeadline.set(d);
+              capturedAt.set(System.currentTimeMillis());
+            }
+          }
+          return new MemoryUsage(0L, c < 4 ? 85L : 60L, 100L, 100L);
+        };
 
+    // First call: drain then headroom — gate cleared.
     HeapBackpressure.awaitHeadroom(pressureThenHeadroom);
     assertFalse(HeapBackpressure.gateEngaged());
     assertEquals(0L, HeapBackpressure.gateDeadlineMs());
 
-    // Second worker sees live pressure again — the gate must install a fresh, future deadline.
-    long beforeSecondEngagement = System.currentTimeMillis();
-    call.set(0); // restart the same pressure→headroom sequence
+    // Second call: with the gate cleared, the gate must install a FRESH deadline when it sees
+    // pressure. Capture it from inside the drain loop so we can assert it was real.
+    secondCall.set(true);
+    call.set(0);
+    long beforeSecond = System.currentTimeMillis();
     HeapBackpressure.awaitHeadroom(pressureThenHeadroom);
-    // State effectively cleared during the second call's headroom-driven exit; the only way to
-    // assert a "fresh" deadline was installed mid-flight is to capture gate state before the call,
-    // so we verify the call returned cleanly.
+    long afterSecond = System.currentTimeMillis();
+
+    long captured = capturedDeadline.get();
+    assertTrue(
+        captured > 0L,
+        "second call must install a fresh deadline (captured=0 means none was installed)");
+    assertTrue(
+        captured > capturedAt.get(),
+        "captured deadline must be in the future at the moment it was observed (captured="
+            + captured
+            + ", capturedAt="
+            + capturedAt.get()
+            + ") — a stale or zero deadline would fail this");
+    assertTrue(
+        captured > beforeSecond && captured <= afterSecond + 1_500L,
+        "captured deadline must be a fresh deadline installed during the second call "
+            + "(beforeSecond="
+            + beforeSecond
+            + ", captured="
+            + captured
+            + ", afterSecond="
+            + afterSecond
+            + ")");
+    // The second call resolved to headroom and cleared state, exactly like the first.
     assertFalse(HeapBackpressure.gateEngaged());
     assertEquals(0L, HeapBackpressure.gateDeadlineMs());
-    // Sanity: the second call did engage the gate at some point (would have started a fresh
-    // deadline earlier than now), even though it has cleared it again by the time it returned.
-    // No assertion can post-observe the past deadline value; the property we care about is that
-    // awaitHeadroom did not wedge on stale state from the first engagement.
-    long afterSecondEngagement = System.currentTimeMillis();
-    assertTrue(afterSecondEngagement >= beforeSecondEngagement, "sanity clock");
   }
 
   /**
-   * Reset guardrail: explicitly restores production poll/escape-valve values so a later test
+   * After a drain, queued workers must NOT all be admitted at once — each released worker's batch
+   * read has to have time to reflect in heap usage before the next one is admitted, otherwise the
+   * {@code N × batchSize} thundering-herd resume the gate exists to prevent just re-occurs across
+   * the resume boundary. The paced handoff admits one worker per {@code releasePaceMs} window;
+   * this test records each worker's admission timestamp and asserts the gaps between consecutive
+   * admissions are at least the pace interval (with tolerance for scheduler jitter), so we are
+   * checking the observable behaviour (reader admission after recovery) rather than internal call
+   * choreography.
+   */
+  @Test
+  void awaitHeadroom_multipleWorkersResumePacedOneAtATimeAfterDrain() throws Exception {
+    int workers = 5;
+    long paceMs = 80L;
+    HeapBackpressure.setReleasePaceMsForTest(paceMs);
+    AtomicLong usedRef = new AtomicLong(90L); // all workers initially sample under-pressure heap
+    AtomicInteger completed = new AtomicInteger(0);
+    CountDownLatch ready = new CountDownLatch(workers);
+    AtomicLongArray admitNs = new AtomicLongArray(workers);
+    AtomicInteger admitIndex = new AtomicInteger(0);
+
+    Supplier<MemoryUsage> supplier = () -> new MemoryUsage(0L, usedRef.get(), 100L, 100L);
+
+    ExecutorService pool = Executors.newFixedThreadPool(workers);
+    try {
+      for (int i = 0; i < workers; i++) {
+        pool.submit(
+            () -> {
+              ready.countDown();
+              HeapBackpressure.awaitHeadroom(supplier);
+              admitNs.set(admitIndex.getAndIncrement(), System.nanoTime());
+              completed.incrementAndGet();
+              return null;
+            });
+      }
+      assertTrue(ready.await(2L, TimeUnit.SECONDS), "all workers should start");
+
+      // Wait until the first worker is parked in the gate's drain loop and the gate is engaged.
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(HeapBackpressure::gateEngaged);
+
+      // Drop heap below RESUME_BELOW so the draining worker exits and installs the first pace.
+      usedRef.set(60L);
+
+      await()
+          .atMost(Duration.ofSeconds(5))
+          .untilAsserted(() -> assertEquals(workers, completed.get(), "all workers should exit"));
+
+      // Sort the admission timestamps and assert consecutive admissions are spaced at least
+      // paceMs apart (with tolerance). The first worker is the drainer and is admitted as soon
+      // as heap drops; the remaining workers are admitted one per pace window.
+      long[] ts = new long[workers];
+      for (int i = 0; i < workers; i++) {
+        ts[i] = admitNs.get(i);
+      }
+      Arrays.sort(ts);
+      long toleranceMs = 30L; // scheduler jitter + Thread.sleep granularity
+      for (int i = 1; i < workers; i++) {
+        long gapMs = (ts[i] - ts[i - 1]) / 1_000_000L;
+        assertTrue(
+            gapMs >= paceMs - toleranceMs,
+            "paced admission gap "
+                + i
+                + " = "
+                + gapMs
+                + "ms must be >= "
+                + (paceMs - toleranceMs)
+                + "ms (pace="
+                + paceMs
+                + "ms); without the paced handoff all workers would be "
+                + "admitted within a single heap-poll interval");
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  /**
+   * Reset guardrail: explicitly restores production poll/escape-valve/pace values so a later test
    * running in the same JVM (e.g. a sibling @Test elsewhere) does not see the test-shrunk values
    * leak across. Even though {@link #resetGateState()} re-applies them, this is cheap insurance
    * against partial isolation if a future test bypasses {@code @BeforeEach}.
@@ -347,5 +473,6 @@ class HeapBackpressureTest {
     HeapBackpressure.resetGateStateForTest();
     HeapBackpressure.setPollMsForTest(PROD_POLL_MS);
     HeapBackpressure.setMaxWaitMsForTest(PROD_MAX_WAIT_MS);
+    HeapBackpressure.setReleasePaceMsForTest(PROD_RELEASE_PACE_MS);
   }
 }
