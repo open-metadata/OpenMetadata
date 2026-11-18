@@ -18,16 +18,11 @@ import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { COUNT_BADGE_CLASS } from '../../../../constants/common/countBadge.constants';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useUnreadInboxActivity } from '../../../../hooks/useUnreadInboxActivity';
 import { openTaskCountQuery } from '../openTaskCount';
 import { PERSONAL_SPACE_ROUTES } from '../personalSpace.constants';
-
-// Keep badge positioning local to this component
-const INBOX_BADGE_CLASS =
-  'tw:absolute tw:-right-1.5 tw:-top-1.5 tw:flex tw:h-[14px] tw:min-w-[14px] ' +
-  'tw:items-center tw:justify-center tw:rounded-full tw:bg-error-solid ' +
-  'tw:px-1 tw:text-[8px] tw:font-medium tw:leading-none tw:text-white';
 
 /**
  * Inbox launcher shown in the sidebar (expanded `UserProfileCard` and the
@@ -86,7 +81,7 @@ const InboxIconButton: React.FC = () => {
         )}
 
         {badgeLabel && (
-          <span className={INBOX_BADGE_CLASS} data-testid="ai-inbox-badge">
+          <span className={COUNT_BADGE_CLASS} data-testid="ai-inbox-badge">
             {badgeLabel}
           </span>
         )}

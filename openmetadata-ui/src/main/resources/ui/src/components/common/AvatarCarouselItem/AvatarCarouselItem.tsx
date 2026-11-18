@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Badge, Box, Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { RefObject, useCallback, useRef } from 'react';
+import { COUNT_BADGE_CLASS } from '../../../constants/common/countBadge.constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
@@ -71,10 +72,9 @@ const AvatarCarouselItem = ({
           <ProfilePicture name={avatar.name ?? ''} width="28" />
         </Button>
         {suggestionsCount > 0 && (
-          <span className="tw:pointer-events-none tw:absolute tw:-top-1.5 tw:-right-1.5 tw:w-max">
-            <Badge color="error" size="xs">
-              {suggestionsCount > 99 ? '99+' : suggestionsCount}
-            </Badge>
+          <span
+            className={classNames(COUNT_BADGE_CLASS, 'tw:pointer-events-none')}>
+            {suggestionsCount > 99 ? '99+' : suggestionsCount}
           </span>
         )}
       </Box>
