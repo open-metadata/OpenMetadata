@@ -249,6 +249,41 @@ describe('Button — icon size and color', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
   });
 
+  // link-color keeps an 18px leading frame at xs, so it keeps the 18px-frame
+  // padding: 28px standalone, 30px inside an InputGroup.
+  it('keeps a boxed xs link-color icon-only button at its height', () => {
+    render(
+      <>
+        <Button
+          boxed
+          aria-label="Open"
+          color="link-color"
+          iconLeading={Edit01}
+          size="xs"
+        />
+        <div data-input-wrapper>
+          <Button
+            boxed
+            aria-label="Copy"
+            color="link-color"
+            iconLeading={Edit01}
+            size="xs"
+          />
+        </div>
+      </>
+    );
+
+    for (const name of ['Open', 'Copy']) {
+      const button = screen.getByRole('button', { name });
+
+      expect(button).toHaveClass(
+        'tw:data-icon-only:p-1.25',
+        'tw:in-data-input-wrapper:data-icon-only:p-1.5'
+      );
+      expect(button).not.toHaveClass('tw:data-icon-only:p-1.5');
+    }
+  });
+
   // Inside an InputGroup the button matches the input height: 30 / 40 / 44.
   it.each([
     ['xs', 'tw:in-data-input-wrapper:data-icon-only:p-1.75'],

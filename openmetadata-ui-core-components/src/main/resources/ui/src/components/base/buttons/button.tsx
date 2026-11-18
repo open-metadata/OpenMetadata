@@ -433,6 +433,12 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
+          // link-color keeps its 18px leading frame at xs, where the size's
+          // icon-only padding is sized for a 16px frame; this keeps it 28px
+          // (30px inside an InputGroup).
+          color === 'link-color' &&
+            size === 'xs' &&
+            'tw:data-icon-only:p-1.25 tw:in-data-input-wrapper:data-icon-only:p-1.5',
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
