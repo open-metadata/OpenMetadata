@@ -114,7 +114,9 @@ public class JwtIdentityResolver {
    * minted under a mapping, that claim can hold the bare name (for example {@code upn}, or {@code
    * email} under {@code username:email}), which would become {@code <name>@<principalDomain>} -
    * another address than the bot's. We always write the stored email into the mapped email claim,
-   * so read it there; a token without an address in it keeps the previous resolution.
+   * so read it there; a token without an address in it keeps the previous resolution. Relies on
+   * the generator writing that claim after the username claim
+   * (ADR:2026-11-03-an-openmetadata-token-resolves-to-the-account-it-names, v2).
    */
   private Optional<String> mappedEmail(Map<String, Claim> claims) {
     String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
