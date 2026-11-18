@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext } from '@playwright/test';
+import { APIRequestContext, expect } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
@@ -21,7 +21,7 @@ import {
   openEntityTasksTab,
   openTaskDetails,
 } from '../../../utils/taskWorkflow';
-import { expect, test } from '../../fixtures/pages';
+import { test } from '../../fixtures/pages';
 
 const SUGGESTED_TAG_FQN = 'PII.Sensitive';
 

@@ -69,6 +69,7 @@ export type TaskFormHandlerConfig = {
   rejectedValue?: string;
 };
 
+const TASK_FORM_SCHEMA_CACHE_MAX = 100;
 const taskFormSchemaCache = new Map<
   string,
   Promise<TaskFormSchema | undefined>
@@ -148,6 +149,12 @@ export const getResolvedTaskFormSchema = async (
     }
   })();
 
+  if (taskFormSchemaCache.size >= TASK_FORM_SCHEMA_CACHE_MAX) {
+    const oldestKey = taskFormSchemaCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      taskFormSchemaCache.delete(oldestKey);
+    }
+  }
   taskFormSchemaCache.set(cacheKey, resolverPromise);
 
   return cloneDeep(await resolverPromise);

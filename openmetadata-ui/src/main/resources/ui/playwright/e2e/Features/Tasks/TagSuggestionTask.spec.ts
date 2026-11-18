@@ -10,13 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { expect } from '@playwright/test';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { getApiContext, redirectToHomePage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
-import { getTaskCard } from '../../../utils/task';
-import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
-import { expect, test } from '../../fixtures/pages';
+import { waitForTaskResolveResponse } from '../../../utils/task';
+import { CreatedTask, getTaskCard } from '../../../utils/taskWorkflow';
+import { test } from '../../fixtures/pages';
 
 // An agent proposes tags as a Suggestion task whose suggestedValue is the
 // tag labels as a JSON string; the reviewer must see tags, not that JSON.
@@ -28,7 +29,7 @@ test.describe('Tag suggestion task', () => {
     labelType: 'Generated',
     state: 'Suggested',
   };
-  let task: { id: string; taskId: string } | undefined;
+  let task: CreatedTask | undefined;
   let columnName: string;
 
   test.beforeAll(
@@ -86,7 +87,7 @@ test.describe('Tag suggestion task', () => {
     if (!task) {
       throw new Error('beforeAll did not create the tag suggestion task');
     }
-    const { id: taskEntityId, taskId } = task;
+    const createdTask = task;
 
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
@@ -99,7 +100,7 @@ test.describe('Tag suggestion task', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        const taskCard = getTaskCard(page, taskId);
+        const taskCard = getTaskCard(page, createdTask);
         await expect(taskCard).toBeVisible();
         await taskCard.click();
 
@@ -125,15 +126,11 @@ test.describe('Tag suggestion task', () => {
       });
 
       await test.step('Accepting applies the tag to the column', async () => {
-        const resolveResponse = waitForResponseWithStatus(
-          page,
-          (response) =>
-            response.url().includes(`/api/v1/tasks/${taskEntityId}/resolve`) &&
-            response.request().method() === 'POST',
-          200
-        );
-        await getTaskCard(page, taskId).getByTestId('approve-button').click();
-        await resolveResponse;
+        const resolveResponse = waitForTaskResolveResponse(page);
+        await getTaskCard(page, createdTask)
+          .getByTestId('approve-button')
+          .click();
+        expect((await resolveResponse).ok()).toBe(true);
 
         await expect
           .poll(async () => {
