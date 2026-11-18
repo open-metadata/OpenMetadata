@@ -29,8 +29,8 @@
     "src/styles/index.ts",
     // Unused here but consumed by openmetadata-collate via the generated
     // openmetadata-ui mirror — verify downstream before deleting:
-    // NodeSuggestions: collate ERDiagramProvider; DataInsightProvider: collate
-    // DashboardChart/DashboardDetails; useLogStream: collate useAutomationLogs.test.
+    // DataInsightProvider: collate DashboardChart/DashboardDetails; useLogStream:
+    // collate useAutomationLogs.test.
     "src/pages/DataInsightPage/DataInsightProvider.tsx",
     "src/components/common/LogViewerModal/useLogStream.ts",
     // Type-only compat forward: collate CustomizeMyDataPageClassCollate imports
