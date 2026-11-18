@@ -633,35 +633,61 @@ public class GlossaryRdfImporter {
   private void registerRelationTypes(Model model, List<TermIntent> intents, boolean dryRun) {
     Map<String, RelationshipType> existing = existingRelationTypes();
     Map<String, RelationshipType> toAdd = new LinkedHashMap<>();
+    Set<String> collected = new HashSet<>();
     for (TermIntent intent : intents) {
       for (RelationIntent relation : intent.relations) {
-        collectRelationPair(model, relation, existing.keySet(), toAdd);
+        if (collected.add(relation.predicateIri())) {
+          collectRelationPair(model, relation, existing, toAdd);
+        }
       }
     }
     Map<String, RelationshipType> updates = wireInversePartners(model, toAdd, existing);
+    if (allowGlobalSchemaChanges && !dryRun) {
+      updates = refreshInversePartners(toAdd, updates.values(), false);
+    }
     if (!toAdd.isEmpty()) {
-      applyRelationTypes(toAdd, dryRun);
+      applyRelationTypes(model, toAdd, updates, dryRun);
     }
     if (allowGlobalSchemaChanges && !dryRun) {
-      persistRelationTypeUpdates(updates.values());
+      persistRelationTypeUpdates(toAdd, updates.values());
     }
   }
 
   private void collectRelationPair(
       Model model,
       RelationIntent relation,
-      Set<String> existing,
+      Map<String, RelationshipType> existing,
       Map<String, RelationshipType> toAdd) {
     collectCustomRelationType(
-        model, relation.relationshipType(), relation.predicateIri(), existing, toAdd);
+        model, relation.relationshipType(), relation.predicateIri(), existing.keySet(), toAdd);
     String inverseIri = inversePredicateIri(model, relation.predicateIri());
     if (inverseIri != null) {
-      collectCustomRelationType(
-          model, sanitizeRelationName(localName(inverseIri)), inverseIri, existing, toAdd);
+      collectInversePartner(model, relation, inverseIri, existing, toAdd);
     }
   }
 
-  private Map<String, RelationshipType> wireInversePartners(
+  private void collectInversePartner(
+      Model model,
+      RelationIntent relation,
+      String inverseIri,
+      Map<String, RelationshipType> existing,
+      Map<String, RelationshipType> toAdd) {
+    RelationshipTypeResolver resolver =
+        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    RelationshipType partner = resolver.findByPredicate(URI.create(inverseIri));
+    if (partner == null) {
+      collectCustomRelationType(
+          model, sanitizeRelationName(localName(inverseIri)), inverseIri, existing.keySet(), toAdd);
+    } else {
+      existing.put(partner.getName(), partner);
+      RelationshipType type = toAdd.get(relation.relationshipType());
+      if (type != null && !isSymmetric(type)) {
+        type.setInverse(partner.getEntityReference());
+      }
+    }
+  }
+
+  Map<String, RelationshipType> wireInversePartners(
       Model model, Map<String, RelationshipType> toAdd, Map<String, RelationshipType> existing) {
     Map<String, RelationshipType> known = new LinkedHashMap<>(existing);
     known.putAll(toAdd);
@@ -685,6 +711,11 @@ public class GlossaryRdfImporter {
       Map<String, RelationshipType> known,
       Map<String, RelationshipType> updates) {
     RelationshipType partner = known.get(type.getInverse().getName());
+    // ADR:2026-11-18-rdf-import-symmetric-inverse-partners-stay-unlinked
+    if (partner != null && isSymmetric(partner)) {
+      type.setInverse(null);
+      return;
+    }
     if (!isCompatibleInversePartner(model, type, partner)) {
       addMessage(
           "Inverse relationship type '"
@@ -701,8 +732,7 @@ public class GlossaryRdfImporter {
 
   private boolean isCompatibleInversePartner(
       Model model, RelationshipType type, RelationshipType partner) {
-    // A self-inverse partner cannot round-trip a different authored predicate.
-    if (partner == null || isSymmetric(partner)) {
+    if (partner == null) {
       return false;
     }
     String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
@@ -717,10 +747,8 @@ public class GlossaryRdfImporter {
     if (inverse == null
         || !type.getName().equals(inverse.getName())
         || !type.getId().equals(inverse.getId())) {
-      // Completing an existing pair must preserve the partner's governed fields and identity.
+      // The snapshot records intent; governed fields come from a fresh read before saving.
       partner.setInverse(type.getEntityReference());
-      partner.setUpdatedBy(user);
-      partner.setUpdatedAt(System.currentTimeMillis());
       updates.put(partner.getName(), partner);
     }
   }
@@ -738,7 +766,11 @@ public class GlossaryRdfImporter {
     return inverse.getName() == null ? inverse.getFullyQualifiedName() : inverse.getName();
   }
 
-  private void applyRelationTypes(Map<String, RelationshipType> toAdd, boolean dryRun) {
+  private void applyRelationTypes(
+      Model model,
+      Map<String, RelationshipType> toAdd,
+      Map<String, RelationshipType> updates,
+      boolean dryRun) {
     if (!allowGlobalSchemaChanges) {
       addMessage(
           String.format(
@@ -747,7 +779,7 @@ public class GlossaryRdfImporter {
     } else if (dryRun) {
       result.setRelationTypesRegistered(result.getRelationTypesRegistered() + toAdd.size());
     } else {
-      persistRelationTypes(toAdd.values());
+      persistRelationTypes(model, toAdd, updates);
     }
   }
 
@@ -981,12 +1013,13 @@ public class GlossaryRdfImporter {
     return existingRelationTypes().keySet();
   }
 
-  private void persistRelationTypes(Collection<RelationshipType> newTypes) {
+  private void persistRelationTypes(
+      Model model, Map<String, RelationshipType> newTypes, Map<String, RelationshipType> updates) {
     RelationshipTypeRepository repository =
         (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+    rejectInvalidRelationPairs(repository, model, newTypes, updates);
     int added = 0;
-    for (RelationshipType type : newTypes) {
-      repository.prepareInternal(type, false);
+    for (RelationshipType type : newTypes.values()) {
       PutResponse<RelationshipType> response = repository.createOrUpdate(uriInfo, type, user);
       if (Response.Status.CREATED.equals(response.getStatus())) {
         added++;
@@ -995,38 +1028,138 @@ public class GlossaryRdfImporter {
     result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
   }
 
-  private void persistRelationTypeUpdates(Collection<RelationshipType> intended) {
-    // The discovery snapshot can be stale by the time the partner is persisted.
-    RelationshipTypeRepository repository =
-        (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
-    RelationshipTypeResolver resolver =
-        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
-    for (RelationshipType intendedType : intended) {
-      RelationshipType current;
+  private void rejectInvalidRelationPairs(
+      RelationshipTypeRepository repository,
+      Model model,
+      Map<String, RelationshipType> newTypes,
+      Map<String, RelationshipType> updates) {
+    Set<URI> invalid = new HashSet<>();
+    for (RelationshipType type : newTypes.values()) {
       try {
-        current = resolver.require(intendedType.getId());
-      } catch (BadRequestException notRegistered) {
+        repository.prepareInternal(type, false);
+      } catch (BadRequestException
+          | EntityNotFoundException
+          | jakarta.ws.rs.BadRequestException exception) {
+        invalid.add(type.getRdfPredicate());
         addMessage(
             "Relationship type '"
-                + intendedType.getName()
-                + "' disappeared before its inverse could be completed; skipping");
-        continue;
+                + type.getName()
+                + "' and its inverse pair skipped: "
+                + exception.getMessage());
       }
-      EntityReference currentInverse = current.getInverse();
-      EntityReference intendedInverse = intendedType.getInverse();
-      if (currentInverse != null && !intendedInverse.getId().equals(currentInverse.getId())) {
-        addMessage(
-            "Inverse of relationship type '"
-                + intendedType.getName()
-                + "' was already set by another import; leaving it unchanged");
-        continue;
-      }
-      current.setInverse(intendedInverse);
-      current.setUpdatedBy(user);
-      current.setUpdatedAt(System.currentTimeMillis());
-      repository.prepareInternal(current, false);
-      repository.createOrUpdate(uriInfo, current, user);
     }
+    expandInvalidInversePairs(model, newTypes.values(), invalid);
+    newTypes.values().removeIf(type -> invalid.contains(type.getRdfPredicate()));
+    Set<UUID> retained =
+        newTypes.values().stream().map(RelationshipType::getId).collect(Collectors.toSet());
+    updates.values().removeIf(type -> !retained.contains(type.getInverse().getId()));
+  }
+
+  private void expandInvalidInversePairs(
+      Model model, Collection<RelationshipType> newTypes, Set<URI> invalid) {
+    boolean changed;
+    do {
+      changed = false;
+      for (RelationshipType type : newTypes) {
+        String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
+        if (inverseIri != null) {
+          URI inverse = URI.create(inverseIri);
+          if (invalid.contains(type.getRdfPredicate()) || invalid.contains(inverse)) {
+            changed |= invalid.add(type.getRdfPredicate());
+            changed |= invalid.add(inverse);
+          }
+        }
+      }
+    } while (changed);
+  }
+
+  private Map<String, RelationshipType> refreshInversePartners(
+      Map<String, RelationshipType> newTypes,
+      Collection<RelationshipType> intended,
+      boolean persisted) {
+    RelationshipTypeResolver resolver =
+        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    Map<String, RelationshipType> refreshed = new LinkedHashMap<>();
+    for (RelationshipType update : intended) {
+      RelationshipType current = currentInversePartner(resolver, update);
+      if (current == null) {
+        clearNewInverse(newTypes, update, persisted);
+      } else {
+        current.setInverse(update.getInverse());
+        refreshed.put(current.getName(), current);
+      }
+    }
+    return refreshed;
+  }
+
+  private RelationshipType currentInversePartner(
+      RelationshipTypeResolver resolver, RelationshipType intended) {
+    RelationshipType current;
+    try {
+      current = resolver.require(intended.getId());
+    } catch (BadRequestException notRegistered) {
+      addMessage(
+          "Relationship type '"
+              + intended.getName()
+              + "' disappeared before inverse completion; leaving the new inverse unset");
+      return null;
+    }
+    EntityReference inverse = current.getInverse();
+    if (inverse != null && !intended.getInverse().getId().equals(inverse.getId())) {
+      addMessage(
+          "Inverse of relationship type '"
+              + intended.getName()
+              + "' changed before completion; leaving the new inverse unset");
+      return null;
+    }
+    return current;
+  }
+
+  private void clearNewInverse(
+      Map<String, RelationshipType> newTypes, RelationshipType partner, boolean persisted) {
+    for (RelationshipType type : newTypes.values()) {
+      if (type.getId().equals(partner.getInverse().getId())) {
+        type.setInverse(null);
+        if (persisted) {
+          clearPersistedInverse(type.getId(), partner.getId());
+        }
+      }
+    }
+  }
+
+  private void clearPersistedInverse(UUID typeId, UUID partnerId) {
+    RelationshipTypeResolver resolver =
+        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    RelationshipType current = resolver.require(typeId);
+    if (current.getInverse() != null && partnerId.equals(current.getInverse().getId())) {
+      current.setInverse(null);
+      persistRelationTypeUpdate(current);
+    }
+  }
+
+  private void persistRelationTypeUpdates(
+      Map<String, RelationshipType> newTypes, Collection<RelationshipType> intended) {
+    RelationshipTypeResolver resolver =
+        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    // A read-then-write window remains without a conditional update or shared lock.
+    for (RelationshipType update : intended) {
+      RelationshipType current = currentInversePartner(resolver, update);
+      if (current == null) {
+        clearNewInverse(newTypes, update, true);
+      } else {
+        current.setInverse(update.getInverse());
+        persistRelationTypeUpdate(current);
+      }
+    }
+  }
+
+  private void persistRelationTypeUpdate(RelationshipType current) {
+    RelationshipTypeRepository repository =
+        (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+    current.setUpdatedBy(user);
+    current.setUpdatedAt(System.currentTimeMillis());
+    repository.prepareInternal(current, false);
+    repository.createOrUpdate(uriInfo, current, user);
   }
 
   private void persistTerms(

@@ -21,12 +21,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.StringReader;
 import java.net.URI;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -202,8 +206,9 @@ class GlossaryRdfImporterTest {
         """);
   }
 
-  @Test
-  void symmetricPropertyKeepsSelfInverseEvenWhenNamedInverseIsDeclared() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void symmetricPropertyKeepsSelfInverseEvenWhenNamedInverseIsDeclared(boolean alreadyRegistered) {
     String ontology =
         """
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -219,6 +224,12 @@ class GlossaryRdfImporterTest {
       RelationshipType forward = importer.buildRelationType(model, "prescribes");
       RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
 
+      Map<String, RelationshipType> newTypes = new LinkedHashMap<>();
+      newTypes.put(reverse.getName(), reverse);
+      Map<String, RelationshipType> existing = new LinkedHashMap<>();
+      (alreadyRegistered ? existing : newTypes).put(forward.getName(), forward);
+      assertTrue(importer.wireInversePartners(model, newTypes, existing).isEmpty());
+
       assertTrue(
           forward.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC),
           "prescribes is symmetric");
@@ -226,9 +237,7 @@ class GlossaryRdfImporterTest {
       assertNotNull(forward.getInverse());
       assertEquals("prescribes", forward.getInverse().getName());
       assertEquals(forward.getId(), forward.getInverse().getId());
-      assertNotNull(reverse.getInverse());
-      assertEquals("prescribes", reverse.getInverse().getName());
-      assertEquals(forward.getId(), reverse.getInverse().getId());
+      assertNull(reverse.getInverse());
     } finally {
       model.close();
     }
