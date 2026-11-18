@@ -181,7 +181,7 @@ public class AIContextBuilder {
   }
 
   /** Structured JSON opts into metric semantics; legacy Markdown keeps its full knowledge budget. */
-  public AIContextBuilder withMetricSemantics(boolean include) {
+  public AIContextBuilder withMetricSemantics(final boolean include) {
     this.includeMetricSemantics = include;
     return this;
   }
@@ -266,8 +266,8 @@ public class AIContextBuilder {
     logDegradation(context);
   }
 
-  private int fitMetricSemantics(AIContext context) {
-    GenericAssetContext generic =
+  private int fitMetricSemantics(final AIContext context) {
+    final GenericAssetContext generic =
         context.getAssetContext() == null ? null : context.getAssetContext().getGeneric();
     if (generic == null) {
       return 0;
@@ -281,8 +281,9 @@ public class AIContextBuilder {
           .withSemanticFieldsTruncated(null);
       return 0;
     }
-    MetricContextBudget budget = new MetricContextBudget(knowledgeBudgetChars, MAX_KNOWLEDGE_ITEMS);
-    boolean alreadyTruncated = Boolean.TRUE.equals(generic.getSemanticFieldsTruncated());
+    final MetricContextBudget budget =
+        new MetricContextBudget(knowledgeBudgetChars, MAX_KNOWLEDGE_ITEMS);
+    final boolean alreadyTruncated = Boolean.TRUE.equals(generic.getSemanticFieldsTruncated());
     generic
         .withFilters(budget.takeAll(listOrEmpty(generic.getFilters()), JsonUtils::pojoToJson))
         .withRelatedMetrics(
@@ -293,7 +294,7 @@ public class AIContextBuilder {
     return metricSemanticChars(generic);
   }
 
-  static int metricSemanticChars(GenericAssetContext generic) {
+  static int metricSemanticChars(final GenericAssetContext generic) {
     if (generic.getDimensions() == null
         && generic.getMeasures() == null
         && generic.getFilters() == null
@@ -1277,8 +1278,8 @@ public class AIContextBuilder {
     return new TableData().withColumns(columns).withRows(rows);
   }
 
-  static GenericAssetContext buildMetricContext(Metric metric, ConceptContext concept) {
-    MetricExpression expression = metric.getMetricExpression();
+  static GenericAssetContext buildMetricContext(final Metric metric, final ConceptContext concept) {
+    final MetricExpression expression = metric.getMetricExpression();
     return new GenericAssetContext()
         .withDefinition(expression == null ? null : expression.getCode())
         .withDimensions(nullOrEmpty(metric.getDimensions()) ? null : metric.getDimensions())
@@ -1293,13 +1294,13 @@ public class AIContextBuilder {
                 .toList());
   }
 
-  private static List<String> relatedMetricFqns(Metric metric, ConceptContext concept) {
-    Set<String> visible =
+  private static List<String> relatedMetricFqns(final Metric metric, final ConceptContext concept) {
+    final Set<String> visible =
         listOrEmpty(concept.getMetrics()).stream()
             .map(KnowledgeItem::getFullyQualifiedName)
             .filter(Objects::nonNull)
             .collect(Collectors.toSet());
-    List<String> related =
+    final List<String> related =
         listOrEmpty(metric.getRelatedMetrics()).stream()
             .map(EntityReference::getFullyQualifiedName)
             .filter(Objects::nonNull)

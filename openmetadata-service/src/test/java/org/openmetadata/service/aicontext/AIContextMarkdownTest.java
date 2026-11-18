@@ -53,13 +53,13 @@ class AIContextMarkdownTest {
 
   @Test
   void metricGenericSemanticsPreserveTheAcceptedConceptMarkdown() {
-    ConceptContext concept =
+    final ConceptContext concept =
         new ConceptContext()
             .withDefinition("SUM(amount)")
             .withFilters(List.of("status = 'paid'", "amount > 0"))
             .withGranularity("MONTH")
             .withUnit("DOLLARS");
-    AIContext context =
+    final AIContext context =
         new AIContext()
             .withEntityType("metric")
             .withFullyQualifiedName("revenue")
@@ -67,8 +67,8 @@ class AIContextMarkdownTest {
                 new AssetContext()
                     .withConceptContext(concept)
                     .withGeneric(new GenericAssetContext().withDefinition("SUM(amount)")));
-    String original = AIContextMarkdown.render(context);
-    Metric metric =
+    final String original = AIContextMarkdown.render(context);
+    final Metric metric =
         new Metric()
             .withMetricExpression(new MetricExpression().withCode("SUM(amount)"))
             .withDimensions(List.of(new MetricDimension().withName("region")))

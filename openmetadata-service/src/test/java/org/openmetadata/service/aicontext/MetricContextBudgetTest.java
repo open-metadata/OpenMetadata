@@ -25,9 +25,9 @@ import org.junit.jupiter.api.Test;
 class MetricContextBudgetTest {
   @Test
   void retainsWholeValuesAtTheExactCharacterBoundary() {
-    MetricContextBudget budget =
+    final MetricContextBudget budget =
         new MetricContextBudget(MetricContextBudget.ENVELOPE_CHARS + 7, 50);
-    List<String> values = List.of("abc", "de", "f");
+    final List<String> values = List.of("abc", "de", "f");
 
     assertEquals(List.of("abc", "de"), budget.take(values, Function.identity()));
     assertTrue(budget.truncated());
@@ -36,14 +36,14 @@ class MetricContextBudgetTest {
 
   @Test
   void stopsAtTheExistingItemLimit() {
-    MetricContextBudget budget = new MetricContextBudget(8000, 2);
+    final MetricContextBudget budget = new MetricContextBudget(8000, 2);
     assertEquals(List.of("a", "b"), budget.take(List.of("a", "b", "c"), Function.identity()));
     assertTrue(budget.truncated());
   }
 
   @Test
   void filtersAreAtomicAndDoNotSpendBudgetWhenTheyDoNotFit() {
-    MetricContextBudget budget =
+    final MetricContextBudget budget =
         new MetricContextBudget(MetricContextBudget.ENVELOPE_CHARS + 5, 50);
     assertNull(budget.takeAll(List.of("abc", "de"), Function.identity()));
     assertEquals(List.of("a"), budget.take(List.of("a"), Function.identity()));
@@ -52,7 +52,7 @@ class MetricContextBudgetTest {
 
   @Test
   void aCompleteFilterGroupFitsAtTheBoundary() {
-    MetricContextBudget budget =
+    final MetricContextBudget budget =
         new MetricContextBudget(MetricContextBudget.ENVELOPE_CHARS + 7, 50);
     assertEquals(List.of("abc", "de"), budget.takeAll(List.of("abc", "de"), Function.identity()));
     assertFalse(budget.truncated());
@@ -60,8 +60,8 @@ class MetricContextBudgetTest {
 
   @Test
   void oversizedAndEmptyGroupsAreOmittedWithoutMutatingInputs() {
-    MetricContextBudget budget = new MetricContextBudget(0, 50);
-    List<String> values = new ArrayList<>(List.of("oversized"));
+    final MetricContextBudget budget = new MetricContextBudget(0, 50);
+    final List<String> values = new ArrayList<>(List.of("oversized"));
     assertNull(budget.take(values, Function.identity()));
     assertEquals(List.of("oversized"), values);
     assertNull(budget.takeAll(List.of(), Function.identity()));
@@ -71,7 +71,7 @@ class MetricContextBudgetTest {
 
   @Test
   void aFilterGroupOverTheItemLimitIsOmittedInFull() {
-    MetricContextBudget budget = new MetricContextBudget(8000, 1);
+    final MetricContextBudget budget = new MetricContextBudget(8000, 1);
     assertNull(budget.takeAll(List.of("a", "b"), Function.identity()));
     assertTrue(budget.truncated());
   }
