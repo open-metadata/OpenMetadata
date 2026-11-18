@@ -45,6 +45,12 @@
       background-color: @red-9;
       color: @red-10;
     }
+
+    &.Stopped {
+      border-color: @grey-22;
+      background-color: @grey-1;
+      color: @grey-4;
+    }
   }
 
   .RUNNING {
@@ -110,6 +116,14 @@
           border-color: @red-10;
           .agent-status-summary-text {
             color: @red-10;
+          }
+        }
+
+        &.Stopped {
+          background-color: @grey-1;
+          border-color: @grey-4;
+          .agent-status-summary-text {
+            color: @grey-4;
           }
         }
       }
