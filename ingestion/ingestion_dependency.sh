@@ -90,6 +90,7 @@ nohup airflow dag-processor > /opt/airflow/logs/dag-processor.log 2>&1 &
 # The scheduler is the container's foreground process, so when it exits the container
 # stops and takes the api-server down with it. Its startup can lose a MySQL connection
 # ("Lost connection to server during query"), so restart it before giving up.
+# ADR:2026-11-18-airflow-startup-restarts-the-scheduler-and-bounds-the-wait
 SCHEDULER_MAX_ATTEMPTS=${SCHEDULER_MAX_ATTEMPTS:-5}
 scheduler_attempt=1
 until airflow scheduler; do

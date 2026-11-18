@@ -521,7 +521,7 @@ run_local_docker_main() {
       local token_response
       local access_token
 
-      token_response=$(curl -s -X POST 'http://localhost:8080/auth/token' \
+      token_response=$(curl -s --max-time 10 -X POST 'http://localhost:8080/auth/token' \
         -H 'Content-Type: application/json' \
         -d '{"username": "admin", "password": "admin"}')
 
@@ -538,6 +538,7 @@ run_local_docker_main() {
 
     # Polling alone never ends when the ingestion container has died: a CI job then sits
     # here until its step timeout. Stop as soon as the container is down, or after a deadline.
+    # ADR:2026-11-18-airflow-startup-restarts-the-scheduler-and-bounds-the-wait
     airflow_wait_deadline=$((SECONDS + ${AIRFLOW_READY_TIMEOUT_SECONDS:-600}))
     ensure_airflow_can_start() {
       local state
@@ -562,8 +563,8 @@ run_local_docker_main() {
     echo "✓ Airflow API is ready, token obtained"
 
     echo "Checking if Sample Data DAG is available..."
-    until curl -s -f -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
-      IMPORT_ERRORS=$(curl -s -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
+    until curl -s -f --max-time 10 -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/dags/sample_data" >/dev/null 2>&1; do
+      IMPORT_ERRORS=$(curl -s --max-time 10 -H "Authorization: Bearer $AIRFLOW_ACCESS_TOKEN" "http://localhost:8080/api/v2/importErrors" 2>/dev/null)
       if [ -n "$IMPORT_ERRORS" ]; then
         echo "$IMPORT_ERRORS" | grep "airflow_sample_data.py" > /dev/null 2>&1
         if [ "$?" == "0" ]; then
