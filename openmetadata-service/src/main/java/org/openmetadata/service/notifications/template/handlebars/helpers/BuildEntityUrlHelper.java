@@ -53,6 +53,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
   private static final String KEY_PIPELINE_TYPE = "pipelineType";
   private static final String KEY_ENTITY = "entity";
   private static final String KEY_ID = "id";
+  private static final String KEY_ABOUT = "about";
 
   @Override
   public String getName() {
@@ -144,6 +145,8 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Builds the entity URL. When {@code view} is set ("tasks" or "all"), returns the deep link to
    * that entity's task / conversation feed. Test cases are special: incidents live on the flat
    * "issues" tab and the route has no activity_feed sub-route, so a generic feed suffix would 404.
+   * Tasks have no page of their own, so they always link to the Tasks tab of the asset they are
+   * about.
    */
   private String buildEntityUrl(
       String entityType, String fqn, Map<String, Object> entityMap, String view) {
@@ -162,6 +165,9 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           case Entity.TEST_CASE ->
           // TEST_CASE: /test-case/{fqn}/test-case-results
           buildUrl(baseUrl, "test-case", fqn, "test-case-results");
+          case Entity.TASK ->
+          // TASK: the Tasks tab of the asset the task is about
+          buildTaskUrl(entityMap);
           case Entity.TEST_SUITE ->
           // TEST_SUITE: /test-suites/{fqn}
           buildUrl(baseUrl, "test-suites", fqn, "");
@@ -218,7 +224,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           buildUrl(baseUrl, entityType, fqn, "");
         };
 
-    if (!nullOrEmpty(view) && !nullOrEmpty(url)) {
+    if (!nullOrEmpty(view) && !nullOrEmpty(url) && !Entity.TASK.equals(entityType)) {
       String feed = "tasks".equals(view) ? "tasks" : "all";
       url = String.format("%s/activity_feed/%s", url, feed);
     }
@@ -288,6 +294,22 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
       LOG.error("Error building ingestion pipeline URL", e);
       return null;
     }
+  }
+
+  @SuppressWarnings("unchecked")
+  private String buildTaskUrl(Map<String, Object> entityMap) {
+    if (!(entityMap.get(KEY_ABOUT) instanceof Map<?, ?> aboutObj)) {
+      LOG.debug("Task missing about reference");
+      return null;
+    }
+    Map<String, Object> about = (Map<String, Object>) aboutObj;
+    String aboutType = getTrimmed(about, KEY_TYPE).orElse("");
+    String aboutFqn = getTrimmed(about, KEY_FQN).orElse("");
+    if (aboutType.isEmpty() || aboutFqn.isEmpty()) {
+      LOG.debug("Task about reference missing type or FQN");
+      return null;
+    }
+    return buildEntityUrl(aboutType, aboutFqn, about, "tasks");
   }
 
   /**
