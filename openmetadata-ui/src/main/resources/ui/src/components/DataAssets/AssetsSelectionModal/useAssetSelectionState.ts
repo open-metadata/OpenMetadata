@@ -205,7 +205,7 @@ export const useAssetSelectionState = ({
         setIsLoading(false);
       }
     },
-    [setActiveFilter, useQueryPost]
+    [activeFilter, useQueryPost]
   );
 
   const fetchCurrentEntity = useCallback(async () => {
