@@ -515,6 +515,48 @@ describe('MemoriesView', () => {
     );
   });
 
+  it('separates each usage item with a dot and names when it was last used', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[
+          {
+            ...mockMemories[0],
+            outcomes: {
+              appliedCount: 12,
+              lastAppliedAt: 1778756959299,
+              positiveCount: 3,
+              negativeCount: 1,
+              correctedCount: 2,
+              countedAt: 1778756959299,
+            },
+          },
+        ]}
+        isLoading={false}
+      />
+    );
+
+    const usage = screen.getByTestId('memory-usage-info');
+
+    expect(screen.getByTestId('memory-last-used')).toHaveTextContent(
+      'label.last-used-time'
+    );
+    // Cited · Last used · votes · Corrected
+    expect(usage.textContent?.match(/·/g)).toHaveLength(3);
+  });
+
+  it('shows no separator when citations are the only usage item', () => {
+    renderWithQueryClient(
+      <MemoriesView
+        data={[{ ...mockMemories[0], usageCount: 5 }]}
+        isLoading={false}
+      />
+    );
+
+    expect(screen.getByTestId('memory-usage-info').textContent).not.toContain(
+      '·'
+    );
+  });
+
   it('names each vote count for screen readers, not just its icon and number', () => {
     renderWithQueryClient(
       <MemoriesView

@@ -2048,6 +2048,7 @@
     "last-run-sentence": "마지막 실행",
     "last-seen": "마지막 발생",
     "last-updated": "마지막 업데이트",
+    "last-used-time": "마지막 사용 {{time}}",
     "late-by": "지연됨",
     "latency": "지연",
     "latest": "최신",

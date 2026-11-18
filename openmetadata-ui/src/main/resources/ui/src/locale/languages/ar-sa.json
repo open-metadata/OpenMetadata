@@ -2048,6 +2048,7 @@
     "last-run-sentence": "آخر تشغيل",
     "last-seen": "آخر ظهور",
     "last-updated": "آخر تحديث",
+    "last-used-time": "آخر استخدام {{time}}",
     "late-by": "متأخر بـ",
     "latency": "الكمون",
     "latest": "الأحدث",

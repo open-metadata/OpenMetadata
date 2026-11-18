@@ -2048,6 +2048,7 @@
     "last-run-sentence": "รันล่าสุด",
     "last-seen": "พบล่าสุด",
     "last-updated": "อัปเดตล่าสุด",
+    "last-used-time": "ใช้ล่าสุด {{time}}",
     "late-by": "ล่าช้า",
     "latency": "ความหน่วง",
     "latest": "ล่าสุด",

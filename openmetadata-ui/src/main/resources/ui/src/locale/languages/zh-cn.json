@@ -2048,6 +2048,7 @@
     "last-run-sentence": "最近运行",
     "last-seen": "最后出现",
     "last-updated": "最近更新",
+    "last-used-time": "最近使用 {{time}}",
     "late-by": "延迟",
     "latency": "延迟",
     "latest": "最新",

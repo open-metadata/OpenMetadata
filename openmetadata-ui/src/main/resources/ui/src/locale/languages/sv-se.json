@@ -2048,6 +2048,7 @@
     "last-run-sentence": "Senaste körning",
     "last-seen": "Senast sedd",
     "last-updated": "Senast uppdaterad",
+    "last-used-time": "Senast använd {{time}}",
     "late-by": "Försenad med",
     "latency": "Latens",
     "latest": "Senaste",

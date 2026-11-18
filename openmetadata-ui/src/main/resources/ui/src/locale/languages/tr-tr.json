@@ -2048,6 +2048,7 @@
     "last-run-sentence": "Son çalışma",
     "last-seen": "Son görülme",
     "last-updated": "Son Güncelleme",
+    "last-used-time": "Son kullanım {{time}}",
     "late-by": "Gecikme",
     "latency": "Gecikme",
     "latest": "En Son",
