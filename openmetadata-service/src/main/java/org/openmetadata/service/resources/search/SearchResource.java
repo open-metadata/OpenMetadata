@@ -279,6 +279,79 @@ public class SearchResource {
     return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
   }
 
+  @POST
+  @Path("/query")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "searchEntitiesWithQueryPost",
+      summary = "Search entities using a request body",
+      description =
+          "Same search as GET /v1/search/query but accepting inputs in the request body, so "
+              + "large query filters (e.g. metrics that filter by hundreds of linked asset ids) do "
+              + "not blow past the request-line size limit. The domain scope and access filters "
+              + "are derived from the caller's security context and override any client-supplied "
+              + "values, matching the GET contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchPost(
+      @Context SecurityContext securityContext,
+      @RequestBody(description = "Search request body", required = true) @Valid SearchRequest body)
+      throws IOException {
+
+    // Validate pagination up front so a nonsense body never reaches the search engine. The
+    // GET path relies on @Min on the @QueryParam; the body fields have no bean-validation
+    // annotations, so mirror the previewSearch guard.
+    requireNonNegative("from", body.getFrom());
+    requireNonNegative("size", body.getSize());
+
+    String query = body.getQuery();
+    if (nullOrEmpty(query)) {
+      query = "*";
+    }
+
+    // The body is untrusted for authorization-relevant fields. Domain scope comes from the
+    // caller's security context (same as the GET path), and the index name is normalized to
+    // its alias so a caller cannot address a raw index by name.
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    SearchRequest request =
+        new SearchRequest()
+            .withQuery(query)
+            .withSize(body.getSize())
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(body.getIndex()))
+            .withFrom(body.getFrom())
+            .withQueryFilter(body.getQueryFilter())
+            .withPostFilter(body.getPostFilter())
+            .withFetchSource(body.getFetchSource())
+            .withTrackTotalHits(body.getTrackTotalHits())
+            .withSortFieldParam(body.getSortFieldParam())
+            .withDeleted(body.getDeleted())
+            .withSortOrder(body.getSortOrder())
+            .withIncludeSourceFields(body.getIncludeSourceFields())
+            .withExcludeSourceFields(body.getExcludeSourceFields())
+            .withIsHierarchy(body.getIsHierarchy())
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withSearchAfter(body.getSearchAfter())
+            .withExplain(body.getExplain())
+            .withIncludeAggregations(body.getIncludeAggregations());
+
+    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+  }
+
   private Response filterTestCaseResponses(
       Response response, SecurityContext securityContext, SearchRequest request) {
     return TestCaseSearchMasker.maskSearch(

@@ -74,7 +74,7 @@ import {
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
 import { removeMetricTabAssets } from '../../../../rest/metricTabsAPI';
 import { domainAssetsCountQueryKey } from '../../../../rest/queries/domainQuery';
-import { searchQuery } from '../../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../../rest/searchAPI';
 import { getTagByFqn, removeAssetsFromTags } from '../../../../rest/tagAPI';
 import { getAssetsPageQuickFilters } from '../../../../utils/AdvancedSearchPureUtils';
 import { getEntityTypeString } from '../../../../utils/Assets/AssetsUtils';
@@ -415,6 +415,7 @@ const AssetsTabs = forwardRef(
       assetCount,
       preloadedData,
       skipSearch = false,
+      useQueryPost = false,
     }: AssetsTabsProps,
     ref
   ) => {
@@ -569,7 +570,10 @@ const AssetsTabs = forwardRef(
               )
             : queryParam;
 
-          const res = await searchQuery({
+          // The metric path embeds every linked asset id in `finalQueryFilter`, so a metric
+          // with hundreds of links would overflow the GET request-line size limit. Route
+          // those callers through the POST-body search endpoint.
+          const res = await (useQueryPost ? searchQueryPost : searchQuery)({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,
@@ -596,6 +600,7 @@ const AssetsTabs = forwardRef(
         skipSearch,
         preloadedData,
         applySearchResults,
+        useQueryPost,
       ]
     );
 
