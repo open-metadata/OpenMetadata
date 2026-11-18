@@ -86,9 +86,9 @@ spec:
               value: "true"
             # Equal min/max heap keeps the page-cache budget predictable. JVM_ARGS replaces the
             # image's FUSEKI_HEAP flags and caps direct buffers until the pinned image applies
-            # that cap itself (open-metadata/jena#6).
+            # that cap itself (open-metadata/jena#6). -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
             - name: JVM_ARGS
-              value: "-Xms4g -Xmx4g -XX:MaxDirectMemorySize=256m"
+              value: "-Xms4g -Xmx4g -XX:MaxDirectMemorySize=256m -XX:-UseBASE64Intrinsics"
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki

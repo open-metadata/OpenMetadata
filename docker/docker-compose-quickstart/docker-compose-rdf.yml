@@ -64,7 +64,8 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms2g -Xmx4g
+      # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - ES_JAVA_OPTS=-Xms2g -Xmx4g -XX:-UseBASE64Intrinsics
       - xpack.security.enabled=false
       - indices.memory.index_buffer_size=20%
       - cluster.routing.allocation.disk.threshold_enabled=false
@@ -106,8 +107,8 @@ services:
       - FUSEKI_UPDATE_TIMEOUT_MS=50000
       - OPENMETADATA_EXTENSION_ENABLED=true
       # JVM_ARGS replaces the image's FUSEKI_HEAP flags. It caps direct buffers until the pinned
-      # image applies that cap itself (open-metadata/jena#6).
-      - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m
+      # image applies that cap itself (open-metadata/jena#6). -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - JVM_ARGS=-Xms${FUSEKI_HEAP:-2g} -Xmx${FUSEKI_HEAP:-2g} -XX:MaxDirectMemorySize=256m -XX:-UseBASE64Intrinsics
     ports:
       - "3030:3030"
     volumes:

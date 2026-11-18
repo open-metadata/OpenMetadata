@@ -42,7 +42,8 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.3.0
     environment:
       - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m
+      # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - ES_JAVA_OPTS=-Xms1024m -Xmx1024m -XX:-UseBASE64Intrinsics
       - xpack.security.enabled=false
     networks:
       - app_net
