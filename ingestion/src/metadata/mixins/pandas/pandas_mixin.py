@@ -191,6 +191,7 @@ class PandasInterfaceMixin:
                 key=table.name.root,
                 bucket_name=table.databaseSchema.name,
                 file_extension=table.fileFormat,
+                file_size=None,
                 separator=None,
                 escapechar=service_connection_config.csvEscapeChar or None,
             ),
