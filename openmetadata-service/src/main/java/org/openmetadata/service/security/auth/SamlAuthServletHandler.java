@@ -879,7 +879,12 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
 
         return UserUtil.createOrAdoptConcurrentlyCreatedUser(
             () -> UserUtil.addOrUpdateUser(newUser),
-            () -> Entity.getEntityByName(Entity.USER, username, USER_FIELDS, Include.NON_DELETED),
+            // From the database: the losing login's own miss can leave a not-found marker that
+            // would
+            // hide the account the winning login just committed.
+            () ->
+                Entity.getEntityByName(
+                    Entity.USER, username, USER_FIELDS, Include.NON_DELETED, false),
             email);
       }
       throw new AuthenticationException("User not found and self-signup is disabled");
