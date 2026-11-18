@@ -168,6 +168,7 @@ public class SearchLineagePermissionFilter {
     boolean upstream = page.getDirection() == LineageDirection.UPSTREAM;
     return new SearchLineageRequest()
         .withFqn(page.getFqn())
+        .withEntityType(page.getEntityType())
         .withDirection(page.getDirection())
         .withUpstreamDepth(upstream ? depth : 0)
         .withDownstreamDepth(upstream ? 0 : depth)

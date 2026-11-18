@@ -22,6 +22,34 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 public class LineageCacheKeyTest {
 
   @Test
+  void anUnspecifiedDeletedFilterHasItsOwnCacheKey() {
+    SearchLineageRequest request = new SearchLineageRequest().withFqn("Metabase.375");
+    LineageCacheKey unspecified = LineageCacheKey.fromRequest(request);
+    LineageCacheKey liveOnly = LineageCacheKey.fromRequest(request.withIncludeDeleted(false));
+
+    assertNotEquals(unspecified, liveOnly);
+  }
+
+  @Test
+  void rootEntityTypeChangesCacheKey() {
+    SearchLineageRequest request = new SearchLineageRequest().withFqn("Metabase.375");
+    LineageCacheKey chart = LineageCacheKey.fromRequest(request.withEntityType("chart"));
+    LineageCacheKey dashboard = LineageCacheKey.fromRequest(request.withEntityType("dashboard"));
+
+    assertNotEquals(chart, dashboard);
+  }
+
+  @Test
+  void deletedVisibilityChangesCacheKey() {
+    SearchLineageRequest request = new SearchLineageRequest().withFqn("Metabase.375");
+    LineageCacheKey liveOnly = LineageCacheKey.fromRequest(request.withIncludeDeleted(false));
+    LineageCacheKey includingDeleted =
+        LineageCacheKey.fromRequest(request.withIncludeDeleted(true));
+
+    assertNotEquals(liveOnly, includingDeleted);
+  }
+
+  @Test
   public void testCacheKeyEquality_SameRequest() {
     SearchLineageRequest request =
         new SearchLineageRequest()
@@ -161,7 +189,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -179,7 +209,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
 
     assertNotEquals(key1, key2);
   }
@@ -203,7 +235,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -221,7 +255,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
 
     assertNotEquals(key1, key2);
   }
@@ -245,7 +281,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -263,7 +301,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
 
     assertEquals(key1, key2);
     assertEquals(key1.hashCode(), key2.hashCode());
@@ -288,7 +328,9 @@ public class LineageCacheKeyTest {
             0,
             0,
             null,
-            null);
+            null,
+            "",
+            false);
     LineageCacheKey key2 =
         new LineageCacheKey(
             "table1",
@@ -306,7 +348,9 @@ public class LineageCacheKeyTest {
             2,
             3,
             null,
-            null);
+            null,
+            "",
+            false);
 
     assertNotEquals(key1, key2);
   }

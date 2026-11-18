@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
@@ -29,6 +30,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -61,6 +63,43 @@ class ESLineageGraphBuilderTest {
   @Mock private SearchResponse<JsonData> searchResponse;
   @Mock private HitsMetadata<JsonData> hitsMetadata;
   @Mock private SearchRepository searchRepository;
+
+  private Map<String, Object> rootDocument;
+  private MockedStatic<EsUtils> rootUtils;
+
+  private void stubRootDocument(MockedStatic<EsUtils> utils, Map<String, Object> document) {
+    rootDocument = new HashMap<>(document);
+    rootDocument.putIfAbsent("id", UUID.randomUUID().toString());
+    rootUtils = utils;
+  }
+
+  private ESLineageGraphBuilder lineageBuilder() throws IOException {
+    if (rootDocument != null) {
+      JsonData rootData = JsonData.of(rootDocument);
+      SearchResponse<JsonData> rootResponse =
+          new SearchResponse.Builder<JsonData>()
+              .took(1)
+              .timedOut(false)
+              .shards(shards -> shards.total(1).successful(1).failed(0))
+              .hits(
+                  hits ->
+                      hits.hits(
+                          Hit.of(
+                              hit ->
+                                  hit.index("root")
+                                      .id(rootDocument.get("id").toString())
+                                      .source(rootData))))
+              .build();
+      when(esClient.search(
+              argThat(
+                  (SearchRequest request) ->
+                      request != null && Integer.valueOf(2).equals(request.size())),
+              eq(JsonData.class)))
+          .thenReturn(rootResponse);
+      rootUtils.when(() -> EsUtils.jsonDataToMap(rootData)).thenReturn(rootDocument);
+    }
+    return new ESLineageGraphBuilder(esClient);
+  }
 
   private static final String ROOT_FQN = "service.database.schema.root_table";
   private static final String UPSTREAM_FQN = "service.database.schema.upstream_table";
@@ -131,7 +170,7 @@ class ESLineageGraphBuilderTest {
   }
 
   private SearchLineageResult fetchRootPage() throws IOException {
-    return new ESLineageGraphBuilder(esClient)
+    return lineageBuilder()
         .searchLineageByEntityCount(
             new EntityCountLineageRequest()
                 .withFqn(ROOT_FQN)
@@ -150,7 +189,8 @@ class ESLineageGraphBuilderTest {
       stubEsClientSearch();
       when(hitsMetadata.hits()).thenReturn(List.of());
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       LineagePaginationInfo result =
           builder.getLineagePaginationInfo(ROOT_FQN, 2, 2, NODE_LEVEL_QUERY_FILTER, false, "table");
@@ -203,7 +243,8 @@ class ESLineageGraphBuilderTest {
                       anyString()))
           .thenReturn(matchingResult);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
+      ESLineageGraphBuilder builder = lineageBuilder();
       LineagePaginationInfo result =
           builder.getLineagePaginationInfo(ROOT_FQN, 1, 0, NODE_LEVEL_QUERY_FILTER, false, "table");
 
@@ -241,6 +282,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       Hit<JsonData> mockHit = (Hit<JsonData>) Mockito.mock(Hit.class);
       JsonData mockJsonData = Mockito.mock(JsonData.class);
@@ -278,7 +320,7 @@ class ESLineageGraphBuilderTest {
           .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
           .then(invocation -> null);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()
@@ -326,6 +368,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       Hit<JsonData> mockHit = (Hit<JsonData>) Mockito.mock(Hit.class);
       JsonData mockJsonData = Mockito.mock(JsonData.class);
@@ -363,7 +406,7 @@ class ESLineageGraphBuilderTest {
           .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
           .then(invocation -> null);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()
@@ -407,6 +450,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       JsonData rootJson = Mockito.mock(JsonData.class);
       JsonData upstreamJson = Mockito.mock(JsonData.class);
@@ -445,7 +489,7 @@ class ESLineageGraphBuilderTest {
                 return Map.of();
               });
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
       SearchLineageResult result =
           builder.executeInMemory(
               LineageQueryContext.builder()
@@ -467,7 +511,7 @@ class ESLineageGraphBuilderTest {
       assertFalse(result.getNodes().containsKey(DOWNSTREAM_FQN));
       assertTrue(result.getUpstreamEdges().containsKey(UPSTREAM_FQN + "->" + ROOT_FQN));
       assertTrue(result.getDownstreamEdges().isEmpty());
-      verify(esClient, times(2)).search(any(SearchRequest.class), eq(JsonData.class));
+      verify(esClient, times(3)).search(any(SearchRequest.class), eq(JsonData.class));
     }
   }
 
@@ -522,7 +566,8 @@ class ESLineageGraphBuilderTest {
       stubEsClientSearch();
       when(hitsMetadata.hits()).thenReturn(List.of());
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       LineagePaginationInfo result =
           builder.getLineagePaginationInfo(ROOT_FQN, 1, 1, NODE_LEVEL_QUERY_FILTER, false, "table");
@@ -556,8 +601,9 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()
@@ -604,6 +650,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       Hit<JsonData> mockHit = (Hit<JsonData>) Mockito.mock(Hit.class);
       JsonData mockJsonData = Mockito.mock(JsonData.class);
@@ -637,7 +684,7 @@ class ESLineageGraphBuilderTest {
           .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
           .then(invocation -> null);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()
@@ -663,7 +710,7 @@ class ESLineageGraphBuilderTest {
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       LineagePaginationInfo result =
           builder.getLineagePaginationInfo(ROOT_FQN, 0, 0, NODE_LEVEL_QUERY_FILTER, false, "table");
@@ -686,7 +733,8 @@ class ESLineageGraphBuilderTest {
       stubEsClientSearch();
       when(hitsMetadata.hits()).thenReturn(List.of());
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       // null queryFilter exercises the else branch (getDepthWiseEntityCounts)
       LineagePaginationInfo result =
@@ -740,7 +788,8 @@ class ESLineageGraphBuilderTest {
                       anyString()))
           .thenReturn(matchingResult);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
+      ESLineageGraphBuilder builder = lineageBuilder();
       // Downstream direction — BFS discovers entities via fullyQualifiedName field
       LineagePaginationInfo result =
           builder.getLineagePaginationInfo(ROOT_FQN, 0, 1, NODE_LEVEL_QUERY_FILTER, false, "table");
@@ -777,6 +826,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       Hit<JsonData> mockHit = (Hit<JsonData>) Mockito.mock(Hit.class);
       JsonData mockJsonData = Mockito.mock(JsonData.class);
@@ -808,7 +858,7 @@ class ESLineageGraphBuilderTest {
           .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
           .then(invocation -> null);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       // No queryFilter, no columnFilter — exercises the unfiltered pagination path
       EntityCountLineageRequest request =
@@ -866,6 +916,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       JsonData jsonA = Mockito.mock(JsonData.class);
       JsonData jsonB = Mockito.mock(JsonData.class);
@@ -903,7 +954,7 @@ class ESLineageGraphBuilderTest {
           .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
           .then(invocation -> null);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()
@@ -954,6 +1005,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(entityDoc(ROOT_FQN, List.of()));
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
 
       Map<JsonData, Map<String, Object>> docs = new HashMap<>();
       List<Hit<JsonData>> walkHits =
@@ -972,7 +1024,7 @@ class ESLineageGraphBuilderTest {
           .then(invocation -> null);
 
       SearchLineageResult result =
-          new ESLineageGraphBuilder(esClient)
+          lineageBuilder()
               .searchLineageByEntityCount(
                   new EntityCountLineageRequest()
                       .withFqn(ROOT_FQN)
@@ -1022,6 +1074,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(entityDoc(ROOT_FQN, List.of()));
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
 
       Map<JsonData, Map<String, Object>> docs = new HashMap<>();
       List<Hit<JsonData>> walkHits =
@@ -1040,7 +1093,7 @@ class ESLineageGraphBuilderTest {
           .then(invocation -> null);
 
       SearchLineageResult result =
-          new ESLineageGraphBuilder(esClient)
+          lineageBuilder()
               .searchLineageByEntityCount(
                   new EntityCountLineageRequest()
                       .withFqn(ROOT_FQN)
@@ -1089,6 +1142,9 @@ class ESLineageGraphBuilderTest {
                       anyList()))
           .thenReturn(
               entityDoc(ROOT_FQN, List.of(lineageEdge(up1, ROOT_FQN), lineageEdge(up2, ROOT_FQN))));
+      stubRootDocument(
+          esUtilsMock,
+          entityDoc(ROOT_FQN, List.of(lineageEdge(up1, ROOT_FQN), lineageEdge(up2, ROOT_FQN))));
 
       Map<JsonData, Map<String, Object>> docs = new HashMap<>();
       // The depth-0 walk returns a slim LINEAGE_WALK_FIELDS document (no id/entityType) —
@@ -1109,7 +1165,7 @@ class ESLineageGraphBuilderTest {
           .then(invocation -> null);
 
       SearchLineageResult result =
-          new ESLineageGraphBuilder(esClient)
+          lineageBuilder()
               .searchLineageByEntityCount(
                   new EntityCountLineageRequest()
                       .withFqn(ROOT_FQN)
@@ -1165,6 +1221,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(entityDoc(ROOT_FQN, List.of()));
+      stubRootDocument(esUtilsMock, entityDoc(ROOT_FQN, List.of()));
       Map<JsonData, Map<String, Object>> docs = new HashMap<>();
       List<Hit<JsonData>> walkHits =
           List.of(
@@ -1186,7 +1243,7 @@ class ESLineageGraphBuilderTest {
           .then(invocation -> null);
 
       SearchLineageResult result =
-          new ESLineageGraphBuilder(esClient)
+          lineageBuilder()
               .searchLineageByEntityCount(
                   new EntityCountLineageRequest()
                       .withFqn(ROOT_FQN)
@@ -1277,6 +1334,7 @@ class ESLineageGraphBuilderTest {
                       any(),
                       anyList()))
           .thenReturn(rootDoc, docA, docB);
+      stubRootDocument(esUtilsMock, rootDoc);
 
       JsonData jsonA = Mockito.mock(JsonData.class);
       JsonData jsonB = Mockito.mock(JsonData.class);
@@ -1306,7 +1364,7 @@ class ESLineageGraphBuilderTest {
           .when(() -> LineageUtil.replaceWithEntityLevelTagsBatch(anyList()))
           .then(invocation -> null);
 
-      ESLineageGraphBuilder builder = new ESLineageGraphBuilder(esClient);
+      ESLineageGraphBuilder builder = lineageBuilder();
 
       EntityCountLineageRequest request =
           new EntityCountLineageRequest()

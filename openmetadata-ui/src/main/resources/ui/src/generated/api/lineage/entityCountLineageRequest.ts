@@ -35,6 +35,11 @@ export interface EntityCountLineageRequest {
      */
     endTime?: number;
     /**
+     * Type of the root entity. Disambiguates entities of different types sharing a fully
+     * qualified name.
+     */
+    entityType?: string;
+    /**
      * Entity Fqn to search lineage
      */
     fqn: string;

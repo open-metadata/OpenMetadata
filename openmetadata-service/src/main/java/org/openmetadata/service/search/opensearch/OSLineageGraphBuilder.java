@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnFilterMatcher;
 import org.openmetadata.service.search.ColumnMetadataCache;
 import org.openmetadata.service.search.LineagePathPreserver;
@@ -45,8 +46,11 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.LineageUtil;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
+import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsAggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
+import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
+import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
@@ -66,6 +70,71 @@ public class OSLineageGraphBuilder
 
   public OSLineageGraphBuilder(OpenSearchClient esClient) {
     this.esClient = esClient;
+  }
+
+  private Map<String, Object> fetchRootEntity(SearchLineageRequest request) throws IOException {
+    var response =
+        esClient.search(
+            SearchRequest.of(
+                builder ->
+                    builder
+                        .index(
+                            Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS))
+                        .query(OsUtils.restrictToOrgWideMemories(rootEntityQuery(request)))
+                        .size(2)
+                        .source(
+                            source ->
+                                source.filter(
+                                    fields -> fields.excludes(SOURCE_FIELDS_TO_EXCLUDE)))),
+            JsonData.class);
+    LineageUtil.rejectTimedOutSearch(response.timedOut(), GLOBAL_SEARCH_ALIAS);
+    return selectRootEntity(
+        response.hits().hits().stream()
+            .filter(hit -> hit.source() != null)
+            .map(hit -> OsUtils.jsonDataToMap(hit.source()))
+            .toList(),
+        request);
+  }
+
+  private Map<String, Set<String>> rootAwareDirections(
+      Map<String, Set<String>> directions, String fqn, String entityType, Boolean includeDeleted)
+      throws IOException {
+    if (nullOrEmpty(entityType)
+        || directions.values().stream()
+            .noneMatch(hashes -> hashes.contains(FullyQualifiedName.buildHash(fqn)))) {
+      return directions;
+    }
+    var root =
+        fetchRootEntity(
+            new SearchLineageRequest()
+                .withFqn(fqn)
+                .withEntityType(entityType)
+                .withIncludeDeleted(includeDeleted));
+    return withRootId(directions, fqn, root.get("id").toString());
+  }
+
+  private Query rootEntityQuery(SearchLineageRequest request) {
+    var query =
+        new BoolQuery.Builder()
+            .filter(
+                filter ->
+                    filter.term(
+                        term ->
+                            term.field(FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD)
+                                .value(
+                                    FieldValue.of(
+                                        FullyQualifiedName.buildHash(request.getFqn())))));
+    if (!nullOrEmpty(request.getEntityType())) {
+      query.filter(
+          filter ->
+              filter.term(
+                  term -> term.field("entityType").value(FieldValue.of(request.getEntityType()))));
+    }
+    if (!Boolean.TRUE.equals(request.getIncludeDeleted())) {
+      query.filter(
+          filter -> filter.term(term -> term.field("deleted").value(FieldValue.of(false))));
+    }
+    return Query.of(builder -> builder.bool(query.build()));
   }
 
   public SearchLineageResult getPlatformLineage(String index, String queryFilter, boolean deleted)
@@ -131,6 +200,12 @@ public class OSLineageGraphBuilder
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     Map<String, Set<String>> directionKeyAndValues =
         buildDirectionToFqnSet(lineageRequest.getDirectionValue(), hasToFqnMap.keySet());
+    directionKeyAndValues =
+        rootAwareDirections(
+            directionKeyAndValues,
+            lineageRequest.getFqn(),
+            lineageRequest.getEntityType(),
+            lineageRequest.getIncludeDeleted());
     SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
@@ -150,12 +225,16 @@ public class OSLineageGraphBuilder
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
         Map<String, Object> esDoc = OsUtils.jsonDataToMap(hit.source());
-        if (!esDoc.isEmpty()) {
+        if (!esDoc.isEmpty()
+            && matchesRootType(esDoc, lineageRequest.getFqn(), lineageRequest.getEntityType())) {
           String fqn = esDoc.get(FQN_FIELD).toString();
           RelationshipRef toEntity = getRelationshipRef(esDoc);
           List<EsLineageData> upStreamEntities =
-              getUpstreamLineageListIfExist(
-                  esDoc, lineageRequest.getStartTime(), lineageRequest.getEndTime());
+              filterRootEdges(
+                  getUpstreamLineageListIfExist(
+                      esDoc, lineageRequest.getStartTime(), lineageRequest.getEndTime()),
+                  lineageRequest.getFqn(),
+                  lineageRequest.getEntityType());
           int currentDepth = calculateCurrentDepth(lineageRequest, remainingDepth);
           result
               .getNodes()
@@ -222,6 +301,12 @@ public class OSLineageGraphBuilder
     Map<String, String> hasToFqnMapForLayer = new HashMap<>();
     Map<String, Set<String>> directionKeyAndValues =
         buildDirectionToFqnSet(lineageRequest.getDirectionValue(), hasToFqnMap.keySet());
+    directionKeyAndValues =
+        rootAwareDirections(
+            directionKeyAndValues,
+            lineageRequest.getFqn(),
+            lineageRequest.getEntityType(),
+            lineageRequest.getIncludeDeleted());
     SearchRequest searchRequest =
         getSearchRequest(
             lineageRequest.getDirection(),
@@ -261,7 +346,9 @@ public class OSLineageGraphBuilder
     for (Hit<JsonData> hit : searchResponse.hits().hits()) {
       if (hit.source() != null) {
         Map<String, Object> entityMap = OsUtils.jsonDataToMap(hit.source());
-        if (!entityMap.isEmpty()) {
+        if (!entityMap.isEmpty()
+            && matchesRootType(
+                entityMap, lineageRequest.getFqn(), lineageRequest.getEntityType())) {
           String fqn = entityMap.get(FQN_FIELD).toString();
 
           RelationshipRef toEntity = getRelationshipRef(entityMap);
@@ -270,7 +357,9 @@ public class OSLineageGraphBuilder
                   entityMap,
                   hasToFqnMap.keySet(),
                   lineageRequest.getStartTime(),
-                  lineageRequest.getEndTime());
+                  lineageRequest.getEndTime(),
+                  lineageRequest.getFqn(),
+                  lineageRequest.getEntityType());
           // Time-window hard prune (point-in-time semantics): a candidate node is kept only when
           // at least one in-window edge connects it to the current frontier. Out-of-window edges
           // sever discovery of everything reachable only through them. This mirrors the upstream
@@ -561,11 +650,15 @@ public class OSLineageGraphBuilder
             null));
   }
 
+  public EntityReference getLineageRoot(SearchLineageRequest request) throws IOException {
+    return rootReference(loadRootEntity(request.getFqn(), fqn -> fetchRootEntity(request)));
+  }
+
   private void addRootEntityWithPagingCounts(
       SearchLineageRequest lineageRequest, SearchLineageResult result, boolean isDirectionBased)
       throws IOException {
     final Map<String, Object> rootEntityMap =
-        loadRootEntity(lineageRequest.getFqn(), this::fetchRootEntity);
+        loadRootEntity(lineageRequest.getFqn(), fqn -> fetchRootEntity(lineageRequest));
 
     if (!rootEntityMap.isEmpty()) {
       String rootFqn = rootEntityMap.get(FQN_FIELD).toString();
@@ -590,55 +683,24 @@ public class OSLineageGraphBuilder
     }
   }
 
-  private Map<String, Object> fetchRootEntity(final String fqn) throws IOException {
-    return OsUtils.searchEntityByKey(
-        esClient,
-        null,
-        GLOBAL_SEARCH_ALIAS,
-        FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD,
-        Pair.of(FullyQualifiedName.buildHash(fqn), fqn),
-        SOURCE_FIELDS_TO_EXCLUDE);
-  }
-
-  private int countDownstreamEntities(String fqn, SearchLineageRequest lineageRequest)
-      throws IOException {
-    Map<String, String> hasToFqnMap = Map.of(FullyQualifiedName.buildHash(fqn), fqn);
-    Map<String, Set<String>> directionKeyAndValues =
-        buildDirectionToFqnSet(
-            getLineageDirection(LineageDirection.DOWNSTREAM, lineageRequest.getIsConnectedVia()),
-            hasToFqnMap.keySet());
-
+  private int countDownstreamEntities(String fqn, SearchLineageRequest request) throws IOException {
+    var root = fetchRootEntity(request);
     SearchRequest searchRequest =
-        getSearchRequest(
+        OsUtils.getSearchRequest(
             LineageDirection.DOWNSTREAM,
             GLOBAL_SEARCH_ALIAS,
-            lineageRequest.getQueryFilter(),
-            GRAPH_AGGREGATION,
-            directionKeyAndValues,
+            request.getQueryFilter(),
+            null,
+            rootDownstreamIds(root.get("id").toString(), request.getIsConnectedVia()),
             0,
-            0, // size = 0 since we only need count
-            lineageRequest.getIncludeDeleted(),
-            lineageRequest.getIncludeSourceFields().stream().toList(),
+            0,
+            request.getIncludeDeleted(),
+            request.getIncludeSourceFields().stream().toList(),
             SOURCE_FIELDS_TO_EXCLUDE);
-
-    SearchResponse<JsonData> response = esClient.search(searchRequest, JsonData.class);
-
-    // Get count from aggregation like in fetchDownstreamNodesRecursively
-    StringTermsAggregate valueCountAgg =
-        response.aggregations() != null && response.aggregations().get(GRAPH_AGGREGATION) != null
-            ? response.aggregations().get(GRAPH_AGGREGATION).sterms()
-            : null;
-
-    if (valueCountAgg != null) {
-      for (StringTermsBucket bucket : valueCountAgg.buckets().array()) {
-        String fqnFromHash = hasToFqnMap.get(bucket.key());
-        if (fqnFromHash != null && fqnFromHash.equals(fqn)) {
-          return (int) bucket.docCount();
-        }
-      }
-    }
-
-    return 0;
+    return Math.toIntExact(
+        esClient
+            .count(count -> count.index(searchRequest.index()).query(searchRequest.query()))
+            .count());
   }
 
   public LineagePaginationInfo getLineagePaginationInfo(
@@ -683,7 +745,8 @@ public class OSLineageGraphBuilder
                 countFilter,
                 includeDeleted,
                 startTime,
-                endTime));
+                endTime,
+                entityType));
       }
       if (downstreamDepth > 0) {
         downstreamDepthCounts.putAll(
@@ -695,7 +758,8 @@ public class OSLineageGraphBuilder
                 countFilter,
                 includeDeleted,
                 startTime,
-                endTime));
+                endTime,
+                entityType));
       }
     } else {
       if (upstreamDepth > 0) {
@@ -735,11 +799,19 @@ public class OSLineageGraphBuilder
       String structuralFilter,
       boolean includeDeleted,
       Long startTime,
-      Long endTime)
+      Long endTime,
+      String rootEntityType)
       throws IOException {
     Map<Integer, List<String>> entitiesByDepth =
         getAllEntitiesByDepth(
-            fqn, direction, maxDepth, structuralFilter, includeDeleted, startTime, endTime);
+            fqn,
+            direction,
+            maxDepth,
+            structuralFilter,
+            includeDeleted,
+            startTime,
+            endTime,
+            rootEntityType);
 
     Set<String> allFqnHashes = new HashSet<>();
     for (List<String> fqns : entitiesByDepth.values()) {
@@ -818,6 +890,7 @@ public class OSLineageGraphBuilder
     addRootEntityWithPagingCounts(
         new SearchLineageRequest()
             .withFqn(request.getFqn())
+            .withEntityType(request.getEntityType())
             .withQueryFilter(request.getQueryFilter())
             .withIncludeDeleted(request.getIncludeDeleted())
             .withIsConnectedVia(request.getIsConnectedVia())
@@ -849,7 +922,8 @@ public class OSLineageGraphBuilder
                   hasNodeLevelQueryFilter ? structuralQueryFilter : request.getQueryFilter(),
                   request.getIncludeDeleted(),
                   request.getStartTime(),
-                  request.getEndTime()));
+                  request.getEndTime(),
+                  request.getEntityType()));
 
       List<String> allEntities = new ArrayList<>();
       for (int depth = 1; depth <= traversalDepth; depth++) {
@@ -960,6 +1034,7 @@ public class OSLineageGraphBuilder
     // Convert EntityCountLineageRequest to SearchLineageRequest for filter application
     return new SearchLineageRequest()
         .withFqn(request.getFqn())
+        .withEntityType(request.getEntityType())
         .withUpstreamDepth(
             request.getDirection() == LineageDirection.UPSTREAM ? request.getMaxDepth() : 0)
         .withDownstreamDepth(
@@ -1026,7 +1101,9 @@ public class OSLineageGraphBuilder
         request.getUpstreamDepth() != null ? request.getUpstreamDepth() : 0,
         request.getDownstreamDepth() != null ? request.getDownstreamDepth() : 0,
         request.getStartTime(),
-        request.getEndTime());
+        request.getEndTime(),
+        request.getEntityType() == null ? "" : request.getEntityType(),
+        request.getIncludeDeleted());
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
@@ -1047,7 +1124,8 @@ public class OSLineageGraphBuilder
         includeDeleted,
         isConnectedVia(entityType),
         startTime,
-        endTime);
+        endTime,
+        entityType);
   }
 
   private Map<Integer, Integer> getDepthWiseEntityCounts(
@@ -1058,7 +1136,8 @@ public class OSLineageGraphBuilder
       boolean includeDeleted,
       boolean connectedVia,
       Long startTime,
-      Long endTime)
+      Long endTime,
+      String rootEntityType)
       throws IOException {
 
     int startingOffset = direction.equals(LineageDirection.UPSTREAM) ? 0 : 1;
@@ -1076,6 +1155,8 @@ public class OSLineageGraphBuilder
           buildDirectionToFqnSet(
               getLineageDirection(direction, connectedVia), currentLevel.keySet());
 
+      directionKeyAndValues =
+          rootAwareDirections(directionKeyAndValues, fqn, rootEntityType, includeDeleted);
       SearchRequest searchRequest =
           getSearchRequest(
               direction,
@@ -1097,10 +1178,11 @@ public class OSLineageGraphBuilder
       for (Hit<JsonData> hit : searchResponse.hits().hits()) {
         if (hit.source() != null) {
           Map<String, Object> esDoc = OsUtils.jsonDataToMap(hit.source());
-          if (!esDoc.isEmpty()) {
+          if (!esDoc.isEmpty() && matchesRootType(esDoc, fqn, rootEntityType)) {
             String entityFqn = esDoc.get(FQN_FIELD).toString();
             if (direction.equals(LineageDirection.DOWNSTREAM)) {
-              if (getMatchingUpstreamLineageData(esDoc, currentLevel.keySet(), startTime, endTime)
+              if (getMatchingUpstreamLineageData(
+                      esDoc, currentLevel.keySet(), startTime, endTime, fqn, rootEntityType)
                   .isEmpty()) {
                 continue;
               }
@@ -1110,7 +1192,10 @@ public class OSLineageGraphBuilder
               }
             } else {
               List<EsLineageData> upStreamEntities =
-                  getUpstreamLineageListIfExist(esDoc, startTime, endTime);
+                  filterRootEdges(
+                      getUpstreamLineageListIfExist(esDoc, startTime, endTime),
+                      fqn,
+                      rootEntityType);
               for (EsLineageData data : upStreamEntities) {
                 if (data.getFromEntity() != null) {
                   String fromFqn = data.getFromEntity().getFullyQualifiedName();
@@ -1143,7 +1228,8 @@ public class OSLineageGraphBuilder
       String queryFilter,
       boolean includeDeleted,
       Long startTime,
-      Long endTime)
+      Long endTime,
+      String rootEntityType)
       throws IOException {
     Set<String> visitedFqns = new HashSet<>();
     visitedFqns.add(fqn);
@@ -1157,6 +1243,8 @@ public class OSLineageGraphBuilder
       Map<String, Set<String>> directionKeyAndValues =
           buildDirectionToFqnSet(getLineageDirection(direction, false), currentLevel.keySet());
 
+      directionKeyAndValues =
+          rootAwareDirections(directionKeyAndValues, fqn, rootEntityType, includeDeleted);
       SearchRequest searchRequest =
           getSearchRequest(
               direction,
@@ -1178,10 +1266,11 @@ public class OSLineageGraphBuilder
       for (Hit<JsonData> hit : searchResponse.hits().hits()) {
         if (hit.source() != null) {
           Map<String, Object> esDoc = OsUtils.jsonDataToMap(hit.source());
-          if (!esDoc.isEmpty()) {
+          if (!esDoc.isEmpty() && matchesRootType(esDoc, fqn, rootEntityType)) {
             if (direction.equals(LineageDirection.DOWNSTREAM)) {
               String entityFqn = esDoc.get(FQN_FIELD).toString();
-              if (getMatchingUpstreamLineageData(esDoc, currentLevel.keySet(), startTime, endTime)
+              if (getMatchingUpstreamLineageData(
+                      esDoc, currentLevel.keySet(), startTime, endTime, fqn, rootEntityType)
                   .isEmpty()) {
                 continue;
               }
@@ -1191,7 +1280,10 @@ public class OSLineageGraphBuilder
               }
             } else {
               List<EsLineageData> upstreamEntities =
-                  getUpstreamLineageListIfExist(esDoc, startTime, endTime);
+                  filterRootEdges(
+                      getUpstreamLineageListIfExist(esDoc, startTime, endTime),
+                      fqn,
+                      rootEntityType);
               for (EsLineageData data : upstreamEntities) {
                 if (data.getFromEntity() != null) {
                   String fromFqn = data.getFromEntity().getFullyQualifiedName();
@@ -1214,8 +1306,15 @@ public class OSLineageGraphBuilder
   }
 
   private static List<EsLineageData> getMatchingUpstreamLineageData(
-      Map<String, Object> esDoc, Set<String> currentLevelHashes, Long startTime, Long endTime) {
-    return getUpstreamLineageListIfExist(esDoc, startTime, endTime).stream()
+      Map<String, Object> esDoc,
+      Set<String> currentLevelHashes,
+      Long startTime,
+      Long endTime,
+      String rootFqn,
+      String rootType) {
+    return filterRootEdges(
+            getUpstreamLineageListIfExist(esDoc, startTime, endTime), rootFqn, rootType)
+        .stream()
         .filter(data -> data.getFromEntity() != null)
         .filter(data -> currentLevelHashes.contains(data.getFromEntity().getFqnHash()))
         .toList();
@@ -1273,7 +1372,10 @@ public class OSLineageGraphBuilder
       Set<String> allCollectedFqns) {
     RelationshipRef currentEntity = getRelationshipRef(entityDoc);
     List<EsLineageData> upstreamEntities =
-        getUpstreamLineageListIfExist(entityDoc, request.getStartTime(), request.getEndTime());
+        filterRootEdges(
+            getUpstreamLineageListIfExist(entityDoc, request.getStartTime(), request.getEndTime()),
+            request.getFqn(),
+            request.getEntityType());
 
     if (request.getDirection() == LineageDirection.UPSTREAM) {
       // Add upstream edges - current entity depends on these upstream entities
@@ -1338,6 +1440,12 @@ public class OSLineageGraphBuilder
           buildDirectionToFqnSet(
               getLineageDirection(request.getDirection(), false), currentLevel.keySet());
 
+      directionKeyAndValues =
+          rootAwareDirections(
+              directionKeyAndValues,
+              request.getFqn(),
+              request.getEntityType(),
+              request.getIncludeDeleted());
       SearchRequest searchRequest =
           getSearchRequest(
               request.getDirection(),
@@ -1357,11 +1465,17 @@ public class OSLineageGraphBuilder
       for (Hit<JsonData> hit : searchResponse.hits().hits()) {
         if (hit.source() != null) {
           Map<String, Object> esDoc = OsUtils.jsonDataToMap(hit.source());
-          if (!esDoc.isEmpty()) {
+          if (!esDoc.isEmpty()
+              && matchesRootType(esDoc, request.getFqn(), request.getEntityType())) {
             String entityFqn = esDoc.get(FQN_FIELD).toString();
             if (request.getDirection().equals(LineageDirection.DOWNSTREAM)) {
               if (getMatchingUpstreamLineageData(
-                      esDoc, currentLevel.keySet(), request.getStartTime(), request.getEndTime())
+                      esDoc,
+                      currentLevel.keySet(),
+                      request.getStartTime(),
+                      request.getEndTime(),
+                      request.getFqn(),
+                      request.getEntityType())
                   .isEmpty()) {
                 continue;
               }
@@ -1372,8 +1486,11 @@ public class OSLineageGraphBuilder
             } else {
               allEntitiesUpToDepth.put(entityFqn, new EntityData(entityFqn, depth, esDoc));
               List<EsLineageData> upStreamEntities =
-                  getUpstreamLineageListIfExist(
-                      esDoc, request.getStartTime(), request.getEndTime());
+                  filterRootEdges(
+                      getUpstreamLineageListIfExist(
+                          esDoc, request.getStartTime(), request.getEndTime()),
+                      request.getFqn(),
+                      request.getEntityType());
               for (EsLineageData data : upStreamEntities) {
                 String fromFqn = data.getFromEntity().getFullyQualifiedName();
                 if (depth < targetDepth && !visitedFqns.contains(fromFqn)) {
@@ -1532,7 +1649,8 @@ public class OSLineageGraphBuilder
           structuralQueryFilter,
           request.getIncludeDeleted(),
           request.getStartTime(),
-          request.getEndTime());
+          request.getEndTime(),
+          request.getEntityType());
     }
 
     return getDepthWiseEntityCounts(
@@ -1543,7 +1661,8 @@ public class OSLineageGraphBuilder
         request.getIncludeDeleted(),
         Boolean.TRUE.equals(request.getIsConnectedVia()),
         request.getStartTime(),
-        request.getEndTime());
+        request.getEndTime(),
+        request.getEntityType());
   }
 
   /**

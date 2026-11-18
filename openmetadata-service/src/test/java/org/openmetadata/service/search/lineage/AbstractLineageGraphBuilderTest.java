@@ -23,7 +23,11 @@ import org.openmetadata.schema.api.lineage.RelationshipRef;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.type.lineage.NodeInformation;
+import org.openmetadata.sdk.exception.SearchException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.QueryFilterParser;
+import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class AbstractLineageGraphBuilderTest {
 
@@ -34,6 +38,63 @@ class AbstractLineageGraphBuilderTest {
   @BeforeEach
   void setUp() {
     builder = new TestableLineageGraphBuilder();
+  }
+
+  @Test
+  void rootIdentityScopesTheEngineQueryAndKeepsOtherFrontierEntities() {
+    String rootHash = FullyQualifiedName.buildHash(ROOT_FQN);
+    String otherHash = FullyQualifiedName.buildHash("svc.db.schema.other");
+    Map<String, Set<String>> frontier =
+        Map.of(
+            Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD, Set.of(rootHash),
+            SearchUtils.DOWNSTREAM_NODE_KEY, Set.of(rootHash, otherHash),
+            SearchUtils.PIPELINE_AS_EDGE_KEY, Set.of(rootHash));
+
+    Map<String, Set<String>> selected =
+        AbstractLineageGraphBuilder.withRootId(frontier, ROOT_FQN, "root-id");
+
+    assertEquals(
+        Map.of(
+            "_id",
+            Set.of("root-id"),
+            "upstreamLineage.fromEntity.id.keyword",
+            Set.of("root-id"),
+            "upstreamLineage.pipeline.id.keyword",
+            Set.of("root-id"),
+            SearchUtils.DOWNSTREAM_NODE_KEY,
+            Set.of(otherHash)),
+        selected);
+    assertEquals(Set.of(rootHash, otherHash), frontier.get(SearchUtils.DOWNSTREAM_NODE_KEY));
+  }
+
+  @Test
+  void rootSelectionDistinguishesAChartFromAnIdenticallyNamedDashboard() {
+    Map<String, Object> chart = Map.of("fullyQualifiedName", ROOT_FQN, "entityType", "chart");
+    Map<String, Object> dashboard =
+        Map.of("fullyQualifiedName", ROOT_FQN, "entityType", "dashboard");
+
+    assertEquals(
+        dashboard,
+        builder.selectRootEntity(
+            List.of(chart, dashboard),
+            new SearchLineageRequest().withFqn(ROOT_FQN).withEntityType("dashboard")));
+    assertThrows(
+        SearchException.class,
+        () ->
+            builder.selectRootEntity(
+                List.of(chart, dashboard), new SearchLineageRequest().withFqn(ROOT_FQN)));
+  }
+
+  @Test
+  void selectedRootReferenceRetainsItsIndexedIdentity() {
+    UUID id = UUID.randomUUID();
+    var reference =
+        AbstractLineageGraphBuilder.rootReference(
+            Map.of("id", id.toString(), "entityType", "dashboard", "fullyQualifiedName", ROOT_FQN));
+
+    assertEquals(id, reference.getId());
+    assertEquals("dashboard", reference.getType());
+    assertEquals(ROOT_FQN, reference.getFullyQualifiedName());
   }
 
   // --- applyEntityCountPagination tests ---

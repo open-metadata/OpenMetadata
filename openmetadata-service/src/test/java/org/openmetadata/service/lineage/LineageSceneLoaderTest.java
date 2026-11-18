@@ -73,6 +73,9 @@ class LineageSceneLoaderTest {
               assertTrue(request.getQueryFilter().contains("PII.Sensitive"));
               assertEquals(1, request.getUpstreamDepth());
               assertEquals(2, request.getDownstreamDepth());
+              assertEquals(
+                  request.getFqn().endsWith(".inventory") ? Entity.STORED_PROCEDURE : Entity.TABLE,
+                  request.getEntityType());
               return LineageSceneLoader.emptyLineage();
             });
 

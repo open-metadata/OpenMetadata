@@ -6,6 +6,10 @@
   "javaType": "org.openmetadata.schema.api.lineage.EntityCountLineageRequest",
   "type": "object",
   "properties": {
+    "entityType": {
+      "description": "Type of the root entity. Disambiguates entities of different types sharing a fully qualified name.",
+      "type": "string"
+    },
     "fqn": {
       "description": "Entity Fqn to search lineage",
       "type": "string"

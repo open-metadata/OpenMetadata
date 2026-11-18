@@ -1005,6 +1005,8 @@ public interface SearchClient
    */
   Optional<EntityReference> getLineageRoot(String fqn) throws IOException;
 
+  EntityReference getLineageRoot(SearchLineageRequest request) throws IOException;
+
   default LineagePaginationInfo getLineagePaginationInfo(
       String fqn,
       int upstreamDepth,

@@ -140,6 +140,7 @@ final class LineageSceneLoader {
     return repository.searchLineage(
         new SearchLineageRequest()
             .withFqn(focusFqn)
+            .withEntityType(entityType)
             .withUpstreamDepth(request.upstreamDepth())
             .withDownstreamDepth(request.downstreamDepth())
             .withQueryFilter(request.queryFilterJson())

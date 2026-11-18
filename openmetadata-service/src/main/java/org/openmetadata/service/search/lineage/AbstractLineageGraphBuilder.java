@@ -1,7 +1,10 @@
 package org.openmetadata.service.search.lineage;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.Entity.FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD;
 import static org.openmetadata.service.search.SearchClient.FQN_FIELD;
+import static org.openmetadata.service.search.SearchUtils.DOWNSTREAM_NODE_KEY;
+import static org.openmetadata.service.search.SearchUtils.PIPELINE_AS_EDGE_KEY;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -13,6 +16,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.ToIntFunction;
 import lombok.extern.slf4j.Slf4j;
@@ -23,8 +27,10 @@ import org.openmetadata.schema.api.lineage.LineageDirection;
 import org.openmetadata.schema.api.lineage.LineagePaginationInfo;
 import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ColumnMetadataCache.EntityDocumentFetcher;
 import org.openmetadata.service.search.LineagePathPreserver;
@@ -58,6 +64,89 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
     } catch (final MissingLineageEntityException e) {
       throw EntityNotFoundException.byName(fqn, e);
     }
+  }
+
+  protected static EntityReference rootReference(Map<String, Object> document) {
+    return new EntityReference()
+        .withId(UUID.fromString(document.get("id").toString()))
+        .withType(document.get("entityType").toString())
+        .withFullyQualifiedName(document.get(FQN_FIELD).toString());
+  }
+
+  protected final Map<String, Object> selectRootEntity(
+      List<Map<String, Object>> candidates, SearchLineageRequest request) {
+    List<Map<String, Object>> roots =
+        candidates.stream()
+            .filter(doc -> request.getFqn().equals(doc.get(FQN_FIELD)))
+            .filter(doc -> matchesRootType(doc, request.getFqn(), request.getEntityType()))
+            .filter(
+                doc ->
+                    Boolean.TRUE.equals(request.getIncludeDeleted())
+                        || !Boolean.TRUE.equals(doc.get("deleted")))
+            .toList();
+    if (roots.isEmpty()) {
+      throw new MissingLineageEntityException(request.getFqn());
+    }
+    if (roots.size() != 1) {
+      throw new SearchException(
+          "Expected one lineage root for type="
+              + request.getEntityType()
+              + ", fqn="
+              + request.getFqn()
+              + "; found="
+              + roots.size());
+    }
+    return roots.getFirst();
+  }
+
+  protected static Map<String, Set<String>> withRootId(
+      Map<String, Set<String>> directions, String rootFqn, String rootId) {
+    Map<String, String> identityFields =
+        Map.of(
+            FIELD_FULLY_QUALIFIED_NAME_HASH_KEYWORD, "_id",
+            DOWNSTREAM_NODE_KEY, "upstreamLineage.fromEntity.id.keyword",
+            PIPELINE_AS_EDGE_KEY, "upstreamLineage.pipeline.id.keyword");
+    String rootHash = FullyQualifiedName.buildHash(rootFqn);
+    Map<String, Set<String>> result = new HashMap<>();
+    directions.forEach(
+        (field, hashes) -> {
+          Set<String> otherHashes = new HashSet<>(hashes);
+          if (otherHashes.remove(rootHash)) {
+            result.put(identityFields.get(field), Set.of(rootId));
+          }
+          if (!otherHashes.isEmpty()) {
+            result.put(field, otherHashes);
+          }
+        });
+    return result;
+  }
+
+  protected static Map<String, Set<String>> rootDownstreamIds(String rootId, Boolean connectedVia) {
+    Map<String, Set<String>> fields = new HashMap<>();
+    fields.put("upstreamLineage.fromEntity.id.keyword", Set.of(rootId));
+    if (Boolean.TRUE.equals(connectedVia)) {
+      fields.put("upstreamLineage.pipeline.id.keyword", Set.of(rootId));
+    }
+    return fields;
+  }
+
+  protected static boolean matchesRootType(
+      Map<String, Object> doc, String rootFqn, String rootType) {
+    return !rootFqn.equals(doc.get(FQN_FIELD))
+        || nullOrEmpty(rootType)
+        || rootType.equals(doc.get("entityType"));
+  }
+
+  protected static List<EsLineageData> filterRootEdges(
+      List<EsLineageData> edges, String rootFqn, String rootType) {
+    return edges.stream()
+        .filter(
+            edge ->
+                edge.getFromEntity() == null
+                    || !rootFqn.equals(edge.getFromEntity().getFullyQualifiedName())
+                    || nullOrEmpty(rootType)
+                    || rootType.equals(edge.getFromEntity().getType()))
+        .toList();
   }
 
   /**
@@ -539,6 +628,8 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
   public static final List<String> LINEAGE_WALK_FIELDS =
       List.of(
           FQN_FIELD,
+          "entityType",
+          "upstreamLineage.fromEntity.type",
           "upstreamLineage.fromEntity.fqnHash",
           "upstreamLineage.fromEntity.fullyQualifiedName",
           "upstreamLineage.createdAt",
