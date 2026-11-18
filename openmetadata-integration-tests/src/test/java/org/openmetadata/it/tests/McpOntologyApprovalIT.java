@@ -122,6 +122,7 @@ class McpOntologyApprovalIT extends McpTestBase {
             new CreateGlossaryTerm()
                 .withGlossary(glossary.getFullyQualifiedName())
                 .withName(name)
+                .withOwners(List.of(SharedEntities.get().USER2.getEntityReference()))
                 .withDescription("MCP approval fixture"));
   }
 
