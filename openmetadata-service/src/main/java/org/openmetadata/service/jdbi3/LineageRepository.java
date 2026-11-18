@@ -2109,10 +2109,21 @@ public class LineageRepository {
   /**
    * A service, domain or data product edge refcounts the child edges rolled up into it. A caller
    * writing that edge directly cannot know the count, so the stored one survives the write.
+   *
+   * <p>Likewise, a write that carries no column-level lineage (e.g. an OpenLineage event without a
+   * {@code columnLineage} facet) does not know the stored column mappings, so the stored {@code
+   * columnsLineage} survives the write. {@code addLineage} rewrites the edge {@code json} in full,
+   * so dropping the stored column lineage on a no-facet write would silently wipe column-level
+   * lineage that typically originated from dbt ingestion or an earlier facet-carrying event. This
+   * mirrors the protection the reference Python consumer applies via {@code check_patch=True}
+   * union-merge in {@code lineage_mixin.py}.
    */
   static void preserveAssetEdges(LineageDetails incoming, LineageDetails prior) {
     if (prior != null) {
       incoming.setAssetEdges(prior.getAssetEdges());
+      if (nullOrEmpty(incoming.getColumnsLineage())) {
+        incoming.setColumnsLineage(prior.getColumnsLineage());
+      }
     }
   }
 
