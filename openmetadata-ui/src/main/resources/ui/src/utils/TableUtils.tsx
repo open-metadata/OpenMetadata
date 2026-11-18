@@ -13,6 +13,7 @@
 
 import type { BadgeColors } from '@openmetadata/ui-core-components';
 import {
+  Badge,
   Box,
   ButtonUtility,
   Tooltip,
@@ -173,6 +174,28 @@ export const getConstraintIcon = ({
   const dataTestId = config.dataTestId;
 
   const ConstraintIcon = icon;
+  const indicator = (
+    <span className="tw:inline-flex tw:items-center tw:gap-0.5">
+      <ConstraintIcon
+        // The core icons default to aria-hidden; this one carries the label.
+        aria-hidden={false}
+        aria-label={accessibleName}
+        className={classNames('tw:shrink-0', {
+          'diff-added': isConstraintAdded,
+          'diff-removed': isConstraintDeleted,
+        })}
+        data-testid={`constraint-icon-${dataTestId}`}
+        height={width}
+        role="img"
+        width={width}
+      />
+      {isComposite && (
+        <Typography aria-hidden as="span" size="text-xs" weight="semibold">
+          {compositeGroup.label}
+        </Typography>
+      )}
+    </span>
+  );
 
   return (
     <Tooltip
@@ -192,26 +215,13 @@ export const getConstraintIcon = ({
         'tw:focus-visible:outline-2 tw:focus-visible:outline-solid tw:focus-visible:outline-brand tw:focus-visible:outline-offset-4':
           isComposite,
       })}>
-      <span className="tw:inline-flex tw:items-center tw:gap-0.5">
-        <ConstraintIcon
-          // The core icons default to aria-hidden; this one carries the label.
-          aria-hidden={false}
-          aria-label={accessibleName}
-          className={classNames('tw:shrink-0', {
-            'diff-added': isConstraintAdded,
-            'diff-removed': isConstraintDeleted,
-          })}
-          data-testid={`constraint-icon-${dataTestId}`}
-          height={width}
-          role="img"
-          width={width}
-        />
-        {isComposite && (
-          <Typography aria-hidden as="span" size="text-xs" weight="semibold">
-            {compositeGroup.label}
-          </Typography>
-        )}
-      </span>
+      {isComposite ? (
+        <Badge color="blue" size="sm" type="color">
+          {indicator}
+        </Badge>
+      ) : (
+        indicator
+      )}
     </Tooltip>
   );
 };
