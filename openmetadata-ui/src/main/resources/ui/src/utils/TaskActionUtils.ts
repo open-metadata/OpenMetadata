@@ -78,8 +78,11 @@ export const INCIDENT_TASK_ACTION_LIST: TaskAction[] = [
 export const isDescriptionTaskType = (taskType: TaskEntityType) =>
   [TaskEntityType.DescriptionUpdate].includes(taskType);
 
-export const isTagsTaskType = (taskType: TaskEntityType) =>
-  [TaskEntityType.TagUpdate].includes(taskType);
+// A Suggestion task carries its proposed tags as a JSON string in suggestedValue.
+export const isTagsTaskType = (task: Pick<TaskEntity, 'type' | 'payload'>) =>
+  task.type === TaskEntityType.TagUpdate ||
+  (task.type === TaskEntityType.Suggestion &&
+    task.payload?.suggestionType === 'Tag');
 
 export const isRecognizerFeedbackTask = (task: TaskEntity) => {
   const taskType = task.type as unknown as string;

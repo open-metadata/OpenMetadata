@@ -26,6 +26,7 @@
 
 import { PagingResponse } from 'Models';
 import { Include } from '../generated/type/include';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
 
 const BASE_URL = '/taskFormSchemas';
@@ -97,6 +98,14 @@ export const resolveTaskFormSchema = async (
   });
 
   return response.data?.[0];
+};
+
+export const getTaskFormSchemaByName = async (fqn: string) => {
+  const response = await APIClient.get<TaskFormSchema>(
+    `${BASE_URL}/name/${getEncodedFqn(fqn)}`
+  );
+
+  return response.data;
 };
 
 export const createTaskFormSchema = async (data: TaskFormSchema) => {

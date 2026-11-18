@@ -28,6 +28,7 @@ import { cloneDeep, uniqBy } from 'lodash';
 import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
+  getTaskFormSchemaByName,
   JsonSchemaObject,
   resolveTaskFormSchema,
   TaskFormSchema,
@@ -38,7 +39,7 @@ import {
   TaskEntityType,
   TaskPayload,
 } from '../rest/tasksAPI';
-import { isRecognizerFeedbackTask } from './TaskActionUtils';
+import { isRecognizerFeedbackTask, isTagsTaskType } from './TaskActionUtils';
 import { getDefaultTaskFormSchema } from './TaskFormSchemaRegistry';
 import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
@@ -74,11 +75,27 @@ const taskFormSchemaCache = new Map<
   Promise<TaskFormSchema | undefined>
 >();
 
+/**
+ * Suggestion schemas share one task type and category (DescriptionSuggestion,
+ * TagSuggestion), so a type+category lookup cannot tell them apart; they are
+ * named after the payload's suggestionType instead.
+ */
+export const getTaskFormSchemaName = (
+  task?: Pick<Task, 'type' | 'payload'>
+): string | undefined => {
+  const suggestionType = task?.payload?.suggestionType;
+
+  return task?.type === TaskEntityType.Suggestion && suggestionType
+    ? `${suggestionType}Suggestion`
+    : undefined;
+};
+
 export const getResolvedTaskFormSchema = async (
   taskType: TaskEntityType,
-  taskCategory: TaskCategory
+  taskCategory: TaskCategory,
+  schemaName?: string
 ) => {
-  const cacheKey = `${taskType}::${taskCategory}`;
+  const cacheKey = schemaName ?? `${taskType}::${taskCategory}`;
   const existing = taskFormSchemaCache.get(cacheKey);
 
   if (existing) {
@@ -87,10 +104,9 @@ export const getResolvedTaskFormSchema = async (
 
   const resolverPromise = (async () => {
     try {
-      const resolvedSchema = await resolveTaskFormSchema(
-        taskType,
-        taskCategory
-      );
+      const resolvedSchema = schemaName
+        ? await getTaskFormSchemaByName(schemaName)
+        : await resolveTaskFormSchema(taskType, taskCategory);
 
       return resolvedSchema ?? getDefaultTaskFormSchema(taskType, taskCategory);
     } catch {
@@ -494,6 +510,11 @@ export const getEditableTaskPayload = (
     return buildEditableTagPayload(payload, normalizedPayload, fields);
   }
 
+  // The TagSuggestion schema's tagSelector edits TagLabel[], not the JSON string.
+  if (isTagsTaskType(task)) {
+    return { ...payload, suggestedValue: normalizedPayload.suggestedTags };
+  }
+
   return payload;
 };
 
@@ -557,6 +578,10 @@ export const getTaskResolutionNewValue = (
 
   if (typeof payload.suggestedValue === 'string') {
     return payload.suggestedValue;
+  }
+
+  if (Array.isArray(payload.suggestedValue)) {
+    return JSON.stringify(payload.suggestedValue);
   }
 
   return undefined;

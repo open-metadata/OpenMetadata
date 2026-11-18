@@ -90,3 +90,32 @@ describe('TagUpdate remove-all-tags suggestion', () => {
     expect(result.isSuggestionEmpty).toBe(false);
   });
 });
+
+describe('Suggestion task with suggestionType Tag', () => {
+  const tags = [{ tagFQN: 'Data Sensitivity.Confidential' }];
+
+  it('reads the tags from suggestedValue instead of a description', () => {
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.Suggestion, {
+        suggestionType: 'Tag',
+        suggestedValue: JSON.stringify(tags),
+      })
+    );
+
+    expect(result.suggestedTags).toEqual(tags);
+    expect(result.newDescription).toBeUndefined();
+    expect(result.isSuggestionEmpty).toBe(false);
+  });
+
+  it('keeps a description suggestion on the description path', () => {
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.Suggestion, {
+        suggestionType: 'Description',
+        suggestedValue: 'A customer address',
+      })
+    );
+
+    expect(result.newDescription).toBe('A customer address');
+    expect(result.suggestedValue).toBe('A customer address');
+  });
+});

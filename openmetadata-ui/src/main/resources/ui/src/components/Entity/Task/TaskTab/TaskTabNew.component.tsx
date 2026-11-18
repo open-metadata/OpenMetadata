@@ -113,6 +113,7 @@ import { getErrorText } from '../../../../utils/StringUtils';
 import {
   GLOSSARY_TASK_ACTION_LIST,
   INCIDENT_TASK_ACTION_LIST,
+  isTagsTaskType,
   TASK_ACTION_COMMON_ITEM,
   TASK_ACTION_LIST,
 } from '../../../../utils/TaskActionUtils';
@@ -128,6 +129,7 @@ import {
   getEditableTaskPayload,
   getResolvedTaskFormSchema,
   getTaskFormHandlerConfig,
+  getTaskFormSchemaName,
   getTaskResolutionNewValue,
   getTaskTransitionFormSchema,
   getTaskTransitionUiSchema,
@@ -334,9 +336,10 @@ interface TaskTypeFlags {
 
 const deriveTaskTypeFlags = (
   taskHandlerType: string,
-  taskEntityType: TaskEntityType
+  task: TaskTabProps['task']
 ): TaskTypeFlags => {
-  const isTaskTags = taskHandlerType === 'tagUpdate';
+  const taskEntityType = task.type;
+  const isTaskTags = taskHandlerType === 'tagUpdate' || isTagsTaskType(task);
   const isTaskApprovalRequest = taskHandlerType === 'approval';
   const isTaskRecognizerFeedbackApproval =
     taskHandlerType === 'feedbackApproval';
@@ -414,6 +417,7 @@ export const TaskTabNew = ({
     () => getTaskDisplayId(task.taskId),
     [task.taskId]
   );
+  const taskFormSchemaName = getTaskFormSchemaName(task);
   const [taskFormSchema, setTaskFormSchema] = useState<
     TaskFormSchema | undefined
   >(() => getDefaultTaskFormSchema(task.type, task.category));
@@ -476,7 +480,7 @@ export const TaskTabNew = ({
     isTaskRecognizerFeedbackApproval,
     isApprovalWorkflowTask,
     isTaskTestCaseResult,
-  } = deriveTaskTypeFlags(taskHandler.type, task.type);
+  } = deriveTaskTypeFlags(taskHandler.type, task);
   const proposedChanges = useMemo(
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]
@@ -1501,8 +1505,12 @@ export const TaskTabNew = ({
 
   useEffect(() => {
     setTaskFormSchema(getDefaultTaskFormSchema(task.type, task.category));
-    getResolvedTaskFormSchema(task.type, task.category).then(setTaskFormSchema);
-  }, [task.category, task.type]);
+    getResolvedTaskFormSchema(
+      task.type,
+      task.category,
+      taskFormSchemaName
+    ).then(setTaskFormSchema);
+  }, [task.category, task.type, taskFormSchemaName]);
 
   useEffect(() => {
     setSelectedTransitionId(availableTransitions?.[0]?.id);

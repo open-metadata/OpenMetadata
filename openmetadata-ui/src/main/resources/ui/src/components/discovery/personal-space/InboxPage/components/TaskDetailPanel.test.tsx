@@ -61,6 +61,7 @@ jest.mock('constants/Task.constant', () => ({
 jest.mock('rest/tasksAPI', () => ({
   TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
     .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
@@ -79,6 +80,7 @@ jest.mock('rest/tasksAPI', () => ({
 jest.mock('utils/TaskFormSchemaUtils', () => ({
   getResolvedTaskFormSchema: (...a: unknown[]) =>
     mockGetResolvedTaskFormSchema(...a),
+  getTaskFormSchemaName: () => undefined,
   applyTaskFormSchemaDefaults: (payload: Record<string, unknown>) => payload,
   getEditableTaskPayload: (task: { payload?: Record<string, unknown> }) =>
     task.payload ?? {},
@@ -1898,7 +1900,8 @@ describe('TaskDetailPanel', () => {
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        undefined
       );
     });
 

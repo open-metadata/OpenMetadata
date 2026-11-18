@@ -55,7 +55,10 @@ import {
 } from '../../../../../utils/ExtensionPointTypes';
 import ontologyExplorerClassBase from '../../../../../utils/OntologyExplorerClassBase';
 import { getPermissionErrorText } from '../../../../../utils/StringUtils';
-import { getResolvedTaskFormSchema } from '../../../../../utils/TaskFormSchemaUtils';
+import {
+  getResolvedTaskFormSchema,
+  getTaskFormSchemaName,
+} from '../../../../../utils/TaskFormSchemaUtils';
 import {
   getTaskAboutPath,
   hasVotedInCurrentStage,
@@ -473,6 +476,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const isLegacyTask = Boolean(task) && !task?.availableTransitions?.length;
   const taskType = task?.type;
   const taskCategory = task?.category;
+  const taskFormSchemaName = getTaskFormSchemaName(task);
 
   useEffect(() => {
     let active = true;
@@ -482,7 +486,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return undefined;
     }
 
-    getResolvedTaskFormSchema(taskType, taskCategory)
+    getResolvedTaskFormSchema(taskType, taskCategory, taskFormSchemaName)
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
       .catch(() => active && setFormSchema(undefined));
@@ -490,7 +494,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [isLegacyTask, taskType, taskCategory]);
+  }, [isLegacyTask, taskType, taskCategory, taskFormSchemaName]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.

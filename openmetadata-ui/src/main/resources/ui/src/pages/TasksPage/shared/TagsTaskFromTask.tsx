@@ -16,7 +16,8 @@ import { diffArrays } from 'diff';
 import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
-import { Task, TaskEntityStatus, TaskEntityType } from '../../../rest/tasksAPI';
+import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
+import { isTagsTaskType } from '../../../utils/TaskActionUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
@@ -96,10 +97,9 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     [suggestedTags]
   );
 
-  const isRequestTag = task.type === TaskEntityType.TagUpdate && !currentValue;
-
-  const isUpdateTag =
-    task.type === TaskEntityType.TagUpdate && Boolean(currentValue);
+  const isTagTask = isTagsTaskType(task);
+  const isRequestTag = isTagTask && !currentValue;
+  const isUpdateTag = isTagTask && Boolean(currentValue);
 
   const isTaskClosed = [
     TaskEntityStatus.Completed,

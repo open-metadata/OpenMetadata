@@ -13,7 +13,8 @@
 import { diffLines, type Change } from 'diff';
 import { isEmpty } from 'lodash';
 import type { TagLabel } from '../generated/type/tagLabel';
-import { TaskEntityType, type Task as TaskEntity } from '../rest/tasksAPI';
+import type { Task as TaskEntity } from '../rest/tasksAPI';
+import { isTagsTaskType } from './TaskActionUtils';
 
 export const getDescriptionDiff = (
   oldValue: string,
@@ -95,11 +96,13 @@ export const getNormalizedTaskPayload = (
   task: TaskEntity
 ): NormalizedTaskPayload => {
   const payload = task.payload;
-  const isTagTask = task.type === TaskEntityType.TagUpdate;
+  const isTagTaskType = isTagsTaskType(task);
   const fieldPath = payload?.fieldPath;
   const currentDescription =
     payload?.currentDescription ?? payload?.currentValue;
-  const newDescription = payload?.newDescription ?? payload?.suggestedValue;
+  const newDescription = isTagTaskType
+    ? undefined
+    : payload?.newDescription ?? payload?.suggestedValue;
 
   const currentTags = parseTaskTags(
     payload?.currentTags ?? (payload?.currentValue as string | undefined)
@@ -123,10 +126,10 @@ export const getNormalizedTaskPayload = (
     suggestedTagsFromLegacyPayload.length > 0;
 
   const { suggestedValue, isSuggestionEmpty } = computeSuggestionState(
-    isTagTask,
+    isTagTaskType,
     suggestedTags,
     newDescription,
-    isTagTask && hasTagOperation
+    isTagTaskType && hasTagOperation
   );
 
   return {
