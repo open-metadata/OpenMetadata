@@ -29,7 +29,7 @@
           "type": "string"
         },
         "type": {
-          "description": "The type of the field (e.g., STRING, INTEGER, STRUCT).",
+          "description": "The type of the field (e.g., STRING, INTEGER, STRUCT). Optional, as in the OpenLineage spec: a field without one is mapped to UNKNOWN.",
           "type": "string"
         },
         "description": {
@@ -37,7 +37,7 @@
           "type": "string"
         }
       },
-      "required": ["name", "type"]
+      "required": ["name"]
     },
     "schemaFacet": {
       "description": "Schema facet describing the structure of a dataset.",
