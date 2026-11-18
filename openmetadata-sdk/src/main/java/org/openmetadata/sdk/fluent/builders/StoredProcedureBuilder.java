@@ -51,6 +51,7 @@ public class StoredProcedureBuilder {
    * Set custom extension data.
    */
   public StoredProcedureBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

@@ -48,13 +48,6 @@ public class MlModelServiceBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public MlModelServiceBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateMlModelService request without executing it.
    */
   public CreateMlModelService build() {
