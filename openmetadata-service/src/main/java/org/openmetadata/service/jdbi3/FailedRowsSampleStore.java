@@ -48,7 +48,7 @@ final class FailedRowsSampleStore {
     }
     RemovalRecord record = readRemovals(current.getId());
     RemovalRecord appended = FailedRowsSamplePolicy.append(record, current, updated);
-    if (record.sequence() != appended.sequence()) {
+    if (!record.sequence().equals(appended.sequence())) {
       dao.entityExtensionDAO()
           .insert(
               current.getId(),

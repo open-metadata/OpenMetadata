@@ -101,7 +101,6 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -122,6 +121,7 @@ import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.EntityETag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -4653,7 +4653,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                             .withColumns(current.getColumns())));
         assertEquals(0, result.getNumberOfRowsFailed());
       }
-      default -> admin.tables().update(current.getId().toString(), current);
+      default -> admin
+          .getHttpClient()
+          .execute(
+              HttpMethod.PUT,
+              "/v1/tables",
+              new CreateTable()
+                  .withName(current.getName())
+                  .withDatabaseSchema(current.getDatabaseSchema().getFullyQualifiedName())
+                  .withColumns(current.getColumns())
+                  .withTags(List.of()),
+              Table.class);
     }
     TableData restricted =
         fixture.reader().testCases().getFailedRowsSample(fixture.testCase().getId().toString());
@@ -4842,26 +4852,19 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     updated.setUpdatedAt(System.currentTimeMillis());
     CountDownLatch captured = new CountDownLatch(1);
     CountDownLatch release = new CountDownLatch(1);
-    TableRepository repository =
-        new TableRepository() {
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
+    TableRepository.TableUpdater updater =
+        repository.new TableUpdater(original, updated, Operation.PUT, null) {
           @Override
-          public TableUpdater getUpdater(
-              Table before, Table after, Operation operation, ChangeSource source) {
-            return new TableUpdater(before, after, operation, source) {
-              @Override
-              protected void beforeEntityMutation() {
-                super.beforeEntityMutation();
-                captured.countDown();
-                awaitFailedRowsLatch(release);
-              }
-            };
+          protected void beforeEntityMutation() {
+            super.beforeEntityMutation();
+            captured.countDown();
+            awaitFailedRowsLatch(release);
           }
         };
     ExecutorService workers = Executors.newFixedThreadPool(3);
     try {
-      var removal =
-          workers.submit(
-              () -> repository.getUpdater(original, updated, Operation.PUT, null).update());
+      var removal = workers.submit(updater::update);
       assertTrue(captured.await(30, TimeUnit.SECONDS));
       CountDownLatch started = new CountDownLatch(2);
       var read =
@@ -4915,29 +4918,24 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withColumns(List.of("name", "extra_column"))
                 .withRows(List.of(List.of("synthetic", "extra"))));
     AtomicInteger attempts = new AtomicInteger();
-    TableRepository repository =
-        new TableRepository() {
-          @Override
-          public TableUpdater getUpdater(
-              Table before, Table after, Operation operation, ChangeSource source) {
-            return new TableUpdater(before, after, operation, source) {
-              @Override
-              protected void beforeEntityMutation() {
-                super.beforeEntityMutation();
-                if (attempts.incrementAndGet() == 1) {
-                  throw new IllegalStateException(
-                      "Injected transaction retry", new SQLException("retry", "40001"));
-                }
-              }
-            };
-          }
-        };
+    TableRepository repository = (TableRepository) Entity.getEntityRepository(Entity.TABLE);
     Table original = admin.tables().get(table.getId().toString(), "*");
     Table updated = JsonUtils.deepCopy(original, Table.class);
     updated.setColumns(List.of(updated.getColumns().getFirst()));
     updated.setUpdatedBy("admin");
     updated.setUpdatedAt(System.currentTimeMillis());
-    repository.getUpdater(original, updated, Operation.PUT, null).update();
+    TableRepository.TableUpdater updater =
+        repository.new TableUpdater(original, updated, Operation.PUT, null) {
+          @Override
+          protected void beforeEntityMutation() {
+            super.beforeEntityMutation();
+            if (attempts.incrementAndGet() == 1) {
+              throw new IllegalStateException(
+                  "Injected transaction retry", new SQLException("retry", "40001"));
+            }
+          }
+        };
+    updater.update();
     assertEquals(2, attempts.get());
     assertEquals(1, removalRecord(table).sequence());
     assertEquals(1, removalRecord(table).batches().size());
@@ -5029,8 +5027,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     admin.tables().update(current.getId().toString(), current);
     assertEquals(0, removalRecord(table).sequence());
     current = admin.tables().get(table.getId().toString(), "columns,tags");
-    current.getColumns().get(1).setTags(List.of());
-    admin.tables().update(current.getId().toString(), current);
+    admin
+        .tables()
+        .patch(
+            current.getId(),
+            JsonUtils.readTree("[{\"op\":\"replace\",\"path\":\"/columns/1/tags\",\"value\":[]}]"),
+            EntityETag.generateWeakETag(current));
+    Table plain = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertFalse(
+        plain.getColumns().get(1).getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+    assertEquals(0, removalRecord(table).sequence());
     assertEquals(
         "synthetic",
         fixture

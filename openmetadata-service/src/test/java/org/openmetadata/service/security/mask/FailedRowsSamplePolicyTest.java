@@ -141,7 +141,7 @@ class FailedRowsSamplePolicyTest {
     var sample =
         FailedRowsSamplePolicy.bind(
             data("source", "extra"), table, FailedRowsSamplePolicy.emptyRecord());
-    var record = new FailedRowsSamplePolicy.RemovalRecord(1, 1, 1, List.of());
+    var record = new FailedRowsSamplePolicy.RemovalRecord(1, 1L, 1L, List.of());
     assertEquals(
         List.of(PIIMasker.MASKED_VALUE, "value-extra"),
         FailedRowsSamplePolicy.mask(sample, table, record).getRows().getFirst());
@@ -223,7 +223,7 @@ class FailedRowsSamplePolicyTest {
   @Test
   void incompleteLegacyEvidenceCannotExposePreviouslyProtectedValues() {
     var legacy = FailedRowsSamplePolicy.decode(JsonUtils.pojoToJson(data("ssn", "extra")));
-    var record = new FailedRowsSamplePolicy.RemovalRecord(1, 1, 1, List.of());
+    var record = new FailedRowsSamplePolicy.RemovalRecord(1, 1L, 1L, List.of());
     assertThrows(
         IllegalStateException.class, () -> FailedRowsSamplePolicy.mask(legacy, table(), record));
   }
@@ -240,6 +240,32 @@ class FailedRowsSamplePolicyTest {
     var node = JsonUtils.valueToTree(sample);
     ((ObjectNode) node).remove("observedSequence");
     assertThrows(RuntimeException.class, () -> FailedRowsSamplePolicy.decode(node.toString()));
+    ((ObjectNode) node).putNull("observedSequence");
+    assertThrows(RuntimeException.class, () -> FailedRowsSamplePolicy.decode(node.toString()));
+  }
+
+  @Test
+  void rejectsMissingOrNullRemovalBoundaryNumbers() {
+    var record =
+        FailedRowsSamplePolicy.append(
+            FailedRowsSamplePolicy.emptyRecord(), table(column("ssn", true)), table());
+    for (String field : List.of("formatVersion", "sequence", "coverageThrough")) {
+      ObjectNode node = (ObjectNode) JsonUtils.valueToTree(record);
+      node.remove(field);
+      assertThrows(
+          RuntimeException.class,
+          () -> JsonUtils.readValue(node.toString(), FailedRowsSamplePolicy.RemovalRecord.class));
+      node.putNull(field);
+      assertThrows(
+          RuntimeException.class,
+          () -> JsonUtils.readValue(node.toString(), FailedRowsSamplePolicy.RemovalRecord.class));
+    }
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            JsonUtils.readValue(
+                "{\"sequence\":null,\"facts\":[{\"path\":[\"ssn\"],\"sensitive\":false}]}",
+                FailedRowsSamplePolicy.RemovalBatch.class));
   }
 
   private Table table(Column... columns) {

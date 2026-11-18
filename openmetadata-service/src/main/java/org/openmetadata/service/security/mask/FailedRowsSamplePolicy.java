@@ -46,13 +46,15 @@ public final class FailedRowsSamplePolicy {
   }
 
   public record SampleRecord(
-      int formatVersion,
+      @JsonProperty(value = "formatVersion", required = true) Integer formatVersion,
       TableData data,
       UUID tableId,
-      @JsonProperty(value = "observedSequence", required = true) long observedSequence,
+      @JsonProperty(value = "observedSequence", required = true) Long observedSequence,
       List<Binding> bindings) {
     public SampleRecord {
-      if (data == null
+      if (formatVersion == null
+          || observedSequence == null
+          || data == null
           || data.getColumns() == null
           || data.getRows() == null
           || observedSequence < 0
@@ -78,19 +80,26 @@ public final class FailedRowsSamplePolicy {
     }
   }
 
-  public record RemovalBatch(long sequence, List<RemovalFact> facts) {
+  public record RemovalBatch(
+      @JsonProperty(value = "sequence", required = true) Long sequence, List<RemovalFact> facts) {
     public RemovalBatch {
       facts = List.copyOf(facts);
-      if (sequence <= 0 || facts.isEmpty()) {
+      if (sequence == null || sequence <= 0 || facts.isEmpty()) {
         throw new IllegalArgumentException("Invalid failed-row removal batch");
       }
     }
   }
 
   public record RemovalRecord(
-      int formatVersion, long sequence, long coverageThrough, List<RemovalBatch> batches) {
+      @JsonProperty(value = "formatVersion", required = true) Integer formatVersion,
+      @JsonProperty(value = "sequence", required = true) Long sequence,
+      @JsonProperty(value = "coverageThrough", required = true) Long coverageThrough,
+      List<RemovalBatch> batches) {
     public RemovalRecord {
-      if (formatVersion != FORMAT_VERSION
+      if (formatVersion == null
+          || sequence == null
+          || coverageThrough == null
+          || formatVersion != FORMAT_VERSION
           || sequence < 0
           || coverageThrough < 0
           || coverageThrough > sequence
@@ -114,7 +123,7 @@ public final class FailedRowsSamplePolicy {
   private record ColumnState(List<String> path, Column column, boolean inheritedSensitive) {}
 
   public static RemovalRecord emptyRecord() {
-    return new RemovalRecord(FORMAT_VERSION, 0, 0, List.of());
+    return new RemovalRecord(FORMAT_VERSION, 0L, 0L, List.of());
   }
 
   public static SampleRecord bind(TableData data, Table table, RemovalRecord record) {
@@ -206,7 +215,7 @@ public final class FailedRowsSamplePolicy {
     if (!node.has("columns") || !node.has("rows")) {
       throw new IllegalArgumentException("Unrecognized failed-row sample format");
     }
-    return new SampleRecord(0, JsonUtils.readValue(json, TableData.class), null, 0, List.of());
+    return new SampleRecord(0, JsonUtils.readValue(json, TableData.class), null, 0L, List.of());
   }
 
   public static TableData mask(SampleRecord sample, Table table, RemovalRecord record) {
