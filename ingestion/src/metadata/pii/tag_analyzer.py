@@ -1,3 +1,4 @@
+import contextlib
 import copy
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -15,7 +16,7 @@ from presidio_analyzer.predefined_recognizers import SpacyRecognizer
 from pydantic import BaseModel
 
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.table import Column
 from metadata.generated.schema.type import recognizer, tagLabelRecognizerMetadata
 from metadata.generated.schema.type.classificationLanguages import (
     ClassificationLanguage,
@@ -38,10 +39,7 @@ from metadata.pii.algorithms.presidio_utils import (
     explain_recognition_results,
     load_nlp_engine,
 )
-from metadata.utils.entity_link import (
-    get_entity_link,  # pyright: ignore[reportUnknownVariableType]
-)
-from metadata.utils.fqn import FQN_SEPARATOR, split_raw_name, unquote_name
+from metadata.utils.fqn import FQN_SEPARATOR, quote_name
 
 TARGET_MAP = {
     recognizer.Target.content: tagLabelRecognizerMetadata.Target.content,
@@ -50,6 +48,25 @@ TARGET_MAP = {
 
 _NAMED_ENTITY_TYPES = frozenset({"PERSON", "LOCATION", "NRP"})
 _MIN_DISTINCT_UNCONTEXTUALIZED_NER_MATCHES = 2
+
+
+def _column_fqns_named_by(entity_link: str) -> set[str]:
+    """The FQNs of the table column a recognizer exception's entity link can name.
+
+    The link names the column by its path under the table, as a test case link does
+    (ADR:2026-11-19-recognizer-exception-links-address-columns-like-test-case-links): a nested column
+    as a dotted path (``address.city``) and a column whose name has a dot in it quoted (``"user.email"``)
+    or bare (``user.email``). A bare dotted path could be either, so both FQNs are returned.
+    """
+    parts = entity_link.removeprefix("<#E::").removesuffix(">").split("::")
+    if len(parts) != 4 or parts[0] != "table" or parts[2] != "columns":
+        return set()
+    table_fqn, column_path = parts[1], parts[3]
+    fqns = {f"{table_fqn}{FQN_SEPARATOR}{column_path}"}
+    # quote_name rejects a path with quoted segments, which is already in its FQN form.
+    with contextlib.suppress(ValueError):
+        fqns.add(f"{table_fqn}{FQN_SEPARATOR}{quote_name(column_path)}")
+    return fqns
 
 
 @dataclass(frozen=True)
@@ -140,18 +157,10 @@ class TagAnalyzer:
         self._language = language
 
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
-        blacklisted_entities = {ex.entityLink.root for ex in exception_list}
-
-        # A name with a dot in it is quoted in the FQN, so only split on the separators outside quotes.
-        *table_fqn_parts, column_name = split_raw_name(
-            self._column.fullyQualifiedName.root  # pyright: ignore[reportOptionalMemberAccess]
-        )
-        table_fqn = FQN_SEPARATOR.join(table_fqn_parts)
-        # The exception may name such a column as it is or quoted, as in its FQN.
-        return any(
-            get_entity_link(Table, table_fqn, column_name=name) in blacklisted_entities
-            for name in {column_name, unquote_name(column_name)}
-        )
+        # Compare FQNs rather than links: splitting the column FQN on every dot to build its link broke
+        # a quoted name such as "user.email" apart and put a nested column's parent into the table name.
+        column_fqn = self._column.fullyQualifiedName.root  # pyright: ignore[reportOptionalMemberAccess]
+        return any(column_fqn in _column_fqns_named_by(exception.entityLink.root) for exception in exception_list)
 
     def _supports_language(self, created: EntityRecognizer) -> bool:
         return self._language is ClassificationLanguage.any or created.supported_language in {

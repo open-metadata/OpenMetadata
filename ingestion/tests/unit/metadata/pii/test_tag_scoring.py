@@ -741,6 +741,24 @@ class TestTagAnalyzer:
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(exceptions) is False
 
+    def test_exception_list_filtering_nested_column(self, email_tag, nlp_engine):
+        """A nested column is named by its dotted path under the table, as in a test case link"""
+        column = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="svc.db.sch.users.contact.email",
+        )
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+
+        own = RecognizerException(
+            entityLink="<#E::table::svc.db.sch.users::columns::contact.email>", reason="Test exception"
+        )
+        parent = RecognizerException(
+            entityLink="<#E::table::svc.db.sch.users::columns::contact>", reason="Test exception"
+        )
+        assert analyzer.should_skip_recognizer([own]) is True
+        assert analyzer.should_skip_recognizer([parent]) is False
+
     def test_exception_list_filtering_table_name_with_a_dot(self, email_tag, nlp_engine):
         """A quoted table name keeps its quotes in the entity link, as in the table's FQN"""
         column = Column(
