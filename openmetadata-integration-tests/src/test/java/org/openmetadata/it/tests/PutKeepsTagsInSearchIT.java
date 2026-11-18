@@ -151,7 +151,7 @@ public class PutKeepsTagsInSearchIT {
         awaitDoc(
             "api_endpoint_search_index",
             endpoint.getId(),
-            written -> textValues(written.path("responseFieldNames")).contains(SOURCE_FIELD));
+            written -> textValues(written.path("response_field_names")).contains(SOURCE_FIELD));
     assertHasTag(doc, piiSensitive(), "response field tag merged into the endpoint's tags");
   }
 

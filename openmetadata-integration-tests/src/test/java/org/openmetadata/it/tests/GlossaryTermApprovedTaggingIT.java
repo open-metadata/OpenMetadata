@@ -84,9 +84,8 @@ import org.openmetadata.service.Entity;
  * only offers Approved terms, and the API has to hold the same line. A term already on an asset
  * stays there when it later leaves Approved, so writes that carry it unchanged keep working.
  *
- * <p>A term is deprecated by a status-only PATCH, which the approval workflow does not act on, so
- * it keeps that stage. A Draft term's glossary is reviewed by another user than the one who creates
- * it, so the workflow cannot approve it on the creator's behalf.
+ * <p>Glossaries are created under {@link GlossaryTestFactory#STATUS_TEST_GLOSSARY_PREFIX}, which the
+ * suite excludes from the approval workflow, so each term keeps the stage the test gives it.
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -519,7 +518,7 @@ public class GlossaryTermApprovedTaggingIT {
   }
 
   private static GlossaryTerm approvedTerm(OpenMetadataClient client, TestNamespace ns) {
-    Glossary glossary = GlossaryTestFactory.createWithName(ns, "approved_tagging");
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
     GlossaryTerm term = createTerm(client, glossary, ns.shortPrefix("term"));
     assertEquals(EntityStatus.APPROVED, term.getEntityStatus());
     return term;
@@ -538,7 +537,7 @@ public class GlossaryTermApprovedTaggingIT {
                 .glossaries()
                 .create(
                     new CreateGlossary()
-                        .withName(ns.prefix("draft_glossary"))
+                        .withName(ns.prefix(GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX))
                         .withDescription("Glossary whose terms start in Draft")
                         .withReviewers(List.of(SharedEntities.get().USER1_REF))));
     return createTerm(client, glossary, ns.shortPrefix("draft_term"));
