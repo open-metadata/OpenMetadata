@@ -183,9 +183,10 @@ def split_field(field: str) -> tuple[str, str]:
         position = end + 2
 
 
-# The column parser of OpenMetadata removes the spaces of a type and splits it
-# on these characters, so a field name that holds one comes out wrong.
-UNPARSABLE_NAME_CHARACTERS = frozenset(" \t\n,<>`")
+# The column parser of OpenMetadata removes the spaces of a type, splits it on
+# commas and counts these brackets, so a field name that holds one of these
+# characters comes out wrong or makes the parser fail.
+UNPARSABLE_NAME_CHARACTERS = frozenset(" \t\n,<>`()[]{}")
 
 
 def to_om_type(data_type: str) -> str:
