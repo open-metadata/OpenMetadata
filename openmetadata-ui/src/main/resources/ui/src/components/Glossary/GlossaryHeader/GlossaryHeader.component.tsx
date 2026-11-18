@@ -60,6 +60,7 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
+import { useLifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   exportGlossaryInCSVFormat,
@@ -94,7 +95,6 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import { EntityPageTitle } from '../../Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
-import { useLifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 import Voting from '../../Entity/Voting/Voting.component';
 import ProposalCard from '../../governance/glossary/GlossaryReview/ProposalCard';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';

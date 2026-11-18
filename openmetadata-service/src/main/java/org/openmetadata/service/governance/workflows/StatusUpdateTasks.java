@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
@@ -97,6 +98,26 @@ public final class StatusUpdateTasks {
             "A status request is decided as requested; raise a new request for %s"
                 .formatted(resolved));
       }
+    }
+  }
+
+  /**
+   * A raised request keeps its asset, the stage it asks for and the stage it was raised from until
+   * it is decided: its approvers were chosen for that move.
+   */
+  public static void requireUneditedRequest(Task original, Task patched) {
+    if (original.getType() == TaskEntityType.StatusUpdate
+        && (!Objects.equals(original.getAbout(), patched.getAbout())
+            || !RequestedMove.of(original).equals(RequestedMove.of(patched)))) {
+      throw new BadRequestException(
+          "A status request cannot be edited once raised; withdraw it and raise a new request");
+    }
+  }
+
+  private record RequestedMove(Object newStatus, Object currentStatus) {
+    static RequestedMove of(Task task) {
+      Map<String, Object> payload = JsonUtils.getMap(task.getPayload());
+      return new RequestedMove(payload.get(NEW_STATUS), payload.get(CURRENT_STATUS));
     }
   }
 

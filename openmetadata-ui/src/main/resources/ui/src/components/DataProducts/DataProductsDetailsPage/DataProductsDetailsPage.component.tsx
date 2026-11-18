@@ -59,6 +59,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { useLifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   QueryVote,
@@ -122,7 +123,6 @@ import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
 import ContractLatestResultBadge from '../../DataContract/ContractLatestResultBadge/ContractLatestResultBadge';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
-import { useLifecycleRequests } from '../../Entity/EntityStatusBadge/useLifecycleRequests';
 import Voting from '../../Entity/Voting/Voting.component';
 import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interface';
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';

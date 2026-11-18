@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  Badge,
   Box,
   Button,
   Divider,
@@ -21,15 +20,14 @@ import { Clock } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PLACEHOLDER_TASK_ID, ROUTES } from '../../../constants/constants';
-import { STATUS_TYPE_TO_BADGE_COLOR } from '../../../constants/StatusBadge.constant';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { getEntityStatusClass } from '../../../utils/EntityStatusUtils';
 import { EntityStageBadge } from './EntityStageBadge';
-import { StagePill } from './StagePill';
 import {
   STAGE_REQUESTED,
   STAGE_TRIGGER_CLASS,
 } from './EntityStageBadge.constants';
+import { StagePill } from './StagePill';
 
 export interface EntityStatusBadgeProps {
   status: EntityStatus;

@@ -12,9 +12,8 @@
  */
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useState } from 'react';
-import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { getRequestableStages } from '../../../rest/metadataTypeAPI';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import { getRequestableStages } from '../rest/metadataTypeAPI';
 import {
   closeTask,
   createTask,
@@ -22,9 +21,10 @@ import {
   TaskCategory,
   TaskEntityStatus,
   TaskEntityType,
-} from '../../../rest/tasksAPI';
-import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
-import { showErrorToast } from '../../../utils/ToastUtils';
+} from '../rest/tasksAPI';
+import { getEntityFeedLink } from '../utils/EntityPureUtils';
+import { showErrorToast } from '../utils/ToastUtils';
+import { useApplicationStore } from './useApplicationStore';
 
 interface LifecycleRequestsOptions {
   entityType: string;
@@ -53,6 +53,10 @@ export interface LifecycleRequests {
   withdraw?: () => Promise<void>;
 }
 
+// The about filter also matches the assets under this one, such as subdomains or glossary terms,
+// so the asset's own request is picked from a page of them.
+const PENDING_PAGE_SIZE = 100;
+
 const readPending = async (
   entityFqn: string
 ): Promise<PendingLifecycleRequest | undefined> => {
@@ -60,10 +64,12 @@ const readPending = async (
     aboutEntity: entityFqn,
     type: TaskEntityType.StatusUpdate,
     status: TaskEntityStatus.Open,
-    fields: 'payload,createdBy',
-    limit: 1,
+    fields: 'payload,createdBy,about',
+    limit: PENDING_PAGE_SIZE,
   });
-  const [task] = data;
+  const task = data.find(
+    ({ about }) => about?.fullyQualifiedName === entityFqn
+  );
   const stage = (task?.payload as { newStatus?: EntityStatus } | undefined)
     ?.newStatus;
 

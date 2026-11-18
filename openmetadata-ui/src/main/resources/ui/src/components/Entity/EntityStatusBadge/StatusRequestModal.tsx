@@ -22,9 +22,8 @@ import {
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
+import { STATUS_REQUEST_MODAL_WIDTH } from './EntityStageBadge.constants';
 import { getStageActionLabel } from './EntityStageBadge.utils';
-
-const MODAL_WIDTH = 480;
 
 export interface StatusRequestModalProps {
   /** Stages the asset's lifecycle offers on request. */
@@ -64,7 +63,8 @@ export const StatusRequestModal = ({
       <Modal>
         <Dialog
           data-testid="status-request-modal"
-          width={MODAL_WIDTH}
+          dividers="scroll"
+          width={STATUS_REQUEST_MODAL_WIDTH}
           onClose={onCancel}>
           <Dialog.Header
             title={t('label.change-entity', { entity: t('label.status') })}

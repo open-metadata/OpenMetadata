@@ -7458,10 +7458,26 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/EntityStatusBadge.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/EntityStatusDecision.tsx"
       ],
       "specs": [
         "playwright/e2e/Features/Workflows/WorkflowRunApprovalOutcome.spec.ts"
+      ]
+    },
+    {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/EntityStatusBadge/StatusRequestModal.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/Workflows/LifecycleRequest.spec.ts"
       ]
     },
     {

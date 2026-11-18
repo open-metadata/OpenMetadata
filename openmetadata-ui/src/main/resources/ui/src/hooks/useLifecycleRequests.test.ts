@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
-import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
-import { getRequestableStages } from '../../../rest/metadataTypeAPI';
-import { closeTask, createTask, listTasks } from '../../../rest/tasksAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { EntityStatus } from '../generated/entity/data/glossaryTerm';
+import { getRequestableStages } from '../rest/metadataTypeAPI';
+import { closeTask, createTask, listTasks } from '../rest/tasksAPI';
+import { showErrorToast } from '../utils/ToastUtils';
 import { useLifecycleRequests } from './useLifecycleRequests';
 
 const mockCurrentUser = { name: 'requester', isAdmin: false };
 
-jest.mock('../../../rest/metadataTypeAPI', () => ({
+jest.mock('../rest/metadataTypeAPI', () => ({
   getRequestableStages: jest.fn(),
 }));
 
-jest.mock('../../../rest/tasksAPI', () => ({
+jest.mock('../rest/tasksAPI', () => ({
   closeTask: jest.fn(),
   createTask: jest.fn(),
   listTasks: jest.fn(),
@@ -32,11 +32,11 @@ jest.mock('../../../rest/tasksAPI', () => ({
   TaskEntityType: { StatusUpdate: 'StatusUpdate' },
 }));
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
+jest.mock('./useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
-jest.mock('../../../utils/ToastUtils', () => ({
+jest.mock('../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
@@ -53,14 +53,15 @@ const renderRequests = () =>
     })
   );
 
+const openRequest = (id: string, aboutFqn: string, createdBy: string) => ({
+  id,
+  about: { fullyQualifiedName: aboutFqn },
+  payload: { newStatus: EntityStatus.Deprecated },
+  createdBy: { name: createdBy },
+});
+
 const pendingTask = (createdBy: string) => ({
-  data: [
-    {
-      id: 'task-id',
-      payload: { newStatus: EntityStatus.Deprecated },
-      createdBy: { name: createdBy },
-    },
-  ],
+  data: [openRequest('task-id', 'Sales', createdBy)],
 });
 
 describe('useLifecycleRequests', () => {
@@ -158,6 +159,31 @@ describe('useLifecycleRequests', () => {
     });
 
     expect(closeTask).toHaveBeenCalledWith('task-id');
+  });
+
+  it("ignores the requests of the assets under this one, such as a subdomain's", async () => {
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [openRequest('subdomain-task', 'Sales.Marketing', 'requester')],
+    });
+    const { result } = renderRequests();
+
+    await waitFor(() => expect(result.current.stages).toHaveLength(2));
+
+    expect(result.current.pending).toBeUndefined();
+  });
+
+  it("picks the asset's own request from the requests under it", async () => {
+    (listTasks as jest.Mock).mockResolvedValue({
+      data: [
+        openRequest('subdomain-task', 'Sales.Marketing', 'someone-else'),
+        openRequest('task-id', 'Sales', 'requester'),
+      ],
+    });
+    const { result } = renderRequests();
+
+    await waitFor(() =>
+      expect(result.current.pending?.taskId).toEqual('task-id')
+    );
   });
 
   it('offers withdrawing to no one but the requester and admins', async () => {

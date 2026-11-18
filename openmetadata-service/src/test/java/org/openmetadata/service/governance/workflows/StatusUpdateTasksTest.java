@@ -40,6 +40,9 @@ class StatusUpdateTasksTest {
   private static final EntityReference FINANCE_TEAM =
       new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEAM).withName("finance");
 
+  private static final EntityReference TERM_REF =
+      new EntityReference().withId(UUID.randomUUID()).withType(Entity.GLOSSARY_TERM);
+
   private static final GlossaryTerm TERM =
       new GlossaryTerm().withOwners(List.of(ANA, FINANCE_TEAM)).withReviewers(List.of(BEN));
 
@@ -167,12 +170,70 @@ class StatusUpdateTasksTest {
     assertNull(task.getAssignees());
   }
 
+  @Test
+  void aRaisedRequestKeepsItsStageItsStartingStageAndItsAsset() {
+    Task raised = raisedFrom("In Review", "Rejected");
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            StatusUpdateTasks.requireUneditedRequest(raised, raisedFrom("In Review", "Approved")));
+    assertThrows(
+        BadRequestException.class,
+        () -> StatusUpdateTasks.requireUneditedRequest(raised, raisedFrom("Approved", "Rejected")));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            StatusUpdateTasks.requireUneditedRequest(
+                raised, raisedFrom("In Review", "Rejected").withAbout(ANA)));
+  }
+
+  @Test
+  void aRaisedRequestsReasonCanStillBeEdited() {
+    Task raised = raisedFrom("In Review", "Rejected");
+    Task reworded = raisedFrom("In Review", "Rejected");
+    reworded.setPayload(
+        Map.of(
+            StatusUpdateTasks.NEW_STATUS,
+            "Rejected",
+            StatusUpdateTasks.CURRENT_STATUS,
+            "In Review",
+            "reason",
+            "Reworded"));
+
+    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(raised, reworded));
+  }
+
+  @Test
+  void otherTaskTypesKeepTheirEditablePayload() {
+    Task tierTask =
+        new Task()
+            .withType(TaskEntityType.TierUpdate)
+            .withPayload(Map.of(StatusUpdateTasks.NEW_STATUS, "Tier1"));
+    Task edited =
+        new Task()
+            .withType(TaskEntityType.TierUpdate)
+            .withPayload(Map.of(StatusUpdateTasks.NEW_STATUS, "Tier2"));
+
+    assertDoesNotThrow(() -> StatusUpdateTasks.requireUneditedRequest(tierTask, edited));
+  }
+
   private static LifecycleTransitionApproval approval(LifecycleApproverGroup... groups) {
     return new LifecycleTransitionApproval().withAssignees(Set.of(groups));
   }
 
   private static Task request(String stage) {
     return statusTask(Map.of(StatusUpdateTasks.NEW_STATUS, stage));
+  }
+
+  private static Task raisedFrom(String currentStage, String requestedStage) {
+    return statusTask(
+            Map.of(
+                StatusUpdateTasks.NEW_STATUS,
+                requestedStage,
+                StatusUpdateTasks.CURRENT_STATUS,
+                currentStage))
+        .withAbout(TERM_REF);
   }
 
   private static Task statusTask(Map<String, Object> payload) {

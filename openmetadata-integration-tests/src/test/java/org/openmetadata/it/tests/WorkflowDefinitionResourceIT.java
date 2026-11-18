@@ -17990,6 +17990,63 @@ public class WorkflowDefinitionResourceIT {
         EntityStatus.APPROVED, admin.domains().get(domain.getId().toString()).getEntityStatus());
   }
 
+  @Test
+  @Order(236)
+  void test_aStatusRequestIsDecidedOnlyByTheApproversItsTransitionNames(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    EntityReference approver = admin.users().getByName("shared_user2").getEntityReference();
+    deployPlaybook(
+        admin,
+        ns,
+        "namedApprover",
+        DEPRECATE_ON_REQUEST_PLAYBOOK,
+        """
+        [{"to": "Deprecated", "trigger": "onRequest",
+          "approval": {"assignees": [], "candidates": [{"id": "%s", "type": "user"}]}}]"""
+            .formatted(approver.getId()));
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("namedApprover"));
+    Task request = requestStatus(admin, domain, "Deprecated", "Replaced by a new domain");
+
+    // The owner may edit the domain but is not one of the transition's approvers.
+    OpenMetadataException notAssigned =
+        assertThrows(
+            OpenMetadataException.class, () -> approveRequest(SdkClients.user1Client(), request));
+    assertEquals(403, notAssigned.getStatusCode());
+
+    // The named approver decides it without being able to edit the domain.
+    approveRequest(SdkClients.user2Client(), request);
+    awaitStage(admin, domain, EntityStatus.DEPRECATED);
+  }
+
+  @Test
+  @Order(237)
+  void test_aRaisedStatusRequestCannotBeEdited(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    deployDeprecateOnRequestPlaybook(admin, ns, "editedRequest");
+    Domain domain = domainOwnedByUser1(admin, ns.shortPrefix("editedRequest"));
+    Task request = requestStatus(admin, domain, "Deprecated", "No longer used");
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                admin
+                    .tasks()
+                    .patch(
+                        request.getId(),
+                        MAPPER.readTree(
+                            """
+                            [{"op": "replace", "path": "/payload/newStatus",
+                              "value": "Archived"}]""")));
+    assertEquals(400, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("cannot be edited once raised"));
+    assertEquals(
+        "Deprecated",
+        JsonUtils.getMap(admin.tasks().get(request.getId().toString()).getPayload())
+            .get("newStatus"));
+  }
+
   private static void approveRequest(OpenMetadataClient approver, Task request) {
     approver
         .tasks()

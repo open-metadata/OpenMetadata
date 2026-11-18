@@ -38,3 +38,5 @@ export const STAGE_REQUESTED: Partial<Record<EntityStatus, string>> = {
   [EntityStatus.Deprecated]: 'label.deprecation-requested',
   [EntityStatus.Archived]: 'label.archival-requested',
 };
+
+export const STATUS_REQUEST_MODAL_WIDTH = 480;

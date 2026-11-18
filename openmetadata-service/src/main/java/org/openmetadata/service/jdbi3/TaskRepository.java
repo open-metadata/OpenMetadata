@@ -1143,7 +1143,7 @@ public class TaskRepository extends EntityRepository<Task> {
     // short-circuit, workflow-managed approval tasks fail for reviewers because the task form
     // schemas declare permission: EDIT_ALL, which TaskFormExecutionResolver surfaces via
     // getOperationForTask.
-    if (!closeTask && !isApprovalTask(task)) {
+    if (!closeTask && !isApprovalTask(task) && !isStatusRequest(task)) {
       validateUnderlyingEntityPermission(authorizer, securityContext, task, input);
     }
 
@@ -1156,9 +1156,18 @@ public class TaskRepository extends EntityRepository<Task> {
 
   /** A stage move or held change that a workflow asks its assignees to decide. */
   private static boolean isWorkflowApproval(Task task) {
-    return task.getWorkflowInstanceId() != null
-        && (task.getType() == TaskEntityType.RequestApproval
-            || ChangeRequestTasks.reviewsChangeRequest(task));
+    return isStatusRequest(task)
+        || (task.getWorkflowInstanceId() != null
+            && (task.getType() == TaskEntityType.RequestApproval
+                || ChangeRequestTasks.reviewsChangeRequest(task)));
+  }
+
+  /**
+   * A requested lifecycle move, decided by the approvers its transition names; {@link
+   * StatusUpdateTasks#prepare} assigns them when the request is raised.
+   */
+  private static boolean isStatusRequest(Task task) {
+    return task.getType() == TaskEntityType.StatusUpdate;
   }
 
   /**
