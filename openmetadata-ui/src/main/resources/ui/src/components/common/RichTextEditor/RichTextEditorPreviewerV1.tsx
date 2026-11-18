@@ -56,14 +56,23 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   /**
    * if hasReadMore is true then value will be based on read more state
    * else value will be content
+   *
+   * `hasReadMore` measures the raw markdown length, so the truncation must
+   * also operate on the raw markdown before it is converted to HTML. Slicing
+   * the converted HTML (the previous behaviour) lands the cut mid-markup-tag
+   * (`<a`, `<strong` fragments) and lets markup consume the `maxLength`
+   * budget, leaving a broken, garbled preview that silently drops links near
+   * the cut. Truncating markdown first yields well-formed HTML for `BlockEditor`.
    */
   const viewerValue = useMemo(() => {
     if (hasReadMore) {
-      return readMore ? content : `${getTrimmedContent(content, maxLength)}...`;
+      return readMore
+        ? content
+        : `${formatClientContent(getTrimmedContent(markdown, maxLength))}...`;
     }
 
     return content;
-  }, [hasReadMore, readMore, maxLength, content]);
+  }, [hasReadMore, markdown, maxLength, readMore, content]);
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));
