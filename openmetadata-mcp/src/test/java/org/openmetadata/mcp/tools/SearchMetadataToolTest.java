@@ -1005,6 +1005,30 @@ class SearchMetadataToolTest {
     }
   }
 
+  @ParameterizedTest
+  @ValueSource(strings = {"from", "size"})
+  void nonNumericPagingStringsRetainExistingDefaults(final String parameter) throws Exception {
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      when(searchRepository.getIndexOrAliasName("all")).thenReturn("all");
+      when(searchRepository.search(any(), any(SubjectContext.class)))
+          .thenAnswer(
+              invocation -> {
+                final SearchRequest request = invocation.getArgument(0);
+                assertEquals(10, request.getSize());
+                assertEquals(0, request.getFrom());
+                return Response.ok("{\"hits\":{\"hits\":[],\"total\":{\"value\":0}}}").build();
+              });
+
+      final Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer, securityContext, Map.of(parameter, "not-a-number"));
+
+      assertEquals(0, result.get("totalFound"));
+      assertEquals(0, result.get("returnedCount"));
+    }
+  }
+
   /** A size-0 count returns no hits, only the total, and must not report 0 matches. */
   @Test
   void anEmptyPageStillReportsTheRealTotal() {

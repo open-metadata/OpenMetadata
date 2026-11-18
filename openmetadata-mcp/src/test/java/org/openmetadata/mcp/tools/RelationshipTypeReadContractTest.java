@@ -52,6 +52,24 @@ class RelationshipTypeReadContractTest {
   }
 
   @ParameterizedTest
+  @ValueSource(strings = {"from", "size"})
+  void negativeNumericStringPagingReturns400(final String parameter) {
+    final McpSchema.CallToolResult result =
+        new DefaultToolContext()
+            .callTool(
+                mock(Authorizer.class),
+                null,
+                "search_metadata",
+                contextFor("alice"),
+                new McpSchema.CallToolRequest("search_metadata", Map.of(parameter, "-1")));
+
+    assertThat(result.isError()).isTrue();
+    final JsonNode error = JsonUtils.valueToTree(result.structuredContent());
+    assertThat(error.path("statusCode").asInt()).isEqualTo(400);
+    assertThat(error.path("error").asText()).contains("non-negative");
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {"alice", "bob"})
   void deniedCallerReceives403WithoutTheDefinition(final String caller) {
     final CatalogSecurityContext context = contextFor(caller);
