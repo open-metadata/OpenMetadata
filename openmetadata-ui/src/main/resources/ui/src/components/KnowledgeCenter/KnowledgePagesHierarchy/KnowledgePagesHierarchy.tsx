@@ -787,7 +787,10 @@ const KnowledgePagesHierarchy = forwardRef<
                     />
                   )}
                   {isQuickLink && onQuickLinkClick ? (
-                    <div className="custom-group tw:flex tw:items-center tw:justify-between tw:flex-1 tw:min-w-0">
+                    <Box
+                      align="center"
+                      className="custom-group tw:min-w-0 tw:flex-1"
+                      justify="between">
                       <button
                         className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
                         data-isactive={isActive}
@@ -798,7 +801,7 @@ const KnowledgePagesHierarchy = forwardRef<
                         {nodeContent}
                       </button>
                       {deleteButton}
-                    </div>
+                    </Box>
                   ) : (
                     <Link
                       className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
