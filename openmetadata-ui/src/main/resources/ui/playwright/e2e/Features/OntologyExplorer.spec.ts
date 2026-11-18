@@ -26,6 +26,13 @@ import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
+// Collate serves Ontology Studio on this route, so the read-only Explorer exists only in OSS.
+// eslint-disable-next-line playwright/no-skipped-test -- runs only where PLAYWRIGHT_IS_OSS is set
+test.skip(
+  !process.env.PLAYWRIGHT_IS_OSS,
+  'Ontology Explorer is OpenMetadata-only'
+);
+
 const glossary = new Glossary();
 const source = new GlossaryTerm(glossary);
 const target = new GlossaryTerm(glossary);
