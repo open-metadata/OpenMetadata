@@ -449,10 +449,6 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
         </GenericProvider>
       </Box>
       {isAssetModalOpen && (
-        // The Add-Assets modal excludes already-linked assets with a `must_not` `ids` filter
-        // carrying every linked asset id, which overflows the GET request-line size limit
-        // for metrics with many links. The POST search endpoint carries the filter in the
-        // body so the URL stays small.
         <AssetSelectionModal
           open
           useQueryPost

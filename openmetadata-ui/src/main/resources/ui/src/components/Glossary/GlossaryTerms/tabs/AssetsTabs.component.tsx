@@ -570,10 +570,8 @@ const AssetsTabs = forwardRef(
               )
             : queryParam;
 
-          // The metric path embeds every linked asset id in `finalQueryFilter`, so a metric
-          // with hundreds of links would overflow the GET request-line size limit. Route
-          // those callers through the POST-body search endpoint.
-          const res = await (useQueryPost ? searchQueryPost : searchQuery)({
+          const searchFn = useQueryPost ? searchQueryPost : searchQuery;
+          const res = await searchFn({
             pageNumber: page,
             pageSize: pageSize,
             searchIndex: index,

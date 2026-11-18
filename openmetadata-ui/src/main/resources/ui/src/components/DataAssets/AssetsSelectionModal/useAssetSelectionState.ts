@@ -187,9 +187,6 @@ export const useAssetSelectionState = ({
     }) => {
       try {
         setIsLoading(true);
-        // The metric Add-Assets modal embeds every already-linked asset id in a `must_not`
-        // `ids` filter, which can exceed the GET request-line size limit. Route those
-        // callers through the POST-body search endpoint.
         const searchFn = useQueryPost ? searchQueryPost : searchQuery;
         const res = await searchFn({
           pageNumber: page,

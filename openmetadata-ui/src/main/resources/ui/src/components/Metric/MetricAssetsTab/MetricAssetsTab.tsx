@@ -57,11 +57,6 @@ export const MetricAssetsTab = ({
       firstPanel={{
         className: 'glossary-term-resizable-panel-container',
         children: (
-          // Linked assets live on the metric's relationship table, not on each asset's search
-          // document, so the Assets tab targets them by document id via
-          // `getMetricAssetsQueryFilter`. Embedding every linked asset id in a GET search URL
-          // overflows the server's request-line limit once the metric has ~140-170+ links,
-          // so route the search through POST /v1/search/query.
           <AssetsTabs
             useQueryPost
             assetCount={assetIds?.length ?? 0}
