@@ -137,7 +137,7 @@ test.describe('Right Panel Test Suite', () => {
   // Setup test data and page objects
   test.beforeAll(async ({ browser }) => {
     // Explicit hook budget for the 9 sequential entity creations. Do NOT
-    // use test.slow(true) here: combined with the (now removed) suite-wide
+    // use test.setTimeout(test.info().timeout * 3) here: combined with the (now removed) suite-wide
     // beforeEach slow, stacked tripled budgets let a single failing attempt
     // grind for 9 minutes before reporting (hook 3m + nested hook 3m + test
     // 3m — run 32500973433) instead of failing fast.

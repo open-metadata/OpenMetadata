@@ -34,7 +34,7 @@ const PAGE_SIZE = 15;
 test.describe('SubDomain Pagination', () => {
   test.beforeAll('Setup domain and subdomains', async ({ browser }) => {
     subDomains.length = 0;
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { apiContext, afterAction } = await createNewPage(browser);
 

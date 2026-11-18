@@ -63,7 +63,7 @@ test.describe('Advanced Search', { tag: ['@advanced-search'] }, () => {
   let searchCriteria: Record<string, Array<string>> = {};
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     user = new UserClass();
     // Advanced search filters by service.name, so each fixture owns its service.
@@ -1711,7 +1711,7 @@ test.describe(
     test('should find page-2 items via search without clicking Load more', async ({
       page,
     }) => {
-      test.slow();
+      test.setTimeout(test.info().timeout * 3);
 
       const { ruleLocator, dropdown } = await openEnumValueDropdown(page);
 

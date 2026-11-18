@@ -61,7 +61,7 @@ const S3_SERVICE_CONFIG = {
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
@@ -314,7 +314,7 @@ test.describe('Deeply nested container navigation', () => {
   let deepContainer4Fqn = '';
 
   test.beforeAll('Setup deeply nested containers', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
     const { afterAction, apiContext } = await getDefaultAdminAPIContext(
       browser
     );

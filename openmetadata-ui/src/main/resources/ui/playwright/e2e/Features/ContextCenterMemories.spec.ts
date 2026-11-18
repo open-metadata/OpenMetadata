@@ -88,7 +88,7 @@ test.describe(
 
     test.beforeAll(async ({ browser }, testInfo) => {
       // Seeds a table, ~21 memories and two search-index waits; give the hook the same
-      // headroom as the test.slow() tests it serves, or a slow server fails every test here.
+      // headroom as the test.setTimeout(test.info().timeout * 3) tests it serves, or a slow server fails every test here.
       testInfo.setTimeout(testInfo.timeout * 3);
       globalMemoryIds.length = 0;
       const { apiContext, afterAction } = await createNewPage(browser);
