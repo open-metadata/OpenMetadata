@@ -88,39 +88,41 @@ class NodeFactoryRegistryTest {
   @Order(5)
   void testDiscoverRegistersTheFactoriesOfListedProviders(@TempDir Path servicesRoot)
       throws IOException {
-    NodeFactoryRegistry registry =
-        NodeFactoryRegistry.discover(classLoaderListing(servicesRoot, PolicyAgentProvider.class));
+    try (URLClassLoader loader = classLoaderListing(servicesRoot, PolicyAgentProvider.class)) {
+      NodeFactoryRegistry registry = NodeFactoryRegistry.discover(loader);
 
-    Optional<NodeInterface> result =
-        registry.create(NodeSubType.POLICY_AGENT_TASK, null, null, "TestWorkflow");
+      Optional<NodeInterface> result =
+          registry.create(NodeSubType.POLICY_AGENT_TASK, null, null, "TestWorkflow");
 
-    assertSame(PolicyAgentProvider.NODE, result.orElseThrow());
+      assertSame(PolicyAgentProvider.NODE, result.orElseThrow());
+    }
   }
 
   @Test
   @Order(6)
   void testDiscoverSkipsProvidersThatCannotBeLoadedOrAsked(@TempDir Path servicesRoot)
       throws IOException {
-    NodeFactoryRegistry registry =
-        NodeFactoryRegistry.discover(
-            classLoaderListing(
-                servicesRoot,
-                "org.openmetadata.service.governance.workflows.elements.MissingProvider",
-                FailingProvider.class.getName(),
-                PolicyAgentProvider.class.getName()));
+    try (URLClassLoader loader =
+        classLoaderListing(
+            servicesRoot,
+            "org.openmetadata.service.governance.workflows.elements.MissingProvider",
+            FailingProvider.class.getName(),
+            PolicyAgentProvider.class.getName())) {
+      NodeFactoryRegistry registry = NodeFactoryRegistry.discover(loader);
 
-    Optional<NodeInterface> result =
-        registry.create(NodeSubType.POLICY_AGENT_TASK, null, null, "TestWorkflow");
+      Optional<NodeInterface> result =
+          registry.create(NodeSubType.POLICY_AGENT_TASK, null, null, "TestWorkflow");
 
-    assertSame(PolicyAgentProvider.NODE, result.orElseThrow());
+      assertSame(PolicyAgentProvider.NODE, result.orElseThrow());
+    }
   }
 
-  private static ClassLoader classLoaderListing(Path servicesRoot, Class<?> provider)
+  private static URLClassLoader classLoaderListing(Path servicesRoot, Class<?> provider)
       throws IOException {
     return classLoaderListing(servicesRoot, provider.getName());
   }
 
-  private static ClassLoader classLoaderListing(Path servicesRoot, String... providers)
+  private static URLClassLoader classLoaderListing(Path servicesRoot, String... providers)
       throws IOException {
     Path services = servicesRoot.resolve("META-INF/services");
     Files.createDirectories(services);
