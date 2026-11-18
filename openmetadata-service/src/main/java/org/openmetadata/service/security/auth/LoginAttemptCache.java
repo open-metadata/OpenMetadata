@@ -69,15 +69,7 @@ public class LoginAttemptCache {
   }
 
   public void recordFailedLogin(String username) {
-    String key = cacheKey(username);
-    int attempts;
-    try {
-      attempts = attemptsCache.get(key);
-    } catch (ExecutionException e) {
-      attempts = 0;
-    }
-    attempts++;
-    attemptsCache.put(key, attempts);
+    attemptsCache.asMap().merge(cacheKey(username), 1, Integer::sum);
   }
 
   public boolean isLoginBlocked(String username) {
