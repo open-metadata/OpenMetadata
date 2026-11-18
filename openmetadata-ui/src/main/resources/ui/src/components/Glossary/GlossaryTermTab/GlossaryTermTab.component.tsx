@@ -700,50 +700,57 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     handleSearch,
   ]);
 
-  const fetchChildTerms = async (parentFQN: string, after?: string) => {
-    const childReqSeq = (childFetchSeqRef.current[parentFQN] ?? 0) + 1;
-    childFetchSeqRef.current[parentFQN] = childReqSeq;
-    const fetchGlossaryFqn = activeGlossary?.fullyQualifiedName;
-    const fetchSearch = searchTermRef.current;
-    const fetchPageSeq = fetchRequestSeqRef.current;
+  const fetchChildTerms = useCallback(
+    async (parentFQN: string, after?: string) => {
+      const childReqSeq = (childFetchSeqRef.current[parentFQN] ?? 0) + 1;
+      childFetchSeqRef.current[parentFQN] = childReqSeq;
+      const fetchGlossaryFqn = activeGlossary?.fullyQualifiedName;
+      const fetchSearch = searchTermRef.current;
+      const fetchPageSeq = fetchRequestSeqRef.current;
 
-    // Read the store live: the render closure is stale once the request
-    // resolves, and a concurrent expand of another parent may have written.
-    const isStaleChildContext = () =>
-      childFetchSeqRef.current[parentFQN] !== childReqSeq ||
-      fetchPageSeq !== fetchRequestSeqRef.current ||
-      fetchGlossaryFqn !==
-        useGlossaryStore.getState().activeGlossary?.fullyQualifiedName ||
-      fetchSearch !== searchTermRef.current;
+      // Read the store live: the render closure is stale once the request
+      // resolves, and a concurrent expand of another parent may have written.
+      const isStaleChildContext = () =>
+        childFetchSeqRef.current[parentFQN] !== childReqSeq ||
+        fetchPageSeq !== fetchRequestSeqRef.current ||
+        fetchGlossaryFqn !==
+          useGlossaryStore.getState().activeGlossary?.fullyQualifiedName ||
+        fetchSearch !== searchTermRef.current;
 
-    setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
-    try {
-      const response = await getGlossaryTermChildrenLazy(parentFQN, 50, after);
-      const currentTerms = useGlossaryStore.getState().glossaryChildTerms;
-
-      if (isStaleChildContext() || !Array.isArray(currentTerms)) {
-        return;
-      }
-
-      setGlossaryChildTerms(
-        mergeChildTermsIntoHierarchy(
-          currentTerms,
+      setLoadingChildren((prev) => ({ ...prev, [parentFQN]: true }));
+      try {
+        const response = await getGlossaryTermChildrenLazy(
           parentFQN,
-          response.data,
-          response.paging?.after,
-          Boolean(after)
-        )
-      );
-    } catch (error) {
-      if (!isStaleChildContext()) {
-        showErrorToast(error as AxiosError);
+          50,
+          after
+        );
+        const currentTerms = useGlossaryStore.getState().glossaryChildTerms;
+
+        if (isStaleChildContext() || !Array.isArray(currentTerms)) {
+          return;
+        }
+
+        setGlossaryChildTerms(
+          mergeChildTermsIntoHierarchy(
+            currentTerms,
+            parentFQN,
+            response.data,
+            response.paging?.after,
+            Boolean(after)
+          )
+        );
+      } catch (error) {
+        if (!isStaleChildContext()) {
+          showErrorToast(error as AxiosError);
+        }
+      } finally {
+        if (childFetchSeqRef.current[parentFQN] === childReqSeq) {
+          setLoadingChildren((prev) => ({ ...prev, [parentFQN]: false }));
+        }
       }
-    } finally {
-      if (childFetchSeqRef.current[parentFQN] === childReqSeq) {
-        setLoadingChildren((prev) => ({ ...prev, [parentFQN]: false }));
-      }
-    }
-  };
+    },
+    [activeGlossary?.fullyQualifiedName, setGlossaryChildTerms]
+  );
 
   // Search uses offset-based paging; the first-level listing uses cursor
   // (before/after) paging. Either way the response replaces the current
