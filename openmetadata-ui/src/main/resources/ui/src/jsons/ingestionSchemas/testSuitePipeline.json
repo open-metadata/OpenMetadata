@@ -11182,10 +11182,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -11214,10 +11214,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -11279,10 +11279,10 @@
                                       "description": "Project ID",
                                       "oneOf": [
                                         {
-                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                         },
                                         {
-                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                         }
                                       ]
                                     },

@@ -455,7 +455,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
             <Box className="tw:mt-2.5 tw:flex-wrap" direction="row" gap={2}>
               {botUserData.isAdmin && (
                 <Badge size="md" type="modern">
-                  {TERM_ADMIN}
+                  {t('label.admin-superuser')}
                 </Badge>
               )}
               {botUserData.roles?.map((role) => (
@@ -739,20 +739,25 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
     }));
 
     if (botUserData && !botUserData.isAdmin) {
-      items.push({ id: toLower(TERM_ADMIN), label: TERM_ADMIN });
+      items.push({
+        id: toLower(TERM_ADMIN),
+        label: t('label.admin-superuser'),
+      });
     }
 
     return items;
-  }, [roles, botUserData]);
+  }, [roles, botUserData, t]);
 
   const selectedRoleItems = useMemo<SelectItemType[]>(
     () =>
       selectedRoles.map((id) => {
         const match = roleItems.find((r) => r.id === id);
+        const fallbackLabel =
+          id === toLower(TERM_ADMIN) ? t('label.admin-superuser') : id;
 
-        return { id, label: match?.label || id };
+        return { id, label: match?.label || fallbackLabel };
       }),
-    [selectedRoles, roleItems]
+    [selectedRoles, roleItems, t]
   );
 
   useDetailHeaderInjection({

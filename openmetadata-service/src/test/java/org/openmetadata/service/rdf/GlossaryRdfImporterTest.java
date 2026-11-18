@@ -183,6 +183,88 @@ class GlossaryRdfImporterTest {
   }
 
   @Test
+  void wiresReverseInverseWhenOnlyOneDirectionIsDeclared() {
+    assertInversePair("hcp:prescribes owl:inverseOf hcp:prescribedBy .");
+  }
+
+  @Test
+  void wiresInverseWhenOnlyReverseDeclarationIsPresent() {
+    assertInversePair("hcp:prescribedBy owl:inverseOf hcp:prescribes .");
+  }
+
+  @Test
+  void ignoresBlankInverseTargetsAndSubjectsWhileFindingNamedPartner() {
+    assertInversePair(
+        """
+        hcp:prescribes owl:inverseOf [] .
+        [] owl:inverseOf hcp:prescribes .
+        hcp:prescribedBy owl:inverseOf hcp:prescribes .
+        """);
+  }
+
+  @Test
+  void symmetricPropertyKeepsSelfInverseEvenWhenNamedInverseIsDeclared() {
+    String ontology =
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:prescribes a owl:ObjectProperty ; a owl:SymmetricProperty ; owl:inverseOf hcp:prescribedBy .
+        hcp:prescribedBy a owl:ObjectProperty .
+        """;
+    Model model = ModelFactory.createDefaultModel();
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+      RelationshipType forward = importer.buildRelationType(model, "prescribes");
+      RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
+
+      assertTrue(
+          forward.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC),
+          "prescribes is symmetric");
+      // applyCharacteristics makes a symmetric property its own inverse, and that self
+      // reference must survive even though owl:inverseOf also names a partner.
+      assertNotNull(forward.getInverse());
+      assertEquals("prescribes", forward.getInverse().getName());
+      assertEquals(forward.getId(), forward.getInverse().getId());
+      // The named partner is still resolved as the reverse direction.
+      assertNotNull(reverse.getInverse());
+      assertEquals("prescribes", reverse.getInverse().getName());
+      assertEquals(forward.getId(), reverse.getInverse().getId());
+    } finally {
+      model.close();
+    }
+  }
+
+  private void assertInversePair(String declaration) {
+    String ontology =
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:prescribes a owl:ObjectProperty .
+        hcp:prescribedBy a owl:ObjectProperty .
+        """
+            + declaration;
+    Model model = ModelFactory.createDefaultModel();
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+      RelationshipType forward = importer.buildRelationType(model, "prescribes");
+      RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
+
+      assertNotNull(forward.getInverse());
+      assertEquals("prescribedBy", forward.getInverse().getName());
+      assertEquals(reverse.getId(), forward.getInverse().getId());
+      assertNotNull(reverse.getInverse());
+      assertEquals("prescribes", reverse.getInverse().getName());
+      assertEquals(forward.getId(), reverse.getInverse().getId());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
   void parsesDatatypePropertiesAndMapsXsdTypes() {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(ONTOLOGY), null, "TURTLE");
