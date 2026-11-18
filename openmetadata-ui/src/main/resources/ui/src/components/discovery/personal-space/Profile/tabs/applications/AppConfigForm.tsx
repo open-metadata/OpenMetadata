@@ -196,11 +196,12 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
   // RJSF prunes schema-unknown keys on submit (`omitExtraData`) but not on
   // `onChange` (no `liveOmit`), so a save that drops a legacy key moves the
   // baseline without re-firing `onChange`. Reset the stale live-form snapshot
-  // when the baseline moves, so it is not compared against the refreshed
-  // value and the form reads clean after a save.
+  // when the stored config changes (a save), so the form reads clean after it.
+  // Keyed on the stored config, not the schema: a schema that loads late (MCP
+  // tool names) must not drop an in-progress edit.
   useEffect(() => {
     setCurrentFormData(undefined);
-  }, [savedFormData]);
+  }, [formData]);
   const isDirty = useMemo(
     () =>
       currentFormData !== undefined && !isEqual(currentFormData, savedFormData),

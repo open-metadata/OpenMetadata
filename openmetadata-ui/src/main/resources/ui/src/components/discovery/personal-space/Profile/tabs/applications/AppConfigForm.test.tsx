@@ -268,6 +268,36 @@ describe('AppConfigForm', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps an unsaved edit when the schema changes without a save', async () => {
+    // e.g. MCP tool names load after settings and reshape the schema.
+    const { rerender } = renderLegacyForm();
+    fireEvent.click(screen.getByRole('switch'));
+
+    rerender(
+      <AppConfigForm
+        appData={legacyAppData}
+        isSaving={false}
+        jsonSchema={{
+          ...strictSchema,
+          properties: {
+            ...strictSchema.properties,
+            tools: { type: 'array', items: { type: 'string' } },
+          },
+        }}
+        showHint={false}
+        submitLabel="label.save"
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(
+      await screen.findByTestId('unsaved-changes-popover')
+    ).toBeInTheDocument();
+  });
+
   it('registers field hints only while hints are shown', () => {
     const { container, unmount } = renderForm(false);
 
