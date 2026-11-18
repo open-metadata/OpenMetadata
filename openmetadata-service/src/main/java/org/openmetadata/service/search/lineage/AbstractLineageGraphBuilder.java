@@ -88,6 +88,17 @@ public abstract class AbstractLineageGraphBuilder implements LineageGraphExecuto
       throw new MissingLineageEntityException(request.getFqn());
     }
     if (roots.size() != 1) {
+      if (nullOrEmpty(request.getEntityType())) {
+        final List<String> matchingTypes =
+            roots.stream()
+                .map(root -> String.valueOf(root.get("entityType")))
+                .distinct()
+                .sorted()
+                .toList();
+        throw new IllegalArgumentException(
+            "Lineage root '%s' matches entity types %s; specify its entity type"
+                .formatted(request.getFqn(), matchingTypes));
+      }
       throw new SearchException(
           "Expected one lineage root for type="
               + request.getEntityType()

@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
@@ -93,6 +94,50 @@ public class LineageRootTypeIT {
                   dashboard.getEntityReference(),
                   dashboardSource,
                   chartSource);
+            });
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "getLineage",
+        "getLineage/Upstream",
+        "getLineage/Downstream",
+        "getLineageByEntityCount",
+        "getPaginationInfo"
+      })
+  void ambiguousUntypedRootsReturnBadRequest(final String endpoint, final TestNamespace ns) {
+    final var admin = SdkClients.adminClient();
+    final var service = DashboardServiceTestFactory.createMetabase(ns);
+    final var chart =
+        admin
+            .charts()
+            .create(new CreateChart().withName("375").withService(service.getFullyQualifiedName()));
+    admin
+        .dashboards()
+        .create(new CreateDashboard().withName("375").withService(service.getFullyQualifiedName()));
+    final var reader = chartReader(ns);
+    final var options =
+        RequestOptions.builder()
+            .queryParams(Map.of("fqn", chart.getFullyQualifiedName(), "direction", "Downstream"))
+            .build();
+    Awaitility.await("ambiguous roots require an explicit type")
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(
+            () -> {
+              for (final var client : List.of(admin, reader)) {
+                final InvalidRequestException ambiguous =
+                    assertThrows(
+                        InvalidRequestException.class,
+                        () ->
+                            client
+                                .getHttpClient()
+                                .executeForString(
+                                    HttpMethod.GET, "/v1/lineage/" + endpoint, null, options));
+                assertEquals(400, ambiguous.getStatusCode());
+                assertTrue(ambiguous.getMessage().contains("chart"));
+                assertTrue(ambiguous.getMessage().contains("dashboard"));
+              }
             });
   }
 

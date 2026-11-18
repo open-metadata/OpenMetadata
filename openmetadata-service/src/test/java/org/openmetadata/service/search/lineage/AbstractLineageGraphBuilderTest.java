@@ -78,11 +78,26 @@ class AbstractLineageGraphBuilderTest {
         builder.selectRootEntity(
             List.of(chart, dashboard),
             new SearchLineageRequest().withFqn(ROOT_FQN).withEntityType("dashboard")));
+    final IllegalArgumentException ambiguous =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                builder.selectRootEntity(
+                    List.of(chart, dashboard), new SearchLineageRequest().withFqn(ROOT_FQN)));
+    assertTrue(ambiguous.getMessage().contains(ROOT_FQN));
+    assertTrue(ambiguous.getMessage().contains("chart"));
+    assertTrue(ambiguous.getMessage().contains("dashboard"));
+  }
+
+  @Test
+  void duplicateTypedRootsRemainAnOperationalSearchError() {
+    final Map<String, Object> chart = Map.of("fullyQualifiedName", ROOT_FQN, "entityType", "chart");
     assertThrows(
         SearchException.class,
         () ->
             builder.selectRootEntity(
-                List.of(chart, dashboard), new SearchLineageRequest().withFqn(ROOT_FQN)));
+                List.of(chart, chart),
+                new SearchLineageRequest().withFqn(ROOT_FQN).withEntityType("chart")));
   }
 
   @Test
