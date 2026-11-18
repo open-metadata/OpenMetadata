@@ -286,6 +286,7 @@ public class ColumnGridResourceIT {
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
             () -> assertEquals(8, getColumnGrid(client, query + "&size=100").getColumns().size()));
+    assertEquals(8, getColumnGrid(client, query + "&size=3").getTotalUniqueColumns());
 
     List<List<String>> pages = new ArrayList<>();
     ColumnGridItem shared = null;

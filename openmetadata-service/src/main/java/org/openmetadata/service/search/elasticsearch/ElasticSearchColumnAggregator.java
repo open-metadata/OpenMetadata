@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
+import es.co.elastic.clients.elasticsearch._types.Script;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregationSource;
@@ -63,6 +64,9 @@ import org.openmetadata.service.search.security.RBACConditionEvaluator;
 
 @Slf4j
 public class ElasticSearchColumnAggregator implements ColumnAggregator {
+  // Lower precision threshold to reduce memory usage (3000 is usually sufficient for UI display)
+  private static final int CARDINALITY_PRECISION_THRESHOLD = 3000;
+
   private final ElasticsearchClient client;
   private final RBACConditionEvaluator rbacConditionEvaluator =
       new RBACConditionEvaluator(new ElasticQueryBuilderFactory());
@@ -190,6 +194,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       }
     }
 
+    if (request.getCursor() == null && responsesByField.size() > 1) {
+      totalUniqueColumns =
+          countNamesAcrossFields(request, responsesByField.keySet(), fieldPathToEntityTypes);
+    }
+
     ColumnAggregator.BrowsePage page =
         ColumnAggregator.nextBrowsePage(keysByField, afterKeys, request.getSize());
     Map<String, List<ColumnWithContext>> allColumnsByName =
@@ -204,6 +213,50 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     String cursor = page.hasMore() ? ColumnAggregator.encodeBrowseCursor(page.afterKeys()) : null;
     return buildResponse(
         gridItems, cursor, page.hasMore(), (int) totalUniqueColumns, (int) totalOccurrences);
+  }
+
+  /** Distinct column names across several column fields, in one cardinality aggregation. */
+  private long countNamesAcrossFields(
+      ColumnAggregationRequest request,
+      Set<String> columnNameKeywords,
+      Map<String, List<String>> fieldPathToEntityTypes)
+      throws IOException {
+    List<String> fields = List.copyOf(columnNameKeywords);
+    List<Query> fieldQueries = fields.stream().map(f -> buildFilters(request, f, null)).toList();
+    List<String> indexes =
+        resolveIndexNames(
+            fields.stream().flatMap(f -> fieldPathToEntityTypes.get(f).stream()).toList());
+    Aggregation cardinalityAgg =
+        Aggregation.of(
+            a ->
+                a.cardinality(
+                    c ->
+                        c.script(
+                                Script.of(
+                                    s ->
+                                        s.source(
+                                                script ->
+                                                    script.scriptString(
+                                                        ColumnAggregator
+                                                            .NAMES_ACROSS_FIELDS_SCRIPT))
+                                            .params(
+                                                Map.of(
+                                                    ColumnAggregator.NAMES_ACROSS_FIELDS_PARAM,
+                                                    JsonData.of(fields)))))
+                            .precisionThreshold(CARDINALITY_PRECISION_THRESHOLD)));
+    SearchRequest countRequest =
+        SearchRequest.of(
+            s ->
+                s.index(indexes)
+                    .query(q -> q.bool(b -> b.should(fieldQueries).minimumShouldMatch("1")))
+                    .aggregations(ColumnAggregator.AGG_UNIQUE_COLUMNS, cardinalityAgg)
+                    .size(0));
+    return client
+        .search(countRequest, JsonData.class)
+        .aggregations()
+        .get(ColumnAggregator.AGG_UNIQUE_COLUMNS)
+        .cardinality()
+        .value();
   }
 
   private Map<String, List<ColumnWithContext>> collectPageColumns(
@@ -1155,11 +1208,13 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   private Map<String, Long> getTotalCounts(
       Query query, List<String> indexes, String columnNameKeyword) throws IOException {
-    // Use lower precision threshold to reduce memory usage (3000 is usually sufficient for UI
-    // display)
     Aggregation cardinalityAgg =
         Aggregation.of(
-            a -> a.cardinality(c -> c.field(columnNameKeyword).precisionThreshold(3000)));
+            a ->
+                a.cardinality(
+                    c ->
+                        c.field(columnNameKeyword)
+                            .precisionThreshold(CARDINALITY_PRECISION_THRESHOLD)));
 
     // Use value_count instead of expensive scripted_metric
     // This counts total column field values which approximates total occurrences

@@ -60,6 +60,18 @@ public interface ColumnAggregator {
 
   String COMPOSITE_COLUMN_NAME = "column_name";
 
+  String NAMES_ACROSS_FIELDS_PARAM = "fields";
+
+  /**
+   * Emits every value of the column-name keyword fields passed in {@link
+   * #NAMES_ACROSS_FIELDS_PARAM}, so one cardinality aggregation counts a name shared by two fields
+   * once.
+   */
+  String NAMES_ACROSS_FIELDS_SCRIPT =
+      "List names = new ArrayList(); for (def field : params."
+          + NAMES_ACROSS_FIELDS_PARAM
+          + ") { if (doc.containsKey(field)) { names.addAll(doc[field]); } } return names;";
+
   /** Cursor payload key for the offset-based search/tag pagination cursor. */
   String CURSOR_SEARCH_OFFSET = "searchOffset";
 
