@@ -71,9 +71,7 @@ const AvatarCarouselItem = ({
           <ProfilePicture name={avatar.name ?? ''} width="28" />
         </Button>
         {suggestionsCount > 0 && (
-          // The dark-mode error tint is translucent; the surface behind it
-          // keeps the avatar from showing through the count.
-          <span className="tw:pointer-events-none tw:absolute tw:-top-1.5 tw:-right-1.5 tw:w-max tw:rounded-full tw:bg-surface">
+          <span className="tw:pointer-events-none tw:absolute tw:-top-1.5 tw:-right-1.5 tw:w-max">
             <Badge color="error" size="xs">
               {suggestionsCount > 99 ? '99+' : suggestionsCount}
             </Badge>
