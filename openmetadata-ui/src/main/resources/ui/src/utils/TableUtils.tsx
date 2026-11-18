@@ -76,6 +76,7 @@ import {
   TableConstraint,
 } from '../generated/entity/data/table';
 import { t } from './i18next/LocalUtil';
+import { getConstraintGroupLabel } from './TablePureUtils';
 
 // These moved to EntityIconUtils/EntityServiceIconUtils so that importing TableUtils no longer
 // drags the entity-icon graph into every consumer. Re-exported because downstream repos (Collate)
@@ -146,14 +147,14 @@ export const getConstraintIcon = ({
   width = '16px',
   isConstraintAdded,
   isConstraintDeleted,
-  compositeColumns = [],
+  compositeGroup,
 }: {
   constraint?: string;
   className?: string;
   width?: string;
   isConstraintAdded?: boolean;
   isConstraintDeleted?: boolean;
-  compositeColumns?: string[][];
+  compositeGroup?: { columns: string[]; label: string };
 }) => {
   const config = CONSTRAINT_ICON_CONFIG[constraint];
   if (!config) {
@@ -161,14 +162,12 @@ export const getConstraintIcon = ({
   }
 
   const isComposite =
-    constraint === ConstraintTypes.UNIQUE && compositeColumns.length > 0;
+    constraint === ConstraintTypes.UNIQUE && compositeGroup !== undefined;
   const title = isComposite
-    ? t('label.composite-unique-constraint')
+    ? `${t('label.composite-unique-constraint')} ${compositeGroup.label}`
     : config.getTitle();
   const accessibleName = isComposite
-    ? `${title}: ${compositeColumns
-        .map((columns) => columns.join(', '))
-        .join('; ')}`
+    ? `${title}: ${compositeGroup.columns.join(', ')}`
     : title;
   const icon = isConstraintDeleted ? config.deletedIcon : config.icon;
   const dataTestId = config.dataTestId;
@@ -181,9 +180,7 @@ export const getConstraintIcon = ({
       description={
         isComposite ? (
           <Box align="start" direction="col" gap={2}>
-            {compositeColumns.map((columns) => (
-              <span key={JSON.stringify(columns)}>{columns.join(' + ')}</span>
-            ))}
+            <span>{compositeGroup.columns.join(' + ')}</span>
             <span>{t('message.composite-unique-constraint-description')}</span>
           </Box>
         ) : undefined
@@ -195,11 +192,7 @@ export const getConstraintIcon = ({
         'tw:focus-visible:outline-2 tw:focus-visible:outline-solid tw:focus-visible:outline-brand tw:focus-visible:outline-offset-4':
           isComposite,
       })}>
-      <span
-        className={classNames('tw:inline-flex', {
-          'tw:outline tw:outline-1 tw:outline-dashed tw:outline-current tw:outline-offset-2 tw:rounded-sm':
-            isComposite,
-        })}>
+      <span className="tw:inline-flex tw:items-center tw:gap-0.5">
         <ConstraintIcon
           // The core icons default to aria-hidden; this one carries the label.
           aria-hidden={false}
@@ -213,6 +206,11 @@ export const getConstraintIcon = ({
           role="img"
           width={width}
         />
+        {isComposite && (
+          <Typography aria-hidden as="span" size="text-xs" weight="semibold">
+            {compositeGroup.label}
+          </Typography>
+        )}
       </span>
     </Tooltip>
   );
@@ -363,12 +361,17 @@ export const prepareConstraintIcon = ({
       constraint.columns?.includes(columnName)
     ) ?? [];
   const filteredTableConstraints = uniqBy(
-    matchingTableConstraints,
-    ({ constraintType, columns }) =>
-      constraintType === ConstraintType.Unique && (columns?.length ?? 0) > 1
-        ? 'COMPOSITE_UNIQUE'
-        : constraintType
+    matchingTableConstraints.filter(
+      ({ constraintType, columns }) =>
+        constraintType !== ConstraintType.Unique || (columns?.length ?? 0) <= 1
+    ),
+    'constraintType'
   );
+  const compositeUniqueConstraints =
+    tableConstraints?.filter(
+      ({ constraintType, columns }) =>
+        constraintType === ConstraintType.Unique && (columns?.length ?? 0) > 1
+    ) ?? [];
 
   // prepare column constraint element
   const columnConstraintEl = columnConstraint
@@ -390,17 +393,6 @@ export const prepareConstraintIcon = ({
           }`}>
           {getConstraintIcon({
             constraint: tableConstraint.constraintType,
-            compositeColumns:
-              tableConstraint.constraintType === ConstraintType.Unique &&
-              (tableConstraint.columns?.length ?? 0) > 1
-                ? matchingTableConstraints
-                    .filter(
-                      ({ constraintType, columns }) =>
-                        constraintType === ConstraintType.Unique &&
-                        (columns?.length ?? 0) > 1
-                    )
-                    .map(({ columns }) => columns ?? [])
-                : undefined,
             className: iconClassName ?? 'm-r-xs',
             width: iconWidth,
             isConstraintAdded: isTableConstraintAdded,
@@ -410,9 +402,27 @@ export const prepareConstraintIcon = ({
       ))
     : null;
 
+  const compositeConstraintEls = compositeUniqueConstraints.map(
+    ({ columns }, index) =>
+      columns?.includes(columnName) ? (
+        <Fragment key={JSON.stringify(columns)}>
+          {getConstraintIcon({
+            constraint: ConstraintType.Unique,
+            compositeGroup: { columns, label: getConstraintGroupLabel(index) },
+            className: iconClassName ?? 'm-r-xs',
+            width: iconWidth,
+            isConstraintAdded: isTableConstraintAdded,
+            isConstraintDeleted: isTableConstraintDeleted,
+          })}
+        </Fragment>
+      ) : null
+  );
+
   return (
-    <span data-testid="constraints">
-      {columnConstraintEl} {tableConstraintEl}
+    <span
+      className="tw:inline-flex tw:shrink-0 tw:items-center"
+      data-testid="constraints">
+      {columnConstraintEl} {tableConstraintEl} {compositeConstraintEls}
     </span>
   );
 };

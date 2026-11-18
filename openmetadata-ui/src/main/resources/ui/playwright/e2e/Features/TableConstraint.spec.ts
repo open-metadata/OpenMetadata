@@ -192,7 +192,9 @@ test.describe('Table Constraints', {}, () => {
       const compositeTrigger = page
         .getByTestId('column-name-cell')
         .filter({ hasText: columnName3 })
-        .getByRole('button', { name: /Composite unique constraint/ });
+        .getByRole('button', { name: /Composite unique constraint A:/ });
+
+      await expect(compositeTrigger).toHaveText('A');
 
       await compositeTrigger.focus();
 

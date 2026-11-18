@@ -33,6 +33,7 @@ import {
   findColumnByEntityLink,
   getCertificationTag,
   getColumnOptionsFromTableColumn,
+  getConstraintGroupLabel,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   getNestedSectionTitle,
@@ -2611,8 +2612,22 @@ describe('getDataTypeBadgeColor', () => {
   });
 });
 
+describe('getConstraintGroupLabel', () => {
+  it.each([
+    [0, 'A'],
+    [25, 'Z'],
+    [26, 'AA'],
+    [51, 'AZ'],
+    [52, 'BA'],
+    [701, 'ZZ'],
+    [702, 'AAA'],
+  ])('labels group %i as %s', (index, expected) => {
+    expect(getConstraintGroupLabel(index)).toBe(expected);
+  });
+});
+
 describe('getConstraintIcon', () => {
-  it('shows every composite unique group containing a column on keyboard focus', async () => {
+  it('shows a separate letter and tooltip for every composite unique group containing a column', async () => {
     const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
 
     render(
@@ -2637,20 +2652,72 @@ describe('getConstraintIcon', () => {
       </>
     );
 
-    expect(screen.getAllByTestId('constraint-icon-unique')).toHaveLength(1);
-    expect(screen.getByRole('img')).toHaveAccessibleName(
-      /warehouse_id, item_code; item_code, locale/
-    );
+    expect(screen.getAllByTestId('constraint-icon-unique')).toHaveLength(2);
+    expect(screen.getByText('A')).toBeVisible();
+    expect(screen.getByText('B')).toBeVisible();
+
+    const groupA = screen.getByRole('button', {
+      name: /constraint A: warehouse_id, item_code/,
+    });
+    const groupB = screen.getByRole('button', {
+      name: /constraint B: item_code, locale/,
+    });
 
     await user.tab();
 
-    expect(screen.getByRole('button')).toHaveFocus();
+    expect(groupA).toHaveFocus();
 
     const tooltip = await screen.findByRole('tooltip');
 
     expect(tooltip).toHaveTextContent('warehouse_id + item_code');
-    expect(tooltip).toHaveTextContent('item_code + locale');
+    expect(tooltip).not.toHaveTextContent('item_code + locale');
     expect(tooltip).not.toHaveTextContent('external_ref');
+
+    await user.keyboard('{Escape}');
+    await user.tab();
+
+    expect(groupB).toHaveFocus();
+
+    const secondTooltip = await screen.findByRole('tooltip');
+
+    expect(secondTooltip).toHaveTextContent('item_code + locale');
+    expect(secondTooltip).not.toHaveTextContent('warehouse_id');
+  });
+
+  it('uses the same letter for a group across its member columns', () => {
+    const tableConstraints: Table['tableConstraints'] = [
+      { constraintType: ConstraintType.Unique, columns: ['external_ref'] },
+      {
+        constraintType: ConstraintType.Unique,
+        columns: ['warehouse_id', 'item_code'],
+      },
+      {
+        constraintType: ConstraintType.Unique,
+        columns: ['item_code', 'locale'],
+      },
+    ];
+    const { rerender } = render(
+      <>{prepareConstraintIcon({ columnName: 'locale', tableConstraints })}</>
+    );
+
+    expect(screen.getByText('B')).toBeVisible();
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      /constraint B: item_code, locale/
+    );
+
+    rerender(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'warehouse_id',
+          tableConstraints,
+        })}
+      </>
+    );
+
+    expect(screen.getByText('A')).toBeVisible();
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      /constraint A: warehouse_id, item_code/
+    );
   });
 
   it('keeps individual uniqueness distinct from composite membership', () => {
