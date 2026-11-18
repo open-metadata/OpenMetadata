@@ -2934,14 +2934,23 @@ test.describe('Glossary tests', () => {
         `[data-row-key=${JSON.stringify(siblingFqn)}]`
       );
 
-      await test.step('Verify both matching rows start at root level before expansion', async () => {
+      // react-aria overwrites data-level with its own (flat) collection level,
+      // so nesting is asserted through row order: an expanded parent's
+      // children are rendered directly after it.
+      const getRowKeys = () =>
+        page
+          .locator('[role="row"][data-row-key]')
+          .evaluateAll((rows) =>
+            rows.map((row) => row.getAttribute('data-row-key'))
+          );
+
+      await test.step('Verify both matching rows are listed once before expansion', async () => {
         await expect(parentRow).toHaveCount(1);
-        await expect(parentRow).toHaveAttribute('data-level', '0');
         await expect(childRow).toHaveCount(1);
-        await expect(childRow).toHaveAttribute('data-level', '0');
+        await expect(siblingRow).toHaveCount(0);
       });
 
-      await test.step('Expand parent term and verify child term renders once at level 1', async () => {
+      await test.step('Expand parent term and verify child term renders once under it', async () => {
         const childrenResponsePromise = page.waitForResponse(
           (response) =>
             response.request().method() === 'GET' &&
@@ -2955,18 +2964,23 @@ test.describe('Glossary tests', () => {
         expect(childrenResponse.status()).toBe(200);
 
         await expect(siblingRow).toHaveCount(1);
-        await expect(siblingRow).toHaveAttribute('data-level', '1');
         await expect(childRow).toHaveCount(1);
-        await expect(childRow).toHaveAttribute('data-level', '1');
+        await expect
+          .poll(async () => {
+            const keys = await getRowKeys();
+            const parentIndex = keys.indexOf(parentFqn);
+
+            return keys.slice(parentIndex + 1, parentIndex + 3).sort();
+          })
+          .toEqual([childFqn, siblingFqn].sort());
         await expect(page.getByText('Something went wrong')).not.toBeVisible();
       });
 
-      await test.step('Collapse parent term and verify child term returns to root level', async () => {
+      await test.step('Collapse parent term and verify child term returns to the root list', async () => {
         await parentRow.getByTestId('expand-icon').click();
 
         await expect(siblingRow).toHaveCount(0);
         await expect(childRow).toHaveCount(1);
-        await expect(childRow).toHaveAttribute('data-level', '0');
       });
     } finally {
       try {
