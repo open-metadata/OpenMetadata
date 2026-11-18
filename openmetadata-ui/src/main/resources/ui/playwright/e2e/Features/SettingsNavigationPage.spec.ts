@@ -292,15 +292,8 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     }
   });
 
-  // Regression test for the WCAG 2.1.1 fix on the shared `Tree` wrapper: every
-  // draggable row must expose a real `<Button slot="drag">` so keyboard and
-  // screen-reader users can initiate a reorder. Previously the wrapper enabled
-  // mouse drag-and-drop but only an inert, `aria-hidden` grip icon rendered on
-  // each row — the row was natively `draggable` but Enter/Space on the row did
-  // nothing, because React Aria hardcodes `hasDragButton: true` and only
-  // delivers the keyboard drag-start handlers through the `drag` slot. See
-  // `openmetadata-ui-core-components/.../components/application/tree/tree.tsx`
-  // and the vitest suite `tree.test.tsx` for the underlying contract.
+  // React Aria only wires keyboard drag-start through a `slot="drag"` button,
+  // so each draggable row must render Tree.DragButton (WCAG 2.1.1).
   test('keyboard users can reorder navigation items via the drag handle button (a11y regression)', async ({
     page,
   }) => {
@@ -311,46 +304,29 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     const treegrid = page.getByRole('treegrid');
     await expect(treegrid).toBeVisible();
 
-    // The drag handle button is now a real button with `slot="drag"` and the
-    // accessible name "Move" (via `t('label.move')`). Before the fix this query
-    // returned zero elements (only an `aria-hidden` SVG was rendered).
-    const dragHandles = treegrid.getByRole('button', { name: 'label.move' });
+    const dragHandles = treegrid.getByRole('button', { name: 'Move' });
     await expect(dragHandles.filter({ visible: true })).not.toHaveCount(0);
+
+    const rowOrder = () =>
+      treegrid
+        .locator('[role="row"][data-key]')
+        .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-key')));
+    const initialOrder = await rowOrder();
+
     const homeRow = treegrid.getByRole('row').filter({
       has: page.getByText('Home', { exact: true }),
       visible: true,
     });
-    const initialHomeRowText = await homeRow.textContent();
-    expect(initialHomeRowText).not.toBeNull();
-
-    // Keyboard-focus the drag handle on the Home row. Use the row's own
-    // drag handle rather than a positional `.first()` so the locator stays
-    // stable as the tree re-orders.
-    const homeDragHandle = homeRow.getByRole('button', {
-      name: 'label.move',
-    });
+    const homeDragHandle = homeRow.getByRole('button', { name: 'Move' });
     await homeDragHandle.focus();
     await expect(homeDragHandle).toBeFocused();
 
-    // Press Enter to start a keyboard drag session. React Aria announces the
-    // drop/cancel instructions via a live region and the source row gets
-    // `data-dragging="true"`.
     await page.keyboard.press('Enter');
-
-    // Move the drop target down to the next row, then drop.
     await page.keyboard.press('Tab');
     await page.keyboard.press('Enter');
 
-    // The drop must dirty the editor and enable the save button — proving the
-    // keyboard drag fired `onItemMove`, not just a mouse `dragStart`.
     await expect(page.getByTestId('save-button')).toBeEnabled();
-
-    // And the Home row must have moved out of the first slot.
-    const firstRowNow = treegrid.getByRole('row').filter({
-      hasText: 'Home',
-      visible: true,
-    });
-    await expect(firstRowNow).not.toHaveText(initialHomeRowText as string);
+    await expect.poll(rowOrder).not.toEqual(initialOrder);
   });
 
   test('should handle multiple items being hidden at once', async ({

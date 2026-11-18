@@ -90,7 +90,6 @@ describe('Tree.DragButton', () => {
     const onItemMove = vi.fn();
     renderDraggableTree({ onItemMove, withDragButton: true });
 
-    // React Aria's effect fires per draggable item on mount; let it settle.
     await waitFor(() =>
       expect(
         warnSpy.mock.calls.some((call) =>
@@ -108,7 +107,6 @@ describe('Tree.DragButton', () => {
     const onItemMove = vi.fn();
     renderDraggableTree({ onItemMove, withDragButton: false });
 
-    // 3 draggable items with no `slot="drag"` button → 3 mount-time warnings.
     await waitFor(() =>
       expect(
         warnSpy.mock.calls.filter((call) =>
@@ -122,12 +120,10 @@ describe('Tree.DragButton', () => {
     const onItemMove = vi.fn();
     renderDraggableTree({ onItemMove, withDragButton: true });
 
-    // The accessible-name query should reach the button, not the icon.
     const handle = screen.getByRole('button', { name: 'Move alpha' });
 
     expect(handle).toBeInTheDocument();
     expect(handle).toHaveAttribute('slot', 'drag');
-    // The visible grip icon is hidden from the accessibility tree.
     expect(handle.querySelector('svg')).toHaveAttribute('aria-hidden', 'true');
   });
 
@@ -140,20 +136,15 @@ describe('Tree.DragButton', () => {
 
     const alphaHandle = screen.getByRole('button', { name: 'Move alpha' });
 
-    // Keyboard-focus the drag button and start a keyboard drag session.
     alphaHandle.focus();
     await waitFor(() => expect(alphaHandle).toHaveFocus());
     pressEnter(alphaHandle);
 
-    // Let React Aria's DragSession.setup() run inside requestAnimationFrame
-    // (auto-selects the first drop target and announces instructions).
     await flushRaf();
 
-    // The source row is now in the keyboard drag state.
     expect(alphaRow).toHaveAttribute('data-dragging', 'true');
 
-    // Press Enter again to drop on the auto-selected drop target. DragSession
-    // registered a capture-phase keyup listener on `document` during setup.
+    // DragSession drops on a capture-phase keyup listener it adds to `document`.
     pressEnter(document.activeElement as HTMLElement);
 
     await waitFor(() => expect(onItemMove).toHaveBeenCalledTimes(1));
@@ -169,14 +160,11 @@ describe('Tree.DragButton', () => {
     const alphaRow = itemRow('alpha');
     expect(alphaRow).not.toBeNull();
 
-    // Focus the row directly (keyboard users would land here) and try Enter.
     alphaRow.focus();
     await waitFor(() => expect(alphaRow).toHaveFocus());
     pressEnter(alphaRow);
     await flushRaf();
 
-    // No drag session was started: the row stays out of the dragging state
-    // and React Aria's `onMove` is never invoked.
     expect(alphaRow).not.toHaveAttribute('data-dragging');
     expect(onItemMove).not.toHaveBeenCalled();
   });
