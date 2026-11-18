@@ -311,22 +311,29 @@ test.describe.serial('Settings Navigation Page Tests', () => {
       treegrid
         .locator('[role="row"][data-key]')
         .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-key')));
-    const initialOrder = await rowOrder();
 
-    const homeRow = treegrid.getByRole('row').filter({
-      has: page.getByText('Home', { exact: true }),
-      visible: true,
-    });
-    const homeDragHandle = homeRow.getByRole('button', { name: 'Move' });
-    await homeDragHandle.focus();
-    await expect(homeDragHandle).toBeFocused();
+    const homeRow = treegrid.getByRole('row', { name: 'Home', exact: true });
+    await homeRow.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(homeRow.getByRole('button', { name: 'Move' })).toBeFocused();
+
+    const dropTarget = (name: string) =>
+      treegrid.getByRole('button', { name, exact: true });
 
     await page.keyboard.press('Enter');
-    await page.keyboard.press('Tab');
+    await expect(dropTarget('Insert between Home and Explore')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(dropTarget('Drop on Explore')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(
+      dropTarget('Insert between Explore and Lineage')
+    ).toBeFocused();
     await page.keyboard.press('Enter');
 
     await expect(page.getByTestId('save-button')).toBeEnabled();
-    await expect.poll(rowOrder).not.toEqual(initialOrder);
+    await expect
+      .poll(async () => (await rowOrder()).slice(0, 2))
+      .toEqual(['/explore', '/my-data']);
   });
 
   test('should handle multiple items being hidden at once', async ({
