@@ -50,11 +50,11 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 
 /**
- * Regression tests for {@link RejectRecognizerFeedbackImpl}. The same NPE that affected the
- * apply delegate (see {@link ApplyRecognizerFeedbackImplTest}) was reachable here because the
- * reject path read the same nullable {@code recognizerFeedback} variable and passed the result
- * straight into {@link RecognizerFeedbackRepository#rejectFeedback} which NPEs on
- * {@code feedback.getStatus()}.
+ * Regression tests for {@link RejectRecognizerFeedbackImpl}; shares the null-guard contract with
+ * {@link ApplyRecognizerFeedbackImplTest}. The non-obvious behavior protected here: a missing
+ * {@code recognizerFeedback} surfaces as a descriptive {@code BpmnError} whose {@code
+ * global_exception} carries an {@code IllegalArgumentException}, not the {@code NullPointerException}
+ * the reject path produced before the guard.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -117,7 +117,6 @@ class RejectRecognizerFeedbackImplTest {
     }
   }
 
-  /** The bug case: a missing feedback variable must fail with a descriptive error, not NPE. */
   @Test
   void missingFeedbackVariable_throwsDescriptiveBpmnError() {
     when(execution.getVariable(FEEDBACK_VARIABLE)).thenReturn(null);
@@ -139,7 +138,6 @@ class RejectRecognizerFeedbackImplTest {
         "exception stack trace should not contain the legacy NullPointerException");
   }
 
-  /** The happy path: feedback deserializes and the repo is invoked with the rejection comment. */
   @Test
   void happyPath_rejectsFeedbackWithCommentFromGlobalVariable() {
     RecognizerFeedback feedback = validFeedback();
@@ -153,7 +151,6 @@ class RejectRecognizerFeedbackImplTest {
     verify(repo).rejectFeedback(eq(feedback), eq("alice"), eq("Not a true positive"));
   }
 
-  /** When the rejection comment is null the delegate still passes it through repo. */
   @Test
   void happyPath_nullComment_isPassedThrough() {
     RecognizerFeedback feedback = validFeedback();

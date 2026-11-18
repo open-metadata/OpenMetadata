@@ -118,8 +118,8 @@ class WorkflowDefinitionGraphValidationTest {
   /**
    * Regression guard for the recognizer-feedback NPE: a recognizer-feedback node deployed without
    * an {@code inputNamespaceMap} reads a {@code null} feedback variable at runtime and (before the
-   * delegate null-guard) NPE'd. {@code validateNodeInputOutputMapping} now rejects this state at
-   * deploy time with a descriptive error pointing at the node and the missing mapping.
+   * delegate null-guard) NPE'd. {@code validateRecognizerFeedbackInputNamespaceMap} rejects this
+   * state at deploy time with a descriptive error pointing at the node and the missing mapping.
    */
   @Test
   void recognizerFeedbackNodeWithoutInputNamespaceMap_isRejected() {
@@ -136,7 +136,8 @@ class WorkflowDefinitionGraphValidationTest {
 
     BadRequestException error =
         assertThrows(
-            BadRequestException.class, () -> validate("validateNodeInputOutputMapping", workflow));
+            BadRequestException.class,
+            () -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow));
     assertTrue(
         error.getMessage().contains("ApplyApprovedFeedback"),
         "error should name the offending node: " + error.getMessage());
@@ -166,7 +167,8 @@ class WorkflowDefinitionGraphValidationTest {
 
     BadRequestException error =
         assertThrows(
-            BadRequestException.class, () -> validate("validateNodeInputOutputMapping", workflow));
+            BadRequestException.class,
+            () -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow));
     assertTrue(
         error.getMessage().contains("ReviewFeedback"),
         "error should name the offending node: " + error.getMessage());
@@ -203,7 +205,7 @@ class WorkflowDefinitionGraphValidationTest {
                 edge("ApplyApprovedFeedback", "ExtraStart", null),
                 edge("ExtraStart", "FeedbackApplied", null)));
 
-    assertDoesNotThrow(() -> validate("validateNodeInputOutputMapping", workflow));
+    assertDoesNotThrow(() -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow));
   }
 
   /**
@@ -222,7 +224,7 @@ class WorkflowDefinitionGraphValidationTest {
                         && n.getInputNamespaceMap() != null),
         "fixture must include at least one node that declares both input and inputNamespaceMap");
     assertDoesNotThrow(
-        () -> validate("validateNodeInputOutputMapping", workflow),
+        () -> validate("validateRecognizerFeedbackInputNamespaceMap", workflow),
         "the shipped RecognizerFeedbackReviewWorkflow must remain deployable after the validator tightening");
   }
 

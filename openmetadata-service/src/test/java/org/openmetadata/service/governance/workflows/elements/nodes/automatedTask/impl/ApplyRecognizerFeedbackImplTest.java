@@ -50,13 +50,11 @@ import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.jdbi3.RecognizerFeedbackRepository;
 
 /**
- * Regression tests for {@link ApplyRecognizerFeedbackImpl}. Before the fix, a missing {@code
- * recognizerFeedback} workflow variable produced a null feedback that flowed straight into {@code
- * RecognizerFeedbackRepository.applyFeedback(...)}, which NPE'd on {@code feedback.getStatus()}
- * and bubbled up as a cryptic {@code BpmnError(WORKFLOW_RUNTIME_EXCEPTION, "...because feedback is
- * null")}. The delegate now null-guards the deserialized feedback and throws a descriptive {@code
- * IllegalArgumentException}, so the wrapped {@code BpmnError} carries a message the operator can
- * act on.
+ * Regression tests for {@link ApplyRecognizerFeedbackImpl}. The non-obvious contract these
+ * protect: a missing {@code recognizerFeedback} variable must surface as a {@code
+ * BpmnError(WORKFLOW_RUNTIME_EXCEPTION)} whose {@code global_exception} carries an {@code
+ * IllegalArgumentException} stack trace (not the legacy {@code NullPointerException}), so the
+ * delegate null-guard is observable through the workflow instance's exception field.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -116,7 +114,6 @@ class ApplyRecognizerFeedbackImplTest {
     }
   }
 
-  /** Reproduces the original bug: a missing feedback variable must fail loudly and descriptively. */
   @Test
   void missingFeedbackVariable_throwsDescriptiveBpmnError() {
     when(execution.getVariable(FEEDBACK_VARIABLE)).thenReturn(null);
@@ -138,7 +135,6 @@ class ApplyRecognizerFeedbackImplTest {
         "exception stack trace should not contain the legacy NullPointerException");
   }
 
-  /** A workflow definition whose inputNamespaceMap resolves no namespace yields the same null. */
   @Test
   void emptyNamespaceMap_throwsDescriptiveBpmnError() {
     when(inputNamespaceMapExpr.getValue(execution)).thenReturn("{}");
@@ -149,7 +145,6 @@ class ApplyRecognizerFeedbackImplTest {
     assertMessageContains(error.getMessage(), "is missing or could not be deserialized");
   }
 
-  /** The happy path: feedback variable deserializes; applyFeedback is invoked with the feedback. */
   @Test
   void happyPath_appliesFeedbackAndDerivesReviewedByFromUpdatedBy() {
     RecognizerFeedback feedback = validFeedback();
@@ -162,7 +157,6 @@ class ApplyRecognizerFeedbackImplTest {
     verify(repo).applyFeedback(eq(feedback), eq("alice"));
   }
 
-  /** When updatedBy is absent the delegate falls back to the system reviewer. */
   @Test
   void happyPath_updatedByMissing_fallsBackToGovernanceBot() {
     RecognizerFeedback feedback = validFeedback();
@@ -175,7 +169,6 @@ class ApplyRecognizerFeedbackImplTest {
     verify(repo).applyFeedback(eq(feedback), eq("governance-bot"));
   }
 
-  /** When updatedBy points at an upstream node the delegate reads it from that node's namespace. */
   @Test
   void happyPath_updatedByFromUpstreamNode_readsFromNamespacedVariable() {
     RecognizerFeedback feedback = validFeedback();
@@ -192,7 +185,6 @@ class ApplyRecognizerFeedbackImplTest {
     verify(repo).applyFeedback(eq(feedback), eq("reviewer.1"));
   }
 
-  /** Empty updatedBy falls back to the system reviewer rather than setting an empty value. */
   @Test
   void happyPath_updatedByEmpty_fallsBackToGovernanceBot() {
     RecognizerFeedback feedback = validFeedback();
@@ -205,7 +197,6 @@ class ApplyRecognizerFeedbackImplTest {
     verify(repo).applyFeedback(eq(feedback), eq("governance-bot"));
   }
 
-  /** Malformed feedback JSON surfaces as a descriptive BpmnError rather than an opaque one. */
   @Test
   void malformedFeedbackJson_wrapsJsonParsingExceptionInBpmnError() {
     when(execution.getVariable(FEEDBACK_VARIABLE)).thenReturn("not-json");

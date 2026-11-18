@@ -45,10 +45,11 @@ import org.openmetadata.service.governance.workflows.Workflow;
 
 /**
  * Regression tests for {@link CheckFeedbackSubmitterIsReviewerImpl}. This delegate runs first in
- * the feedback-review sub-process (right after the variables are set) and NPEd before the
- * apply/reject nodes when {@code recognizerFeedback} was missing - the NPE landed on
- * {@code feedback.getEntityLink()} in the first log line. The fix replaces the NPE with a
- * descriptive {@link BpmnError}.
+ * the feedback-review sub-process, so the null-guard contract it shares with the apply/reject
+ * delegates must surface the same descriptive {@code BpmnError} (with an {@code
+ * IllegalArgumentException} in {@code global_exception}) when {@code recognizerFeedback} is
+ * missing. The non-obvious behavior protected below: a {@code createdBy} FQN containing a dot is
+ * matched against a quoted assignee entity-link.
  */
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -96,7 +97,6 @@ class CheckFeedbackSubmitterIsReviewerImplTest {
   @AfterEach
   void tearDown() {}
 
-  /** The bug case: a missing feedback variable must fail loudly and descriptively, not NPE. */
   @Test
   void missingFeedbackVariable_throwsDescriptiveBpmnError() {
     when(execution.getVariable(FEEDBACK_VARIABLE)).thenReturn(null);
@@ -118,7 +118,6 @@ class CheckFeedbackSubmitterIsReviewerImplTest {
         "exception stack trace should not contain the legacy NullPointerException");
   }
 
-  /** A workflow definition whose inputNamespaceMap has no recognizerFeedback entry maps to null. */
   @Test
   void emptyNamespaceMap_throwsDescriptiveBpmnError() {
     when(inputNamespaceMapExpr.getValue(execution)).thenReturn("{}");
@@ -129,7 +128,6 @@ class CheckFeedbackSubmitterIsReviewerImplTest {
     assertMessageContains(error.getMessage(), "is missing or could not be deserialized");
   }
 
-  /** If the submitter is in the assignee list {@code submitterIsReviewer=true} is set. */
   @Test
   void submitterIsReviewer_setsVariableTrue() {
     EntityReference submitter =
@@ -148,7 +146,6 @@ class CheckFeedbackSubmitterIsReviewerImplTest {
     assertEquals(Boolean.TRUE, capturedVars.get("submitterIsReviewer"));
   }
 
-  /** If the submitter is not in the assignee list {@code submitterIsReviewer=false} is set. */
   @Test
   void submitterNotInAssignees_setsVariableFalse() {
     EntityReference submitter =
@@ -167,7 +164,6 @@ class CheckFeedbackSubmitterIsReviewerImplTest {
     assertEquals(Boolean.FALSE, capturedVars.get("submitterIsReviewer"));
   }
 
-  /** Empty assignees falls back to {@code submitterIsReviewer=false} instead of NPE'ing. */
   @Test
   void emptyAssignees_setsVariableFalse() {
     EntityReference submitter =
@@ -181,7 +177,6 @@ class CheckFeedbackSubmitterIsReviewerImplTest {
     assertEquals(Boolean.FALSE, capturedVars.get("submitterIsReviewer"));
   }
 
-  /** A null createdBy falls back to {@code submitterIsReviewer=false} instead of NPE'ing. */
   @Test
   void nullCreatedBy_setsVariableFalse() {
     RecognizerFeedback feedback = validFeedback().withCreatedBy(null);
