@@ -40,14 +40,18 @@ const EVALUATED_ROWS = 100;
 const RELATIVE_THRESHOLD = 5;
 
 // Seed verdicts to exercise persistence and presentation; this does not run
-// ingestion or verify the threshold evaluation algorithm.
+// ingestion or verify the threshold evaluation algorithm. The run details card
+// reads the threshold the run recorded, not the test case's current one, so
+// each seeded run carries the snapshot an agent would have written.
 const seedNotNullResult = async (
   apiContext: APIRequestContext,
   table: TableClass,
   testCaseFqn: string,
-  testCaseStatus: 'Success' | 'Failed'
+  testCaseStatus: 'Success' | 'Failed',
+  appliedThreshold: { value: number; unit: 'ABSOLUTE' | 'PERCENTAGE' }
 ) => {
   await table.addTestCaseResult(apiContext, testCaseFqn, {
+    appliedThreshold: { applied: true, ...appliedThreshold },
     result: `Found ${NULL_ROWS} null rows out of ${EVALUATED_ROWS} evaluated (3.00%).`,
     testCaseStatus,
     timestamp: Date.now(),
@@ -339,8 +343,14 @@ test.describe(
           });
           strictFqn = strict.fullyQualifiedName as string;
 
-          await seedNotNullResult(apiContext, table, strictFqn, 'Failed');
-          await seedNotNullResult(apiContext, table, relativeFqn, 'Success');
+          await seedNotNullResult(apiContext, table, strictFqn, 'Failed', {
+            value: 0,
+            unit: 'ABSOLUTE',
+          });
+          await seedNotNullResult(apiContext, table, relativeFqn, 'Success', {
+            value: RELATIVE_THRESHOLD,
+            unit: 'PERCENTAGE',
+          });
         });
       } finally {
         await afterAction();
