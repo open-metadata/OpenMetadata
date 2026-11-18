@@ -41,6 +41,7 @@ import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
+import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
 import org.openmetadata.schema.services.connections.dashboard.SsrsConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
@@ -48,6 +49,8 @@ import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfig;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
@@ -91,6 +94,9 @@ import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.metadata.AlationConnection;
 import org.openmetadata.schema.services.connections.metadata.AlationSinkConnection;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -237,7 +243,11 @@ public final class ClassConverterFactory {
               NatsConnection.class,
               new NestedConfigClassConverter(
                   NatsConnection.class,
-                  Map.of("tlsConfig", List.of(ValidateSSLClientConfig.class)))),
+                  Map.of(
+                      "authType",
+                      List.of(NatsBasicAuth.class, NatsTokenAuth.class, NatsNkeyAuth.class),
+                      "tlsConfig",
+                      List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               OmniConnection.class,
               new NestedConfigClassConverter(
@@ -259,6 +269,18 @@ public final class ClassConverterFactory {
                           org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig
                               .class,
                           S3Config.class)))),
+          Map.entry(
+              QlikCertificateValues.class,
+              new NestedConfigClassConverter(
+                  QlikCertificateValues.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+          Map.entry(
+              QlikSenseConnection.class,
+              new NestedConfigClassConverter(
+                  QlikSenseConnection.class,
+                  Map.of(
+                      "certificates",
+                      List.of(QlikCertificateValues.class, QlikCertificatePath.class)))),
           Map.entry(
               QuestDBConnection.class,
               new NestedConfigClassConverter(

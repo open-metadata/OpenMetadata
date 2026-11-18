@@ -87,6 +87,7 @@ public class SecretsManagerUpdateService {
     updateServices();
     updateBotUsers();
     updateIngestionPipelines();
+    updateWorkflows();
     runExtensions(ServiceLoader.load(SecretsManagerUpdateExtension.class).iterator());
   }
 
@@ -187,6 +188,30 @@ public class SecretsManagerUpdateService {
                     ingestionPipeline.getId(),
                     e.getMessage());
                 // Continue processing other pipelines instead of failing the entire migration
+              }
+            });
+  }
+
+  /**
+   * Workflows (e.g. Test Connection requests) hold a service connection too, so a converter fix
+   * must reach the ones already stored, like it reaches services.
+   */
+  private void updateWorkflows() {
+    LOG.info(
+        "Updating workflows in case of an update on the JSON schema: [{}]",
+        secretManager.getSecretsManagerProvider().value());
+    retrieveWorkflows()
+        .forEach(
+            workflow -> {
+              try {
+                updateWorkflow(workflow);
+              } catch (Exception e) {
+                LOG.error(
+                    "Failed to update workflow [{}] with id [{}]: {}",
+                    workflow.getName(),
+                    workflow.getId(),
+                    e.getMessage());
+                // Continue processing other workflows instead of failing the entire migration
               }
             });
   }
@@ -441,7 +466,7 @@ public class SecretsManagerUpdateService {
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);
-      ingestionPipelineRepository.getDao().update(workflowObject);
+      workflowRepository.getDao().update(workflowObject);
     } catch (EntityNotFoundException e) {
       LOG.warn("Workflow {} not found during secrets migration. Skipping.", workflow.getId());
     } catch (Exception e) {

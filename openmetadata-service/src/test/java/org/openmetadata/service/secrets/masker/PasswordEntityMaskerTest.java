@@ -23,9 +23,12 @@ import org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig;
 import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
+import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
+import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
+import org.openmetadata.schema.services.connections.database.MssqlConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig;
 import org.openmetadata.schema.services.connections.database.cassandra.CloudConfig__1;
@@ -42,9 +45,12 @@ import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.messaging.ConsumerConfig;
 import org.openmetadata.schema.services.connections.messaging.ConsumerConfig__1;
 import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
+import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.messaging.SchemaRegistryConfig;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -395,6 +401,63 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   /** Masks a config shaped as it is stored: nested auth objects arrive as plain maps. */
+  @Test
+  void testSsisDatabaseConnectionSslConfigFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "SSIS",
+            "packageConnection",
+            "/opt/ssis/projects",
+            "databaseConnection",
+            Map.of(
+                "type",
+                "Mssql",
+                "hostPort",
+                "mssql:1433",
+                "username",
+                "sa",
+                "sslConfig",
+                Map.of("caCertificate", NESTED_SECRET)));
+
+    SSISConnection masked = (SSISConnection) mask(serialized, "SSIS", ServiceType.PIPELINE);
+
+    MssqlConnection database = masked.getDatabaseConnection();
+    assertEquals(
+        getMaskedPassword(),
+        ((ValidateSSLClientConfig) database.getSslConfig()).getCaCertificate());
+  }
+
+  @Test
+  void testQlikSenseCertificateValuesFromSerializedConfigAreMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "QlikSense",
+            "hostPort",
+            "https://qlik:4242",
+            "certificates",
+            Map.of("sslConfig", Map.of("caCertificate", NESTED_SECRET, "sslKey", NESTED_SECRET)));
+
+    QlikSenseConnection masked =
+        (QlikSenseConnection) mask(serialized, "QlikSense", ServiceType.DASHBOARD);
+
+    ValidateSSLClientConfig ssl =
+        (ValidateSSLClientConfig) ((QlikCertificateValues) masked.getCertificates()).getSslConfig();
+    assertEquals(getMaskedPassword(), ssl.getCaCertificate());
+    assertEquals(getMaskedPassword(), ssl.getSslKey());
+  }
+
+  @Test
+  void testNatsTokenAuthFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of("type", "Nats", "authType", Map.of("token", NESTED_SECRET));
+
+    NatsConnection masked = (NatsConnection) mask(serialized, "Nats", ServiceType.MESSAGING);
+
+    assertEquals(getMaskedPassword(), ((NatsTokenAuth) masked.getAuthType()).getToken());
+  }
+
   private Object mask(
       Map<String, Object> serialized, String connectionType, ServiceType serviceType) {
     return EntityMaskerFactory.createEntityMasker()

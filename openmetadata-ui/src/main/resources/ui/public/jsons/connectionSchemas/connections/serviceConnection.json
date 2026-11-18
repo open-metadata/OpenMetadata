@@ -4530,96 +4530,6 @@
                         "QlikSense"
                       ],
                       "default": "QlikSense"
-                    },
-                    "qlikCertificatePath": {
-                      "description": "Qlik Authentication Certificate File Path",
-                      "title": "Qlik Certificates By File Path",
-                      "type": "object",
-                      "properties": {
-                        "clientCertificate": {
-                          "title": "Client Certificate Path",
-                          "description": "Client Certificate",
-                          "type": "string"
-                        },
-                        "clientKeyCertificate": {
-                          "title": "Client Key Certificate",
-                          "description": "Client Key Certificate.",
-                          "type": "string"
-                        },
-                        "rootCertificate": {
-                          "title": "Root Certificate",
-                          "description": "Root Certificate.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "clientCertificate",
-                        "clientKeyCertificate",
-                        "rootCertificate"
-                      ]
-                    },
-                    "qlikCertificateValues": {
-                      "description": "Qlik Authentication Certificate By Values",
-                      "title": "Qlik Certificates By Values",
-                      "type": "object",
-                      "properties": {
-                        "sslConfig": {
-                          "title": "SSL Config",
-                          "description": "Client SSL configuration",
-                          "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
-                          "mask": true,
-                          "oneOf": [
-                            {
-                              "title": "Validate SSL Client Config",
-                              "description": "OpenMetadata Client configured to validate SSL certificates.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
-                              "additionalProperties": false,
-                              "properties": {
-                                "caCertificate": {
-                                  "title": "CA Certificate",
-                                  "description": "The CA certificate used for SSL validation.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslCertificate": {
-                                  "title": "SSL Certificate",
-                                  "description": "The SSL certificate used for client authentication.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslKey": {
-                                  "title": "SSL Key",
-                                  "description": "The private key associated with the SSL certificate.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "sslConfig"
-                      ]
                     }
                   },
                   "properties": {
@@ -4649,9 +4559,10 @@
                     "certificates": {
                       "oneOf": [
                         {
-                          "description": "Qlik Authentication Certificate By Values",
                           "title": "Qlik Certificates By Values",
+                          "description": "Qlik Authentication Certificate By Values",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
                           "properties": {
                             "sslConfig": {
                               "title": "SSL Config",
@@ -4712,9 +4623,10 @@
                           ]
                         },
                         {
-                          "description": "Qlik Authentication Certificate File Path",
                           "title": "Qlik Certificates By File Path",
+                          "description": "Qlik Authentication Certificate File Path",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
                           "properties": {
                             "clientCertificate": {
                               "title": "Client Certificate Path",
@@ -24627,63 +24539,6 @@
                         "Nats"
                       ],
                       "default": "Nats"
-                    },
-                    "basicAuth": {
-                      "title": "Username and Password",
-                      "description": "Username and password authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "Username for NATS authentication.",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "Password for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "tokenAuth": {
-                      "title": "Token",
-                      "description": "Token-based authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "token": {
-                          "title": "Token",
-                          "description": "Token for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "token"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "nkeyAuth": {
-                      "title": "NKey Seed",
-                      "description": "NKey seed authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "nkeySeed": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "nkeySeed"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -24709,6 +24564,7 @@
                           "title": "Username and Password",
                           "description": "Username and password authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -24732,6 +24588,7 @@
                           "title": "Token",
                           "description": "Token-based authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
                           "properties": {
                             "token": {
                               "title": "Token",
@@ -24749,6 +24606,7 @@
                           "title": "NKey Seed",
                           "description": "NKey seed authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
                           "properties": {
                             "nkeySeed": {
                               "title": "NKey Seed",
@@ -42997,96 +42855,6 @@
                         "QlikSense"
                       ],
                       "default": "QlikSense"
-                    },
-                    "qlikCertificatePath": {
-                      "description": "Qlik Authentication Certificate File Path",
-                      "title": "Qlik Certificates By File Path",
-                      "type": "object",
-                      "properties": {
-                        "clientCertificate": {
-                          "title": "Client Certificate Path",
-                          "description": "Client Certificate",
-                          "type": "string"
-                        },
-                        "clientKeyCertificate": {
-                          "title": "Client Key Certificate",
-                          "description": "Client Key Certificate.",
-                          "type": "string"
-                        },
-                        "rootCertificate": {
-                          "title": "Root Certificate",
-                          "description": "Root Certificate.",
-                          "type": "string"
-                        }
-                      },
-                      "required": [
-                        "clientCertificate",
-                        "clientKeyCertificate",
-                        "rootCertificate"
-                      ]
-                    },
-                    "qlikCertificateValues": {
-                      "description": "Qlik Authentication Certificate By Values",
-                      "title": "Qlik Certificates By Values",
-                      "type": "object",
-                      "properties": {
-                        "sslConfig": {
-                          "title": "SSL Config",
-                          "description": "Client SSL configuration",
-                          "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
-                          "mask": true,
-                          "oneOf": [
-                            {
-                              "title": "Validate SSL Client Config",
-                              "description": "OpenMetadata Client configured to validate SSL certificates.",
-                              "type": "object",
-                              "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
-                              "additionalProperties": false,
-                              "properties": {
-                                "caCertificate": {
-                                  "title": "CA Certificate",
-                                  "description": "The CA certificate used for SSL validation.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslCertificate": {
-                                  "title": "SSL Certificate",
-                                  "description": "The SSL certificate used for client authentication.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                },
-                                "sslKey": {
-                                  "title": "SSL Key",
-                                  "description": "The private key associated with the SSL certificate.",
-                                  "type": "string",
-                                  "format": "password",
-                                  "accept": [
-                                    ".pem",
-                                    ".crt",
-                                    ".cer"
-                                  ],
-                                  "uiFieldType": "fileOrInput"
-                                }
-                              }
-                            }
-                          ]
-                        }
-                      },
-                      "required": [
-                        "sslConfig"
-                      ]
                     }
                   },
                   "properties": {
@@ -43116,9 +42884,10 @@
                     "certificates": {
                       "oneOf": [
                         {
-                          "description": "Qlik Authentication Certificate By Values",
                           "title": "Qlik Certificates By Values",
+                          "description": "Qlik Authentication Certificate By Values",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
                           "properties": {
                             "sslConfig": {
                               "title": "SSL Config",
@@ -43179,9 +42948,10 @@
                           ]
                         },
                         {
-                          "description": "Qlik Authentication Certificate File Path",
                           "title": "Qlik Certificates By File Path",
+                          "description": "Qlik Authentication Certificate File Path",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
                           "properties": {
                             "clientCertificate": {
                               "title": "Client Certificate Path",
@@ -63094,63 +62864,6 @@
                         "Nats"
                       ],
                       "default": "Nats"
-                    },
-                    "basicAuth": {
-                      "title": "Username and Password",
-                      "description": "Username and password authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "username": {
-                          "title": "Username",
-                          "description": "Username for NATS authentication.",
-                          "type": "string"
-                        },
-                        "password": {
-                          "title": "Password",
-                          "description": "Password for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "username",
-                        "password"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "tokenAuth": {
-                      "title": "Token",
-                      "description": "Token-based authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "token": {
-                          "title": "Token",
-                          "description": "Token for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "token"
-                      ],
-                      "additionalProperties": false
-                    },
-                    "nkeyAuth": {
-                      "title": "NKey Seed",
-                      "description": "NKey seed authentication for NATS.",
-                      "type": "object",
-                      "properties": {
-                        "nkeySeed": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed for NATS authentication.",
-                          "type": "string",
-                          "format": "password"
-                        }
-                      },
-                      "required": [
-                        "nkeySeed"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -63176,6 +62889,7 @@
                           "title": "Username and Password",
                           "description": "Username and password authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
                           "properties": {
                             "username": {
                               "title": "Username",
@@ -63199,6 +62913,7 @@
                           "title": "Token",
                           "description": "Token-based authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
                           "properties": {
                             "token": {
                               "title": "Token",
@@ -63216,6 +62931,7 @@
                           "title": "NKey Seed",
                           "description": "NKey seed authentication for NATS.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
                           "properties": {
                             "nkeySeed": {
                               "title": "NKey Seed",

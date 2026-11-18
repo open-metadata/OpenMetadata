@@ -7159,46 +7159,6 @@
                             "QlikSense"
                           ],
                           "default": "QlikSense"
-                        },
-                        "qlikCertificatePath": {
-                          "description": "Qlik Authentication Certificate File Path",
-                          "title": "Qlik Certificates By File Path",
-                          "type": "object",
-                          "properties": {
-                            "clientCertificate": {
-                              "title": "Client Certificate Path",
-                              "description": "Client Certificate",
-                              "type": "string"
-                            },
-                            "clientKeyCertificate": {
-                              "title": "Client Key Certificate",
-                              "description": "Client Key Certificate.",
-                              "type": "string"
-                            },
-                            "rootCertificate": {
-                              "title": "Root Certificate",
-                              "description": "Root Certificate.",
-                              "type": "string"
-                            }
-                          },
-                          "required": [
-                            "clientCertificate",
-                            "clientKeyCertificate",
-                            "rootCertificate"
-                          ]
-                        },
-                        "qlikCertificateValues": {
-                          "description": "Qlik Authentication Certificate By Values",
-                          "title": "Qlik Certificates By Values",
-                          "type": "object",
-                          "properties": {
-                            "sslConfig": {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
-                            }
-                          },
-                          "required": [
-                            "sslConfig"
-                          ]
                         }
                       },
                       "properties": {
@@ -7225,10 +7185,46 @@
                         "certificates": {
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/11/definitions/qlikCertificateValues"
+                              "title": "Qlik Certificates By Values",
+                              "description": "Qlik Authentication Certificate By Values",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues",
+                              "properties": {
+                                "sslConfig": {
+                                  "$ref": "#/definitions/source/properties/serviceConnection/oneOf/0/properties/config/oneOf/0/properties/sslConfig"
+                                }
+                              },
+                              "required": [
+                                "sslConfig"
+                              ]
                             },
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/11/definitions/qlikCertificatePath"
+                              "title": "Qlik Certificates By File Path",
+                              "description": "Qlik Authentication Certificate File Path",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath",
+                              "properties": {
+                                "clientCertificate": {
+                                  "title": "Client Certificate Path",
+                                  "description": "Client Certificate",
+                                  "type": "string"
+                                },
+                                "clientKeyCertificate": {
+                                  "title": "Client Key Certificate",
+                                  "description": "Client Key Certificate.",
+                                  "type": "string"
+                                },
+                                "rootCertificate": {
+                                  "title": "Root Certificate",
+                                  "description": "Root Certificate.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientCertificate",
+                                "clientKeyCertificate",
+                                "rootCertificate"
+                              ]
                             }
                           ]
                         },
@@ -16532,63 +16528,6 @@
                             "Nats"
                           ],
                           "default": "Nats"
-                        },
-                        "basicAuth": {
-                          "title": "Username and Password",
-                          "description": "Username and password authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "username": {
-                              "title": "Username",
-                              "description": "Username for NATS authentication.",
-                              "type": "string"
-                            },
-                            "password": {
-                              "title": "Password",
-                              "description": "Password for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "username",
-                            "password"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "tokenAuth": {
-                          "title": "Token",
-                          "description": "Token-based authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "token": {
-                              "title": "Token",
-                              "description": "Token for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "token"
-                          ],
-                          "additionalProperties": false
-                        },
-                        "nkeyAuth": {
-                          "title": "NKey Seed",
-                          "description": "NKey seed authentication for NATS.",
-                          "type": "object",
-                          "properties": {
-                            "nkeySeed": {
-                              "title": "NKey Seed",
-                              "description": "NKey seed for NATS authentication.",
-                              "type": "string",
-                              "format": "password"
-                            }
-                          },
-                          "required": [
-                            "nkeySeed"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -16608,13 +16547,64 @@
                           "description": "NATS authentication method. Leave empty for anonymous authentication.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/basicAuth"
+                              "title": "Username and Password",
+                              "description": "Username and password authentication for NATS.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
+                              "properties": {
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Username for NATS authentication.",
+                                  "type": "string"
+                                },
+                                "password": {
+                                  "title": "Password",
+                                  "description": "Password for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "username",
+                                "password"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/tokenAuth"
+                              "title": "Token",
+                              "description": "Token-based authentication for NATS.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
+                              "properties": {
+                                "token": {
+                                  "title": "Token",
+                                  "description": "Token for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "token"
+                              ],
+                              "additionalProperties": false
                             },
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/3/properties/config/oneOf/3/definitions/nkeyAuth"
+                              "title": "NKey Seed",
+                              "description": "NKey seed authentication for NATS.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
+                              "properties": {
+                                "nkeySeed": {
+                                  "title": "NKey Seed",
+                                  "description": "NKey seed for NATS authentication.",
+                                  "type": "string",
+                                  "format": "password"
+                                }
+                              },
+                              "required": [
+                                "nkeySeed"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
