@@ -903,8 +903,7 @@ public class GlossaryRdfImportIT {
    * wiring the source would show B instead of its authored A.
    */
   @Test
-  void importWiresReverseInverseWhenOnlyOneDirectionIsDeclared(TestNamespace ns)
-      throws Exception {
+  void importWiresReverseInverseWhenOnlyOneDirectionIsDeclared(TestNamespace ns) throws Exception {
     Glossary glossary = GlossaryTestFactory.createSimple(ns);
     String prescribesName = relationshipTypeName(glossary.getName());
     String prescribedByName = prescribesName + "Inverse";
@@ -932,8 +931,7 @@ public class GlossaryRdfImportIT {
     // Both halves are registered and reference each other in both directions.
     JsonNode prescribesType =
         OBJECT_MAPPER.readTree(
-            get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribesName)
-                .body());
+            get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribesName).body());
     JsonNode prescribedByType =
         OBJECT_MAPPER.readTree(
             get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribedByName)
