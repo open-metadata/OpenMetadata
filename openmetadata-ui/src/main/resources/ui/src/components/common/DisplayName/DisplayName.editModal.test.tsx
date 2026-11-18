@@ -167,6 +167,39 @@ describe('DisplayName edit-displayName save flow (real EntityNameModal)', () => 
     );
   });
 
+  it('keeps the existing display name when both `name` and `displayName` are highlighted and Save is clicked without edits', async () => {
+    render(
+      <MemoryRouter>
+        <DisplayName
+          {...baseProps}
+          displayName={renderHighlightedText(
+            highlightSearchText('User Database', 'user')
+          )}
+          entityDisplayName="User Database"
+          entityName="UserDatabase"
+          name={renderHighlightedText(
+            highlightSearchText('UserDatabase', 'user')
+          )}
+        />
+      </MemoryRouter>
+    );
+
+    await openEditModal();
+
+    expect(getDisplayNameInput().value).toBe('User Database');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    await waitFor(() => expect(mockOnEditDisplayName).toHaveBeenCalledTimes(1));
+
+    expect(mockOnEditDisplayName).toHaveBeenCalledWith(
+      { name: 'UserDatabase', displayName: 'User Database' },
+      '1'
+    );
+  });
+
   it('blocks Save with a "Name is required" error when `name` is a highlighted ReactNode and no `entityName` is supplied (regression guard for the original bug)', async () => {
     const highlightedName: ReactNode = renderHighlightedText(
       highlightSearchText('UserDatabase', 'data')

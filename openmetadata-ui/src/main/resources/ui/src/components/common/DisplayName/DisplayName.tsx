@@ -34,6 +34,7 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
   name,
   displayName,
   entityName,
+  entityDisplayName,
   onEditDisplayName,
   link,
   allowRename,
@@ -129,7 +130,9 @@ const DisplayName: React.FC<DisplayNamePropsWithParent> = ({
             // `EntityNameModal` (whose `name` is a required, possibly-disabled
             // string) cannot consume, which would seed `''` and block Save.
             name: entityName ?? (isString(name) ? name : ''),
-            displayName: isString(displayName) ? displayName : undefined,
+            displayName:
+              entityDisplayName ??
+              (isString(displayName) ? displayName : undefined),
           }}
           title={t('label.edit-entity', {
             entity: t('label.display-name'),

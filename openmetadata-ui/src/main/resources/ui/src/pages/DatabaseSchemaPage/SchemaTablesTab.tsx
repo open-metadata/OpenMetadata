@@ -274,6 +274,7 @@ function SchemaTablesTab({
               displayName={renderHighlightedText(
                 highlightSearchText(record.displayName, searchValue)
               )}
+              entityDisplayName={record.displayName}
               entityName={record.name}
               hasEditPermission={allowEditDisplayNamePermission}
               id={record.id}
