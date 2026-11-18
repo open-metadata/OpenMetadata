@@ -31,6 +31,10 @@ started it.
   is still being created when the provider is asked.
 - A provider that cannot be loaded, created or asked is logged and skipped. The built-in nodes and
   the other providers still build.
+- Discovery stops after 100 failed registrations (`MAX_DISCOVERY_ERRORS`), because
+  `ServiceLoader`'s iterator throws instead of skipping one and does not promise the next call
+  advances. Providers listed after the cap are not registered, and the stop is logged as an error.
+  The value only bounds a loop at startup; a classpath has a handful of providers.
 - `register` stays public. Code that registers explicitly keeps working, and the last registration
   for a subtype wins.
 

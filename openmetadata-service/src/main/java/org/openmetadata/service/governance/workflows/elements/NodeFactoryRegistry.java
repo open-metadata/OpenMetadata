@@ -76,7 +76,17 @@ public class NodeFactoryRegistry {
         LOG.error("Skipping a workflow node factory provider that could not be loaded.", error);
       }
     }
+    warnIfDiscoveryGaveUp(errors);
     return registry;
+  }
+
+  private static void warnIfDiscoveryGaveUp(final int errors) {
+    if (errors >= MAX_DISCOVERY_ERRORS) {
+      LOG.error(
+          "Gave up discovering workflow node factory providers after {} unreadable registrations. "
+              + "Any provider listed after them is not registered.",
+          errors);
+    }
   }
 
   private void registerAll(final Provider<NodeFactoryProvider> provider) {
