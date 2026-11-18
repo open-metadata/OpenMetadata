@@ -10,10 +10,7 @@
 #  limitations under the License.
 """Unit tests for SSEClient"""
 
-import contextlib
 import json
-import os
-import time
 from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from typing import Any
@@ -24,32 +21,6 @@ import requests
 
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.ometa.sse_client import SSEClient
-
-
-@contextlib.contextmanager
-def _forced_tz(tz_name: str):
-    """Force the process-local timezone so naive datetime interpretation is observable.
-
-    ``datetime.timestamp()`` on a naive datetime delegates to the C library's
-    ``mktime``, which uses the process timezone (read from ``TZ`` on POSIX via
-    ``time.tzset``). On a UTC host a naive UTC datetime and the matching aware
-    UTC datetime produce the *same* epoch, so the bug is invisible; forcing a
-    zone west of UTC (e.g. ``America/New_York``) makes the 5h skew observable.
-    Skipped on platforms without ``time.tzset`` (Windows).
-    """
-    if not hasattr(time, "tzset"):
-        pytest.skip("time.tzset is unavailable on this platform; cannot force a non-UTC local zone")
-    orig_tz = os.environ.get("TZ")
-    os.environ["TZ"] = tz_name
-    time.tzset()
-    try:
-        yield
-    finally:
-        if orig_tz is None:
-            os.environ.pop("TZ", None)
-        else:
-            os.environ["TZ"] = orig_tz
-        time.tzset()
 
 
 class MockSSEResponse:
@@ -473,11 +444,11 @@ def test_validate_access_token_with_datetime_expiry(sse_client, mock_client_conf
     assert mock_client_config.expires_in == future_time.timestamp() - 120
 
 
-def test_validate_access_token_with_naive_utc_expiry(sse_client, mock_client_config):
+def test_validate_access_token_with_naive_utc_expiry(sse_client, mock_client_config, local_tz):
     """A naive UTC expiry (as google-auth's ``credentials.expiry`` returns it)
     must be interpreted as UTC, not as the host's local time.
 
-    The companion ``_forced_tz`` context forces ``America/New_York`` so the
+    The ``local_tz`` fixture forces ``America/New_York`` so the
     5h skew the bug introduces on hosts west of UTC is observable on any
     POSIX CI runner — including UTC ones, where the buggy and fixed
     arithmetic happen to be numerically equal.
@@ -488,11 +459,11 @@ def test_validate_access_token_with_naive_utc_expiry(sse_client, mock_client_con
     mock_client_config.access_token = None
     mock_client_config.auth_token = Mock(return_value=("new_token", naive_utc))
 
-    with _forced_tz("America/New_York"):
-        sse_client._validate_access_token()
+    local_tz("America/New_York")
+    sse_client._validate_access_token()
 
     assert mock_client_config.access_token == "new_token"
-    assert mock_client_config.expires_in == pytest.approx(expected_expires_in)
+    assert mock_client_config.expires_in == expected_expires_in
 
 
 def test_validate_access_token_with_no_token_mode(sse_client, mock_client_config):

@@ -22,9 +22,7 @@ These tests verify every auth path in auth.py and the AirflowApiClient construct
 
 import base64
 import contextlib
-import os
 import sys
-import time
 import types
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -57,32 +55,6 @@ from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (
 )
 
 # ── Helpers ─────────────────────────────────────────────────────────────────
-
-
-@contextlib.contextmanager
-def _forced_tz(tz_name: str):
-    """Force the process-local timezone so naive datetime interpretation is observable.
-
-    ``datetime.timestamp()`` on a naive datetime delegates to the C library's
-    ``mktime``, which uses the process timezone (read from ``TZ`` on POSIX via
-    ``time.tzset``). On a UTC host a naive UTC datetime and the matching aware
-    UTC datetime produce the *same* epoch, so the bug is invisible; forcing a
-    zone west of UTC (e.g. ``America/New_York``) makes the 5h skew observable.
-    Skipped on platforms without ``time.tzset`` (Windows).
-    """
-    if not hasattr(time, "tzset"):
-        pytest.skip("time.tzset is unavailable on this platform; cannot force a non-UTC local zone")
-    orig_tz = os.environ.get("TZ")
-    os.environ["TZ"] = tz_name
-    time.tzset()
-    try:
-        yield
-    finally:
-        if orig_tz is None:
-            os.environ.pop("TZ", None)
-        else:
-            os.environ["TZ"] = orig_tz
-        time.tzset()
 
 
 def _make_config(auth_variant):
@@ -404,7 +376,7 @@ class TestBuildGcpTokenCallback:
 
     @patch("google.auth.default")
     @patch("metadata.ingestion.source.pipeline.airflow.api.auth.set_google_credentials")
-    def test_naive_utc_expiry_timestamp_is_utc_under_non_utc_host(self, _mock_set, mock_default):
+    def test_naive_utc_expiry_timestamp_is_utc_under_non_utc_host(self, _mock_set, mock_default, local_tz):
         """On a host west of UTC the naive expiry's ``.timestamp()`` would
         otherwise be several hours ahead of the real UTC epoch. The fix
         keeps the returned expiry's epoch equal to the UTC epoch of the
@@ -418,16 +390,13 @@ class TestBuildGcpTokenCallback:
         gcp_creds = self._make_gcp_credentials()
         cb = build_gcp_token_callback(gcp_creds)
 
-        # The assertion must run *inside* the forced-TZ context: outside it
-        # the host resets to (likely) UTC, where naive and aware UTC epochs
-        # are numerically equal and the bug is invisible.
-        with _forced_tz("America/New_York"), patch("google.auth.transport.requests.Request"):
+        local_tz("America/New_York")
+        with patch("google.auth.transport.requests.Request"):
             _, expiry = cb()
-            # Pre-fix, on a New_York host expiry was the naive datetime, so
-            # ``.timestamp()`` would be ``expected_epoch + 5*3600``. The fix
-            # returns an aware UTC datetime, so ``.timestamp()`` equals the
-            # real UTC epoch.
-            assert expiry.timestamp() == expected_epoch
+
+        # Pre-fix, on a New_York host expiry was the naive datetime, so
+        # ``.timestamp()`` would be ``expected_epoch + 5*3600``.
+        assert expiry.timestamp() == expected_epoch
 
 
 # ── GCP credential type coverage ─────────────────────────────────────────────

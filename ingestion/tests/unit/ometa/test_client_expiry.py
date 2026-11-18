@@ -27,42 +27,12 @@ arithmetic is numerically identical to the fixed one and the regression
 would be invisible.
 """
 
-import contextlib
-import os
-import time
 from datetime import datetime, timezone
 from unittest.mock import MagicMock
 
-import pytest
 import requests
 
 from metadata.ingestion.ometa.client import REST, ClientConfig
-
-
-@contextlib.contextmanager
-def _forced_tz(tz_name: str):
-    """Force the process-local timezone so naive datetime interpretation is observable.
-
-    ``datetime.timestamp()`` on a naive datetime delegates to the C library's
-    ``mktime``, which uses the process timezone (read from ``TZ`` on POSIX via
-    ``time.tzset``). On a UTC host a naive UTC datetime and the matching aware
-    UTC datetime produce the *same* epoch, so the bug is invisible; forcing a
-    zone west of UTC (e.g. ``America/New_York``) makes the 5h skew observable.
-    Skipped on platforms without ``time.tzset`` (Windows).
-    """
-    if not hasattr(time, "tzset"):
-        pytest.skip("time.tzset is unavailable on this platform; cannot force a non-UTC local zone")
-    orig_tz = os.environ.get("TZ")
-    os.environ["TZ"] = tz_name
-    time.tzset()
-    try:
-        yield
-    finally:
-        if orig_tz is None:
-            os.environ.pop("TZ", None)
-        else:
-            os.environ["TZ"] = orig_tz
-        time.tzset()
 
 
 def _ok_response() -> requests.Response:
@@ -100,7 +70,7 @@ class TestRestExpiryNormalization:
     callbacks (e.g. google-auth's ``credentials.expiry``) as UTC, and leave
     aware datetimes alone."""
 
-    def test_naive_utc_expiry_matches_aware_utc_expiry_on_non_utc_host(self):
+    def test_naive_utc_expiry_matches_aware_utc_expiry_on_non_utc_host(self, local_tz):
         """A naive UTC expiry must produce the same ``expires_in`` as the
         equivalent aware UTC expiry — the round-trip the bug breaks.
 
@@ -113,19 +83,19 @@ class TestRestExpiryNormalization:
         naive_cb = lambda: ("tok", naive_utc)  # noqa: E731
         aware_cb = lambda: ("tok", aware_utc)  # noqa: E731
 
-        with _forced_tz("America/New_York"):
-            naive_client = _rest_with_auth_callback(auth_token=naive_cb, access_token=None, expires_in=None)
-            naive_client.get("/test")
+        local_tz("America/New_York")
+        naive_client = _rest_with_auth_callback(auth_token=naive_cb, access_token=None, expires_in=None)
+        naive_client.get("/test")
 
-            aware_client = _rest_with_auth_callback(auth_token=aware_cb, access_token=None, expires_in=None)
-            aware_client.get("/test")
+        aware_client = _rest_with_auth_callback(auth_token=aware_cb, access_token=None, expires_in=None)
+        aware_client.get("/test")
 
         # Pre-fix, on a New_York host naive drifted +5h from aware. The fix
         # collapses that gap: naive == aware == the canonical UTC epoch - 120.
-        assert naive_client.config.expires_in == pytest.approx(aware_client.config.expires_in)
-        assert naive_client.config.expires_in == pytest.approx(aware_utc.timestamp() - 120)
+        assert naive_client.config.expires_in == aware_client.config.expires_in
+        assert naive_client.config.expires_in == aware_utc.timestamp() - 120
 
-    def test_aware_non_utc_expiry_is_unchanged(self):
+    def test_aware_non_utc_expiry_is_unchanged(self, local_tz):
         """An aware datetime in a non-UTC zone is still converted via its own
         ``.timestamp()`` — the fix only assumes naive datetimes are UTC, it
         does not reinterpret an already-aware datetime."""
@@ -138,10 +108,8 @@ class TestRestExpiryNormalization:
         client = _rest_with_auth_callback(auth_token=cb, access_token=None, expires_in=None)
         # Drive under a *different* host TZ to prove the tzinfo-aware value is
         # taken literally, not reinterpreted as host-local.
-        with _forced_tz("Asia/Kolkata"):
-            client.get("/test")
+        local_tz("Asia/Kolkata")
+        client.get("/test")
 
-        assert client.config.expires_in == pytest.approx(expected)
-        assert client.config.expires_in == pytest.approx(
-            datetime(2030, 1, 1, 15, 0, tzinfo=timezone.utc).timestamp() - 120
-        )
+        assert client.config.expires_in == expected
+        assert client.config.expires_in == datetime(2030, 1, 1, 15, 0, tzinfo=timezone.utc).timestamp() - 120
