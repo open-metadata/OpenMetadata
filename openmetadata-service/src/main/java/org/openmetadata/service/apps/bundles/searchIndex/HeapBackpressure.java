@@ -63,6 +63,18 @@ import lombok.extern.slf4j.Slf4j;
  * The {@link #MAX_WAIT_MS} forward-progress escape valve is applied against a single shared
  * deadline ({@link #GATE_DEADLINE_MS}) installed when the gate first engages — not one per worker —
  * so the timeout can never collapse into a synchronized multi-worker bypass.
+ *
+ * <p><b>Paced handoff after a drain.</b> Serializing the heap check is not enough on its own: the
+ * lock is released before the released worker calls {@code processBatch()} and reads its next
+ * batch, so queued workers can all acquire the lock in succession and see the same healthy heap
+ * sample before the first batch read has returned its entities — an {@code N × batchSize} burst
+ * across the resume boundary. To prevent that, every released worker installs an admission pace
+ * ({@link #NEXT_ADMISSION_MS} = now + {@link #RELEASE_PACE_MS}) and leaves the gate engaged while
+ * the pace window is open; the next queued worker acquires the lock, waits out the pace under the
+ * lock, then re-checks the heap — so each released worker's batch allocation has time to be
+ * reflected in heap usage before the next worker is admitted. If the previous worker's allocation
+ * pushed the heap back to pressure, the next worker re-enters the drain instead of admitting, so
+ * the gate reacts to the actual post-resume heap, not a stale sample taken before the burst.
  */
 @Slf4j
 public final class HeapBackpressure {
@@ -78,6 +90,15 @@ public final class HeapBackpressure {
   private static final long MAX_WAIT_MS = 30_000;
 
   /**
+   * Pace at which workers are admitted one at a time after a successful drain, so each released
+   * worker's batch read has time to reflect in heap usage before the next worker is admitted.
+   * Chosen to comfortably exceed one batch read + its heap allocation becoming visible to a heap
+   * poll, while keeping the resume burst short enough that reindex throughput is not the cost of
+   * safety.
+   */
+  private static final long RELEASE_PACE_MS = 1_000;
+
+  /**
    * Test-settable mirror of {@link #POLL_MS} so tests can run the drain loop on a sub-millisecond
    * budget; production code reads this field, not the constant. Volatile for cross-thread
    * visibility once a test reconfigures it.
@@ -90,6 +111,12 @@ public final class HeapBackpressure {
    * cross-thread visibility once a test reconfigures it.
    */
   private static volatile long maxWaitMs = MAX_WAIT_MS;
+
+  /**
+   * Test-settable mirror of {@link #RELEASE_PACE_MS} so tests can exercise the paced handoff on a
+   * sub-second budget. Volatile for cross-thread visibility once a test reconfigures it.
+   */
+  private static volatile long releasePaceMs = RELEASE_PACE_MS;
 
   private static final MemoryMXBean MEMORY = ManagementFactory.getMemoryMXBean();
 
@@ -118,6 +145,15 @@ public final class HeapBackpressure {
    * immediately instead of restarting their own 30 s clock.
    */
   private static final AtomicLong GATE_DEADLINE_MS = new AtomicLong(0L);
+
+  /**
+   * Earliest epoch ms at which the next queued worker may be admitted after a paced handoff. Set by
+   * a released worker (the lock holder that just observed headroom) to {@code now + releasePaceMs}
+   * and cleared once no worker is queued behind the most recent admission. While this is in the
+   * future, the next worker that acquires the lock waits it out before re-checking the heap, so each
+   * released worker's batch allocation is reflected in heap usage before the next one is admitted.
+   */
+  private static final AtomicLong NEXT_ADMISSION_MS = new AtomicLong(0L);
 
   /** True when used heap is at/above the pause threshold. Unknown max ({@code <= 0}) is never a pause. */
   static boolean underPressure(long usedBytes, long maxBytes) {
@@ -169,6 +205,7 @@ public final class HeapBackpressure {
     try {
       GATE_ENGAGED.set(false);
       GATE_DEADLINE_MS.set(0L);
+      NEXT_ADMISSION_MS.set(0L);
     } finally {
       GATE_LOCK.unlock();
     }
@@ -186,6 +223,12 @@ public final class HeapBackpressure {
     maxWaitMs = ms;
   }
 
+  /** Shrinks the admission pace so tests can exercise the paced handoff on a sub-second budget. */
+  @VisibleForTesting
+  static void setReleasePaceMsForTest(long ms) {
+    releasePaceMs = ms;
+  }
+
   /** Whether the gate is currently engaged (visible to tests for episode-state assertions). */
   @VisibleForTesting
   static boolean gateEngaged() {
@@ -196,6 +239,12 @@ public final class HeapBackpressure {
   @VisibleForTesting
   static long gateDeadlineMs() {
     return GATE_DEADLINE_MS.get();
+  }
+
+  /** Current admission pace (epoch ms), or {@code 0} when no paced handoff is in flight. */
+  @VisibleForTesting
+  static long nextAdmissionMs() {
+    return NEXT_ADMISSION_MS.get();
   }
 
   /** Whether the calling thread currently holds {@link #GATE_LOCK}; tests use it to assert mutual
@@ -216,11 +265,28 @@ public final class HeapBackpressure {
     long maxBytes = usage.getMax();
     long usedBytes = usage.getUsed();
 
+    // Paced handoff: a previous worker was released from the drain and installed an admission
+    // pace so its batch read has time to reflect in heap usage before the next worker is admitted.
+    // Wait out the pace (under the lock — queued workers are blocked on the lock anyway) and then
+    // re-check the heap below; if the previous worker's allocation pushed us back to pressure,
+    // we fall through to the drain instead of admitting.
+    long paceDeadline = NEXT_ADMISSION_MS.get();
+    if (paceDeadline > 0L) {
+      long now = System.currentTimeMillis();
+      while (!Thread.currentThread().isInterrupted()
+          && (now = System.currentTimeMillis()) < paceDeadline) {
+        sleep(Math.min(pollMs, Math.max(1L, paceDeadline - now)));
+      }
+      usage = usageSupplier.get();
+      maxBytes = usage.getMax();
+      usedBytes = usage.getUsed();
+    }
+
     if (hasHeadroom(usedBytes, maxBytes)) {
-      // A peer already drained to headroom while we waited for the lock; clear state and
-      // proceed (the next-pressure worker will re-engage and install a fresh deadline).
-      GATE_ENGAGED.set(false);
-      GATE_DEADLINE_MS.set(0L);
+      // Headroom confirmed: admit ourselves and install a fresh pace so the next queued worker
+      // does not read its batch alongside ours. The pace only matters when someone is queued
+      // behind us; if no one is, clear the gate so the fast path returns for healthy heap.
+      admitWithPacedHandoff();
       return;
     }
 
@@ -233,6 +299,7 @@ public final class HeapBackpressure {
       // fresh deadline, and proceed.
       GATE_ENGAGED.set(false);
       GATE_DEADLINE_MS.set(0L);
+      NEXT_ADMISSION_MS.set(0L);
       return;
     }
 
@@ -265,12 +332,32 @@ public final class HeapBackpressure {
     logResume(usedBytes, maxBytes, waited);
 
     if (hasHeadroom(usedBytes, maxBytes)) {
-      // Episode resolved: clear state so the next pressure wave starts with a fresh deadline.
-      GATE_ENGAGED.set(false);
-      GATE_DEADLINE_MS.set(0L);
+      // Episode resolved: install a paced handoff so queued workers do not all rush the next
+      // batch read together. Leave GATE_ENGAGED=true while the pace window is open; the next
+      // admitted worker clears everything if no one is queued behind it.
+      admitWithPacedHandoff();
     }
     // Otherwise leave engaged=true and the (expired) deadline in place so workers queued behind
     // this bypass flow through immediately instead of each restarting their own 30 s clock.
+  }
+
+  /**
+   * Admits the current lock-holding worker after a successful drain (or after waiting out a peer's
+   * admission pace and confirming headroom). If other workers are queued behind us, stay engaged
+   * and install the next pace so they are admitted one at a time, each with time for their
+   * predecessor's batch allocation to be reflected in heap usage. If no one is queued, clear the
+   * gate so the fast path returns immediately for healthy heap.
+   */
+  private static void admitWithPacedHandoff() {
+    if (GATE_LOCK.hasQueuedThreads()) {
+      GATE_ENGAGED.set(true);
+      NEXT_ADMISSION_MS.set(System.currentTimeMillis() + releasePaceMs);
+      GATE_DEADLINE_MS.set(0L);
+    } else {
+      GATE_ENGAGED.set(false);
+      GATE_DEADLINE_MS.set(0L);
+      NEXT_ADMISSION_MS.set(0L);
+    }
   }
 
   private static void logResume(long usedBytes, long maxBytes, long waited) {
