@@ -574,7 +574,11 @@ class FivetranSource(PipelineServiceSource):
     ) -> _TableResolution:
         if not table_name:
             return _TableResolution(reason="not_found")
-        reference = TableReference(database_name or None, schema_name or None, replace_separators(table_name))
+        reference = TableReference(
+            replace_separators(database_name) if database_name else None,
+            replace_separators(schema_name) if schema_name else None,
+            replace_separators(table_name),
+        )
         resolver = EntityResolver(self.metadata)
         entities: dict[str, Table] = {}
         try:

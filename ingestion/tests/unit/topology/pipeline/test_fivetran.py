@@ -960,6 +960,50 @@ class TestFivetranUniqueTableLineage:
             ColumnLineage(fromColumns=[upstream_fqn + ".id"], toColumn=downstream_fqn + ".id")
         ]
 
+    @pytest.mark.parametrize("endpoint", ["source", "destination"])
+    @pytest.mark.parametrize("component", ["database", "schema"])
+    @pytest.mark.parametrize("configured", [False, True])
+    @pytest.mark.parametrize(
+        "name,stored_name",
+        [
+            ("stage>prod", "stage__reserved__arrow__prod"),
+            ("stage::prod", "stage__reserved__colon__prod"),
+            ('stage"prod', "stage__reserved__quote__prod"),
+        ],
+    )
+    def test_reserved_parent_names_preserve_lineage_identity(
+        self, lineage_boundary, endpoint, component, configured, name, stored_name
+    ):
+        source, client, transport, details = lineage_boundary
+        if not configured:
+            source.source_config.lineageInformation.dbServiceNames = []
+        schemas = client.get_connector_schema_details.return_value
+        upstream_parts = ["A", "db", "public", "orders"]
+        downstream_parts = ["warehouse", "analytics", "landing", "orders_copy"]
+        parts = upstream_parts if endpoint == "source" else downstream_parts
+        parts[1 if component == "database" else 2] = stored_name
+        if component == "database":
+            getattr(details, endpoint)["config"]["database"] = name
+        elif endpoint == "source":
+            schemas[name] = schemas.pop("public")
+        else:
+            schemas["public"]["name_in_destination"] = name
+        upstream_fqn = ".".join(upstream_parts)
+        downstream_fqn = ".".join(downstream_parts)
+        upstream = lineage_table(upstream_fqn)
+        downstream = lineage_table(downstream_fqn)
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in (upstream, downstream)})
+
+        result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        edge = result[0].right.edge
+        assert edge.fromEntity.id == upstream.id
+        assert edge.toEntity.id == downstream.id
+        assert edge.lineageDetails.columnsLineage == [
+            ColumnLineage(fromColumns=[upstream_fqn + ".id"], toColumn=downstream_fqn + ".id")
+        ]
+
     def test_exact_first_policy_does_not_give_a_service_precedence(self, lineage_boundary):
         source, _, transport, _ = lineage_boundary
         tables = [lineage_table(name) for name in ("A.db.public.orders", "B.DB.PUBLIC.ORDERS")]
