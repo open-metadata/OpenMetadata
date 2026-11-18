@@ -707,24 +707,42 @@ class TestTagAnalyzer:
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList) is True
 
-    @pytest.mark.parametrize(
-        "entity_link",
-        [
-            "<#E::table::svc.db.sch.users::columns::user.email>",
-            '<#E::table::svc.db.sch.users::columns::"user.email">',
-        ],
-    )
-    def test_exception_list_filtering_column_name_with_a_dot(self, email_tag, nlp_engine, entity_link):
-        """A column whose name contains a dot is quoted in its FQN; its exception must still apply"""
+    def test_exception_list_filtering_column_name_with_a_dot(self, email_tag, nlp_engine):
+        """A column whose name contains a dot is quoted in its FQN and in its exception's link"""
         column = Column(
             name=ColumnName(root="user.email"),
             dataType=DataType.STRING,
             fullyQualifiedName='svc.db.sch.users."user.email"',
         )
-        exceptions = [RecognizerException(entityLink=entity_link, reason="Test exception")]
+        exceptions = [
+            RecognizerException(
+                entityLink='<#E::table::svc.db.sch.users::columns::"user.email">', reason="Test exception"
+            )
+        ]
 
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(exceptions) is True
+
+    def test_exception_list_filtering_dotted_name_and_nested_path(self, email_tag, nlp_engine):
+        """An unquoted dotted path names the nested column, not a column whose own name has that dot"""
+        literal = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        nested = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName="svc.db.sch.users.user.email",
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink="<#E::table::svc.db.sch.users::columns::user.email>", reason="Test exception"
+            )
+        ]
+
+        assert TagAnalyzer(tag=email_tag, column=nested, nlp_engine=nlp_engine).should_skip_recognizer(exceptions)
+        assert not TagAnalyzer(tag=email_tag, column=literal, nlp_engine=nlp_engine).should_skip_recognizer(exceptions)
 
     def test_exception_list_filtering_other_column_with_a_dot(self, email_tag, nlp_engine):
         """An exception for one column does not apply to another column of the table"""

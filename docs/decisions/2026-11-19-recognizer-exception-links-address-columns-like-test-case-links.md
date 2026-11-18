@@ -20,12 +20,17 @@ read whatever form a client wrote.
 A recognizer exception's entityLink is `<#E::table::<table FQN>::columns::<column path>>`, where the
 table FQN keeps its quotes and the column path is the column's FQN below the table, as for test
 cases in ADR:2026-10-27-nested-column-dq-tests-address-nested-paths: a nested column is a dotted path
-(`contact.email`), and a column whose own name contains a dot is quoted (`"user.email"`). For links
-already stored, a bare dotted path (`user.email`) is also read as the quoted name. Ingestion turns
-each link into the column FQNs it can name and compares them with the column's FQN; it does not
-rebuild a link from the column FQN.
+(`contact.email`), and a column whose own name contains a dot is quoted (`"user.email"`). Ingestion
+turns each link into the column FQN it names (table FQN, `.`, column path) and compares it with the
+column's FQN; it does not rebuild a link from the column FQN.
+
+A bare dotted path (`user.email`) names the nested column only. Unlike test case resolution, the
+analyzer does not see the table's other columns, so it cannot fall back to a literal dotted name
+when no nested path exists; reading the bare form as both would let an exception for a nested
+field also silence an unrelated column named `user.email`.
 
 ## Consequences
-Writers should send the quoted form for a name with a dot, which is the column's segment in its
-FQN. A bare dotted path that is both a nested path and a literal top-level column name matches both
-columns. Accepting the bare form could be dropped once no stored exception uses it.
+Writers must quote a column name that contains a dot. An exception stored with a bare dotted path
+for such a column does not apply to it (none applied before this record either, since the link the
+analyzer built never matched). Accepting the bare form for a literal name would need the table's
+columns at classification time, with the nested path taking precedence as for test cases.
