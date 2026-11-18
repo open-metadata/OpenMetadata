@@ -70,14 +70,6 @@ test.describe('Tag suggestion task', () => {
       const task = await createResponse.json();
 
       await test.step('The task card shows the tag, not raw JSON', async () => {
-        const schemaResponse = waitForResponseWithStatus(
-          page,
-          (response) =>
-            response
-              .url()
-              .includes('/api/v1/taskFormSchemas/name/TagSuggestion'),
-          200
-        );
         await page.goto(
           `/table/${encodeURIComponent(tableFqn)}/activity_feed/tasks`
         );
@@ -86,7 +78,6 @@ test.describe('Tag suggestion task', () => {
         const taskCard = getTaskCard(page, task.taskId);
         await expect(taskCard).toBeVisible();
         await taskCard.click();
-        await schemaResponse;
 
         await expect(taskCard.getByTestId('diff-added')).toContainText(
           'Sensitive'

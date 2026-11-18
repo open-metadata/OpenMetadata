@@ -557,7 +557,10 @@ const getSuggestionBody = (
   t: Translate
 ): Partial<TaskDetailDescriptor> => {
   if (isTagsTaskType(task)) {
-    const after = tagNames(getNormalizedTaskPayload(task).suggestedTags);
+    // Approving adds the suggested tags to the current ones; list only what it adds.
+    const { currentTags, suggestedTags } = getNormalizedTaskPayload(task);
+    const current = new Set(tagNames(currentTags));
+    const after = tagNames(suggestedTags).filter((fqn) => !current.has(fqn));
 
     return after.length
       ? {

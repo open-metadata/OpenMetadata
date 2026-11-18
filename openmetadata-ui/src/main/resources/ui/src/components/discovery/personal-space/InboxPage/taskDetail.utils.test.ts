@@ -432,6 +432,23 @@ describe('tag suggestion', () => {
     expect(descriptor.callout).toBeUndefined();
   });
 
+  it('lists only the tags it adds, not the ones the field already has', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      currentValue: JSON.stringify([{ tagFQN: 'Tier.Tier1' }]),
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual(
+      expect.objectContaining({
+        before: [],
+        after: ['Data Sensitivity.Confidential'],
+      })
+    );
+  });
+
   it('keeps the text callout for a description suggestion', () => {
     expect(
       describeSuggestion({
