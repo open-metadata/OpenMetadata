@@ -112,11 +112,23 @@ const addonOnlyColors = Object.fromEntries(
   ])
 ) as Record<BadgeColors, { root: string; addon: string }>;
 
-const solidColors: Partial<Record<BadgeColors, string>> = {
-  brand: 'tw:bg-brand-solid tw:text-primary_on-brand',
-  error: 'tw:bg-error-solid tw:text-primary_on-brand',
-  warning: 'tw:bg-warning-solid tw:text-primary_on-brand',
-  success: 'tw:bg-success-solid tw:text-primary_on-brand',
+// A solid fill keeps the 600 step in both themes, like the `bg-*-solid` roles:
+// `utility-*-600` lightens to the 400 step in dark mode, which would wash out
+// the on-solid text. Colors without a semantic solid role use the raw step.
+const solidColors: Record<BadgeColors, string> = {
+  gray: 'tw:bg-gray-600',
+  brand: 'tw:bg-brand-solid',
+  error: 'tw:bg-error-solid',
+  warning: 'tw:bg-warning-solid',
+  success: 'tw:bg-success-solid',
+  'gray-blue': 'tw:bg-gray-blue-600',
+  'blue-light': 'tw:bg-blue-light-600',
+  blue: 'tw:bg-blue-600',
+  indigo: 'tw:bg-indigo-600',
+  purple: 'tw:bg-purple-600',
+  pink: 'tw:bg-pink-600',
+  orange: 'tw:bg-orange-600',
+  'blue-dark': 'tw:bg-blue-dark-600',
 };
 
 const withPillTypes = {
@@ -177,8 +189,7 @@ interface BadgeProps<T extends BadgeTypes>
   /**
    * `solid` paints an opaque fill with on-solid text, for a badge laid over
    * imagery such as a count on an avatar, where the translucent dark-mode
-   * tint of `tinted` lets the image show through. Solid applies to `brand`,
-   * `error`, `warning` and `success`; other colors stay tinted.
+   * tint of `tinted` lets the image show through.
    */
   variant?: 'tinted' | 'solid';
   style?: CSSProperties;
@@ -212,8 +223,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     ...rest
   } = props;
   const colors = withPillTypes[type];
-  const solidRoot =
-    variant === 'solid' ? solidColors[color as BadgeColors] : undefined;
+  const isSolid = variant === 'solid';
   const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
@@ -246,8 +256,10 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         // Never wider than its container: a long label truncates instead of spilling out of it.
         'tw:max-w-full',
         sizes[type][size],
-        solidRoot ?? colors.styles[color].root,
-        bordered && !solidRoot && 'tw:outline-1 tw:-outline-offset-1',
+        isSolid
+          ? cx(solidColors[color as BadgeColors], 'tw:text-primary_on-brand')
+          : colors.styles[color].root,
+        bordered && !isSolid && 'tw:outline-1 tw:-outline-offset-1',
         // A linked badge must look identical to a non-linked one: no underline,
         // and the color root's text class sets its color. `tw:text-inherit` here
         // would win the tailwind-merge conflict and drop that color.

@@ -57,14 +57,17 @@ describe('Badge solid variant', () => {
     expect(badge).not.toHaveClass('tw:bg-utility-error-50', 'tw:outline-1');
   });
 
-  it('keeps the tinted fill for a color without a solid role', () => {
+  it('keeps a dark-enough fill for a color without a semantic solid role', () => {
     render(
-      <Badge color="gray" data-testid="badge" variant="solid">
+      <Badge color="indigo" data-testid="badge" variant="solid">
         10
       </Badge>
     );
 
-    expect(screen.getByTestId('badge')).toHaveClass('tw:bg-utility-gray-50');
+    const badge = screen.getByTestId('badge');
+
+    expect(badge).toHaveClass('tw:bg-indigo-600', 'tw:text-primary_on-brand');
+    expect(badge).not.toHaveClass('tw:bg-utility-indigo-50');
   });
 });
 
