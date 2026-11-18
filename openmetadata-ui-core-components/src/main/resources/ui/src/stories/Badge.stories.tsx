@@ -12,6 +12,7 @@
  */
 import { HelpCircle } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
+import { Avatar } from '../components/base/avatar/avatar';
 import {
   Badge,
   BadgeIcon,
@@ -236,6 +237,39 @@ export const ModernStyle: StoryObj = {
       <BadgeWithDot color="gray" type="modern">
         With Dot
       </BadgeWithDot>
+    </div>
+  ),
+};
+
+/**
+ * Opaque fill for a badge laid over imagery, such as a count on an avatar.
+ * Check it in both themes: the tinted fill is translucent in dark mode.
+ */
+export const Solid: StoryObj = {
+  render: () => (
+    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+      <Badge color="brand" size="xs" variant="solid">
+        3
+      </Badge>
+      <Badge color="error" size="xs" variant="solid">
+        10
+      </Badge>
+      <Badge color="warning" size="xs" variant="solid">
+        99+
+      </Badge>
+      <Badge color="success" size="xs" variant="solid">
+        1
+      </Badge>
+      <div className="tw:relative tw:inline-flex">
+        <Avatar initials="A" size="sm" />
+        <Badge
+          className="tw:absolute tw:-top-1.5 tw:-right-1.5"
+          color="error"
+          size="xs"
+          variant="solid">
+          10
+        </Badge>
+      </div>
     </div>
   ),
 };

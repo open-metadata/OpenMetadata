@@ -112,6 +112,13 @@ const addonOnlyColors = Object.fromEntries(
   ])
 ) as Record<BadgeColors, { root: string; addon: string }>;
 
+const solidColors: Partial<Record<BadgeColors, string>> = {
+  brand: 'tw:bg-brand-solid tw:text-primary_on-brand',
+  error: 'tw:bg-error-solid tw:text-primary_on-brand',
+  warning: 'tw:bg-warning-solid tw:text-primary_on-brand',
+  success: 'tw:bg-success-solid tw:text-primary_on-brand',
+};
+
 const withPillTypes = {
   [badgeTypes.pillColor]: {
     common:
@@ -167,6 +174,13 @@ interface BadgeProps<T extends BadgeTypes>
   children: ReactNode;
   className?: string;
   bordered?: boolean;
+  /**
+   * `solid` paints an opaque fill with on-solid text, for a badge laid over
+   * imagery such as a count on an avatar, where the translucent dark-mode
+   * tint of `tinted` lets the image show through. Solid applies to `brand`,
+   * `error`, `warning` and `success`; other colors stay tinted.
+   */
+  variant?: 'tinted' | 'solid';
   style?: CSSProperties;
   'data-testid'?: string;
   /** Tooltip text shown on hover/focus */
@@ -187,6 +201,7 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     size = 'md',
     color = 'gray',
     bordered = true,
+    variant = 'tinted',
     children,
     tooltip,
     tooltipPlacement = 'top',
@@ -197,6 +212,8 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
     ...rest
   } = props;
   const colors = withPillTypes[type];
+  const solidRoot =
+    variant === 'solid' ? solidColors[color as BadgeColors] : undefined;
   const Component = href ? AriaLink : 'span';
 
   const pillSizes = {
@@ -229,8 +246,8 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         // Never wider than its container: a long label truncates instead of spilling out of it.
         'tw:max-w-full',
         sizes[type][size],
-        colors.styles[color].root,
-        bordered && 'tw:outline-1 tw:-outline-offset-1',
+        solidRoot ?? colors.styles[color].root,
+        bordered && !solidRoot && 'tw:outline-1 tw:-outline-offset-1',
         // A linked badge must look identical to a non-linked one: no underline,
         // and the color root's text class sets its color. `tw:text-inherit` here
         // would win the tailwind-merge conflict and drop that color.
