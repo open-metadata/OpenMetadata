@@ -18,7 +18,8 @@ services:
       # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
       - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
       - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=-Xmx8g -Xms4g
+      # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - JVM_ARGS=-Xmx8g -Xms4g -XX:-UseBASE64Intrinsics
     volumes:
       # Host bind path renamed from `.../fuseki` (used by the old stain image
       # layout) to `.../fuseki-tdb2-data` so an existing host directory with

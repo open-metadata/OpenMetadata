@@ -15,7 +15,8 @@ services:
       # Admin credentials
       - ADMIN_PASSWORD=admin
       # JVM memory settings
-      - JVM_ARGS=-Xmx4g -Xms2g
+      # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - JVM_ARGS=-Xmx4g -Xms2g -XX:-UseBASE64Intrinsics
     volumes:
       # Mount directory for persistent storage
       - ${DOCKER_VOLUMES_PATH:-./docker-volumes}/fuseki:/fuseki

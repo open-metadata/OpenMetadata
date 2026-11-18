@@ -21,5 +21,5 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# Run the operator
-ENTRYPOINT ["java", "-jar", "omjob-operator.jar"]
+# -XX:-UseBASE64Intrinsics: CVE-2026-114938, as in bin/openmetadata-server-start.sh.
+ENTRYPOINT ["java", "-XX:-UseBASE64Intrinsics", "-jar", "omjob-operator.jar"]

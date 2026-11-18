@@ -16,7 +16,8 @@ services:
       # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars.
       - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
       - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
-      - JVM_ARGS=-Xmx4g -Xms2g
+      # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - JVM_ARGS=-Xmx4g -Xms2g -XX:-UseBASE64Intrinsics
     volumes:
       # See docker-compose-fuseki-rosetta.yml — host bind path renamed so
       # existing directories with the old stain layout aren't silently
