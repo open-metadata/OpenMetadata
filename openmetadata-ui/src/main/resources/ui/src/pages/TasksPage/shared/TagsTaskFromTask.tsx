@@ -12,13 +12,15 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { diffArrays } from 'diff';
 import { FC, Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { Task, TaskEntityStatus } from '../../../rest/tasksAPI';
 import { isTagsTaskType } from '../../../utils/TaskActionUtils';
-import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
+import {
+  diffTagLabels,
+  getNormalizedTaskPayload,
+} from '../../../utils/TaskPayloadUtils';
 import { TagsDiffView } from './TagsDiffView';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
@@ -122,7 +124,7 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     } else {
       return (
         <TagsDiffView
-          diffArr={diffArrays(
+          diffArr={diffTagLabels(
             JSON.parse(currentValue ?? '[]'),
             JSON.parse(suggestedValue ?? '[]')
           )}
@@ -144,7 +146,7 @@ const TagsTaskFromTask: FC<TagsTaskFromTaskProps> = ({
     } else {
       return (
         <TagsDiffView
-          diffArr={diffArrays(
+          diffArr={diffTagLabels(
             JSON.parse(currentValue ?? '[]'),
             JSON.parse(suggestedValue ?? '[]')
           )}

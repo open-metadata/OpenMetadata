@@ -567,18 +567,15 @@ describe('TaskFormSchemaUtils', () => {
       ).toBeUndefined();
     });
 
-    it('exposes the suggested tags as a list for the tag selector', () => {
-      expect(getEditableTaskPayload(tagSuggestion).suggestedValue).toEqual(
-        tags
-      );
-    });
-
-    it('sends the edited tags back as the JSON string the server parses', () => {
+    // The server validates the resolve payload against TagSuggestion, whose
+    // suggestedValue is a string; an array there is rejected with a 400.
+    it('keeps suggestedValue a JSON string in the payload it resolves with', () => {
       const payload = getEditableTaskPayload(tagSuggestion);
 
-      expect(
-        JSON.parse(getTaskResolutionNewValue(tagSuggestion, payload) ?? '')
-      ).toEqual(tags);
+      expect(payload.suggestedValue).toBe(JSON.stringify(tags));
+      expect(getTaskResolutionNewValue(tagSuggestion, payload)).toBe(
+        JSON.stringify(tags)
+      );
     });
   });
 });

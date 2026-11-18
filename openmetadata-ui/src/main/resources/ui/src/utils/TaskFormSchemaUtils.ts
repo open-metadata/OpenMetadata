@@ -39,7 +39,7 @@ import {
   TaskEntityType,
   TaskPayload,
 } from '../rest/tasksAPI';
-import { isRecognizerFeedbackTask, isTagsTaskType } from './TaskActionUtils';
+import { isRecognizerFeedbackTask } from './TaskActionUtils';
 import { getDefaultTaskFormSchema } from './TaskFormSchemaRegistry';
 import { getNormalizedTaskPayload } from './TaskPayloadUtils';
 
@@ -79,6 +79,7 @@ const taskFormSchemaCache = new Map<
  * Suggestion schemas share one task type and category (DescriptionSuggestion,
  * TagSuggestion), so a type+category lookup cannot tell them apart; they are
  * named after the payload's suggestionType instead.
+ * ADR:2026-11-18-suggestion-task-form-schemas-are-named-after-their-suggestion-type
  */
 export const getTaskFormSchemaName = (
   task?: Pick<Task, 'type' | 'payload'>
@@ -510,11 +511,6 @@ export const getEditableTaskPayload = (
     return buildEditableTagPayload(payload, normalizedPayload, fields);
   }
 
-  // The TagSuggestion schema's tagSelector edits TagLabel[], not the JSON string.
-  if (isTagsTaskType(task)) {
-    return { ...payload, suggestedValue: normalizedPayload.suggestedTags };
-  }
-
   return payload;
 };
 
@@ -578,10 +574,6 @@ export const getTaskResolutionNewValue = (
 
   if (typeof payload.suggestedValue === 'string') {
     return payload.suggestedValue;
-  }
-
-  if (Array.isArray(payload.suggestedValue)) {
-    return JSON.stringify(payload.suggestedValue);
   }
 
   return undefined;

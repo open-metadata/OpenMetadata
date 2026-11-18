@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TagLabel } from '../generated/type/tagLabel';
 import { TaskEntityType, type Task as TaskEntity } from '../rest/tasksAPI';
-import { getNormalizedTaskPayload } from './TaskPayloadUtils';
+import { diffTagLabels, getNormalizedTaskPayload } from './TaskPayloadUtils';
 
 const buildTask = (
   type: TaskEntityType,
@@ -107,6 +108,22 @@ describe('Suggestion task with suggestionType Tag', () => {
     expect(result.isSuggestionEmpty).toBe(false);
   });
 
+  // The server adds a Tag suggestion to the field's tags, so existing tags
+  // stay and the suggested ones are what is new.
+  it('adds the suggested tags to the current ones instead of dropping them', () => {
+    const existing = { tagFQN: 'Tier.Tier1' };
+    const result = getNormalizedTaskPayload(
+      buildTask(TaskEntityType.Suggestion, {
+        suggestionType: 'Tag',
+        currentValue: JSON.stringify([existing]),
+        suggestedValue: JSON.stringify(tags),
+      })
+    );
+
+    expect(result.currentTags).toEqual([existing]);
+    expect(result.suggestedTags).toEqual([existing, ...tags]);
+  });
+
   it('keeps a description suggestion on the description path', () => {
     const result = getNormalizedTaskPayload(
       buildTask(TaskEntityType.Suggestion, {
@@ -117,5 +134,19 @@ describe('Suggestion task with suggestionType Tag', () => {
 
     expect(result.newDescription).toBe('A customer address');
     expect(result.suggestedValue).toBe('A customer address');
+  });
+});
+
+describe('diffTagLabels', () => {
+  it('matches tags by tagFQN, so an unchanged tag is neither removed nor added', () => {
+    const diff = diffTagLabels(
+      [{ tagFQN: 'Tier.Tier1' }] as TagLabel[],
+      [{ tagFQN: 'Tier.Tier1' }, { tagFQN: 'PII.Sensitive' }] as TagLabel[]
+    );
+
+    expect(diff.filter((part) => part.removed)).toEqual([]);
+    expect(
+      diff.filter((part) => part.added).flatMap((part) => part.value)
+    ).toEqual([{ tagFQN: 'PII.Sensitive' }]);
   });
 });

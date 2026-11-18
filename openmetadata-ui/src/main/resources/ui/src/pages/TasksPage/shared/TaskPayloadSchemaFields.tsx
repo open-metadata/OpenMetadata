@@ -38,6 +38,7 @@ import { useTranslation } from 'react-i18next';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../rest/tasksAPI';
+import { parseTaskTags } from '../../../utils/TaskPayloadUtils';
 import { DescriptionTabs } from './DescriptionTabs';
 import { TagsTabs } from './TagsTabs';
 import TagSuggestion from './TagSuggestion';
@@ -515,27 +516,33 @@ const TaskPayloadSchemaFields = ({
     );
   };
 
+  // A string-typed field (TagSuggestion's suggestedValue) holds the tags as
+  // JSON; keep it a string so the payload still validates against its schema.
   const renderTagSelectorField: FieldRenderer = (
     fieldName,
-    _fieldSchema,
+    fieldSchema,
     label,
     description
   ) => {
+    const tags = parseTaskTags(
+      payload[fieldName] as string | TagLabel[] | undefined
+    ).filter(Boolean);
+
     if (mode === 'read') {
-      return renderReadOnlyTags(
-        label,
-        ((payload[fieldName] as TagLabel[] | undefined) ?? []).filter(Boolean),
-        description,
-        icons?.[fieldName]
-      );
+      return renderReadOnlyTags(label, tags, description, icons?.[fieldName]);
     }
 
     return (
       <Box direction="col" gap={2} key={fieldName}>
         <FormItemLabel label={label} />
         <TagSuggestion
-          value={(payload[fieldName] as TagLabel[] | undefined) ?? []}
-          onChange={(newTags) => updateField(fieldName, newTags)}
+          value={tags}
+          onChange={(newTags) =>
+            updateField(
+              fieldName,
+              fieldSchema?.type === 'string' ? JSON.stringify(newTags) : newTags
+            )
+          }
         />
         {description ? (
           <Typography as="p" className="tw:mb-0 tw:mt-1" color="secondary">
