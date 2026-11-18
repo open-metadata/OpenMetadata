@@ -8,6 +8,16 @@ result, and a code or test fix. Report credential exposure, broken checks, lost 
 and incorrect success reporting as 🔴 Important findings; fix them before merge.
 Review the current PR head. Zero findings is a valid result when the evidence supports it.
 
+### Migrations
+
+- **Migration queries on large, growing tables must not scan the whole table.** Check that each
+  such query's `WHERE` or `JOIN` is backed by an index, and that the index already exists when the
+  query runs: an index created in a later version, or present only on `main`, does not help an
+  earlier version. Check a backport on the target branch itself; do not assume an index, column or
+  other change from `main` came with it. A test on an empty database will not show a scan. (The
+  2.0.8 `audit_log_event` cleanup ran for hours on large deployments because only 2.1.0 indexed
+  `entity_type`.)
+
 ### CI credentials and PR code
 
 ADR:2026-11-10-pr-jobs-never-receive-credentials supersedes the earlier same-repository exception.
