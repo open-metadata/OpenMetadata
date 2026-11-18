@@ -28,6 +28,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -1655,7 +1656,7 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
   void test_glossaryTermStatusTransitionUpdatesSearchIndex(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
-    Glossary glossary = getOrCreateGlossary(ns);
+    Glossary glossary = GlossaryTestFactory.createForStatusTests(ns);
 
     CreateGlossaryTerm request =
         new CreateGlossaryTerm()
@@ -1664,8 +1665,9 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
             .withDescription("Term for search status propagation");
 
     GlossaryTerm term = createEntity(request);
-    term.setEntityStatus(org.openmetadata.schema.type.EntityStatus.DEPRECATED);
+    term.setEntityStatus(EntityStatus.DEPRECATED);
     GlossaryTerm updated = patchEntity(term.getId().toString(), term);
+    assertEquals(EntityStatus.DEPRECATED, updated.getEntityStatus());
 
     Awaitility.await("Glossary term status should be reflected in search")
         .atMost(java.time.Duration.ofSeconds(30))
