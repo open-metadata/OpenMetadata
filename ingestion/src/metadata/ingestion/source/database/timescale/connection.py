@@ -38,6 +38,7 @@ from metadata.ingestion.source.database.postgres.queries import (
 )
 from metadata.ingestion.source.database.postgres.utils import (
     get_postgres_time_column_name,
+    validate_query_statement_source,
 )
 from metadata.utils.constants import THREE_MIN
 
@@ -67,7 +68,7 @@ class TimescaleConnection(BaseConnection[TimescaleConnectionConfig, Engine]):
         queries = {
             "GetQueries": POSTGRES_TEST_GET_QUERIES.format(
                 time_column_name=get_postgres_time_column_name(engine=self.client),
-                query_statement_source=self.service_connection.queryStatementSource or "pg_stat_statements",
+                query_statement_source=validate_query_statement_source(self.service_connection.queryStatementSource),
             ),
             "GetDatabases": POSTGRES_GET_DATABASE,
             "GetTags": POSTGRES_TEST_GET_TAGS,
