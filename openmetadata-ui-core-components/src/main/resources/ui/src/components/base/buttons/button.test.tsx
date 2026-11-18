@@ -205,18 +205,55 @@ describe('Button — tooltip prop', () => {
 });
 
 describe('Button — icon size and color', () => {
-  it('sizes compact icons to the 18px leading / 16px trailing frame', () => {
-    render(
-      <Button iconLeading={Edit01} iconTrailing={Edit01} size="xs">
-        Edit
-      </Button>
-    );
+  // One frame for leading and trailing icons per height: 16 / 18 / 18 / 18 / 20.
+  it.each([
+    ['xs', 'tw:*:data-icon:size-4', 'tw:*:data-icon:p-[0.5px]'],
+    ['sm', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['md', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['lg', 'tw:*:data-icon:size-4.5', 'tw:*:data-icon:p-[0.25px]'],
+    ['xl', 'tw:*:data-icon:size-5', undefined],
+  ] as const)(
+    'gives %s leading and trailing icons the same frame',
+    (size, frame, svgPadding) => {
+      render(
+        <Button iconLeading={Edit01} iconTrailing={Edit01} size={size}>
+          Edit
+        </Button>
+      );
+
+      const button = screen.getByRole('button', { name: 'Edit' });
+
+      expect(button).toHaveClass(frame);
+      if (svgPadding) {
+        expect(button).toHaveClass(svgPadding);
+      }
+      expect(button.className).not.toMatch(/data-\[icon=trailing\]:size/);
+      expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
+      expect(
+        button.querySelector('[data-icon="trailing"]')
+      ).toBeInTheDocument();
+    }
+  );
+
+  // A smaller frame needs 1px more padding to keep icon-only heights at
+  // 28 / 32 / 36 / 40 / 44.
+  it.each([
+    ['xs', 'tw:data-icon-only:p-1.5'],
+    ['sm', 'tw:data-icon-only:p-1.75'],
+    ['md', 'tw:data-icon-only:p-2.25'],
+    ['lg', 'tw:data-icon-only:p-2.75'],
+    ['xl', 'tw:data-icon-only:p-3'],
+  ] as const)('pads a %s icon-only button to its height', (size, padding) => {
+    render(<Button aria-label="Edit" iconLeading={Edit01} size={size} />);
+
+    expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
+  });
+
+  it('keeps the drawn stroke weight when an icon is scaled down', () => {
+    render(<Button iconLeading={Edit01}>Edit</Button>);
 
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
-      'tw:*:data-icon:size-4.5',
-      'tw:*:data-icon:p-[0.25px]',
-      'tw:*:data-[icon=trailing]:size-4',
-      'tw:*:data-[icon=trailing]:p-[0.5px]'
+      'tw:*:data-icon:**:[vector-effect:non-scaling-stroke]'
     );
   });
 
@@ -232,22 +269,37 @@ describe('Button — icon size and color', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
   });
 
-  it('keeps the 20px leading frame and an 18px trailing frame on regular sizes', () => {
-    render(
-      <Button iconLeading={Edit01} iconTrailing={Edit01} size="md">
-        Edit
-      </Button>
-    );
+  // The label adds 2px (px-0.5) to each boxed gap; unboxed links drop it, so
+  // their class is one step wider. Spec visible gap: 6px at every size.
+  it.each([
+    ['xs', 'tw:gap-1', 'tw:gap-1.5'],
+    ['sm', 'tw:gap-1', 'tw:gap-1.5'],
+    ['md', 'tw:gap-1', 'tw:gap-1.5'],
+    ['lg', 'tw:gap-1', 'tw:gap-1.5'],
+    ['xl', 'tw:gap-1', 'tw:gap-1.5'],
+  ] as const)(
+    'spaces the %s icon and label to the spec gap',
+    (size, boxedGap, linkGap) => {
+      render(
+        <>
+          <Button iconLeading={Edit01} size={size}>
+            Edit
+          </Button>
+          <Button color="link-gray" iconLeading={Edit01} size={size}>
+            Back
+          </Button>
+        </>
+      );
 
-    const button = screen.getByRole('button', { name: 'Edit' });
+      expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(
+        boxedGap
+      );
+      const link = screen.getByRole('button', { name: 'Back' });
 
-    expect(button).toHaveClass(
-      'tw:*:data-icon:size-5',
-      'tw:*:data-[icon=trailing]:size-4.5'
-    );
-    expect(button.querySelector('[data-icon="leading"]')).toBeInTheDocument();
-    expect(button.querySelector('[data-icon="trailing"]')).toBeInTheDocument();
-  });
+      expect(link).toHaveClass(linkGap);
+      expect(link).not.toHaveClass(boxedGap);
+    }
+  );
 
   it('uses gray-500 icons with a gray-600 hover on neutral buttons', () => {
     render(
