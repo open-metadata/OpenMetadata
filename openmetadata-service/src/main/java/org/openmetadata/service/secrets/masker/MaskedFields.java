@@ -33,9 +33,10 @@ import org.openmetadata.annotations.MaskedField;
  */
 public final class MaskedFields {
 
-  // Collate generates its entities into its own package, and they reach the same writers.
+  // Collate's entities reach the same writers, and it generates them into more than one package
+  // under these two roots.
   private static final List<String> SCHEMA_PACKAGES =
-      List.of("org.openmetadata.schema.", "io.collate.schema.");
+      List.of("org.openmetadata.schema.", "io.collate.", "io.getcollate.");
   // One entry per class, so the caps are never reached; they are there to bound the caches.
   private static final Cache<Class<?>, Boolean> ANY_MASKED =
       Caffeine.newBuilder().maximumSize(1_000).build();

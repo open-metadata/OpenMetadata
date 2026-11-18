@@ -11,11 +11,30 @@
  *  limitations under the License.
  */
 
-package io.collate.schema;
+package io.collate.generated;
 
 import org.openmetadata.annotations.MaskedField;
 
-/** Stands in for an entity Collate generates: the package is what {@code MaskedFields} reads. */
+/** Stands in for an entity Collate generates: its package is all {@code MaskedFields} reads. */
 public class CollateEntityWithASecret {
+  private String name;
   @MaskedField private Object secret;
+
+  public String getName() {
+    return name;
+  }
+
+  public void setName(String name) {
+    this.name = name;
+  }
+
+  @MaskedField
+  public Object getSecret() {
+    return secret;
+  }
+
+  @MaskedField
+  public void setSecret(Object secret) {
+    this.secret = secret;
+  }
 }
