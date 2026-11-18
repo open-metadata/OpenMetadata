@@ -69,6 +69,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -129,6 +130,7 @@ import org.openmetadata.service.resources.databases.TableResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -173,6 +175,18 @@ public class TableRepository extends EntityRepository<Table> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("description", "owners", "columns.description");
   private final TableMetadataLoader metadataLoader;
+
+  @Override
+  protected <R> R executeEntityWrite(List<Table> entities, Supplier<R> work) {
+    return executeInTransaction(work);
+  }
+
+  @Override
+  protected boolean requiresAtomicBulkUpdate(Table original, Table updated) {
+    return original != null
+        && (FailedRowsSamplePolicy.hasRemovals(original, updated)
+            || FailedRowsSamplePolicy.hasRemovals(updated, original));
+  }
 
   public TableRepository() {
     super(
@@ -2349,6 +2363,13 @@ public class TableRepository extends EntityRepository<Table> {
     @Override
     protected boolean supportsColumnExtension() {
       return true;
+    }
+
+    @Override
+    protected void beforeEntityMutation() {
+      if (!operation.isDelete()) {
+        new FailedRowsSampleStore(daoCollection).captureRemoval(original, updated);
+      }
     }
 
     @Override

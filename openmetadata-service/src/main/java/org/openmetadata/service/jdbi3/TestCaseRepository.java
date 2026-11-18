@@ -24,9 +24,7 @@ import static org.openmetadata.service.Entity.TEST_CASE_RESULT;
 import static org.openmetadata.service.Entity.TEST_DEFINITION;
 import static org.openmetadata.service.Entity.TEST_SUITE;
 import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
-import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
-import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
@@ -113,6 +111,7 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.TestCaseBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
 import org.openmetadata.service.security.policyevaluator.DomainAccessFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
@@ -1938,6 +1937,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       TestCase testCase, TableData tableData, boolean validateColumns) {
     EntityLink entityLink = EntityLink.parse(testCase.getEntityLink());
     Table table = Entity.getEntity(entityLink, FIELD_OWNERS, ALL);
+    return executeInTransaction(
+        () -> storeFailedRowsSample(testCase, tableData, validateColumns, table.getId()));
+  }
+
+  private TestCase storeFailedRowsSample(
+      TestCase testCase, TableData tableData, boolean validateColumns, UUID tableId) {
+    FailedRowsSampleStore store = new FailedRowsSampleStore(daoCollection);
+    Table table = store.lockTable(tableId);
     // Validate all the columns
     if (validateColumns) {
       for (String columnName : tableData.getColumns()) {
@@ -1959,7 +1966,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             testCase.getId(),
             FAILED_ROWS_SAMPLE_EXTENSION,
             "failedRowsSample",
-            JsonUtils.pojoToJson(tableData));
+            JsonUtils.pojoToJson(
+                FailedRowsSamplePolicy.bind(tableData, table, store.readRemovals(tableId))));
     setFieldsInternal(testCase, Fields.EMPTY_FIELDS);
     // deep copy the test case to avoid updating the cached entity
     testCase = JsonUtils.deepCopy(testCase, TestCase.class);
@@ -2135,25 +2143,24 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public TableData getSampleData(TestCase testCase, boolean authorizePII) {
     Table table = Entity.getEntity(EntityLink.parse(testCase.getEntityLink()), FIELD_OWNERS, ALL);
-    // Validate the request content
-    TableData sampleData =
-        JsonUtils.readValue(
-            daoCollection
-                .entityExtensionDAO()
-                .getExtension(testCase.getId(), FAILED_ROWS_SAMPLE_EXTENSION),
-            TableData.class);
-    if (sampleData == null) {
+    return executeInTransaction(() -> readFailedRowsSample(testCase, table.getId(), authorizePII));
+  }
+
+  private TableData readFailedRowsSample(TestCase testCase, UUID tableId, boolean authorizePII) {
+    FailedRowsSampleStore store = new FailedRowsSampleStore(daoCollection);
+    Table table = store.lockTable(tableId);
+    String json =
+        daoCollection
+            .entityExtensionDAO()
+            .getExtensionForUpdate(testCase.getId(), FAILED_ROWS_SAMPLE_EXTENSION);
+    if (json == null) {
       throw new EntityNotFoundException(
           entityNotFound(FAILED_ROWS_SAMPLE_EXTENSION, testCase.getId()));
     }
-    // Set the column tags. Will be used to mask the sample data
-    if (!authorizePII) {
-      populateEntityFieldTags(TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
-      List<TagLabel> tags = daoCollection.tagUsageDAO().getTags(table.getFullyQualifiedName());
-      table.setTags(tags);
-      return maskSampleData(sampleData, table, table.getColumns());
-    }
-    return sampleData;
+    var sample = FailedRowsSamplePolicy.decode(json);
+    return authorizePII
+        ? sample.data()
+        : FailedRowsSamplePolicy.mask(sample, table, store.readRemovals(tableId));
   }
 
   private void validateParameterRule(TestCaseParameter parameter, Map<String, Object> values) {

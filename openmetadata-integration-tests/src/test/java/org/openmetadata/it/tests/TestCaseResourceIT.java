@@ -4556,6 +4556,53 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertEquals(List.of("1", PIIMasker.MASKED_VALUE), masked.getRows().getFirst());
   }
 
+  @ParameterizedTest
+  @CsvSource({"true,true,true", "true,false,false", "false,false,false", "false,true,true"})
+  void test_failedRowsSamplePreservesClassificationAtRemoval(
+      boolean initiallySensitive, boolean sensitiveAtRemoval, boolean masked, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    Table current = client.tables().get(table.getId().toString(), "columns,tags");
+    current.getColumns().get(1).setTags(initiallySensitive ? failedRowsSensitiveTags() : List.of());
+    client.tables().update(current.getId().toString(), current);
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("retired_failed_rows"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addTestCaseResult(client, testCase, TestCaseStatus.Failed, 1L);
+    TableData original =
+        new TableData()
+            .withColumns(List.of("id", "name"))
+            .withRows(List.of(List.of("1", "synthetic-private")));
+    client.testCases().addFailedRowsSample(testCase.getId().toString(), original);
+    current = client.tables().get(table.getId().toString(), "columns,tags");
+    current.getColumns().get(1).setTags(sensitiveAtRemoval ? failedRowsSensitiveTags() : List.of());
+    client.tables().update(current.getId().toString(), current);
+    current = client.tables().get(table.getId().toString(), "columns,tags");
+    current.setColumns(new ArrayList<>(List.of(current.getColumns().getFirst())));
+    client.tables().update(current.getId().toString(), current);
+    User reader = UserTestFactory.createUser(ns, "retired_sample_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    TableData restricted =
+        readerClient.testCases().getFailedRowsSample(testCase.getId().toString());
+    assertEquals(
+        List.of("1", masked ? PIIMasker.MASKED_VALUE : "synthetic-private"),
+        restricted.getRows().getFirst());
+    assertEquals(List.of("id", masked ? "name [MASKED]" : "name"), restricted.getColumns());
+    assertEquals(original, client.testCases().getFailedRowsSample(testCase.getId().toString()));
+  }
+
+  private List<TagLabel> failedRowsSensitiveTags() {
+    return List.of(
+        new TagLabel()
+            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+            .withSource(TagLabel.TagSource.CLASSIFICATION));
+  }
+
   private Table createTableWithName(TestNamespace ns, String nameSuffix) {
     OpenMetadataClient client = SdkClients.adminClient();
     String shortId = ns.uniqueShortId();
