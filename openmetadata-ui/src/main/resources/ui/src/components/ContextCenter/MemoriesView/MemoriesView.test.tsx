@@ -43,10 +43,10 @@ jest.mock('../../../rest/userAPI', () => ({
 jest.mock('react-i18next', () => ({
   ...jest.requireActual('react-i18next'),
   useTranslation: () => ({
-    // Echoes the count, the Query or the user, so a test can tell which one a label shows.
+    // Echoes the count, the Query, the user or the time, so a test can tell which one a label shows.
     t: (
       key: string,
-      options?: { count?: number; query?: string; user?: string }
+      options?: { count?: number; query?: string; user?: string; time?: string }
     ) => {
       if (options?.count !== undefined) {
         return `${key}:${options.count}`;
@@ -55,10 +55,20 @@ jest.mock('react-i18next', () => ({
         return `${key}:${options.query}`;
       }
 
-      return options?.user === undefined ? key : `${key} ${options.user}`;
+      if (options?.user !== undefined) {
+        return `${key} ${options.user}`;
+      }
+
+      return options?.time === undefined ? key : `${key}:${options.time}`;
     },
     i18n: { language: 'en-US' },
   }),
+}));
+
+jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
+  ...jest.requireActual('../../../utils/date-time/DateTimeUtils'),
+  getShortRelativeTime: (timestamp?: number) =>
+    timestamp === undefined ? '' : `relative:${timestamp}`,
 }));
 
 jest.mock('../../../components/common/ProfilePicture/ProfilePicture', () =>
@@ -538,7 +548,7 @@ describe('MemoriesView', () => {
     const usage = screen.getByTestId('memory-usage-info');
 
     expect(screen.getByTestId('memory-last-used')).toHaveTextContent(
-      'label.last-used-time'
+      'label.last-used-time:relative:1778756959299'
     );
     // Cited · Last used · votes · Corrected
     expect(usage.textContent?.match(/·/g)).toHaveLength(3);
