@@ -263,7 +263,18 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Map<String, SearchResponse<JsonData>> responsesByField,
       Map<String, List<String>> fieldPathToEntityTypes,
       Set<String> pageKeys) {
-    Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
+    // Bucket keys come from the column-name keyword field, which uses the lowercase normalizer, so
+    // two fields can return the same normalized key for different original-cased names (e.g. a
+    // table column "CustomerID" and a topic field "customerid"). parseBucketHits re-keys each
+    // field's buckets by the original-cased name from _source, so merging into a plain HashMap
+    // would
+    // split those case variants into separate grid rows while totalUniqueColumns (a
+    // case-insensitive
+    // cardinality) reports one. A case-insensitive TreeMap merges them — matching the cardinality
+    // and the tag/row-filter paths in this class — while the first field's original casing is
+    // retained as the display key.
+    Map<String, List<ColumnWithContext>> allColumnsByName =
+        new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
     responsesByField.forEach(
         (columnNameKeyword, response) -> {
           String columnFieldPath =

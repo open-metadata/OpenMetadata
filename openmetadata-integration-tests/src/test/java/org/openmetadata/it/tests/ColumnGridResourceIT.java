@@ -310,6 +310,86 @@ public class ColumnGridResourceIT {
   }
 
   @Test
+  void test_getColumnGrid_browseMergesCaseVariantNamesAcrossFields(TestNamespace ns)
+      throws Exception {
+    // The column-name keyword field uses the lowercase normalizer, so a table column "CustomerID"
+    // and a topic field "customerid" share one normalized bucket key. The browse path must merge
+    // them into a single grid row with combined occurrences so totalUniqueColumns (a
+    // case-insensitive cardinality) matches the row count and occurrences aren't split.
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        Domains.create(
+            new CreateDomain()
+                .withName(ns.prefix("case_variant_domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Scopes the mixed-case browse walk"));
+    List<String> domains = List.of(domain.getFullyQualifiedName());
+    String tableColumnName = ns.shortPrefix() + "_CustomerID";
+    String topicFieldName = ns.shortPrefix() + "_customerid";
+
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix("case_variant_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(
+                        Columns.build(tableColumnName)
+                            .withType(ColumnDataType.VARCHAR)
+                            .withLength(255)
+                            .create()))
+                .withDomains(domains));
+    client
+        .topics()
+        .create(
+            new CreateTopic()
+                .withName(ns.prefix("case_variant_topic"))
+                .withService(MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName())
+                .withPartitions(1)
+                .withMessageSchema(
+                    new MessageSchema()
+                        .withSchemaType(SchemaType.JSON)
+                        .withSchemaFields(
+                            List.of(
+                                new Field()
+                                    .withName(topicFieldName)
+                                    .withDataType(FieldDataType.STRING))))
+                .withDomains(domains));
+
+    String query = "entityTypes=table,topic&domainId=" + domain.getId();
+    waitForSearchIndexRefresh(ns);
+    await("Wait for the case-variant columns to be indexed and merged")
+        .atMost(Duration.ofSeconds(45))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    1,
+                    getColumnGrid(client, query + "&size=100").getTotalUniqueColumns(),
+                    "case-variant names across fields must count as one unique column"));
+
+    ColumnGridResponse page = getColumnGrid(client, query + "&size=100");
+    assertNotNull(page.getColumns());
+    assertEquals(1, page.getColumns().size(), "case-variant names must merge into one grid row");
+    ColumnGridItem merged = page.getColumns().getFirst();
+    assertTrue(
+        merged.getColumnName().equalsIgnoreCase(tableColumnName),
+        "merged row should carry one of the original-cased names");
+    assertEquals(2, merged.getTotalOccurrences(), "both occurrences must be combined into one row");
+
+    List<String> occurrenceEntityTypes =
+        merged.getGroups().stream()
+            .flatMap(group -> group.getOccurrences().stream())
+            .map(ColumnOccurrenceRef::getEntityType)
+            .sorted()
+            .toList();
+    assertEquals(List.of("table", "topic"), occurrenceEntityTypes);
+  }
+
+  @Test
   void test_getColumnGrid_withEntityTypeFilter(TestNamespace ns) throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
