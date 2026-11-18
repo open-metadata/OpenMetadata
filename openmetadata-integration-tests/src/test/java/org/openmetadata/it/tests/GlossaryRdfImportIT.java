@@ -1158,6 +1158,12 @@ public class GlossaryRdfImportIT {
             .toString()
             .contains("held by a deleted relationship type on " + oldPredicate),
         result.toString());
+    assertTrue(
+        result
+            .path("messages")
+            .toString()
+            .contains("its relationship type '" + authored + "' was skipped as invalid"),
+        result.toString());
     assertEquals(0, result.path("relationTypesRegistered").asInt(), result.toString());
     assertEquals(0, result.path("relationsAdded").asInt(), result.toString());
     JsonNode stored = relationshipTypeById(held.getId());
