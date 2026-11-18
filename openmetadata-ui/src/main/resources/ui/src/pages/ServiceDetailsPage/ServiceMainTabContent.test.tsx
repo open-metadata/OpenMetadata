@@ -222,6 +222,7 @@ describe('ServiceMainTabContent permission wiring', () => {
     (usePermissionProvider as jest.Mock).mockReturnValue({
       permissions: {
         databaseService: FULL_PERMISSION,
+        database: FULL_PERMISSION,
       },
     });
     (getEntityTypeFromServiceCategory as jest.Mock).mockReturnValue(
@@ -297,7 +298,8 @@ describe('ServiceMainTabContent permission wiring', () => {
       'databaseServices',
       true,
       expect.any(Function),
-      undefined
+      undefined,
+      true
     );
   });
 
@@ -311,6 +313,7 @@ describe('ServiceMainTabContent permission wiring', () => {
           ...FULL_PERMISSION,
           EditDisplayName: false,
         },
+        database: FULL_PERMISSION,
       },
     });
 
@@ -320,7 +323,53 @@ describe('ServiceMainTabContent permission wiring', () => {
       'databaseServices',
       false,
       expect.any(Function),
-      undefined
+      undefined,
+      true
+    );
+  });
+
+  it('passes viewUsagePermission=false through to getServiceMainTabColumns when the database resource denies ViewUsage', () => {
+    // Matches ServiceDetailsPage.fetchDatabases' `permissions.database.canViewUsage`
+    // gate (and DatabaseSchemaTable's `viewUsagePermission` column gate): without
+    // ViewUsage the API omits the `usageSummary` field, so the column must be
+    // hidden entirely rather than render fabricated "0th pctile" from the `?? 0`
+    // coercion.
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      permissions: {
+        databaseService: FULL_PERMISSION,
+        database: { ...FULL_PERMISSION, ViewUsage: false },
+      },
+    });
+
+    renderComponent({ servicePermission: FULL_PERMISSION });
+
+    expect(getServiceMainTabColumns).toHaveBeenCalledWith(
+      'databaseServices',
+      true,
+      expect.any(Function),
+      undefined,
+      false
+    );
+  });
+
+  it('denies viewUsagePermission when both ViewUsage and ViewAll are absent on the database resource', () => {
+    (usePermissionProvider as jest.Mock).mockReturnValue({
+      permissions: {
+        databaseService: FULL_PERMISSION,
+        // No ViewUsage key and no ViewAll key → getPrioritizedViewPermission
+        // falls through to an undefined ViewAll → Boolean(undefined) → false.
+        database: { EditAll: true } as OperationPermission,
+      },
+    });
+
+    renderComponent({ servicePermission: FULL_PERMISSION });
+
+    expect(getServiceMainTabColumns).toHaveBeenCalledWith(
+      'databaseServices',
+      true,
+      expect.any(Function),
+      undefined,
+      false
     );
   });
 
