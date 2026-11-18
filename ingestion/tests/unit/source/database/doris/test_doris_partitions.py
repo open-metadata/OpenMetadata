@@ -387,3 +387,38 @@ class TestPartitionDetails:
         for table_name in ("t_uniq", "t_auto"):
             assert doris_source.get_table_partition_details(table_name, "om_verify", inspector=None) == (False, None)
         assert _statements(doris_source) == ["information_schema.partitions"]
+
+    @pytest.mark.parametrize(
+        ("failing_statement", "table_name"),
+        [
+            pytest.param("SHOW CREATE TABLE", "t_auto", id="ddl"),
+            pytest.param("SHOW FULL COLUMNS FROM", "t_range_int", id="columns"),
+        ],
+    )
+    def test_table_failure_keeps_table_without_partitions(self, doris_source, failing_statement, table_name):
+        """A table whose partitions cannot be read is still ingested, without partition details"""
+
+        def execute(statement, *args):
+            if str(statement).strip().startswith(failing_statement):
+                raise OperationalError(str(statement), {}, Exception("Access denied"))
+            return _execute(statement, *args)
+
+        doris_source.engine.connect.return_value.execute.side_effect = execute
+
+        assert doris_source.get_table_partition_details(table_name, "om_verify", inspector=None) == (False, None)
+        # The other tables of the schema keep their partitions
+        is_partitioned, partition = doris_source.get_table_partition_details("t_uniq", "om_verify", inspector=None)
+        assert is_partitioned is True
+        assert [(column.columnName, column.intervalType) for column in partition.columns] == [("region", COLUMN_VALUE)]
+
+    def test_partition_column_missing_from_columns_keeps_table_without_partitions(self, doris_source):
+        """A partition column absent from SHOW FULL COLUMNS costs the partition details, not the table"""
+
+        def execute(statement, *args):
+            if str(statement).strip().startswith("SHOW FULL COLUMNS FROM"):
+                return [("v", "int", "", "YES", "NO", None, "NONE", "", "")]
+            return _execute(statement, *args)
+
+        doris_source.engine.connect.return_value.execute.side_effect = execute
+
+        assert doris_source.get_table_partition_details("t_range_int", "om_verify", inspector=None) == (False, None)
