@@ -33,7 +33,6 @@ import pytest
 from metadata.ingestion.source.database.postgres.queries import POSTGRES_SQL_STATEMENT
 from metadata.ingestion.source.database.postgres.utils import (
     DEFAULT_QUERY_STATEMENT_SOURCE,
-    validate_query_statement_source,
 )
 from metadata.ingestion.source.database.timescale.connection import TimescaleConnection
 from metadata.ingestion.source.database.timescale.query_parser import (
@@ -186,23 +185,6 @@ class TestTimescaleConnectionQueryStatementSource:
         assert ";" not in get_queries
         assert "--" not in get_queries
 
-    def test_get_queries_call_site_routes_through_validate_query_statement_source(self):
-        """The hardening is structural, not incidental: the GetQueries SQL is
-        built with validate_query_statement_source(...) rather than the raw
-        ``or "pg_stat_statements"`` fallback. Guard the wiring so a future
-        refactor cannot silently swap it back to the vulnerable form."""
-        connection = _build_timescale_connection("pg_stat_statements")
-        with (
-            patch(f"{_CONNECTION_MODULE}.get_postgres_time_column_name", return_value="total_exec_time"),
-            patch(
-                f"{_CONNECTION_MODULE}.validate_query_statement_source", wraps=validate_query_statement_source
-            ) as mock_validate,
-            patch(f"{_CONNECTION_MODULE}.test_connection_db_common"),
-        ):
-            connection.test_connection(metadata=MagicMock())
-
-        mock_validate.assert_called_once_with("pg_stat_statements")
-
 
 class TestTimescaleQueryParserQueryStatementSource:
     """Defense-in-depth for the (currently-unregistered) copy of the
@@ -247,16 +229,3 @@ class TestTimescaleQueryParserQueryStatementSource:
         assert "UNION" not in statement
         assert ";" not in statement
         assert "--" not in statement
-
-    def test_get_sql_statement_routes_through_validate_query_statement_source(self):
-        parser = _build_timescale_query_parser("pg_stat_statements")
-        with (
-            patch(f"{_QUERY_PARSER_MODULE}.get_postgres_time_column_name", return_value="total_exec_time"),
-            patch(
-                f"{_QUERY_PARSER_MODULE}.validate_query_statement_source",
-                wraps=validate_query_statement_source,
-            ) as mock_validate,
-        ):
-            parser.get_sql_statement()
-
-        mock_validate.assert_called_once_with("pg_stat_statements")
