@@ -113,6 +113,7 @@ import { getErrorText } from '../../../../utils/StringUtils';
 import {
   GLOSSARY_TASK_ACTION_LIST,
   INCIDENT_TASK_ACTION_LIST,
+  isTagsTaskType,
   TASK_ACTION_COMMON_ITEM,
   TASK_ACTION_LIST,
 } from '../../../../utils/TaskActionUtils';
@@ -334,9 +335,10 @@ interface TaskTypeFlags {
 
 const deriveTaskTypeFlags = (
   taskHandlerType: string,
-  taskEntityType: TaskEntityType
+  task: TaskTabProps['task']
 ): TaskTypeFlags => {
-  const isTaskTags = taskHandlerType === 'tagUpdate';
+  const taskEntityType = task.type;
+  const isTaskTags = taskHandlerType === 'tagUpdate' || isTagsTaskType(task);
   const isTaskApprovalRequest = taskHandlerType === 'approval';
   const isTaskRecognizerFeedbackApproval =
     taskHandlerType === 'feedbackApproval';
@@ -476,7 +478,7 @@ export const TaskTabNew = ({
     isTaskRecognizerFeedbackApproval,
     isApprovalWorkflowTask,
     isTaskTestCaseResult,
-  } = deriveTaskTypeFlags(taskHandler.type, task.type);
+  } = deriveTaskTypeFlags(taskHandler.type, task);
   const proposedChanges = useMemo(
     () => (isTaskApprovalRequest ? extractProposedChanges(task.payload) : null),
     [isTaskApprovalRequest, task.payload]

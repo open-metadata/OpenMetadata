@@ -372,7 +372,6 @@ jest.mock('../../../../utils/EntityLink', () => {
 
 jest.mock('../../../../utils/TaskActionUtils', () => ({
   ...jest.requireActual('../../../../utils/TaskActionUtils'),
-  isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
 }));
@@ -493,7 +492,6 @@ describe('TaskTabNew Component', () => {
       getResolvedTaskFormSchema,
     } = require('../../../../utils/TaskFormSchemaUtils');
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
     } = require('../../../../utils/TaskActionUtils');
@@ -518,7 +516,6 @@ describe('TaskTabNew Component', () => {
           )
         )
     );
-    isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
     isRecognizerFeedbackTask.mockReturnValue(false);
   });
@@ -614,10 +611,8 @@ describe('TaskTabNew Component', () => {
 
   it('should render schema-driven description payload details for description tasks', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
     const descriptionTask: Task = {
@@ -1021,10 +1016,8 @@ describe('TaskTabNew Component', () => {
 
   it('should display the task information for approval tasks with suggestion data', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
     await act(async () => {
@@ -1043,10 +1036,8 @@ describe('TaskTabNew Component', () => {
 
   it('shows the change request a review task names instead of its preview chips', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
     await act(async () => {
@@ -1427,10 +1418,8 @@ describe('TaskTabNew Component', () => {
     'restricts native ontology resolution to assigned reviewers (assigned: %s)',
     async (assigned) => {
       const { useAuth } = require('../../../../hooks/authHooks');
-      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
       const { resolveTask } = require('../../../../rest/tasksAPI');
       useAuth.mockReturnValue({ isAdminUser: true });
-      isTagsTaskType.mockReturnValue(false);
       const task: Task = {
         ...MOCK_TASK,
         type: TaskEntityType.RequestApproval,
@@ -1504,9 +1493,7 @@ describe('TaskTabNew Component', () => {
 
   it('keeps release approval hidden until a review panel reports the release loaded', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
-    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
     useAuth.mockReturnValue({ isAdminUser: true });
-    isTagsTaskType.mockReturnValue(false);
     let reportReady: OntologyReviewPanelProps['onReadyChange'] | undefined;
     const ReviewPanel = ({ onReadyChange }: OntologyReviewPanelProps) => {
       reportReady = onReadyChange;
@@ -1571,9 +1558,7 @@ describe('TaskTabNew Component', () => {
       ]
     ) => {
       const { useAuth } = require('../../../../hooks/authHooks');
-      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
       useAuth.mockReturnValue({ isAdminUser: false });
-      isTagsTaskType.mockReturnValue(false);
       const task: Task = {
         ...MOCK_TASK,
         type: TaskEntityType.RequestApproval,
@@ -1663,9 +1648,7 @@ describe('TaskTabNew Component', () => {
 
   it('does not fall back to legacy approval while a native workflow is starting', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
-    const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
     useAuth.mockReturnValue({ isAdminUser: true });
-    isTagsTaskType.mockReturnValue(false);
     const task: Task = {
       ...MOCK_TASK,
       type: TaskEntityType.RequestApproval,

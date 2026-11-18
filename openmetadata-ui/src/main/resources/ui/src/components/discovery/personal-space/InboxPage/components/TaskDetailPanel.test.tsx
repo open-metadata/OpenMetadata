@@ -61,6 +61,7 @@ jest.mock('constants/Task.constant', () => ({
 jest.mock('rest/tasksAPI', () => ({
   TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
     .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
