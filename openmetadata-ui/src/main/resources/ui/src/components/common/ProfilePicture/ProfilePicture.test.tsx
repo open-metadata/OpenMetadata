@@ -12,7 +12,7 @@
  */
 
 import { Avatar } from '@openmetadata/ui-core-components';
-import { findByTestId, render } from '@testing-library/react';
+import { findByTestId, render, screen } from '@testing-library/react';
 import userClassBase from '../../../utils/UserClassBase';
 import ProfilePicture from './ProfilePicture';
 
@@ -217,29 +217,30 @@ describe('Test ProfilePicture component', () => {
     expect(props.className).toBe('custom');
   });
 
-  it('draws a bot icon in place of the logo when one is registered', () => {
-    const BotIcon = () => null;
+  it('draws a registered bot icon instead of the logo and initials', () => {
+    const { Avatar: RealAvatar } = jest.requireActual(
+      '@openmetadata/ui-core-components'
+    );
+    const mockAvatar = Avatar as jest.Mock;
+    const mockedAvatarImpl = mockAvatar.getMockImplementation();
+    mockAvatar.mockImplementation(RealAvatar);
     const getBotIcon = jest
       .spyOn(userClassBase, 'getBotIcon')
-      .mockReturnValue(BotIcon);
+      .mockReturnValue(() => <svg data-testid="bot-icon" />);
     mockUseUserProfile.mockReturnValue([
       '/bot-logo.svg',
       false,
-      { isBot: true, name: 'aiautomationapplicationbot' },
+      { isBot: true, name: 'collateaiapplicationbot' },
     ]);
-    (Avatar as jest.Mock).mockClear();
 
-    render(<ProfilePicture {...mockData} />);
+    const { container } = render(<ProfilePicture {...mockData} />);
 
-    const props = (Avatar as jest.Mock).mock.calls[0][0];
-
-    expect(getBotIcon).toHaveBeenCalledWith('aiautomationapplicationbot');
-    expect(props.placeholderIcon).toBe(BotIcon);
-    expect(props.src).toBeUndefined();
-    expect(props.initials).toBeUndefined();
-    expect(props.contrastBorder).toBe(false);
+    expect(screen.getByTestId('bot-icon')).toBeInTheDocument();
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.queryByText('T')).not.toBeInTheDocument();
 
     getBotIcon.mockRestore();
+    mockAvatar.mockImplementation(mockedAvatarImpl);
   });
 
   it('keeps the tinted, outlined avatar for a bot without a logo', () => {
