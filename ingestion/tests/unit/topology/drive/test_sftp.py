@@ -19,9 +19,13 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.generated.schema.entity.services.connections.drive.sftp.basicAuth import (
+    UsernamePasswordAuthentication,
+)
+from metadata.generated.schema.entity.services.connections.drive.sftp.keyAuth import (
+    PrivateKeyAuthentication,
+)
 from metadata.generated.schema.entity.services.connections.drive.sftpConnection import (
-    BasicAuth,
-    KeyAuth,
     SftpConnection,
 )
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -209,14 +213,14 @@ class TestSftpConnection(TestCase):
     """Test SFTP connection configuration"""
 
     def test_basic_auth_config(self):
-        """Test BasicAuth configuration"""
-        auth = BasicAuth(username="testuser", password="testpass")
+        """Test username/password auth configuration"""
+        auth = UsernamePasswordAuthentication(username="testuser", password="testpass")
         self.assertEqual(auth.username, "testuser")
         self.assertEqual(auth.password.get_secret_value(), "testpass")
 
     def test_key_auth_config(self):
-        """Test KeyAuth configuration"""
-        auth = KeyAuth(
+        """Test private-key auth configuration"""
+        auth = PrivateKeyAuthentication(
             username="testuser",
             privateKey="-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
             privateKeyPassphrase="passphrase",
@@ -230,7 +234,7 @@ class TestSftpConnection(TestCase):
         config = SftpConnection(
             host="localhost",
             port=22,
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             rootDirectories=["/data", "/home"],
         )
         self.assertEqual(config.host, "localhost")
@@ -383,7 +387,7 @@ class TestSftpConnectionModule(TestCase):
         connection = SftpConnection(
             host="localhost",
             port=22,
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
         )
 
         client = SftpConnectionHandler(connection)._get_client()
@@ -412,7 +416,7 @@ class TestSftpConnectionModule(TestCase):
         connection = SftpConnection(
             host="localhost",
             port=2222,
-            authType=KeyAuth(
+            authType=PrivateKeyAuthentication(
                 username="user",
                 privateKey="-----BEGIN RSA PRIVATE KEY-----\ntest\n-----END RSA PRIVATE KEY-----",
             ),
@@ -589,7 +593,7 @@ class TestConfigOptions(TestCase):
         """Test structuredDataFilesOnly defaults to False"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
         )
         self.assertFalse(connection.structuredDataFilesOnly)
 
@@ -597,7 +601,7 @@ class TestConfigOptions(TestCase):
         """Test structuredDataFilesOnly can be enabled"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             structuredDataFilesOnly=True,
         )
         self.assertTrue(connection.structuredDataFilesOnly)
@@ -606,7 +610,7 @@ class TestConfigOptions(TestCase):
         """Test extractSampleData defaults to False"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
         )
         self.assertFalse(connection.extractSampleData)
 
@@ -614,7 +618,7 @@ class TestConfigOptions(TestCase):
         """Test extractSampleData can be enabled"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             extractSampleData=True,
         )
         self.assertTrue(connection.extractSampleData)
@@ -623,7 +627,7 @@ class TestConfigOptions(TestCase):
         """Test both options can be enabled together"""
         connection = SftpConnection(
             host="localhost",
-            authType=BasicAuth(username="user", password="pass"),
+            authType=UsernamePasswordAuthentication(username="user", password="pass"),
             structuredDataFilesOnly=True,
             extractSampleData=True,
         )
