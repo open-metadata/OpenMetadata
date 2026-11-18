@@ -61,6 +61,7 @@ public class PatchEntityTool implements McpTool {
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
   //   notificationTemplate provider-aware EDIT_ALL authorization
+  //   ontologyChangeSet    draft scope, state transitions and owned edit lease
   //   persona              authorizeAdmin
   //   testCase             table-or-testCase authorization, sample cleanup
   //   testSuite            getAuthRequestsForUpdate authorization
@@ -79,6 +80,7 @@ public class PatchEntityTool implements McpTool {
           Entity.INGESTION_PIPELINE,
           Entity.INTAKE_FORM,
           Entity.NOTIFICATION_TEMPLATE,
+          Entity.ONTOLOGY_CHANGE_SET,
           Entity.PERSONA,
           Entity.TEST_CASE,
           Entity.TEST_SUITE,

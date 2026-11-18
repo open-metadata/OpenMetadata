@@ -250,6 +250,10 @@ public class GetEntityTool implements McpTool {
       Map<String, Object> params,
       String entityType,
       String fqn) {
+    if (Entity.ONTOLOGY_CHANGE_SET.equals(entityType)) {
+      throw new IllegalArgumentException(
+          "Use the dedicated get_ontology_change_set tool with its id; draft scope checks are required");
+    }
     List<String> includes =
         McpParams.getStringList(params, INCLUDE_PARAM).stream().distinct().toList();
     if (includes.size() == 1 && includes.contains(INCLUDE_CONTENT)) {

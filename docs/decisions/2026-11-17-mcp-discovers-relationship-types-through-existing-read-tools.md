@@ -1,7 +1,7 @@
 # MCP discovers relationship types through the existing read tools
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-17 (initial)
+- **Revisions:** v1 2026-11-17 (initial); v2 2026-11-18 (link the ontology write follow-up)
 - **Deciders:** Contributor implementation for #33459
 - **Guard:** `RelationshipTypeToolDiscoveryTest`, `RelationshipTypeReadContractTest`,
   `SearchMetadataToolTest#relationshipCatalogSearchPreservesConstraintsAndContinuesTheCallersPage`
@@ -30,5 +30,5 @@ search-backed read tool would duplicate that capability.
 
 Agents can discover the existing read path and inspect governed constraints without a new tool,
 RDF dependency or permission change. Search remains index-backed and subject to its existing
-result window and access-control configuration. This is a partial response to #33459: typed
-relation writes, AI suggestions and change-set read/submission tools require separate work.
+result window and access-control configuration. The typed relation and change-set workflow is
+specified separately in ADR:2026-11-18-mcp-ontology-writes-reuse-authorized-rest-actions.

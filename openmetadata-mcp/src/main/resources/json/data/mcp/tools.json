@@ -1093,6 +1093,313 @@
           }
         }
       }
+    },
+    {
+      "name": "create_term_relation",
+      "title": "Suggest a typed term relation",
+      "description": "Add a typed glossary-term relation with server-stamped AiSuggested provenance and the normal Unprocessed lifecycle status. Read the relationshipType catalog first with search_metadata(entityType=relationshipType), then get_entity_details to inspect constraints. Requires caller ViewAll on both terms and EditAll on the source; canonical validation, idempotence and approval holds apply. A pendingApproval result is not a persisted edge. AiSuggested records provenance; it does not itself guarantee a reviewer task. For multi-operation proposals use create_ontology_change_set. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "sourceTermId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "targetTermId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "relationType": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Exact governed relationshipType name."
+          }
+        },
+        "required": [
+          "sourceTermId",
+          "targetTermId",
+          "relationType"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "create_ontology_change_set",
+      "title": "Create an ontology proposal",
+      "description": "Create a DRAFT OntologyChangeSet with typed operations through the canonical scope-authorized creation API and normal limits. This only stores a proposal; it does not apply operations or publish an ontology release. Choose either glossaries (FQNs) or a native ontology FQN. Retain sourceMemoryIds, rationale, confidence and modelId where applicable. Then get_ontology_change_set, acquire an explicit ontology_change_set_lease and submit_ontology_change_set. The server stamps the caller and DRAFT state. No admin shortcut or RDF requirement.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "glossaries": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "uniqueItems": true
+          },
+          "ontology": {
+            "type": "string"
+          },
+          "baseWorkingRevision": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "operations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "description": "Canonical OntologyChangeOperation, not JSON Patch. Use describe_entity_type(entityType=ontologyChangeSet) for payload schemas. Existing targets require baseVersion. Proposal validation and scope authorization are identical to REST.",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "operationType": {
+                  "type": "string",
+                  "enum": [
+                    "CREATE_GLOSSARY",
+                    "CREATE_TERM",
+                    "UPDATE_TERM",
+                    "DELETE_TERM",
+                    "ADD_RELATIONSHIP",
+                    "UPDATE_RELATIONSHIP",
+                    "DELETE_RELATIONSHIP",
+                    "UPSERT_MAPPING",
+                    "DELETE_MAPPING",
+                    "UPSERT_AXIOM",
+                    "DELETE_AXIOM",
+                    "UPSERT_CONCEPT",
+                    "DELETE_CONCEPT",
+                    "UPSERT_PROPERTY",
+                    "DELETE_PROPERTY"
+                  ]
+                },
+                "targetId": {
+                  "type": "object"
+                },
+                "baseVersion": {
+                  "description": "Version used for optimistic concurrency. Omitted for create operations.",
+                  "type": "number",
+                  "minimum": 0.1,
+                  "multipleOf": 0.1
+                },
+                "relationship": {
+                  "type": "object"
+                },
+                "mapping": {
+                  "type": "object"
+                },
+                "axiom": {
+                  "type": "object"
+                },
+                "term": {
+                  "type": "object"
+                },
+                "glossary": {
+                  "type": "object"
+                },
+                "sourceMemoryIds": {
+                  "description": "Published context memories that support this AI suggestion.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 20
+                },
+                "confidence": {
+                  "description": "Model confidence in this AI suggestion, from 0 to 1.",
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                "rationale": {
+                  "description": "Model explanation of the evidence behind this AI suggestion.",
+                  "type": "string",
+                  "maxLength": 2000
+                },
+                "modelId": {
+                  "description": "Identifier of the model that produced this AI suggestion.",
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE"
+                  ],
+                  "default": "ACTIVE"
+                },
+                "requiresConceptIris": {
+                  "description": "IRIs of concepts that an import expects to create in the same change set. Applying the operation without an UPSERT_CONCEPT operation for each of them is refused.",
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                },
+                "concept": {
+                  "type": "object"
+                },
+                "property": {
+                  "type": "object"
+                }
+              },
+              "required": [
+                "id",
+                "operationType",
+                "state"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "name",
+          "displayName",
+          "description",
+          "operations"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "get_ontology_change_set",
+      "title": "Read an ontology proposal",
+      "description": "Read one caller-visible non-deleted OntologyChangeSet including typed operations, state, undoCursor, scope and applicationResult. Uses canonical draft scope checks (edit permission on the scoped glossary or ontology) and change-set view permissions. Submitted is not approved or applied. Works without RDF; does not run or apply operations.",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "idempotentHint": true,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          }
+        },
+        "required": [
+          "id"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "ontology_change_set_lease",
+      "title": "Manage an ontology proposal lease",
+      "description": "Explicitly ACQUIRE or RELEASE the caller-owned edit lease for an accessible OntologyChangeSet. Requires canonical change-set edit authorization and readable draft scope. Use a unique sessionId; ACQUIRE returns version for submit. Renew by ACQUIRE with the current expectedVersion. Foreign, expired and stale lease rules are enforced by the normal API; never retry by stealing a lease. RELEASE after submission. No operations are applied. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "ACQUIRE",
+              "RELEASE"
+            ]
+          },
+          "sessionId": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "expectedVersion": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "leaseSeconds": {
+            "type": "integer",
+            "minimum": 10,
+            "maximum": 300,
+            "default": 60
+          }
+        },
+        "required": [
+          "id",
+          "action",
+          "sessionId"
+        ],
+        "additionalProperties": false
+      }
+    },
+    {
+      "name": "submit_ontology_change_set",
+      "title": "Submit an ontology proposal",
+      "description": "Transition an existing DRAFT OntologyChangeSet to SUBMITTED through canonical scope authorization and the current caller-owned edit lease. Read the proposal first; provide the sessionId and version returned by ontology_change_set_lease. Submission stores review intent, not approval, application, release publication or guaranteed reviewer-task creation. Existing governance and review must continue through the normal OpenMetadata UI/API; this tool never applies changes. Release the lease after submission. Works without RDF.",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "idempotentHint": false,
+        "openWorldHint": false
+      },
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "lease": {
+            "type": "object",
+            "properties": {
+              "sessionId": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "version": {
+                "type": "integer",
+                "minimum": 1
+              }
+            },
+            "required": [
+              "sessionId",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "id",
+          "lease"
+        ],
+        "additionalProperties": false
+      }
     }
   ]
 }

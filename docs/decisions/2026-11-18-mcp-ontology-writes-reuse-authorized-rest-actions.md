@@ -1,0 +1,72 @@
+# MCP ontology proposals reuse the authorized REST actions
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-18 (initial)
+- **Deciders:** Contributor implementation for #33459
+- **Guard:** `OntologyToolDiscoveryTest`, `OntologyToolContractTest`, `OntologyToolExecutionTest`,
+  `CollectionRegistryTest`, `McpOntologyGovernanceIT`
+- **Related:** #33459; ADR:2026-11-17-mcp-discovers-relationship-types-through-existing-read-tools;
+  ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
+
+## Context
+
+The relationship catalog is already discoverable through explicit `relationshipType` search
+and named detail reads. Typed relation creation and the ontology proposal lifecycle have additional
+REST authorization and concurrency checks. Generic repository access cannot substitute for those
+checks: change-set reads require access to the draft's scope, creation checks the affected scope
+and normal entity limits, and submission requires a current caller-owned edit lease.
+
+## Decision
+
+- `create_term_relation` takes source and target glossary-term IDs and a governed relationship-type
+  name. It requires view permission on both terms before calling the canonical source-edit action.
+  It stamps `AiSuggested` provenance, accepts no caller-supplied lifecycle status or attribution,
+  and leaves default status, validation, inverse handling, deduplication and approval staging to
+  the normal repository. `AiSuggested` is origin metadata, not evidence of correctness or approval.
+- `create_ontology_change_set` decodes the canonical typed create request, including typed
+  operations and their evidence fields. The MCP surface accepts neither state/cursor overrides
+  nor ownership/provider/source-pack changes. The canonical mapper stamps the caller, starts a
+  `DRAFT`, and the normal resource enforces scope, create permissions and limits. Operations are
+  retained for review; they are not applied by creation.
+- `get_ontology_change_set` reads one non-deleted proposal with operations and application result,
+  through the canonical draft-scope and entity-view checks. Generic `get_entity_details` refuses
+  change sets, including batch/content reads, and directs callers to the dedicated tool.
+- `ontology_change_set_lease` explicitly acquires, renews or releases a lease. It requires a
+  readable draft and uses the normal edit-lock resource's edit authorization. Renewing requires
+  the current version; no foreign lease is stolen or implicitly replaced. Submission takes the
+  exact caller-owned session/version token. The canonical lease service enforces holder, expiry,
+  session and version. Generic `patch_entity` refuses change sets rather than skipping that path.
+- `submit_ontology_change_set` first requires a readable draft, then invokes the canonical scope-
+  and lease-checked transition. Its result is `SUBMITTED`, not approval, application or release
+  publication. Application, undo/redo and discard remain in the existing UI/API workflow.
+- MCP reuses the initialized resource instances from a typed, fail-closed collection-registry
+  lookup. It does not construct resources per call or register permission mappings again. Direct
+  invocation uses the actual caller security context and a URI context built from the configured
+  public base URL and API root. The decoded generated requests receive recursive Bean Validation;
+  invalid requests are transport-level 400 errors, not server faults.
+- Successful writes publish the existing MCP entity change event because direct invocation does
+  not pass through the REST response filter. Actual 201 creation responses can omit the change
+  header; other writes must carry it. Approval holds retain the pending-change ID and
+  `pendingApproval` outcome, without an update event or a claim that a relation was persisted.
+  No-change responses report `unchanged`.
+- All five tools operate without RDF. Read-only and disabled-tool controls continue to use the
+  ordinary MCP registration path and tool annotations. No administrator shortcut is added.
+
+## Consequences
+
+An agent can discover a valid relation type, contribute a typed AI-suggested edge, or create,
+read and submit a typed proposal without applying it. Lease management is explicit and recoverable
+through the existing API. Generic tools cannot offer a shorter change-set read/write path that
+omits the special scope and lease checks.
+
+Submission currently records review intent as a durable state. The existing submit resource does
+not automatically create a reviewer task, and the default workflow consumer does not process
+`ontologyChangeSet`. Existing workflow handling can also skip bot update events. These tools do
+not promise automatic reviewer routing, human approval, model compliance, or that an AI suggestion
+is true. Review and publication must continue through the configured normal OpenMetadata process.
+
+The in-process adapter preserves the canonical authorized actions rather than duplicating their
+private scope logic. It does not reproduce every HTTP response-filter effect, such as websocket
+notifications. Unit tests with resource/authorizer doubles establish transport and response
+contracts; actual authentication, authorization, persistence and lease integration require the
+dedicated MCP integration test against a running supported stack.
