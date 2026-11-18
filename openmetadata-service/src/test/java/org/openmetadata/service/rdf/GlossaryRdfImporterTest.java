@@ -75,12 +75,6 @@ class GlossaryRdfImporterTest {
           rdfs:range hcp:Drug ;
           owl:inverseOf hcp:prescribedBy .
 
-      hcp:prescribedBy a owl:ObjectProperty ;
-          rdfs:label "prescribed by" ;
-          rdfs:domain hcp:Drug ;
-          rdfs:range hcp:Physician ;
-          owl:inverseOf hcp:prescribes .
-
       hcp:hasNpiNumber a owl:DatatypeProperty ;
           rdfs:label "has NPI number" ;
           rdfs:domain hcp:HealthcareProvider ;
@@ -188,134 +182,52 @@ class GlossaryRdfImporterTest {
     assertEquals(1, type.getCardinality().getSourceMax());
   }
 
-  /**
-   * The importer must NOT stamp an inverse reference whose referent will never exist. Before the
-   * fix it stamped {@code RelationshipTypeIds.stableId("prescribedBy")} for an inverse target that
-   * was never declared as an ObjectProperty in the ontology; the resulting dangling reference
-   * broke TO-side {@code relatedTerms} reads ({@code applyInverse} → {@code require} threw) and
-   * silently dropped edges whose canonical stored type was the inverse. This test pins the
-   * non-regression: the inverse stays null and the importer surfaces a message so the loss of
-   * inverse wiring is reported rather than silently persisted.
-   */
-  @Test
-  void leavesInverseUnsetWhenTargetIsNotDeclaredAsObjectProperty() {
-    String ontology =
-        """
-        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
-        @prefix hcp:  <http://example.com/ontology/hcp#> .
-
-        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" .
-        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
-
-        hcp:prescribes a owl:ObjectProperty ;
-            rdfs:label "prescribes" ;
-            rdfs:domain hcp:Physician ;
-            rdfs:range hcp:Drug ;
-            owl:inverseOf hcp:prescribedBy .
-        """;
-    Model model = ModelFactory.createDefaultModel();
-    model.read(new StringReader(ontology), null, "TURTLE");
-    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
-
-    RelationshipType type = importer.buildRelationType(model, "prescribes");
-
-    assertNull(type.getInverse(), "an undeclared inverse target must not produce a reference");
-    assertEquals(1, importer.importMessages().size(), "the dropped inverse wiring is surfaced");
-    assertTrue(
-        importer.importMessages().get(0).contains("prescribedBy"),
-        "the message identifies the missing inverse target: " + importer.importMessages());
-  }
-
-  @Test
-  void stampsInverseReferenceWhenInverseTargetIsDeclaredAsObjectProperty() {
-    String ontology =
-        """
-        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
-        @prefix hcp:  <http://example.com/ontology/hcp#> .
-
-        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" .
-        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
-
-        hcp:prescribes a owl:ObjectProperty ;
-            rdfs:label "prescribes" ;
-            rdfs:domain hcp:Physician ;
-            rdfs:range hcp:Drug ;
-            owl:inverseOf hcp:prescribedBy .
-
-        hcp:prescribedBy a owl:ObjectProperty ;
-            rdfs:label "prescribed by" ;
-            rdfs:domain hcp:Drug ;
-            rdfs:range hcp:Physician .
-        """;
-    Model model = ModelFactory.createDefaultModel();
-    model.read(new StringReader(ontology), null, "TURTLE");
-    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
-
-    RelationshipType type = importer.buildRelationType(model, "prescribes");
-
-    assertNotNull(type.getInverse(), "a declared inverse target produces a reference");
-    assertEquals("prescribedBy", type.getInverse().getName());
-    assertNotNull(type.getInverse().getId(), "the inverse reference carries a stable id");
-    assertTrue(
-        importer.importMessages().isEmpty(),
-        "no message is surfaced for a fully-resolvable inverse: " + importer.importMessages());
-  }
-
-  /**
-   * owl:inverseOf is symmetric, but a file may declare only one half ({@code A owl:inverseOf B}
-   * with {@code B a owl:ObjectProperty} and no {@code B owl:inverseOf A}). The registration pass
-   * still registers B as the inverse target; without wiring the reverse reference B.inverse stays
-   * null. A source term whose UUID sorts after the target's is then canonicalised to B (see
-   * GlossaryTermRepository.computeCanonicalRelationType) and applyInverse on B cannot flip it
-   * back, so the source shows B instead of its authored A. The importer must resolve the partner
-   * pointing back at B so the pair is wired in both directions.
-   */
   @Test
   void wiresReverseInverseWhenOnlyOneDirectionIsDeclared() {
+    assertInversePair("hcp:prescribes owl:inverseOf hcp:prescribedBy .");
+  }
+
+  @Test
+  void wiresInverseWhenOnlyReverseDeclarationIsPresent() {
+    assertInversePair("hcp:prescribedBy owl:inverseOf hcp:prescribes .");
+  }
+
+  @Test
+  void ignoresBlankInverseTargetsAndSubjectsWhileFindingNamedPartner() {
+    assertInversePair(
+        """
+        hcp:prescribes owl:inverseOf [] .
+        [] owl:inverseOf hcp:prescribes .
+        hcp:prescribedBy owl:inverseOf hcp:prescribes .
+        """);
+  }
+
+  private void assertInversePair(String declaration) {
     String ontology =
         """
-        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
-        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
-        @prefix hcp:  <http://example.com/ontology/hcp#> .
-
-        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" .
-        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
-
-        hcp:prescribes a owl:ObjectProperty ;
-            rdfs:label "prescribes" ;
-            rdfs:domain hcp:Physician ;
-            rdfs:range hcp:Drug ;
-            owl:inverseOf hcp:prescribedBy .
-
-        hcp:prescribedBy a owl:ObjectProperty ;
-            rdfs:label "prescribed by" ;
-            rdfs:domain hcp:Drug ;
-            rdfs:range hcp:Physician .
-        """;
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:prescribes a owl:ObjectProperty .
+        hcp:prescribedBy a owl:ObjectProperty .
+        """
+            + declaration;
     Model model = ModelFactory.createDefaultModel();
-    model.read(new StringReader(ontology), null, "TURTLE");
-    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
 
-    RelationshipType forward = importer.buildRelationType(model, "prescribes");
-    RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
+      RelationshipType forward = importer.buildRelationType(model, "prescribes");
+      RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
 
-    assertNotNull(forward.getInverse(), "the forward half wires its declared inverse");
-    assertEquals("prescribedBy", forward.getInverse().getName());
-    assertNotNull(
-        reverse.getInverse(),
-        "the reverse half wires the partner that points back at it, "
-            + "so applyInverse can flip a canonicalised B back to the authored A");
-    assertEquals("prescribes", reverse.getInverse().getName());
-    assertNotNull(
-        reverse.getInverse().getId(), "the reverse inverse reference carries a stable id");
-    assertTrue(
-        importer.importMessages().isEmpty(),
-        "no message is surfaced for a fully-resolvable pair: " + importer.importMessages());
+      assertNotNull(forward.getInverse());
+      assertEquals("prescribedBy", forward.getInverse().getName());
+      assertEquals(reverse.getId(), forward.getInverse().getId());
+      assertNotNull(reverse.getInverse());
+      assertEquals("prescribes", reverse.getInverse().getName());
+      assertEquals(forward.getId(), reverse.getInverse().getId());
+    } finally {
+      model.close();
+    }
   }
 
   @Test

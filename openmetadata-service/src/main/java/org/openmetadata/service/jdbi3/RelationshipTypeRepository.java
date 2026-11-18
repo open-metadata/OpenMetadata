@@ -143,12 +143,6 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   private EntityReference hydrate(
       final EntityReference reference, final String selfFqn, final UUID selfId) {
     if (reference == null || reference.getId() != null) {
-      // A pre-stamped id is set by the seed loader and the RDF glossary importer for both
-      // halves of a mutual inverse pair via RelationshipTypeIds.stableId(name); when the
-      // referent is the partner persisted later in the same batch it does not yet exist, so
-      // an existence-by-id check here would break both batch paths. Trust the stamped id for
-      // these internal callers; clients of the public REST API go through the FQN-only branch
-      // below, which is the path that can produce a dangling reference if left unchecked.
       return reference;
     }
     final String fqn = reference.getFullyQualifiedName();
@@ -162,12 +156,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     if (resolved != null) {
       return reference.withId(resolved.getId());
     }
-    // Defense in depth for the public REST path: a client-supplied
-    // inverse/replacedBy/propertyChain/disjointWith FQN that does not resolve to an existing
-    // relationship type is a dangling reference. Accepting it would persist a non-resolving
-    // pointer and later break TO-side relatedTerms reads through
-    // GlossaryTermRepository.applyInverse (which calls require(inverseName)).
-    throw new BadRequestException("Relationship type '" + fqn + "' is not registered");
+    return reference;
   }
 
   @Override
