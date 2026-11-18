@@ -11,7 +11,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.ColumnOccurrenceRef;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.CreateTopic;
 import org.openmetadata.schema.api.data.MetadataStatus;
 import org.openmetadata.schema.api.domains.CreateDomain;
@@ -43,7 +46,6 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
-import org.openmetadata.schema.entity.services.MessagingService;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DataModelType;
@@ -217,204 +219,93 @@ public class ColumnGridResourceIT {
     assertTrue(page1.getColumns().size() <= 2, "Should respect page size limit");
   }
 
-  /**
-   * Regression test for the multi-group browse-path pagination bug. When {@code entityTypes}
-   * selects types whose column field paths live under different keyword fields (e.g.
-   * {@code table} → {@code columns.name.keyword} and {@code topic} →
-   * {@code messageSchema.schemaFields.name.keyword}), the previous browse path ran one composite
-   * aggregation per group but shared a single {@code after_key} cursor across them — inflating
-   * the first page to {@code size × #groups} items, and on later pages silently skipping or
-   * re-serving columns depending on which group's cursor "won" (HashMap iteration order).
-   *
-   * <p>This test creates data spanning two field-path groups and asserts the two visible symptoms:
-   *
-   * <ol>
-   *   <li>Page 1 of the browse path (no {@code columnNamePattern}) must respect the requested
-   *       {@code size}. The buggy code returned up to {@code size × 2} items on page 1.
-   *   <li>Paginating through the test's own columns via {@code columnNamePattern} (which routes to
-   *       the same unified names-agg path the browse path now uses) must serve every test column
-   *       exactly once across all pages — no skips, no duplicates, and the page count must equal
-   *       {@code totalUniqueColumns}.
-   * </ol>
-   */
+  /** Browsing table columns and topic fields together pages through each name exactly once. */
   @Test
-  void test_getColumnGrid_multiGroupBrowsePaginationRespectsSizeAndServesAllColumns(
-      TestNamespace ns) throws Exception {
+  void test_getColumnGrid_browseAcrossColumnFieldsServesEachColumnOnce(TestNamespace ns)
+      throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain =
+        Domains.create(
+            new CreateDomain()
+                .withName(ns.prefix("browse_domain"))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Scopes the multi-field browse walk"));
+    List<String> domains = List.of(domain.getFullyQualifiedName());
+    String prefix = ns.shortPrefix() + "_browse_";
+    String c0 = prefix + "c0";
+    String c1 = prefix + "c1";
+    String c2 = prefix + "c2";
+    String c3 = prefix + "c3";
+    String c4 = prefix + "c4";
+    String c5 = prefix + "c5";
+    String c6 = prefix + "c6";
+    String c8 = prefix + "c8";
 
-    // 8 table columns live under columns.name.keyword; 5 topic fields under
-    // messageSchema.schemaFields.name.keyword. Two distinct groups is the minimal setup that
-    // triggers the multi-group browse-path bug.
-    DatabaseService dbService = DatabaseServiceTestFactory.createPostgres(ns);
-    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, dbService);
-    MessagingService messagingService = MessagingServiceTestFactory.createKafka(ns);
+    DatabaseSchema schema =
+        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    client
+        .tables()
+        .create(
+            new CreateTable()
+                .withName(ns.prefix("browse_table"))
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    Stream.of(c0, c2, c4, c6, c8)
+                        .map(
+                            name ->
+                                Columns.build(name)
+                                    .withType(ColumnDataType.VARCHAR)
+                                    .withLength(255)
+                                    .create())
+                        .toList())
+                .withDomains(domains));
+    client
+        .topics()
+        .create(
+            new CreateTopic()
+                .withName(ns.prefix("browse_topic"))
+                .withService(MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName())
+                .withPartitions(1)
+                .withMessageSchema(
+                    new MessageSchema()
+                        .withSchemaType(SchemaType.JSON)
+                        .withSchemaFields(
+                            Stream.of(c1, c3, c5, c8)
+                                .map(
+                                    name ->
+                                        new Field()
+                                            .withName(name)
+                                            .withDataType(FieldDataType.STRING))
+                                .toList()))
+                .withDomains(domains));
 
-    int tableCount = 8;
-    for (int i = 0; i < tableCount; i++) {
-      String colName = ns.prefix("mgpag_t_" + i);
-      Column col = Columns.build(colName).withType(ColumnDataType.VARCHAR).withLength(255).create();
-      Tables.create()
-          .name(ns.prefix("mgpag_table_" + i))
-          .inSchema(schema.getFullyQualifiedName())
-          .withColumns(List.of(col))
-          .execute();
-    }
-
-    int topicCount = 5;
-    for (int i = 0; i < topicCount; i++) {
-      String fieldName = ns.prefix("mgpag_f_" + i);
-      Field field = new Field().withName(fieldName).withDataType(FieldDataType.STRING);
-      CreateTopic request =
-          new CreateTopic()
-              .withName(ns.prefix("mgpag_topic_" + i))
-              .withService(messagingService.getFullyQualifiedName())
-              .withPartitions(3)
-              .withMessageSchema(
-                  new MessageSchema()
-                      .withSchemaType(SchemaType.JSON)
-                      .withSchemaFields(List.of(field)));
-      client.topics().create(request);
-    }
-
+    String query = "entityTypes=table,topic&domainId=" + domain.getId();
     waitForSearchIndexRefresh(ns);
-
-    int totalTestColumns = tableCount + topicCount; // 13
-    int pageSize = 3;
-
-    // (1) Browse path: page 1 must respect the requested size. The buggy code returned up to
-    //     size × #groups = 6 items on page 1 with size=3 and two groups.
-    await("Wait for multi-group browse page 1 to respect requested size")
+    await("Wait for the table and the topic to be indexed")
         .atMost(Duration.ofSeconds(45))
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
-            () -> {
-              ColumnGridResponse browsePage1 =
-                  getColumnGrid(client, "size=" + pageSize + "&entityTypes=table,topic");
-              assertNotNull(browsePage1);
-              assertNotNull(browsePage1.getColumns());
-              assertTrue(
-                  browsePage1.getColumns().size() <= pageSize,
-                  "browse page 1 must respect requested size "
-                      + pageSize
-                      + "; got "
-                      + browsePage1.getColumns().size()
-                      + " (the multi-group shared-cursor bug inflates page 1 to size × "
-                      + "#groups)");
-            });
+            () -> assertEquals(8, getColumnGrid(client, query + "&size=100").getColumns().size()));
 
-    // (2) Paginate through the test's columns via columnNamePattern and verify every test
-    //     column is served exactly once across all pages. The pattern path now routes through
-    //     the same unified names-agg method as the browse path, so this also exercises the
-    //     per-group terms aggregation + dedup + offset slicing end-to-end on a multi-group
-    //     request.
-    String baseQuery =
-        "entityTypes=table,topic&columnNamePattern="
-            + URLEncoder.encode(ns.prefix("mgpag_"), StandardCharsets.UTF_8)
-            + "&size="
-            + pageSize;
-
-    await("Wait for all " + totalTestColumns + " test columns to be indexed")
-        .atMost(Duration.ofSeconds(45))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              ColumnGridResponse first = getColumnGrid(client, baseQuery);
-              assertEquals(
-                  totalTestColumns,
-                  first.getTotalUniqueColumns(),
-                  "must report all " + totalTestColumns + " test columns");
-            });
-
-    java.util.Set<String> seenNames = new java.util.HashSet<>();
+    List<List<String>> pages = new ArrayList<>();
+    ColumnGridItem shared = null;
     String cursor = null;
-    int pages = 0;
-    int totalServed = 0;
-    while (true) {
-      String query =
-          baseQuery
-              + (cursor != null
-                  ? "&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8)
-                  : "");
-      ColumnGridResponse page = getColumnGrid(client, query);
-      assertNotNull(page.getColumns(), "page " + pages + " columns should not be null");
-      assertTrue(
-          page.getColumns().size() <= pageSize,
-          "page " + pages + " size must respect requested page size " + pageSize);
-      for (ColumnGridItem item : page.getColumns()) {
-        assertTrue(
-            seenNames.add(item.getColumnName()),
-            "Duplicate column '" + item.getColumnName() + "' served across pages — regression");
-      }
-      totalServed += page.getColumns().size();
+    do {
+      String cursorParam =
+          cursor == null ? "" : "&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8);
+      ColumnGridResponse page = getColumnGrid(client, query + "&size=3" + cursorParam);
+      pages.add(page.getColumns().stream().map(ColumnGridItem::getColumnName).sorted().toList());
+      shared =
+          page.getColumns().stream()
+              .filter(item -> c8.equals(item.getColumnName()))
+              .findFirst()
+              .orElse(shared);
       cursor = page.getCursor();
-      pages++;
-      if (cursor == null || page.getColumns().isEmpty()) {
-        break;
-      }
-      if (pages > 50) {
-        org.junit.jupiter.api.Assertions.fail(
-            "Pagination did not terminate after 50 pages (size=" + pageSize + ")");
-      }
-    }
+    } while (cursor != null && pages.size() <= 3);
 
-    assertEquals(
-        totalTestColumns,
-        seenNames.size(),
-        "every test column ("
-            + totalTestColumns
-            + ") must be served exactly once; got "
-            + seenNames.size());
-    assertEquals(totalTestColumns, totalServed, "no test column should be re-served");
-
-    // (3) Browse-only cursor walk (no columnNamePattern). Section (2) routes through the
-    //     pattern path, which already used offset pagination before this PR — so a buggy
-    //     browse implementation that respects page-1 size but skips or repeats columns on
-    //     later pages would still pass section (2). This walk paginates the browse path
-    //     (entityTypes=table,topic, no pattern) to completion and asserts every test column
-    //     is served exactly once. The shared index carries columns from other concurrent
-    //     tests, so a larger page size keeps the walk bounded; non-test columns are filtered
-    //     out of the assertion by the test prefix.
-    String browseQuery = "size=100&entityTypes=table,topic";
-    String testPrefix = ns.prefix("mgpag_");
-    java.util.Set<String> seenBrowseNames = new java.util.HashSet<>();
-    String browseCursor = null;
-    int browsePages = 0;
-    while (true) {
-      String query =
-          browseQuery
-              + (browseCursor != null
-                  ? "&cursor=" + URLEncoder.encode(browseCursor, StandardCharsets.UTF_8)
-                  : "");
-      ColumnGridResponse browsePage = getColumnGrid(client, query);
-      assertNotNull(
-          browsePage.getColumns(), "browse page " + browsePages + " columns should not be null");
-      for (ColumnGridItem item : browsePage.getColumns()) {
-        if (item.getColumnName().startsWith(testPrefix)) {
-          assertTrue(
-              seenBrowseNames.add(item.getColumnName()),
-              "Duplicate column '"
-                  + item.getColumnName()
-                  + "' served across browse pages — regression");
-        }
-      }
-      browseCursor = browsePage.getCursor();
-      browsePages++;
-      if (browseCursor == null || browsePage.getColumns().isEmpty()) {
-        break;
-      }
-      if (browsePages > 500) {
-        org.junit.jupiter.api.Assertions.fail(
-            "Browse pagination did not terminate after 500 pages (size=100)");
-      }
-    }
-
-    assertEquals(
-        totalTestColumns,
-        seenBrowseNames.size(),
-        "browse cursor walk must serve every test column ("
-            + totalTestColumns
-            + ") exactly once; got "
-            + seenBrowseNames.size());
+    assertEquals(List.of(List.of(c0, c1, c2), List.of(c3, c4, c5), List.of(c6, c8)), pages);
+    assertNotNull(shared);
+    assertEquals(2, shared.getTotalOccurrences());
   }
 
   @Test

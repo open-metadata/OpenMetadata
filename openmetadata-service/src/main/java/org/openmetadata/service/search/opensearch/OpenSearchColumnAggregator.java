@@ -48,8 +48,6 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
-import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
-import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregation;
 import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import os.org.opensearch.client.opensearch._types.aggregations.CompositeBucket;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsAggregate;
@@ -139,46 +137,103 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       return aggregateColumnsWithRowFilters(request, entityTypes);
     }
 
-    // Browse + pattern paths share the same names-agg + offset pagination approach. The previous
-    // browse path ran one composite aggregation per field-path group with a single shared
-    // after_key cursor. The after_key is only valid within the composite key space that minted
-    // it, so with more than one group (e.g. entityTypes=table,topic) the shared cursor was
-    // re-applied to every group's query and the last non-null group cursor (with HashMap iteration
-    // order picking the winner) was returned. That inflated the first page to size × #groups and
-    // caused later pages to silently skip or re-serve columns. The offset-based cursor is
-    // already used by the pattern, tag and row-level-filter paths and is unaffected by the number
-    // of groups, so it is reused here.
-    String regex =
-        nullOrEmpty(request.getColumnNamePattern())
-            ? null
-            : ColumnAggregator.toCaseInsensitiveRegex(request.getColumnNamePattern());
-    return aggregateColumnsWithNames(request, entityTypes, regex);
+    // Pattern-only path (no tag filter): use terms agg with include regex
+    if (!nullOrEmpty(request.getColumnNamePattern())) {
+      return aggregateColumnsWithPattern(request, entityTypes);
+    }
+
+    return aggregateColumnsWithCompositeCursor(request, entityTypes);
   }
 
   /**
-   * Names-agg path shared by the browse and pattern-search flows (no tag filter, no row-level
-   * filter). Two queries per entity-type group: (1) lightweight names query that returns every
-   * matching column name (filtered by {@code regex} when non-null, unfiltered otherwise) plus the
-   * per-name doc_count, and (2) targeted data query with top_hits for the current page's column
-   * names. The merged set of names is sorted case-insensitively and paginated in Java by a stable
-   * search-offset cursor, which unlike a composite-agg {@code after_key} is independent of the key
-   * space any single group iterates over — so multi-group requests (e.g.
-   * entityTypes=table,topic) page correctly without skipping or re-serving columns.
+   * Browse path: one composite aggregation per column field. A composite after key is only valid
+   * within the field that produced it, so the cursor keeps one per field and {@link
+   * ColumnAggregator#nextBrowsePage} merges the per-field pages.
    */
-  private ColumnGridResponse aggregateColumnsWithNames(
-      ColumnAggregationRequest request, List<String> entityTypes, String regex) throws IOException {
+  private ColumnGridResponse aggregateColumnsWithCompositeCursor(
+      ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
+    Map<String, String> afterKeys = ColumnAggregator.decodeBrowseCursor(request.getCursor());
+    Map<String, SearchResponse<JsonData>> responsesByField = new HashMap<>();
+    Map<String, List<String>> keysByField = new HashMap<>();
+    long totalUniqueColumns = 0;
+    long totalOccurrences = 0;
 
+    // Group entity types by their column field path to minimize queries
     Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
 
-    // Display set: case-insensitive merged names. TreeSet with CASE_INSENSITIVE_ORDER dedupes
-    // names that differ only by case (e.g. "Extract"/"extract") so the page count and
-    // totalUniqueColumns reflect the merged view the grid shows.
+    for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
+      String columnNameKeyword = entry.getKey();
+      List<String> indexes = resolveIndexNames(entry.getValue());
+      Query query = buildFilters(request, columnNameKeyword, null);
+
+      try {
+        SearchResponse<JsonData> response =
+            executeSearch(
+                request, query, indexes, columnNameKeyword, afterKeys.get(columnNameKeyword));
+        responsesByField.put(columnNameKeyword, response);
+        keysByField.put(columnNameKeyword, compositeBucketKeys(response));
+
+        if (request.getCursor() == null) {
+          Map<String, Long> totals = getTotalCounts(query, indexes, columnNameKeyword);
+          totalUniqueColumns += totals.get("uniqueColumns");
+          totalOccurrences += totals.get("totalOccurrences");
+        }
+      } catch (OpenSearchException e) {
+        if (!isIndexNotFoundException(e)) {
+          throw e;
+        }
+        LOG.warn("Search index not found for indexes {}, returning empty results", indexes);
+      }
+    }
+
+    ColumnAggregator.BrowsePage page =
+        ColumnAggregator.nextBrowsePage(keysByField, afterKeys, request.getSize());
+    Map<String, List<ColumnWithContext>> allColumnsByName =
+        collectPageColumns(responsesByField, fieldPathToEntityTypes, new HashSet<>(page.names()));
+    List<ColumnGridItem> gridItems = ColumnMetadataGrouper.groupColumns(allColumnsByName);
+
+    if (request.getCursor() != null) {
+      totalUniqueColumns = allColumnsByName.size();
+      totalOccurrences = gridItems.stream().mapToInt(ColumnGridItem::getTotalOccurrences).sum();
+    }
+
+    String cursor = page.hasMore() ? ColumnAggregator.encodeBrowseCursor(page.afterKeys()) : null;
+    return buildResponse(
+        gridItems, cursor, page.hasMore(), (int) totalUniqueColumns, (int) totalOccurrences);
+  }
+
+  private Map<String, List<ColumnWithContext>> collectPageColumns(
+      Map<String, SearchResponse<JsonData>> responsesByField,
+      Map<String, List<String>> fieldPathToEntityTypes,
+      Set<String> pageKeys) {
+    Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
+    responsesByField.forEach(
+        (columnNameKeyword, response) -> {
+          String columnFieldPath =
+              resolveColumnFieldPath(fieldPathToEntityTypes.get(columnNameKeyword).getFirst());
+          parseCompositeAggResults(response, columnFieldPath, pageKeys)
+              .forEach(
+                  (name, columns) ->
+                      allColumnsByName
+                          .computeIfAbsent(name, k -> new ArrayList<>())
+                          .addAll(columns));
+        });
+    return allColumnsByName;
+  }
+
+  /**
+   * Pattern-only search path (no tag filter): uses terms aggregation with include regex to filter
+   * column names at the aggregation level. Two queries per entity-type group: (1) lightweight names
+   * query to get all matching names and total count, (2) targeted data query with top_hits for the
+   * current page.
+   */
+  private ColumnGridResponse aggregateColumnsWithPattern(
+      ColumnAggregationRequest request, List<String> entityTypes) throws IOException {
+
+    Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
+    String regex = ColumnAggregator.toCaseInsensitiveRegex(request.getColumnNamePattern());
+
     Set<String> allMatchingNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
-    // Every original spelling seen across groups, keyed by lowercase, so the page data query
-    // can fetch every case variant the display set merged. Without this, only the single
-    // spelling the TreeSet kept for each merged name reaches the data query, and the other
-    // spellings' occurrences (e.g. tasks named "Extract" and "extract") silently disappear.
-    Map<String, Set<String>> spellingsByLowerCase = new HashMap<>();
     long totalOccurrencesAcrossGroups = 0;
 
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
@@ -189,12 +244,7 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       try {
         ColumnAggregator.NamesWithCount result =
             executeNamesQuery(query, indexes, columnNameKeyword, regex);
-        for (String name : result.names()) {
-          allMatchingNames.add(name);
-          spellingsByLowerCase
-              .computeIfAbsent(name.toLowerCase(Locale.ROOT), k -> new TreeSet<>())
-              .add(name);
-        }
+        allMatchingNames.addAll(result.names());
         totalOccurrencesAcrossGroups += result.totalDocCount();
       } catch (OpenSearchException e) {
         if (!isIndexNotFoundException(e)) {
@@ -217,21 +267,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       return buildResponse(new ArrayList<>(), null, false, totalUniqueColumns, totalOccurrences);
     }
 
-    // All original spellings for the names on this page, so case variants are fetched even
-    // though the display set merges them. Mapped back to the page display name after the
-    // fetch so the merged grid item keeps one canonical key instead of splitting per spelling.
-    List<String> pageQueryNames = new ArrayList<>();
-    Map<String, String> spellingToDisplayName = new HashMap<>();
-    for (String pageName : pageNames) {
-      Set<String> variants = spellingsByLowerCase.get(pageName.toLowerCase(Locale.ROOT));
-      if (variants != null) {
-        pageQueryNames.addAll(variants);
-        for (String v : variants) {
-          spellingToDisplayName.put(v, pageName);
-        }
-      }
-    }
-
     Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
 
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
@@ -242,14 +277,11 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
       try {
         Map<String, List<ColumnWithContext>> columnsByName =
-            executePageDataQuery(
-                query, indexes, columnNameKeyword, columnFieldPath, pageQueryNames);
+            executePageDataQuery(query, indexes, columnNameKeyword, columnFieldPath, pageNames);
 
         for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
-          String displayName =
-              spellingToDisplayName.getOrDefault(colEntry.getKey(), colEntry.getKey());
           allColumnsByName
-              .computeIfAbsent(displayName, k -> new ArrayList<>())
+              .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
               .addAll(colEntry.getValue());
         }
       } catch (OpenSearchException e) {
@@ -752,30 +784,20 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     }
   }
 
-  /**
-   * Phase 1: Get all matching column names. The browse path ({@code regex == null}) paginates
-   * every distinct name via a composite aggregation whose {@code after_key} is consumed to
-   * completion within this single group — so browse is not capped at
-   * {@link ColumnAggregator#MAX_PATTERN_SEARCH_NAMES} (10,000) the way the pattern path is.
-   * The pattern path keeps the capped terms-agg with regex include (unchanged pre-PR behavior).
-   */
+  /** Phase 1: Get all matching column names using terms agg with include regex (no top_hits). */
   private ColumnAggregator.NamesWithCount executeNamesQuery(
       Query query, List<String> indexes, String columnNameKeyword, String regex)
       throws IOException {
-
-    if (regex == null) {
-      return executeBrowseNamesQuery(query, indexes, columnNameKeyword);
-    }
-
     Aggregation termsAgg =
         Aggregation.of(
             a ->
                 a.terms(
                     t ->
                         t.field(columnNameKeyword)
+                            .include(inc -> inc.regexp(regex))
                             .size(ColumnAggregator.MAX_PATTERN_SEARCH_NAMES)
-                            .order(List.of(Map.of(ColumnAggregator.AGG_KEY_ORDER, SortOrder.Asc)))
-                            .include(inc -> inc.regexp(regex))));
+                            .order(
+                                List.of(Map.of(ColumnAggregator.AGG_KEY_ORDER, SortOrder.Asc)))));
 
     SearchRequest searchRequest =
         SearchRequest.of(
@@ -801,74 +823,6 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
         LOG.warn(
             "Column name pattern matched at least {} distinct names; results truncated",
             ColumnAggregator.MAX_PATTERN_SEARCH_NAMES);
-      }
-    }
-    return new ColumnAggregator.NamesWithCount(names, totalDocCount);
-  }
-
-  /**
-   * Browse-path phase 1: paginate every distinct column name in the group's index via a composite
-   * aggregation. The composite {@code after_key} is only valid within this single group's key
-   * space, so it is consumed to completion here and never shared across groups (the bug the
-   * page-data offset cursor fixes for paging). Returns every distinct name plus the per-name
-   * doc_count so {@code totalOccurrences} is exact and browse is not capped at
-   * {@link ColumnAggregator#MAX_PATTERN_SEARCH_NAMES}.
-   */
-  private ColumnAggregator.NamesWithCount executeBrowseNamesQuery(
-      Query query, List<String> indexes, String columnNameKeyword) throws IOException {
-
-    CompositeAggregationSource source =
-        CompositeAggregationSource.of(
-            s -> s.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc)));
-
-    List<String> names = new ArrayList<>();
-    long totalDocCount = 0;
-    Map<String, FieldValue> afterKey = null;
-
-    while (true) {
-      CompositeAggregation.Builder cBuilder =
-          new CompositeAggregation.Builder()
-              .size(ColumnAggregator.NAMES_BATCH_SIZE)
-              .sources(Map.of(ColumnAggregator.COMPOSITE_SOURCE_NAME, source));
-      if (afterKey != null) {
-        cBuilder.after(afterKey);
-      }
-
-      Aggregation compositeAgg = Aggregation.of(a -> a.composite(cBuilder.build()));
-
-      SearchRequest searchRequest =
-          SearchRequest.of(
-              s ->
-                  s.index(indexes)
-                      .query(query)
-                      .aggregations(ColumnAggregator.AGG_MATCHING_COLUMNS, compositeAgg)
-                      .size(0));
-
-      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
-
-      if (response.aggregations() == null
-          || !response.aggregations().containsKey(ColumnAggregator.AGG_MATCHING_COLUMNS)) {
-        break;
-      }
-      CompositeAggregate composite =
-          response.aggregations().get(ColumnAggregator.AGG_MATCHING_COLUMNS).composite();
-      List<CompositeBucket> buckets = composite.buckets().array();
-      if (buckets.isEmpty()) {
-        break;
-      }
-      for (CompositeBucket bucket : buckets) {
-        FieldValue keyValue = bucket.key().get(ColumnAggregator.COMPOSITE_SOURCE_NAME);
-        if (keyValue != null && keyValue.isString()) {
-          names.add(keyValue.stringValue());
-        }
-        totalDocCount += bucket.docCount();
-      }
-      if (buckets.size() < ColumnAggregator.NAMES_BATCH_SIZE) {
-        break;
-      }
-      afterKey = composite.afterKey();
-      if (afterKey == null) {
-        break;
       }
     }
     return new ColumnAggregator.NamesWithCount(names, totalDocCount);
@@ -936,7 +890,90 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
     return columnsByName;
   }
 
-  /** Parse top_hits from a single bucket (terms-agg parsing). */
+  private SearchResponse<JsonData> executeSearch(
+      ColumnAggregationRequest request,
+      Query query,
+      List<String> indexes,
+      String columnNameKeyword,
+      String afterKey)
+      throws IOException {
+    Map<String, CompositeAggregationSource> sources = new HashMap<>();
+    sources.put(
+        ColumnAggregator.COMPOSITE_COLUMN_NAME,
+        CompositeAggregationSource.of(
+            cas -> cas.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc))));
+
+    Aggregation topHitsAgg =
+        Aggregation.of(a -> a.topHits(th -> th.size(ColumnAggregator.SAMPLE_DOCS_PER_COLUMN)));
+
+    Map<String, Aggregation> subAggs = new HashMap<>();
+    subAggs.put(ColumnAggregator.AGG_SAMPLE_DOCS, topHitsAgg);
+
+    Aggregation compositeAgg =
+        Aggregation.of(
+            a ->
+                a.composite(
+                        c -> {
+                          c.sources(List.of(sources));
+                          c.size(request.getSize());
+                          if (afterKey != null) {
+                            c.after(
+                                Map.of(
+                                    ColumnAggregator.COMPOSITE_COLUMN_NAME,
+                                    FieldValue.of(afterKey)));
+                          }
+                          return c;
+                        })
+                    .aggregations(subAggs));
+
+    Map<String, Aggregation> aggs = new HashMap<>();
+    aggs.put(ColumnAggregator.AGG_UNIQUE_COLUMNS, compositeAgg);
+
+    SearchRequest searchRequest =
+        SearchRequest.of(s -> s.index(indexes).query(query).aggregations(aggs).size(0));
+
+    return client.search(searchRequest, JsonData.class);
+  }
+
+  private List<CompositeBucket> compositeBuckets(SearchResponse<JsonData> response) {
+    boolean hasComposite =
+        response.aggregations() != null
+            && response.aggregations().containsKey(ColumnAggregator.AGG_UNIQUE_COLUMNS);
+    return hasComposite
+        ? response
+            .aggregations()
+            .get(ColumnAggregator.AGG_UNIQUE_COLUMNS)
+            .composite()
+            .buckets()
+            .array()
+        : List.of();
+  }
+
+  private String bucketKey(CompositeBucket bucket) {
+    FieldValue fieldValue = bucket.key().get(ColumnAggregator.COMPOSITE_COLUMN_NAME);
+    return fieldValue != null ? fieldValue.stringValue() : null;
+  }
+
+  private List<String> compositeBucketKeys(SearchResponse<JsonData> response) {
+    return compositeBuckets(response).stream().map(this::bucketKey).toList();
+  }
+
+  private Map<String, List<ColumnWithContext>> parseCompositeAggResults(
+      SearchResponse<JsonData> response, String columnFieldPath, Set<String> pageKeys) {
+    Map<String, List<ColumnWithContext>> columnsByName = new HashMap<>();
+    for (CompositeBucket bucket : compositeBuckets(response)) {
+      String columnName = bucketKey(bucket);
+      if (pageKeys.contains(columnName)
+          && bucket.aggregations().containsKey(ColumnAggregator.AGG_SAMPLE_DOCS)) {
+        TopHitsAggregate topHits =
+            bucket.aggregations().get(ColumnAggregator.AGG_SAMPLE_DOCS).topHits();
+        parseBucketHits(columnName, topHits, columnFieldPath, columnsByName);
+      }
+    }
+    return columnsByName;
+  }
+
+  /** Parse top_hits from a single bucket (shared by composite and terms agg parsing). */
   private void parseBucketHits(
       String columnName,
       TopHitsAggregate topHits,
@@ -1093,6 +1130,67 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       LOG.warn("Unknown data type: {}", dataType);
       return null;
     }
+  }
+
+  private Map<String, Long> getTotalCounts(
+      Query query, List<String> indexes, String columnNameKeyword) throws IOException {
+    Aggregation cardinalityAgg =
+        Aggregation.of(
+            a -> a.cardinality(c -> c.field(columnNameKeyword).precisionThreshold(40000)));
+
+    // The field name is interpolated into the Painless source rather than bound as a param because
+    // doc-value access needs the key at compile time. It is always one of the registry-derived
+    // keyword paths, never request input.
+    String occurrenceMapScript =
+        "if (doc.containsKey('%s')) { state.total += doc['%s'].size() }"
+            .formatted(columnNameKeyword, columnNameKeyword);
+
+    Aggregation sumAgg =
+        Aggregation.of(
+            a ->
+                a.scriptedMetric(
+                    sm ->
+                        sm.initScript(s -> s.inline(i -> i.source("state.total = 0")))
+                            .mapScript(s -> s.inline(i -> i.source(occurrenceMapScript)))
+                            .combineScript(s -> s.inline(i -> i.source("return state.total")))
+                            .reduceScript(
+                                s ->
+                                    s.inline(
+                                        i ->
+                                            i.source(
+                                                "long total = 0; for (state in states) { total += state } return total")))));
+
+    Map<String, Aggregation> aggs = new HashMap<>();
+    aggs.put("unique_column_names", cardinalityAgg);
+    aggs.put("total_column_occurrences", sumAgg);
+
+    SearchRequest countRequest =
+        SearchRequest.of(s -> s.index(indexes).query(query).aggregations(aggs).size(0));
+
+    SearchResponse<JsonData> countResponse = client.search(countRequest, JsonData.class);
+
+    long uniqueColumns = 0;
+    long totalOccurrences = 0;
+
+    if (countResponse.aggregations() != null) {
+      if (countResponse.aggregations().containsKey("unique_column_names")) {
+        uniqueColumns =
+            countResponse.aggregations().get("unique_column_names").cardinality().value();
+      }
+      if (countResponse.aggregations().containsKey("total_column_occurrences")) {
+        JsonData result =
+            countResponse.aggregations().get("total_column_occurrences").scriptedMetric().value();
+        if (result != null) {
+          totalOccurrences = result.to(Long.class);
+        }
+      }
+    }
+
+    Map<String, Long> totals = new HashMap<>();
+    totals.put("uniqueColumns", uniqueColumns);
+    totals.put("totalOccurrences", totalOccurrences);
+
+    return totals;
   }
 
   private ColumnGridResponse buildResponse(

@@ -20,11 +20,14 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -37,17 +40,6 @@ public interface ColumnAggregator {
 
   /** Max column names to retrieve in the names-only query during pattern search. */
   int MAX_PATTERN_SEARCH_NAMES = 10000;
-
-  /**
-   * Page size used when paginating the browse path's per-group composite name aggregation. The
-   * composite {@code after_key} is consumed to completion per group, so a modest batch keeps
-   * each round-trip bounded while letting browse exceed the {@link #MAX_PATTERN_SEARCH_NAMES}
-   * cap that the pattern path's single terms-agg is subject to.
-   */
-  int NAMES_BATCH_SIZE = 1000;
-
-  /** Key name used for the single terms source in the browse path's composite aggregation. */
-  String COMPOSITE_SOURCE_NAME = "col";
 
   /**
    * Number of sample docs pulled per column-name bucket to populate occurrences. Caps
@@ -63,10 +55,17 @@ public interface ColumnAggregator {
   String AGG_SAMPLE_DOCS = "sample_docs";
   String AGG_KEY_ORDER = "_key";
 
+  /** Aggregation and composite source names used in browse queries (ES + OS). */
+  String AGG_UNIQUE_COLUMNS = "unique_columns";
+
+  String COMPOSITE_COLUMN_NAME = "column_name";
+
   /** Cursor payload key for the offset-based search/tag pagination cursor. */
   String CURSOR_SEARCH_OFFSET = "searchOffset";
 
   TypeReference<Map<String, Object>> CURSOR_TYPE = new TypeReference<>() {};
+
+  TypeReference<Map<String, String>> BROWSE_CURSOR_TYPE = new TypeReference<>() {};
 
   ColumnGridResponse aggregateColumns(ColumnAggregationRequest request) throws IOException;
 
@@ -120,6 +119,66 @@ public interface ColumnAggregator {
       LOG.debug("Failed to decode search offset cursor, restarting from page 1", e);
       return 0;
     }
+  }
+
+  /**
+   * Encode the browse cursor: one composite after key per column field, because an after key is
+   * only valid within the field whose composite aggregation produced it.
+   */
+  static String encodeBrowseCursor(Map<String, String> afterKeys) {
+    String json = JsonUtils.pojoToJson(afterKeys);
+    return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
+  }
+
+  /** Decode the browse cursor; a field absent from it, or a malformed cursor, starts at page 1. */
+  static Map<String, String> decodeBrowseCursor(String cursor) {
+    Map<String, String> afterKeys = Map.of();
+    if (cursor != null) {
+      try {
+        String json = new String(Base64.getDecoder().decode(cursor), StandardCharsets.UTF_8);
+        afterKeys =
+            new HashMap<>(
+                Objects.requireNonNullElse(
+                    JsonUtils.readValue(json, BROWSE_CURSOR_TYPE), Map.of()));
+        afterKeys.values().removeIf(Objects::isNull);
+      } catch (IllegalArgumentException | JsonParsingException e) {
+        LOG.debug("Failed to decode browse cursor, restarting from page 1", e);
+      }
+    }
+    return afterKeys;
+  }
+
+  /**
+   * Merge one ascending composite page per column field into a page of {@code size} distinct names,
+   * and move each field's after key past the names it contributed. A field that contributed nothing
+   * keeps its after key.
+   */
+  static BrowsePage nextBrowsePage(
+      Map<String, List<String>> keysByField, Map<String, String> afterKeys, int size) {
+    List<String> names =
+        keysByField.values().stream()
+            .flatMap(List::stream)
+            .distinct()
+            .sorted()
+            .limit(size)
+            .toList();
+    Map<String, String> nextAfterKeys = new HashMap<>(afterKeys);
+    boolean hasMore = false;
+    if (!names.isEmpty()) {
+      String lastName = names.getLast();
+      keysByField.forEach(
+          (field, keys) ->
+              keys.stream()
+                  .filter(key -> key.compareTo(lastName) <= 0)
+                  .reduce((previous, next) -> next)
+                  .ifPresent(key -> nextAfterKeys.put(field, key)));
+      hasMore = keysByField.values().stream().anyMatch(keys -> mayHaveMore(keys, lastName, size));
+    }
+    return new BrowsePage(names, Map.copyOf(nextAfterKeys), hasMore);
+  }
+
+  private static boolean mayHaveMore(List<String> keys, String lastName, int size) {
+    return keys.size() >= size || (!keys.isEmpty() && keys.getLast().compareTo(lastName) > 0);
   }
 
   /** Saturating long → int cast for response totals. Caps at Integer.MAX_VALUE. */
@@ -246,6 +305,9 @@ public interface ColumnAggregator {
 
   /** Phase 1 result: matching column names and the total doc_count summed across buckets. */
   record NamesWithCount(List<String> names, long totalDocCount) {}
+
+  /** One browse page merged across column fields, with each field's after key for the next page. */
+  record BrowsePage(List<String> names, Map<String, String> afterKeys, boolean hasMore) {}
 
   class ColumnAggregationRequest {
     private int size = 1000;

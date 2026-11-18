@@ -20,8 +20,11 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ColumnGridItem;
@@ -312,5 +315,30 @@ class ColumnAggregatorTest {
     TagLabel tag = ColumnAggregator.parseTagLabel(tagData);
 
     assertNull(tag.getStyle());
+  }
+
+  @Test
+  void nextBrowsePage_advancesOnlyFieldsThatContributed() {
+    Map<String, List<String>> keysByField =
+        Map.of("columns.name.keyword", List.of("a", "b", "c"), "fields.name.keyword", List.of());
+
+    ColumnAggregator.BrowsePage page =
+        ColumnAggregator.nextBrowsePage(keysByField, Map.of("fields.name.keyword", "a0"), 3);
+
+    assertEquals(List.of("a", "b", "c"), page.names());
+    assertEquals(
+        Map.of("columns.name.keyword", "c", "fields.name.keyword", "a0"), page.afterKeys());
+    assertTrue(page.hasMore());
+  }
+
+  @Test
+  void decodeBrowseCursor_nullPayloadStartsAtPageOne() {
+    assertEquals(Map.of(), ColumnAggregator.decodeBrowseCursor(base64("null")));
+    assertEquals(
+        Map.of(), ColumnAggregator.decodeBrowseCursor(base64("{\"columns.name.keyword\":null}")));
+  }
+
+  private static String base64(String json) {
+    return Base64.getEncoder().encodeToString(json.getBytes(StandardCharsets.UTF_8));
   }
 }
