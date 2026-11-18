@@ -165,6 +165,18 @@ class MigrationUtilTest {
                   Entity.getEntityReferenceById(
                       Entity.TABLE, orphanDeleteFailureEntityId, Include.NON_DELETED))
           .thenThrow(EntityNotFoundException.byId(orphanDeleteFailureEntityId.toString()));
+      // A truly missing parent is gone under both NON_DELETED and ALL — the migration must
+      // follow up the NON_DELETED miss with an ALL probe before it treats the contract as
+      // orphaned, so the ALL lookups here throw too.
+      entity
+          .when(() -> Entity.getEntityReferenceById(Entity.TABLE, orphanEntityId, Include.ALL))
+          .thenThrow(EntityNotFoundException.byId(orphanEntityId.toString()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferenceById(
+                      Entity.TABLE, orphanDeleteFailureEntityId, Include.ALL))
+          .thenThrow(EntityNotFoundException.byId(orphanDeleteFailureEntityId.toString()));
 
       MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.POSTGRES);
       assertDoesNotThrow(migrationUtil::cleanupOrphanedDataContracts);
@@ -173,6 +185,84 @@ class MigrationUtilTest {
     verify(repository, never()).delete(Entity.ADMIN_USER_NAME, valid.getId(), true, true);
     verify(repository).delete(Entity.ADMIN_USER_NAME, orphan.getId(), true, true);
     verify(repository).delete(Entity.ADMIN_USER_NAME, orphanWithDeleteFailure.getId(), true, true);
+  }
+
+  /**
+   * Regresses the v1.10.0 migration bug: a contract whose parent is merely soft-deleted (trash that
+   * can be restored) used to be hard-deleted just like a contract whose parent row was truly gone,
+   * because {@link Include#NON_DELETED} throws {@link EntityNotFoundException} for both. The fix
+   * re-checks the parent with {@link Include#ALL} and only hard-deletes the contract when the
+   * parent row no longer exists at all.
+   */
+  @Test
+  void cleanupOrphanedDataContractsSkipsContractsWhoseParentIsSoftDeleted() {
+    DataContractRepository repository = mock(DataContractRepository.class);
+    UUID validEntityId = UUID.randomUUID();
+    UUID softDeletedParentEntityId = UUID.randomUUID();
+    UUID trulyMissingEntityId = UUID.randomUUID();
+
+    DataContract valid =
+        contract("service.schema.table.contractValid", validEntityId, UUID.randomUUID());
+    DataContract softDeletedParent =
+        contract(
+            "service.schema.table.contractSoftDeleted",
+            softDeletedParentEntityId,
+            UUID.randomUUID());
+    DataContract trulyMissing =
+        contract(
+            "service.schema.table.contractTrulyMissing", trulyMissingEntityId, UUID.randomUUID());
+
+    when(repository.getFields("id,entity"))
+        .thenReturn(new EntityUtil.Fields(Set.of("id", "entity")));
+    when(repository.listAll(any(EntityUtil.Fields.class), any()))
+        .thenReturn(List.of(valid, softDeletedParent, trulyMissing));
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(() -> Entity.getEntityRepository(Entity.DATA_CONTRACT)).thenReturn(repository);
+      // Valid parent resolves under NON_DELETED — no further lookup, no delete.
+      entity
+          .when(
+              () -> Entity.getEntityReferenceById(Entity.TABLE, validEntityId, Include.NON_DELETED))
+          .thenReturn(new EntityReference().withId(validEntityId).withType(Entity.TABLE));
+      // Soft-deleted parent: NON_DELETED throws (the row exists with deleted = true, so it is
+      // hidden from NON_DELETED lookups) but ALL succeeds (the row is still present) — the
+      // contract must be left intact for the parent restore cascade.
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferenceById(
+                      Entity.TABLE, softDeletedParentEntityId, Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byId(softDeletedParentEntityId.toString()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferenceById(
+                      Entity.TABLE, softDeletedParentEntityId, Include.ALL))
+          .thenReturn(
+              new EntityReference().withId(softDeletedParentEntityId).withType(Entity.TABLE));
+      // Truly missing parent: both NON_DELETED and ALL throw — hard-delete the contract.
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferenceById(
+                      Entity.TABLE, trulyMissingEntityId, Include.NON_DELETED))
+          .thenThrow(EntityNotFoundException.byId(trulyMissingEntityId.toString()));
+      entity
+          .when(
+              () -> Entity.getEntityReferenceById(Entity.TABLE, trulyMissingEntityId, Include.ALL))
+          .thenThrow(EntityNotFoundException.byId(trulyMissingEntityId.toString()));
+
+      MigrationUtil migrationUtil = new MigrationUtil(handle, ConnectionType.POSTGRES);
+      assertDoesNotThrow(migrationUtil::cleanupOrphanedDataContracts);
+    }
+
+    // The valid contract is never deleted; the soft-deleted-parent contract is preserved so a
+    // later parent restore can bring it back; only the truly-missing parent's contract is
+    // hard-deleted, preserving the original cleanup intent for pre-1.9.3 orphans.
+    verify(repository, never()).delete(Entity.ADMIN_USER_NAME, valid.getId(), true, true);
+    verify(repository, never())
+        .delete(Entity.ADMIN_USER_NAME, softDeletedParent.getId(), true, true);
+    verify(repository).delete(Entity.ADMIN_USER_NAME, trulyMissing.getId(), true, true);
   }
 
   @Test
