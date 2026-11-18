@@ -28,6 +28,7 @@ import org.openmetadata.it.tests.mcp.McpTestUtils;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespace.EntityRoot;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
@@ -49,7 +50,19 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 class McpOntologyApprovalIT extends McpTestBase {
   @AfterEach
   void cleanup(final TestNamespace namespace) {
-    NamespaceCleanup.deleteRoots(namespace.drainTrackedRoots());
+    final List<EntityRoot> roots = namespace.drainTrackedRoots();
+    try {
+      for (final EntityRoot root : roots) {
+        if (Entity.WORKFLOW_DEFINITION.equals(root.entityType())) {
+          SdkClients.adminClient().workflowDefinitions().delete(root.id());
+        }
+      }
+    } finally {
+      NamespaceCleanup.deleteRoots(
+          roots.stream()
+              .filter(root -> !Entity.WORKFLOW_DEFINITION.equals(root.entityType()))
+              .toList());
+    }
   }
 
   @ParameterizedTest
