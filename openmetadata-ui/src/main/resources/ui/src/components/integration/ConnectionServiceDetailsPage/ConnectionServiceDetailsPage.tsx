@@ -86,6 +86,7 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
@@ -211,6 +212,20 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  useEffect(() => {
+    serviceUtilClassBase
+      .getExtraInfo()
+      .finally(() => setIsExtraInfoLoaded(true));
+  }, []);
+
+  // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
+  const extraInfoData = useMemo(() => {
+    return isExtraInfoLoaded
+      ? serviceUtilClassBase.getServiceExtraInfo(serviceDetails)
+      : null;
+  }, [serviceDetails, isExtraInfoLoaded]);
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isServicePermissionLoading, setIsServicePermissionLoading] =
@@ -1124,6 +1139,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                     {allowTestConn && (
                       <TestConnection
                         connectionType={serviceDetails?.serviceType ?? ''}
+                        extraInfo={extraInfoData?.name}
                         getData={() => connectionDetails}
                         isTestingDisabled={isTestingDisabled}
                         serviceCategory={serviceCategory as ServiceCategory}

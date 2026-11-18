@@ -1804,9 +1804,14 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
   const extraInfoData = useMemo(() => {
-    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
-  }, [serviceDetails]);
+    return isExtraInfoLoaded
+      ? serviceUtilClassBase.getServiceExtraInfo(serviceDetails)
+      : null;
+  }, [serviceDetails, isExtraInfoLoaded]);
 
   const testConnectionTab = useMemo(() => {
     return (
@@ -2103,7 +2108,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
+    serviceUtilClassBase
+      .getExtraInfo()
+      .finally(() => setIsExtraInfoLoaded(true));
   }, []);
 
   const isCustomService = useMemo(
