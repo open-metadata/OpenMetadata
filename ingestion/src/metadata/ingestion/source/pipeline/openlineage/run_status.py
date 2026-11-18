@@ -11,18 +11,23 @@
 """
 Pipeline run status and tasks built from OpenLineage run events.
 
-A pipeline run is an event without a parent facet, such as a Spark application or
-an Airflow DAG run. Its own events and those of the jobs it runs directly (Spark SQL
-jobs, Airflow tasks) are merged into one status row with one task line per job. The
-row is keyed by the time embedded in the run's UUIDv7 runId, so every event of the
-run finds the same row whichever ingestion reads it.
+A pipeline run is an event without a parent facet, or one whose job type names a run of
+its own: a Spark application, an Airflow DAG run or a dbt run, even when another system
+started it (ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent).
+Any other event with a parent is a step of the parent's run: a Spark SQL job, an Airflow
+task, a dbt model. The run's own events and its steps' events are merged into one status
+row. The run's own events set the row, and each try of a step gets its own task line,
+holding the try's runId as taskId: the run is not a task of its pipeline. The row is keyed
+by the time embedded in the run's UUIDv7 runId, so every event of the run finds the same
+row whichever ingestion reads it
+(ADR:2026-11-18-openlineage-run-status-is-one-row-per-run-keyed-by-its-runid-time).
 
 Schedule dates are not part of the OpenLineage spec. Airflow sends them in its own run
 facets: the DAG's start_date on every DAG and task event, and a task's start_date and
 end_date only when [openlineage] include_full_task_info is enabled.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, TypeVar
 from uuid import UUID
 
@@ -51,12 +56,25 @@ STATUS_MAP = {
     EventType.ABORT.value: StatusType.Failed,
 }
 
-# A run or a job never goes back to an earlier state: Spark sends COMPLETE after a
-# SQL job's FAIL, and events of one run can be read in any order across ingestions.
+# A run or a try of a step never goes back to an earlier state: Spark sends COMPLETE after
+# a SQL job's FAIL, and events of one run can be read in any order across ingestions.
 _PROGRESS = {StatusType.Pending: 0, StatusType.Successful: 1, StatusType.Failed: 2}
+
+# The server keeps one status per pipeline and timestamp, so two runs whose ids carry the same
+# millisecond cannot share a key: the run read second takes the next free one within this window.
+RUN_KEY_WINDOW_MS = 1000
 
 # Facets carrying the error of a failed run: the standard one, and the one Spark sends.
 _ERROR_FACETS = ("errorMessage", "spark.exception")
+
+# jobType facet values of a whole run, set by the Spark, Airflow and dbt integrations; their
+# steps are SQL_JOB, TASK, and MODEL, SNAPSHOT or TEST.
+_RUN_JOB_TYPES = {"APPLICATION", "DAG", "JOB"}
+
+# A failed Airflow task does not fail its DAG run: a retry or a trigger rule can still let the
+# DAG succeed, and the DAG run sends its own FAIL. A Spark application always ends with
+# COMPLETE, so a failed SQL job fails it.
+_STEPS_THAT_LEAVE_THE_RUN_OUTCOME_TO_IT = {"TASK"}
 
 
 @dataclass(frozen=True)
@@ -65,18 +83,44 @@ class RunUpdate:
 
     run_id: str
     run_key: int
-    pipeline_job: str
     job: str
+    job_run_id: str
     is_pipeline_run: bool
-    parent_is_pipeline_run: bool
+    fails_run: bool
     status: StatusType
     started_at: int | None
     ended_at: int | None
     error: ExecutionError | None
 
 
+def _job_type(event: OpenLineageEvent) -> str | None:
+    return ((event.job.get("facets") or {}).get("jobType") or {}).get("jobType")
+
+
+def _is_own_run(event: OpenLineageEvent) -> bool:
+    return _job_type(event) in _RUN_JOB_TYPES
+
+
+def launched_by(event: OpenLineageEvent) -> tuple[dict, dict] | None:
+    """The job that started this run from another system (an Airflow task starting a Spark
+    application), and that job's root (the DAG), when the event is such a run and names both."""
+    facets = event.run_facet.get("facets") or {}
+    if "parent" not in facets or not _is_own_run(event):
+        return None
+    try:
+        parent, root = facets["parent"]["job"], facets["parent"]["root"]["job"]
+        return (
+            {"namespace": parent["namespace"], "name": parent["name"]},
+            {"namespace": root["namespace"], "name": root["name"]},
+        )
+    except (KeyError, TypeError):
+        return None
+
+
 def pipeline_job(event: OpenLineageEvent) -> dict:
-    """The job a pipeline is named after: the parent job when the event has one."""
+    """The job a pipeline is named after: the parent job when the event is a step of the parent's run."""
+    if _is_own_run(event):
+        return event.job
     try:
         parent_job = event.run_facet["facets"]["parent"]["job"]
         return {"namespace": parent_job["namespace"], "name": parent_job["name"]}
@@ -95,8 +139,7 @@ def _airflow_facet(event: OpenLineageEvent) -> dict:
 
 
 def pipeline_start_date(event: OpenLineageEvent) -> DateTime | None:
-    """The DAG's start_date, for the pipeline named after that DAG only: a DAG run with a parent
-    facet (triggered from another DAG's task) is named after its parent."""
+    """The DAG's start_date, for the pipeline named after that DAG only."""
     dag = _airflow_facet(event).get("dag")
     if not isinstance(dag, dict) or dag.get("dag_id") != pipeline_job(event)["name"]:
         return None
@@ -105,20 +148,21 @@ def pipeline_start_date(event: OpenLineageEvent) -> DateTime | None:
 
 
 def pipeline_tasks(event: OpenLineageEvent) -> list[Task]:
-    """The tasks an event shows on its pipeline: the pipeline's own job and the event's job."""
+    """The task an event adds to its pipeline: its job, unless the event is of the pipeline run itself."""
     run_name = pipeline_job(event)["name"]
     job_name = event.job["name"]
-    tasks = {run_name: Task(name=run_name, displayName=run_name)}
-    if job_name != run_name:
-        task_facet = _airflow_facet(event).get("task")
-        dates = task_facet if isinstance(task_facet, dict) else {}
-        tasks[job_name] = Task(
+    if job_name == run_name:
+        return []
+    task_facet = _airflow_facet(event).get("task")
+    dates = task_facet if isinstance(task_facet, dict) else {}
+    return [
+        Task(
             name=job_name,
             displayName=job_name.removeprefix(f"{run_name}."),
             startDate=dates.get("start_date"),
             endDate=dates.get("end_date"),
         )
-    return list(tasks.values())
+    ]
 
 
 def _uuid7_millis(run_id: str) -> int | None:
@@ -133,7 +177,7 @@ def _millis(event_time: str | None) -> int | None:
     return datetime_to_timestamp(isoparse(event_time), milliseconds=True) if event_time else None
 
 
-def _error(facets: dict, job: str) -> ExecutionError | None:
+def _error(facets: dict, job: str | None) -> ExecutionError | None:
     for name in _ERROR_FACETS:
         facet = facets.get(name)
         if isinstance(facet, dict):
@@ -147,18 +191,17 @@ def build_run_update(event: OpenLineageEvent) -> RunUpdate | None:
         return None
     facets = event.run_facet.get("facets") or {}
     job = event.job["name"]
-    is_pipeline_run = "parent" not in facets
-    ended_at = _millis(event.event_time) if status != StatusType.Pending else None
+    is_pipeline_run = "parent" not in facets or _is_own_run(event)
     if is_pipeline_run:
-        run_job, run_id, parent_is_pipeline_run = job, event.run_facet["runId"], False
+        run_id = event.run_facet["runId"]
     else:
         try:
             parent = facets["parent"]
-            run_job, run_id = parent["job"]["name"], parent["run"]["runId"]
+            # The parent job must be there too: the pipeline is named after it.
+            _, run_id = parent["job"]["name"], parent["run"]["runId"]
         except (KeyError, TypeError):
             return None
-        root = parent.get("root")
-        parent_is_pipeline_run = isinstance(root, dict) and (root.get("run") or {}).get("runId") == run_id
+    ended_at = _millis(event.event_time) if status != StatusType.Pending else None
     run_key = _uuid7_millis(run_id)
     if run_key is None:
         # Without a time in the runId, only the run's own final event gives it a stable key.
@@ -168,14 +211,14 @@ def build_run_update(event: OpenLineageEvent) -> RunUpdate | None:
     return RunUpdate(
         run_id=run_id,
         run_key=run_key,
-        pipeline_job=run_job,
         job=job,
+        job_run_id=event.run_facet["runId"],
         is_pipeline_run=is_pipeline_run,
-        parent_is_pipeline_run=parent_is_pipeline_run,
+        fails_run=status == StatusType.Failed and _job_type(event) not in _STEPS_THAT_LEAVE_THE_RUN_OUTCOME_TO_IT,
         status=status,
         started_at=_millis(event.event_time) if event.event_type == EventType.START.value else None,
         ended_at=ended_at,
-        error=_error(facets, job) if status == StatusType.Failed else None,
+        error=_error(facets, None if is_pipeline_run else job) if status == StatusType.Failed else None,
     )
 
 
@@ -199,49 +242,61 @@ def _with(stored: ModelT | None, model: type[ModelT], **fields: Any) -> ModelT:
     return model.model_validate({**(stored.model_dump() if stored else {}), **fields})
 
 
-def _line(
-    stored: TaskStatus | None, name: str, status: StatusType, started: int | None, ended: int | None
-) -> TaskStatus:
+def _line(stored: TaskStatus | None, update: RunUpdate) -> TaskStatus:
+    """The line of the step try the event belongs to."""
     return _with(
         stored,
         TaskStatus,
-        name=name,
-        executionStatus=status,
-        startTime=_value(stored.startTime) if stored and stored.startTime else started,
-        endTime=_latest(_value(stored.endTime) if stored else None, ended),
+        name=update.job,
+        taskId=update.job_run_id,
+        executionStatus=_later(stored.executionStatus, update.status) if stored else update.status,
+        startTime=_value(stored.startTime) if stored and stored.startTime else update.started_at,
+        endTime=_latest(_value(stored.endTime) if stored else None, update.ended_at),
     )
+
+
+def place_run(rows: list[PipelineStatus], update: RunUpdate) -> tuple[PipelineStatus | None, RunUpdate] | None:
+    """
+    The run's stored row and the update keyed to it, given the pipeline's rows from the run's key
+    to the end of RUN_KEY_WINDOW_MS: the row holding the run's id, or else no row and the first
+    free key. None when every key of the window is taken.
+    """
+    for row in rows:
+        if row.executionId == update.run_id:
+            return row, replace(update, run_key=row.timestamp.root)
+    taken = {row.timestamp.root for row in rows}
+    free = next((key for key in range(update.run_key, update.run_key + RUN_KEY_WINDOW_MS) if key not in taken), None)
+    return None if free is None else (None, replace(update, run_key=free))
 
 
 def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> PipelineStatus | None:
     """
-    The run's row once this event is applied, or None when nothing is to be written:
-    a job event of a run the pipeline has no row for, a row of another run with the
-    same key, or an event that changes nothing. A job failure still opens the row when
-    its parent is the pipeline run, so a run whose start was never read cannot later
-    complete as Successful.
+    The run's row once this event is applied, or None when it changes nothing. Any event opens
+    the row, so a step read before its run's own events (or without them) still shows; the run
+    stays Pending until its own final event or a failure that fails it. ``stored`` is the run's
+    own row, as place_run found it.
     """
-    opens_row = update.is_pipeline_run or (update.parent_is_pipeline_run and update.status == StatusType.Failed)
-    if stored is None and not opens_row:
-        return None
-    if stored is not None and stored.executionId != update.run_id:
-        return None
-
-    stored_lines = {line.name: line for line in (stored.taskStatus if stored else None) or []}
-    run_line = stored_lines.pop(update.pipeline_job, None)
-    previous = stored.executionStatus if stored else update.status
-    if update.is_pipeline_run or update.status == StatusType.Failed:
-        status = _later(previous, update.status)
+    lines = list((stored.taskStatus if stored else None) or [])
+    status = stored.executionStatus if stored else StatusType.Pending
+    error = stored.error if stored else None
+    if update.is_pipeline_run:
+        status = _later(status, update.status)
     else:
-        status = previous
-    if not update.is_pipeline_run:
-        job_line = stored_lines.get(update.job)
-        job_status = _later(job_line.executionStatus if job_line else update.status, update.status)
-        stored_lines[update.job] = _line(job_line, update.job, job_status, update.started_at, update.ended_at)
+        if update.fails_run:
+            status = _later(status, StatusType.Failed)
+        index = next((i for i, line in enumerate(lines) if line.taskId == update.job_run_id), None)
+        line = _line(lines[index] if index is not None else None, update)
+        if index is None:
+            lines.append(line)
+        else:
+            lines[index] = line
+        if error is not None and error.failedTask == update.job and line.executionStatus == StatusType.Successful:
+            # A later try of the failed step succeeded, so its failure no longer explains the run.
+            error = None
 
     ended_at = None
     if status != StatusType.Pending:
         ended_at = _latest(_value(stored.endTime) if stored else None, update.ended_at)
-    run_started = update.started_at if update.is_pipeline_run else None
     merged = _with(
         stored,
         PipelineStatus,
@@ -249,10 +304,7 @@ def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> Pipeli
         executionId=update.run_id,
         executionStatus=status,
         endTime=ended_at,
-        error=stored.error if stored and stored.error else update.error,
-        taskStatus=[
-            _line(run_line, update.pipeline_job, status, run_started, ended_at),
-            *stored_lines.values(),
-        ],
+        error=None if status == StatusType.Successful else (error or update.error),
+        taskStatus=lines,
     )
     return None if merged == stored else merged

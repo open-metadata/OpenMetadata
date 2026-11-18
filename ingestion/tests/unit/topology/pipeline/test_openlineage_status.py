@@ -22,14 +22,17 @@ import copy
 import json
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
-from uuid import UUID
+from uuid import NAMESPACE_URL, UUID, uuid5
 
 import pytest
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineStatus, StatusType, Task
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.type.basic import Uuid
+from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
+from metadata.ingestion.source.pipeline.openlineage.run_status import RUN_KEY_WINDOW_MS
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
 )
@@ -38,7 +41,8 @@ DATASETS = Path(__file__).parent.parent.parent / "resources/datasets"
 with open(DATASETS / "openlineage_spark_runs.json") as runs_file:  # noqa: PTH123
     SPARK_RUNS = json.load(runs_file)
 # Real Airflow 3.3.2 events (apache-airflow-providers-openlineage 2.20.1): a DAG run whose
-# second task fails, once with the default task facet and once with include_full_task_info.
+# second task fails, once with the default task facet and once with include_full_task_info,
+# and a DAG run whose first task fails twice and passes on its third try (retries=2).
 with open(DATASETS / "openlineage_airflow_runs.json") as runs_file:  # noqa: PTH123
     AIRFLOW_RUNS = json.load(runs_file)
 
@@ -68,7 +72,10 @@ TABLE_IDS = {
     "shop_db.shop.public.orders": UUID("aaaa1111-1111-1111-1111-111111111111"),
     "shop_db.shop.public.report": UUID("bbbb2222-2222-2222-2222-222222222222"),
 }
-PIPELINE_ID = UUID("cccc3333-3333-3333-3333-333333333333")
+
+
+def pipeline_id(pipeline_fqn: str) -> UUID:
+    return uuid5(NAMESPACE_URL, pipeline_fqn)
 
 
 class FakeServer:
@@ -88,9 +95,15 @@ class FakeServer:
         if entity is Pipeline and fqn in self.pipeline_tasks:
             request = self.pipeline_requests.get(fqn)
             pipeline = Mock(tasks=self.pipeline_tasks[fqn], startDate=request.startDate if request else None)
-            pipeline.id.root = PIPELINE_ID
+            pipeline.id = Uuid(pipeline_id(fqn))
+            pipeline.fullyQualifiedName.root = fqn
             return pipeline
         return None
+
+    def es_search_from_fqn(self, entity_type, fqn_search_string, **kwargs):
+        """Pipelines matching a ``*.<name>`` search in any service."""
+        name = fqn_search_string.removeprefix("*.")
+        return [self.get_by_name(entity_type, fqn) for fqn in self.pipeline_tasks if fqn.endswith(f".{name}")]
 
     def store_status(self, fqn: str, status: PipelineStatus):
         """Keep a row the way the server returns it: with the input and output lists it defaults."""
@@ -113,6 +126,7 @@ def server():
 def source(server):
     metadata = MagicMock()
     metadata.get_by_name.side_effect = server.get_by_name
+    metadata.es_search_from_fqn.side_effect = server.es_search_from_fqn
     metadata.list_pipeline_statuses.side_effect = server.list_pipeline_statuses
     metadata.client.get.return_value = {"serviceType": "Postgres"}
     metadata.get_lineage_by_id.return_value = None
@@ -212,7 +226,7 @@ def test_application_event_type_sets_the_run_status(source, server, event_type, 
     if expected:
         assert rows[0].executionId == OK_RUN_ID
         assert rows[0].timestamp.root == OK_RUN_KEY
-        assert [line.name for line in rows[0].taskStatus] == ["orders_app"]
+        assert rows[0].taskStatus == []
 
 
 def test_successful_run_is_one_row_with_a_line_per_job(source, server):
@@ -225,7 +239,6 @@ def test_successful_run_is_one_row_with_a_line_per_job(source, server):
     assert row.endTime.root == 1794900878780
     assert row.error is None
     assert lines(row) == [
-        ("orders_app", StatusType.Successful, 1794900873907, 1794900878780),
         (
             "orders_app.execute_save_into_data_source_command.public_orders_copy",
             StatusType.Successful,
@@ -245,7 +258,6 @@ def test_failed_sql_job_fails_the_run_although_the_application_completes(source,
     assert row.executionId == FAILED_RUN_ID
     assert row.endTime.root == 1794900891850
     assert lines(row) == [
-        ("report_app", StatusType.Failed, 1794900887537, 1794900891850),
         (
             "report_app.execute_save_into_data_source_command.public_report",
             StatusType.Successful,
@@ -282,10 +294,24 @@ def test_start_read_in_a_later_ingestion_than_complete_never_downgrades(source, 
     assert server.statuses[(OK_PIPELINE, OK_RUN_KEY)].executionStatus == StatusType.Successful
 
 
-def test_sql_job_completing_without_its_application_run_writes_nothing(source, server):
+def test_sql_job_read_without_its_application_run_opens_a_pending_row(source, server):
     ingest(source, server, [event("failed_run", 5)])
 
-    assert server.statuses == {}
+    [row] = server.statuses.values()
+    assert (row.executionId, row.executionStatus) == (FAILED_RUN_ID, StatusType.Pending)
+    assert lines(row) == [("report_app.deserialize_to_object", StatusType.Successful, None, 1794900891811)]
+
+
+def test_tasks_read_before_the_dag_run_start_are_kept(source, server):
+    """airflow dags test sends no DAG START: the real default_task_info run begins with a task."""
+    ingest(source, server, whole_run("default_task_info"))
+
+    [row] = server.statuses.values()
+    assert (row.executionId, row.executionStatus) == ("01a1e772-7380-7000-8000-000000000001", StatusType.Failed)
+    assert lines(row) == [
+        ("nightly_sales.extract", StatusType.Successful, 1794917732608, 1794917736597),
+        ("nightly_sales.transform", StatusType.Failed, 1794917736622, 1794917736658),
+    ]
 
 
 def test_run_ids_without_a_timestamp_report_only_the_application_outcome(source, server):
@@ -302,7 +328,7 @@ def test_run_ids_without_a_timestamp_report_only_the_application_outcome(source,
     row = server.statuses[(OK_PIPELINE, 1794900878780)]
     assert row.executionStatus == StatusType.Successful
     assert row.executionId == UUID4_RUN_ID
-    assert lines(row) == [("orders_app", StatusType.Successful, None, 1794900878780)]
+    assert lines(row) == []
 
 
 def test_failed_status_read_is_reported_and_writes_nothing(source, server):
@@ -330,26 +356,27 @@ def test_application_failure_takes_its_error_from_the_error_message_facet(source
     assert (error.errorMessage, error.stackTrace, error.failedTask) == (
         "disk full",
         "Traceback (most recent call last): OSError: disk full",
-        "orders_app",
+        None,
     )
 
 
-def test_event_of_another_run_with_the_same_key_writes_nothing(source, server):
+def test_run_whose_id_carries_the_millisecond_of_another_run_takes_the_next_free_key(source, server):
     ingest(source, server, [event("successful_run", 0)])
     other_run = event("successful_run", 7)
     other_run.run_facet["runId"] = "01a1e86d-dc26-7000-8000-0000000000ff"
 
-    results = ingest(source, server, [other_run])
+    ingest(source, server, [other_run, event("successful_run", 7)])
 
-    assert [result.right for result in results] == []
-    assert server.statuses[(OK_PIPELINE, OK_RUN_KEY)].executionStatus == StatusType.Pending
+    assert {key: (row.executionId, row.executionStatus) for key, row in server.statuses.items()} == {
+        (OK_PIPELINE, OK_RUN_KEY): (OK_RUN_ID, StatusType.Successful),
+        (OK_PIPELINE, OK_RUN_KEY + 1): ("01a1e86d-dc26-7000-8000-0000000000ff", StatusType.Successful),
+    }
 
 
 def test_pipeline_gets_a_task_per_job_of_its_runs(source, server):
     ingest(source, server, whole_run("failed_run"))
 
     assert [(task.name, task.displayName) for task in server.pipeline_tasks[FAILED_PIPELINE]] == [
-        ("report_app", "report_app"),
         (
             "report_app.execute_save_into_data_source_command.public_report",
             "execute_save_into_data_source_command.public_report",
@@ -365,7 +392,6 @@ def test_tasks_already_on_the_pipeline_are_kept(source, server):
 
     assert [task.name for task in server.pipeline_tasks[FAILED_PIPELINE]] == [
         "report_app.monday_only_job",
-        "report_app",
         "report_app.execute_save_into_data_source_command.public_report",
         "report_app.deserialize_to_object",
     ]
@@ -411,7 +437,7 @@ def test_job_event_with_an_incomplete_parent_facet_writes_nothing(source, server
     results = ingest(source, server, [child])
 
     assert [result.right for result in results] == []
-    assert [line.name for line in server.statuses[(OK_PIPELINE, OK_RUN_KEY)].taskStatus] == ["orders_app"]
+    assert server.statuses[(OK_PIPELINE, OK_RUN_KEY)].taskStatus == []
 
 
 def test_run_id_that_is_not_a_uuid_is_keyed_like_any_run_id_without_a_timestamp(source, server):
@@ -430,22 +456,38 @@ def test_failed_sql_job_records_the_failure_when_its_application_start_was_never
     row = server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)]
     assert row.executionStatus == StatusType.Failed
     assert lines(row) == [
-        ("report_app", StatusType.Failed, None, 1794900891850),
         ("report_app.deserialize_to_object", StatusType.Failed, None, 1794900891761),
     ]
 
 
-def test_failure_of_a_job_whose_parent_is_not_the_pipeline_run_writes_nothing(source, server):
-    """Spark launched by Airflow: the SQL job's parent is the Spark application, its root the DAG run."""
-    failure = event("failed_run", 4)
-    failure.run_facet["facets"]["parent"]["root"] = {
-        "job": {"namespace": "airflow", "name": "nightly"},
-        "run": {"runId": "01a1e86e-0000-7000-8000-0000000000aa"},
+def test_spark_application_launched_by_an_airflow_task_is_a_run_of_its_own_pipeline(source, server):
+    """The application's parent is the Airflow task and its SQL jobs' root the DAG run (ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent)."""
+    airflow_task = {
+        "job": {"namespace": "airflow", "name": "nightly.run_spark"},
+        "run": {"runId": "01a1e86e-0000-7000-8000-0000000000ab"},
+        "root": {
+            "job": {"namespace": "airflow", "name": "nightly"},
+            "run": {"runId": "01a1e86e-0000-7000-8000-0000000000aa"},
+        },
     }
+    events = whole_run("failed_run")
+    for launched in events:
+        facets = launched.run_facet["facets"]
+        if "parent" in facets:
+            facets["parent"]["root"] = airflow_task["root"]
+        else:
+            facets["parent"] = airflow_task
 
-    ingest(source, server, [failure])
+    ingest(source, server, events)
 
-    assert server.statuses == {}
+    assert list(server.pipeline_requests) == [FAILED_PIPELINE]
+    assert list(server.statuses) == [(FAILED_PIPELINE, FAILED_RUN_KEY)]
+    row = server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)]
+    assert (row.executionStatus, row.executionId) == (StatusType.Failed, FAILED_RUN_ID)
+    assert [line.name for line in row.taskStatus] == [
+        "report_app.execute_save_into_data_source_command.public_report",
+        "report_app.deserialize_to_object",
+    ]
 
 
 def test_status_stage_reports_a_pipeline_fqn_that_cannot_be_built(source):
@@ -478,7 +520,6 @@ def test_airflow_dag_run_fails_with_its_first_task_failure(source, server):
     [row] = server.statuses.values()
     assert row.executionStatus == StatusType.Failed
     assert [(line.name, line.executionStatus) for line in row.taskStatus] == [
-        ("nightly_sales", StatusType.Failed),
         ("nightly_sales.extract", StatusType.Successful),
         ("nightly_sales.transform", StatusType.Failed),
     ]
@@ -499,7 +540,6 @@ def test_airflow_task_dates_reach_the_tasks_when_airflow_sends_them(source, serv
     ingest(source, server, whole_run("full_task_info"))
 
     assert [(task.name, task.startDate, task.endDate) for task in server.pipeline_tasks[AIRFLOW_PIPELINE]] == [
-        ("nightly_sales", None, None),
         ("nightly_sales.extract", "2026-11-05T00:00:00+00:00", "2027-01-01T00:00:00+00:00"),
         ("nightly_sales.transform", "2026-11-01T00:00:00+00:00", None),
     ]
@@ -539,8 +579,36 @@ def test_pipeline_start_date_is_kept_when_an_event_carries_none(source, server):
     assert str(server.pipeline_requests[AIRFLOW_PIPELINE].startDate.root) == "2026-11-01 00:00:00+00:00"
 
 
-def test_dag_start_date_lands_only_on_the_pipeline_of_that_dag(source, server):
-    """A DAG run with a parent (e.g. triggered by another DAG's task) is named after its parent."""
+def test_step_joins_its_parents_run_whatever_its_name(source, server):
+    """dbt, for one, names a model after its table (db.schema.model) and its parent dbt-run-<project>."""
+    model = event("failed_run", 4)
+    model.job["name"] = "shop.public.report"
+
+    ingest(source, server, [model])
+
+    row = server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)]
+    assert [(line.name, line.executionStatus) for line in row.taskStatus] == [("shop.public.report", StatusType.Failed)]
+
+
+def test_event_with_a_parent_and_no_job_type_is_a_step_of_the_parent(source, server):
+    launched = event("successful_run", 7)
+    del launched.job["facets"]["jobType"]["jobType"]
+    launched.run_facet["facets"]["parent"] = {
+        "job": {"namespace": "airflow", "name": "nightly.run_spark"},
+        "run": {"runId": "01a1e86e-0000-7000-8000-0000000000ab"},
+    }
+
+    ingest(source, server, [launched])
+
+    assert list(server.pipeline_requests) == ["spark_openlineage.airflow-nightly.run_spark"]
+    [row] = server.statuses.values()
+    assert (row.executionId, [line.name for line in row.taskStatus]) == (
+        "01a1e86e-0000-7000-8000-0000000000ab",
+        ["orders_app"],
+    )
+
+
+def test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline(source, server):
     triggered = event("full_task_info", 0)
     triggered.run_facet["facets"]["parent"] = {
         "job": {"namespace": "airflow", "name": "upstream_dag.trigger"},
@@ -549,4 +617,166 @@ def test_dag_start_date_lands_only_on_the_pipeline_of_that_dag(source, server):
 
     ingest(source, server, [triggered])
 
-    assert server.pipeline_requests["airflow_openlineage.airflow-upstream_dag.trigger"].startDate is None
+    assert list(server.pipeline_requests) == [AIRFLOW_PIPELINE]
+    assert str(server.pipeline_requests[AIRFLOW_PIPELINE].startDate.root) == "2026-11-01 00:00:00+00:00"
+    [row] = server.statuses.values()
+    assert row.executionId == triggered.run_facet["runId"]
+
+
+RETRY_RUN_ID = "01a1ede9-bb77-7000-8000-000000000021"
+RETRY_TRIES = [
+    ("nightly_retry.flaky", StatusType.Failed, 1794992882308, 1794992885754),
+    ("nightly_retry.flaky", StatusType.Failed, 1794992890429, 1794992892362),
+    ("nightly_retry.flaky", StatusType.Successful, 1794992897884, 1794992899628),
+    ("nightly_retry.load", StatusType.Successful, 1794992900083, 1794992901612),
+]
+
+
+def test_each_try_of_a_retried_airflow_task_is_its_own_line(source, server):
+    ingest(source, server, whole_run("retried_task"))
+
+    [row] = server.statuses.values()
+    assert (row.executionId, row.executionStatus, row.error) == (RETRY_RUN_ID, StatusType.Successful, None)
+    assert row.endTime.root == 1794992902015
+    assert lines(row) == RETRY_TRIES
+    assert [line.taskId for line in row.taskStatus] == [
+        "01a1ede9-bb77-7000-8000-000000000022",
+        "01a1ede9-bb77-7000-8000-000000000023",
+        "01a1ede9-bb77-7000-8000-000000000024",
+        "01a1ede9-bb77-7000-8000-000000000025",
+    ]
+
+    results = ingest(source, server, whole_run("retried_task"))
+
+    assert [result.right for result in results] == []
+
+
+def test_tries_read_out_of_order_each_find_their_own_line(source, server):
+    ingest(source, server, [event("retried_task", index) for index in (0, 5, 6, 3, 1, 4, 2, 7, 8, 9)])
+
+    [row] = server.statuses.values()
+    assert row.executionStatus == StatusType.Successful
+    assert sorted(lines(row), key=lambda line: line[2]) == RETRY_TRIES
+
+
+def test_failed_try_read_without_the_dag_run_start_leaves_the_outcome_to_the_dag_run(source, server):
+    ingest(source, server, [event("retried_task", 2)])
+
+    [row] = server.statuses.values()
+    assert row.executionStatus == StatusType.Pending
+    assert lines(row) == [("nightly_retry.flaky", StatusType.Failed, None, 1794992885754)]
+
+    ingest(source, server, [event("retried_task", 9)])
+
+    [row] = server.statuses.values()
+    assert (row.executionStatus, row.error) == (StatusType.Successful, None)
+
+
+STARTED_BY_TRANSFORM = {
+    "job": {"namespace": "airflow", "name": "nightly_sales.transform"},
+    "run": {"runId": "01a1e974-b232-7000-8000-0000000000aa"},
+    "root": {
+        "job": {"namespace": "airflow", "name": "nightly_sales"},
+        "run": {"runId": "01a1e974-b232-7000-8000-000000000004"},
+    },
+}
+
+
+def started_by_transform(index: int):
+    """An event of the Spark application report_app, started by the Airflow task nightly_sales.transform."""
+    started = event("failed_run", index)
+    started.run_facet["facets"]["parent"] = copy.deepcopy(STARTED_BY_TRANSFORM)
+    return started
+
+
+def pipeline_links(source, server, started) -> list[tuple]:
+    ingest(source, server, [started])
+    source.context.get().pipeline = source.get_pipeline_name(started)
+    return [
+        (result.right.edge.fromEntity.id.root, result.right.edge.toEntity.id.root, result.right.edge.lineageDetails)
+        for result in source.yield_pipeline_lineage_details(started)
+        if isinstance(result.right, AddLineageRequest) and result.right.edge.fromEntity.type == "pipeline"
+    ]
+
+
+def test_run_started_by_an_airflow_task_is_linked_from_the_dag_pipeline(source, server):
+    ingest(source, server, whole_run("full_task_info"))
+
+    [(from_id, to_id, details)] = pipeline_links(source, server, started_by_transform(0))
+
+    assert (from_id, to_id) == (pipeline_id(AIRFLOW_PIPELINE), pipeline_id(FAILED_PIPELINE))
+    assert details.description == "Run started by OpenLineage job: nightly_sales.transform"
+    assert (details.source, details.pipeline) == (LineageSource.OpenLineage, None)
+    assert pipeline_links(source, server, started_by_transform(7)) == []
+
+
+def test_run_started_by_a_task_of_a_natively_ingested_dag_is_linked_from_that_dag(source, server):
+    """A native Airflow connector names its service after the namespace and its tasks by task_id."""
+    server.pipeline_tasks["airflow.nightly_sales"] = [Task(name="transform")]
+
+    [(from_id, to_id, _)] = pipeline_links(source, server, started_by_transform(0))
+
+    assert (from_id, to_id) == (pipeline_id("airflow.nightly_sales"), pipeline_id(FAILED_PIPELINE))
+
+
+def test_run_is_not_linked_from_a_pipeline_without_the_task_that_started_it(source, server):
+    server.pipeline_tasks[AIRFLOW_PIPELINE] = [Task(name="nightly_sales.extract")]
+
+    assert pipeline_links(source, server, started_by_transform(0)) == []
+
+
+def test_run_is_not_linked_when_several_pipelines_have_the_task_that_started_it(source, server):
+    ingest(source, server, whole_run("full_task_info"))
+    server.pipeline_tasks["openlineage_source.airflow-nightly_sales"] = [Task(name="nightly_sales.transform")]
+
+    assert pipeline_links(source, server, started_by_transform(0)) == []
+
+
+def test_dag_run_error_names_the_task_that_failed_it_not_a_try_a_retry_made_good(source, server):
+    """The real retried run, with its last task failing the DAG run instead of completing."""
+    load_fails = event("retried_task", 8, eventType="FAIL")
+    load_fails.run_facet["facets"]["errorMessage"] = {
+        "message": "load lost its connection",
+        "programmingLanguage": "python",
+    }
+    dag_fails = event("retried_task", 9, eventType="FAIL")
+    dag_fails.run_facet["facets"]["errorMessage"] = {"message": "task_failure", "programmingLanguage": "python"}
+
+    ingest(source, server, [*whole_run("retried_task")[:8], load_fails, dag_fails])
+
+    [row] = server.statuses.values()
+    assert row.executionStatus == StatusType.Failed
+    assert (row.error.errorMessage, row.error.failedTask) == ("load lost its connection", "nightly_retry.load")
+
+
+def test_run_started_by_a_task_whose_event_names_no_root_is_not_linked(source, server):
+    """Senders older than the root parent facet name only the launching task, not its DAG."""
+    ingest(source, server, whole_run("full_task_info"))
+    started = started_by_transform(0)
+    del started.run_facet["facets"]["parent"]["root"]
+
+    assert pipeline_links(source, server, started) == []
+
+
+def test_failed_search_for_the_launching_pipeline_writes_no_link(source, server):
+    ingest(source, server, whole_run("full_task_info"))
+    source.metadata.es_search_from_fqn.side_effect = RuntimeError("search unavailable")
+
+    assert pipeline_links(source, server, started_by_transform(0)) == []
+
+
+@pytest.mark.parametrize(
+    "taken, written_key",
+    [(RUN_KEY_WINDOW_MS - 1, OK_RUN_KEY + RUN_KEY_WINDOW_MS - 1), (RUN_KEY_WINDOW_MS, None)],
+)
+def test_run_takes_the_last_free_key_of_its_window_and_none_past_it(source, server, taken, written_key):
+    for key in range(OK_RUN_KEY, OK_RUN_KEY + taken):
+        server.statuses[(OK_PIPELINE, key)] = PipelineStatus(
+            timestamp=key, executionStatus=StatusType.Successful, executionId=f"other-run-{key}"
+        )
+
+    ingest(source, server, [event("successful_run", 0)])
+
+    assert [key for (_, key), row in server.statuses.items() if row.executionId == OK_RUN_ID] == (
+        [written_key] if written_key else []
+    )

@@ -83,11 +83,14 @@ from metadata.ingestion.source.pipeline.openlineage.ownership_resolver import (
     OpenLineageOwnerResolver,
 )
 from metadata.ingestion.source.pipeline.openlineage.run_status import (
+    RUN_KEY_WINDOW_MS,
     build_run_update,
+    launched_by,
     merge_run_status,
     pipeline_job,
     pipeline_start_date,
     pipeline_tasks,
+    place_run,
 )
 from metadata.ingestion.source.pipeline.openlineage.service_resolver import (
     build_service_name,
@@ -133,6 +136,10 @@ FAILED_EVENT_TYPES = [EventType.FAIL, EventType.ABORT]
 # job and only some carry Airflow's dates, so what a pipeline holds is read once per
 # ingestion and kept here.
 KNOWN_PIPELINES_CACHE_MAXSIZE = 1000
+
+# Pipeline links already written by this ingestion: the pipeline of a run started from another
+# system, and the task that started it. Every event of the run would otherwise search again.
+LAUNCH_LINKS_CACHE_MAXSIZE = 1000
 
 # Kinesis Producer Library (KPL) aggregated-record framing.
 # When the OpenLineage Kinesis transport runs with AggregationEnabled, KPL packs
@@ -248,6 +255,7 @@ class OpenlineageSource(PipelineServiceSource):
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
         self._known_pipelines: LRUCache = LRUCache(maxsize=KNOWN_PIPELINES_CACHE_MAXSIZE)
+        self._launch_links: LRUCache = LRUCache(maxsize=LAUNCH_LINKS_CACHE_MAXSIZE)
         self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
 
     def close(self) -> None:
@@ -783,9 +791,9 @@ class OpenlineageSource(PipelineServiceSource):
     @classmethod
     def _render_pipeline_name(cls, pipeline_details: OpenLineageEvent) -> str:
         """
-        Construct a pipeline name from an OpenLineage event. If the event's run facet
-        contains a parent job reference, the pipeline name is derived from the parent's
-        namespace and name. Otherwise, it falls back to the top-level job's namespace and name.
+        Construct a pipeline name from an OpenLineage event: the parent job's namespace
+        and name when the event is a step of the parent's run, otherwise the event's own
+        job namespace and name (see run_status.pipeline_job).
 
         :param run_facet: Open Lineage run facet
         :return: pipeline name (not fully qualified name)
@@ -1102,6 +1110,81 @@ class OpenlineageSource(PipelineServiceSource):
                 f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"
             )
 
+    def _launching_pipeline(self, parent: dict, root: dict) -> Pipeline | None:
+        """
+        The one pipeline holding the task that started a run: the root job's pipeline, written by
+        this connector (``<namespace>-<name>`` in any service) or by a native connector (the
+        service named after the namespace), when it has that task. Its task is named after the
+        job, or after the part of it that follows the root's name for a native connector. None
+        when no pipeline, or more than one, has the task.
+        """
+        root_name = root["name"]
+        try:
+            candidates = [
+                self._get_by_name_cached(
+                    Pipeline, f"{root['namespace']}.{fqn.quote_name(root_name)}", fields=["tasks"]
+                ),
+                *(
+                    self.metadata.es_search_from_fqn(
+                        entity_type=Pipeline,
+                        fqn_search_string=fqn.prefix_entity_for_wildcard_search(
+                            Pipeline, fqn.quote_name(f"{root['namespace']}-{root_name}")
+                        ),
+                        fields="tasks",
+                    )
+                    or []
+                ),
+            ]
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not look up the pipeline of %s that started a run: %s", root_name, exc)
+            return None
+        task_names = {parent["name"], parent["name"].removeprefix(f"{root_name}.")}
+        matches = {
+            pipeline.id.root: pipeline
+            for pipeline in candidates
+            if pipeline and any(task.name in task_names for task in pipeline.tasks or [])
+        }
+        if len(matches) > 1:
+            logger.debug(
+                "Several pipelines have the task %s that started a run: %s",
+                parent["name"],
+                sorted(model_str(pipeline.fullyQualifiedName) for pipeline in matches.values()),
+            )
+        return next(iter(matches.values())) if len(matches) == 1 else None
+
+    def _yield_launch_link(
+        self, pipeline_details: OpenLineageEvent, pipeline_entity: Pipeline
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """A lineage edge from the pipeline whose task started this run to this run's pipeline
+        (ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent)."""
+        launch = launched_by(pipeline_details)
+        if launch is None:
+            return
+        parent, root = launch
+        key = (str(pipeline_entity.id.root), parent["namespace"], parent["name"])
+        if key in self._launch_links:
+            return
+        launching = self._launching_pipeline(parent, root)
+        if launching is None:
+            # The launching pipeline may not be ingested yet; a later event of this run tries again.
+            logger.debug("No pipeline has the task %s that started %s", parent["name"], pipeline_details.job["name"])
+            return
+        self._launch_links[key] = True
+        yield Either(
+            left=None,
+            right=AddLineageRequest(
+                edge=EntitiesEdge(
+                    fromEntity=EntityReference(id=launching.id, type="pipeline"),
+                    toEntity=EntityReference(id=pipeline_entity.id, type="pipeline"),
+                    lineageDetails=LineageDetails(
+                        description=f"Run started by OpenLineage job: {parent['name']}",
+                        source=Source.OpenLineage,
+                    ),
+                )
+            ),
+        )
+
     def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
         # A failed or aborted job reports the datasets it meant to read and write, not what it wrote.
         if pipeline_details.event_type in FAILED_EVENT_TYPES:
@@ -1180,6 +1263,8 @@ class OpenlineageSource(PipelineServiceSource):
         if not pipeline_entity:
             logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
             return
+
+        yield from self._yield_launch_link(pipeline_details, pipeline_entity)
 
         event_has_no_outputs = not output_edges
         event_has_no_inputs = not input_edges
@@ -1394,10 +1479,21 @@ class OpenlineageSource(PipelineServiceSource):
                 pipeline_name=pipeline_name,
             )
             if not pipeline_fqn:
-                logger.warning(f"Could not build the FQN of pipeline '{pipeline_name}', skipping its run status.")
+                logger.warning("Could not build the FQN of pipeline '%s', skipping its run status.", pipeline_name)
                 return
-            stored = self.metadata.list_pipeline_statuses(pipeline_fqn, update.run_key, update.run_key, limit=1)
-            status = merge_run_status(next(iter(stored), None), update)
+            rows = self.metadata.list_pipeline_statuses(
+                pipeline_fqn, update.run_key, update.run_key + RUN_KEY_WINDOW_MS - 1
+            )
+            placed = place_run(rows, update)
+            if placed is None:
+                logger.warning(
+                    "Every status key of pipeline %s within %d ms of run %s is taken, skipping its run status.",
+                    pipeline_fqn,
+                    RUN_KEY_WINDOW_MS,
+                    update.run_id,
+                )
+                return
+            status = merge_run_status(*placed)
             if status:
                 yield Either(left=None, right=OMetaPipelineStatus(pipeline_fqn=pipeline_fqn, pipeline_status=status))
         except Exception as exc:
