@@ -1019,26 +1019,40 @@ public class GlossaryRdfImportIT {
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
-  void importRestoresASoftDeletedInverseUnderItsStoredId(boolean createdViaRest, TestNamespace ns)
+  void importRestoresASoftDeletedInverseFoundByItsPredicate(boolean governedName, TestNamespace ns)
       throws Exception {
-    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossaryRestore" + createdViaRest);
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossaryRestore" + governedName);
     String forward = relationshipTypeName(glossary.getName());
     String inverse = forward + "Inverse";
     relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
-    UUID storedId = softDeletedPartner(glossary, inverse, createdViaRest);
-    relationshipTypeIds.add(storedId);
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
+    RelationshipType deleted = softDeletedPartner(glossary, inverse, governedName);
+    relationshipTypeIds.add(deleted.getId());
+    String ontology = inverseCycleOntology(glossary.getName(), forward, inverse, "undeclared");
 
-    JsonNode result =
-        importRdfBody(
-            glossary.getName(),
-            inverseCycleOntology(glossary.getName(), forward, inverse, "undeclared"));
+    JsonNode planned = importRdfBody(glossary.getName(), ontology, true);
+
+    assertTrue(
+        planned.path("messages").toString().contains(deleted.getName() + "' is deleted"),
+        planned.toString());
+    assertTrue(relationshipTypeById(deleted.getId()).path("deleted").asBoolean());
+
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
 
     assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
-    JsonNode restored = getRelationshipType(inverse);
-    assertEquals(storedId.toString(), restored.path("id").asText());
+    assertEquals(planned.path("relationsAdded"), result.path("relationsAdded"));
+    assertEquals(planned.path("relationTypesRegistered"), result.path("relationTypesRegistered"));
+    JsonNode restored = getRelationshipType(deleted.getName());
+    assertEquals(deleted.getId().toString(), restored.path("id").asText());
     assertFalse(restored.path("deleted").asBoolean());
-    assertInversePair(forward, inverse);
-    assertCyclePerspectives(glossary, forward, inverse);
+    if (governedName) {
+      assertEquals(
+          404,
+          get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + inverse).statusCode(),
+          "no alias is registered beside the governed type");
+    }
+    assertInversePair(forward, deleted.getName());
+    assertCyclePerspectives(glossary, forward, deleted.getName());
   }
 
   @Test
@@ -1087,17 +1101,32 @@ public class GlossaryRdfImportIT {
     }
   }
 
-  private UUID softDeletedPartner(Glossary glossary, String name, boolean createdViaRest)
+  /**
+   * A soft-deleted type on the predicate the ontology names {@code name}: one an earlier import
+   * registered under that name, or a governed type whose name differs from the IRI's local name.
+   */
+  private RelationshipType softDeletedPartner(Glossary glossary, String name, boolean governedName)
       throws Exception {
-    UUID id;
-    if (createdViaRest) {
-      id = createExistingPartner(glossary, name, null).getId();
+    RelationshipType type;
+    if (governedName) {
+      type =
+          SdkClients.adminClient()
+              .relationshipTypes()
+              .create(
+                  new CreateRelationshipType()
+                      .withName(name + "Governed")
+                      .withDisplayName("Governed inverse")
+                      .withDescription("Governed under its own name")
+                      .withRdfPredicate(
+                          URI.create(
+                              "http://example.com/ontology/" + glossary.getName() + "#" + name))
+                      .withCategory(RelationshipTypeCategory.CUSTOM)
+                      .withPaletteKey(RelationshipPaletteKey.BLUE));
     } else {
       importRdfBody(
           glossary.getName(),
           inverseCycleOntology(glossary.getName(), name, "unused", "none")
               .replace("hcp:Term", "hcp:Earlier"));
-      id = RelationshipTypeIds.stableId(name);
       for (int index = 0; index < 3; index++) {
         RelationshipTypeTestSupport.Reply deleted =
             RelationshipTypeTestSupport.send(
@@ -1110,10 +1139,19 @@ public class GlossaryRdfImportIT {
                 null);
         assertEquals(200, deleted.status(), deleted.message());
       }
+      type = RelationshipTypeTestSupport.asType(RelationshipTypeTestSupport.getTypeByName(name));
     }
-    RelationshipTypeTestSupport.Reply reply = RelationshipTypeTestSupport.deleteType(id, false);
+    RelationshipTypeTestSupport.Reply reply =
+        RelationshipTypeTestSupport.deleteType(type.getId(), false);
     assertEquals(200, reply.status(), reply.message());
-    return id;
+    return type;
+  }
+
+  private JsonNode relationshipTypeById(UUID id) throws Exception {
+    HttpResponse<String> response =
+        get(SdkClients.getServerUrl() + "/v1/relationshipTypes/" + id + "?include=all");
+    assertEquals(200, response.statusCode(), response.body());
+    return OBJECT_MAPPER.readTree(response.body());
   }
 
   @Test

@@ -36,8 +36,9 @@ were protected from deletion.
    while re-linking a used partner would change how the partner's relations read.
 4. A create or update whose references name a soft-deleted type is rejected with 400. A reference
    by FQN to a type that does not exist yet stays allowed (the UI creates an inverse pair that
-   way); the ontology export omits such an axiom instead of failing. An RDF import that names a
-   soft-deleted type restores it under its stored id before writing the types that reference it.
+   way); the ontology export omits such an axiom instead of failing. An RDF import that names the
+   predicate of a soft-deleted type restores that type first
+   (ADR:2026-11-18-rdf-import-registers-governed-inverse-components).
 5. The deprecated settings write removes several types at once: the whole removal is checked before
    the setting is saved, against the definitions that write saves, and references among the removed
    types do not block it. A kept type's inverse naming a removed type is cleared as in rule 2. A
