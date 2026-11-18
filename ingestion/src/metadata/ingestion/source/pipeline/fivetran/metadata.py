@@ -61,6 +61,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.lineage.topic_lineage import get_topic_field_fqn
+from metadata.ingestion.models.custom_basemodel_validation import replace_separators
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -573,7 +574,7 @@ class FivetranSource(PipelineServiceSource):
     ) -> _TableResolution:
         if not table_name:
             return _TableResolution(reason="not_found")
-        reference = TableReference(database_name or None, schema_name or None, table_name)
+        reference = TableReference(database_name or None, schema_name or None, replace_separators(table_name))
         resolver = EntityResolver(self.metadata)
         entities: dict[str, Table] = {}
         try:

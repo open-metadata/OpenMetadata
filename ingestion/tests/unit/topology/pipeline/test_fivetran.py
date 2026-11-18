@@ -888,7 +888,11 @@ class TestFivetranUniqueTableLineage:
         "name,fqn_name,search",
         [
             ("orders.2026", 'A.db.public."orders.2026"', 'A.*.public."orders.2026"'),
-            ('"orders.2026"', 'A.db.public."orders.2026"', 'A.*.public."orders.2026"'),
+            (
+                '"orders.2026"',
+                'A.db.public."__reserved__quote__orders.2026__reserved__quote__"',
+                'A.*.public."__reserved__quote__orders.2026__reserved__quote__"',
+            ),
             ("order rows", "A.db.public.order rows", "A.*.public.order rows"),
             ("고객", "A.db.public.고객", "A.*.public.고객"),
             ("orders*", "A.db.public.orders*", r"A.*.public.orders\*"),
@@ -906,6 +910,55 @@ class TestFivetranUniqueTableLineage:
 
         assert result.entity == entity
         assert transport.requests[0][1]["fieldValue"] == [search]
+
+    @pytest.mark.parametrize("endpoint", ["source", "destination"])
+    @pytest.mark.parametrize("missing_database", [False, True])
+    @pytest.mark.parametrize(
+        "name,stored_name",
+        [
+            ("orders::daily", "orders__reserved__colon__daily"),
+            ("stage>production", "stage__reserved__arrow__production"),
+            ('users "2024"', "users __reserved__quote__2024__reserved__quote__"),
+            ("orders\narchive", "orders__reserved__newline__archive"),
+            ("orders\rarchive", "orders__reserved__carriage_return__archive"),
+            ("orders\tarchive", "orders__reserved__tab__archive"),
+            ('"orders.2026"', '"__reserved__quote__orders.2026__reserved__quote__"'),
+        ],
+    )
+    def test_reserved_table_names_preserve_lineage_identity(
+        self, lineage_boundary, endpoint, missing_database, name, stored_name
+    ):
+        source, client, transport, details = lineage_boundary
+        schema = client.get_connector_schema_details.return_value["public"]
+        upstream_fqn = "A.db.public.orders"
+        downstream_fqn = "warehouse.analytics.landing.orders_copy"
+        if endpoint == "source":
+            schema["tables"][name] = schema["tables"].pop("orders")
+            upstream_fqn = f"A.db.public.{stored_name}"
+        else:
+            schema["tables"]["orders"]["name_in_destination"] = name
+            downstream_fqn = f"warehouse.analytics.landing.{stored_name}"
+        if missing_database:
+            getattr(details, endpoint)["config"].pop("database")
+        upstream = lineage_table(upstream_fqn)
+        downstream = lineage_table(downstream_fqn)
+        tables = [
+            upstream,
+            downstream,
+            lineage_table('A.db.public."orders.2026"'),
+            lineage_table('warehouse.analytics.landing."orders.2026"'),
+        ]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
+
+        result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        edge = result[0].right.edge
+        assert edge.fromEntity.id == upstream.id
+        assert edge.toEntity.id == downstream.id
+        assert edge.lineageDetails.columnsLineage == [
+            ColumnLineage(fromColumns=[upstream_fqn + ".id"], toColumn=downstream_fqn + ".id")
+        ]
 
     def test_exact_first_policy_does_not_give_a_service_precedence(self, lineage_boundary):
         source, _, transport, _ = lineage_boundary
