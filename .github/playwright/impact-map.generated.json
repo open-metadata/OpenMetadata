@@ -10906,8 +10906,10 @@
       ],
       "specs": [
         "playwright/e2e/Features/AIMode/PersonaSettings.spec.ts",
+        "playwright/e2e/Features/ProfileGovernance.spec.ts",
         "playwright/e2e/Features/ProfilePlatformSettings.spec.ts",
         "playwright/e2e/Features/SettingsUnsavedChanges.spec.ts",
+        "playwright/e2e/Pages/AIProfile/ProfileDetails.spec.ts",
         "playwright/e2e/Pages/AIProfile/ProfileMembers.spec.ts"
       ]
     },
