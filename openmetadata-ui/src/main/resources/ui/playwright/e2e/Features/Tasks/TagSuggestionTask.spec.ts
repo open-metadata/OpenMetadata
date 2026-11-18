@@ -28,47 +28,65 @@ test.describe('Tag suggestion task', () => {
     labelType: 'Generated',
     state: 'Suggested',
   };
-  let task: { id: string; taskId: string };
+  let task: { id: string; taskId: string } | undefined;
   let columnName: string;
 
   test.beforeAll(
     'Create the table and its tag suggestion',
     async ({ browser }) => {
+      // beforeAll can run more than once per worker; start from a clean slate.
+      task = undefined;
       const { apiContext, afterAction } = await performAdminLogin(browser);
-      await table.create(apiContext);
-      columnName = table.entityResponseData.columns?.[0]?.name ?? '';
 
-      const createResponse = await apiContext.post('/api/v1/tasks', {
-        data: {
-          about: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
-          type: 'Suggestion',
-          category: 'MetadataUpdate',
-          assignees: ['admin'],
-          payload: {
-            source: 'Agent',
-            suggestionType: 'Tag',
-            fieldPath: `columns.${columnName}.tags`,
-            suggestedValue: JSON.stringify([suggestedTag]),
+      try {
+        await table.create(apiContext);
+        columnName = table.entityResponseData.columns?.[0]?.name ?? '';
+
+        const createResponse = await apiContext.post('/api/v1/tasks', {
+          data: {
+            about: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
+            type: 'Suggestion',
+            category: 'MetadataUpdate',
+            assignees: ['admin'],
+            payload: {
+              source: 'Agent',
+              suggestionType: 'Tag',
+              fieldPath: `columns.${columnName}.tags`,
+              suggestedValue: JSON.stringify([suggestedTag]),
+            },
           },
-        },
-      });
-      expect(createResponse.ok()).toBe(true);
-      task = await createResponse.json();
-      await afterAction();
+        });
+        expect(createResponse.ok()).toBe(true);
+        task = await createResponse.json();
+      } finally {
+        await afterAction();
+      }
     }
   );
 
   test.afterAll('Delete the task and the table', async ({ browser }) => {
     const { apiContext, afterAction } = await performAdminLogin(browser);
-    await apiContext.delete(`/api/v1/tasks/${task.id}?hardDelete=true`);
-    await table.delete(apiContext);
-    await afterAction();
+
+    try {
+      // Skip when beforeAll failed before creating it, so the table is still deleted.
+      if (task) {
+        await apiContext.delete(`/api/v1/tasks/${task.id}?hardDelete=true`);
+      }
+      await table.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
   });
 
   test('shows the suggested tags as tags and applies them on accept', async ({
     page,
   }) => {
     test.slow();
+
+    if (!task) {
+      throw new Error('beforeAll did not create the tag suggestion task');
+    }
+    const { id: taskEntityId, taskId } = task;
 
     await redirectToHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
@@ -81,7 +99,7 @@ test.describe('Tag suggestion task', () => {
         );
         await waitForAllLoadersToDisappear(page);
 
-        const taskCard = getTaskCard(page, task.taskId);
+        const taskCard = getTaskCard(page, taskId);
         await expect(taskCard).toBeVisible();
         await taskCard.click();
 
@@ -110,13 +128,11 @@ test.describe('Tag suggestion task', () => {
         const resolveResponse = waitForResponseWithStatus(
           page,
           (response) =>
-            response.url().includes(`/api/v1/tasks/${task.id}/resolve`) &&
+            response.url().includes(`/api/v1/tasks/${taskEntityId}/resolve`) &&
             response.request().method() === 'POST',
           200
         );
-        await getTaskCard(page, task.taskId)
-          .getByTestId('approve-button')
-          .click();
+        await getTaskCard(page, taskId).getByTestId('approve-button').click();
         await resolveResponse;
 
         await expect
