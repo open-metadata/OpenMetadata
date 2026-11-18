@@ -23,11 +23,15 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
+import org.openmetadata.service.ontology.RelationshipTypeReferences;
+import org.openmetadata.service.ontology.RelationshipTypeReferences.Reference;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.RelationshipTypeValidator;
 import org.openmetadata.service.resources.ontology.RelationshipTypeResource;
@@ -75,6 +79,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     entity.setFullyQualifiedName(entity.getName());
     applyDefaults(entity);
     hydrateReferences(entity);
+    rejectDeletedReferences(entity);
     RelationshipTypeValidator.validate(entity);
     validateUniquePredicate(entity);
     graphValidator.validate(entity);
@@ -159,6 +164,33 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     return reference;
   }
 
+  /** A reference to a soft-deleted type would leave every read through it failing. */
+  private void rejectDeletedReferences(final RelationshipType entity) {
+    for (final Reference reference : RelationshipTypeReferences.heldBy(entity)) {
+      final RelationshipType target = findReferenced(reference.target());
+      if (target != null && Boolean.TRUE.equals(target.getDeleted())) {
+        throw new BadRequestException(
+            "Relationship type '"
+                + target.getName()
+                + "' named in "
+                + reference.field().jsonName()
+                + " is deleted; restore it first");
+      }
+    }
+  }
+
+  private RelationshipType findReferenced(final EntityReference reference) {
+    final List<RelationshipType> byId =
+        reference.getId() == null
+            ? List.of()
+            : daoCollection
+                .relationshipTypeDAO()
+                .findEntitiesByIds(List.of(reference.getId()), Include.ALL);
+    return !byId.isEmpty() || reference.getFullyQualifiedName() == null
+        ? byId.stream().findFirst().orElse(null)
+        : findByNameOrNull(reference.getFullyQualifiedName(), Include.ALL);
+  }
+
   @Override
   public void storeEntity(final RelationshipType entity, final boolean update) {
     store(entity, update);
@@ -198,6 +230,31 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
       throw new BadRequestException(
           "System relationship type '" + entity.getName() + "' cannot be deleted");
     }
+    requireUnreferenced(entity);
+  }
+
+  /** ADR:2026-11-18-a-relationship-type-in-use-cannot-be-deleted */
+  private void requireUnreferenced(final RelationshipType entity) {
+    final List<Reference> references =
+        RelationshipTypeReferences.referencesTo(entity, listIncludingDeleted());
+    final int relationCount =
+        daoCollection
+            .relationshipDAO()
+            .countRelationsOfType(
+                Entity.GLOSSARY_TERM,
+                Relationship.RELATED_TO.ordinal(),
+                entity.getId(),
+                entity.getName());
+    if (!references.isEmpty() || relationCount > 0) {
+      throw new BadRequestException(
+          RelationshipTypeReferences.inUseMessage(entity, references, relationCount));
+    }
+  }
+
+  private List<RelationshipType> listIncludingDeleted() {
+    return daoCollection.relationshipTypeDAO().listIncludingDeleted().stream()
+        .map(json -> JsonUtils.readValue(json, RelationshipType.class))
+        .toList();
   }
 
   @Override

@@ -54,7 +54,7 @@ public final class OntologyMigration {
         .orElse("{}");
   }
 
-  private static void upsert(
+  static void upsert(
       final Handle handle,
       final ConnectionType connectionType,
       final RelationshipType relationshipType) {

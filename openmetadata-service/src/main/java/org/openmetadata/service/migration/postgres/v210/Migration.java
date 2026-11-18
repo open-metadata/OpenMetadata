@@ -60,6 +60,7 @@ import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
+import org.openmetadata.service.migration.utils.v210.RelationshipTypeReferenceRepair;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
@@ -83,6 +84,13 @@ public class Migration extends MigrationProcessImpl {
     alignHybridSearchWeightsWithDefaults();
     new MigrationUtil(handle, POSTGRES).archiveLegacyThreadStorage();
     migrateRelationshipTypes(handle, POSTGRES);
+    // Relationship types deleted while still in use left their relations unreadable; the delete is
+    // guarded now, and this undeletes or recreates the types those relations still name.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        RelationshipTypeReferenceRepair.STEP_NAME,
+        () -> RelationshipTypeReferenceRepair.repair(handle, POSTGRES));
     copyConceptBindingsToRows(handle, POSTGRES);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the

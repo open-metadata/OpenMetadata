@@ -1445,6 +1445,16 @@ public interface CoreRelationshipDAOs {
         @Bind("relation") int relation);
 
     @SqlQuery(
+        "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity AND toEntity = :entity "
+            + "AND relation = :relation AND (relationshipTypeId = :relationshipTypeId "
+            + "OR relationType = :relationshipTypeName)")
+    int countRelationsOfType(
+        @Bind("entity") String entity,
+        @Bind("relation") int relation,
+        @BindUUID("relationshipTypeId") UUID relationshipTypeId,
+        @Bind("relationshipTypeName") String relationshipTypeName);
+
+    @SqlQuery(
         "SELECT COUNT(toId) FROM entity_relationship WHERE fromId = :fromId AND fromEntity = :fromEntity "
             + "AND relation IN (<relation>) AND deleted = FALSE")
     @RegisterRowMapper(ToRelationshipMapper.class)
