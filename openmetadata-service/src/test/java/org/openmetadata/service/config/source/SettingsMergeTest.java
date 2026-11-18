@@ -64,6 +64,32 @@ class SettingsMergeTest {
   private static final DeploymentTemplate AUTHZ =
       DeploymentTemplate.parse(AUTH_TEMPLATE, "/authorizerConfiguration");
 
+  /**
+   * A deployment template that mirrors the shipped LDAP block, including the trust-store password
+   * environment variable written as {@code ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}}, which a
+   * missing mount resolves to an empty string. The trust store object is a single-value merge
+   * unit that encloses a secret leaf.
+   */
+  private static final DeploymentTemplate LDAP =
+      DeploymentTemplate.parse(
+          """
+          authenticationConfiguration:
+            clientType: ${AUTHENTICATION_CLIENT_TYPE:-public}
+            provider: ${AUTHENTICATION_PROVIDER:-basic}
+            ldapConfiguration:
+              host: ${AUTHENTICATION_LDAP_HOST:-}
+              maxPoolSize: ${AUTHENTICATION_LDAP_POOL_SIZE:-3}
+              dnAdminPassword: ${AUTHENTICATION_LDAP_ADMIN_PASSWORD:-""}
+              trustStoreConfig:
+                customTrustManagerConfig:
+                  trustStoreFilePath: ${AUTHENTICATION_LDAP_TRUSTSTORE_PATH:-}
+                  trustStoreFilePassword: ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-}
+                  trustStoreFileFormat: ${AUTHENTICATION_LDAP_SSL_KEY_FORMAT:-}
+                  verifyHostname: ${AUTHENTICATION_LDAP_SSL_VERIFY_CERT_HOST:-}
+                  examineValidityDates: ${AUTHENTICATION_LDAP_EXAMINE_VALIDITY_DATES:-}
+          """,
+          "/authenticationConfiguration");
+
   private final SettingsMerge merge = new SettingsMerge();
 
   @Test
@@ -559,9 +585,225 @@ class SettingsMergeTest {
     assertEquals("https://new.example", result.stored().get("supportUrl").asText());
   }
 
+  // ---- Secrets nested inside a single-value merge unit (trustStoreConfig) ----
+  // The policy marks /ldapConfiguration/trustStoreConfig as a single-value merge unit (compared and
+  // applied whole) while {@link SettingsSecrets} discovers the trust-store password as a deep
+  // leaf secret at
+  // /ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword.
+  // A naive secret guard only matches a unit pointer to a leaf secret pointer, so it never fires
+  // for the enclosing object, and a missing ${AUTHENTICATION_LDAP_KEYSTORE_PASSWORD:-} env var
+  // (resolved to "") wipes a password saved before. The tests pin the invariant: a blank deployment
+  // value never replaces a stored secret, even when the secret is nested under a single-value unit.
+
+  @Test
+  void aBlankNestedTrustStorePasswordIsKeptWhenTheTrustStoreObjectOtherwiseChanged() {
+    // The deployment's block matches the stored block, except the password env var went missing
+    // (resolves to "") and verifyHostname was flipped. The single-value object as a whole changed
+    // and stays non-blank, which is the case the kept-over-blank guard for whole units misses.
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ks-p4ss','trustStoreFileFormat':'JKS',"
+            + "'verifyHostname':false}}}}";
+    String deployment =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'','trustStoreFileFormat':'JKS','verifyHostname':true}}}}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, stored);
+
+    assertEquals(
+        "ks-p4ss",
+        result
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "a missing password env var must not wipe the stored secret");
+    assertEquals(
+        true,
+        result
+            .stored()
+            .at("/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/verifyHostname")
+            .asBoolean(),
+        "the unrelated sibling change is still applied");
+    assertTrue(result.report().has(MergeOutcome.APPLIED));
+    assertFalse(
+        result.report().has(MergeOutcome.CONFLICT),
+        "the UI never changed the value, so no conflict is reported");
+  }
+
+  @Test
+  void aNestedTrustStorePasswordMissingFromTheDeploymentObjectIsKept() {
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ks-p4ss','trustStoreFileFormat':'JKS'}}}}";
+    // The deployment object omits the password leaf entirely; verifyHostname is added so the
+    // object as a whole changed (and stays non-blank), the same shape as a form that does not
+    // show the password field.
+    String deployment =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFileFormat':'JKS','verifyHostname':true}}}}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, stored);
+
+    assertEquals(
+        "ks-p4ss",
+        result
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "an absent password leaf must not erase the stored secret");
+    assertEquals(
+        true,
+        result
+            .stored()
+            .at("/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/verifyHostname")
+            .asBoolean());
+  }
+
+  @Test
+  void aNonBlankDeploymentNestedTrustStorePasswordReplacesTheStoredOne() {
+    // When the deployment deliberately sets a non-blank password, the secret is applied like any
+    // other value: the fix only keeps the stored secret over a BLANK deployment value.
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ks-p4ss','trustStoreFileFormat':'JKS'}}}}";
+    String deployment =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/new-ts',"
+            + "'trustStoreFilePassword':'new-pw','trustStoreFileFormat':'JKS'}}}}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, stored);
+
+    assertEquals(
+        "new-pw",
+        result
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "a deliberate non-blank deployment password replaces the stored secret");
+    assertEquals(
+        "/new-ts",
+        result
+            .stored()
+            .at("/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePath")
+            .asText());
+  }
+
+  @Test
+  void aProviderSwitchAwayFromLdapKeepsTheTrustStoreConfigAndPassword() {
+    // A deployment that switches the provider and brings no LDAP block must keep the old block's
+    // secrets, just as it keeps the flat dnAdminPassword: a blank secret is far likelier a missing
+    // mount than a deliberate removal.
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'dnAdminPassword':'bind-pw','maxPoolSize':10,'trustStoreConfig':"
+            + "{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ks-p4ss','trustStoreFileFormat':'JKS'}}}}";
+    String deployment = "{'provider':'basic','clientType':'public'}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, stored);
+
+    assertEquals("basic", result.stored().get("provider").asText());
+    assertEquals(
+        "bind-pw",
+        result.stored().at("/ldapConfiguration/dnAdminPassword").asText(),
+        "the flat LDAP secret is kept across the switch (existing behaviour)");
+    assertEquals(
+        "ks-p4ss",
+        result
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "the nested trust-store secret is kept too, like the flat secret");
+    assertTrue(
+        result.stored().at("/ldapConfiguration/host").isMissingNode(),
+        "non-secret provider fields are replaced by the switch");
+    assertTrue(
+        result.stored().at("/ldapConfiguration/maxPoolSize").isMissingNode(),
+        "non-secret provider defaults are replaced by the switch");
+    assertTrue(result.report().isIdentityProviderReplaced());
+    assertTrue(
+        result.report().units(MergeOutcome.KEPT_OVER_BLANK).stream()
+            .anyMatch(unit -> unit.pointers().contains("/ldapConfiguration/trustStoreConfig")),
+        "the trust-store secret unit is kept over the blank deployment block");
+    assertTrue(
+        result.report().units(MergeOutcome.KEPT_OVER_BLANK).stream()
+            .anyMatch(unit -> unit.pointers().contains("/ldapConfiguration/dnAdminPassword")),
+        "the flat secret is still kept over the blank deployment block");
+  }
+
+  @Test
+  void aProviderSwitchToANewLdapAppliesItsTrustStoreConfigWithoutTheOldPassword() {
+    // A switch to a different LDAP that brings its own trust-store object replaces the old one
+    // wholesale: the new trust store uses a different file and password, so the old password is
+    // not carried across. Only the wholesale-blank case (an absent LDAP block) keeps the secret.
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'old.ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/old-ts',"
+            + "'trustStoreFilePassword':'old-pw','trustStoreFileFormat':'JKS'}}}}";
+    String deployment =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'new.ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/new-ts',"
+            + "'trustStoreFilePassword':'','trustStoreFileFormat':'JKS'}}}}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, stored);
+
+    assertEquals("new.ldap.example", result.stored().at("/ldapConfiguration/host").asText());
+    assertEquals(
+        "/new-ts",
+        result
+            .stored()
+            .at("/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePath")
+            .asText(),
+        "the new provider's trust-store object replaces the old");
+    assertEquals(
+        "",
+        result
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "the old password is not carried across to a different provider's trust store");
+    assertFalse(
+        result.report().units(MergeOutcome.KEPT_OVER_BLANK).stream()
+            .anyMatch(unit -> unit.pointers().contains("/ldapConfiguration/trustStoreConfig")),
+        "the switch owns the new trust-store object, so the secret-over-blank guard does not fire");
+    assertTrue(result.report().isIdentityProviderReplaced());
+  }
+
+  @Test
+  void aFlatLdapSecretIsKeptOverABlankDeploymentValue() {
+    // Control: a flat secret whose leaf IS its own merge unit is already protected by the
+    // existing kept-over-blank guard. The nested-secret fix must not change that behaviour.
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'dnAdminPassword':'bind-pw','maxPoolSize':10}}";
+    String deployment =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'dnAdminPassword':'','maxPoolSize':10}}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, stored);
+
+    assertEquals("bind-pw", result.stored().at("/ldapConfiguration/dnAdminPassword").asText());
+    assertTrue(result.report().has(MergeOutcome.KEPT_OVER_BLANK));
+  }
+
   private MergeResult auth(
       ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
     return merge.merge(authInput(mode, deployment, stored, lastApplied).build());
+  }
+
+  private MergeResult ldapAuth(
+      ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
+    return merge.merge(ldapAuthInput(mode, deployment, stored, lastApplied).build());
   }
 
   private MergeResult authz(
@@ -575,6 +817,12 @@ class SettingsMergeTest {
   private static MergeInput.MergeInputBuilder authInput(
       ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
     return input(AUTH, mode, deployment, stored, lastApplied)
+        .policy(SettingsFieldPolicies.of(AUTHENTICATION_CONFIGURATION));
+  }
+
+  private static MergeInput.MergeInputBuilder ldapAuthInput(
+      ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
+    return input(LDAP, mode, deployment, stored, lastApplied)
         .policy(SettingsFieldPolicies.of(AUTHENTICATION_CONFIGURATION));
   }
 
