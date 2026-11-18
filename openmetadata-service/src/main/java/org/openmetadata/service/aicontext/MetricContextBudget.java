@@ -26,14 +26,14 @@ final class MetricContextBudget {
   private final int maxItems;
   private boolean truncated;
 
-  MetricContextBudget(int budgetChars, int maxItems) {
+  MetricContextBudget(final int budgetChars, final int maxItems) {
     budget = new BudgetTracker(Math.max(0, budgetChars) - ENVELOPE_CHARS);
     this.maxItems = maxItems;
   }
 
-  <T> List<T> take(List<T> values, Function<T, String> serialize) {
-    List<T> retained = new ArrayList<>();
-    for (T value : values) {
+  <T> List<T> take(final List<T> values, final Function<T, String> serialize) {
+    final List<T> retained = new ArrayList<>();
+    for (final T value : values) {
       if (retained.size() == maxItems || !budget.tryConsume("," + serialize.apply(value))) {
         break;
       }
@@ -43,14 +43,14 @@ final class MetricContextBudget {
     return retained.isEmpty() ? null : List.copyOf(retained);
   }
 
-  <T> List<T> takeAll(List<T> values, Function<T, String> serialize) {
+  <T> List<T> takeAll(final List<T> values, final Function<T, String> serialize) {
     if (values.size() > maxItems) {
       truncated = true;
       return null;
     }
-    StringBuilder serialized = new StringBuilder();
-    for (T value : values) {
-      String item = serialize.apply(value);
+    final StringBuilder serialized = new StringBuilder();
+    for (final T value : values) {
+      final String item = serialize.apply(value);
       if ((long) serialized.length() + item.length() + 1 > budget.remaining()) {
         truncated = true;
         return null;

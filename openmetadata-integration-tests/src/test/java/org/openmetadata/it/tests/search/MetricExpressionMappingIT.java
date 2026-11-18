@@ -7,7 +7,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,127 +17,151 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 
 @ExtendWith(TestNamespaceExtension.class)
 class MetricExpressionMappingIT {
+  private static final String METRIC_EXPRESSION = "metricExpression";
+  private static final String LEGACY_EXPRESSION = "expression";
+  private static final String CODE = "code";
+  private static final String LANGUAGE = "language";
+  private static final String PROPERTIES = "properties";
+  private static final String MAPPING_PROPERTIES = "/mappings/" + PROPERTIES;
+  private static final String METRIC_EXPRESSION_MAPPING =
+      MAPPING_PROPERTIES + "/" + METRIC_EXPRESSION;
+  private static final String LEGACY_EXPRESSION_MAPPING =
+      MAPPING_PROPERTIES + "/" + LEGACY_EXPRESSION;
+  private static final String CODE_TYPE_MAPPING =
+      METRIC_EXPRESSION_MAPPING + "/" + PROPERTIES + "/" + CODE + "/type";
+  private static final String EXPRESSION_CODE = METRIC_EXPRESSION + "." + CODE;
+  private static final String EXPRESSION_LANGUAGE = METRIC_EXPRESSION + "." + LANGUAGE;
+  private static final String KEYWORD_SUFFIX = ".keyword";
+  private static final String HITS_TOTAL = "/hits/total/value";
+  private static final String SQL = "SQL";
+  private static final String TERM_QUERY = "term";
+  private static final String LEGACY_AMOUNT = "legacy_amount";
+  private static final String LEGACY_CODE = "SUM(" + LEGACY_AMOUNT + ")";
+  private static final String CURRENT_CODE = "SUM(current_amount)";
+  private static final String FRESH_CODE = "SUM(fresh_amount)";
 
   @Test
-  void explicitMappingAcceptsExistingDynamicAndLegacyExpressionDocuments(TestNamespace namespace)
-      throws Exception {
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode mapping;
-    try (InputStream input =
-        getClass().getResourceAsStream("/elasticsearch/en/metric_index_mapping.json")) {
-      assertNotNull(input);
-      mapping = (ObjectNode) mapper.readTree(input);
-    }
-    ObjectNode previousMapping = mapping.deepCopy();
-    ((ObjectNode) previousMapping.at("/mappings/properties")).remove("metricExpression");
-    SearchClient search = new SearchClient(OssTestServer.defaultHandle());
-    String index = namespace.prefix("metric_expression").toLowerCase(Locale.ROOT);
+  void explicitMappingAcceptsExistingDynamicAndLegacyExpressionDocuments(
+      final TestNamespace namespace) throws Exception {
+    final ObjectNode mapping = readMetricMapping();
+    final SearchClient search = new SearchClient(OssTestServer.defaultHandle());
+    final String index = namespace.prefix("metric_expression").toLowerCase(Locale.ROOT);
     try {
-      search.put("/" + index, previousMapping.toString());
-      search.put(
-          "/" + index + "/_doc/before?refresh=wait_for",
-          """
-          {"metricExpression":{"language":"SQL","code":"SUM(legacy_amount)"}}
-          """);
-      search.put(
-          "/" + index + "/_doc/legacy?refresh=wait_for",
-          """
-          {"expression":{"language":"SQL","code":"SUM(legacy_amount)"}}
-          """);
-      JsonNode previousExpression =
-          search.mapping(index).at("/" + index + "/mappings/properties/metricExpression");
-      assertThat(mapping.at("/mappings/properties/metricExpression")).isEqualTo(previousExpression);
-      ObjectNode properties = mapper.createObjectNode();
-      properties.set("metricExpression", mapping.at("/mappings/properties/metricExpression"));
-      properties.set("expression", mapping.at("/mappings/properties/expression"));
-      search.put(
-          "/" + index + "/_mapping",
-          mapper.createObjectNode().set("properties", properties).toString());
-      search.put(
-          "/" + index + "/_doc/after?refresh=wait_for",
-          """
-          {"metricExpression":{"language":"SQL","code":"SUM(current_amount)"}}
-          """);
-
-      assertThat(
-              search
-                  .mapping(index)
-                  .at("/" + index + "/mappings/properties/metricExpression/properties/code/type")
-                  .asText())
-          .isEqualTo("text");
-      assertThat(
-              search
-                  .search(
-                      index,
-                      """
-                  {"query":{"match":{"metricExpression.code":"legacy_amount"}}}
-                  """)
-                  .at("/hits/total/value")
-                  .asInt())
-          .isEqualTo(1);
-      assertExactExpressionSearch(search, index, "SUM(legacy_amount)");
-      assertExactExpressionSearch(search, index, "SUM(current_amount)");
-      assertThat(
-              search
-                  .search(
-                      index,
-                      """
-                  {"query":{"match":{"expression.code":"legacy_amount"}}}
-                  """)
-                  .at("/hits/total/value")
-                  .asInt())
-          .isEqualTo(1);
-      assertThat(
-              search
-                  .search(
-                      index,
-                      """
-                  {"query":{"match":{"metricExpression.code":"current_amount"}}}
-                  """)
-                  .at("/hits/total/value")
-                  .asInt())
-          .isEqualTo(1);
+      createLegacyIndex(search, index, mapping);
+      assertDynamicMappingMatchesDeclaredExpression(search, index, mapping);
+      addExplicitExpressionMappings(search, index, mapping);
+      indexExpressionDocument(search, index, "after", METRIC_EXPRESSION, CURRENT_CODE);
+      assertUpdatedMappingPreservesExpressionSearch(search, index);
     } finally {
       search.delete("/" + index);
     }
   }
 
   @Test
-  void freshIndexPreservesDynamicExpressionKeywordSearch(TestNamespace namespace) throws Exception {
-    SearchClient search = new SearchClient(OssTestServer.defaultHandle());
-    String index = namespace.prefix("metric_expression_fresh").toLowerCase(Locale.ROOT);
-    try (InputStream input =
-        getClass().getResourceAsStream("/elasticsearch/en/metric_index_mapping.json")) {
-      assertNotNull(input);
-      search.put("/" + index, new String(input.readAllBytes(), StandardCharsets.UTF_8));
-      search.put(
-          "/" + index + "/_doc/fresh?refresh=wait_for",
-          """
-          {"metricExpression":{"language":"SQL","code":"SUM(fresh_amount)"}}
-          """);
-      assertExactExpressionSearch(search, index, "SUM(fresh_amount)");
+  void freshIndexPreservesDynamicExpressionKeywordSearch(final TestNamespace namespace)
+      throws Exception {
+    final SearchClient search = new SearchClient(OssTestServer.defaultHandle());
+    final String index = namespace.prefix("metric_expression_fresh").toLowerCase(Locale.ROOT);
+    try {
+      search.put("/" + index, readMetricMapping().toString());
+      indexExpressionDocument(search, index, "fresh", METRIC_EXPRESSION, FRESH_CODE);
+      assertExactExpressionSearch(search, index, FRESH_CODE);
     } finally {
       search.delete("/" + index);
     }
   }
 
-  private static void assertExactExpressionSearch(SearchClient search, String index, String code) {
-    ObjectMapper mapper = new ObjectMapper();
-    ObjectNode terms = mapper.createObjectNode();
-    terms.put("metricExpression.code.keyword", code);
-    ObjectNode codeQuery = mapper.createObjectNode();
-    codeQuery.set("query", mapper.createObjectNode().set("term", terms));
-    assertThat(search.search(index, codeQuery.toString()).at("/hits/total/value").asInt())
-        .isEqualTo(1);
+  private ObjectNode readMetricMapping() throws Exception {
+    try (final InputStream input =
+        getClass().getResourceAsStream("/elasticsearch/en/metric_index_mapping.json")) {
+      assertNotNull(input);
+      return (ObjectNode) new ObjectMapper().readTree(input);
+    }
+  }
+
+  private static void createLegacyIndex(
+      final SearchClient search, final String index, final ObjectNode mapping) {
+    final ObjectNode previousMapping = mapping.deepCopy();
+    ((ObjectNode) previousMapping.at(MAPPING_PROPERTIES)).remove(METRIC_EXPRESSION);
+    search.put("/" + index, previousMapping.toString());
+    indexExpressionDocument(search, index, "before", METRIC_EXPRESSION, LEGACY_CODE);
+    indexExpressionDocument(search, index, "legacy", LEGACY_EXPRESSION, LEGACY_CODE);
+  }
+
+  private static void assertDynamicMappingMatchesDeclaredExpression(
+      final SearchClient search, final String index, final ObjectNode mapping) {
+    final JsonNode previousExpression =
+        search.mapping(index).at("/" + index + METRIC_EXPRESSION_MAPPING);
+    assertThat(mapping.at(METRIC_EXPRESSION_MAPPING)).isEqualTo(previousExpression);
+  }
+
+  private static void addExplicitExpressionMappings(
+      final SearchClient search, final String index, final ObjectNode mapping) {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode properties = mapper.createObjectNode();
+    properties.set(METRIC_EXPRESSION, mapping.at(METRIC_EXPRESSION_MAPPING));
+    properties.set(LEGACY_EXPRESSION, mapping.at(LEGACY_EXPRESSION_MAPPING));
+    search.put(
+        "/" + index + "/_mapping",
+        mapper.createObjectNode().set(PROPERTIES, properties).toString());
+  }
+
+  private static void indexExpressionDocument(
+      final SearchClient search,
+      final String index,
+      final String documentId,
+      final String expressionField,
+      final String code) {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode expression = mapper.createObjectNode().put(LANGUAGE, SQL).put(CODE, code);
+    search.put(
+        "/" + index + "/_doc/" + documentId + "?refresh=wait_for",
+        mapper.createObjectNode().set(expressionField, expression).toString());
+  }
+
+  private static void assertUpdatedMappingPreservesExpressionSearch(
+      final SearchClient search, final String index) {
+    assertExpressionCodeIsText(search, index);
+    assertExpressionMatch(search, index, METRIC_EXPRESSION, LEGACY_AMOUNT);
+    assertExactExpressionSearch(search, index, LEGACY_CODE);
+    assertExactExpressionSearch(search, index, CURRENT_CODE);
+    assertExpressionMatch(search, index, LEGACY_EXPRESSION, LEGACY_AMOUNT);
+    assertExpressionMatch(search, index, METRIC_EXPRESSION, "current_amount");
+  }
+
+  private static void assertExpressionCodeIsText(final SearchClient search, final String index) {
+    assertThat(search.mapping(index).at("/" + index + CODE_TYPE_MAPPING).asText())
+        .isEqualTo("text");
+  }
+
+  private static void assertExpressionMatch(
+      final SearchClient search,
+      final String index,
+      final String expressionField,
+      final String amount) {
     assertThat(
             search
-                .search(
-                    index,
-                    """
-                {"query":{"term":{"metricExpression.language.keyword":"SQL"}}}
-                """)
-                .at("/hits/total/value")
+                .search(index, expressionQuery("match", expressionField + "." + CODE, amount))
+                .at(HITS_TOTAL)
                 .asInt())
+        .isEqualTo(1);
+  }
+
+  private static void assertExactExpressionSearch(
+      final SearchClient search, final String index, final String code) {
+    final String codeQuery = expressionQuery(TERM_QUERY, EXPRESSION_CODE + KEYWORD_SUFFIX, code);
+    assertThat(search.search(index, codeQuery).at(HITS_TOTAL).asInt()).isEqualTo(1);
+    final String languageQuery =
+        expressionQuery(TERM_QUERY, EXPRESSION_LANGUAGE + KEYWORD_SUFFIX, SQL);
+    assertThat(search.search(index, languageQuery).at(HITS_TOTAL).asInt())
         .isGreaterThanOrEqualTo(1);
+  }
+
+  private static String expressionQuery(
+      final String queryType, final String field, final String value) {
+    final ObjectMapper mapper = new ObjectMapper();
+    final ObjectNode clause = mapper.createObjectNode();
+    clause.set(queryType, mapper.createObjectNode().put(field, value));
+    return mapper.createObjectNode().set("query", clause).toString();
   }
 }

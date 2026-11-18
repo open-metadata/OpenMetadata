@@ -39,29 +39,29 @@ class MetricIndexTest {
 
   @ParameterizedTest
   @ValueSource(strings = {"en", "jp", "ko", "ru", "zh"})
-  void metricExpressionInSearchDocumentHasAnExplicitCompatibleMapping(String language)
+  void metricExpressionInSearchDocumentHasAnExplicitCompatibleMapping(final String language)
       throws Exception {
-    ObjectMapper mapper = new ObjectMapper();
-    Metric metric =
+    final ObjectMapper mapper = new ObjectMapper();
+    final Metric metric =
         new Metric()
             .withName("revenue")
             .withFullyQualifiedName("revenue")
             .withMetricExpression(new MetricExpression().withCode("SUM(amount)"));
-    JsonNode document =
+    final JsonNode document =
         mapper.valueToTree(
             new MetricIndex(metric).buildSearchIndexDocInternal(JsonUtils.getMap(metric)));
     assertEquals("SUM(amount)", document.at("/metricExpression/code").asText());
     assertFalse(document.has("expression"));
 
-    try (InputStream input =
+    try (final InputStream input =
         getClass()
             .getResourceAsStream("/elasticsearch/" + language + "/metric_index_mapping.json")) {
       assertNotNull(input);
-      JsonNode properties = mapper.readTree(input).at("/mappings/properties");
+      final JsonNode properties = mapper.readTree(input).at("/mappings/properties");
       assertEquals("text", properties.at("/metricExpression/properties/code/type").asText());
       assertEquals("text", properties.at("/metricExpression/properties/language/type").asText());
-      for (String field : List.of("code", "language")) {
-        JsonNode keyword =
+      for (final String field : List.of("code", "language")) {
+        final JsonNode keyword =
             properties.at("/metricExpression/properties/" + field + "/fields/keyword");
         assertEquals("keyword", keyword.path("type").asText());
         assertEquals(256, keyword.path("ignore_above").asInt());
