@@ -14,6 +14,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
 import type { Key, Selection } from 'react-aria-components';
 import { Tree } from '../components/application/tree/tree';
+import type { TreeItemMoveEvent } from '../components/application/tree/tree';
 
 const meta = {
   title: 'Components/Tree',
@@ -399,6 +400,74 @@ export const ControlledExpansion: StoryObj = {
               </Tree.Item>
             </Tree.Item>
           </Tree.Item>
+        </Tree>
+      </div>
+    );
+  },
+};
+
+// Reorderable tree demonstrating the required `Tree.DragButton` affordance for
+// keyboard and screen-reader drag initiation. `onItemMove` wires React Aria's
+// `useDragAndDrop` internally, but each `Tree.ItemContent` must render a
+// `<Tree.DragButton>` (or a raw `<Button slot="drag">`) for keyboard users to
+// start a drag — see the `onItemMove` prop docstring for the rationale.
+export const WithDragAndDrop: StoryObj = {
+  render: () => {
+    const [items, setItems] = useState<string[]>([
+      'Databases',
+      'Tables',
+      'Views',
+      'Pipelines',
+    ]);
+
+    const handleItemMove = ({
+      sourceKey,
+      targetKey,
+      dropPosition,
+    }: TreeItemMoveEvent) => {
+      setItems((prev) => {
+        const next = [...prev];
+        const sourceIdx = next.indexOf(String(sourceKey));
+        if (sourceIdx === -1) {
+          return prev;
+        }
+        const [moved] = next.splice(sourceIdx, 1);
+        const targetIdx = next.indexOf(String(targetKey));
+        if (targetIdx === -1) {
+          return prev;
+        }
+        if (dropPosition === 'before') {
+          next.splice(targetIdx, 0, moved);
+        } else if (dropPosition === 'after') {
+          next.splice(targetIdx + 1, 0, moved);
+        } else {
+          // 'on' is not meaningful for a flat list of strings; treat as 'after'.
+          next.splice(targetIdx + 1, 0, moved);
+        }
+
+        return next;
+      });
+    };
+
+    return (
+      <div style={{ width: 300 }}>
+        <p style={{ fontSize: 13, marginBottom: 8, color: '#667085' }}>
+          Tab to the drag handle on a row and press Enter to start a keyboard
+          drag. Tab again to move the drop target, then press Enter to drop.
+          Press Escape to cancel.
+        </p>
+        <Tree
+          aria-label="Reorderable list"
+          selectionMode="none"
+          onItemMove={handleItemMove}>
+          {items.map((item) => (
+            <Tree.Item id={item} key={item} textValue={item}>
+              <Tree.ItemContent showExpandIcon={false}>
+                <Tree.DragButton aria-label={`Move ${item}`} />
+                {item}
+              </Tree.ItemContent>
+            </Tree.Item>
+          ))}
         </Tree>
       </div>
     );
