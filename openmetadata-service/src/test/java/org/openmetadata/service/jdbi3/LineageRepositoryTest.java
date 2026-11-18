@@ -1606,7 +1606,8 @@ class LineageRepositoryTest {
     ColumnLineage stored =
         new ColumnLineage()
             .withFromColumns(new ArrayList<>(List.of("db.s.from.col")))
-            .withToColumn("db.s.to.col");
+            .withToColumn("db.s.to.col")
+            .withFunction("coalesce(a, b)");
     LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(stored));
     LineageDetails incoming = new LineageDetails().withColumnsLineage(null);
 
@@ -1615,6 +1616,7 @@ class LineageRepositoryTest {
     assertNotSame(stored, incoming.getColumnsLineage().get(0), "entry must be a copy, not shared");
     assertNotSame(
         prior.getColumnsLineage(), incoming.getColumnsLineage(), "list must be a copy, not shared");
+    assertEquals("coalesce(a, b)", incoming.getColumnsLineage().get(0).getFunction());
     // Mutating the restored entry must not bleed into the prior edge.
     incoming.getColumnsLineage().get(0).getFromColumns().add("db.s.from.extra");
     assertEquals(

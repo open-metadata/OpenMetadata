@@ -2140,7 +2140,8 @@ public class LineageRepository {
    * Deep-copies a {@link ColumnLineage} list so mutations performed by {@code
    * validateLineageDetails} on the incoming copy never reach the prior edge objects, which would
    * otherwise make {@code payloadChanged} compare two already-mutated references and miss a real
-   * change.
+   * change. Carries over {@link ColumnLineage#getFunction()} so a transformation description
+   * attached to a facet-carrying write survives a subsequent no-facet event.
    */
   private static List<ColumnLineage> copyColumnsLineage(List<ColumnLineage> source) {
     List<ColumnLineage> copy = new ArrayList<>(source.size());
@@ -2149,7 +2150,8 @@ public class LineageRepository {
           new ColumnLineage()
               .withFromColumns(
                   entry.getFromColumns() == null ? null : new ArrayList<>(entry.getFromColumns()))
-              .withToColumn(entry.getToColumn()));
+              .withToColumn(entry.getToColumn())
+              .withFunction(entry.getFunction()));
     }
     return copy;
   }
