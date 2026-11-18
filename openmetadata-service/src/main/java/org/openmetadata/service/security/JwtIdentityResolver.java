@@ -92,21 +92,37 @@ public class JwtIdentityResolver {
         () -> findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims));
   }
 
-  /**
-   * Our own tokens carry the account's stored email. A bot's is used even under a claims mapping:
-   * bot resolution skips the mapping and would take the first claim in the order instead, which
-   * in a bot token minted under the mapping is the bare username (for example {@code upn}), and
-   * then build {@code <username>@<principalDomain>} - another address than the bot's.
-   */
   private String resolveLegacyEmail(
       Map<String, Claim> claims, boolean internallyIssued, boolean isBotUser) {
+    if (internallyIssued && isBotUser && !nullOrEmpty(jwtPrincipalClaimsMapping)) {
+      Optional<String> botEmail = mappedEmail(claims);
+      if (botEmail.isPresent()) {
+        return botEmail.get();
+      }
+    }
     if (internallyIssued
-        && (nullOrEmpty(jwtPrincipalClaimsMapping) || isBotUser)
+        && nullOrEmpty(jwtPrincipalClaimsMapping)
         && claims.containsKey(EMAIL_CLAIM_KEY)) {
       return extractEmailFromClaim(claims, EMAIL_CLAIM_KEY);
     }
     return findEmailFromClaims(
         jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
+  }
+
+  /**
+   * Bot resolution skips the mapping and takes the first claim in the order. In a bot token we
+   * minted under a mapping, that claim can hold the bare name (for example {@code upn}, or {@code
+   * email} under {@code username:email}), which would become {@code <name>@<principalDomain>} -
+   * another address than the bot's. We always write the stored email into the mapped email claim,
+   * so read it there; a token without an address in it keeps the previous resolution.
+   */
+  private Optional<String> mappedEmail(Map<String, Claim> claims) {
+    String emailClaim = jwtPrincipalClaimsMapping.get(EMAIL_CLAIM_KEY);
+    Claim claim = nullOrEmpty(emailClaim) ? null : claims.get(emailClaim);
+    String value = claim == null ? null : claim.asString();
+    return value != null && value.contains("@")
+        ? Optional.of(extractEmailFromClaim(claims, emailClaim))
+        : Optional.empty();
   }
 
   private boolean shouldUseEmailFirstFlow(boolean isBotUser) {
