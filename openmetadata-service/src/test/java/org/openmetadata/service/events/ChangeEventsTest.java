@@ -14,6 +14,7 @@
 package org.openmetadata.service.events;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doReturn;
@@ -30,6 +31,9 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.Env;
+import org.openmetadata.schema.entity.ai.McpConnectionConfig;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -38,10 +42,45 @@ import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.util.RestUtil;
 
 class ChangeEventsTest {
+
+  @Test
+  void mcpEventsMaskConnectionsWithoutMutatingStoredEntities() {
+    final McpServer server =
+        new McpServer()
+            .withId(UUID.randomUUID())
+            .withName("mcp")
+            .withVersion(0.2)
+            .withConnectionConfig(
+                new McpConnectionConfig()
+                    .withUrl("https://secret.example.com")
+                    .withArgs(List.of("secret-argument"))
+                    .withEnv(new Env().withAdditionalProperty("SETTING", "secret-env")))
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withPreviousVersion(0.1)
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("connectionConfig")
+                                .withOldValue("old-secret")
+                                .withNewValue("new-secret"))));
+    final String original = JsonUtils.pojoToJson(server);
+
+    final ChangeEvent event =
+        ChangeEvents.createChangeEventForEntity("admin", EventType.ENTITY_UPDATED, server);
+
+    assertFalse(JsonUtils.pojoToJson(event).contains("secret"));
+    assertEquals(
+        PasswordEntityMasker.PASSWORD_MASK,
+        event.getChangeDescription().getFieldsUpdated().getFirst().getNewValue());
+    assertEquals(original, JsonUtils.pojoToJson(server));
+  }
 
   @Test
   void getUpdatedFieldNormalizesNestedFieldsAndExtensions() {

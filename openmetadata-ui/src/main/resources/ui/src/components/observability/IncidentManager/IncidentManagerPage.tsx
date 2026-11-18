@@ -18,11 +18,12 @@ import { usePermissionProvider } from '../../../context/PermissionProvider/Permi
 import { Operation } from '../../../generated/entity/policies/policy';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
+import { OBSERVABILITY_PAGE_LAYOUT_CLASS } from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import IncidentGroupsView from './IncidentGroups/IncidentGroupsView';
 import IncidentManagerPageWidgets from './IncidentManagerPageWidgets';
 
@@ -54,51 +55,51 @@ const IncidentManagerPage = () => {
   const canEditIncidents = testCasePermissionFlags.can(Operation.EditStatus);
 
   return (
-    <ObservabilityPageShell
-      header={
-        <PageLayout.PageHeader
-          badge={
-            <LearningIcon
-              pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
-              title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
-            />
-          }
-          breadcrumb={
-            <HeaderBreadcrumb
-              noMargin
-              className="tw:text-xs"
-              items={[
-                getObservabilityRootBreadcrumb(t),
-                {
-                  label: t('label.incident-manager'),
-                  ariaLabel: t('label.incident-manager'),
-                },
-              ]}
-              showHome={false}
-            />
-          }
-          subtitle={t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader)}
-          title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
-          variant="gradient"
-        />
-      }
-      pageTitle={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}>
-      <div className={INCIDENT_WIDGETS_WRAPPER_CLASS}>
-        <IncidentManagerPageWidgets />
-      </div>
-      {hasViewPermission ? (
-        <IncidentGroupsView canEditIncidents={canEditIncidents} />
-      ) : (
-        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
-          <PermissionPlaceholder
-            data-testid="permission-error-placeholder"
-            permissionValue={t('label.view-entity', {
-              entity: t('label.test-case'),
-            })}
+    <PageLayout className={OBSERVABILITY_PAGE_LAYOUT_CLASS}>
+      <DocumentTitle title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)} />
+      <PageLayout.PageHeader
+        badge={
+          <LearningIcon
+            pageId={LEARNING_PAGE_IDS.INCIDENT_MANAGER}
+            title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
           />
+        }
+        breadcrumb={
+          <HeaderBreadcrumb
+            noMargin
+            className="tw:text-xs"
+            items={[
+              getObservabilityRootBreadcrumb(t),
+              {
+                label: t('label.incident-manager'),
+                ariaLabel: t('label.incident-manager'),
+              },
+            ]}
+            showHome={false}
+          />
+        }
+        subtitle={t(PAGE_HEADERS.INCIDENT_MANAGER.subHeader)}
+        title={t(PAGE_HEADERS.INCIDENT_MANAGER.header)}
+        variant="gradient"
+      />
+      <PageLayout.Content>
+        <div className={INCIDENT_WIDGETS_WRAPPER_CLASS}>
+          <IncidentManagerPageWidgets />
         </div>
-      )}
-    </ObservabilityPageShell>
+        {hasViewPermission ? (
+          <IncidentGroupsView canEditIncidents={canEditIncidents} />
+        ) : (
+          <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+            <PermissionPlaceholder
+              data-testid="permission-error-placeholder"
+              permissionValue={t('label.view-entity', {
+                entity: t('label.test-case'),
+              })}
+            />
+          </div>
+        )}
+      </PageLayout.Content>
+    </PageLayout>
   );
 };
 

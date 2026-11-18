@@ -48,6 +48,7 @@ import java.util.Set;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
+import org.openmetadata.schema.api.lineage.LineageLevelKind;
 import org.openmetadata.schema.api.lineage.LineageSceneEdge;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -88,10 +89,25 @@ final class LineageSceneGraph {
       seedNodes(focusedContainerScene, false);
     }
     lineageEdges.forEach(this::addEdge);
+    addFocusNode();
     if (nodes.isEmpty()) {
       seedNodes(false, true);
     }
     return visibleSelection(size);
+  }
+
+  // A pipeline or stored procedure only annotates the edges it drives, so it is never an
+  // edge end; without this its focused scene would not contain the focus itself.
+  private void addFocusNode() {
+    boolean isAssetFocus = focusRef != null && LineageSceneHierarchy.isAssetKind(focusRef.kind());
+    SceneAsset focusAsset = isAssetFocus ? assets.get(focusRef.fqn()) : null;
+    if (focusAsset == null || nodes.isEmpty()) {
+      return;
+    }
+    Ref ref = selectRef(focusAsset, lens, band, focusRef, selectionLevel);
+    if (ref != null && !nodes.containsKey(ref.nodeId())) {
+      addNode(ref, focusAsset, false);
+    }
   }
 
   private void seedNodes(boolean containedOnly, boolean markGhosts) {
@@ -160,6 +176,15 @@ final class LineageSceneGraph {
     mergeNodeCounts(node, ref, asset);
   }
 
+  // A domain or data product spans services, so it must not take its first asset's type.
+  private static String serviceType(Ref ref, SceneAsset asset) {
+    boolean spansServices =
+        ref.kind() == LineageLevelKind.DOMAIN || ref.kind() == LineageLevelKind.DATA_PRODUCT;
+    return spansServices
+        ? ref.serviceType()
+        : firstNonBlank(ref.serviceType(), asset.serviceType());
+  }
+
   private LineageSceneNode createNode(Ref ref, SceneAsset asset, boolean isGhost) {
     return new LineageSceneNode()
         .withId(ref.nodeId())
@@ -167,7 +192,7 @@ final class LineageSceneGraph {
         .withEntityType(ref.entityType())
         .withLevelKind(ref.kind())
         .withBand(nodeBand(ref.kind(), band))
-        .withServiceType(firstNonBlank(ref.serviceType(), asset.serviceType()))
+        .withServiceType(serviceType(ref, asset))
         .withLabel(ref.label())
         .withDisplayName(stringValue(ref.sourceEntity(), "displayName"))
         .withParentId(parentId(ref, asset))

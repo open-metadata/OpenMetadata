@@ -37,6 +37,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateQuery;
+import org.openmetadata.schema.api.domains.CreateDomain;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
@@ -52,6 +53,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
@@ -297,6 +299,48 @@ public class ContextMemoryQueryEvidenceIT {
     assertTrue(asReader.contains(query.getId().toString()), asReader);
   }
 
+  /**
+   * A domain condition cannot be evaluated on a Query that is gone and failed open, so a reader the
+   * Query was hidden from saw it in full, in the hold's change and every version, once deleted.
+   */
+  @Test
+  void aDeletedQueryStaysHiddenFromAReaderOutsideItsDomain(TestNamespace ns) {
+    Domain readersDomain = domain(ns, "readers");
+    Domain queriesDomain = domain(ns, "queries");
+    Evidence evidence = evidence(ns);
+    Query query =
+        SdkClients.adminClient()
+            .queries()
+            .create(
+                evidence
+                    .createQuery("SELECT SUM(bonus) FROM payroll")
+                    .withDomains(List.of(queriesDomain.getFullyQualifiedName())));
+    ContextMemory memory =
+        admin()
+            .create(
+                publicRequest(evidence, "domain-only", query)
+                    .withDomains(List.of(readersDomain.getFullyQualifiedName())));
+    ContextMemoryService reader =
+        new ContextMemoryService(domainOnlyReader(readersDomain).getHttpClient());
+    assertNull(
+        reader
+            .get(memory.getId().toString(), RELATED)
+            .getRelatedEntities()
+            .getFirst()
+            .getFullyQualifiedName(),
+        "its domain hides the Query from this reader while it exists");
+
+    delete(query);
+
+    String asReader = JsonUtils.pojoToJson(reader.get(memory.getId().toString(), RELATED));
+    String versions = JsonUtils.pojoToJson(reader.getVersionList(memory.getId()));
+    for (String seen : List.of(asReader, versions)) {
+      assertTrue(seen.contains(query.getId().toString()), seen);
+      assertFalse(seen.contains(query.getFullyQualifiedName()), seen);
+      assertFalse(seen.contains(query.getDisplayName()), seen);
+    }
+  }
+
   @Test
   void aWriteAnswersWithTheEvidenceTheWriterMayView(TestNamespace ns) {
     Evidence evidence = evidence(ns);
@@ -414,6 +458,33 @@ public class ContextMemoryQueryEvidenceIT {
     return SdkClients.adminClient()
         .users()
         .create(new CreateUser().withName(name).withEmail(name + "@test.openmetadata.org"));
+  }
+
+  private static Domain domain(TestNamespace ns, String name) {
+    return SdkClients.adminClient()
+        .domains()
+        .create(
+            new CreateDomain()
+                .withName(ns.prefix(name))
+                .withDomainType(CreateDomain.DomainType.AGGREGATE)
+                .withDescription("Memory evidence domain"));
+  }
+
+  /** A user in {@code domain} whom the seeded DomainOnlyAccessRole keeps from anything outside it. */
+  private static OpenMetadataClient domainOnlyReader(Domain domain) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Role domainOnly = admin.roles().getByName("DomainOnlyAccessRole");
+    String name = "donly_" + UUID.randomUUID().toString().substring(0, 8);
+    String email = name + "@test.openmetadata.org";
+    admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(name)
+                .withEmail(email)
+                .withDomains(List.of(domain.getFullyQualifiedName()))
+                .withRoles(List.of(domainOnly.getId())));
+    return SdkClients.createClient(email, email, new String[] {});
   }
 
   /** A user who may edit memories, and whom one deny rule keeps from reading any Query. */

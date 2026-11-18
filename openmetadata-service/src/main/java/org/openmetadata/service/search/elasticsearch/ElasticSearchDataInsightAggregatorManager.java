@@ -53,20 +53,40 @@ import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.Elas
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchPageViewsByEntitiesAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.ElasticSearchUnusedAssetsAggregator;
 import org.openmetadata.service.search.elasticsearch.dataInsightAggregators.QueryCostRecordsAggregator;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class ElasticSearchDataInsightAggregatorManager implements DataInsightAggregatorClient {
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
+  private final RBACConditionEvaluator rbacConditionEvaluator;
 
   public ElasticSearchDataInsightAggregatorManager(ElasticsearchClient client) {
+    this(client, null);
+  }
+
+  public ElasticSearchDataInsightAggregatorManager(
+      ElasticsearchClient client, RBACConditionEvaluator rbacConditionEvaluator) {
     this.client = client;
     this.isClientAvailable = client != null;
+    this.rbacConditionEvaluator = rbacConditionEvaluator;
   }
 
   @Override
   public DataInsightCustomChartResultList buildDIChart(
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
+      throws IOException {
+    return buildDIChart(diChart, start, end, live, null);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
       throws IOException {
     if (!isClientAvailable) {
       LOG.error("ElasticSearch client is not available. Cannot build DI chart.");
@@ -81,6 +101,22 @@ public class ElasticSearchDataInsightAggregatorManager implements DataInsightAgg
           new HashMap<>();
       SearchRequest searchRequest =
           aggregator.prepareSearchRequest(diChart, start, end, formulas, metricFormulaHolder, live);
+      if (live) {
+        // A live chart aggregates the entity documents behind the search aliases.
+        SearchRequest unrestricted = searchRequest;
+        Query restricted =
+            ElasticRbacQueries.withAccessPolicies(
+                unrestricted.query(), caller, rbacConditionEvaluator);
+        if (restricted != unrestricted.query()) {
+          searchRequest =
+              SearchRequest.of(
+                  b ->
+                      b.index(unrestricted.index())
+                          .size(unrestricted.size())
+                          .aggregations(unrestricted.aggregations())
+                          .query(restricted));
+        }
+      }
       Timer.Sample searchTimerSample = RequestLatencyContext.startSearchOperation();
       SearchResponse<JsonData> searchResponse;
       try {

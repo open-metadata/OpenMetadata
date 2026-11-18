@@ -23,6 +23,7 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -34,6 +35,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.AIContextFinderAccess;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.security.Authorizer;
 
 /**
@@ -68,6 +70,14 @@ public final class ContextMemoryEvidenceAccess {
   public static void redactUnviewableQueries(
       List<ContextMemory> memories, Authorizer authorizer, SecurityContext securityContext) {
     redactUnviewableQueries(memories, callerAccess(authorizer, securityContext));
+  }
+
+  /** A redacted copy, so the memory passed in, which others may hold, stays whole. */
+  public static ContextMemory redactedCopy(
+      ContextMemory memory, Authorizer authorizer, SecurityContext securityContext) {
+    ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
+    redactUnviewableQueries(List.of(copy), authorizer, securityContext);
+    return copy;
   }
 
   /** Each version is the memory as it was written, its Query references included. */
@@ -191,9 +201,26 @@ public final class ContextMemoryEvidenceAccess {
 
   private static QueryAccess callerAccess(Authorizer authorizer, SecurityContext securityContext) {
     return decidedOncePerQuery(
-        query ->
-            AIContextFinderAccess.canView(
-                Entity.QUERY, query.getFullyQualifiedName(), authorizer, securityContext));
+        evidenceAccess(
+            ContextMemoryVisibility.isAdmin(securityContext),
+            ContextMemoryEvidenceAccess::stillExists,
+            query ->
+                AIContextFinderAccess.canView(
+                    Entity.QUERY, query.getFullyQualifiedName(), authorizer, securityContext)));
+  }
+
+  /**
+   * A deleted Query reads in full only to an admin: policy conditions that need the Query, such as
+   * its domain or tags, cannot be evaluated once it is gone, and they fail open.
+   */
+  static QueryAccess evidenceAccess(
+      boolean isAdmin, Predicate<EntityReference> stillExists, QueryAccess canView) {
+    return query -> stillExists.test(query) ? canView.canView(query) : isAdmin;
+  }
+
+  private static boolean stillExists(EntityReference query) {
+    EntityDAO<?> queries = Entity.getEntityRepository(Entity.QUERY).getDao();
+    return query.getId() != null && queries.exists(queries.getTableName(), query.getId());
   }
 
   private static QueryAccess decidedOncePerQuery(QueryAccess access) {

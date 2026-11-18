@@ -49,7 +49,8 @@ export const DynamicHeightWidget = ({
           continue;
         }
         const newHeight =
-          (entry.contentRect.height + GRID_VERTICAL_MARGIN) /
+          // Whole pixels: sub-pixel jitter would otherwise relayout the whole tab.
+          (Math.round(entry.contentRect.height) + GRID_VERTICAL_MARGIN) /
           (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN);
         if (newHeight !== height) {
           setHeight(newHeight);

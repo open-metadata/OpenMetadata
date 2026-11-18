@@ -97,7 +97,7 @@ describe('EmailSettings', () => {
 
     fireEvent.click(screen.getByTestId('test-email-button'));
 
-    expect(await screen.findByTestId('test-email-modal')).toBeInTheDocument();
+    expect(await screen.findByTestId('test-email-popover')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('edit-button'));
 

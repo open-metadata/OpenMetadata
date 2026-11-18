@@ -21,6 +21,8 @@ export interface FilterSelectOption {
   textValue?: string;
   /** Result count shown as a trailing badge on the row. */
   count?: number;
+  /** Secondary line under the label; the row then aligns to the label line. */
+  description?: ReactNode;
   /**
    * Extra content under the row, shown and hidden by a chevron (or
    * ArrowRight / ArrowLeft) without selecting the row.
@@ -79,6 +81,8 @@ export interface FilterSelectProps {
   isDisabled?: boolean;
   isLoading?: boolean;
   isOpen?: boolean;
+  /** Merged over the option list's classes, e.g. to raise its `max-h-64` cap. */
+  menuClassName?: string;
   /**
    * Pinned row above the value rows (e.g. "No Owner"). Rendered through the
    * same row component as value rows, so it cannot drift visually.

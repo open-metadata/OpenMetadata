@@ -15,4 +15,6 @@ export interface LearningIconProps {
   pageId: string;
   title?: string;
   className?: string;
+  /** Defaults to `lg` so it matches the CopyButton it usually sits beside. */
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 }

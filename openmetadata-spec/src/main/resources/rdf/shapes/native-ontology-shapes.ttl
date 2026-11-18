@@ -1,0 +1,45 @@
+@prefix native: <https://open-metadata.org/shapes/native-ontology#> .
+@prefix sh: <http://www.w3.org/ns/shacl#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+
+native:ClassShape a sh:NodeShape ;
+    sh:targetClass owl:Class ;
+    sh:property native:ClassLabelShape .
+
+native:ClassLabelShape a sh:PropertyShape ;
+    sh:path rdfs:label ;
+    sh:minCount 1 ;
+    sh:message "Class needs an rdfs:label" .
+
+native:EnumerationShape a sh:NodeShape ;
+    sh:targetClass owl:DatatypeProperty ;
+    sh:sparql [
+        sh:message "Enumeration needs at least two list entries" ;
+        sh:select """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            SELECT DISTINCT $this WHERE {
+                $this rdfs:range / owl:equivalentClass / owl:oneOf ?list .
+                FILTER (?list = rdf:nil || EXISTS { ?list rdf:rest rdf:nil })
+            }
+        """ ;
+    ] .
+
+native:DeprecatedParentShape a sh:NodeShape ;
+    sh:targetClass owl:Class ;
+    sh:severity sh:Warning ;
+    sh:sparql [
+        sh:message "Class has a direct deprecated parent" ;
+        sh:select """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX owl: <http://www.w3.org/2002/07/owl#>
+            SELECT DISTINCT $this WHERE {
+                $this rdfs:subClassOf ?parent .
+                FILTER isIRI(?parent)
+                ?parent owl:deprecated true .
+                FILTER NOT EXISTS { $this owl:deprecated true }
+            }
+        """ ;
+    ] .

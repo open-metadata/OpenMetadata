@@ -30,7 +30,7 @@ from pydantic import ValidationError
 
 from metadata.config.common import ConfigModel
 from metadata.entity_resolution.engine import EntityResolver
-from metadata.entity_resolution.table import TableResolver, TableServiceBinding
+from metadata.entity_resolution.table import TableResolver
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
     ColumnJoins,
@@ -82,14 +82,14 @@ class MetadataUsageBulkSink(BulkSink):
         config: MetadataUsageSinkConfig,
         metadata: OpenMetadata,
         *,
-        table_services: tuple[TableServiceBinding, ...] = (),
+        table_service_types: dict[str, str] | None = None,
     ):
         super().__init__()
         self.config = config
         self.service_name = None
         self.wrote_something = False
         self.metadata = metadata
-        self.table_services = table_services
+        self.table_service_types = table_service_types or {}
         self.table_join_dict = {}
         self.table_usage_map = {}
         self.today = datetime.today().strftime("%Y-%m-%d")
@@ -185,7 +185,7 @@ class MetadataUsageBulkSink(BulkSink):
         Handle table usage.
         """
         resolver = EntityResolver(self.metadata)
-        table_resolver = TableResolver(resolver, self.table_services)
+        table_resolver = TableResolver(resolver, self.table_service_types)
         try:
             for file_handler in self.iterate_files():
                 self.table_usage_map = {}
@@ -269,7 +269,7 @@ class MetadataUsageBulkSink(BulkSink):
                 self.get_table_usage_and_joins(
                     table_entities,
                     table_usage,
-                    table_resolver=TableResolver(resolver, self.table_services),
+                    table_resolver=TableResolver(resolver, self.table_service_types),
                 )
             finally:
                 resolver.close()

@@ -12,10 +12,14 @@
  */
 
 import { PageLayout } from '@openmetadata/ui-core-components';
-import React, { PropsWithChildren, useEffect } from 'react';
+import React, { PropsWithChildren, useCallback, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAnalytics } from 'use-analytics';
-import { useSettingsHash } from '../../../hooks/useSettingsHash';
+import { usePersonalSpaceStore } from '../../../hooks/usePersonalSpaceStore';
+import {
+  useSettingsHash,
+  useSettingsHashSync,
+} from '../../../hooks/useSettingsHash';
 import { useSettingsLinkInterceptor } from '../../../hooks/useSettingsLinkInterceptor';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { isFullscreenPersonaHash } from '../../discovery/personal-space/Profile/tabs/personas/Personas.utils';
@@ -55,6 +59,31 @@ export const AppShell = ({ children }: PropsWithChildren) => {
   const analytics = useAnalytics();
   const { state: settingsHash } = useSettingsHash();
   useSettingsLinkInterceptor();
+  const isPersonalSpaceOpen = usePersonalSpaceStore(
+    (state) => state.activePanel !== null
+  );
+  const openPersonalSpace = usePersonalSpaceStore((state) => state.open);
+  const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
+  const suppressHashClear = usePersonalSpaceStore(
+    (state) => state.suppressHashClear
+  );
+  const clearSuppressHashClear = usePersonalSpaceStore(
+    (state) => state.clearSuppressHashClear
+  );
+  const openProfile = useCallback(
+    (panel: 'profile') => openPersonalSpace(panel),
+    [openPersonalSpace]
+  );
+  // Here, not in the lazy PersonalSpaceModal: closing pops the history entries
+  // this hook counted, and a Settings click that lands before the modal chunk
+  // loads would go uncounted, leaving settings entries behind the page.
+  useSettingsHashSync(
+    openProfile,
+    isPersonalSpaceOpen,
+    suppressHashClear,
+    clearSuppressHashClear,
+    closePersonalSpace
+  );
   // Hidden, not unmounted: the routed page keeps its state for when the
   // persona fullscreen view closes and the personal-space modal reopens on it.
   const isPersonaFullscreen = isFullscreenPersonaHash(
@@ -88,9 +117,8 @@ export const AppShell = ({ children }: PropsWithChildren) => {
         {/* Routed pages own the main landmark. A neutral grid cell here avoids
             nesting a second main around every PageLayout.Content. */}
         <div
-          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl tw:[html[data-product-tour-pending]_&]:invisible"
-          data-testid="app-shell-content"
-          data-tour-page="">
+          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl"
+          data-testid="app-shell-content">
           {banners.map(({ key, component: Banner }) => (
             <Banner key={key} />
           ))}

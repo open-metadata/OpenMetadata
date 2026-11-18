@@ -54,7 +54,9 @@ const TaskTitle: React.FC<TaskTitleProps> = ({
         // the line is measured it waits at the title's edge.
         <span
           className={classNames(
-            'tw:absolute tw:top-0 tw:flex tw:h-lh tw:items-center tw:pl-2',
+            // Bounded on the right so a narrow pane truncates the badge
+            // instead of pushing it past the card.
+            'tw:absolute tw:top-0 tw:right-0 tw:flex tw:h-lh tw:min-w-0 tw:items-center tw:pl-2',
             TASK_TITLE_LINE_CLASS[size],
             end === undefined && 'tw:left-3/4'
           )}

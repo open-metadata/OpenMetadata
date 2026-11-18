@@ -16,10 +16,10 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, isObject, isUndefined } from 'lodash';
 import React, { ReactNode } from 'react';
-import { ReactComponent as IconExternalLink } from '../assets/svg/external-links.svg';
 import {
   DataAssetHeaderInfo,
   DataAssetsHeaderProps,
@@ -56,8 +56,14 @@ import {
 } from './EntityDataBreadcrumbUtils';
 import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
-import { bytesToSize } from './StringUtils';
+import { bytesToSize, getSafeHttpUrl } from './StringUtils';
 import { getUsagePercentile } from './TablePureUtils';
+
+// A creation time before the Unix epoch is the year-0001 placeholder older ingestion stored for a
+// source that reported none (ADR:2026-10-29-lifecycle-timestamps-before-the-epoch-are-dropped-on-write).
+export const isRecordedLifeCycleTimestamp = (
+  timestamp?: number
+): timestamp is number => timestamp !== undefined && timestamp >= 0;
 
 const { t } = i18n;
 
@@ -161,11 +167,7 @@ export const ExtraInfoLink = ({
           </a>
         </TooltipTrigger>
       </Tooltip>
-      <IconExternalLink
-        className="tw:text-fg-quaternary"
-        height={18}
-        width={18}
-      />
+      <LinkExternal01 className="tw:text-fg-quaternary" size={18} />
     </div>
   </div>
 );
@@ -288,6 +290,7 @@ const getPipelineHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
 
 const getMlModelHeaderInfo: HeaderInfoBuilder = (dataAsset, entityName) => {
   const mlModelDetail = dataAsset as Mlmodel;
+  const safeServerUrl = getSafeHttpUrl(mlModelDetail.server);
 
   return {
     breadcrumbs: getBreadcrumbForEntitiesWithServiceOnly(mlModelDetail),
@@ -314,12 +317,19 @@ const getMlModelHeaderInfo: HeaderInfoBuilder = (dataAsset, entityName) => {
         {mlModelDetail.server && (
           <>
             <HeaderDotSeparator />
-            <ExtraInfoLink
-              newTab
-              href={mlModelDetail.server}
-              label={t('label.server')}
-              value={mlModelDetail.server}
-            />
+            {safeServerUrl ? (
+              <ExtraInfoLink
+                newTab
+                href={safeServerUrl}
+                label={t('label.server')}
+                value={mlModelDetail.server}
+              />
+            ) : (
+              <ExtraInfoLabel
+                label={t('label.server')}
+                value={mlModelDetail.server}
+              />
+            )}
           </>
         )}
         {mlModelDetail.dashboard && (
@@ -677,7 +687,9 @@ const getTableHeaderInfo: HeaderInfoBuilder = (dataAsset) => {
             />
           </>
         )}
-        {tableDetails?.lifeCycle?.created?.timestamp !== undefined && (
+        {isRecordedLifeCycleTimestamp(
+          tableDetails?.lifeCycle?.created?.timestamp
+        ) && (
           <>
             <HeaderDotSeparator />
             <ExtraInfoLabel

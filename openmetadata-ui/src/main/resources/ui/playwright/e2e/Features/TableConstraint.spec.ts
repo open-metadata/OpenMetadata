@@ -23,8 +23,8 @@ import {
 import { TableClass } from '../../support/entity/TableClass';
 import {
   createNewPage,
+  pickSelectOption,
   redirectToHomePage,
-  selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -94,13 +94,22 @@ test.describe('Table Constraints', {}, () => {
 
       await clickOnForeignKeySelector(page);
 
-      await selectOptionWithRetry(
-        page.getByTestId('0-column-type-select').getByRole('button'),
-        page.getByRole('option', { name: columnName, exact: true })
+      const columnTrigger = page
+        .getByTestId('0-column-type-select')
+        .getByRole('button');
+      await pickSelectOption(
+        columnTrigger,
+        page.getByRole('option', { name: columnName, exact: true }),
+        columnTrigger.filter({ hasText: columnName })
       );
-      await selectOptionWithRetry(
-        page.getByTestId('0-relationship-type-select').getByRole('button'),
-        page.getByRole('option', { name: 'One to One', exact: true })
+
+      const relationshipTrigger = page
+        .getByTestId('0-relationship-type-select')
+        .getByRole('button');
+      await pickSelectOption(
+        relationshipTrigger,
+        page.getByRole('option', { name: 'One to One', exact: true }),
+        relationshipTrigger.filter({ hasText: 'One to One' })
       );
 
       // select 2nd Table column as related column

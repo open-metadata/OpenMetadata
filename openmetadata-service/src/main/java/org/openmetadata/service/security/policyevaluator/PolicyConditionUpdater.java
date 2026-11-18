@@ -14,12 +14,15 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
@@ -31,31 +34,49 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.springframework.expression.ParseException;
+import org.springframework.expression.spel.SpelNode;
+import org.springframework.expression.spel.ast.MethodReference;
+import org.springframework.expression.spel.ast.StringLiteral;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 /**
  * Utility for updating SpEL condition strings in policy rules when referenced entities (tags,
- * roles, teams) are renamed or deleted.
+ * roles, teams, services) are renamed or deleted.
+ *
+ * <p>Conditions are rewritten through the SpEL AST, so an entity name is always handled as one
+ * string literal whatever characters it contains. Only calls whose arguments are all string
+ * literals are rewritten, and nothing outside those calls' own text changes.
+ *
+ * <p>A call whose arguments all name deleted entities becomes {@code false}, the value it evaluates
+ * to once those entities are gone: {@code isOwner() && matchAnyTag('PII.Sensitive')} becomes {@code
+ * isOwner() && false}. See
+ * ADR:2026-10-30-deleted-policy-condition-references-become-false.
  */
 @Slf4j
 public final class PolicyConditionUpdater {
 
+  private static final String MATCH_ALL_TAGS = "matchAllTags";
+
   public static final Set<String> TAG_FUNCTIONS =
-      Set.of("matchAnyTag", "matchAllTags", "matchAnyCertification", "matchAnyServiceTag");
+      Set.of("matchAnyTag", MATCH_ALL_TAGS, "matchAnyCertification", "matchAnyServiceTag");
   public static final Set<String> ROLE_FUNCTIONS = Set.of("hasAnyRole");
   public static final Set<String> TEAM_FUNCTIONS = Set.of("inAnyTeam");
   public static final Set<String> SERVICE_FUNCTIONS = Set.of("matchAnyServiceName");
 
-  /**
-   * A SpEL string literal escapes a single quote by doubling it, so a service named {@code bob's-db}
-   * is written {@code matchAnyServiceName('bob''s-db')}. Matching {@code '([^']*)'} would read that
-   * as the two arguments {@code bob} and {@code s-db} and rewrite the condition into names that
-   * exist nowhere — silently disarming the rule, which for a Deny means its assets become visible.
-   * The inner {@code ''} alternative keeps an escaped quote inside the literal it belongs to.
-   */
-  private static final Pattern SINGLE_QUOTED_ARG = Pattern.compile("'((?:[^']|'')*)'");
+  /** What a call evaluates to once the entities it needs to match are gone. */
+  private static final String NEVER_MATCHES = "false";
+
+  private static final SpelExpressionParser CONDITION_PARSER = new SpelExpressionParser();
 
   private static final int MAX_REWRITE_RETRIES = 5;
   private static final int POLICY_PAGE_SIZE = 1000;
+
+  /**
+   * A call to one of the target functions, located in the condition text. {@code start} is the
+   * first character of the function name and {@code end} is just past its closing parenthesis.
+   */
+  record FunctionCall(String name, int start, int end, List<String> args) {}
 
   private PolicyConditionUpdater() {}
 
@@ -65,14 +86,10 @@ public final class PolicyConditionUpdater {
    */
   public static String renameInCondition(
       String condition, String oldName, String newName, Set<String> targetFunctions) {
-    if (condition == null) {
-      return null;
-    }
-    String result = condition;
-    for (String function : targetFunctions) {
-      result = rewriteFunctionArgs(result, function, arg -> arg.equals(oldName) ? newName : arg);
-    }
-    return result;
+    return rewriteCalls(
+        condition,
+        targetFunctions,
+        call -> renamedCall(call, arg -> arg.equals(oldName) ? newName : arg));
   }
 
   /**
@@ -81,23 +98,16 @@ public final class PolicyConditionUpdater {
    */
   public static String renamePrefixInCondition(
       String condition, String oldPrefix, String newPrefix, Set<String> targetFunctions) {
-    if (condition == null) {
-      return null;
-    }
-    String result = condition;
-    for (String function : targetFunctions) {
-      result =
-          rewriteFunctionArgs(
-              result,
-              function,
-              arg -> {
-                if (arg.equals(oldPrefix) || arg.startsWith(oldPrefix + ".")) {
-                  return newPrefix + arg.substring(oldPrefix.length());
-                }
-                return arg;
-              });
-    }
-    return result;
+    return rewriteCalls(
+        condition,
+        targetFunctions,
+        call ->
+            renamedCall(
+                call,
+                arg ->
+                    isAtOrUnder(arg, oldPrefix)
+                        ? newPrefix + arg.substring(oldPrefix.length())
+                        : arg));
   }
 
   /**
@@ -107,30 +117,17 @@ public final class PolicyConditionUpdater {
    */
   public static String removeByPrefixFromCondition(
       String condition, String prefix, Set<String> targetFunctions) {
-    if (condition == null) {
-      return null;
-    }
-    String result = condition;
-    for (String function : targetFunctions) {
-      result = removeFunctionArgByPrefix(result, function, prefix);
-    }
-    return result.trim().isEmpty() ? null : result;
+    return rewriteCalls(
+        condition,
+        targetFunctions,
+        call -> callWithoutDeleted(call, arg -> isAtOrUnder(arg, prefix)));
   }
 
-  /**
-   * Remove deletedName from arguments of targetFunctions within the condition string. Returns null
-   * if the entire condition becomes empty after removal.
-   */
+  /** Remove deletedName from arguments of targetFunctions within the condition string. */
   public static String removeFromCondition(
       String condition, String deletedName, Set<String> targetFunctions) {
-    if (condition == null) {
-      return null;
-    }
-    String result = condition;
-    for (String function : targetFunctions) {
-      result = removeFunctionArg(result, function, deletedName);
-    }
-    return result.trim().isEmpty() ? null : result;
+    return rewriteCalls(
+        condition, targetFunctions, call -> callWithoutDeleted(call, deletedName::equals));
   }
 
   /**
@@ -273,161 +270,116 @@ public final class PolicyConditionUpdater {
   }
 
   /**
-   * Rewrite arguments of a specific function call within a condition string. The argRewriter
-   * transforms each argument value (without quotes).
+   * Apply callRewriter to every call of targetFunctions in the condition. Replacements run from the
+   * last call to the first so earlier offsets stay valid; calls never overlap because their
+   * arguments are string literals.
    */
-  static String rewriteFunctionArgs(
-      String condition, String functionName, UnaryOperator<String> argRewriter) {
-    Pattern functionPattern =
-        Pattern.compile("(" + Pattern.quote(functionName) + "\\s*\\()([^)]*)(\\))");
-    Matcher matcher = functionPattern.matcher(condition);
-    StringBuilder result = new StringBuilder();
-
-    while (matcher.find()) {
-      String prefix = matcher.group(1);
-      String argsStr = matcher.group(2);
-      String suffix = matcher.group(3);
-
-      List<String> rewrittenArgs = new ArrayList<>();
-      Matcher argMatcher = SINGLE_QUOTED_ARG.matcher(argsStr);
-      while (argMatcher.find()) {
-        String argValue = decodeSpelLiteral(argMatcher.group(1));
-        rewrittenArgs.add(quoteSpelLiteral(argRewriter.apply(argValue)));
-      }
-      matcher.appendReplacement(
-          result, Matcher.quoteReplacement(prefix + String.join(", ", rewrittenArgs) + suffix));
+  static String rewriteCalls(
+      String condition,
+      Set<String> targetFunctions,
+      Function<FunctionCall, Optional<String>> callRewriter) {
+    if (condition == null) {
+      return null;
     }
-    matcher.appendTail(result);
-    return result.toString();
+    StringBuilder rewritten = new StringBuilder(condition);
+    for (FunctionCall call : findCalls(condition, targetFunctions).reversed()) {
+      callRewriter
+          .apply(call)
+          .ifPresent(replacement -> rewritten.replace(call.start(), call.end(), replacement));
+    }
+    return rewritten.toString();
+  }
+
+  /** Every call of targetFunctions whose arguments are all string literals, in text order. */
+  static List<FunctionCall> findCalls(String condition, Set<String> targetFunctions) {
+    List<FunctionCall> calls = new ArrayList<>();
+    try {
+      collectCalls(
+          CONDITION_PARSER.parseRaw(condition).getAST(), condition, targetFunctions, calls);
+    } catch (ParseException e) {
+      LOG.warn("Leaving policy condition '{}' unchanged: it does not parse", condition, e);
+    }
+    calls.sort(Comparator.comparingInt(FunctionCall::start));
+    return calls;
+  }
+
+  private static void collectCalls(
+      SpelNode node, String condition, Set<String> targetFunctions, List<FunctionCall> calls) {
+    // The SpEL AST exposes children only as SpelNode, so the node kind is a runtime type check.
+    if (node instanceof MethodReference method && targetFunctions.contains(method.getName())) {
+      List<StringLiteral> literals = literalArguments(method);
+      if (!literals.isEmpty()) {
+        calls.add(toFunctionCall(method, literals, condition));
+      }
+    }
+    for (int i = 0; i < node.getChildCount(); i++) {
+      collectCalls(node.getChild(i), condition, targetFunctions, calls);
+    }
   }
 
   /**
-   * Remove a specific argument from a function call. If the function has no remaining arguments,
-   * the entire function call is removed and dangling boolean operators are cleaned up.
+   * The call's arguments if every one is a string literal, otherwise none. A computed argument is
+   * not an entity name, so such a call is left as written.
    */
-  static String removeFunctionArg(String condition, String functionName, String argToRemove) {
-    Pattern functionPattern = Pattern.compile(Pattern.quote(functionName) + "\\s*\\([^)]*\\)");
-    Matcher matcher = functionPattern.matcher(condition);
-    StringBuilder result = new StringBuilder();
-
-    while (matcher.find()) {
-      String functionCall = matcher.group();
-      List<String> args = extractArgs(functionCall);
-      args.removeIf(arg -> arg.equals(argToRemove));
-
-      String replacement;
-      if (args.isEmpty()) {
-        replacement = "";
-      } else {
-        String argsStr =
-            args.stream()
-                .map(PolicyConditionUpdater::quoteSpelLiteral)
-                .reduce((a, b) -> a + ", " + b)
-                .orElse("");
-        replacement = functionName + "(" + argsStr + ")";
+  private static List<StringLiteral> literalArguments(MethodReference method) {
+    List<StringLiteral> literals = new ArrayList<>();
+    for (int i = 0; i < method.getChildCount(); i++) {
+      // Same SpelNode-typed children as collectCalls; only literal arguments are entity names.
+      if (method.getChild(i) instanceof StringLiteral literal) {
+        literals.add(literal);
       }
-      matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
     }
-    matcher.appendTail(result);
-    return cleanupDanglingOperators(result.toString());
+    return literals.size() == method.getChildCount() ? literals : List.of();
   }
 
   /**
-   * Remove arguments matching a prefix (exact or starts with prefix + ".") from a function call.
+   * A MethodReference spans only the function name, so the call ends at the first {@code )} after
+   * its last argument -- nothing but whitespace can sit between a literal and that parenthesis.
    */
-  static String removeFunctionArgByPrefix(String condition, String functionName, String prefix) {
-    Pattern functionPattern = Pattern.compile(Pattern.quote(functionName) + "\\s*\\([^)]*\\)");
-    Matcher matcher = functionPattern.matcher(condition);
-    StringBuilder result = new StringBuilder();
-
-    while (matcher.find()) {
-      String functionCall = matcher.group();
-      List<String> args = extractArgs(functionCall);
-      args.removeIf(arg -> arg.equals(prefix) || arg.startsWith(prefix + "."));
-
-      String replacement;
-      if (args.isEmpty()) {
-        replacement = "";
-      } else {
-        String argsStr =
-            args.stream()
-                .map(PolicyConditionUpdater::quoteSpelLiteral)
-                .reduce((a, b) -> a + ", " + b)
-                .orElse("");
-        replacement = functionName + "(" + argsStr + ")";
-      }
-      matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
-    }
-    matcher.appendTail(result);
-    return cleanupDanglingOperators(result.toString());
+  private static FunctionCall toFunctionCall(
+      MethodReference method, List<StringLiteral> literals, String condition) {
+    int end = condition.indexOf(')', literals.getLast().getEndPosition()) + 1;
+    List<String> args =
+        literals.stream().map(literal -> (String) literal.getLiteralValue().getValue()).toList();
+    return new FunctionCall(method.getName(), method.getStartPosition(), end, args);
   }
 
-  /** Extract unquoted argument values from a function call string. */
-  static List<String> extractArgs(String functionCall) {
-    List<String> args = new ArrayList<>();
-    Matcher argMatcher = SINGLE_QUOTED_ARG.matcher(functionCall);
-    while (argMatcher.find()) {
-      args.add(decodeSpelLiteral(argMatcher.group(1)));
-    }
-    return args;
+  private static Optional<String> renamedCall(
+      FunctionCall call, UnaryOperator<String> argRewriter) {
+    List<String> renamed = call.args().stream().map(argRewriter).toList();
+    return renamed.equals(call.args())
+        ? Optional.empty()
+        : Optional.of(renderCall(call.name(), renamed));
   }
 
-  /** Turns a SpEL string literal's body into the value it denotes. */
-  private static String decodeSpelLiteral(String literal) {
-    return literal.replace("''", "'");
+  /**
+   * The call without its deleted arguments. Any-of functions keep matching the survivors; with
+   * none left, or for matchAllTags, which can no longer be satisfied, the call is {@code false}.
+   */
+  private static Optional<String> callWithoutDeleted(
+      FunctionCall call, Predicate<String> isDeleted) {
+    List<String> kept = call.args().stream().filter(isDeleted.negate()).toList();
+    boolean anyDeleted = kept.size() < call.args().size();
+    boolean neverMatches = kept.isEmpty() || MATCH_ALL_TAGS.equals(call.name());
+    Optional<String> rewritten = Optional.empty();
+    if (anyDeleted) {
+      rewritten = Optional.of(neverMatches ? NEVER_MATCHES : renderCall(call.name(), kept));
+    }
+    return rewritten;
+  }
+
+  private static boolean isAtOrUnder(String fqn, String prefix) {
+    return fqn.equals(prefix) || fqn.startsWith(prefix + ".");
+  }
+
+  private static String renderCall(String functionName, List<String> args) {
+    return args.stream()
+        .map(PolicyConditionUpdater::quoteSpelLiteral)
+        .collect(Collectors.joining(", ", functionName + "(", ")"));
   }
 
   /** Renders a value as a SpEL string literal, re-escaping any quote it contains. */
   private static String quoteSpelLiteral(String value) {
     return "'" + value.replace("'", "''") + "'";
-  }
-
-  /**
-   * Remove dangling boolean operators left after removing a function call. Handles patterns like
-   * {@code && remaining}, {@code remaining &&}, {@code || remaining}, {@code remaining ||}.
-   */
-  static String cleanupDanglingOperators(String expression) {
-    String result = expression.trim();
-    String previous;
-    do {
-      previous = result;
-      // Collapse consecutive operators: 'X &&  && Y' or 'X ||  || Y'
-      result = result.replaceAll("(&&|\\|\\|)\\s+(&&|\\|\\|)", "$1");
-      // Remove leading operators: '&& X' or '|| X'
-      result = result.replaceAll("^\\s*(&&|\\|\\|)\\s*", "");
-      // Remove trailing operators: 'X &&' or 'X ||'
-      result = result.replaceAll("\\s*(&&|\\|\\|)\\s*$", "");
-      result = result.trim();
-    } while (!result.equals(previous));
-    return result;
-  }
-
-  /**
-   * Simplify boolean expressions containing 'true' literals. Handles: {@code true && X → X},
-   * {@code X && true → X}, {@code true || X → true}, {@code X || true → true}.
-   */
-  static String simplifyBooleanExpression(String expression) {
-    String result = expression.trim();
-    if (result.isEmpty()) {
-      return "true";
-    }
-    String previous;
-    do {
-      previous = result;
-      // Remove 'true &&' from the left side
-      result = result.replaceAll("^true\\s*&&\\s*", "");
-      // Remove '&& true' from the right side
-      result = result.replaceAll("\\s*&&\\s*true$", "");
-      // 'true || anything' collapses to 'true'
-      if (result.matches("true\\s*\\|\\|.*")) {
-        result = "true";
-      }
-      // 'anything || true' collapses to 'true'
-      if (result.matches(".*\\|\\|\\s*true")) {
-        result = "true";
-      }
-      result = result.trim();
-    } while (!result.equals(previous));
-    return result.isEmpty() ? "true" : result;
   }
 }

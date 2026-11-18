@@ -39,6 +39,9 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
     .mockImplementation((_entityType, fqn) => `/entity/${fqn}`),
+  getEntityDetailsUrl: jest
+    .fn()
+    .mockImplementation((_entityType, fqn) => `http://localhost/entity/${fqn}`),
 }));
 
 const mockOnEditDisplayName = jest.fn();

@@ -12,6 +12,7 @@ import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
+import io.modelcontextprotocol.spec.HttpHeaders;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
@@ -21,9 +22,9 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Mono;
@@ -68,6 +69,10 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   static final String SSE_LINE_TERMINATOR = "\n";
 
   static final String SSE_EVENT_TERMINATOR = "\n\n";
+
+  // Largest JSON-RPC message /mcp reads; a bigger body is refused before it is parsed.
+  // ADR:2026-11-02-mcp-request-bodies-are-bounded-before-parsing
+  static final int MAX_MESSAGE_BODY_BYTES = 4 * 1024 * 1024;
 
   private final ObjectMapper objectMapper;
 
@@ -162,6 +167,19 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
     McpTransportContext transportContext = this.contextExtractor.extract(request);
 
+    // After authentication, so a client without a token still gets the 401 that starts OAuth
+    // discovery. See ADR:2026-11-06-mcp-post-requires-a-json-content-type.
+    if (!isJsonContentType(request.getContentType())) {
+      responseError(
+          response,
+          HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE,
+          null,
+          McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+              .message("Content-Type must be application/json")
+              .build());
+      return;
+    }
+
     String accept = request.getHeader(ACCEPT);
     boolean acceptsJson = accept != null && accept.contains(APPLICATION_JSON);
     boolean acceptsSse = accept != null && accept.contains(TEXT_EVENT_STREAM);
@@ -177,17 +195,34 @@ public class HttpServletStatelessServerTransport extends HttpServlet
     }
 
     try {
-      BufferedReader reader = request.getReader();
-      StringBuilder body = new StringBuilder();
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
+      byte[] body = readBody(request, MAX_MESSAGE_BODY_BYTES);
+      if (body == null) {
+        responseError(
+            response,
+            HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+            null,
+            McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+                .message("Message exceeds " + MAX_MESSAGE_BODY_BYTES + " bytes")
+                .build());
+        return;
       }
 
       McpSchema.JSONRPCMessage message =
-          McpSchema.deserializeJsonRpcMessage(jsonMapper, body.toString());
+          McpSchema.deserializeJsonRpcMessage(jsonMapper, new String(body, StandardCharsets.UTF_8));
 
-      if (message instanceof McpSchema.JSONRPCRequest jsonrpcRequest) {
+      if (!supportsProtocolVersion(request.getHeader(HttpHeaders.PROTOCOL_VERSION), message)) {
+        responseError(
+            response,
+            HttpServletResponse.SC_BAD_REQUEST,
+            message instanceof McpSchema.JSONRPCRequest refused ? refused.id() : null,
+            McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+                .message(
+                    "Unsupported "
+                        + HttpHeaders.PROTOCOL_VERSION
+                        + ". Supported: "
+                        + String.join(", ", protocolVersions()))
+                .build());
+      } else if (message instanceof McpSchema.JSONRPCRequest jsonrpcRequest) {
         try {
           McpSchema.JSONRPCResponse jsonrpcResponse =
               this.mcpHandler
@@ -265,6 +300,40 @@ public class HttpServletStatelessServerTransport extends HttpServlet
               .message("Internal server error")
               .build());
     }
+  }
+
+  /**
+   * Reads the request body, stopping one byte past {@code maxBytes}. The count is taken after a
+   * gzip body is inflated, so it holds whatever the size on the wire, and it runs before parsing
+   * because a limit on the parsed value only applies once Jackson has built the whole document.
+   *
+   * @return the body, or null when it is longer than {@code maxBytes}
+   */
+  static byte[] readBody(HttpServletRequest request, int maxBytes) throws IOException {
+    byte[] body = request.getInputStream().readNBytes(maxBytes + 1);
+    return body.length > maxBytes ? null : body;
+  }
+
+  /**
+   * The rule the SDK's own servlet transports apply: the media type must be
+   * application/json, and parameters such as charset are allowed. A missing header fails.
+   */
+  static boolean isJsonContentType(String contentType) {
+    String mediaType = contentType == null ? "" : contentType.split(";", 2)[0].trim();
+    return APPLICATION_JSON.equalsIgnoreCase(mediaType);
+  }
+
+  /**
+   * A message naming a protocol version this transport does not implement is refused, as the
+   * 2025-11-25 transport requires. A missing header passes, since the spec says to assume
+   * 2025-03-26. {@code initialize} passes because its body negotiates the version.
+   * ADR:2026-11-14-mcp-refuses-unsupported-protocol-versions
+   */
+  private boolean supportsProtocolVersion(String version, McpSchema.JSONRPCMessage message) {
+    boolean initialize =
+        message instanceof McpSchema.JSONRPCRequest jsonrpcRequest
+            && McpSchema.METHOD_INITIALIZE.equals(jsonrpcRequest.method());
+    return version == null || initialize || protocolVersions().contains(version);
   }
 
   /**

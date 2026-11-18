@@ -13,7 +13,6 @@
 
 import '@github/g-emoji-element';
 import {
-  Button,
   ButtonUtility,
   Popover,
   PopoverTrigger,
@@ -141,28 +140,18 @@ const Reactions: FC<ReactionsProps> = ({
       {emojis}
       {canAddReaction && (
         <PopoverTrigger isOpen={visible} onOpenChange={setVisible}>
-          {isPill(variant) ? (
-            <Button
-              aria-label={addReactionLabel}
-              className="tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover"
-              color="tertiary"
-              data-testid="add-reactions"
-              iconLeading={<FaceSmile data-icon size={16} />}
-              size="xs"
-              title={addReactionLabel}
-              onClick={(e: MouseEvent) => e.stopPropagation()}
-            />
-          ) : (
-            <ButtonUtility
-              aria-label={addReactionLabel}
-              color="tertiary"
-              data-testid="add-reactions"
-              icon={AddReactionIcon}
-              size="sm"
-              title={addReactionLabel}
-              onClick={(e: MouseEvent) => e.stopPropagation()}
-            />
-          )}
+          <ButtonUtility
+            // The pill matches the reaction chips beside it.
+            className={classNames({
+              'tw:h-6.5 tw:w-7 tw:rounded-full! tw:p-1! tw:*:data-icon:size-4 tw:*:data-icon:text-fg-secondary tw:hover:*:data-icon:text-fg-secondary_hover':
+                isPill(variant),
+            })}
+            data-testid="add-reactions"
+            icon={isPill(variant) ? FaceSmile : AddReactionIcon}
+            size="sm"
+            tooltip={addReactionLabel}
+            onClick={(e: MouseEvent) => e.stopPropagation()}
+          />
           <Popover
             arrow
             containerClassName="tw:flex tw:gap-2 tw:p-1"

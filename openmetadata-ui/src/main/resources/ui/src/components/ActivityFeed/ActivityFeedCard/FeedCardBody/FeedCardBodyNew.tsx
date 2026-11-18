@@ -150,7 +150,6 @@ const FeedCardBodyNew = ({
   showThread,
   isForFeedTab,
   isFeedWidget,
-  isActive,
   isThreadPanel,
 }: FeedCardBodyV1Props) => {
   const { t } = useTranslation();
@@ -267,9 +266,6 @@ const FeedCardBodyNew = ({
     <Card
       className={classNames(
         'tw:overflow-y-auto',
-        // On the selected card's dark brand tint the surface Card is a dark
-        // slab; let the tint show through. Light mode keeps the white surface.
-        isActive && 'tw:dark:bg-transparent',
         showThread
           ? [
               'tw:max-h-100',
@@ -277,9 +273,13 @@ const FeedCardBodyNew = ({
             ]
           : 'tw:mt-0.5 tw:max-h-50 tw:p-5 tw:scrollbar-hide',
         // In the thread panels the card shares the drawer's surface, so the
-        // message sits recessed into it, as the Inbox's does.
+        // message sits recessed into it, as the Inbox's does. Elsewhere it does
+        // so in dark mode only, the selected card included; light keeps the
+        // white card.
         // ADR:2026-10-26-conversation-drawers-style-the-reply-count-and-message-like-the-inbox
-        isThreadPanel && ['tw:border-transparent', INBOX_RECESSED_SURFACE_CLASS]
+        isThreadPanel
+          ? ['tw:border-transparent', INBOX_RECESSED_SURFACE_CLASS]
+          : 'tw:dark:border-transparent tw:dark:bg-primary'
       )}>
       {feedBodyRender}
     </Card>

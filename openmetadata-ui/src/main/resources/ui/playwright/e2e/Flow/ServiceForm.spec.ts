@@ -247,16 +247,18 @@ test.describe(
           caCertificateField.getByTestId('credential-file-name')
         ).toHaveText(CERT_FILE);
 
-        // Verify the certificate content is sent correctly.
-        const testConnectionResponse1 = page.waitForResponse(
-          'api/v1/automations/workflows'
+        // Assert on what the form sent: caCertificate is a password field, so
+        // the server masks it in the workflow response.
+        const testConnectionRequest = page.waitForRequest(
+          (request) =>
+            request.url().endsWith('/api/v1/automations/workflows') &&
+            request.method() === 'POST'
         );
 
         await page.getByTestId('test-connection-btn').click();
 
-        const testConnection1 = await (await testConnectionResponse1).json();
+        const testConnection1 = (await testConnectionRequest).postDataJSON();
 
-        // Verify form details submission - 1
         expect(
           testConnection1.request.connection.config.connection.sslConfig
             .caCertificate

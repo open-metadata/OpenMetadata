@@ -1,12 +1,13 @@
 # A data contract only acts on the test suite named after its own id
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-26 (initial)
+- **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-27 (contract PUTs authorize before prepare)
 - **Deciders:** Vishnu Jain
 - **Guard:** `DataContractTestSuiteOwnershipTest`, `DataContractResourceIT`
   (`testUpdateReleasesAnotherContractsTestSuite`, `testHardDeleteLeavesAnotherContractsTestSuite`,
   `testPutRestoringASoftDeletedContractKeepsItsOwnSuite`,
-  `testNoOpPatchStoresTheReleasedContractsOwnSuite`),
+  `testNoOpPatchStoresTheReleasedContractsOwnSuite`, `testForbiddenPutLeavesTheContractsTestSuite`,
+  `testForbiddenPutCreateLeavesTheTestCasesSuites`),
   `CreateEntityToolTest` (`aDataContractCannotBeGivenFieldsItsRepositoryOwns`)
 
 ## Context
@@ -39,6 +40,9 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
   there would not be stored on the contract. The updater compares `testSuite` on every update,
   whichever fields a PATCH names, so a suite `prepare` swapped in is always stored.
 - MCP `create_entity` and `describe_entity_type` do not offer those four fields for a data contract.
+- A contract PUT is authorized before `prepare` runs (`DataContractResource.createOrUpdate`):
+  `EntityResource.createOrUpdate` prepares an entity before it authorizes, and `prepare` creates,
+  edits or deletes the contract's suite. POST and PATCH already authorize first.
 
 ## Consequences
 
@@ -48,3 +52,5 @@ tests on every update. REST never takes that reference from a caller (`CreateDat
   until its next update (follow, vote and result updates leave both alone) or hard delete, which
   removes all of the contract's links. Until then, validating it aborts with "does not have a test
   suite defined" instead of running that suite's pipeline.
+- `prepare` still writes the suite. An edit the caller may make but that a rule then refuses, or
+  that is staged for approval, has already changed the suite.

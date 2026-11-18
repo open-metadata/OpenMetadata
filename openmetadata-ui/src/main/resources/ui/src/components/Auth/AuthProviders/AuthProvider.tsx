@@ -57,7 +57,6 @@ import {
   hydrateBackendSyncedPreferences,
   resetBackendSyncState,
 } from '../../../hooks/currentUserStore/useCurrentUserStore';
-import { useProductTourStore } from '../../../hooks/product-tour/useProductTourStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   AppModeHint,
@@ -75,6 +74,7 @@ import {
 } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
 import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest/axiosClient';
 import { getDocumentByFQN } from '../../../rest/DocStoreAPI';
@@ -435,10 +435,8 @@ export const AuthProvider = ({
       clearEtagCache();
       queryClient.clear();
 
-      // End a tour this user left running, before the app mode is cleared:
-      // its step, return page and mode snapshot are theirs, and its mock
-      // must not answer the next user's requests.
-      useProductTourStore.getState().exit();
+      // A tour this user left open must not reopen for whoever signs in next.
+      useProductTourStore.getState().close();
 
       // Drop the tab-scoped app-mode session so the next user boots into
       // their own persona/preference-resolved mode rather than inheriting
@@ -461,6 +459,8 @@ export const AuthProvider = ({
       // `handleRefreshFailed` recovery would never see the logout finish and
       // the SPA would be left half-logged-out with the flag stuck armed.
       isSigningOutRef.current = false;
+      // Refreshes were held off for the logout; the next sign-in needs them.
+      authCoordinator.resume();
       // A recovery that stood down for this logout returned without
       // navigating, so nothing reset this. Logout lands on /signin without a
       // reload; left set, it would swallow every refresh failure after the
@@ -594,6 +594,9 @@ export const AuthProvider = ({
 
       return;
     }
+    // Not resumed here: invokeSilentReauth leaves the page, and its failure
+    // signs out, which resumes.
+    // ADR:2026-10-28-auth-coordinator-pause-is-always-resumed-or-unloaded
     authCoordinator.pause();
     setApplicationLoading(true);
     try {

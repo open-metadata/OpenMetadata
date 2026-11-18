@@ -65,6 +65,11 @@ export interface EdgeDetails {
   docId?: string;
   extraInfo?: EdgeDetails;
   tempLineageTables?: TempLineageTable[];
+  /**
+   * Set on an edge synthesised from one `tempLineageTables` hop: the key of
+   * the stored edge it came from (see getEdgeEndpointsKey). Not stored itself.
+   */
+  tempHopOf?: string;
   createdAt?: number;
   createdBy?: string;
   updatedAt?: number;

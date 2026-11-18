@@ -31,6 +31,7 @@ import {
 } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
 interface HistogramRow {
@@ -55,6 +56,7 @@ const TOOLTIP: ChartTooltipRenderProps<HistogramRow> = {
 
 const DataDistributionHistogram = ({
   data,
+  isSharded,
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
@@ -65,7 +67,9 @@ const DataDistributionHistogram = ({
         key: 'frequency',
         name: t('label.frequency'),
         status: 'info',
-        seriesOption: { barWidth: 22 },
+        // A cap, not a fixed width: with many bins a slot is narrower than
+        // 22px, and fixed-width bars overlapped their neighbours.
+        seriesOption: { barMaxWidth: 22 },
       },
     ],
     [t]
@@ -87,6 +91,7 @@ const DataDistributionHistogram = ({
 
           return {
             key,
+            executionSource: columnProfile?.executionSource,
             skew,
             skewColor,
             date: customFormatDateTime(
@@ -153,6 +158,10 @@ const DataDistributionHistogram = ({
               {`${t('label.skew')}: ${chart.skew || '--'}`}
             </Badge>
           </div>
+          <ExecutionSource
+            isSharded={isSharded}
+            source={chart.executionSource}
+          />
           <div
             className="tw:flex-1 tw:min-h-87.5"
             id={`${chart.key}-histogram`}>

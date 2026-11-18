@@ -1,0 +1,70 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyDataGraph.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyDataGraph",
+  "description": "One page of a native ontology's bound concepts ranked by binding count, the assets of each that the caller may view, the object properties that join the returned concepts, and observed lineage between the returned assets.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyDataGraph",
+  "definitions": {
+    "conceptEdge": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyConceptEdge",
+      "description": "Two returned concepts that an object property joins, through an object property assertion or a class restriction.",
+      "properties": {
+        "fromConceptId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "toConceptId": {
+          "$ref": "../../type/basic.json#/definitions/uuid"
+        },
+        "propertyIri": {
+          "description": "IRI of the object property.",
+          "type": "string",
+          "format": "uri"
+        },
+        "label": {
+          "description": "Display name or name of the declared property, or the local part of its IRI when the ontology declares none the caller may view.",
+          "type": "string"
+        },
+        "property": {
+          "description": "The declared property, when this ontology declares one for the IRI and the caller may view it.",
+          "$ref": "../../type/entityReference.json"
+        }
+      },
+      "required": ["fromConceptId", "toConceptId", "propertyIri", "label"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "clusters": {
+      "description": "Ranked concept clusters in this page. Concepts with no viewable asset are left out.",
+      "type": "array",
+      "items": {
+        "$ref": "nativeOntologyAssetCluster.json"
+      },
+      "default": []
+    },
+    "edges": {
+      "description": "Object property links whose endpoints are both returned clusters.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/conceptEdge"
+      },
+      "default": []
+    },
+    "lineageEdges": {
+      "description": "Observed lineage whose endpoints are assets in the returned clusters.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityLineage.json#/definitions/edge"
+      },
+      "default": []
+    },
+    "paging": {
+      "description": "Offset pagination over the ontology's bound concepts.",
+      "$ref": "../../type/paging.json"
+    }
+  },
+  "required": ["clusters", "edges", "lineageEdges", "paging"],
+  "additionalProperties": false
+}

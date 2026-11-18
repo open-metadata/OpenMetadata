@@ -145,12 +145,11 @@ pre {
   color: @yellow-7;
 }
 
-a.ant-typography,
-.ant-typography a,
 .prose-typography a {
   font-weight: var(--om-font-weight-medium);
-  font-size: var(--om-font-size-sm);
-  line-height: 21px;
+  // Inherit so a link matches the Typography size it sits in (e.g. text-xs placeholder copy).
+  font-size: inherit;
+  line-height: inherit;
   color: @blue-9;
 
   &:hover {
@@ -261,44 +260,6 @@ a.ant-typography,
 }
 .text-xs {
   .text-style(12px, 18px);
-}
-
-.ant-typography {
-  &.display-lg {
-    .display-lg();
-  }
-
-  &.display-md {
-    .display-md();
-  }
-
-  &.display-sm {
-    .display-sm();
-  }
-
-  &.display-xs {
-    .display-xs();
-  }
-
-  &.text-xl {
-    .text-xl();
-  }
-
-  &.text-lg {
-    .text-lg();
-  }
-
-  &.text-md {
-    .text-md();
-  }
-
-  &.text-sm {
-    .text-sm();
-  }
-
-  &.text-xs {
-    .text-xs();
-  }
 }
 
 // =============================== End of New Design System ===============================

@@ -64,6 +64,14 @@ describe('UserAssetCard', () => {
     expect(card).toHaveTextContent('Bob');
   });
 
+  it('shows -- for an asset with no owners', () => {
+    renderCard(table({ owners: [] }));
+
+    expect(screen.getByTestId('owner-empty-placeholder')).toHaveTextContent(
+      /^--$/
+    );
+  });
+
   it('links the parent schema under the description', () => {
     renderCard(table());
 
@@ -103,13 +111,13 @@ describe('UserAssetCard', () => {
 
     expect(
       screen.getByTestId('user-asset-card-svc.db.schema.orders')
-    ).toHaveClass('tw:border-brand');
+    ).toHaveClass('tw:border-utility-brand-300');
 
     unmount();
     renderCard(table(), false);
 
     expect(
       screen.getByTestId('user-asset-card-svc.db.schema.orders')
-    ).not.toHaveClass('tw:border-brand');
+    ).not.toHaveClass('tw:border-utility-brand-300');
   });
 });

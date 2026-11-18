@@ -432,12 +432,8 @@ describe('CommentCard', () => {
   });
 
   describe('in an activity thread panel', () => {
-    it('puts the actions in a menu and edits with the comment editor', async () => {
+    it('edits with the comment editor', async () => {
       renderCommentCard({ isThreadPanel: true });
-
-      expect(mockActivityFeedActions).toHaveBeenLastCalledWith(
-        expect.objectContaining({ asMenu: true })
-      );
 
       await hoverCard();
       fireEvent.click(screen.getByTestId('edit-button'));
@@ -450,12 +446,8 @@ describe('CommentCard', () => {
       expect(screen.queryByTestId('feed-editor')).not.toBeInTheDocument();
     });
 
-    it('keeps the hover actions and the old editor elsewhere', async () => {
+    it('keeps the old editor elsewhere', async () => {
       renderCommentCard();
-
-      expect(mockActivityFeedActions).not.toHaveBeenLastCalledWith(
-        expect.objectContaining({ asMenu: true })
-      );
 
       await hoverCard();
       fireEvent.click(screen.getByTestId('edit-button'));

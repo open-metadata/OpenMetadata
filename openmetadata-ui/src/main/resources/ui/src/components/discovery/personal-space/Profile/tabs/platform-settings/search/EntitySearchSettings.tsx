@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ConfirmPopover,
   Dropdown,
   Select,
 } from '@openmetadata/ui-core-components';
@@ -48,7 +49,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../../utils/ToastUtils';
-import ConfirmDialog from '../ConfirmDialog';
 import type { PlatformSettingsPageProps } from '../PlatformSettings.types';
 import { SettingsSkeleton } from '../SettingsFormLayout';
 import FieldValueBoostTable from './FieldValueBoostTable';
@@ -99,7 +99,6 @@ const EntitySearchSettings = ({
   );
   const [lastAddedField, setLastAddedField] = useState<string>();
   const [showNewTermBoost, setShowNewTermBoost] = useState(false);
-  const [isRestoreOpen, setIsRestoreOpen] = useState(false);
 
   const applyConfig = useCallback(
     (next: SearchSettings) => {
@@ -149,8 +148,12 @@ const EntitySearchSettings = ({
   }, []);
   useEffect(() => {
     if (!entityType) {
-      // A stale or mistyped link: back to the entity list.
-      onNavigate({ type: 'page', page: 'search', isEditing: false });
+      // A stale or mistyped link: back to the entity list, replacing it so
+      // Back does not land on it again.
+      onNavigate(
+        { type: 'page', page: 'search', isEditing: false },
+        { replace: true }
+      );
 
       return;
     }
@@ -220,7 +223,8 @@ const EntitySearchSettings = ({
     }
   }, [applyConfig, config, draft, entityType, t]);
 
-  const handleRestore = async () => {
+  /** Resolves `false` when the restore failed, keeping the confirmation open. */
+  const handleRestore = useCallback(async (): Promise<boolean> => {
     setIsSaving(true);
     try {
       await restoreSettingsConfig(SettingType.SearchSettings);
@@ -231,26 +235,36 @@ const EntitySearchSettings = ({
           })
         );
       }
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsSaving(false);
-      setIsRestoreOpen(false);
     }
-  };
+  }, [fetchConfig, t]);
 
   useEffect(() => {
     onSetHeaderActions(
       <Box direction="row" gap={3}>
-        <Button
-          color="secondary"
-          data-testid="restore-defaults-btn"
-          iconLeading={RefreshCcw01}
-          isDisabled={!config || isSaving}
-          size="xs"
-          onPress={() => setIsRestoreOpen(true)}>
-          {t('label.restore-default-plural')}
-        </Button>
+        <ConfirmPopover
+          confirmText={t('label.restore-default-plural')}
+          data-testid="restore-defaults-popover"
+          description={t('message.reset-search-settings-confirmation')}
+          title={t('label.restore-default-plural')}
+          variant="primary"
+          onConfirm={handleRestore}>
+          <Button
+            color="secondary"
+            data-testid="restore-defaults-btn"
+            iconLeading={RefreshCcw01}
+            isDisabled={!config || isSaving}
+            size="xs">
+            {t('label.restore-default-plural')}
+          </Button>
+        </ConfirmPopover>
         <Button
           color="primary"
           data-testid="save-btn"
@@ -264,7 +278,15 @@ const EntitySearchSettings = ({
     );
 
     return () => onSetHeaderActions(undefined);
-  }, [config, handleSave, isChanged, isSaving, onSetHeaderActions, t]);
+  }, [
+    config,
+    handleRestore,
+    handleSave,
+    isChanged,
+    isSaving,
+    onSetHeaderActions,
+    t,
+  ]);
 
   const entityFields = useMemo(() => {
     const allowed =
@@ -452,7 +474,7 @@ const EntitySearchSettings = ({
           count={draft.termBoosts.length}
           testId="term-boosts"
           title={t('label.term-boost')}>
-          <Box direction="row" gap={3} justify="between" wrap="wrap">
+          <Box direction="row" gap={3} wrap="wrap">
             {draft.termBoosts.map((boost) => (
               <TermBoostCard
                 key={boost.value}
@@ -500,17 +522,6 @@ const EntitySearchSettings = ({
       <SearchPreviewPanel
         entityType={entityType}
         searchConfig={previewConfig}
-      />
-
-      <ConfirmDialog
-        confirmLabel={t('label.restore-default-plural')}
-        isLoading={isSaving}
-        isOpen={isRestoreOpen}
-        message={t('message.reset-search-settings-confirmation')}
-        testId="restore-defaults-dialog"
-        title={t('label.restore-default-plural')}
-        onCancel={() => setIsRestoreOpen(false)}
-        onConfirm={handleRestore}
       />
     </div>
   );

@@ -12,7 +12,10 @@
  */
 
 import { expect, Page } from '@playwright/test';
-import { ALERT_UPDATED_DESCRIPTION } from '../constant/alert';
+import {
+  ALERT_MASKED_SECRET,
+  ALERT_UPDATED_DESCRIPTION,
+} from '../constant/alert';
 import {
   AlertDetails,
   ObservabilityCreationDetails,
@@ -714,7 +717,6 @@ export const createCommonObservabilityAlert = async ({
 export const checkAlertConfigDetails = async ({
   page,
   sourceName,
-  destinationEndpoint,
   tableName,
 }: {
   page: Page;
@@ -744,8 +746,9 @@ export const checkAlertConfigDetails = async ({
   await expect(
     page.getByTestId('destination-category-select-0').getByRole('combobox')
   ).toHaveValue('Slack');
+  // The endpoint is a credential, so the page shows the mask, never the URL.
   await expect(page.getByTestId('endpoint-input-field-0')).toHaveValue(
-    destinationEndpoint
+    ALERT_MASKED_SECRET
   );
 };
 

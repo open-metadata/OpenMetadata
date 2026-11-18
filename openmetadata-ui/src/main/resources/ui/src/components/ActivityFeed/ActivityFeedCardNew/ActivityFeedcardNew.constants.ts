@@ -43,7 +43,14 @@ export const PANEL_HEADER_LAYOUT = {
   authorName: 'tw:block tw:min-w-0',
   authorLink: 'tw:block tw:truncate',
   timestamp: 'tw:whitespace-nowrap',
+  // One avatar size for the author, the replies and the comment input.
+  avatarSize: 'sm' as const,
 };
+
+// The conversation's menu sits in the card's top corner, and its header keeps
+// clear of it.
+export const ACTIONS_CLASS_NAME = 'tw:absolute tw:end-2.5 tw:top-4.5';
+export const ACTIONS_CLEARANCE_CLASS_NAME = 'tw:pe-8';
 
 export const DEFAULT_HEADER_LAYOUT = {
   row: undefined,
@@ -52,6 +59,7 @@ export const DEFAULT_HEADER_LAYOUT = {
   authorName: undefined,
   authorLink: undefined,
   timestamp: undefined,
+  avatarSize: undefined,
 };
 
 // An open conversation in a thread panel already lists its replies, so its
