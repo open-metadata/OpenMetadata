@@ -72,7 +72,7 @@ const AvatarCarouselItem = ({
         </Button>
         {suggestionsCount > 0 && (
           <Badge
-            className="tw:pointer-events-none tw:absolute tw:-top-1.5 tw:-right-1.5 tw:max-w-none"
+            className="tw:pointer-events-none tw:absolute tw:-top-2.5 tw:-right-1.5 tw:max-w-none"
             color="error"
             size="xs"
             variant="solid">
