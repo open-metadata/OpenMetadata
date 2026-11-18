@@ -1310,7 +1310,7 @@
     {
       "name": "get_ontology_change_set",
       "title": "Read an ontology proposal",
-      "description": "Read one caller-visible non-deleted OntologyChangeSet including typed operations, state, undoCursor, scope and applicationResult. Uses canonical draft scope checks (edit permission on the scoped glossary or ontology) and change-set view permissions. Submitted is not approved or applied. Works without RDF; does not run or apply operations.",
+      "description": "Read a non-deleted OntologyChangeSet through canonical draft-scope and entity-view authorization on every page. Returns compact identity/lifecycle metadata and pages of complete operations (default) or applicationResults, or compact scope identifiers with section=glossaries. Native ontology identifiers remain in metadata. limit defaults to 10, maximum 25; the response budget may return fewer items. Follow hasMore/nextCursor until complete. Cursors bind proposal content and section; if changed or invalid, restart without cursor. Application counters remain visible while result rows are paged separately. Free-form description, display name and change diffs are omitted. No returned operation/result is cut and no operations are applied. A single item too large to fit with metadata still requires the REST API. Works without RDF.",
       "annotations": {
         "readOnlyHint": true,
         "destructiveHint": false,
@@ -1323,6 +1323,27 @@
           "id": {
             "type": "string",
             "format": "uuid"
+          },
+          "section": {
+            "type": "string",
+            "enum": [
+              "operations",
+              "applicationResults",
+              "glossaries"
+            ],
+            "default": "operations"
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 25,
+            "default": 10
+          },
+          "cursor": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512,
+            "description": "Opaque nextCursor from the same proposal and section; omit to start or restart after a change."
           }
         },
         "required": [

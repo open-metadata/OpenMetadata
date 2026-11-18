@@ -1,10 +1,11 @@
 # MCP ontology proposals reuse the authorized REST actions
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial)
+- **Revisions:** v1 2026-11-18 (initial); v2 2026-11-18 (bounded proposal reads)
 - **Deciders:** Contributor implementation for #33459
 - **Guard:** `OntologyToolDiscoveryTest`, `OntologyToolContractTest`, `OntologyToolExecutionTest`,
-  `OntologyProposalSchemaTest`, `CollectionRegistryTest`, `McpOntologyGovernanceIT`
+  `OntologyProposalSchemaTest`, `OntologyChangeSetPagingTest`, `CollectionRegistryTest`,
+  `McpOntologyGovernanceIT`
 - **Related:** #33459; ADR:2026-11-17-mcp-discovers-relationship-types-through-existing-read-tools;
   ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
 
@@ -40,9 +41,25 @@ and normal entity limits, and submission requires a current caller-owned edit le
   This keeps detailed payload shapes out of every initial tool list while making the documented
   workflow executable. The proposal selector describes the canonical REST request; the dedicated
   MCP create tool accepts only its advertised subset. The normal response budget still applies.
-- `get_ontology_change_set` reads one non-deleted proposal with operations and application result,
-  through the canonical draft-scope and entity-view checks. Generic `get_entity_details` refuses
-  change sets, including batch/content reads, and directs callers to the dedicated tool.
+- `get_ontology_change_set` authorizes one non-deleted proposal through the canonical draft-scope
+  and entity-view checks on every page. It returns compact identity/lifecycle metadata and whole
+  items from `section=operations` (default), `section=applicationResults`, or compact glossary
+  scope identifiers from `section=glossaries`. Native ontology identifiers remain in the metadata;
+  scope references include IDs, types and names without their free-form descriptions. `limit` defaults to
+  10 and must be 1–25; the shared response budget can reduce the actual count. The result carries
+  section totals, counts and `hasMore`/`nextCursor`. Application counters remain visible without
+  resending its whole result list. Descriptions, display names and verbose change diffs are omitted
+  so metadata cannot duplicate the unpaged timeline. Generic `get_entity_details` still refuses
+  change sets, including batch/content reads, and directs callers to this tool.
+- Continuations are opaque keyset tokens containing a SHA-256 proposal/section snapshot and next
+  offset. Invalid, foreign or stale cursors are rejected with restart guidance, including content
+  changes that retain the same entity version. Cursors convey no authorization: the canonical
+  resource checks the caller before cursor content is inspected. The stored DTO is not modified.
+  These pages bound the MCP wire payload; the canonical resource still loads the stored proposal.
+- Paging preserves each returned operation/result in full. As with the shared response-budget
+  contract, a single item that cannot fit with required metadata under `maxResponseChars` cannot be split into whole-item pages and
+  remains an explicit oversized response requiring the REST API. No rationale or payload is
+  silently cut and no response limit or permission is relaxed.
 - `ontology_change_set_lease` explicitly acquires, renews or releases a lease. It requires a
   readable draft and uses the normal edit-lock resource's edit authorization. Renewing requires
   the current version; no foreign lease is stolen or implicitly replaced. Submission takes the

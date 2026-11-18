@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLock;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.OpenMetadataApplicationConfigHolder;
@@ -120,7 +121,7 @@ class OntologyToolExecutionTest {
   }
 
   @Test
-  void returnsCanonicalReadAndSubmitsTheExactLeaseTokenWithoutApplying() {
+  void returnsPagedReadAndSubmitsTheExactLeaseTokenWithoutApplying() {
     final OntologyChangeSetResource resource = mock(OntologyChangeSetResource.class);
     final OntologyChangeSet draft = changeSet(OntologyChangeSetState.DRAFT);
     when(resource.get(
@@ -130,10 +131,14 @@ class OntologyToolExecutionTest {
             eq("operations,applicationResult"),
             eq(Include.NON_DELETED)))
         .thenReturn(draft);
-    assertThat(
+    final var page =
+        JsonUtils.valueToTree(
             tool(OntologyTool.Action.GET_CHANGE_SET, resource)
-                .execute(mock(Authorizer.class), CONTEXT, Map.of("id", ID.toString())))
-        .isSameAs(draft);
+                .execute(mock(Authorizer.class), CONTEXT, Map.of("id", ID.toString())));
+    assertThat(page.path("id").asText()).isEqualTo(ID.toString());
+    assertThat(page.path("state").asText()).isEqualTo("DRAFT");
+    assertThat(page.path("operations").size()).isZero();
+    assertThat(page.path("hasMore").asBoolean()).isFalse();
     doAnswer(
             invocation -> {
               assertThat(invocation.getArgument(1, CatalogSecurityContext.class)).isSameAs(CONTEXT);

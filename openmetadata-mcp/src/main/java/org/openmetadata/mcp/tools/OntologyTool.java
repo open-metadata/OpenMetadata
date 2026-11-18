@@ -9,6 +9,7 @@ import java.util.function.Function;
 import org.openmetadata.schema.api.data.AcquireOntologyEditLock;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyChangeSetCommand;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -65,7 +66,7 @@ final class OntologyTool implements TypedMcpTool<Object> {
     return switch (action) {
       case CREATE_RELATION -> createRelation(authorizer, context, RelationRequest.from(values));
       case CREATE_CHANGE_SET -> createChangeSet(context, proposal(values));
-      case GET_CHANGE_SET -> getChangeSet(context, changeSetId(values));
+      case GET_CHANGE_SET -> readChangeSet(context, OntologyChangeSetPaging.Request.from(values));
       case LEASE -> lease(context, LeaseRequest.from(values));
       case SUBMIT -> submit(context, SubmitRequest.from(values));
     };
@@ -116,7 +117,12 @@ final class OntologyTool implements TypedMcpTool<Object> {
     }
   }
 
-  private Object getChangeSet(final CatalogSecurityContext context, final UUID id) {
+  private Object readChangeSet(
+      final CatalogSecurityContext context, final OntologyChangeSetPaging.Request request) {
+    return OntologyChangeSetPaging.read(getChangeSet(context, request.id()), request);
+  }
+
+  private OntologyChangeSet getChangeSet(final CatalogSecurityContext context, final UUID id) {
     return resource(OntologyChangeSetResource.class)
         .get(
             uriInfo.apply(context),
@@ -181,11 +187,6 @@ final class OntologyTool implements TypedMcpTool<Object> {
             "baseWorkingRevision",
             "operations"));
     return OntologyToolSupport.request(values, CreateOntologyChangeSet.class);
-  }
-
-  private static UUID changeSetId(final Map<String, Object> values) {
-    OntologyToolSupport.requireOnly(values, Set.of("id"));
-    return OntologyToolSupport.id(values, "id");
   }
 
   record RelationRequest(UUID sourceTermId, UUID targetTermId, String relationType) {

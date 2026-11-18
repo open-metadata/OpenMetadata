@@ -202,6 +202,11 @@ class McpOntologyGovernanceIT extends McpTestBase {
     final String id = draft.path("id").asText();
     assertError("get_ontology_change_set", Map.of("id", id), editorToken, 403);
     assertError(
+        "get_ontology_change_set",
+        Map.of("id", id, "cursor", "not-a-valid-cursor"),
+        editorToken,
+        403);
+    assertError(
         "ontology_change_set_lease",
         Map.of("id", id, "action", "ACQUIRE", "sessionId", "forbidden"),
         editorToken,
@@ -213,6 +218,59 @@ class McpOntologyGovernanceIT extends McpTestBase {
         403);
     assertError("create_ontology_change_set", proposal(restrictedGlossary), editorToken, 403);
     assertThat(get("ontologyChangeSets/" + id, JsonNode.class).path("state").asText())
+        .isEqualTo("DRAFT");
+  }
+
+  @Test
+  void largeProposalCanBeReadCompletelyThroughBoundedOperationPages() throws Exception {
+    final List<Map<String, Object>> operations = new ArrayList<>();
+    for (int index = 0; index < 60; index++) {
+      final JsonNode targetTerm = term(glossary, "PagedTarget");
+      operations.add(
+          Map.of(
+              "id", UUID.randomUUID().toString(),
+              "operationType", "DELETE_TERM",
+              "state", "ACTIVE",
+              "targetId", targetTerm.path("id").asText(),
+              "baseVersion", targetTerm.path("version").asDouble(),
+              "rationale", "e".repeat(2000)));
+    }
+    final Map<String, Object> values = new HashMap<>(proposal(glossary));
+    values.put("operations", operations);
+    final JsonNode draft = call("create_ontology_change_set", values, editorToken);
+    track("ontologyChangeSets", draft);
+    final JsonNode stored =
+        get(
+            "ontologyChangeSets/" + draft.path("id").asText() + "?fields=operations",
+            JsonNode.class);
+    final JsonNode scope =
+        call(
+            "get_ontology_change_set",
+            Map.of("id", draft.path("id").asText(), "section", "glossaries"),
+            editorToken);
+    assertThat(scope.at("/glossaries/0/id").asText()).isEqualTo(glossary.path("id").asText());
+    final Map<String, Object> read =
+        new HashMap<>(Map.of("id", draft.path("id").asText(), "limit", 25));
+    final List<JsonNode> reconstructed = new ArrayList<>();
+    boolean more = true;
+    for (int page = 0; more && page < 60; page++) {
+      final JsonNode response = call("get_ontology_change_set", read, editorToken);
+      assertThat(response.path("truncated").asBoolean()).isFalse();
+      assertThat(response.toString().length()).isLessThan(100_000);
+      response.path("operations").forEach(reconstructed::add);
+      more = response.path("hasMore").asBoolean();
+      if (more) {
+        assertThat(response.path("returnedCount").asInt()).isPositive();
+        read.put("cursor", response.path("nextCursor").asText());
+      }
+    }
+    assertThat(more).isFalse();
+    assertThat(reconstructed).hasSize(60);
+    assertThat(OBJECT_MAPPER.valueToTree(reconstructed)).isEqualTo(stored.path("operations"));
+    assertThat(
+            get("ontologyChangeSets/" + draft.path("id").asText(), JsonNode.class)
+                .path("state")
+                .asText())
         .isEqualTo("DRAFT");
   }
 

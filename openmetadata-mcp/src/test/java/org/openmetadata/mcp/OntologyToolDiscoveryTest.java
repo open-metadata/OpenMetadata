@@ -23,6 +23,41 @@ class OntologyToolDiscoveryTest {
           "submit_ontology_change_set");
 
   @Test
+  void advertisedProposalReadSchemaSupportsBoundedSectionsAndContinuation() {
+    final var tool =
+        new McpServer()
+            .getTools().stream()
+                .filter(candidate -> candidate.name().equals("get_ontology_change_set"))
+                .findFirst()
+                .orElseThrow();
+    final var schema =
+        SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+            .getSchema(JsonUtils.valueToTree(tool).path("inputSchema"));
+    final String id = "30028612-7a62-4f0b-94ef-84073f65bedd";
+    assertThat(
+            schema.validate(
+                JsonUtils.valueToTree(
+                    Map.of(
+                        "id",
+                        id,
+                        "section",
+                        "applicationResults",
+                        "limit",
+                        25,
+                        "cursor",
+                        "opaque-next-cursor"))))
+        .isEmpty();
+    for (final Map<String, Object> invalid :
+        List.of(
+            Map.<String, Object>of("id", id, "limit", 0),
+            Map.<String, Object>of("id", id, "limit", 26),
+            Map.<String, Object>of("id", id, "section", "other"),
+            Map.<String, Object>of("id", id, "cursor", "x".repeat(513)))) {
+      assertThat(schema.validate(JsonUtils.valueToTree(invalid))).isNotEmpty();
+    }
+  }
+
+  @Test
   void advertisedProposalSchemaAcceptsAnExistingTargetOperation() {
     final var tool =
         new McpServer()
