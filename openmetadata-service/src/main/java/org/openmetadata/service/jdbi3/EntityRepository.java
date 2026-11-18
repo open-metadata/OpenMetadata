@@ -6294,7 +6294,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Whether an FQN of this type can nest under an FQN that none of its ancestors has: a bare name
    * with dots ("sales.revenue"), or a fixed segment after the parent (data models under
    * "service.model"). Such an entity sits under the FQN of an unrelated entity, so a hard delete of
-   * that entity keeps its FQN-keyed rows (see {@link FqnKeyedRowCleanup}).
+   * that entity keeps its FQN-keyed rows. Its own FQN can also equal a field's (a table column's),
+   * so its own hard delete keeps the rows of the fields it shares an FQN with (see {@link
+   * FqnKeyedRowCleanup}).
    */
   protected boolean nestsUnderUnrelatedFqns() {
     return false;
@@ -6311,7 +6313,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private FqnKeyedRowCleanup fqnKeyedRowCleanup() {
-    return new FqnKeyedRowCleanup(daoCollection, entityType, dao.getTableName(), supportsTags);
+    return new FqnKeyedRowCleanup(daoCollection, this);
   }
 
   /**

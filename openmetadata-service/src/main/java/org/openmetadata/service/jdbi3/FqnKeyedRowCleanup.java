@@ -1,8 +1,10 @@
 package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.joining;
+import static java.util.stream.Collectors.toSet;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,14 +15,16 @@ import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Removes the FQN-keyed rows a hard delete leaves behind: tag labels and field relationships at and
  * under the deleted entity's FQN. Those tables key rows by FQN hash alone, and an FQN is unique
  * only within an entity type: services of two kinds can share a name, a stored procedure can share
- * a table's FQN, and dashboard data models nest under {@code service.model}, the FQN of a chart
- * named "model". Rows that an entity the delete leaves in place also holds stay
+ * a table's FQN, dashboard data models nest under {@code service.model}, the FQN of a chart named
+ * "model", and a metric's bare name can equal a table column's FQN. Rows that an entity the delete
+ * leaves in place also holds stay
  * (ADR:2026-11-18-a-hard-delete-keeps-the-rows-of-entities-that-share-its-fqn).
  */
 final class FqnKeyedRowCleanup {
@@ -34,13 +38,14 @@ final class FqnKeyedRowCleanup {
   private final String entityType;
   private final String ownTable;
   private final boolean taggable;
+  private final boolean freeFormFqn;
 
-  FqnKeyedRowCleanup(
-      CollectionDAO daoCollection, String entityType, String ownTable, boolean taggable) {
+  FqnKeyedRowCleanup(CollectionDAO daoCollection, EntityRepository<?> deleting) {
     this.daoCollection = daoCollection;
-    this.entityType = entityType;
-    this.ownTable = ownTable;
-    this.taggable = taggable;
+    this.entityType = deleting.getEntityType();
+    this.ownTable = deleting.getDao() == null ? null : deleting.getDao().getTableName();
+    this.taggable = deleting.isSupportsTags();
+    this.freeFormFqn = deleting.nestsUnderUnrelatedFqns();
   }
 
   /**
@@ -52,7 +57,7 @@ final class FqnKeyedRowCleanup {
   boolean rootKeepsDescendantRows(String fqn) {
     List<String> hashes = List.of(FullyQualifiedName.buildHash(fqn));
     return taggable
-        && (!namesakeHashes(hashes).isEmpty()
+        && (!keptHashes(hashes).isEmpty()
             || hasNestedHolders(hashes, tables(this::nestsUnrelatedToThisType)));
   }
 
@@ -91,43 +96,64 @@ final class FqnKeyedRowCleanup {
     fqns.forEach(fqn -> hashes.put(fqn, FullyQualifiedName.buildHash(fqn)));
     Map<String, OwnedRows> owned = new LinkedHashMap<>();
     if (taggable) {
-      Set<String> namesakes = new HashSet<>(namesakeHashes(List.copyOf(hashes.values())));
+      List<String> hashList = List.copyOf(hashes.values());
+      Set<String> kept = keptHashes(hashList);
       boolean anyNested =
-          hasNestedHolders(
-              List.copyOf(hashes.values()), tables(EntityRepository::nestsUnderUnrelatedFqns));
+          hasNestedHolders(hashList, tables(EntityRepository::nestsUnderUnrelatedFqns));
       hashes.forEach(
-          (fqn, hash) -> owned.put(fqn, ownedRows(hash, namesakes.contains(hash), anyNested)));
+          (fqn, hash) -> owned.put(fqn, ownedRows(hash, kept.contains(hash), anyNested)));
     } else {
       fqns.forEach(fqn -> owned.put(fqn, OwnedRows.ALL));
     }
     return owned;
   }
 
-  private OwnedRows ownedRows(String hash, boolean hasNamesake, boolean mayHaveNestedHolders) {
+  private OwnedRows ownedRows(String hash, boolean heldElsewhere, boolean mayHaveNestedHolders) {
     OwnedRows owned = OwnedRows.NONE;
-    if (!hasNamesake) {
+    if (!heldElsewhere) {
       owned = mayHaveNestedHolders ? OwnedRows.keeping(nestedHolderHashes(hash)) : OwnedRows.ALL;
     }
     return owned;
   }
 
+  /** The hashes whose rows another entity holds too: as its own, or as one of its fields'. */
+  private Set<String> keptHashes(List<String> hashes) {
+    Set<String> kept = new HashSet<>(namesakeHashes(hashes));
+    if (freeFormFqn) {
+      kept.addAll(fieldHashes(hashes));
+    }
+    return kept;
+  }
+
   /** The hashes among {@code hashes} that an entity of another taggable type also has. */
   private List<String> namesakeHashes(List<String> hashes) {
     Map<String, String> bindings = bindAll("hash", hashes, "");
-    String inList = bindings.keySet().stream().map(name -> ":" + name).collect(joining(", "));
-    return listHashes(
-        tables(this::isAnotherTypesTable),
-        table -> table.select() + " WHERE " + table.hashColumn() + " IN (" + inList + ")",
-        bindings);
+    List<EntityTable> tables = tables(this::isAnotherTypesTable);
+    return listHashes(tables, inProbes(tables, bindings.keySet()), bindings);
+  }
+
+  /**
+   * The hashes that sit under an entity with inline fields (a table's columns, a topic's schema
+   * fields): a free-form FQN can equal one of its fields' FQNs and then shares that field's rows.
+   */
+  private Set<String> fieldHashes(List<String> hashes) {
+    List<String> prefixes =
+        hashes.stream().flatMap(hash -> properPrefixes(hash).stream()).distinct().toList();
+    Map<String, String> bindings = bindAll("prefix", prefixes, "");
+    List<EntityTable> tables =
+        tables(repository -> ChildFieldResolver.supports(repository.getEntityType()));
+    Set<String> fieldHolders =
+        prefixes.isEmpty()
+            ? Set.of()
+            : new HashSet<>(listHashes(tables, inProbes(tables, bindings.keySet()), bindings));
+    return hashes.stream()
+        .filter(hash -> properPrefixes(hash).stream().anyMatch(fieldHolders::contains))
+        .collect(toSet());
   }
 
   private boolean hasNestedHolders(List<String> hashes, List<EntityTable> nestingTables) {
     Map<String, String> bindings = bindAll("under", hashes, UNDER);
-    return !listHashes(
-            nestingTables,
-            table ->
-                table.select() + " WHERE " + likeAny(table.hashColumn(), bindings) + " LIMIT 1",
-            bindings)
+    return !listHashes(nestingTables, anyUnderProbes(nestingTables, bindings.keySet()), bindings)
         .isEmpty();
   }
 
@@ -137,26 +163,18 @@ final class FqnKeyedRowCleanup {
 
   /** Entities under the hash, listed one past the cap so that hitting it shows. */
   private List<String> nestedHolderHashes(String hash) {
+    List<EntityTable> tables = tables(EntityRepository::nestsUnderUnrelatedFqns);
     return listHashes(
-        tables(EntityRepository::nestsUnderUnrelatedFqns),
-        table ->
-            table.select()
-                + " WHERE "
-                + table.hashColumn()
-                + " LIKE :under LIMIT "
-                + (MAX_KEPT_SUBTREES + 1),
+        tables,
+        allUnderProbes(tables, "under", MAX_KEPT_SUBTREES + 1),
         Map.of("under", hash + UNDER));
   }
 
   private List<String> listHashes(
-      List<EntityTable> tables, Function<EntityTable, String> select, Map<String, String> binds) {
-    List<String> hashes = List.of();
-    if (!tables.isEmpty()) {
-      String probes =
-          tables.stream().map(select).map(part -> "(" + part + ")").collect(joining(" UNION ALL "));
-      hashes = daoCollection.tagUsageDAO().listEntityFqnHashes(probes, binds);
-    }
-    return hashes;
+      List<EntityTable> tables, String probes, Map<String, String> bindings) {
+    return tables.isEmpty()
+        ? List.of()
+        : daoCollection.tagUsageDAO().listEntityFqnHashes(probes, bindings);
   }
 
   private boolean isAnotherTypesTable(EntityRepository<?> repository) {
@@ -187,10 +205,53 @@ final class FqnKeyedRowCleanup {
     return bindings;
   }
 
-  private static String likeAny(String column, Map<String, String> bindings) {
-    return bindings.keySet().stream()
-        .map(name -> column + " LIKE :" + name)
-        .collect(joining(" OR ", "(", ")"));
+  /** One probe per table for the rows whose hash is one of the bound values. */
+  static String inProbes(List<EntityTable> tables, Collection<String> bindNames) {
+    String inList = bindNames.stream().map(name -> ":" + name).collect(joining(", "));
+    return union(
+        tables, table -> table.select() + " WHERE " + table.hashColumn() + " IN (" + inList + ")");
+  }
+
+  /** One probe per table for a row under any of the bound prefixes. */
+  static String anyUnderProbes(List<EntityTable> tables, Collection<String> bindNames) {
+    return union(
+        tables,
+        table ->
+            table.select()
+                + " WHERE "
+                + bindNames.stream()
+                    .map(name -> table.hashColumn() + " LIKE :" + name)
+                    .collect(joining(" OR ", "(", ")"))
+                + " LIMIT 1");
+  }
+
+  /** One probe per table for up to {@code limit} rows under the bound prefix. */
+  static String allUnderProbes(List<EntityTable> tables, String bindName, int limit) {
+    return union(
+        tables,
+        table ->
+            table.select()
+                + " WHERE "
+                + table.hashColumn()
+                + " LIKE :"
+                + bindName
+                + " LIMIT "
+                + limit);
+  }
+
+  private static String union(List<EntityTable> tables, Function<EntityTable, String> probe) {
+    return tables.stream().map(probe).map(part -> "(" + part + ")").collect(joining(" UNION ALL "));
+  }
+
+  /** The FQN hashes of the entities a hash could nest under: every shorter run of its segments. */
+  static List<String> properPrefixes(String hash) {
+    List<String> prefixes = new ArrayList<>();
+    for (int dot = hash.indexOf(Entity.SEPARATOR);
+        dot >= 0;
+        dot = hash.indexOf(Entity.SEPARATOR, dot + 1)) {
+      prefixes.add(hash.substring(0, dot));
+    }
+    return List.copyOf(prefixes);
   }
 
   /**
@@ -219,7 +280,7 @@ final class FqnKeyedRowCleanup {
     return List.copyOf(outermost);
   }
 
-  private record EntityTable(String name, String hashColumn) {
+  record EntityTable(String name, String hashColumn) {
     String select() {
       return "SELECT " + hashColumn + " AS hash FROM " + name;
     }

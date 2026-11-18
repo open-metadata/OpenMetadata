@@ -234,6 +234,21 @@ public class HardDeleteCleanupIT {
     assertKeepsItsTags(table);
   }
 
+  /** A metric's FQN is its bare name, so it can equal a table column's FQN. */
+  @Test
+  void hardDeletingAMetricNamedLikeAColumnKeepsTheColumnsTags(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = createTaggedTable(ns, uniqueName("hd_col_"));
+    Metric namedLikeTheColumn =
+        admin
+            .metrics()
+            .create(new CreateMetric().withName(table.getColumns().get(0).getFullyQualifiedName()));
+
+    admin.metrics().delete(namedLikeTheColumn.getId().toString(), HARD_DELETE);
+
+    assertKeepsItsTags(table);
+  }
+
   /** Data models nest under {@code <service>.model}, the FQN of a chart named "model". */
   @Test
   void hardDeletingAChartNamedModelKeepsTheTagsOfTheServicesDataModels(TestNamespace ns) {
