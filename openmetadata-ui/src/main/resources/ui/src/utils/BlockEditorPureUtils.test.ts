@@ -574,6 +574,20 @@ describe('getTrimmedHtmlContent', () => {
     expect(getTrimmedHtmlContent(html, 50)).toBe(html);
   });
 
+  it('should keep more than three short blocks when the text fits the limit', () => {
+    const html = '<p>a</p><p>b</p><p>c</p><p>d</p>';
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+  });
+
+  it('should not cut a mention that ends the content', () => {
+    const html = formatClientContent(
+      'Intro [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure)'
+    );
+
+    expect(getTrimmedHtmlContent(html, 10)).toBe(html);
+  });
+
   it('should keep bold formatting that crosses the cut', () => {
     const html = formatClientContent(
       'Intro **bold words continue here** tail and some more text after it'
@@ -642,7 +656,7 @@ describe('getTrimmedHtmlContent', () => {
       '- item one\n- item two\n- item three\n- item four\n- item five'
     );
 
-    expect(getTrimmedHtmlContent(html, 350)).toBe(
+    expect(getTrimmedHtmlContent(html, 40)).toBe(
       '<ul>\n<li>item one</li>\n<li>item two</li>\n<li>item three...</li></ul>'
     );
   });
@@ -666,32 +680,47 @@ describe('getTrimmedHtmlContent', () => {
 
   it('should count a quoted section with two paragraphs as two blocks', () => {
     const html =
-      '<blockquote>\n<p>First</p>\n<p>Second</p>\n</blockquote>\n<p>Third</p>';
+      '<blockquote>\n<p>First</p>\n<p>Second</p>\n</blockquote>\n<p>Third</p>\n<p>Fourth</p>';
 
-    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<blockquote>\n<p>First</p>\n<p>Second</p>\n</blockquote>\n<p>Third...</p>'
+    );
   });
 
   it('should count line breaks inside a paragraph as separate lines', () => {
     const html = formatClientContent('one\ntwo\nthree\nfour\nfive');
 
-    expect(getTrimmedHtmlContent(html, 350)).toBe(
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
       '<p>one<br>\ntwo<br>\nthree...</p>'
     );
   });
 
   it('should count each table row as one block', () => {
     const html = formatClientContent(
-      '| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |'
+      '| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |'
     );
+    const rows = new DOMParser()
+      .parseFromString(getTrimmedHtmlContent(html, 7), 'text/html')
+      .querySelectorAll('tr');
 
-    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+    expect(rows).toHaveLength(3);
+    expect(rows[2].textContent?.trim()).toMatch(/^3\s+4\.\.\.$/);
   });
 
   it('should count an editor table row with paragraphs in its cells as one block', () => {
-    const html =
-      '<table><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr><tr><td><p>c</p></td><td><p>d</p></td></tr></tbody></table>';
+    const row = (left: string, right: string) =>
+      `<tr><td><p>${left}</p></td><td><p>${right}</p></td></tr>`;
+    const html = `<table><tbody>${row('a', 'b')}${row('c', 'd')}${row(
+      'e',
+      'f'
+    )}${row('g', 'h')}</tbody></table>`;
 
-    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+    expect(getTrimmedHtmlContent(html, 7)).toBe(
+      `<table><tbody>${row('a', 'b')}${row('c', 'd')}${row(
+        'e',
+        'f...'
+      )}</tbody></table>`
+    );
   });
 
   it('should return the content unchanged when only a trailing line break follows the limit', () => {
@@ -704,7 +733,7 @@ describe('getTrimmedHtmlContent', () => {
     const html =
       '<pre><code>line one\nline two\nline three\nline four\n</code></pre>';
 
-    expect(getTrimmedHtmlContent(html, 350)).toBe(
+    expect(getTrimmedHtmlContent(html, 35)).toBe(
       '<pre><code>line one\nline two\nline three...</code></pre>'
     );
   });

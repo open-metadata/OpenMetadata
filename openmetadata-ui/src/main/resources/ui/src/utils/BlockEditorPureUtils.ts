@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { findLastIndex, isEmpty } from 'lodash';
+import { findLastIndex, isEmpty, sumBy } from 'lodash';
 import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
@@ -338,8 +338,15 @@ const getPreviewBlock = (text: Text) =>
   text.parentElement?.closest(PREVIEW_BLOCK_SELECTOR) ??
   null;
 
-const findPreviewCut = (body: HTMLElement, limit: number) => {
-  const nodes = getPreviewNodes(body);
+const isTrailingMentionOrHashtag = (text: Text, isLastText: boolean) =>
+  isLastText &&
+  Boolean(text.parentElement?.closest(MENTION_OR_HASHTAG_SELECTOR));
+
+const reachesLimit = (text: Text, remaining: number, hasMoreText: boolean) =>
+  text.data.length > remaining ||
+  (text.data.length === remaining && hasMoreText);
+
+const findPreviewCut = (nodes: Node[], limit: number) => {
   const lastTextIndex = findLastIndex(nodes, (node) =>
     Boolean(node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
@@ -371,11 +378,10 @@ const findPreviewCut = (body: HTMLElement, limit: number) => {
       return { node: previous, remaining: previous.data.length };
     }
 
-    if (
-      text.data.length > remaining ||
-      (text.data.length === remaining && index < lastTextIndex)
-    ) {
-      return { node: text, remaining };
+    if (reachesLimit(text, remaining, index < lastTextIndex)) {
+      return isTrailingMentionOrHashtag(text, index === lastTextIndex)
+        ? undefined
+        : { node: text, remaining };
     }
 
     remaining -= text.data.length;
@@ -387,7 +393,16 @@ const findPreviewCut = (body: HTMLElement, limit: number) => {
 
 export const getTrimmedHtmlContent = (html: string, limit: number) => {
   const doc = new DOMParser().parseFromString(html, 'text/html');
-  const cut = findPreviewCut(doc.body, limit);
+  const nodes = getPreviewNodes(doc.body);
+  const textLength = sumBy(nodes, (node) =>
+    node.nodeType === Node.TEXT_NODE ? (node as Text).data.length : 0
+  );
+
+  if (textLength <= limit) {
+    return html;
+  }
+
+  const cut = findPreviewCut(nodes, limit);
 
   if (!cut) {
     return html;
