@@ -26,6 +26,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -893,6 +894,13 @@ public class GlossaryRdfImportIT {
     assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
     assertEquals(1, result.path("relationsAdded").asInt(), result.toString());
     assertTrue(result.path("messages").toString().contains("incompatible"), result.toString());
+    String relationSkipped =
+        "Relation %s skipped: its relationship type '%s' was skipped as invalid"
+            .formatted(forward, forward);
+    List<String> messages = new ArrayList<>();
+    result.path("messages").forEach(message -> messages.add(message.asText()));
+    assertEquals(3, messages.stream().filter(relationSkipped::equals).count(), result.toString());
+    assertFalse(result.path("messages").toString().contains("not registered"), result.toString());
     assertRelationshipTypeMissing(forward);
     assertRelationshipTypeMissing(inverse);
     if (dryRun) {
