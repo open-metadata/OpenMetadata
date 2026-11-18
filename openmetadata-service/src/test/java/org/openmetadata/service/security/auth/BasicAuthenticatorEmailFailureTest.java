@@ -14,7 +14,9 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.nullable;
@@ -24,6 +26,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import at.favre.lib.crypto.bcrypt.BCrypt;
 import freemarker.core.Environment;
 import freemarker.template.TemplateException;
 import jakarta.ws.rs.core.UriInfo;
@@ -33,7 +36,9 @@ import java.util.HashSet;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.auth.BasicAuthMechanism;
 import org.openmetadata.schema.auth.PasswordResetRequest;
 import org.openmetadata.schema.auth.PasswordResetToken;
 import org.openmetadata.schema.auth.TokenType;
@@ -173,8 +178,24 @@ class BasicAuthenticatorEmailFailureTest {
 
       assertEquals(424, failure.getResponse().getStatus());
       assertEquals("FAILED_SEND_EMAIL", failure.getErrorType());
-      // The password IS persisted before the notification email, so the change is durable.
-      verify(userRepository).createOrUpdate(nullable(UriInfo.class), any(User.class), anyString());
+      // The password IS persisted before the notification email, so the change is durable. Assert
+      // on
+      // the observable outcome — the User actually handed to createOrUpdate carries a BCrypt hash
+      // of
+      // the new password — not just that createOrUpdate was called.
+      ArgumentCaptor<User> savedUser = ArgumentCaptor.forClass(User.class);
+      verify(userRepository)
+          .createOrUpdate(nullable(UriInfo.class), savedUser.capture(), anyString());
+      User persisted = savedUser.getValue();
+      assertNotNull(persisted.getAuthenticationMechanism(), "auth mechanism must be set");
+      BasicAuthMechanism config =
+          (BasicAuthMechanism) persisted.getAuthenticationMechanism().getConfig();
+      assertNotNull(config, "basic-auth config must be set on the persisted user");
+      assertTrue(
+          BCrypt.verifyer()
+              .verify("Password123!".toCharArray(), config.getPassword().toCharArray())
+              .verified,
+          "the persisted password must be a BCrypt hash of the requested new password");
       verify(tokenRepository)
           .deleteTokenByUserAndType(user.getId(), TokenType.PASSWORD_RESET.toString());
     }
