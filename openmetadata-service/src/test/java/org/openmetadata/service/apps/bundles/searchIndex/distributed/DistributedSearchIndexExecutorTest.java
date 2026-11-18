@@ -332,8 +332,12 @@ class DistributedSearchIndexExecutorTest {
     assertEquals(jobId, lock.holder(), "execute() takes over the lock the job already holds");
   }
 
+  /**
+   * The lock renewal kept the job's updatedAt fresh, so a job left INITIALIZING would look alive and
+   * block every new run for ten minutes before the orphan sweep failed it as "abandoned".
+   */
   @Test
-  void createJobReleasesTheJobsLockWhenBuildingPartitionsFails() throws Exception {
+  void createJobFailsTheJobAndFreesItsLockWhenBuildingPartitionsFails() throws Exception {
     UUID jobId = UUID.randomUUID();
     SearchIndexJob created =
         SearchIndexJob.builder().id(jobId).status(IndexJobStatus.INITIALIZING).build();
@@ -341,6 +345,7 @@ class DistributedSearchIndexExecutorTest {
 
     when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
     when(coordinator.createJob(any(), any(), eq("admin"), any())).thenReturn(created);
+    when(coordinator.getJob(jobId)).thenReturn(Optional.of(created));
     when(coordinator.initializePartitions(eq(jobId), any()))
         .thenThrow(new IllegalStateException("partition calculation failed"));
 
@@ -354,6 +359,55 @@ class DistributedSearchIndexExecutorTest {
                 ReindexingConfiguration.builder().build()));
 
     assertNull(lock.holder(), "a run whose partitions could not be built must free the lock");
+    verify(jobDAO)
+        .update(
+            eq(jobId.toString()),
+            eq(IndexJobStatus.FAILED.name()),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            isNull(),
+            isNull(),
+            anyLong(),
+            anyLong(),
+            eq("Failed to build partitions: partition calculation failed"));
+  }
+
+  @Test
+  void createJobKeepsTheOutcomeOfAJobEndedWhileItsPartitionsWereBuilt() throws Exception {
+    UUID jobId = UUID.randomUUID();
+    SearchIndexJob created =
+        SearchIndexJob.builder().id(jobId).status(IndexJobStatus.INITIALIZING).build();
+    emulateReindexLock();
+
+    when(recoveryManager.checkForBlockingJob()).thenReturn(Optional.empty());
+    when(coordinator.createJob(any(), any(), eq("admin"), any())).thenReturn(created);
+    when(coordinator.getJob(jobId))
+        .thenReturn(Optional.of(created.withStatus(IndexJobStatus.FAILED)));
+    when(coordinator.initializePartitions(eq(jobId), any()))
+        .thenThrow(new IllegalStateException("not marking it READY"));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            executor.createJob(
+                Set.of("table"),
+                new EventPublisherJob().withEntities(Set.of("table")),
+                "admin",
+                ReindexingConfiguration.builder().build()));
+
+    verify(jobDAO, never())
+        .update(
+            eq(jobId.toString()),
+            anyString(),
+            anyLong(),
+            anyLong(),
+            anyLong(),
+            any(),
+            any(),
+            any(),
+            anyLong(),
+            any());
   }
 
   @Test

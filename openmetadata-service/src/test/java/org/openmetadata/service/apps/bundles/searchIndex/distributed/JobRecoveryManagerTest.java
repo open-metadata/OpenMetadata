@@ -531,12 +531,10 @@ class JobRecoveryManagerTest {
   }
 
   @Test
-  void testStartupRecovery_LeavesStaleJobAloneWhileALiveLockItCannotAttributeIsHeld() {
-    // Regression for #38016. A coordinator building a job's partitions held the reindex lock under
-    // a placeholder id the sweep cannot tie to the job, and nothing touched the job's updatedAt
-    // until it finished, so after 10 minutes the sweep failed the live job as "abandoned due to
-    // server crash or shutdown". A live lock the sweep cannot take may be that coordinator's, so
-    // the job is left for a later sweep.
+  void testStartupRecovery_LeavesOrphanForALaterSweepWhileTheReindexLockIsHeld() {
+    // #38016: failing an orphan took no lock, unlike recovering or terminalizing one. While another
+    // server's sweep or a running reindex holds the reindex lock, the sweep must not fail the job
+    // under it; the next sweep checks the job again.
     UUID jobId = UUID.randomUUID();
     SearchIndexJobRecord jobRecord = createJobRecord(jobId, IndexJobStatus.INITIALIZING);
     long now = System.currentTimeMillis();

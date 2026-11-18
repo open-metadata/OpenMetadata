@@ -306,7 +306,8 @@ public class DistributedSearchIndexExecutor {
   /**
    * Moves the reindex lock from its placeholder id onto the job as soon as the job row exists. The
    * orphan sweep only counts a lock held under the job's own id as proof of a live coordinator, so a
-   * job initialized under the placeholder looked abandoned and was failed mid-initialization.
+   * job initialized under the placeholder looked abandoned and was failed mid-initialization. See
+   * ADR:2026-11-18-the-reindex-orphan-sweep-fails-a-job-only-under-its-lock-and-unchanged.
    */
   private void claimReindexLock(UUID tempJobId, UUID jobId) {
     if (!coordinator.transferReindexLock(tempJobId, jobId)) {
@@ -325,6 +326,16 @@ public class DistributedSearchIndexExecutor {
    */
   private SearchIndexJob initializePartitionsHoldingLock(
       UUID jobId, ReindexingConfiguration reindexConfig) {
+    try {
+      return initializePartitionsWithLockRenewal(jobId, reindexConfig);
+    } catch (RuntimeException e) {
+      failJobStillInitializing(jobId, e);
+      throw e;
+    }
+  }
+
+  private SearchIndexJob initializePartitionsWithLockRenewal(
+      UUID jobId, ReindexingConfiguration reindexConfig) {
     Thread lockRenewal =
         Thread.ofVirtual()
             .name("reindex-init-lock-refresh-" + jobId.toString().substring(0, 8))
@@ -333,6 +344,30 @@ public class DistributedSearchIndexExecutor {
       return coordinator.initializePartitions(jobId, reindexConfig);
     } finally {
       interruptAndJoin(lockRenewal, "init-lock-refresh");
+    }
+  }
+
+  /**
+   * The renewal kept the job's updatedAt fresh, so a job left INITIALIZING after its partitions
+   * failed to build would look alive and block every new run for ten minutes, until the orphan sweep
+   * failed it as abandoned. Record the real failure now, unless something else already ended the job.
+   */
+  private void failJobStillInitializing(UUID jobId, RuntimeException failure) {
+    try {
+      boolean stillInitializing =
+          coordinator
+              .getJob(jobId)
+              .map(job -> job.getStatus() == IndexJobStatus.INITIALIZING)
+              .orElse(false);
+      if (stillInitializing) {
+        String reason =
+            failure.getMessage() != null
+                ? failure.getMessage()
+                : failure.getClass().getSimpleName();
+        markJobAsFailed(jobId, "Failed to build partitions: " + reason);
+      }
+    } catch (RuntimeException e) {
+      LOG.warn("Could not mark job {} failed after its partitions failed to build", jobId, e);
     }
   }
 

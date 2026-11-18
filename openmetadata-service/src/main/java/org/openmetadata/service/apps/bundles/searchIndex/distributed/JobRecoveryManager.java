@@ -315,9 +315,10 @@ public class JobRecoveryManager {
 
   /**
    * Fail an orphaned job while holding the reindex lock, as {@link #recoverJob} and {@link
-   * #terminalizeUnpromotedJob} do. A lock this sweep cannot take is live, and its holder may be the
-   * job's own coordinator (one that is still building partitions under a placeholder lock id), so the
-   * job is left for a later sweep instead of being failed while it runs.
+   * #terminalizeUnpromotedJob} do. The sweep runs on every server; the lock keeps it from acting on
+   * a job at the same time as another server's sweep, or while a running reindex holds the lock. A
+   * job it cannot lock now is checked again on the next sweep. See
+   * ADR:2026-11-18-the-reindex-orphan-sweep-fails-a-job-only-under-its-lock-and-unchanged.
    */
   private void failAbandonedJob(SearchIndexJob job, RecoveryResult.Builder resultBuilder) {
     if (coordinator.tryAcquireReindexLock(job.getId())) {
@@ -330,8 +331,8 @@ public class JobRecoveryManager {
       }
     } else {
       LOG.info(
-          "Not failing orphaned job {}: the reindex lock is held, possibly by its own coordinator; "
-              + "the next sweep checks it again",
+          "Not failing orphaned job {} yet: another server's sweep or a running reindex holds the "
+              + "reindex lock; the next sweep checks it again",
           job.getId());
     }
   }

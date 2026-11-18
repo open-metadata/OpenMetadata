@@ -63,12 +63,11 @@ public class SearchReindexOrphanSweepIT {
   }
 
   /**
-   * #38016: a coordinator still building a job's partitions held the lock under a placeholder id,
-   * and nothing touched the job's updatedAt until it finished. The sweep cannot tell that lock from
-   * the job's own coordinator, so it must leave the job alone while the lock is live.
+   * #38016: the sweep failed orphans without taking the reindex lock. While another server's sweep
+   * or a running reindex holds it, the orphan is left for a later sweep.
    */
   @Test
-  void sweepLeavesAStaleJobAloneWhileALockItCannotAttributeIsLive() {
+  void sweepLeavesAnOrphanForALaterSweepWhileTheReindexLockIsHeld() {
     final long now = System.currentTimeMillis();
     final String jobId = insertJob(IndexJobStatus.INITIALIZING, now - STALE_FOR_MS);
     holdLock(UUID.randomUUID().toString(), now + LOCK_TTL_MS);
@@ -78,8 +77,13 @@ public class SearchReindexOrphanSweepIT {
     assertEquals(IndexJobStatus.INITIALIZING.name(), job(jobId).status());
   }
 
+  /**
+   * With its updatedAt stale and the lock expired, nothing shows the job is alive, so it is failed.
+   * A live coordinator keeps both fresh while it builds partitions (see
+   * DistributedSearchIndexExecutorTest#createJobRenewsTheJobsOwnLockWhileItsPartitionsAreBuilt).
+   */
   @Test
-  void sweepFailsAStaleJobOnceThatLockHasExpired() {
+  void sweepFailsAStaleJobOnceTheLockHasExpired() {
     final long now = System.currentTimeMillis();
     final String jobId = insertJob(IndexJobStatus.INITIALIZING, now - STALE_FOR_MS);
     holdLock(UUID.randomUUID().toString(), now - TimeUnit.MINUTES.toMillis(1));
