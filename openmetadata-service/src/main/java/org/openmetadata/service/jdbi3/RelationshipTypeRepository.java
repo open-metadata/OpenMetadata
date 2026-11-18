@@ -36,6 +36,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Repository
 public class RelationshipTypeRepository extends EntityRepository<RelationshipType> {
+  private static final String FIELD_INVERSE = "inverse";
   private static final String UPDATE_FIELDS =
       "iri,rdfPredicate,category,inverse,domain,range,characteristics,cardinality,propertyChain,"
           + "disjointWith,crossGlossaryAllowed,paletteKey,replacedBy,entityStatus";
@@ -159,6 +160,53 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     return reference;
   }
 
+  static EntityReference inverseForUpdate(
+      final RelationshipType original,
+      final RelationshipType updated,
+      final Operation operation,
+      final boolean inverseRequested) {
+    final EntityReference stored = original.getInverse();
+    final EntityReference requested = updated.getInverse();
+    if (stored == null || stored.getName() != null) {
+      return requested;
+    }
+    if (!inverseRequested) {
+      return stored;
+    }
+    if (isSafeSelfInverse(updated, requested)) {
+      return requested;
+    }
+    if (operation.isPut() && (requested == null || sameReferencedType(stored, requested))) {
+      return stored;
+    }
+    if (requested != null && requested.getName() == null && sameReferencedType(stored, requested)) {
+      return requested;
+    }
+    throw new BadRequestException(
+        "Relationship type '"
+            + original.getName()
+            + "' has legacy inverse metadata. Review and repair historical term relations before changing the inverse.");
+  }
+
+  private static boolean isSafeSelfInverse(
+      final RelationshipType type, final EntityReference inverse) {
+    return inverse != null
+        && type.getName().equals(inverse.getName())
+        && sameReferencedType(type.getEntityReference(), inverse);
+  }
+
+  private static boolean sameReferencedType(
+      final EntityReference stored, final EntityReference requested) {
+    if (stored == null || requested == null) {
+      return false;
+    }
+    if (stored.getId() != null && requested.getId() != null) {
+      return stored.getId().equals(requested.getId());
+    }
+    return stored.getFullyQualifiedName() != null
+        && stored.getFullyQualifiedName().equals(requested.getFullyQualifiedName());
+  }
+
   @Override
   public void storeEntity(final RelationshipType entity, final boolean update) {
     store(entity, update);
@@ -210,6 +258,8 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   public class RelationshipTypeUpdater extends EntityUpdater {
+    private boolean inverseGuardApplied;
+
     RelationshipTypeUpdater(
         final RelationshipType original,
         final RelationshipType updated,
@@ -220,9 +270,24 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     @Override
     public void entitySpecificUpdate(final boolean consolidatingChanges) {
       validateImmutableFields();
+      preserveHistoricalInverse();
       recordIdentityChanges();
       recordSemanticChanges();
       recordGovernanceChanges();
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      inverseGuardApplied = false;
+    }
+
+    private void preserveHistoricalInverse() {
+      if (!inverseGuardApplied) {
+        // Consolidation replays older versions; protect the actual request baseline only.
+        inverseGuardApplied = true;
+        updated.setInverse(
+            inverseForUpdate(original, updated, operation, shouldCompare(FIELD_INVERSE)));
+      }
     }
 
     private void validateImmutableFields() {
@@ -239,7 +304,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     }
 
     private void recordSemanticChanges() {
-      recordChange("inverse", original.getInverse(), updated.getInverse());
+      recordChange(FIELD_INVERSE, original.getInverse(), updated.getInverse());
       recordChange("domain", original.getDomain(), updated.getDomain(), true);
       recordChange("range", original.getRange(), updated.getRange(), true);
       boolean characteristicsChanged =
