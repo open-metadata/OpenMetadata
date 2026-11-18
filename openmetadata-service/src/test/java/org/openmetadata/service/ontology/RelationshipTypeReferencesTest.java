@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ontology.RelationshipTypeReferences.PartnerUse;
 import org.openmetadata.service.ontology.RelationshipTypeReferences.Reference;
 
 class RelationshipTypeReferencesTest {
@@ -83,50 +84,76 @@ class RelationshipTypeReferencesTest {
   }
 
   @Test
+  void onlyAnInverseIsABackLink() {
+    final RelationshipType owner =
+        type("owner")
+            .withInverse(byId(target))
+            .withReplacedBy(byId(target))
+            .withPropertyChain(List.of(byId(target)))
+            .withDisjointWith(Set.of(byId(target)));
+
+    assertEquals(
+        List.of(true, false, false, false),
+        RelationshipTypeReferences.referencesTo(target, List.of(owner)).stream()
+            .map(Reference::isInverseBackLink)
+            .toList());
+  }
+
+  @Test
   void aSoftDeletedOwnerStillCountsAndIsLabelledSo() {
     final RelationshipType deletedOwner =
-        type("deletedOwner").withInverse(byId(target)).withDeleted(true);
+        type("deletedOwner").withReplacedBy(byId(target)).withDeleted(true);
 
     final List<Reference> references =
         RelationshipTypeReferences.referencesTo(target, List.of(deletedOwner));
 
     assertEquals(
         "Relationship type 'target' is in use and cannot be deleted: referenced by relationship"
-            + " type 'deletedOwner' (inverse, soft-deleted). Remove these references first.",
-        RelationshipTypeReferences.inUseMessage(target, references, 0));
+            + " type 'deletedOwner' (replacedBy, soft-deleted). Remove these references first.",
+        RelationshipTypeReferences.inUseMessage(target, references, 0, List.of()));
   }
 
   @Test
   void theMessageNamesReferrersAndCountsRelations() {
-    final RelationshipType owner = type("owner").withInverse(byId(target));
+    final RelationshipType owner = type("owner").withReplacedBy(byId(target));
 
     final String message =
         RelationshipTypeReferences.inUseMessage(
-            target, RelationshipTypeReferences.referencesTo(target, List.of(owner)), 3);
+            target, RelationshipTypeReferences.referencesTo(target, List.of(owner)), 3, List.of());
 
     assertEquals(
         "Relationship type 'target' is in use and cannot be deleted: referenced by relationship"
-            + " type 'owner' (inverse); used by 3 glossary term relations. Remove these references"
-            + " first.",
+            + " type 'owner' (replacedBy); used by 3 glossary term relations. Remove these"
+            + " references first.",
         message);
     assertEquals(
         "Relationship type 'target' is in use and cannot be deleted: used by 1 glossary term"
             + " relation. Remove these references first.",
-        RelationshipTypeReferences.inUseMessage(target, List.of(), 1));
+        RelationshipTypeReferences.inUseMessage(target, List.of(), 1, List.of()));
+  }
+
+  @Test
+  void theMessageCountsRelationsStoredAsAnInversePartner() {
+    assertEquals(
+        "Relationship type 'target' is in use and cannot be deleted: its inverse 'partner' is"
+            + " used by 2 glossary term relations, which read as this type from their other end."
+            + " Remove these references first.",
+        RelationshipTypeReferences.inUseMessage(
+            target, List.of(), 0, List.of(new PartnerUse("partner", 2))));
   }
 
   @Test
   void theMessageListsAtMostTenReferrers() {
     final List<RelationshipType> owners =
         IntStream.range(0, 12)
-            .mapToObj(index -> type("owner" + (char) ('a' + index)).withInverse(byId(target)))
+            .mapToObj(index -> type("owner" + (char) ('a' + index)).withReplacedBy(byId(target)))
             .toList();
 
     final String message =
         RelationshipTypeReferences.inUseMessage(
-            target, RelationshipTypeReferences.referencesTo(target, owners), 0);
+            target, RelationshipTypeReferences.referencesTo(target, owners), 0, List.of());
 
-    assertTrue(message.contains("'ownerj' (inverse) and 2 more"), message);
+    assertTrue(message.contains("'ownerj' (replacedBy) and 2 more"), message);
     assertFalse(message.contains("'ownerk'"), message);
   }
 

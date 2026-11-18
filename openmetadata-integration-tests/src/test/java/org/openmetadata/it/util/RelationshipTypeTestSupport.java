@@ -92,6 +92,30 @@ public final class RelationshipTypeTestSupport {
     return request;
   }
 
+  /** The name the type's stored inverse refers to, or null when it has none. */
+  public static String inverseOf(UUID id) {
+    JsonNode inverse = getType(id).body().path("inverse");
+    return inverse.isObject() ? inverse.path("fullyQualifiedName").asText(null) : null;
+  }
+
+  /** The change events recorded for a relationship type since {@code timestamp}. */
+  public static List<JsonNode> updateEventsSince(UUID id, long timestamp) {
+    Reply reply =
+        send("GET", "/v1/events?entityUpdated=relationshipType&timestamp=" + timestamp, null);
+    assertEquals(200, reply.status(), reply.message());
+    List<JsonNode> events = new ArrayList<>();
+    reply
+        .body()
+        .path("data")
+        .forEach(
+            event -> {
+              if (id.toString().equals(event.path("entityId").asText())) {
+                events.add(event);
+              }
+            });
+    return events;
+  }
+
   public static Reply putType(ObjectNode request) {
     return send("PUT", TYPES, request.toString());
   }
@@ -101,28 +125,13 @@ public final class RelationshipTypeTestSupport {
   }
 
   /**
-   * Hard-deletes the given types, tolerating ones already gone. The inverses they hold are cleared
-   * first because a type another type names as its inverse cannot be deleted, so neither half of an
-   * inverse pair could go first.
+   * Hard-deletes the given types, tolerating ones already gone. Deleting one half of an unused
+   * inverse pair clears the other half's inverse, so the order does not matter.
    */
   public static void hardDeleteAll(Collection<UUID> ids) {
-    ids.forEach(RelationshipTypeTestSupport::clearInverse);
     for (UUID id : ids) {
       Reply reply = deleteType(id, true);
       assertTrue(reply.status() == 200 || reply.status() == 404, reply.message());
-    }
-  }
-
-  private static void clearInverse(UUID id) {
-    Reply type = getType(id);
-    JsonNode inverse = type.body().path("inverse");
-    boolean namesAnotherType =
-        type.status() == 200
-            && inverse.isObject()
-            && !id.toString().equals(inverse.path("id").asText());
-    if (namesAnotherType) {
-      Reply reply = send("PATCH", TYPES + "/" + id, "[{\"op\":\"remove\",\"path\":\"/inverse\"}]");
-      assertEquals(200, reply.status(), reply.message());
     }
   }
 

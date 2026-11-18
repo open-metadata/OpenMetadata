@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.asType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.createInversePair;
@@ -24,6 +25,7 @@ import static org.openmetadata.it.util.RelationshipTypeTestSupport.deleteType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.getType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.getTypeByName;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.importInversePair;
+import static org.openmetadata.it.util.RelationshipTypeTestSupport.inverseOf;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.putType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.relate;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.relationReads;
@@ -33,6 +35,7 @@ import static org.openmetadata.it.util.RelationshipTypeTestSupport.restoreType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.send;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.typeRequest;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.unrelate;
+import static org.openmetadata.it.util.RelationshipTypeTestSupport.updateEventsSince;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -49,6 +52,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
@@ -84,21 +88,157 @@ public class RelationshipTypeDeleteGuardIT {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void aTypeAnotherTypeNamesAsItsInverseCannotBeDeleted(boolean hardDelete, TestNamespace ns) {
+  @CsvSource({"false,false", "false,true", "true,false", "true,true"})
+  void eitherSideOfAnUnusedPairCanBeDeletedAndThePartnersInverseIsCleared(
+      boolean hardDelete, boolean deleteFirst, TestNamespace ns) {
     List<RelationshipType> pair =
         createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
-    RelationshipType owner = pair.getFirst();
-    RelationshipType inverse = pair.getLast();
-    UUID whole = createTerm(glossary, ns.shortPrefix("whole"));
-    UUID part = createTerm(glossary, ns.shortPrefix("part"));
-    assertEquals(200, relate(whole, part, owner.getName()).status());
+    RelationshipType deleted = deleteFirst ? pair.getFirst() : pair.getLast();
+    RelationshipType partner = deleteFirst ? pair.getLast() : pair.getFirst();
+    long before = System.currentTimeMillis();
 
-    Reply reply = deleteType(inverse.getId(), hardDelete);
+    Reply reply = deleteType(deleted.getId(), hardDelete);
 
-    assertRejectedAsInUse(reply, "'" + owner.getName() + "' (inverse)");
-    assertLive(inverse);
-    assertAllSucceed(relationReads(glossary, whole, part));
+    assertEquals(200, reply.status(), reply.message());
+    assertLive(partner);
+    assertNull(inverseOf(partner.getId()));
+    assertTrue(
+        updateEventsSince(partner.getId(), before).stream()
+            .anyMatch(event -> event.path("changeDescription").toString().contains("inverse")),
+        "the partner's inverse change is recorded as a change event");
+    assertAllSucceed(relationReads(glossary));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void aPairWithARelationStoredAsEitherSideKeepsBothSides(
+      boolean authoredFromTheHigherId, TestNamespace ns) {
+    // An imported pair names its inverses, which is what makes storage swap to the inverse.
+    String first = relationTypeName(ns, "hasPart");
+    String second = relationTypeName(ns, "partOf");
+    for (UUID seeded : importInversePair(glossary, first, second)) {
+      Reply deleted = send("DELETE", "/v1/glossaryTerms/" + seeded + "?hardDelete=true", null);
+      assertEquals(200, deleted.status(), deleted.message());
+    }
+    List<RelationshipType> pair =
+        List.of(asType(getTypeByName(first)), asType(getTypeByName(second)));
+    UUID one = createTerm(glossary, ns.shortPrefix("one"));
+    UUID two = createTerm(glossary, ns.shortPrefix("two"));
+    UUID lower = one.compareTo(two) < 0 ? one : two;
+    UUID higher = one.compareTo(two) < 0 ? two : one;
+    RelationshipType authored = pair.getFirst();
+    RelationshipType partner = pair.getLast();
+    // A relation is stored from the lower term id, so one authored from the higher id is stored
+    // as the authored type's inverse.
+    assertEquals(
+        200,
+        (authoredFromTheHigherId
+                ? relate(higher, lower, authored.getName())
+                : relate(lower, higher, authored.getName()))
+            .status());
+    RelationshipType stored = authoredFromTheHigherId ? partner : authored;
+    RelationshipType other = authoredFromTheHigherId ? authored : partner;
+
+    assertRejectedAsInUse(deleteType(stored.getId(), false), "used by 1 glossary term relation");
+    assertRejectedAsInUse(
+        deleteType(other.getId(), true),
+        "its inverse '" + stored.getName() + "' is used by 1 glossary term relation");
+    assertLive(authored);
+    assertLive(partner);
+    assertEquals(partner.getName(), inverseOf(authored.getId()));
+    assertEquals(authored.getName(), inverseOf(partner.getId()));
+    assertAllSucceed(relationReads(glossary, lower, higher));
+  }
+
+  @Test
+  void aBackLinkWithAnotherReferenceStillBlocksAndKeepsThePair(TestNamespace ns) {
+    List<RelationshipType> pair =
+        createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
+    RelationshipType deleted = pair.getFirst();
+    String ownerName = relationTypeName(ns, "successor");
+    assertEquals(
+        201, putType(typeRequest(ownerName, null).put("replacedBy", deleted.getName())).status());
+
+    Reply reply = deleteType(deleted.getId(), true);
+
+    assertRejectedAsInUse(reply, "'" + ownerName + "' (replacedBy)");
+    assertFalse(reply.message().contains("(inverse)"), reply.message());
+    assertEquals(deleted.getName(), inverseOf(pair.getLast().getId()));
+  }
+
+  @Test
+  void restoringADeletedSideLinksItsUnusedPartnerBack(TestNamespace ns) {
+    List<RelationshipType> pair =
+        createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
+    RelationshipType deleted = pair.getFirst();
+    RelationshipType partner = pair.getLast();
+    assertEquals(200, deleteType(deleted.getId(), false).status());
+    assertNull(inverseOf(partner.getId()));
+
+    Reply reply = restoreType(deleted.getId());
+
+    assertEquals(200, reply.status(), reply.message());
+    assertEquals(partner.getName(), inverseOf(deleted.getId()));
+    assertEquals(deleted.getName(), inverseOf(partner.getId()));
+    assertAllSucceed(relationReads(glossary));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"namesAnotherInverse", "isUsed", "isDeleted"})
+  void restoringADeletedSideDropsItsInverseWhenThePartnerCannotTakeItBack(
+      String partnerState, TestNamespace ns) {
+    List<RelationshipType> pair =
+        createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
+    RelationshipType deleted = pair.getFirst();
+    RelationshipType partner = pair.getLast();
+    assertEquals(200, deleteType(deleted.getId(), false).status());
+    UUID from = createTerm(glossary, ns.shortPrefix("from"));
+    UUID to = createTerm(glossary, ns.shortPrefix("to"));
+    switch (partnerState) {
+      case "namesAnotherInverse" -> {
+        RelationshipType other = createType(relationTypeName(ns, "other"), null);
+        assertEquals(200, putType(typeRequest(partner.getName(), other.getName())).status());
+      }
+      case "isUsed" -> assertEquals(200, relate(from, to, partner.getName()).status());
+      default -> assertEquals(200, deleteType(partner.getId(), false).status());
+    }
+    String partnerInverse = inverseOf(partner.getId());
+    List<String> partnerReads = relationTypesTowards(from, to);
+
+    Reply reply = restoreType(deleted.getId());
+
+    assertEquals(200, reply.status(), reply.message());
+    assertNull(reply.body().path("inverse").path("fullyQualifiedName").asText(null));
+    assertNull(inverseOf(deleted.getId()));
+    assertEquals(partnerInverse, inverseOf(partner.getId()));
+    assertEquals(partnerReads, relationTypesTowards(from, to));
+    assertAllSucceed(relationReads(glossary, from, to));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void aSymmetricTypesOwnInverseNeverBlocksItsDelete(boolean hardDelete, TestNamespace ns) {
+    ObjectNode request = typeRequest(relationTypeName(ns, "adjacentTo"), null);
+    request.putArray("characteristics").add("SYMMETRIC");
+    RelationshipType symmetric = asType(putType(request));
+    assertEquals(symmetric.getName(), inverseOf(symmetric.getId()));
+
+    assertEquals(200, deleteType(symmetric.getId(), hardDelete).status());
+    if (!hardDelete) {
+      assertEquals(200, restoreType(symmetric.getId()).status());
+      assertEquals(symmetric.getName(), inverseOf(symmetric.getId()));
+    }
+  }
+
+  @Test
+  void bothSidesOfAnUnusedPairCanBeDeletedInTurn(TestNamespace ns) {
+    List<RelationshipType> pair =
+        createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
+
+    assertEquals(200, deleteType(pair.getFirst().getId(), false).status());
+    assertEquals(200, deleteType(pair.getLast().getId(), false).status());
+    assertEquals(200, deleteType(pair.getLast().getId(), true).status());
+    assertEquals(200, deleteType(pair.getFirst().getId(), true).status());
   }
 
   @ParameterizedTest
@@ -113,7 +253,7 @@ public class RelationshipTypeDeleteGuardIT {
 
     Reply reply = deleteType(inverse.getId(), hardDelete);
 
-    assertRejectedAsInUse(reply, "'" + first + "' (inverse)");
+    assertRejectedAsInUse(reply, "glossary term relation");
     assertLive(inverse);
     assertAllSucceed(relationReads(glossary, terms.getFirst(), terms.getLast()));
     assertEquals(fromWhole, relationTypesTowards(terms.getFirst(), terms.getLast()));
@@ -131,11 +271,14 @@ public class RelationshipTypeDeleteGuardIT {
     JsonNode original = settingsRelationTypes();
     try {
       assertEquals(200, putSettings(withLegacyTypes(original, pair(first, second))).status());
-      RelationshipType referrer = createType(relationTypeName(ns, "outsider"), first);
+      RelationshipType referrer =
+          asType(
+              putType(
+                  typeRequest(relationTypeName(ns, "outsider"), null).put("replacedBy", first)));
 
       Reply refused = putSettings(original);
 
-      assertRejectedAsInUse(refused, "'" + referrer.getName() + "' (inverse)");
+      assertRejectedAsInUse(refused, "'" + referrer.getName() + "' (replacedBy)");
       assertTrue(settingsRelationTypes().toString().contains(first), "the setting was not saved");
       assertLive(asType(getTypeByName(first)));
 
@@ -145,6 +288,29 @@ public class RelationshipTypeDeleteGuardIT {
       assertEquals(200, putSettings(original).status());
       assertEquals(404, getTypeByName(first).status());
       assertEquals(404, getTypeByName(second).status());
+    } finally {
+      putSettings(original);
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void theDeprecatedSettingsWriteClearsAnOutsideTypesBackLinkToARemovedType(TestNamespace ns) {
+    String removed = relationTypeName(ns, "legacyMentors");
+    JsonNode original = settingsRelationTypes();
+    try {
+      assertEquals(
+          200, putSettings(withLegacyTypes(original, List.of(legacyType(removed, null)))).status());
+      RelationshipType outsider = createType(relationTypeName(ns, "outsider"), removed);
+
+      Reply reply = putSettings(original);
+
+      assertEquals(200, reply.status(), reply.message());
+      assertEquals(404, getTypeByName(removed).status());
+      assertLive(outsider);
+      assertNull(inverseOf(outsider.getId()));
     } finally {
       putSettings(original);
     }
@@ -254,14 +420,29 @@ public class RelationshipTypeDeleteGuardIT {
   @Test
   void aSoftDeletedTypesReferenceStillBlocksTheDeleteSoARestoreCannotDangle(TestNamespace ns) {
     RelationshipType target = createType(relationTypeName(ns, "target"), null);
-    RelationshipType owner = createType(relationTypeName(ns, "owner"), target.getName());
+    String ownerName = relationTypeName(ns, "owner");
+    RelationshipType owner =
+        asType(putType(typeRequest(ownerName, null).put("replacedBy", target.getName())));
     assertEquals(200, deleteType(owner.getId(), false).status());
 
     assertRejectedAsInUse(
-        deleteType(target.getId(), true), "'" + owner.getName() + "' (inverse, soft-deleted)");
+        deleteType(target.getId(), true), "'" + ownerName + "' (replacedBy, soft-deleted)");
 
     assertEquals(200, deleteType(owner.getId(), true).status());
     assertEquals(200, deleteType(target.getId(), true).status());
+  }
+
+  @Test
+  void aSoftDeletedTypesBackLinkDoesNotBlockAndItsRestoreDropsIt(TestNamespace ns) {
+    RelationshipType target = createType(relationTypeName(ns, "target"), null);
+    RelationshipType owner = createType(relationTypeName(ns, "owner"), target.getName());
+    assertEquals(200, deleteType(owner.getId(), false).status());
+
+    assertEquals(200, deleteType(target.getId(), true).status());
+
+    assertEquals(200, restoreType(owner.getId()).status());
+    assertNull(inverseOf(owner.getId()));
+    assertAllSucceed(relationReads(glossary));
   }
 
   @Test

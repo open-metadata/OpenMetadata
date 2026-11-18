@@ -50,7 +50,18 @@ public final class RelationshipTypeReferences {
   }
 
   /** One reference held by {@code owner}. */
-  public record Reference(RelationshipType owner, Field field, EntityReference target) {}
+  public record Reference(RelationshipType owner, Field field, EntityReference target) {
+    /**
+     * Another type naming the target as its inverse: the one reference a delete of the target
+     * clears instead of refusing.
+     */
+    public boolean isInverseBackLink() {
+      return field == Field.INVERSE;
+    }
+  }
+
+  /** The glossary term relations stored as {@code typeName}, an inverse partner of a deleted type. */
+  public record PartnerUse(String typeName, int relationCount) {}
 
   private RelationshipTypeReferences() {}
 
@@ -66,7 +77,7 @@ public final class RelationshipTypeReferences {
             .map(target -> new Reference(owner, Field.DISJOINT_WITH, target));
     return Stream.of(inverse, replacedBy, chain, disjoint)
         .flatMap(references -> references)
-        .filter(reference -> reference.target() != null && !names(reference.target(), owner))
+        .filter(reference -> reference.target() != null && !refersTo(reference.target(), owner))
         .toList();
   }
 
@@ -76,7 +87,7 @@ public final class RelationshipTypeReferences {
     return types.stream()
         .filter(type -> !Objects.equals(type.getId(), target.getId()))
         .flatMap(type -> heldBy(type).stream())
-        .filter(reference -> names(reference.target(), target))
+        .filter(reference -> refersTo(reference.target(), target))
         .toList();
   }
 
@@ -84,7 +95,7 @@ public final class RelationshipTypeReferences {
    * A reference names a type by id once it was resolved, and only by FQN when it was written before
    * its target existed, so both are compared; the name covers references built from a name alone.
    */
-  private static boolean names(final EntityReference reference, final RelationshipType type) {
+  public static boolean refersTo(final EntityReference reference, final RelationshipType type) {
     final boolean byId = reference.getId() != null && reference.getId().equals(type.getId());
     final boolean byFqn =
         reference.getFullyQualifiedName() != null
@@ -95,9 +106,16 @@ public final class RelationshipTypeReferences {
   }
 
   public static String inUseMessage(
-      final RelationshipType type, final List<Reference> references, final int relationCount) {
+      final RelationshipType type,
+      final List<Reference> references,
+      final int relationCount,
+      final List<PartnerUse> partnerUses) {
+    final Stream<String> partnerReasons =
+        partnerUses.stream().map(RelationshipTypeReferences::partnerSummary);
     final List<String> reasons =
-        Stream.of(referrerSummary(references), relationSummary(relationCount))
+        Stream.concat(
+                Stream.of(referrerSummary(references), relationSummary(relationCount)),
+                partnerReasons)
             .filter(Objects::nonNull)
             .toList();
     return "Relationship type '"
@@ -136,16 +154,23 @@ public final class RelationshipTypeReferences {
   }
 
   private static String relationSummary(final int relationCount) {
-    final String summary;
-    if (relationCount == 0) {
-      summary = null;
-    } else {
-      summary =
-          "used by "
-              + relationCount
-              + (relationCount == 1 ? " glossary term relation" : " glossary term relations");
-    }
-    return summary;
+    return relationCount == 0 ? null : "used by " + relations(relationCount);
+  }
+
+  /**
+   * A relation stored as the partner reads as the deleted type from its other end, so clearing the
+   * partner's inverse would change what it says.
+   */
+  private static String partnerSummary(final PartnerUse use) {
+    return "its inverse '"
+        + use.typeName()
+        + "' is used by "
+        + relations(use.relationCount())
+        + ", which read as this type from their other end";
+  }
+
+  private static String relations(final int count) {
+    return count + (count == 1 ? " glossary term relation" : " glossary term relations");
   }
 
   private static Stream<Reference> single(

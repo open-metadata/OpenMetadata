@@ -16,25 +16,44 @@ were protected from deletion.
 
 ## Decision
 1. A soft or hard delete of a relationship type is rejected with 400 while another type, live or
-   soft-deleted, references it (matched by id, FQN or name, its own references excluded) or any
-   stored glossary term relation, including those of soft-deleted terms, uses it. The message
-   names the referencing types and counts the relations. Counting soft-deleted referrers means a
-   restore never brings back a reference to a missing type, so restore needs no check of its own.
-2. A create or update whose references name a soft-deleted type is rejected with 400. A reference
+   soft-deleted, names it in `replacedBy`, `propertyChain` or `disjointWith` (matched by id, FQN or
+   name, its own references excluded), or while any stored glossary term relation, including those
+   of soft-deleted terms, is stored as it. The message names those types and counts the relations.
+2. Another type naming it as its `inverse` does not block the delete: the delete clears each live
+   partner's `inverse` in the same transaction, as a versioned change of the partner by the
+   deleting user with its own change event. The partner is written only if it is unchanged since
+   the delete read it; otherwise the delete fails with 412 and nothing is written. The delete is
+   still rejected while a relation is stored as such a partner: relations are stored from the lower
+   term id, so one authored as the deleted type from the higher id is stored as the partner, and
+   every relation stored as the partner reads as the deleted type from its other end. Clearing the
+   inverse would make those read as the partner at both ends, so only a pair with no relation stored
+   as either side loses a side. A soft-deleted partner keeps its back-link; it holds no relation.
+3. A restored type keeps its `inverse` only as one half of a pair. A live partner with no inverse and
+   no stored relation is linked back, under the same unchanged-since-read condition; otherwise the
+   restored type's inverse is cleared. A one-way link would read a relation authored as the restored
+   type from the higher term id back as the partner. The restored type holds no relation (it could
+   not be deleted with one or gain one while deleted), so clearing its inverse changes no reading,
+   while re-linking a used partner would change how the partner's relations read.
+4. A create or update whose references name a soft-deleted type is rejected with 400. A reference
    by FQN to a type that does not exist yet stays allowed (the UI creates an inverse pair that
    way); the ontology export omits such an axiom instead of failing. An RDF import that names a
    soft-deleted type restores it under its stored id before writing the types that reference it.
-3. The deprecated settings write removes several types at once: the whole removal is checked before
+5. The deprecated settings write removes several types at once: the whole removal is checked before
    the setting is saved, against the definitions that write saves, and references among the removed
-   types do not block it. A listed type that is soft-deleted is brought back before the others.
-4. Dependents are never cascaded: deleting or retyping relations, or clearing an `inverse`, would
-   drop or silently reinterpret what users stored.
-5. No repair ships for types deleted earlier: that was possible only on unreleased 2.1/main builds
+   types do not block it. A kept type's inverse naming a removed type is cleared as in rule 2. A
+   listed type that is soft-deleted is brought back before the others.
+6. Dependents are never cascaded: relations are never deleted or retyped, and an `inverse` is cleared
+   only when no relation reads through it.
+7. No repair ships for types deleted earlier: that was possible only on unreleased 2.1/main builds
    and the 2.1.0 pre-releases, and restoring the type (soft delete) or recreating it under the same
    name, with its inverse, through the API (hard delete) makes those reads work again.
 
 ## Consequences
-Reads stay consistent without tolerant fallbacks. To delete a type, an admin first removes the
-relations and the references to it; a mutual inverse pair needs one side's `inverse` cleared first
-(the deprecated settings write removes a pair in one call). A concurrent relation write and type
-delete are each validated on their own, not locked against each other.
+Reads stay consistent without tolerant fallbacks. Deleting one side of an unused inverse pair just
+works and leaves the other side without an inverse; relations added to it afterwards are stored and
+read as that type at both ends, like any type without an inverse. Restoring the deleted side links
+the pair again while the other side is still unused. When both sides were deleted, restoring the one
+deleted last first and then the other rebuilds the pair; the other order leaves both without an
+inverse. To delete a type that relations or other definitions use, an admin first removes them. A
+concurrent relation write and type delete are each validated on their own, not locked against each
+other.
