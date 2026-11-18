@@ -122,7 +122,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
               <Button
                 color="primary"
                 data-testid="browse-apps"
-                size="sm"
+                size="xs"
                 onPress={() => onNavigate({ type: 'marketplace' })}>
                 {t('label.browse-app-plural')}
               </Button>

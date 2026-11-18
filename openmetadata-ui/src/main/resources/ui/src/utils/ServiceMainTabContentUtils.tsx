@@ -72,6 +72,8 @@ export const getServiceMainTabColumns = (
         displayName={renderHighlightedText(
           highlightSearchText(record.displayName, searchValue)
         )}
+        entityDisplayName={record.displayName}
+        entityName={record.name}
         hasEditPermission={editDisplayNamePermission}
         id={record.id}
         key={record.id}

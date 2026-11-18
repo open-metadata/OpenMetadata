@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`) · v7 2026-11-05 (tree-row hover actions are `xs`) · v8 2026-11-12 (bordered icon-only actions are a `secondary` `ButtonUtility`) · v9 2026-11-12 (what stays outside `ButtonUtility`)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`) · v7 2026-11-05 (tree-row hover actions are `xs`) · v8 2026-11-12 (bordered icon-only actions are a `secondary` `ButtonUtility`) · v9 2026-11-12 (what stays outside `ButtonUtility`) · v10 2026-11-17 (the learning action is `lg`, matching `CopyButton`)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -119,3 +119,8 @@ These icon-only controls stay as they are. They are listed so a search for child
   to a pointer drag, not a press. They are not buttons.
 
 Any other icon-only control follows the rules above.
+
+## Amendment: learning action matches CopyButton (v10, 2026-11-17)
+This replaces the v6 clause. `LearningIcon` is an `lg` `ButtonUtility` (32px box, 20px glyph) at every
+placement, including beside the PageHeader heading, so it matches the `CopyButton` it usually sits
+beside. Callers may still pass a smaller `size`. The PageHeader wrapper keeps `line-height: 0`.

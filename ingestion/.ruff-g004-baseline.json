@@ -1304,7 +1304,6 @@
     },
     "ingestion/src/metadata/ingestion/source/database/doris/metadata.py": {
       "378309d0fb6d42369f9270679fc44cf43fbd1a8ac057572af1cb21fa22efa34a": 1,
-      "7712d40bcde53591a20fb3c95bb13851d9f5e1b51fa083514b23de2badc0d5ce": 1,
       "b43f7a4651d59bcb49cd72f8f6164366b1bbef0d136b11d0b8923826b32be8b3": 1
     },
     "ingestion/src/metadata/ingestion/source/database/dynamodb/metadata.py": {

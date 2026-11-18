@@ -451,6 +451,7 @@ const MetricDetails: React.FC<MetricDetailsProps> = ({
       {isAssetModalOpen && (
         <AssetSelectionModal
           open
+          useQueryPost
           entityFqn={decodedMetricFqn}
           queryFilter={assetSelectionQueryFilter}
           type={AssetsOfEntity.METRIC}

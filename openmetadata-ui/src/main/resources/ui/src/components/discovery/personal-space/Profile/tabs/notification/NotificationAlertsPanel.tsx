@@ -35,7 +35,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -404,7 +407,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
       case 'trigger':
         return (
           <Typography size="text-sm">
-            {alert.filteringRules?.resources?.join(', ') || '--'}
+            {alert.filteringRules?.resources?.join(', ') || NO_DATA_PLACEHOLDER}
           </Typography>
         );
 

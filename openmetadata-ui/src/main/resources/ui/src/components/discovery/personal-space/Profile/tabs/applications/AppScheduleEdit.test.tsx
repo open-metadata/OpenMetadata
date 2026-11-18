@@ -178,6 +178,18 @@ describe('AppScheduleEdit', () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
+  it('asks before discarding a timezone-only change on cancel', async () => {
+    const { onCancel } = renderEdit({});
+
+    fireEvent.click(screen.getByText('Change timezone'));
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    expect(
+      await screen.findByTestId('unsaved-changes-popover')
+    ).toBeInTheDocument();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
   it('locks Cancel while a save is in flight', () => {
     renderEdit({ isSaving: true });
 
