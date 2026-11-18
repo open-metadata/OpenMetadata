@@ -1,4 +1,4 @@
-# Amazon Corretto 21 for Alpine; see ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list.
+# Amazon Corretto 21 for Alpine; see ADR:2026-11-18-shipped-jvm-images-run-on-corretto.
 # binutils: jlink --strip-debug runs objcopy.
 FROM amazoncorretto:21-alpine AS jre-builder
 RUN apk add --no-cache binutils
@@ -13,10 +13,6 @@ RUN jlink \
       --output /javaruntime && \
     rm -f /javaruntime/lib/libawt_xawt.so /javaruntime/lib/libjawt.so \
       /javaruntime/lib/libsplashscreen.so /javaruntime/lib/libjsound.so
-
-# The trust store stays the one this image shipped on Temurin, built from Mozilla's CA list.
-# Corretto's own list leaves out some of those roots.
-COPY --from=eclipse-temurin:21-jre-alpine /opt/java/openjdk/lib/security/cacerts /javaruntime/lib/security/cacerts
 
 FROM alpine:3
 
@@ -33,8 +29,8 @@ COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 # eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
 # 21.0.13.0.3 also removes emSign G1, G2 and Comodo's AAA Certificate Services from cacerts, so
 # this step drops those too.
-# Until the JDK ships none of them, drop them here by SHA-256 and fail
-# the build if any is still trusted. Once the JDK no longer ships them nothing is deleted.
+# Corretto's cacerts has none of them, so nothing is deleted today. The step stays as the check:
+# it drops any that come back by SHA-256 and fails the build if one is still trusted.
 # Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
 # re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
 RUN set -eu; \

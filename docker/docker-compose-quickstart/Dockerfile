@@ -52,7 +52,7 @@ RUN mkdir -p /opt/openmetadata && \
 # Amazon Corretto 21's generic Linux build, from its official image. Not plain
 # `amazoncorretto:21`: that is Amazon Linux's own build, which links system freetype,
 # libjpeg and libpng that the runtime does not ship. See
-# ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list.
+# ADR:2026-11-18-shipped-jvm-images-run-on-corretto.
 # binutils: jlink --strip-debug runs objcopy.
 FROM debian:13-slim AS jre-builder
 RUN apt-get update && \
@@ -69,16 +69,12 @@ RUN jlink \
       --compress=zip-6 \
       --output /javaruntime
 
-# The trust store stays Temurin's, built from Mozilla's CA list. Corretto's own list leaves out
-# roots this image trusted before, so swapping it in would change which TLS endpoints validate.
-COPY --from=eclipse-temurin:21-jdk /opt/java/openjdk/lib/security/cacerts /javaruntime/lib/security/cacerts
-
 # CVE-2026-91403 (ADR:2026-10-23-image-jdks-distrust-compromised-cas-by-deleting-roots):
 # eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
 # 21.0.13.0.3 also removes emSign G1, G2 and Comodo's AAA Certificate Services from cacerts, so
 # this step drops those too.
-# Until the JDK ships none of them, drop them here by SHA-256 and fail
-# the build if any is still trusted. Once the base no longer ships them nothing is deleted.
+# Corretto's cacerts has none of them, so nothing is deleted today. The step stays as the check:
+# it drops any that come back by SHA-256 and fails the build if one is still trusted.
 # Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
 # re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
 RUN set -eu; \

@@ -46,6 +46,7 @@ Services. The step now lists six roots: the three from v1 plus G1, G2 and AAA.
   21.0.13. Temurin is not known to remove G1, G2 or AAA, so the step can only be dropped once no
   base ships any root in its list.
 
-**v3, 2026-11-18.** The server and k8s operator images now run on Amazon Corretto but keep
-Temurin's `cacerts` (ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list). The step runs on that list unchanged. The olivaw and oss-scanner images
+**v3, 2026-11-18.** The server and k8s operator images now run on Amazon Corretto with the CA list
+it ships (ADR:2026-11-18-shipped-jvm-images-run-on-corretto). That list holds none of the six roots,
+so on those images the step deletes nothing and only checks. The olivaw and oss-scanner images
 still run on Temurin.
