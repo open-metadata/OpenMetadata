@@ -152,9 +152,12 @@ class HeapBackpressureTest {
     // Smoke test: the public no-arg entrypoint delegates to MEMORY.getHeapMemoryUsage. On a
     // healthy runner JVM it fast-paths and returns immediately; on a runner whose heap happens
     // to be at/above the pause threshold mid-suite (this test runs inside a 30-minute, 18k-test
-    // JVM), it engages the gate and drains within the configured escape valve instead of
-    // wedging. What we can assert independent of the runner's heap state is that it returns
-    // within the test escape-valve bound (set in @BeforeEach) and leaves no engaged gate behind.
+    // JVM), it engages the gate and either drains to headroom or bypasses via the escape valve.
+    // The only thing we can assert independent of the runner's heap state is that it returns
+    // within the test escape-valve bound (set in @BeforeEach) — i.e. it never wedges. The
+    // gate-engaged flag is NOT heap-state independent: if the runner is under sustained pressure
+    // for the whole escape valve, the bypass path intentionally leaves the gate engaged (the
+    // multi-worker cascade design), so it is not asserted here.
     long maxWaitMs = 2_000L; // matches the @BeforeEach setMaxWaitMsForTest(2_000L)
     long start = System.nanoTime();
     HeapBackpressure.awaitHeadroom();
@@ -164,9 +167,6 @@ class HeapBackpressureTest {
         "public awaitHeadroom must return within the escape-valve bound (took "
             + elapsedMs
             + "ms); a wedge would exceed this");
-    assertFalse(
-        HeapBackpressure.gateEngaged(),
-        "public awaitHeadroom must not leave the gate engaged after returning");
   }
 
   // ---------------------------------------------------------------------------
