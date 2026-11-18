@@ -1024,6 +1024,21 @@ describe('getAlertExtraInfo', () => {
     expect(failedEvents).toBeInTheDocument();
   });
 
+  it('marks the total and pending counts with a plus when the server capped them', () => {
+    const alertEventCounts = {
+      totalEventsCount: 507,
+      pendingEventsCount: 500,
+      failedEventsCount: 2,
+      countsAreLowerBound: true,
+    };
+
+    render(getAlertExtraInfo(false, alertEventCounts));
+
+    expect(screen.getByText('507+')).toBeInTheDocument();
+    expect(screen.getByText('500+')).toBeInTheDocument();
+    expect(screen.getByText('2')).toBeInTheDocument();
+  });
+
   it('should return zero values when alertEventCounts is undefined', () => {
     const alertExtraInfo = getAlertExtraInfo(false);
 
