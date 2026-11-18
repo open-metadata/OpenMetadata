@@ -100,16 +100,11 @@ describe('NavigationEditor', () => {
     );
   });
 
-  // Backstop for the shared Tree's `Tree.DragButton` slot-button fix: each
-  // draggable row must render a real, focusable drag handle (not an inert
-  // `aria-hidden` icon). See tree.test.tsx in `@openmetadata/ui-core-components`
-  // for the underlying keyboard-drag behavior.
   it('renders a real focusable drag handle button with slot="drag" on each row', () => {
     renderEditor();
 
     const handles = screen.getAllByRole('button', { name: 'label.move' });
 
-    // One drag handle per draggable row (the default nav tree has >1 items).
     expect(handles.length).toBeGreaterThan(1);
 
     handles.forEach((handle) => {

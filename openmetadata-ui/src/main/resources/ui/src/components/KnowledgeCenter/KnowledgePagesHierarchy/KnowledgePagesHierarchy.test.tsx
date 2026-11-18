@@ -291,11 +291,6 @@ describe('KnowledgePagesHierarchy', () => {
     expect(screen.getAllByTestId('page-icon')).toHaveLength(3);
   });
 
-  // Backstop for the shared Tree's `Tree.DragButton` slot-button fix: the
-  // drag handle must render as a real focusable button when EditAll is
-  // granted, and must NOT render when EditAll is denied (the bug pre-fix
-  // rendered an inert `aria-hidden` icon in both cases — keyboard/screen-
-  // reader users could never start a reorder even with permission).
   it('renders a real focusable drag handle button (slot="drag") per row only when EditAll is granted', async () => {
     const { unmount } = await act(async () => {
       const result = render(
@@ -317,7 +312,6 @@ describe('KnowledgePagesHierarchy', () => {
       expect(handle).not.toHaveAttribute('aria-hidden');
     });
 
-    // And the opposite: with EditAll false, no drag handle button renders.
     unmount();
     await act(async () => {
       render(
