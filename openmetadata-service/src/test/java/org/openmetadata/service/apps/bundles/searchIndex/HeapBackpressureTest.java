@@ -552,12 +552,21 @@ class HeapBackpressureTest {
       usedRef.set(60L);
 
       // Wait for the drainer to release and complete; the second worker then acquires the lock
-      // and enters its pace wait (under the lock) for the full paceMs window.
+      // and enters its pace wait (under the lock) for the full paceMs window. The pace wait does
+      // not call the usage supplier, so no deadline capture happens during this window.
       await()
           .pollDelay(Duration.ZERO)
           .pollInterval(Duration.ofMillis(5))
           .atMost(Duration.ofSeconds(3))
           .until(() -> completed.get() == 1);
+
+      // Drop the deadline captured during the first worker's drain so the wait below can only
+      // succeed on a deadline the second worker installs in its own drain. Without this reset the
+      // wait would pass on the first drain's stale capture and the test would not detect a revert
+      // of the zero-deadline re-arm fix (the second worker would skip its drain, never install a
+      // fresh deadline, and capturedDeadline would still be > 0 from worker 1).
+      capturedDeadline.set(0L);
+      capturedAt.set(0L);
 
       // Raise heap back above PAUSE_ABOVE while the second worker is still inside its pace wait,
       // so its post-pace re-check observes pressure. With paceMs=200ms there is a wide margin
@@ -566,7 +575,8 @@ class HeapBackpressureTest {
 
       // Assert the second worker re-armed a fresh deadline and entered the drain loop (the
       // supplier under the lock observed it). Without the fix the deadline would stay at 0 and
-      // the worker would skip the drain and allocate immediately — capturedDeadline stays 0.
+      // the worker would skip the drain and allocate immediately — capturedDeadline stays 0 and
+      // this wait times out, failing the test.
       await()
           .pollDelay(Duration.ZERO)
           .pollInterval(Duration.ofMillis(5))
