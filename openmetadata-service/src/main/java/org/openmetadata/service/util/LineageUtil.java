@@ -10,7 +10,6 @@ import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
 import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -36,6 +35,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 
 @Slf4j
 public class LineageUtil {
@@ -244,8 +244,12 @@ public class LineageUtil {
               List.of(uniqueValue),
               new ImmutablePair<>(
                   REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
-    } catch (IOException e) {
-      throw new UncheckedIOException("Failed to remove derived lineage edge " + uniqueValue, e);
+    } catch (IOException | RuntimeException e) {
+      SearchIndexRetryQueue.enqueue(
+          toEntity.getId() != null ? toEntity.getId().toString() : null,
+          toEntity.getFullyQualifiedName(),
+          SearchIndexRetryQueue.failureReason("deleteDerivedLineageFromSearch", e));
+      LOG.error("Failed to remove derived lineage edge {}: {}", uniqueValue, e.getMessage());
     }
   }
 

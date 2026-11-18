@@ -22,6 +22,10 @@ after the database transaction. A sequential replacement cannot be erased by tha
 Skip the update when there are no matches; otherwise update and refresh those indices, using the
 existing conflict reconciliation. Preserve the existing bounded aggregation's handling of a full
 page and its rejection of partial shard results.
+- Checked and runtime search failures during derived-edge removal are logged and enqueue the
+downstream entity in `SearchIndexRetryQueue`, because its search document carries the edge. A
+search failure must not interrupt catalog operations, whether the write runs inline or is drained
+after commit.
 - This ordering is specific to removing an individual lineage edge. Inherited-field propagation
 retains its asynchronous, sliced, rate-limited execution and recovery policy. It may fan out to
 many children; lineage removal must order against a subsequent write of the same edge.
