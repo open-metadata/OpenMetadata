@@ -631,17 +631,123 @@ public class GlossaryRdfImporter {
   }
 
   private void registerRelationTypes(Model model, List<TermIntent> intents, boolean dryRun) {
-    Set<String> existing = existingRelationTypeNames();
+    Map<String, RelationshipType> existing = existingRelationTypes();
     Map<String, RelationshipType> toAdd = new LinkedHashMap<>();
     for (TermIntent intent : intents) {
       for (RelationIntent relation : intent.relations) {
-        collectCustomRelationType(
-            model, relation.relationshipType(), relation.predicateIri(), existing, toAdd);
+        collectRelationPair(model, relation, existing.keySet(), toAdd);
       }
     }
+    Map<String, RelationshipType> updates = wireInversePartners(model, toAdd, existing);
     if (!toAdd.isEmpty()) {
       applyRelationTypes(toAdd, dryRun);
     }
+    if (allowGlobalSchemaChanges && !dryRun) {
+      persistRelationTypeUpdates(updates.values());
+    }
+  }
+
+  private void collectRelationPair(
+      Model model,
+      RelationIntent relation,
+      Set<String> existing,
+      Map<String, RelationshipType> toAdd) {
+    collectCustomRelationType(
+        model, relation.relationshipType(), relation.predicateIri(), existing, toAdd);
+    String inverseIri = inversePredicateIri(model, relation.predicateIri());
+    if (inverseIri != null) {
+      collectCustomRelationType(
+          model, sanitizeRelationName(localName(inverseIri)), inverseIri, existing, toAdd);
+    }
+  }
+
+  private Map<String, RelationshipType> wireInversePartners(
+      Model model, Map<String, RelationshipType> toAdd, Map<String, RelationshipType> existing) {
+    Map<String, RelationshipType> known = new LinkedHashMap<>(existing);
+    known.putAll(toAdd);
+    Map<String, RelationshipType> updates = new LinkedHashMap<>();
+    for (RelationshipType type : toAdd.values()) {
+      if (isSymmetric(type)) {
+        // A symmetric property is its own inverse; preserve the self-reference set by
+        // applyCharacteristics and do not rewire it to a declared named inverse. OWL 2 DL
+        // treats `A owl:inverseOf B` on a symmetric `A` as an equivalent-property axiom, not
+        // a separate inverse, so wiring A to B would both lose the symmetry and trip the
+        // validator's "symmetric must be its own inverse" check.
+        continue;
+      }
+      if (type.getInverse() != null) {
+        wireInversePartner(model, type, known, updates);
+      }
+    }
+    updates.keySet().removeAll(toAdd.keySet());
+    return updates;
+  }
+
+  private void wireInversePartner(
+      Model model,
+      RelationshipType type,
+      Map<String, RelationshipType> known,
+      Map<String, RelationshipType> updates) {
+    RelationshipType partner = known.get(type.getInverse().getName());
+    if (!isCompatibleInversePartner(model, type, partner)) {
+      addMessage(
+          "Inverse relationship type '"
+              + type.getInverse().getName()
+              + "' is unavailable or has a different inverse; leaving inverse unset on '"
+              + type.getName()
+              + "'");
+      type.setInverse(null);
+      return;
+    }
+    type.setInverse(partner.getEntityReference());
+    completeInversePartner(type, partner, updates);
+  }
+
+  private boolean isCompatibleInversePartner(
+      Model model, RelationshipType type, RelationshipType partner) {
+    if (partner == null) {
+      return false;
+    }
+    if (isSymmetric(partner)) {
+      // A symmetric partner keeps its self-inverse; it can still be named as this type's
+      // inverse without the partner's own inverse being rewritten (see completeInversePartner).
+      return true;
+    }
+    String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
+    String partnerInverse = inverseName(partner);
+    return (inverseIri == null || URI.create(inverseIri).equals(partner.getRdfPredicate()))
+        && (partnerInverse == null || type.getName().equals(partnerInverse));
+  }
+
+  private void completeInversePartner(
+      RelationshipType type, RelationshipType partner, Map<String, RelationshipType> updates) {
+    if (isSymmetric(partner)) {
+      // The partner is its own inverse; do not overwrite that self-reference.
+      return;
+    }
+    EntityReference inverse = partner.getInverse();
+    if (inverse == null
+        || !type.getName().equals(inverse.getName())
+        || !type.getId().equals(inverse.getId())) {
+      // Completing an existing pair must preserve the partner's governed fields and identity.
+      partner.setInverse(type.getEntityReference());
+      partner.setUpdatedBy(user);
+      partner.setUpdatedAt(System.currentTimeMillis());
+      updates.put(partner.getName(), partner);
+    }
+  }
+
+  private boolean isSymmetric(RelationshipType type) {
+    return type.getCharacteristics() != null
+        && type.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC);
+  }
+
+  private String inverseName(RelationshipType type) {
+    EntityReference inverse = type.getInverse();
+    if (inverse == null) {
+      return null;
+    }
+    return inverse.getName() == null ? inverse.getFullyQualifiedName() : inverse.getName();
   }
 
   private void applyRelationTypes(Map<String, RelationshipType> toAdd, boolean dryRun) {
@@ -845,18 +951,46 @@ public class GlossaryRdfImporter {
   }
 
   private String inverseRelationName(Resource property, Model model) {
-    String inverse = firstResourceUri(property, model.getProperty(OWL, "inverseOf"));
+    String inverse = inversePredicateIri(model, property.getURI());
     return inverse == null ? null : sanitizeRelationName(localName(inverse));
   }
 
-  private Set<String> existingRelationTypeNames() {
+  private String inversePredicateIri(Model model, String predicateIri) {
+    Resource property = model.getResource(predicateIri);
+    Property inverseOf = model.getProperty(OWL, "inverseOf");
+    List<String> inverseIris = listResourceUris(property, inverseOf);
+    if (inverseIris.isEmpty()) {
+      inverseIris = reverseInversePredicateIris(model, property);
+    }
+    return inverseIris.stream().sorted().findFirst().orElse(null);
+  }
+
+  private List<String> reverseInversePredicateIris(Model model, Resource property) {
+    List<String> inverseIris = new ArrayList<>();
+    var declarations =
+        model.listResourcesWithProperty(model.getProperty(OWL, "inverseOf"), property);
+    try {
+      while (declarations.hasNext()) {
+        Resource subject = declarations.next();
+        if (subject.isURIResource()) {
+          inverseIris.add(subject.getURI());
+        }
+      }
+    } finally {
+      declarations.close();
+    }
+    return inverseIris;
+  }
+
+  private Map<String, RelationshipType> existingRelationTypes() {
     RelationshipTypeResolver resolver =
         new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
-    Set<String> names =
-        resolver.list().stream()
-            .map(RelationshipType::getName)
-            .collect(Collectors.toCollection(LinkedHashSet::new));
-    return names;
+    return resolver.list().stream()
+        .collect(Collectors.toMap(RelationshipType::getName, type -> type));
+  }
+
+  private Set<String> existingRelationTypeNames() {
+    return existingRelationTypes().keySet();
   }
 
   private void persistRelationTypes(Collection<RelationshipType> newTypes) {
@@ -871,6 +1005,44 @@ public class GlossaryRdfImporter {
       }
     }
     result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
+  }
+
+  private void persistRelationTypeUpdates(Collection<RelationshipType> intended) {
+    // Existing partners are claimed against the snapshot taken in registerRelationTypes, but
+    // persisted later through a whole-entity createOrUpdate. Re-fetch each partner right before
+    // writing so a concurrent import that already set its inverse (or edited unrelated fields)
+    // is not silently overwritten — only the inverse field is mutated on the fresh state, and
+    // a partner whose inverse no longer matches the snapshot is left untouched.
+    RelationshipTypeRepository repository =
+        (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+    RelationshipTypeResolver resolver =
+        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    for (RelationshipType intendedType : intended) {
+      RelationshipType current;
+      try {
+        current = resolver.require(intendedType.getId());
+      } catch (BadRequestException notRegistered) {
+        addMessage(
+            "Relationship type '"
+                + intendedType.getName()
+                + "' disappeared before its inverse could be completed; skipping");
+        continue;
+      }
+      EntityReference currentInverse = current.getInverse();
+      EntityReference intendedInverse = intendedType.getInverse();
+      if (currentInverse != null && !intendedInverse.getId().equals(currentInverse.getId())) {
+        addMessage(
+            "Inverse of relationship type '"
+                + intendedType.getName()
+                + "' was already set by another import; leaving it unchanged");
+        continue;
+      }
+      current.setInverse(intendedInverse);
+      current.setUpdatedBy(user);
+      current.setUpdatedAt(System.currentTimeMillis());
+      repository.prepareInternal(current, false);
+      repository.createOrUpdate(uriInfo, current, user);
+    }
   }
 
   private void persistTerms(
