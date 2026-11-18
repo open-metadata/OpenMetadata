@@ -589,6 +589,36 @@ describe('TaskFormSchemaUtils', () => {
       },
     });
   });
+
+  describe('tag suggestion tasks', () => {
+    const tags = [
+      {
+        tagFQN: 'Data Sensitivity.Confidential',
+        source: 'Classification',
+        labelType: 'Generated',
+        state: 'Confirmed',
+      },
+    ];
+    const tagSuggestion = {
+      type: TaskEntityType.Suggestion,
+      payload: {
+        suggestionType: 'Tag',
+        fieldPath: 'columns::address',
+        suggestedValue: JSON.stringify(tags),
+      },
+    } as unknown as Task;
+
+    // The server validates the resolve payload against TagSuggestion, whose
+    // suggestedValue is a string; an array there is rejected with a 400.
+    it('keeps suggestedValue a JSON string in the payload it resolves with', () => {
+      const payload = getEditableTaskPayload(tagSuggestion);
+
+      expect(payload.suggestedValue).toBe(JSON.stringify(tags));
+      expect(getTaskResolutionNewValue(tagSuggestion, payload)).toBe(
+        JSON.stringify(tags)
+      );
+    });
+  });
 });
 
 describe('Suggestion form schema resolution', () => {
