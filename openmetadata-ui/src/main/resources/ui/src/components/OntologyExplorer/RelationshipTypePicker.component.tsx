@@ -103,7 +103,7 @@ const renderOption = (
       <Button
         noTextPadding
         className={classNames(
-          'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-transparent tw:p-2 tw:text-left hover:tw:bg-primary_hover',
+          'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover',
           'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
         )}
         color="tertiary"
@@ -376,17 +376,16 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
     <div
       className={classNames(
         isAiMode
-          ? 'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl'
-          : 'tw:flex tw:w-64 tw:flex-col tw:overflow-hidden tw:rounded-xl',
-        // A floating overlay: a translucent border on bg-primary faded out at the corners in dark mode.
-        'tw:bg-floating tw:shadow-raised tw:outline-1 tw:-outline-offset-1 tw:outline-secondary_alt',
+          ? 'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-primary tw:bg-primary'
+          : 'tw:flex tw:w-64 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-primary tw:bg-primary',
+        'tw:shadow-xl',
         className
       )}
       data-testid="relationship-type-picker">
       <div
         className={
           isAiMode
-            ? 'tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:py-3 tw:pr-2.5 tw:pl-4'
+            ? 'tw:flex tw:items-center tw:gap-2 tw:border-b tw:border-secondary tw:bg-secondary_alt tw:py-3 tw:pr-2.5 tw:pl-4'
             : 'tw:flex tw:items-center tw:gap-1.5 tw:border-b tw:border-secondary tw:bg-secondary tw:px-3 tw:py-2.5'
         }>
         <span className={labelClass}>{sourceLabel}</span>
