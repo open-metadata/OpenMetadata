@@ -18,8 +18,8 @@ import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.IntStream;
 import org.apache.commons.lang3.tuple.Pair;
@@ -180,9 +180,12 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
     indicesHoldingMatches();
     final UpdateByQueryResponse clean = response(0, 0);
     when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(clean);
-    new OpenSearchEntityManager(client).updateChildren(
-        List.of("all"), "upstreamLineage.docUniqueId", List.of("from--->to"),
-        Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
+    new OpenSearchEntityManager(client)
+        .updateChildren(
+            List.of("all"),
+            "upstreamLineage.docUniqueId",
+            List.of("from--->to"),
+            Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
     verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
   }
 
@@ -192,10 +195,14 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
     final UpdateByQueryResponse conflicted = response(2, 1);
     final UpdateByQueryResponse clean = response(1, 0);
     when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(conflicted, clean);
-    new OpenSearchEntityManager(client).updateChildren(
-        List.of("all", "staged"), "upstreamLineage.docUniqueId", List.of("from--->to"),
-        Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
-    final ArgumentCaptor<UpdateByQueryRequest> requests = ArgumentCaptor.forClass(UpdateByQueryRequest.class);
+    new OpenSearchEntityManager(client)
+        .updateChildren(
+            List.of("all", "staged"),
+            "upstreamLineage.docUniqueId",
+            List.of("from--->to"),
+            Pair.of("ctx._source.remove('upstreamLineage')", Map.of()));
+    final ArgumentCaptor<UpdateByQueryRequest> requests =
+        ArgumentCaptor.forClass(UpdateByQueryRequest.class);
     verify(client, times(2)).updateByQuery(requests.capture());
     for (final UpdateByQueryRequest request : requests.getAllValues()) {
       assertEquals(List.of("table_search_index", "table_search_index_rebuild"), request.index());
@@ -209,9 +216,30 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
   @Test
   void removingLineageDoesNotSilentlyIgnoreAnUnreachableShard() throws Exception {
     matchingIndicesSearch(1);
-    assertThrows(IOException.class, () -> new OpenSearchEntityManager(client).updateChildren(
-        List.of("all"), "upstreamLineage.docUniqueId", List.of("from--->to"),
-        Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    assertThrows(
+        IOException.class,
+        () ->
+            new OpenSearchEntityManager(client)
+                .updateChildren(
+                    List.of("all"),
+                    "upstreamLineage.docUniqueId",
+                    List.of("from--->to"),
+                    Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void removingLineageRejectsTimedOutMatchingIndexSearch() throws Exception {
+    matchingIndicesSearch(true, 0);
+    assertThrows(
+        IOException.class,
+        () ->
+            new OpenSearchEntityManager(client)
+                .updateChildren(
+                    List.of("all"),
+                    "upstreamLineage.docUniqueId",
+                    List.of("from--->to"),
+                    Pair.of("ctx._source.remove('upstreamLineage')", Map.of())));
     verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
   }
 
@@ -220,6 +248,11 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
   }
 
   private void matchingIndicesSearch(int failedShards, String... names) throws Exception {
+    matchingIndicesSearch(false, failedShards, names);
+  }
+
+  private void matchingIndicesSearch(
+      final boolean timedOut, final int failedShards, final String... names) throws Exception {
     List<StringTermsBucket> buckets =
         Arrays.stream(names)
             .map(name -> StringTermsBucket.of(bucket -> bucket.key(name).docCount(1)))
@@ -227,7 +260,7 @@ class OpenSearchEntityManagerUpdateByQueryRetryTest {
     SearchResponse<JsonData> matches =
         new SearchResponse.Builder<JsonData>()
             .took(1)
-            .timedOut(false)
+            .timedOut(timedOut)
             .shards(shards -> shards.total(2).successful(2 - failedShards).failed(failedShards))
             .hits(hits -> hits.hits(List.of()))
             .aggregations(

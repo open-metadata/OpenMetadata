@@ -9,6 +9,8 @@ import static org.openmetadata.service.jdbi3.LineageRepository.getDocumentUnique
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.search.SearchClient.REMOVE_LINEAGE_SCRIPT;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -232,14 +234,19 @@ public class LineageUtil {
 
   private static void doDeleteLineageFromSearch(
       EntityReference fromEntity, EntityReference toEntity) {
-    String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
-    Entity.getSearchRepository()
-        .getSearchClient()
-        .updateChildren(
-            GLOBAL_SEARCH_ALIAS,
-            new ImmutablePair<>("upstreamLineage.docUniqueId", uniqueValue),
-            new ImmutablePair<>(
-                REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    final String uniqueValue = getDocumentUniqueId(fromEntity, toEntity);
+    try {
+      Entity.getSearchRepository()
+          .getSearchClient()
+          .updateChildren(
+              List.of(Entity.getSearchRepository().getIndexOrAliasName(GLOBAL_SEARCH_ALIAS)),
+              "upstreamLineage.docUniqueId",
+              List.of(uniqueValue),
+              new ImmutablePair<>(
+                  REMOVE_LINEAGE_SCRIPT, Collections.singletonMap("docUniqueId", uniqueValue)));
+    } catch (IOException e) {
+      throw new UncheckedIOException("Failed to remove derived lineage edge " + uniqueValue, e);
+    }
   }
 
   private static void insertDomainLineage(EntityReference fromDomain, EntityReference toDomain) {

@@ -6,8 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -217,7 +217,8 @@ class LineageUtilTest {
   }
 
   @Test
-  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved() throws Exception {
+  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved()
+      throws Exception {
     UUID entityId = UUID.randomUUID();
     EntityReference dataProduct = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.updated");
     EntityReference downstreamProduct =
@@ -244,8 +245,13 @@ class LineageUtilTest {
 
     when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
     final AtomicBoolean indexed = new AtomicBoolean(true);
-    doAnswer(call -> { indexed.set(false); return null; })
-        .when(searchClient).updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
+    doAnswer(
+            call -> {
+              indexed.set(false);
+              return null;
+            })
+        .when(searchClient)
+        .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
@@ -274,7 +280,8 @@ class LineageUtilTest {
       verify(searchClient)
           .updateChildren(
               eq(List.of("all")), eq("upstreamLineage.docUniqueId"),
-              eq(List.of(dataProduct.getId() + "--->" + downstreamProduct.getId())), updateCaptor.capture());
+              eq(List.of(dataProduct.getId() + "--->" + downstreamProduct.getId())),
+                  updateCaptor.capture());
       assertEquals(SearchClient.REMOVE_LINEAGE_SCRIPT, updateCaptor.getValue().getLeft());
       assertEquals(
           dataProduct.getId() + "--->" + downstreamProduct.getId(),
@@ -359,6 +366,7 @@ class LineageUtilTest {
                 .json(JsonUtils.pojoToJson(new LineageDetails()))
                 .build());
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
 
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);

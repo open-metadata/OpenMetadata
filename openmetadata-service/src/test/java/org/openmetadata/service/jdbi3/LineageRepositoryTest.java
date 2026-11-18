@@ -29,6 +29,7 @@ import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import java.io.StringReader;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -172,7 +173,9 @@ class LineageRepositoryTest {
 
   @Test
   void aCompletedLineageDeletionCannotRemoveAReplacementEdge() throws Exception {
-    final SearchClient client = searchRepository.getSearchClient();
+    final Field clientField = LineageRepository.class.getDeclaredField("searchClient");
+    clientField.setAccessible(true);
+    final SearchClient client = (SearchClient) clientField.get(null);
     final AtomicBoolean indexed = new AtomicBoolean(true);
     final List<Runnable> backgroundTasks = new ArrayList<>();
     doAnswer(
