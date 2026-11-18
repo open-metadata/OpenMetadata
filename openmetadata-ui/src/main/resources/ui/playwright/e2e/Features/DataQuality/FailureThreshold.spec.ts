@@ -109,7 +109,7 @@ const expectListboxOptions = async (
  * Data Quality failure thresholds
  * @description Covers the `threshold` / `thresholdUnit` parameters end to end in the UI: enum
  * parameters read as sentences and round-trip through the test case form, and seeded strict
- * and relative results display their configured thresholds alongside the reported verdicts.
+ * and relative results display the thresholds each run recorded alongside the reported verdicts.
  */
 test.describe(
   'Data Quality failure thresholds',
@@ -263,8 +263,9 @@ test.describe(
      * Seeded strict and relative results display their thresholds
      * @description A `columnValuesToBeNotNull` test with a 5% threshold is created through the form
      * next to a strict one on the same column. Both are given seeded results reporting 3 nulls
-     * in 100 rows with precomputed Failed/Success verdicts. Each run shows its saved threshold
-     * beside the failing share and the evaluated rows; ingestion evaluation is covered separately.
+     * in 100 rows with precomputed Failed/Success verdicts and the threshold snapshot an agent
+     * records. Each run shows the threshold it recorded, not the test case's current one, beside
+     * the failing share and the evaluated rows; ingestion evaluation is covered separately.
      * Steps
      * 1. Create the relative test in the form; the preview and the saved parameters carry 5% of rows.
      * 2. Create the strict test through the API.
