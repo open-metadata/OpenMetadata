@@ -158,7 +158,7 @@ class AWSClient:
     def _get_session(
         aws_access_key_id: Optional[str],  # noqa: UP045
         aws_secret_access_key: Optional[CustomSecretStr],  # noqa: UP045
-        aws_session_token: Optional[str],  # noqa: UP045
+        aws_session_token: Optional[CustomSecretStr],  # noqa: UP045
         aws_region: str,
         profile=None,
         refresh_using: Optional[Callable] = None,  # noqa: UP045
@@ -181,7 +181,7 @@ class AWSClient:
         return Session(
             aws_access_key_id=aws_access_key_id,
             aws_secret_access_key=(aws_secret_access_key.get_secret_value() if aws_secret_access_key else None),
-            aws_session_token=aws_session_token,
+            aws_session_token=(aws_session_token.get_secret_value() if aws_session_token else None),
             region_name=aws_region,
             profile_name=profile,
         )

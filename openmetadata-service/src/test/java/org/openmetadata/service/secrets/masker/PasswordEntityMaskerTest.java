@@ -2,6 +2,7 @@ package org.openmetadata.service.secrets.masker;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -30,6 +31,8 @@ import org.openmetadata.schema.services.connections.database.databricks.Personal
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpKeyAuth;
+import org.openmetadata.schema.services.connections.mcp.McpConnection;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
 import org.openmetadata.schema.services.connections.pipeline.SSISConnection;
@@ -113,6 +116,88 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   private String astraToken(CassandraConnection connection) {
     return ((CloudConfig) connection.getAuthType()).getCloudConfig().getToken();
+  }
+
+  /**
+   * Secrets inside a collection are restored by element identity, not by position. Keying on
+   * position means deleting the first of two servers shifts the second into slot 0, so it would be
+   * handed the deleted server's key while its own is lost.
+   */
+  @Test
+  void testCollectionSecretsFollowTheElementNotThePosition() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("beta").withApiKey(BETA_KEY)));
+    // What the edit form sends back after deleting "alpha": "beta" alone, key still masked.
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(new McpServerConfig().withName("beta").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(1, restored.getServers().size());
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+  }
+
+  /** Reordering must not swap the two servers' keys either. */
+  @Test
+  void testCollectionSecretsSurviveReordering() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("alpha").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("beta").withApiKey(BETA_KEY)));
+    McpConnection reordered =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("beta").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("alpha").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(reordered, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(BETA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  /**
+   * A name is only an identity if it is unique, and the schema does not enforce that. Two servers
+   * sharing a name must not share a key, or one secret would overwrite the other and both entries
+   * would come back holding the survivor.
+   */
+  @Test
+  void testDuplicateNamesDoNotShareASecret() {
+    McpConnection original =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(ALPHA_KEY),
+                    new McpServerConfig().withName("dup").withApiKey(BETA_KEY)));
+    McpConnection edited =
+        new McpConnection()
+            .withServers(
+                List.of(
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword()),
+                    new McpServerConfig().withName("dup").withApiKey(getMaskedPassword())));
+
+    McpConnection restored =
+        (McpConnection)
+            EntityMaskerFactory.createEntityMasker()
+                .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
+
+    assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
   }
 
   @Test
