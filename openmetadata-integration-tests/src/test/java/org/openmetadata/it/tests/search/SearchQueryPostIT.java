@@ -67,6 +67,9 @@ class SearchQueryPostIT {
   private static final String SIZE = "size";
   private static final String QUERY_FILTER = "queryFilter";
   private static final String HITS = "hits";
+  private static final String TOTAL = "total";
+  private static final String AGGREGATIONS = "aggregations";
+  private static final String APPLICATION_JSON = "application/json";
 
   @Test
   void postSearchQueryReturnsSearchResponse(final TestNamespace ns) throws Exception {
@@ -83,11 +86,11 @@ class SearchQueryPostIT {
 
     final JsonNode json = MAPPER.readTree(response.body());
     assertTrue(json.has(HITS), "response must carry `hits` (SearchResponse shape)");
-    assertTrue(json.path(HITS).has("total"), "hits.total must be present");
+    assertTrue(json.path(HITS).has(TOTAL), "hits.total must be present");
     // aggregations may be a present-but-null key when includeAggregations defaults; assert the
     // key exists at least, matching the GET contract documented by the search listeners.
     assertTrue(
-        json.has("aggregations") || json.path("aggregations").isNull(),
+        json.has(AGGREGATIONS) || json.path(AGGREGATIONS).isNull(),
         "response must carry `aggregations`");
   }
 
@@ -152,7 +155,7 @@ class SearchQueryPostIT {
     assertTrue(json.has(HITS), "POST must return SearchResponse shape, not 414/400/431");
     // The filter lists non-existent ids, so the matched hit count is 0 — but the response must
     // still be a well-formed SearchResponse, not a 414/400/431.
-    assertEquals(0, json.path(HITS).path("total").path("value").asInt(-1));
+    assertEquals(0, json.path(HITS).path(TOTAL).path("value").asInt(-1));
 
     // The same filter via GET must fail — that's the bug, and the existence of the POST variant
     // is the fix. The endpoint returns 414 (Jetty Request-URI Too Long), or 400/431 depending on
@@ -201,8 +204,8 @@ class SearchQueryPostIT {
     return HttpRequest.newBuilder()
         .uri(URI.create(SdkClients.getServerUrl() + path))
         .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-        .header("Content-Type", "application/json")
-        .header("Accept", "application/json")
+        .header("Content-Type", APPLICATION_JSON)
+        .header("Accept", APPLICATION_JSON)
         .timeout(Duration.ofSeconds(30));
   }
 }
