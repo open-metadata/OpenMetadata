@@ -23,11 +23,9 @@ env:
 jobs:
   browser-tests:
     name: browser tests + coverage
-    runs-on: ubuntu-latest
+    # Playwright 1.57 supports Ubuntu up to 24.04; ubuntu-latest moved past it.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -40,19 +38,16 @@ jobs:
         run: |
           yarn test:ui:coverage --reporter=default --reporter=junit \
             --outputFile.junit=src/test/browser/junit.xml
-      # A fork PR's token cannot comment; its results stay in the job log.
-      - name: Coverage comment
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository
-        continue-on-error: true
-        uses: MishaKav/jest-coverage-comment@v1.0.34
-        with:
-          coverage-summary-path: ${{ env.UI_DIR }}/src/test/browser/coverage/coverage-summary.json
-          junitxml-path: ${{ env.UI_DIR }}/src/test/browser/junit.xml
-          junitxml-title: UI browser tests (Vitest)
-          title: UI browser test coverage
-          summary-title: UI browser tests summary
-          badge-title: Browser coverage
-          unique-id-for-comment: ui-browser-tests
+      # Pull-request jobs are read-only, so results go to the job summary.
+      - name: Summary
+        if: always()
+        working-directory: ${{ env.UI_DIR }}
+        run: |
+          {
+            echo "### UI browser tests"
+            jq -r '.total | "Lines \(.lines.pct)% · Statements \(.statements.pct)% · Branches \(.branches.pct)% · Functions \(.functions.pct)%"' \
+              src/test/browser/coverage/coverage-summary.json 2>/dev/null || echo "No coverage summary."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload failure screenshots
         if: always() && steps.tests.outcome == 'failure'
         uses: actions/upload-artifact@v7
