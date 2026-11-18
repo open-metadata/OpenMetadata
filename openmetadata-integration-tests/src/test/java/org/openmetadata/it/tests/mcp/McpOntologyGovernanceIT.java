@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -13,8 +14,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 
-/** Real MCP dispatch, JWT/RBAC, persistence and edit leases; run with RDF disabled. */
+/**
+ * Real MCP dispatch, JWT/RBAC, persistence and edit leases; run with RDF disabled. Status fixtures
+ * use the bootstrap's existing automatic-workflow exclusion so persistence assertions are stable.
+ */
 @Execution(ExecutionMode.SAME_THREAD)
 class McpOntologyGovernanceIT extends McpTestBase {
   private static final List<String> ROOTS = new ArrayList<>();
@@ -72,13 +77,20 @@ class McpOntologyGovernanceIT extends McpTestBase {
             "roles",
             List.of(role.path("id").asText())));
     editorToken = "Bearer " + tokenFor(name);
-    glossary = create("glossaries", Map.of("name", "mcp_ontology_" + SUFFIX));
+    glossary =
+        create(
+            "glossaries",
+            Map.of(
+                "name",
+                GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX + "__mcp_ontology_" + SUFFIX));
     restrictedGlossary =
         create(
             "glossaries",
             Map.of(
                 "name",
-                "mcp_private_ontology_" + SUFFIX,
+                GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX
+                    + "__mcp_private_ontology_"
+                    + SUFFIX,
                 "tags",
                 List.of(
                     Map.of(
@@ -257,14 +269,28 @@ class McpOntologyGovernanceIT extends McpTestBase {
   }
 
   private static JsonNode term(final JsonNode scope, final String name) throws Exception {
-    return post(
-        "glossaryTerms",
-        Map.of(
-            "name",
-            name + UUID.randomUUID(),
-            "glossary",
-            scope.path("fullyQualifiedName").asText()),
-        JsonNode.class);
+    final Map<String, Object> values =
+        new HashMap<>(
+            Map.of(
+                "name",
+                name + UUID.randomUUID(),
+                "glossary",
+                scope.path("fullyQualifiedName").asText()));
+    if (scope == restrictedGlossary) {
+      values.put(
+          "tags",
+          List.of(
+              Map.of(
+                  "tagFQN",
+                  "PII.Sensitive",
+                  "source",
+                  "Classification",
+                  "labelType",
+                  "Manual",
+                  "state",
+                  "Confirmed")));
+    }
+    return post("glossaryTerms", values, JsonNode.class);
   }
 
   private static JsonNode create(final String collection, final Map<String, Object> body)
@@ -278,7 +304,7 @@ class McpOntologyGovernanceIT extends McpTestBase {
     ROOTS.add(collection + "/" + entity.path("id").asText());
   }
 
-  private static JsonNode acquire(final String id, final String session, final String caller)
+  private JsonNode acquire(final String id, final String session, final String caller)
       throws Exception {
     return call(
         "ontology_change_set_lease",
@@ -291,8 +317,8 @@ class McpOntologyGovernanceIT extends McpTestBase {
         "sessionId", lease.path("sessionId").asText(), "version", lease.path("version").asInt());
   }
 
-  private static JsonNode call(
-      final String tool, final Map<String, Object> values, final String caller) throws Exception {
+  private JsonNode call(final String tool, final Map<String, Object> values, final String caller)
+      throws Exception {
     final JsonNode response =
         executeMcpRequest(McpTestUtils.createToolCallRequest(tool, values), caller);
     assertThat(response.path("result").path("isError").asBoolean())
@@ -302,7 +328,7 @@ class McpOntologyGovernanceIT extends McpTestBase {
     return response.path("result").path("structuredContent");
   }
 
-  private static void assertError(
+  private void assertError(
       final String tool, final Map<String, Object> values, final String caller, final int status)
       throws Exception {
     final JsonNode response =

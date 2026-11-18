@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Contributor implementation for #33459
 - **Guard:** `OntologyToolDiscoveryTest`, `OntologyToolContractTest`, `OntologyToolExecutionTest`,
-  `CollectionRegistryTest`, `McpOntologyGovernanceIT`
+  `OntologyProposalSchemaTest`, `CollectionRegistryTest`, `McpOntologyGovernanceIT`
 - **Related:** #33459; ADR:2026-11-17-mcp-discovers-relationship-types-through-existing-read-tools;
   ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
 
@@ -28,6 +28,13 @@ and normal entity limits, and submission requires a current caller-owned edit le
   nor ownership/provider/source-pack changes. The canonical mapper stamps the caller, starts a
   `DRAFT`, and the normal resource enforces scope, create permissions and limits. Operations are
   retained for review; they are not applied by creation.
+- `describe_entity_type(entityType=ontologyChangeSet)` returns public canonical operation schemas
+  without reading an entity or enabling generic creation. Its optional `schema` selector fetches
+  a specific proposal or payload shape and the complete classpath reference closure. Loading is
+  restricted to nine named roots, bounded to 128 distinct schemas and never fetches external URLs.
+  This keeps detailed payload shapes out of every initial tool list while making the documented
+  workflow executable. The proposal selector describes the canonical REST request; the dedicated
+  MCP create tool accepts only its advertised subset. The normal response budget still applies.
 - `get_ontology_change_set` reads one non-deleted proposal with operations and application result,
   through the canonical draft-scope and entity-view checks. Generic `get_entity_details` refuses
   change sets, including batch/content reads, and directs callers to the dedicated tool.

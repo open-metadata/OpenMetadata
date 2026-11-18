@@ -15,6 +15,7 @@ import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -71,6 +72,10 @@ public class DescribeEntityTypeTool implements McpTool {
   public Map<String, Object> execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params) {
     String requested = CommonUtils.requireNonBlank(params.get("entityType"), "entityType");
+    if (Entity.ONTOLOGY_CHANGE_SET.equals(requested)) {
+      return JsonUtils.getMap(
+          OntologyProposalSchema.describe(McpToolParameters.from(params).optionalString("schema")));
+    }
     EntityCreationSpec type = EntityCreationSpec.resolve(requested);
     Map<String, Object> result = new LinkedHashMap<>();
     result.put("entityType", type.entityType());

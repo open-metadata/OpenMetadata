@@ -588,13 +588,29 @@
         "idempotentHint": true,
         "openWorldHint": false
       },
-      "description": "Return the 'attributes' create_entity accepts for one entityType: each field's name, type, whether it is required, and its allowed values. Call this before create_entity when the type's requirements are not already known, rather than guessing attribute names.",
+      "description": "Return the 'attributes' create_entity accepts for one entityType: each field's name, type, whether it is required, and its allowed values. Call this before create_entity when the type's requirements are not already known, rather than guessing attribute names. For ontologyChangeSet, returns canonical proposal/operation payload schemas and their local references for create_ontology_change_set, without reading entity instances or enabling generic create_entity. Use schema to select the payload; only the dedicated tool's advertised parameters may be sent when creating a proposal.",
       "parameters": {
         "type": "object",
         "properties": {
           "entityType": {
             "type": "string",
             "description": "Registered entity type whose create attributes to return."
+          },
+          "schema": {
+            "type": "string",
+            "enum": [
+              "proposal",
+              "operation",
+              "relationship",
+              "mapping",
+              "term",
+              "glossary",
+              "axiom",
+              "concept",
+              "property"
+            ],
+            "default": "operation",
+            "description": "Only for entityType=ontologyChangeSet: select the canonical schema and its referenced schemas. Fetch a specific payload to keep the response small. schema=proposal is the canonical REST request; create_ontology_change_set accepts only its advertised subset of fields."
           }
         },
         "required": [
@@ -1170,7 +1186,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "description": "Canonical OntologyChangeOperation, not JSON Patch. Use describe_entity_type(entityType=ontologyChangeSet) for payload schemas. Existing targets require baseVersion. Proposal validation and scope authorization are identical to REST.",
+              "description": "Canonical OntologyChangeOperation, not JSON Patch. Fetch canonical payload schemas on demand with describe_entity_type(entityType=ontologyChangeSet, schema=relationship|mapping|term|glossary|axiom|concept|property); the default schema=operation returns the operation contract. Existing targets require baseVersion. Scope authorization and validation use the normal API.",
               "properties": {
                 "id": {
                   "type": "string",
@@ -1197,7 +1213,8 @@
                   ]
                 },
                 "targetId": {
-                  "type": "object"
+                  "type": "string",
+                  "format": "uuid"
                 },
                 "baseVersion": {
                   "description": "Version used for optimistic concurrency. Omitted for create operations.",

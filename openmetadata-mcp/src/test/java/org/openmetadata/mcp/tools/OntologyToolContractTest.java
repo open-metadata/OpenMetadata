@@ -38,6 +38,33 @@ class OntologyToolContractTest {
   private static final String ID = "b0df08ad-5eca-4eb3-aa7d-cbd136f4195a";
   private static final String TARGET = "27e356c5-f7ab-4c13-aede-8fa8d1327255";
 
+  @Test
+  void documentedPayloadDiscoveryWorksWithoutEnablingGenericCreation() {
+    final var outcome =
+        new DefaultToolContext()
+            .callTool(
+                mock(Authorizer.class),
+                null,
+                "describe_entity_type",
+                context(),
+                new McpSchema.CallToolRequest(
+                    "describe_entity_type",
+                    Map.of("entityType", "ontologyChangeSet", "schema", "relationship")));
+    assertThat(outcome.isError()).as(String.valueOf(outcome)).isFalse();
+    final JsonNode description = JsonUtils.valueToTree(outcome.structuredContent());
+    assertThat(description.path("rootSchema").asText()).isEqualTo("type/ontologyRelationship.json");
+    assertThat(description.path("schemas").path("type/ontologyRelationship.json").path("required"))
+        .contains(JsonUtils.valueToTree("fromTerm"), JsonUtils.valueToTree("toTerm"));
+    assertThat(
+            invoke(
+                    "create_entity",
+                    Map.of("entityType", "ontologyChangeSet", "name", "proposal"),
+                    mock(Authorizer.class))
+                .path("statusCode")
+                .asInt())
+        .isEqualTo(400);
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {
