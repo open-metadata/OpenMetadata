@@ -653,6 +653,17 @@ describe('getTrimmedHtmlContent', () => {
     expect(getTrimmedHtmlContent(html, 15)).toBe('<p>First paragraph...</p>');
   });
 
+  it('should count spaces between inline formatted words', () => {
+    const html = `<p>${Array(80).fill('<strong>word</strong>').join(' ')}</p>`;
+    const trimmed = new DOMParser().parseFromString(
+      getTrimmedHtmlContent(html, 350),
+      'text/html'
+    ).body.textContent;
+
+    expect(trimmed).toMatch(/word\.\.\.$/);
+    expect(trimmed?.length).toBeLessThanOrEqual(353);
+  });
+
   it('should drop every block after the cut', () => {
     const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
 

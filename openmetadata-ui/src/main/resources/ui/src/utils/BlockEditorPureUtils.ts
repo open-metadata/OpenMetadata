@@ -255,7 +255,7 @@ const cutTextNode = (node: Text, remaining: number): Node => {
   }
 
   if (node.data.length === remaining) {
-    node.data = `${node.data}...`;
+    node.data = `${node.data.trimEnd()}...`;
 
     return node;
   }
@@ -274,7 +274,8 @@ const findPreviewCut = (body: HTMLElement, limit: number) => {
     body,
     NodeFilter.SHOW_TEXT,
     (node) =>
-      node.textContent?.trim()
+      node.textContent?.trim() ||
+      node.parentElement?.closest(PREVIEW_BLOCK_SELECTOR)
         ? NodeFilter.FILTER_ACCEPT
         : NodeFilter.FILTER_SKIP
   );
