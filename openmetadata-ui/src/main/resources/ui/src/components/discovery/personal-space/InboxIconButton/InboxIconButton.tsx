@@ -60,9 +60,7 @@ const InboxIconButton: React.FC = () => {
 
   const isActive =
     pathname === PERSONAL_SPACE_ROUTES.INBOX ||
-    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.INBOX}/`) ||
-    pathname === PERSONAL_SPACE_ROUTES.MY_DATA ||
-    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.MY_DATA}/`);
+    pathname.startsWith(`${PERSONAL_SPACE_ROUTES.INBOX}/`);
 
   return (
     <Tooltip arrow placement="right" title={t('label.inbox')}>
