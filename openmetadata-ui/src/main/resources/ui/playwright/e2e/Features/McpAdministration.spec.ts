@@ -161,6 +161,7 @@ test(
         })
       ).not.toBeChecked();
     } finally {
+      // No endpoint removes the stored MCP setting, so a 404 start leaves the schema defaults stored.
       const restored = await apiContext.put('/api/v1/system/mcp/config', {
         data: original,
       });
