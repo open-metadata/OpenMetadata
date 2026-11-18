@@ -65,6 +65,7 @@ test(
       });
       await expect(serverSwitch).toBeChecked();
       await serverSwitch.press('Space');
+      await expect(serverSwitch).not.toBeChecked();
       await saveConfiguration(page);
       expect((await apiContext.post('/mcp', { data: {} })).status()).toBe(404);
       await page.reload();
@@ -142,12 +143,13 @@ test(
         .getByRole('tab', { name: 'Configuration', exact: true })
         .click();
       await serverSwitch.press('Space');
-      await page
-        .getByRole('switch', {
-          name: 'Allow Dynamic Client Registration',
-          exact: true,
-        })
-        .press('Space');
+      await expect(serverSwitch).toBeChecked();
+      const registrationSwitch = page.getByRole('switch', {
+        name: 'Allow Dynamic Client Registration',
+        exact: true,
+      });
+      await registrationSwitch.press('Space');
+      await expect(registrationSwitch).not.toBeChecked();
       await saveConfiguration(page);
       expect(
         (await apiContext.post('/mcp/register', { data: {} })).status()
