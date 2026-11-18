@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -81,6 +82,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.MemoryExtractionAccess;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -89,6 +91,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.ListCursors;
 import org.openmetadata.service.util.RestUtil;
 
 @Tag(
@@ -212,8 +215,12 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     if (updatedBy != null && !updatedBy.isBlank()) {
       filter.addQueryParam("updatedBy", updatedBy);
     }
+    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     if (orderBy == null || orderBy.isBlank()) {
       return visibleOnly(
+          securityContext,
+          filter,
+          fields,
           super.listInternal(
               uriInfo,
               securityContext,
@@ -221,30 +228,79 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
               filter,
               limit,
               before,
-              after),
-          securityContext);
+              after));
     }
 
     RestUtil.validateCursors(before, after);
-    Fields fields = getFields(ContextFileVisibility.guardFields(fieldsParam));
     OperationContext operationContext = new OperationContext(entityType, getViewOperations(fields));
     ResourceContextInterface resourceContext = filter.getResourceContext(entityType);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     ResultList<ContextFile> resultList =
         repository.listByUpdatedAt(
-            uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
-    return visibleOnly(addHref(uriInfo, resultList), securityContext);
+            uriInfo,
+            fields,
+            filter,
+            limit,
+            ListCursors.unseal(before),
+            ListCursors.unseal(after),
+            resolveOrderBy(orderBy));
+    return visibleOnly(
+        securityContext,
+        filter,
+        fields,
+        addHref(uriInfo, readableOnly(securityContext, fields, resultList)));
+  }
+
+  /**
+   * Leaves out the rows a rule refuses, as an unordered listing does
+   * (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read). The page is not refilled;
+   * its cursors are sealed, since one may point at a row left out.
+   */
+  private ResultList<ContextFile> readableOnly(
+      SecurityContext securityContext, Fields fields, ResultList<ContextFile> page) {
+    if (rowsMayDiffer(securityContext, fields)) {
+      page.setData(rowAuthorization(fields).readable().apply(securityContext, page.getData()));
+      page.getPaging()
+          .withBefore(ListCursors.seal(page.getPaging().getBefore()))
+          .withAfter(ListCursors.seal(page.getPaging().getAfter()));
+    }
+    return page;
   }
 
   /**
    * Drops the files this caller may not see. A page is filtered after it is read, so it can come
    * back shorter than {@code limit} — the paging cursors still walk every file, which is what keeps
-   * the next page from skipping any.
+   * the next page from skipping any. The total counts only files the caller may see, as Context
+   * Center memories do (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
   private ResultList<ContextFile> visibleOnly(
-      ResultList<ContextFile> files, SecurityContext securityContext) {
-    return ContextFileVisibility.filterByVisibility(files, securityContext);
+      SecurityContext securityContext,
+      ListFilter filter,
+      Fields fields,
+      ResultList<ContextFile> files) {
+    ResultList<ContextFile> visible =
+        ContextFileVisibility.filterByVisibility(files, securityContext);
+    Paging paging = visible.getPaging();
+    if (paging != null
+        && paging.getTotal() != null
+        && !ContextFileVisibility.seesEveryFile(securityContext)) {
+      paging.setTotal(
+          ContextMemoryResource.listedTotal(
+              paging.getTotal(),
+              visible.getData().size(),
+              () -> visibleCount(securityContext, filter, fields)));
+    }
+    return visible;
+  }
+
+  /**
+   * How many files under {@code filter} the caller may see, passing the same row and sharing checks
+   * as a page listed with {@code fields}: a field that needs ViewAll makes the count need it too.
+   */
+  private int visibleCount(SecurityContext securityContext, ListFilter filter, Fields fields) {
+    return repository.countVisible(
+        filter, securityContext, viewPermissionFilter, rowAuthorization(fields).operations());
   }
 
   @GET

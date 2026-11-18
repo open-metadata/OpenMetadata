@@ -1026,7 +1026,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
           className={classNames(
             'tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
             scope === 'global'
-              ? 'tw:border-0'
+              ? 'tw:rounded-lg tw:border-0'
               : 'tw:rounded-lg tw:border tw:border-utility-gray-blue-100'
           )}>
           {renderGraphSurfaceSection()}

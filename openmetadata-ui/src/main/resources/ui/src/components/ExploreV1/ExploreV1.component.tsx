@@ -32,9 +32,9 @@ import {
   Typography as CoreTypography,
 } from '@openmetadata/ui-core-components';
 import {
+  AdvancedSearch,
   ChevronDown,
   Download01,
-  FilterFunnel01,
   InfoCircle,
   SortAscending,
   SortDescending,
@@ -1337,7 +1337,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                   </Dropdown.Item>
 
                   <Dropdown.Item
-                    icon={FilterFunnel01}
+                    icon={AdvancedSearch}
                     label={t('label.advanced-search')}
                     onPress={() => toggleModal(true)}
                   />

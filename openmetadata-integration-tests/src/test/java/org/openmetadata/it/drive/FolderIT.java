@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.it.util.UriTestUtils.encodeURIComponent;
 
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
@@ -381,6 +382,29 @@ class FolderIT {
     ContextFile patched = adminRest.getById(FILE_PATH, file.getId(), "folder", ContextFile.class);
     assertEquals(file.getFullyQualifiedName(), patched.getFullyQualifiedName());
     assertEquals(folder.getId(), patched.getFolder().getId());
+  }
+
+  /** A PATCH loads a folder without its parent, and must still keep the parent in its name. */
+  @Test
+  void testPatchingANestedFolderKeepsItsFullyQualifiedName(TestNamespace ns) throws Exception {
+    RestClient rest = RestClient.admin();
+    Folder root = createFolder(rest, new CreateFolder().withName(ns.prefix("patch-root")));
+    Folder child =
+        createFolder(
+            rest,
+            new CreateFolder()
+                .withName(ns.prefix("patch-child"))
+                .withParent(root.getFullyQualifiedName()));
+    assertTrue(child.getFullyQualifiedName().startsWith(root.getFullyQualifiedName() + "."));
+    String original = JsonUtils.pojoToJson(child);
+    child.setDescription("Edited after creation");
+
+    Folder patched = patchFolder(rest, child.getId(), original, child);
+
+    assertEquals(child.getFullyQualifiedName(), patched.getFullyQualifiedName());
+    Folder byName =
+        rest.get(PATH + "/name/" + encodeURIComponent(child.getFullyQualifiedName()), Folder.class);
+    assertEquals(child.getId(), byName.getId());
   }
 
   private static CreateContextFile fileIn(Folder folder, String name, User owner) {
