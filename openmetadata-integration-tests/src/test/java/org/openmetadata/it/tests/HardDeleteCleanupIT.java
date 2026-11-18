@@ -183,7 +183,7 @@ public class HardDeleteCleanupIT {
     assertEquals(
         List.of(PERSONAL_TAG),
         tagFqns(admin.pipelines().get(pipeline.getId().toString(), "tags").getTags()));
-    assertHasNoTags(createTable(ns, sharedName, List.of()));
+    assertHasNoTagsOfItsOwn(createTable(ns, sharedName, List.of()));
   }
 
   /** A metric's FQN is its bare name, so "service.db" hashes like the service's database. */
@@ -207,7 +207,7 @@ public class HardDeleteCleanupIT {
       assertEquals(
           List.of(PERSONAL_TAG),
           tagFqns(admin.metrics().get(namedLikeTheDatabase.getId().toString(), "tags").getTags()));
-      assertHasNoTags(createTable(ns, serviceName, List.of()));
+      assertHasNoTagsOfItsOwn(createTable(ns, serviceName, List.of()));
     } finally {
       admin.metrics().delete(namedLikeTheDatabase.getId().toString(), HARD_DELETE);
     }
@@ -261,7 +261,7 @@ public class HardDeleteCleanupIT {
     Chart recreated = createChartNamedModel(service, List.of());
     assertEquals(
         List.of(),
-        tagFqns(admin.charts().get(recreated.getId().toString(), "tags").getTags()),
+        ownTagFqns(admin.charts().get(recreated.getId().toString(), "tags").getTags()),
         "A chart re-created at the deleted FQN must not inherit the deleted chart's tags");
   }
 
@@ -441,14 +441,14 @@ public class HardDeleteCleanupIT {
     return gone;
   }
 
-  private static void assertHasNoTags(Table recreated) {
+  private static void assertHasNoTagsOfItsOwn(Table recreated) {
     Table reloaded =
         SdkClients.adminClient().tables().get(recreated.getId().toString(), "tags,columns");
     assertEquals(
         List.of(),
-        tagFqns(reloaded.getTags()),
+        ownTagFqns(reloaded.getTags()),
         "A table re-created at a deleted FQN must not inherit the deleted table's tags");
-    assertEquals(List.of(), tagFqns(reloaded.getColumns().get(0).getTags()));
+    assertEquals(List.of(), ownTagFqns(reloaded.getColumns().get(0).getTags()));
   }
 
   private static void assertKeepsItsTags(Table table) {
@@ -490,5 +490,14 @@ public class HardDeleteCleanupIT {
 
   private static List<String> tagFqns(List<TagLabel> tags) {
     return tags.stream().map(TagLabel::getTagFQN).sorted().toList();
+  }
+
+  /**
+   * Leaves out DERIVED labels, which a read propagates from the parent: a database that shares its
+   * FQN with a metric shows the metric's tags, and passes them down to its tables.
+   */
+  private static List<String> ownTagFqns(List<TagLabel> tags) {
+    return tagFqns(
+        tags.stream().filter(tag -> tag.getLabelType() != TagLabel.LabelType.DERIVED).toList());
   }
 }
