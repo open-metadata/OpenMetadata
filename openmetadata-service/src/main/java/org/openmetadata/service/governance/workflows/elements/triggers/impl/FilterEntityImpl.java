@@ -3,6 +3,7 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.elements.triggers.EventBasedEntityTrigger.PASSES_FILTER_VARIABLE;
@@ -16,6 +17,7 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -92,7 +94,7 @@ public class FilterEntityImpl implements JavaDelegate {
       passesFilter =
           passesExcludedFilter(
               entityLinkStr,
-              varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+              TriggeringEvent.from(varHandler),
               excludedFilter,
               includeFields,
               filterLogic);
@@ -154,20 +156,18 @@ public class FilterEntityImpl implements JavaDelegate {
 
   private boolean passesExcludedFilter(
       String entityLinkStr,
-      Object triggeringVersion,
+      TriggeringEvent triggeringEvent,
       List<String> excludedFilter,
       List<String> includeFields,
       String filterLogic) {
     MessageParser.EntityLink entityLink = MessageParser.EntityLink.parse(entityLinkStr);
     String entityType = entityLink.getEntityType();
     EntityInterface<?> entity = Entity.getEntity(entityLink, "*", Include.ALL);
-
-    // A null change description means a Create event.
-    ChangeDescription change = TriggeringChange.of(entity, triggeringVersion);
+    ChangeDescription change = TriggeringChange.of(entity, triggeringEvent.version());
 
     boolean fieldBasedFilter;
     if (change == null) {
-      fieldBasedFilter = true;
+      fieldBasedFilter = triggeringEvent.mayCarryNoChange();
     } else {
       List<FieldChange> changedFields = getAllChangedFields(change);
       fieldBasedFilter =
@@ -176,6 +176,24 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     return fieldBasedFilter && !TriggerEntityFilter.excludes(filterLogic, entity);
+  }
+
+  /**
+   * The version the triggering event produced and the event's type. Only a create carries no change:
+   * an update that leaves none (an edit undone within its session reverts the entity to a version
+   * without one, and a follow never stores one) has nothing for include/exclude to judge. A run
+   * started before the event type was recorded keeps treating a missing change as a create.
+   */
+  private record TriggeringEvent(Object version, Object type) {
+    static TriggeringEvent from(WorkflowVariableHandler varHandler) {
+      return new TriggeringEvent(
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE),
+          varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE));
+    }
+
+    boolean mayCarryNoChange() {
+      return type == null || EventType.ENTITY_CREATED.value().equals(type);
+    }
   }
 
   private List<FieldChange> getAllChangedFields(ChangeDescription changeDescription) {

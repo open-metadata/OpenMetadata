@@ -41,7 +41,7 @@ class CreateTaskLifecycleMoveTest {
                 stageChangedDomain(),
                 Map.of("proposedChanges", Map.of("entityStatus", Map.of())),
                 IN_REVIEW_TO_APPROVED,
-                null));
+                CreateTask.PreviewChanges.NONE));
 
     assertFalse(payload.containsKey("proposedChanges"));
     assertEquals(
@@ -57,7 +57,7 @@ class CreateTaskLifecycleMoveTest {
                 changedDomain("description", "Old", "New"),
                 null,
                 null,
-                null));
+                CreateTask.PreviewChanges.NONE));
 
     assertEquals(
         List.of("description"), List.copyOf(((Map<?, ?>) payload.get("proposedChanges")).keySet()));

@@ -87,6 +87,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultCsvExporter;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.TestCaseSearchMasker;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -275,6 +276,64 @@ public class SearchResource {
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
 
+    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+  }
+
+  @POST
+  @Path("/query")
+  @Consumes(MediaType.APPLICATION_JSON)
+  @Produces(MediaType.APPLICATION_JSON)
+  @Operation(
+      operationId = "searchEntitiesWithQueryPost",
+      summary = "Search entities using a request body",
+      description =
+          "Same search as GET /v1/search/query but accepting inputs in the request body, so "
+              + "large query filters (e.g. metrics that filter by hundreds of linked asset ids) do "
+              + "not blow past the request-line size limit. The domain scope and access filters "
+              + "are derived from the caller's security context and override any client-supplied "
+              + "values, matching the GET contract.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "search response",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchResponse.class)))
+      })
+  public Response searchPost(
+      @Context final SecurityContext securityContext,
+      @RequestBody(description = "Search request body", required = true) @Valid
+          final SearchRequest body)
+      throws IOException {
+    // The GET route validates pagination with @Min on its params; the body has no such annotations.
+    requireNonNegative("from", body.getFrom());
+    requireNonNegative("size", body.getSize());
+    final SubjectContext subjectContext = getSubjectContext(securityContext);
+    final boolean isAdmin = subjectContext.isAdmin();
+    // Authorization-relevant fields never come from the body: the domain scope is the caller's,
+    // and the index resolves to its alias exactly as the GET route does.
+    final SearchRequest request =
+        new SearchRequest()
+            .withQuery(nullOrEmpty(body.getQuery()) ? "*" : body.getQuery())
+            .withSize(body.getSize())
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(body.getIndex()))
+            .withFrom(body.getFrom())
+            .withQueryFilter(body.getQueryFilter())
+            .withPostFilter(body.getPostFilter())
+            .withFetchSource(body.getFetchSource())
+            .withTrackTotalHits(body.getTrackTotalHits())
+            .withSortFieldParam(body.getSortFieldParam())
+            .withDeleted(body.getDeleted())
+            .withSortOrder(body.getSortOrder())
+            .withIncludeSourceFields(body.getIncludeSourceFields())
+            .withExcludeSourceFields(body.getExcludeSourceFields())
+            .withIsHierarchy(body.getIsHierarchy())
+            .withDomains(isAdmin ? new ArrayList<>() : subjectContext.getUserDomains())
+            .withApplyDomainFilter(!isAdmin && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withSearchAfter(body.getSearchAfter())
+            .withExplain(body.getExplain())
+            .withIncludeAggregations(body.getIncludeAggregations());
     return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
   }
 
@@ -516,6 +575,19 @@ public class SearchResource {
           @QueryParam("from")
           int from) {
     SubjectContext subjectContext = getSubjectContext(securityContext);
+    // The job searches later, so a search it would refuse is refused now rather than as a failed
+    // job.
+    PrivateSearchFields.refuseReferences(
+        subjectContext,
+        buildExportSearchRequest(
+            subjectContext,
+            query,
+            index,
+            deleted,
+            queryFilter,
+            postFilter,
+            sortFieldParam,
+            sortOrder));
     CsvAsyncJobArgs.SearchExportArgs searchExport =
         new CsvAsyncJobArgs.SearchExportArgs()
             .setQuery(query)

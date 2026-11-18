@@ -138,7 +138,7 @@ export interface Source {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -434,7 +434,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -619,7 +619,8 @@ export interface Connection {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -1225,10 +1226,16 @@ export interface Connection {
      */
     spaceUUID?: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
@@ -1241,6 +1248,16 @@ export interface Connection {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      *
@@ -1412,7 +1429,9 @@ export interface Connection {
      */
     s3StagingDir?: string;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
     workgroup?: string;
     /**
@@ -1761,6 +1780,10 @@ export interface Connection {
     salesforceApiVersion?: string;
     /**
      * Domain of Salesforce instance
+     *
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -2043,7 +2066,7 @@ export interface Connection {
      *
      * Confluent Redpanda Consumer Config
      */
-    consumerConfig?: { [key: string]: any };
+    consumerConfig?: ConsumerConfig;
     /**
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
@@ -2067,7 +2090,7 @@ export interface Connection {
      *
      * Confluent Redpanda Schema Registry Config.
      */
-    schemaRegistryConfig?: { [key: string]: any };
+    schemaRegistryConfig?: SchemaRegistryConfig;
     /**
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
@@ -2356,7 +2379,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     /**
      * Fivetran API Secret.
      */
@@ -2889,6 +2912,9 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -3006,6 +3032,9 @@ export interface AuthenticationType {
     /**
      * Username to access the service.
      *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
+     *
      * Username to authenticate with SAP S/4HANA.
      *
      * Username for authenticating with Dremio Software. This user should have appropriate
@@ -3029,16 +3058,26 @@ export interface AuthenticationType {
      */
     personalAccessTokenSecret?: string;
     /**
-     * Authentication type identifier.
-     */
-    authType?: AuthType;
-    /**
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      *
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      */
     clientId?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
     /**
      * OAuth 2.0 client secret.
      *
@@ -3278,9 +3317,9 @@ export interface AWSCredentials {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
     /**
@@ -3774,9 +3813,9 @@ export enum CloudProvider {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface DataLakeConfigurationSource {
     securityConfig?: DbtSecurityConfigClass;
@@ -3809,9 +3848,9 @@ export interface DataLakeConfigurationSource {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  *
  * GCP credentials configs.
  *
@@ -4077,7 +4116,7 @@ export interface ConnectionClass {
     /**
      * Service Type
      */
-    type?: ConnectionType;
+    type?: S3Type;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -4356,7 +4395,7 @@ export enum SSLMode {
  *
  * S3 service type
  */
-export enum ConnectionType {
+export enum S3Type {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -4386,6 +4425,52 @@ export enum VerifySSL {
 }
 
 /**
+ * Confluent Kafka Consumer Config. From
+ * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+ *
+ * Confluent Redpanda Consumer Config
+ */
+export interface ConsumerConfig {
+    /**
+     * Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.passphrase"?: string;
+    /**
+     * PEM private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.pem"?: string;
+    /**
+     * Client secret for the OAUTHBEARER (OIDC) token request.
+     */
+    "sasl.oauthbearer.client.secret"?: string;
+    /**
+     * SASL/OAUTHBEARER configuration string, which can carry a client secret.
+     */
+    "sasl.oauthbearer.config"?: string;
+    /**
+     * SASL password.
+     */
+    "sasl.password"?: string;
+    /**
+     * Passphrase of the client's private key.
+     */
+    "ssl.key.password"?: string;
+    /**
+     * Client's private key as a PEM string.
+     */
+    "ssl.key.pem"?: string;
+    /**
+     * Password of the client keystore (PKCS#12).
+     */
+    "ssl.keystore.password"?: string;
+    /**
+     * Password of the truststore.
+     */
+    "ssl.truststore.password"?: string;
+    [property: string]: any;
+}
+
+/**
  * GCP credentials configs.
  *
  * GCP credentials to use. If not provided, Application Default Credentials will be used.
@@ -4400,9 +4485,9 @@ export enum VerifySSL {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface PurpleGCPCredentials {
     /**
@@ -4883,9 +4968,11 @@ export interface OracleConnectionType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -4906,14 +4993,25 @@ export interface S3Connection {
      * Service Type
      */
     type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
 export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 
@@ -4998,6 +5096,28 @@ export interface PolicyAgentConfig {
 export enum RunMode {
     Batch = "batch",
     Stream = "stream",
+}
+
+/**
+ * Confluent Kafka Schema Registry Config. From
+ * https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
+ *
+ * Confluent Redpanda Schema Registry Config.
+ */
+export interface SchemaRegistryConfig {
+    /**
+     * Schema Registry credentials in the form of username:password.
+     */
+    "basic.auth.user.info"?: string;
+    /**
+     * Client secret for the Schema Registry OAuth token request.
+     */
+    "bearer.auth.client.secret"?: string;
+    /**
+     * Static bearer token for the Schema Registry.
+     */
+    "bearer.auth.token"?: string;
+    [property: string]: any;
 }
 
 /**
@@ -6347,6 +6467,11 @@ export interface CollateAIAppConfig {
      */
     resources?: Resource;
     /**
+     * App-level token (xapp-*) required for Socket Mode. Generate from Slack app settings under
+     * App-Level Tokens with connections:write scope.
+     */
+    appToken?: string;
+    /**
      * Bot Token
      */
     botToken?: string;
@@ -6358,6 +6483,13 @@ export interface CollateAIAppConfig {
      * Client Secret of the Application.
      */
     clientSecret?: string;
+    /**
+     * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+     * for production) receives events on a public HTTP endpoint and scales horizontally behind
+     * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+     * deployments that cannot expose a public endpoint (on-prem/firewalled).
+     */
+    connectionMode?: ConnectionMode;
     /**
      * Signing Secret of the Application. Confirm that each request comes from Slack by
      * verifying its unique signature.
@@ -7395,6 +7527,17 @@ export enum TranslogDurability {
 }
 
 /**
+ * Connection mode for receiving Slack events. Webhook (recommended, and Slack's guidance
+ * for production) receives events on a public HTTP endpoint and scales horizontally behind
+ * a load balancer. SocketMode uses an outbound WebSocket connection for single-instance
+ * deployments that cannot expose a public endpoint (on-prem/firewalled).
+ */
+export enum ConnectionMode {
+    SocketMode = "SocketMode",
+    Webhook = "Webhook",
+}
+
+/**
  * Settings applied to staged indexes before alias swap (live serving values). Tune for read
  * freshness and HA. Defaults: refresh=1s (near-real-time, required if users/agents
  * read-after-write), replicas=1, shards=1, durability=request.
@@ -7693,7 +7836,15 @@ export interface DBTConfigurationSource {
      */
     dbtCloudAuthToken?: string;
     /**
-     * dbt cloud job id.
+     * When no job IDs are set, extract the dbt run artifacts from the latest completed run of
+     * every job of the project (or of the account, when no project is set) instead of only the
+     * most recent run. CI jobs are skipped.
+     */
+    dbtCloudIngestAllJobs?: boolean;
+    /**
+     * Comma-separated IDs of the dbt cloud jobs to extract the dbt run artifacts from, using
+     * the latest completed run of each job. If left empty, the artifacts of the most recent
+     * completed run across all jobs are used.
      */
     dbtCloudJobId?: string;
     /**

@@ -163,6 +163,7 @@ const CustomPropertiesDetailPage: React.FC<CustomPropertiesDetailPageProps> = ({
                   />
                 </div>
               }
+              isLoading={false}
               variant="muted"
               onDelete={openDeleteConfirm}
               onEdit={onEditProperty}

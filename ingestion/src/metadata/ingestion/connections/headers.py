@@ -21,6 +21,9 @@ from importlib.metadata import version as _pkg_version
 from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import (
     AzureSQLConnection,
 )
+from metadata.generated.schema.entity.services.connections.database.microsoftFabricConnection import (
+    MicrosoftFabricConnection,
+)
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection,
 )
@@ -146,6 +149,15 @@ def _(_, conn, cursor, statement, parameters, context, executemany):  # pylint: 
 def _(_, conn, cursor, statement, parameters, context, executemany):  # pylint: disable=unused-argument
     """
     Azure SQL shares SQL Server's Query Store behaviour; see the Mssql override.
+    """
+    return inject_inline_query_header(statement), parameters
+
+
+@inject_query_header_by_conn.register(MicrosoftFabricConnection)
+def _(_, conn, cursor, statement, parameters, context, executemany):  # pylint: disable=unused-argument
+    """
+    Fabric's query history (queryinsights.exec_requests_history) also keeps a statement without
+    its leading comments; see the Mssql override.
     """
     return inject_inline_query_header(statement), parameters
 

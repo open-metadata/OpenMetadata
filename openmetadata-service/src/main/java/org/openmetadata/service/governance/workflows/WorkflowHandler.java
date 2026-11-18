@@ -25,6 +25,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
@@ -60,8 +61,8 @@ import org.flowable.engine.repository.Deployment;
 import org.flowable.engine.repository.ProcessDefinition;
 import org.flowable.engine.repository.ProcessDefinitionQuery;
 import org.flowable.engine.runtime.Execution;
+import org.flowable.engine.runtime.NativeProcessInstanceQuery;
 import org.flowable.engine.runtime.ProcessInstance;
-import org.flowable.engine.runtime.ProcessInstanceQuery;
 import org.flowable.job.api.Job;
 import org.flowable.task.api.Task;
 import org.openmetadata.schema.configuration.WorkflowSettings;
@@ -135,9 +136,8 @@ public class WorkflowHandler {
   // lets the loop stop cleanly the moment the backlog for THIS key is fully drained.
   private static final int CLEANUP_BATCH_SIZE = 100;
 
-  // Max entity ids per Flowable OR-chained query when cancelling running instances during a
-  // bulk hard-delete. Keeps the generated statement inside driver parameter limits (Postgres
-  // caps at 32767 bind params; MySQL is lower under some JDBC configs).
+  // Max entity ids per native lookup when cancelling running instances during a bulk hard-delete.
+  // Keeps the IN list inside driver parameter limits (Postgres caps at 32767 bind params).
   private static final int CANCEL_BATCH_SIZE = 100;
 
   /**
@@ -1014,6 +1014,12 @@ public class WorkflowHandler {
     return activityId;
   }
 
+  /** The workflow node an OM task belongs to, or null when no runtime task waits on it. */
+  public String getTaskNode(UUID customTaskId) {
+    Task task = getTaskFromCustomTaskId(customTaskId);
+    return task == null ? null : getParentActivityId(task.getExecutionId());
+  }
+
   private Task getTaskFromCustomTaskId(UUID customTaskId) {
     TaskService taskService = processEngine.getTaskService();
     List<Task> tasks =
@@ -1794,10 +1800,13 @@ public class WorkflowHandler {
   }
 
   /**
-   * Batch variant of {@link #cancelInstancesForEntity}. Uses Flowable's OR builder in bounded
-   * sub-chunks so a large subtree hard-delete does not fan out into thousands of
-   * variableValueEquals queries. The count() gate short-circuits when the engine has zero
-   * running instances, which is the common case on tenants that don't use governance workflows.
+   * Batch variant of {@link #cancelInstancesForEntity}. The count() gate short-circuits when the
+   * engine has zero running instances, which is the common case on tenants that don't use
+   * governance workflows.
+   *
+   * <p>One native {@code IN} lookup per chunk: Flowable's {@code or().variableValueEquals(...)}
+   * emits one EXISTS per id, which Postgres plans as a hashed subplan over all of ACT_RU_VARIABLE,
+   * so at ~10k running instances a 100-id chunk took 15-18s on Postgres and MySQL alike.
    */
   public void cancelInstancesForEntities(Collection<UUID> entityIds, String reason) {
     if (entityIds == null || entityIds.isEmpty()) {
@@ -1816,11 +1825,8 @@ public class WorkflowHandler {
     }
     for (int i = 0; i < ids.size(); i += CANCEL_BATCH_SIZE) {
       List<UUID> subChunk = ids.subList(i, Math.min(i + CANCEL_BATCH_SIZE, ids.size()));
-      ProcessInstanceQuery query = runtimeService.createProcessInstanceQuery().or();
-      for (UUID id : subChunk) {
-        query = query.variableValueEquals(namespacedVar, id.toString());
-      }
-      List<ProcessInstance> instances = query.endOr().list();
+      List<ProcessInstance> instances =
+          findProcessInstancesByVariable(runtimeService, namespacedVar, subChunk);
       for (ProcessInstance pi : instances) {
         endWorkflowInstanceForBusinessKey(
             pi.getBusinessKey(), WorkflowInstance.WorkflowStatus.CANCELLED, reason);
@@ -1831,6 +1837,25 @@ public class WorkflowHandler {
         }
       }
     }
+  }
+
+  private static List<ProcessInstance> findProcessInstancesByVariable(
+      RuntimeService runtimeService, String variableName, List<UUID> values) {
+    StringJoiner placeholders = new StringJoiner(", ");
+    NativeProcessInstanceQuery query = runtimeService.createNativeProcessInstanceQuery();
+    for (int i = 0; i < values.size(); i++) {
+      placeholders.add("#{v" + i + "}");
+      query.parameter("v" + i, values.get(i).toString());
+    }
+    return query
+        .sql(
+            "SELECT RES.* FROM ACT_RU_EXECUTION RES WHERE RES.ID_ = RES.PROC_INST_ID_"
+                + " AND RES.ID_ IN (SELECT V.PROC_INST_ID_ FROM ACT_RU_VARIABLE V"
+                + " WHERE V.NAME_ = #{name} AND V.TEXT_ IN ("
+                + placeholders
+                + "))")
+        .parameter("name", variableName)
+        .list();
   }
 
   /**
@@ -2023,6 +2048,21 @@ public class WorkflowHandler {
   public void updateBusinessKey(String processInstanceId, UUID workflowInstanceBusinessKey) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     runtimeService.updateBusinessKey(processInstanceId, workflowInstanceBusinessKey.toString());
+  }
+
+  /** The business key of a running process instance, which an OM workflow run uses as its id. */
+  public String getProcessBusinessKey(String processInstanceId) {
+    String businessKey = null;
+    if (processInstanceId != null && !processInstanceId.isBlank()) {
+      ProcessInstance processInstance =
+          processEngine
+              .getRuntimeService()
+              .createProcessInstanceQuery()
+              .processInstanceId(processInstanceId)
+              .singleResult();
+      businessKey = processInstance != null ? processInstance.getBusinessKey() : null;
+    }
+    return businessKey;
   }
 
   public boolean hasProcessInstanceFinished(String processInstanceId) {

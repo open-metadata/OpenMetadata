@@ -2967,6 +2967,24 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
+  void patch_containerParent_cascadesFqnBelowAQuotedName_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "quoteA");
+    Container parentB = createUnderService(ns, service, "quoteB");
+    // A dot makes the FQN segment quoted, and the JSON text escapes those quotes
+    Container child = createUnderParent(ns, service, parentA, "it's.quoted\\");
+    Container grandchild = createUnderParent(ns, service, child, "quoteGrandchild");
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    Container refetchedGrand = getEntity(grandchild.getId().toString());
+    assertEquals(
+        moved.getFullyQualifiedName() + "." + grandchild.getName(),
+        refetchedGrand.getFullyQualifiedName());
+  }
+
+  @Test
   void patch_containerParent_cascadesToColumnFqns_200(TestNamespace ns) {
     StorageService service = StorageServiceTestFactory.createS3(ns);
     Container parentA = createUnderService(ns, service, "colA");
@@ -3444,5 +3462,28 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
     CreateContainer request = new CreateContainer();
     request.setName(ns.prefix("invalid_container"));
     return request;
+  }
+
+  @Test
+  void patch_rejectedRenameKeepsDataModelColumnFqns(TestNamespace ns) {
+    ContainerDataModel dataModel =
+        new ContainerDataModel()
+            .withIsPartitioned(false)
+            .withColumns(
+                List.of(
+                    new Column().withName("id").withDataType(ColumnDataType.INT),
+                    new Column().withName("name").withDataType(ColumnDataType.STRING)));
+    Container created = createEntity(createMinimalRequest(ns).withDataModel(dataModel));
+    Container patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    Container updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> columnFqns =
+        updated.getDataModel().getColumns().stream().map(Column::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, columnFqns.size());
+    assertTrue(columnFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), columnFqns::toString);
   }
 }

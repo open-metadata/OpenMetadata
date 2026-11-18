@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { Edit01, Plus } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -23,10 +25,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import { isPropertyValueEmpty } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyCard.utils';
 import { CustomPropertyEditModal } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyEditModal';
 import { getPropertyRenderer } from '../../common/CustomPropertyTable/CustomPropertyCard/CustomPropertyRenderers';
-import {
-  WidgetEditButton,
-  WidgetPlusButton,
-} from '../../common/WidgetActionButton/WidgetActionButton';
 
 export interface ColumnCustomPropertyCellProps {
   property: CustomProperty;
@@ -83,11 +81,12 @@ export const ColumnCustomPropertyCell: FC<ColumnCustomPropertyCellProps> = ({
     }
 
     return hasEditPermissions ? (
-      <WidgetPlusButton
-        compact
+      <ButtonUtility
         className="tw:mt-2"
         data-testid="add-icon"
-        title={t('label.add-entity', { entity: getEntityName(property) })}
+        icon={Plus}
+        size="xs"
+        tooltip={t('label.add-entity', { entity: getEntityName(property) })}
         onClick={() => setIsEditing(true)}
       />
     ) : (
@@ -105,11 +104,12 @@ export const ColumnCustomPropertyCell: FC<ColumnCustomPropertyCellProps> = ({
         {renderValue()}
       </div>
       {hasEditPermissions && !isEmptyValue && (
-        <WidgetEditButton
-          compact
+        <ButtonUtility
           className="hover-cell-icon"
           data-testid="edit-icon"
-          title={editTitle}
+          icon={Edit01}
+          size="xs"
+          tooltip={editTitle}
           onClick={() => setIsEditing(true)}
         />
       )}

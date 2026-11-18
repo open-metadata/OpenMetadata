@@ -18,6 +18,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 @Execution(ExecutionMode.CONCURRENT)
 class JwtIdentityResolverTest {
+  private static final List<String> DEFAULT_CLAIM_ORDER =
+      List.of("email", "preferred_username", "sub");
 
   @ParameterizedTest
   @ValueSource(booleans = {false, true})
@@ -34,6 +36,75 @@ class JwtIdentityResolverTest {
     assertEquals("admin_ab12", identity.userName());
     assertEquals("admin@attacker.example", identity.email());
     assertFalse(identity.emailFirstFlow());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void testInternalTokenResolvesToTheNameItWasMintedForUnderTheDefaultClaimOrder(
+      boolean isBotUser) {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(null, Map.of(), DEFAULT_CLAIM_ORDER, null, email -> "ignored");
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(
+            claims(
+                Map.of(
+                    "sub", "admin_x1y2",
+                    "username", "admin_x1y2",
+                    "email", "admin@elsewhere.example",
+                    "preferred_username", "admin@elsewhere.example")),
+            isBotUser,
+            true);
+
+    assertEquals("admin_x1y2", identity.userName());
+    assertEquals("admin@elsewhere.example", identity.email());
+  }
+
+  @Test
+  void testInternalTokenTakesTheUsernameClaimWhenSubCarriesTheEmail() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(null, Map.of(), DEFAULT_CLAIM_ORDER, null, email -> "ignored");
+
+    assertEquals(
+        "admin_x1y2",
+        resolver
+            .resolve(
+                claims(
+                    Map.of(
+                        "sub", "admin@elsewhere.example",
+                        "username", "admin_x1y2",
+                        "email", "admin@elsewhere.example")),
+                false,
+                true)
+            .userName());
+  }
+
+  @Test
+  void testInternalTokenWithoutAStoredNameKeepsTheClaimOrder() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(null, Map.of(), DEFAULT_CLAIM_ORDER, null, email -> "ignored");
+
+    assertEquals(
+        "admin",
+        resolver
+            .resolve(
+                claims(
+                    Map.of("sub", "admin@open-metadata.org", "email", "admin@open-metadata.org")),
+                false,
+                true)
+            .userName());
+  }
+
+  @Test
+  void testProviderTokenKeepsTheClaimOrder() {
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(null, Map.of(), DEFAULT_CLAIM_ORDER, null, email -> "ignored");
+
+    assertEquals(
+        "jane",
+        resolver
+            .resolve(claims(Map.of("sub", "00u1abcd", "email", "jane@company.com")), false, false)
+            .userName());
   }
 
   @Test
@@ -64,6 +135,36 @@ class JwtIdentityResolverTest {
             true);
 
     assertEquals("john@company.com", identity.email());
+  }
+
+  @Test
+  void testInternalBotTokenUnderMappingKeepsTheBotsStoredEmail() {
+    // A bot token minted under username:upn / email:mail puts the bare name in upn, the first
+    // claim in the order. Building <upn>@<principalDomain> from it gave another address than the
+    // bot's, and the request failed with "Account already exists".
+    JwtIdentityResolver resolver =
+        new JwtIdentityResolver(
+            null,
+            Map.of("username", "upn", "email", "mail"),
+            List.of("upn", "mail", "email", "preferred_username", "sub"),
+            "openmetadata.local",
+            email -> "ignored");
+
+    JwtIdentityResolver.ResolvedIdentity identity =
+        resolver.resolve(
+            claims(
+                Map.of(
+                    "sub", "ingestion-bot",
+                    "upn", "ingestion-bot",
+                    "mail", "ingestion-bot@open-metadata.org",
+                    "email", "ingestion-bot@open-metadata.org",
+                    "preferred_username", "ingestion-bot@open-metadata.org",
+                    "isBot", true)),
+            true,
+            true);
+
+    assertEquals("ingestion-bot", identity.userName());
+    assertEquals("ingestion-bot@open-metadata.org", identity.email());
   }
 
   @ParameterizedTest

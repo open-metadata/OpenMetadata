@@ -23,6 +23,7 @@ import { Edit01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { FC, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';
@@ -47,12 +48,6 @@ import {
 const MAX_VISIBLE_CONFIG_VALUES = 3;
 
 const CONFIG_CHIP_CLASS = 'tw:max-w-full tw:truncate tw:font-medium';
-const ACTIONS_BUTTON_CLASS = classNames(
-  'tw:flex tw:size-8 tw:items-center tw:justify-center tw:rounded-lg',
-  'tw:border tw:border-transparent tw:hover:border-secondary tw:hover:bg-primary_hover',
-  'tw:[&>svg]:size-4'
-);
-
 const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
   property,
 }) => {
@@ -65,7 +60,7 @@ const CustomPropertyConfigCell: FC<CustomPropertyConfigCellProps> = ({
         className="tw:text-fg-quaternary"
         data-testid="no-config"
         size="text-sm">
-        —
+        {NO_DATA_PLACEHOLDER}
       </Typography>
     );
   }
@@ -126,7 +121,6 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
   return (
     <Dropdown.Root>
       <Dropdown.DotsButton
-        className={ACTIONS_BUTTON_CLASS}
         data-testid="property-actions"
         ref={actionsButtonRef}
       />
@@ -156,7 +150,8 @@ const CustomPropertyActions: FC<CustomPropertyActionsProps> = ({
               <Box align="center" gap={2}>
                 <Trash01
                   aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:text-fg-error-primary"
+                  className="tw:shrink-0 tw:text-fg-error-primary"
+                  size={16}
                 />
                 <Typography color="danger" size="text-sm">
                   {t('label.delete')}

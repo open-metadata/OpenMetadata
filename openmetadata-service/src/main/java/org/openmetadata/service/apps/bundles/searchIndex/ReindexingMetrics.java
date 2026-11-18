@@ -33,9 +33,6 @@ public class ReindexingMetrics {
   private final DistributionSummary bulkPayloadSize;
   private final AtomicLong pendingBulkRequests = new AtomicLong();
 
-  // Backpressure
-  private final Counter backpressureEvents;
-
   // Circuit breaker
   private final Map<String, Counter> circuitBreakerCounters = new ConcurrentHashMap<>();
 
@@ -44,12 +41,6 @@ public class ReindexingMetrics {
   private final Map<String, Counter> stageFailedCounters = new ConcurrentHashMap<>();
   private final Map<String, Counter> stageWarningCounters = new ConcurrentHashMap<>();
   private final Map<String, Counter> promotionCounters = new ConcurrentHashMap<>();
-
-  // Vector timeouts
-  private final Counter vectorTimeouts;
-
-  // Queue fill ratio gauge
-  private final AtomicLong queueFillRatio = new AtomicLong();
 
   private ReindexingMetrics(MeterRegistry meterRegistry) {
     this.meterRegistry = meterRegistry;
@@ -144,23 +135,6 @@ public class ReindexingMetrics {
     // Pending bulk requests gauge
     Gauge.builder("reindexing.sink.pending", pendingBulkRequests, AtomicLong::get)
         .description("In-flight bulk requests")
-        .register(meterRegistry);
-
-    // Backpressure counter
-    this.backpressureEvents =
-        Counter.builder("reindexing.backpressure.events")
-            .description("Backpressure detections")
-            .register(meterRegistry);
-
-    // Vector timeouts counter
-    this.vectorTimeouts =
-        Counter.builder("reindexing.vector.timeouts")
-            .description("Vector embedding completion timeouts")
-            .register(meterRegistry);
-
-    // Queue fill ratio gauge
-    Gauge.builder("reindexing.queue.fill_ratio", queueFillRatio, AtomicLong::get)
-        .description("Task queue fill ratio (0-100)")
         .register(meterRegistry);
 
     LOG.info("Reindexing metrics initialized");

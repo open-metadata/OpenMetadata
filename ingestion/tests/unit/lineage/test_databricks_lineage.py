@@ -125,8 +125,7 @@ class DatabricksLineageTests(TestCase):
     Databricks lineage test
     """
 
-    def __init__(self, methodName) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self) -> None:
         config = OpenMetadataWorkflowConfig.model_validate(mock_databricks_config)
 
         with patch("metadata.ingestion.source.database.databricks.lineage.DatabricksLineageSource.test_connection"):

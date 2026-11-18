@@ -191,14 +191,14 @@ class SecurityUtilTest {
         new CatalogSecurityContext(
             () -> "alice@example.com", "https", "openid", Set.of(), false, "admin");
 
-    assertEquals("alice", SecurityUtil.getUserName(impersonatedContext));
-    assertEquals("alice", SecurityUtil.getImpersonatedByUser(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getUserName(impersonatedContext));
+    assertEquals("alice@example.com", SecurityUtil.getImpersonatedByUser(impersonatedContext));
 
     CatalogSecurityContext directContext =
         new CatalogSecurityContext(
             () -> "service-account/openmetadata", "https", "openid", Set.of());
 
-    assertEquals("service-account", SecurityUtil.getUserName(directContext));
+    assertEquals("service-account/openmetadata", SecurityUtil.getUserName(directContext));
     assertNull(SecurityUtil.getImpersonatedByUser(directContext));
 
     SecurityContext anonymous = mock(SecurityContext.class);
@@ -206,6 +206,15 @@ class SecurityUtilTest {
 
     assertNull(SecurityUtil.getUserName(anonymous));
     assertNull(SecurityUtil.getImpersonatedByUser(anonymous));
+  }
+
+  @Test
+  void testGetUserNameIsTheWholePrincipalName() {
+    for (String name : List.of("admin/mallory", "ingestion-bot/mallory", "admin@corp")) {
+      CatalogSecurityContext context =
+          new CatalogSecurityContext(() -> name, "https", "openid", Set.of());
+      assertEquals(name, SecurityUtil.getUserName(context));
+    }
   }
 
   @Test

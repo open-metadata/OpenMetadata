@@ -21,6 +21,7 @@ import {
   Typography,
   Virtualizer,
 } from '@openmetadata/ui-core-components';
+import { NoFilterFunnel } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import isEmpty from 'lodash/isEmpty';
@@ -35,7 +36,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
@@ -724,7 +724,7 @@ export const AddTestCaseList = ({
         <Box className="tw:relative tw:min-h-80 tw:w-full">
           <NoFilteredResultsPlaceholder
             description={t('message.try-adjusting-filter')}
-            icon={<FilterOffIcon />}
+            icon={<NoFilterFunnel />}
             title={t('label.no-result-found')}
           />
         </Box>

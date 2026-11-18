@@ -13,17 +13,20 @@
 import {
   Autocomplete,
   Box,
-  Button,
+  ButtonUtility,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  CloseCircleFilled,
+  Edit01,
+  Persona,
+  Save,
+} from '@openmetadata/ui-core-components/icons';
 import { debounce } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as PersonaIcon } from '../../../../assets/svg/ic-persona-new.svg';
-import { ReactComponent as ClosePopoverIcon } from '../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../assets/svg/ic-popover-save.svg';
 
 import { PAGE_SIZE_LARGE } from '../../../../constants/constants';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -31,7 +34,6 @@ import { EntityReference } from '../../../../generated/entity/type';
 import { getAllPersonas, searchPersonas } from '../../../../rest/PersonaAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
-import { WidgetEditButton } from '../../../common/WidgetActionButton/WidgetActionButton';
 import { PersonaSelectableListProps } from './PersonaSelectableList.interface';
 
 export const PersonaListItemRenderer = (props: EntityReference) => {
@@ -218,9 +220,11 @@ export const PersonaSelectableList = ({
 
   return (
     <PopoverTrigger isOpen={popupVisible} onOpenChange={setPopupVisible}>
-      <WidgetEditButton
+      <ButtonUtility
         data-testid={`${isDefaultPersona ? 'default-' : ''}edit-user-persona`}
-        title={t('label.edit-entity', {
+        icon={Edit01}
+        size="sm"
+        tooltip={t('label.edit-entity', {
           entity: t('label.persona'),
         })}
       />
@@ -234,7 +238,7 @@ export const PersonaSelectableList = ({
           direction="col">
           <div className="d-flex justify-start items-center gap-2 m-b-sm">
             <div className="d-flex flex-start items-center">
-              <PersonaIcon height={16} />
+              <Persona className="tw:text-utility-gray-500" size={16} />
             </div>
 
             <Typography className="user-profile-edit-popover-card-title">
@@ -278,25 +282,23 @@ export const PersonaSelectableList = ({
           </Box>
 
           <div className="flex justify-end gap-2">
-            <Button
-              aria-label={t('label.cancel')}
+            <ButtonUtility
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }persona-edit-cancel`}
-              iconLeading={<ClosePopoverIcon height={24} />}
-              size="xs"
+              icon={CloseCircleFilled}
+              tooltip={t('label.cancel')}
               onClick={handleCloseEditTeam}
             />
-            <Button
-              aria-label={t('label.save')}
+            <ButtonUtility
               color="primary"
               data-testid={`user-profile${
                 isDefaultPersona ? '-default' : ''
               }-persona-edit-save`}
-              iconLeading={<SavePopoverIcon height={24} />}
+              icon={Save}
               isLoading={isSaving}
-              size="xs"
+              tooltip={t('label.save')}
               onClick={handlePersonaUpdate}
             />
           </div>

@@ -106,16 +106,24 @@ public final class ContainerizedServer implements AutoCloseable {
     final Network network = Network.newNetwork();
     final MySQLContainer<?> mysql = newMysql(network);
     final OpensearchContainer<?> opensearch = newOpenSearch(network);
-    mysql.start();
-    opensearch.start();
-    runMigrations(network);
-    final MockOidcServer idp = (profile != null) ? MockOidcServer.launch(network) : null;
     final GenericContainer<?> server = newServer(network);
-    if (profile != null) {
-      applySsoEnv(server, profile, idp);
-      bindFixedHostPort(server, FIXED_OM_HOST_PORT, SERVER_PORT);
+    MockOidcServer idp = null;
+    try {
+      mysql.start();
+      opensearch.start();
+      runMigrations(network);
+      idp = (profile != null) ? MockOidcServer.launch(network) : null;
+      if (profile != null) {
+        applySsoEnv(server, profile, idp);
+        bindFixedHostPort(server, FIXED_OM_HOST_PORT, SERVER_PORT);
+      }
+      server.start();
+    } catch (RuntimeException e) {
+      // Nothing owns a stack whose server never came up, so stop it here; left running, each
+      // failed launch holds its database and search engine until the JVM exits.
+      new ContainerizedServer(network, mysql, opensearch, server, idp).close();
+      throw e;
     }
-    server.start();
     LOG.info(
         "Containerized OpenMetadata ready at http://{}:{} (sso={})",
         server.getHost(),
@@ -218,10 +226,7 @@ public final class ContainerizedServer implements AutoCloseable {
         .withDatabaseName(DB_NAME)
         .withUsername(DB_USER)
         .withPassword(DB_PASSWORD)
-        .withCommand(
-            "--character-set-server=utf8mb4",
-            "--collation-server=utf8mb4_unicode_ci",
-            "--max_allowed_packet=64M");
+        .withCommand("--character-set-server=utf8mb4", "--max_allowed_packet=64M");
   }
 
   private static OpensearchContainer<?> newOpenSearch(final Network network) {

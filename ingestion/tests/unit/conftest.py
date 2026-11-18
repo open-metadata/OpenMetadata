@@ -1,6 +1,9 @@
 import math
+import time
+import unittest
 from unittest.mock import patch
 
+import pytest
 import sqlalchemy as sqa
 from pytest import fixture
 
@@ -39,6 +42,28 @@ def worker_id(request):
     if hasattr(request.config, "workerinput"):
         return request.config.workerinput["workerid"]
     return "master"
+
+
+@fixture
+def local_tz(monkeypatch):
+    """Set the process-local timezone that a naive ``datetime.timestamp()`` reads.
+
+    A naive-vs-aware UTC bug is numerically invisible on a UTC host, so tests
+    pinning one must run under a non-UTC zone.
+    """
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is unavailable on this platform")
+
+    def _set(tz_name: str) -> None:
+        monkeypatch.setenv("TZ", tz_name)
+        time.tzset()
+        # tzset silently falls back to UTC when the zone can't be loaded, which
+        # would let a timezone regression test pass without the fix.
+        assert time.timezone != 0, f"TZ={tz_name} did not load; is tzdata installed?"
+
+    yield _set
+    monkeypatch.undo()
+    time.tzset()
 
 
 @fixture(scope="session", autouse=True)
@@ -82,6 +107,17 @@ def register_sqlite_math_functions():
 
 
 def pytest_pycollect_makeitem(collector, name, obj):
+    # pytest >= 8.2 instantiates every TestCase method at collection and keeps the instance
+    # until that test's teardown, so work in __init__ runs for the whole suite up front, once
+    # per xdist worker. Building sources there peaked the unit run at ~3.5 GB per worker and
+    # OOM-killed the swapless nightly runner.
+    if isinstance(obj, type) and issubclass(obj, unittest.TestCase):
+        owner = next(c for c in obj.__mro__ if "__init__" in vars(c))
+        if not owner.__module__.startswith("unittest"):
+            pytest.fail(
+                f"{obj.__qualname__} overrides TestCase.__init__ (via {owner.__qualname__}); move that setup into setUp",
+                pytrace=False,
+            )
     try:
         if obj.__name__ in ("TestSuiteSource", "TestSuiteInterfaceFactory"):
             return []

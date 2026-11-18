@@ -19,13 +19,13 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Column } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import {
   CUSTOM_PROPERTY_CATEGORY,
@@ -223,7 +223,7 @@ const AddCustomProperty = ({
                   data-testid="applies-to"
                   size="md"
                   type="pill-color">
-                  <ColumnIcon height={14} width={14} />
+                  <Column size={14} />
                   {t('label.table-column')}
                 </Badge>
               </Box>

@@ -31,22 +31,19 @@ describe('ServiceIconUtils', () => {
 });
 
 describe('service logo dark theme', () => {
-  it.each(['PowerBI', 'power-bi', 'POWER_BI', 'Kafka', 'KafkaConnect'])(
-    'makes monochrome %s artwork legible only in dark mode',
-    (serviceType) => {
-      expect(
-        getServiceLogoThemeClass(serviceType)
-          .split(' ')
-          .every((value) => value.startsWith('tw:dark:'))
-      ).toBe(true);
-      expect(getServiceLogoThemeClass(serviceType)).toContain('tw:dark:invert');
-    }
-  );
-
-  it.each(['BigQuery', 'Snowflake', 'Superset', '', undefined])(
-    'preserves the original artwork for %s',
-    (serviceType) => {
-      expect(getServiceLogoThemeClass(serviceType)).toBe('');
-    }
-  );
+  // Kafka and Power BI were redrawn to read on dark, so inverting them would turn them white —
+  // invisible on the white logo tiles some surfaces still draw in dark mode.
+  it.each([
+    'PowerBI',
+    'power-bi',
+    'Kafka',
+    'KafkaConnect',
+    'BigQuery',
+    'Snowflake',
+    'Superset',
+    '',
+    undefined,
+  ])('preserves the original artwork for %s', (serviceType) => {
+    expect(getServiceLogoThemeClass(serviceType)).toBe('');
+  });
 });

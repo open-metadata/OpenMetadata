@@ -215,7 +215,7 @@ describe('PermissionsTab', () => {
     expect(screen.getByText('CoreTeam')).toBeInTheDocument();
     expect(screen.getByText('Analyst')).toBeInTheDocument();
     // isAdmin surfaces a synthetic Admin role chip.
-    expect(screen.getByText('label.admin')).toBeInTheDocument();
+    expect(screen.getByText('label.admin-superuser')).toBeInTheDocument();
     expect(screen.getAllByText('label.admin-managed').length).toBe(2);
   });
 

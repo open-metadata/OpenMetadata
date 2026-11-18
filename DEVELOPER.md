@@ -374,7 +374,7 @@ Authorization uses the `Authorizer` interface, injected into all resource classe
 
 **Pattern in resources:**
 ```java
-// All mutating operations must authorize:
+// All endpoints — including reads, listings, and sub-resource accesses — must authorize:
 authorizer.authorize(securityContext, operationContext, resourceContext);
 
 // OperationContext wraps the MetadataOperation enum:
@@ -391,7 +391,7 @@ new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TAGS)
 - `PolicyEvaluator` — evaluates rules against `SubjectContext` + `ResourceContextInterface` + `OperationContext`
 - `SubjectCache` — caches permission evaluations per user
 
-**When adding new resources:** ensure all mutating methods call `authorizer.authorize()` before execution. Override `getEntitySpecificOperations()` in the resource to register field-level view permissions.
+**When adding new resources:** ensure all endpoints (including reads, listings, and sub-resource accesses) call `authorizer.authorize()` before execution. Override `getEntitySpecificOperations()` in the resource to register field-level view permissions.
 
 ### Search Infrastructure
 
@@ -630,8 +630,8 @@ An explicit path replaces the default suite; `-k` and `-m` filter that selection
 Make prepares pinned uv/Nox automatically. Application profiles reuse `env/` and remove
 packages outside the selected profile; switching from `test` to `dev` removes test-only
 packages. Formatting, generation and coverage tools use separate `ingestion/.nox/`
-environments. The test profile locks the four classification models and validates them locally;
-repeat runs reuse matching models. Updating their versions requires a manifest/lock update.
+environments. The `test-classification` profile locks the four classification models and validates them locally;
+repeat runs reuse matching models. Updating their versions requires a dependency-group, metadata and lock update.
 
 For another interpreter/environment, use Nox explicitly after setup:
 

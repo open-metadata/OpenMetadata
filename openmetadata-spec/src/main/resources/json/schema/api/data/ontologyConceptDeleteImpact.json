@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyConceptDeleteImpact.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyConceptDeleteImpact",
+  "description": "What deleting one ontology concept touches. Relationships and rules are removed together with the concept; blockers must be edited by hand before the concept can be deleted. Catalog bindings are listed by the bindings endpoint.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyConceptDeleteImpact",
+  "properties": {
+    "concept": {
+      "$ref": "../../type/entityReference.json"
+    },
+    "children": {
+      "description": "Concepts whose named parent is this concept. They keep existing and move to the top level.",
+      "type": "array",
+      "items": { "$ref": "../../type/entityReference.json" },
+      "default": []
+    },
+    "relationships": {
+      "description": "Hierarchy and link axioms that name this concept as subject or as a parent or filler.",
+      "type": "array",
+      "items": { "$ref": "../../type/entityReference.json" },
+      "default": []
+    },
+    "rules": {
+      "description": "All other axioms that name this concept.",
+      "type": "array",
+      "items": { "$ref": "../../type/entityReference.json" },
+      "default": []
+    },
+    "blockers": {
+      "description": "Properties and concepts that point at this concept through a domain, range or replacement.",
+      "type": "array",
+      "items": { "$ref": "../../type/entityReference.json" },
+      "default": []
+    }
+  },
+  "required": ["concept", "children", "relationships", "rules", "blockers"],
+  "additionalProperties": false
+}

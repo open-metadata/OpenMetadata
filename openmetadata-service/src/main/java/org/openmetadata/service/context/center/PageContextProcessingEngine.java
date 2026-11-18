@@ -1,13 +1,23 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
+
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -25,10 +35,14 @@ import org.openmetadata.service.jobs.JobDAO;
 @Slf4j
 public class PageContextProcessingEngine extends ContextProcessingEngine {
   static final long DEFAULT_QUIET_PERIOD_MILLIS = TimeUnit.MINUTES.toMillis(5);
+  private static final Set<PageProcessingStatus> IN_FLIGHT =
+      Collections.unmodifiableSet(
+          EnumSet.of(PageProcessingStatus.Queued, PageProcessingStatus.Processing));
 
   private final KnowledgePageRepository pageRepository;
   private final JobDAO jobDao;
   private final long quietPeriodMillis;
+  private final Supplier<ExtractionAvailability> availability;
 
   public PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
@@ -44,10 +58,27 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       ContextMemoryReconciler reconciler,
       JobDAO jobDao,
       long quietPeriodMillis) {
+    this(
+        pageRepository,
+        extractor,
+        reconciler,
+        jobDao,
+        quietPeriodMillis,
+        () -> AiProviderHolder.get().extractionAvailability());
+  }
+
+  PageContextProcessingEngine(
+      KnowledgePageRepository pageRepository,
+      DocumentMemoryExtractor extractor,
+      ContextMemoryReconciler reconciler,
+      JobDAO jobDao,
+      long quietPeriodMillis,
+      Supplier<ExtractionAvailability> availability) {
     super(extractor, reconciler);
     this.pageRepository = pageRepository;
     this.jobDao = jobDao;
     this.quietPeriodMillis = quietPeriodMillis;
+    this.availability = availability;
   }
 
   /**
@@ -56,6 +87,19 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
    */
   public void schedule(UUID pageId) {
     scheduleAt(pageId, System.currentTimeMillis() + quietPeriodMillis);
+  }
+
+  /**
+   * Schedules the run an article write armed, after that write commits. One the queue refuses
+   * leaves the article Failed to retry, as the file pipeline's submit does, not Queued for good.
+   */
+  public void submit(UUID pageId) {
+    try {
+      schedule(pageId);
+    } catch (RuntimeException e) {
+      LOG.error("Unable to queue memory extraction for page {}", pageId, e);
+      ExtractionRequests.recordFailure(Entity.PAGE, pageId, () -> stampQueueFailed(pageId));
+    }
   }
 
   private void scheduleAt(UUID pageId, long runAt) {
@@ -69,6 +113,69 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
         Entity.ADMIN_USER_NAME,
         runAt,
         now);
+  }
+
+  /**
+   * Queues a failed or never-extracted article, once: Queued refuses a second request until the run
+   * settles. The run waits out the quiet period the stamp restarts, as after any article write.
+   */
+  public Page requestExtraction(UUID pageId) {
+    ExtractionRequests.requireAvailable(availability.get());
+    Page queued = stampQueued(pageId);
+    requireScheduled(pageId);
+    return queued;
+  }
+
+  private Page stampQueued(UUID pageId) {
+    AtomicReference<Page> queued = new AtomicReference<>();
+    try {
+      updateSource(pageId, () -> queued.set(queue(requireRequestable(getPage(pageId)))));
+    } catch (ConditionalUpdateExhaustedException e) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    return queued.get();
+  }
+
+  private static Page requireRequestable(Page page) {
+    if (page == null) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    if (IN_FLIGHT.contains(page.getProcessingStatus())) {
+      throw ExtractionRequests.alreadyRequested();
+    }
+    if (!isRequestable(page)) {
+      throw ExtractionRequests.notExtractable();
+    }
+    return page;
+  }
+
+  private static boolean isRequestable(Page page) {
+    return page.getPageType() == PageType.ARTICLE
+        && (page.getProcessingStatus() == PageProcessingStatus.Failed
+            || MemoryExtractionState.neverExtracted(page));
+  }
+
+  private Page queue(Page current) {
+    Page queued = JsonUtils.deepCopy(current, Page.class);
+    queued.setProcessingStatus(PageProcessingStatus.Queued);
+    queued.setProcessingError(null);
+    pageRepository.updateIfCurrent(null, current, queued, lastEditorOf(current));
+    return queued;
+  }
+
+  /** A job the queue cannot take leaves the article Failed, not Queued for good, and is a 503. */
+  private void requireScheduled(UUID pageId) {
+    try {
+      schedule(pageId);
+    } catch (RuntimeException e) {
+      LOG.error("Unable to queue requested memory extraction for page {}", pageId, e);
+      throw ExtractionRequests.queueRefused(
+          Entity.PAGE, pageId, ExtractionRequests.QUEUE_FAILED, () -> stampQueueFailed(pageId));
+    }
+  }
+
+  private void stampQueueFailed(UUID pageId) {
+    stampStatus(pageId, PageProcessingStatus.Failed, ExtractionRequests.QUEUE_FAILED);
   }
 
   /** Cancels work whose source has been deleted. A claimed job will skip the missing page. */
@@ -98,13 +205,29 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     } catch (ConditionalUpdateExhaustedException e) {
       schedule(pageId);
     } catch (RuntimeException e) {
-      LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
+      recordFailure(pageId, e);
+      throw e;
+    }
+  }
+
+  /**
+   * A run a server stop cuts short keeps its status, and rethrowing keeps its job from completing,
+   * so the stale-job reaper requeues the job to resume it.
+   */
+  private void recordFailure(UUID pageId, RuntimeException failure) {
+    if (isStopInterruption(failure)) {
+      LOG.info(
+          "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes"
+              + " it: {}",
+          pageId,
+          ExceptionUtils.getRootCauseMessage(failure));
+    } else {
+      LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
       try {
-        stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+        stampStatus(pageId, PageProcessingStatus.Failed, failure.getMessage());
       } catch (ConditionalUpdateExhaustedException exhausted) {
         schedule(pageId);
       }
-      throw e;
     }
   }
 
@@ -135,7 +258,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
             Page updated = JsonUtils.deepCopy(current, Page.class);
             updated.setProcessingStatus(status);
             updated.setProcessingError(error);
-            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+            pageRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
           }
         });
   }
@@ -159,9 +282,14 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       // Return a source even for an empty body so a cleared article reconciles to an empty pill
       // set (archiving its stale pills); null is reserved for a page that no longer exists.
       String body = page.getDescription() == null ? "" : page.getDescription();
-      source = new Source(body, DigestUtils.sha256Hex(body), page.getEntityReference());
+      source = new Source(body, sourceHash(body), page.getEntityReference());
     }
     return source;
+  }
+
+  /** The hash a run records for an article body; the next run skips a body with the same hash. */
+  static String sourceHash(String body) {
+    return DigestUtils.sha256Hex(body == null ? "" : body);
   }
 
   @Override
@@ -181,7 +309,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
             updated.setExtractionStats(stats);
             updated.setProcessingStatus(PageProcessingStatus.Processed);
             updated.setProcessingError(null);
-            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+            pageRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
           }
         });
   }

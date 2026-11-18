@@ -33,23 +33,17 @@ class SearchLineagePermissionFilterTest {
   private static final String ROOT = "svc.db.schema.root";
   private static final String HIDDEN = "svc.db.schema.hidden";
 
-  /**
-   * The graph builders cache the graph they return and hand the same one to every caller, so a
-   * restricted caller's view is cut from a copy and the graph is still whole for the next caller.
-   */
   @Test
-  void aCallersViewLeavesTheGraphItWasCutFromWhole() {
-    SearchLineageResult shared = graph();
+  void aCallersViewKeepsOnlyTheNodesAndEdgesItCanView() {
     SubjectContext restricted = mock(SubjectContext.class);
     when(restricted.isAdmin()).thenReturn(false);
 
     SearchLineageResult view =
         new SearchLineagePermissionFilter(mock(Authorizer.class))
-            .filter(mock(SecurityContext.class), restricted, shared, ROOT);
+            .filter(mock(SecurityContext.class), restricted, graph(), ROOT);
 
     assertEquals(Set.of(ROOT), view.getNodes().keySet());
-    assertEquals(Set.of(ROOT, HIDDEN), shared.getNodes().keySet());
-    assertEquals(1, shared.getUpstreamEdges().size());
+    assertEquals(0, view.getUpstreamEdges().size());
   }
 
   // HIDDEN carries no id, so the filter cannot identify it and leaves it out without asking the

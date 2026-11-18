@@ -457,7 +457,7 @@ class TestCaseResolutionStatusRepositoryTest {
         new TestSuite()
             .withId(testCase.getTestSuite().getId())
             .withName(testCase.getTestSuite().getName())
-            .withBasicEntityReference(table.getEntityReference());
+            .withBasicEntityReference(table.getEntityReference().withType(Entity.TABLE));
     TestCaseResolutionStatus incident =
         createIncident(TestCaseResolutionStatusTypes.New)
             .withTestCaseReference(testCase.getEntityReference());

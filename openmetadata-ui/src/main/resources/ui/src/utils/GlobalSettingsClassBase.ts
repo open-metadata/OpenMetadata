@@ -12,9 +12,9 @@
  */
 import {
   AnnouncementColored,
-  ArticleSettings,
   DefaultAppMode,
   DefaultTime,
+  File06,
   GlossaryTerm,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored.svg';
@@ -962,7 +962,7 @@ class GlobalSettingsClassBase {
             }),
             isProtected: Boolean(isAdminUser),
             key: `${GlobalSettingsMenuCategory.CUSTOM_PROPERTIES}.${GlobalSettingOptions.ARTICLES}`,
-            icon: ArticleSettings,
+            icon: File06,
             iconColor: 'green' as const,
           },
           {

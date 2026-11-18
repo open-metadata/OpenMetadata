@@ -1,0 +1,77 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/nativeOntologyImportItem.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NativeOntologyImportItem",
+  "description": "One definition an import source states, with what applying it would do to the target.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportItem",
+  "definitions": {
+    "kind": {
+      "description": "What the item is. A rule is any axiom other than a named subclass link or an object property assertion between two named concepts.",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportItemKind",
+      "type": "string",
+      "enum": ["CONCEPT", "PROPERTY", "RELATIONSHIP", "RULE"]
+    },
+    "status": {
+      "description": "NEW and UPDATE carry a change set operation. ALREADY_EXISTS matches a stored definition. DUPLICATE repeats an earlier item of the same source. SKIPPED names a reason in `reason` and carries no operation.",
+      "javaType": "org.openmetadata.schema.api.data.NativeOntologyImportItemStatus",
+      "type": "string",
+      "enum": ["NEW", "UPDATE", "ALREADY_EXISTS", "DUPLICATE", "SKIPPED"]
+    }
+  },
+  "properties": {
+    "id": {
+      "description": "Derived from what the item states, so it is the same in every preview of one source and a selection survives a second preview.",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/definitions/kind"
+    },
+    "status": {
+      "$ref": "#/definitions/status"
+    },
+    "label": {
+      "description": "What a reader calls the item: a display name, or the sentence of a relationship or rule.",
+      "type": "string"
+    },
+    "iri": {
+      "description": "IRI of the concept or property, or of the subject of a relationship or rule.",
+      "type": "string"
+    },
+    "detail": {
+      "description": "For UPDATE, what changes, for example `Description: none to A customer.`.",
+      "type": "string"
+    },
+    "reason": {
+      "description": "Why the item is DUPLICATE or SKIPPED.",
+      "type": "string"
+    },
+    "warning": {
+      "description": "A finding applying the item would cause, for example a disjointness clash. The item stays selectable.",
+      "type": "string"
+    },
+    "conceptIds": {
+      "description": "Concepts the warning names, the clashing concept first.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/basic.json#/definitions/uuid"
+      },
+      "default": []
+    },
+    "dependsOnIris": {
+      "description": "IRIs of the NEW concepts of this same import that the item states a fact about. A relationship or rule applies only with every one of them.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyIri.json"
+      },
+      "default": [],
+      "existingJavaType": "java.util.List<java.net.URI>"
+    },
+    "operationId": {
+      "description": "The change set operation that applies this item. Absent for ALREADY_EXISTS, DUPLICATE, and SKIPPED.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    }
+  },
+  "required": ["id", "kind", "status", "label"],
+  "additionalProperties": false
+}

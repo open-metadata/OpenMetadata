@@ -49,6 +49,7 @@ public class SplitHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{split }}")
-                    .withExample("{{#each (split fieldName \".\")}}{{this}}{{/each}}")));
+                    .withExample(
+                        "{{#each (split entity.fullyQualifiedName \".\")}}{{this}} {{/each}}")));
   }
 }

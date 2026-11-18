@@ -31,6 +31,8 @@ let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  isCapped?: boolean;
+  cutAt?: number;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -52,6 +54,8 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      isCapped: activityState.isCapped ?? false,
+      cutAt: activityState.cutAt,
       error: activityState.error ?? null,
       refetch: mockRefetch,
     };
@@ -174,6 +178,13 @@ jest.mock('react-i18next', () => ({
     t: (key: string, options?: { number?: number }) =>
       options?.number === undefined ? key : `${key}:${options.number}`,
   }),
+}));
+
+const mockMarkInboxActivitySeen = jest.fn();
+
+jest.mock('../../../../../hooks/usePersonalSpaceStore', () => ({
+  usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
+    selector({ markInboxActivitySeen: mockMarkInboxActivitySeen }),
 }));
 
 import { User } from '../../../../../generated/entity/teams/user';
@@ -485,6 +496,104 @@ describe('ActivityTab', () => {
     );
   });
 
+  // A capped feed is cut inside its oldest day: only that count is a floor,
+  // and the end of the list says older updates are not shown.
+  it('marks the cut day as a floor and says the feed is capped', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'earlier', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: DAY,
+    };
+
+    render(<ActivityTab />);
+
+    const [newest, oldest] = screen.getAllByTestId('activity-group');
+
+    expect(newest).toHaveTextContent('label.one-update');
+    expect(oldest).toHaveTextContent('label.number-update-plural:1+');
+    expect(
+      screen.getByText('message.inbox-activity-capped')
+    ).toBeInTheDocument();
+  });
+
+  // The cut is the whole feed's: a type filter that empties the cut day must
+  // not move the floor onto a complete one.
+  it('keeps the floor on the cut day when a type filter empties it', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        {
+          activity: {
+            id: 'tags',
+            eventType: 'TagsUpdated',
+            timestamp: 3 * DAY,
+          },
+        },
+        {
+          activity: {
+            id: 'created',
+            eventType: 'EntityCreated',
+            timestamp: DAY,
+          },
+        },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: DAY,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.one-update'
+    );
+  });
+
+  // A Mentions feed keeps an old event mentioned today, so its last card can
+  // sit past the cut; the floor goes on the day the feed was cut.
+  it('marks the day the feed was cut, not the day of its last card', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'old-mentioned-today', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: 3 * DAY,
+    };
+
+    render(<ActivityTab />);
+
+    const [cutDay, olderDay] = screen.getAllByTestId('activity-group');
+
+    expect(cutDay).toHaveTextContent('label.number-update-plural:1+');
+    expect(olderDay).toHaveTextContent('label.one-update');
+  });
+
+  it('says nothing about a cap when the feed is complete', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1', timestamp: 1 } }],
+      total: 1,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(
+      screen.queryByText('message.inbox-activity-capped')
+    ).not.toBeInTheDocument();
+  });
+
   // A batch revealed later would grow a group above the viewport, so Asset and
   // User groupings render every card at once.
   it('renders every card when grouped by user, not a batch', () => {
@@ -565,5 +674,89 @@ describe('ActivityTab', () => {
 
     expect(screen.getByTestId('activity-group')).toHaveTextContent('orders');
     expect(screen.getByTestId('group-icon-table')).toBeInTheDocument();
+  });
+
+  // The seen-mark drives the sidebar's unread badge and is the only state
+  // persisted to localStorage, so stamping it at the wrong time permanently
+  // loses unread mentions. The mark must only fire once the viewer's own feed
+  // has loaded successfully — not while loading, not on error, and not for
+  // another user's feed.
+  describe('seen-mark timing', () => {
+    it('stamps the seen-mark once the feed has loaded', () => {
+      activityState = { items: [], total: 0, isLoading: false };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark while the feed is loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed errors', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed is forbidden', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 403 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it("does not stamp the seen-mark for another user's feed", () => {
+      activityState = {
+        items: [{ feed: { id: 't1' } }],
+        total: 1,
+        isLoading: false,
+      };
+      render(<ActivityTab user={alice} />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    // The bug: the mark fired on mount regardless of feed state. A feed that
+    // starts loading and then resolves must stamp the mark only after the
+    // transition to loaded.
+    it('stamps the seen-mark after the feed finishes loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    // A failed visit must leave the unread state intact; retrying successfully
+    // is what stamps the mark.
+    it('stamps the seen-mark after a failed feed succeeds on retry', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
   });
 });

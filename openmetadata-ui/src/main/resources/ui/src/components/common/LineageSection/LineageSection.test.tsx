@@ -56,14 +56,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
-jest.mock('../../../assets/svg/lineage-upstream-icon.svg', () => ({
-  ReactComponent: () => <div data-testid="upstream-icon">Upstream</div>,
-}));
-
-jest.mock('../../../assets/svg/lineage-downstream-icon.svg', () => ({
-  ReactComponent: () => <div data-testid="downstream-icon">Downstream</div>,
-}));
-
 jest.mock('../../../rest/lineageAPI', () => ({
   getLineagePagingData: jest.fn(),
 }));

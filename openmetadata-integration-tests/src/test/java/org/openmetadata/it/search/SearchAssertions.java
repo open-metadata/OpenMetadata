@@ -31,6 +31,10 @@ public final class SearchAssertions {
     return body.path("count").asLong();
   }
 
+  public long countMatching(final String indexOrAlias, final String queryBody) {
+    return search.count(indexOrAlias, queryBody).path("count").asLong();
+  }
+
   public long countByEntityType(final String alias, final String entityType) {
     final String body = "{\"query\":{\"term\":{\"entityType\":\"" + entityType + "\"}}}";
     final JsonNode response = search.count(alias, body);

@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { MessagePlusSquare } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { WidgetRequestButton } from '../../../components/common/WidgetActionButton/WidgetActionButton';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { ENTITY_TASKS_TOOLTIP } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
@@ -82,11 +82,12 @@ const EntityTasks = ({
     const hasData = !isEmpty(data.field);
 
     return (
-      <WidgetRequestButton
-        compact
+      <ButtonUtility
         className="hover-cell-icon"
         data-testid="task-element"
-        title={
+        icon={MessagePlusSquare}
+        size="xs"
+        tooltip={
           hasData
             ? t(ENTITY_TASKS_TOOLTIP[entityTaskType].update)
             : t(ENTITY_TASKS_TOOLTIP[entityTaskType].request)

@@ -19,7 +19,7 @@ import {
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Edit03 } from '@openmetadata/ui-core-components/icons';
+import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { isString, toString } from 'lodash';
 import type { FormEvent } from 'react';
 import { useEffect, useState } from 'react';
@@ -207,7 +207,7 @@ const MetricExpression = ({
         {canEditMetricExpression(canEdit, metric, onUpdate) ? (
           <Button
             color="secondary"
-            iconLeading={Edit03}
+            iconLeading={Edit01}
             size="sm"
             onPress={startEditing}>
             {t('label.edit-entity', { entity: t('label.expression') })}

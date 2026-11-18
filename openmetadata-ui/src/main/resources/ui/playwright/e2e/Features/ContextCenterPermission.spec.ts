@@ -25,6 +25,7 @@ import {
 import {
   buildPermissionRule,
   createDisposableArchivedDocument,
+  createMemoryViaApi,
   getLoggedInUser,
   loginAsUser,
   MEMORIES_API,
@@ -244,16 +245,14 @@ test.describe('Context Center Permissions', () => {
     });
 
     ownerMemoryTitle = `CC Permission Memory ${uuid()}`;
-    const memoryRes = await apiContext.post(MEMORIES_API, {
-      data: {
-        name: `cc_permission_memory_${uuid()}`,
-        title: ownerMemoryTitle,
-        question: 'Owned by admin for permission matrix tests',
-        answer: 'Owned by admin for permission matrix tests',
-        shareConfig: { visibility: 'Entity' },
-      },
+    const ownerMemory = await createMemoryViaApi(apiContext, {
+      name: `cc_permission_memory_${uuid()}`,
+      title: ownerMemoryTitle,
+      question: 'Owned by admin for permission matrix tests',
+      answer: 'Owned by admin for permission matrix tests',
+      shareConfig: { visibility: 'Entity' },
     });
-    ownerMemoryId = (await memoryRes.json()).id;
+    ownerMemoryId = ownerMemory.id;
 
     viewOnlyUser = new UserClass();
     await viewOnlyUser.create(apiContext, false);
@@ -1176,8 +1175,8 @@ test.describe('Context Center Permissions', () => {
 
         const row = await searchAndGetDocumentRow(createAllPage, fileName);
         await expect(row).toBeVisible();
-        await expect(row.getByTestId('document-updated-by')).toHaveText(
-          createAllUser.responseData.name
+        await expect(row.getByTestId('document-updated-by')).toContainText(
+          createAllUser.getUserDisplayName()
         );
 
         await apiContext

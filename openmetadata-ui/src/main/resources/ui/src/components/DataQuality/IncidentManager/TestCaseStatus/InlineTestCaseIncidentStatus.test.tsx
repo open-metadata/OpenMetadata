@@ -157,14 +157,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     ButtonUtility: ({
       icon: Icon,
+      isDisabled,
       onClick,
       ...props
     }: {
       icon?: React.ComponentType<{ className?: string }>;
+      isDisabled?: boolean;
       onClick?: () => void;
       [key: string]: unknown;
     }) => (
-      <button type="button" onClick={onClick} {...props}>
+      <button disabled={isDisabled} type="button" onClick={onClick} {...props}>
         {Icon ? <Icon /> : null}
       </button>
     ),

@@ -27,6 +27,7 @@ export const AssetSelectionModal = ({
   type = AssetsOfEntity.GLOSSARY,
   queryFilter,
   emptyPlaceHolderText,
+  useQueryPost,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
 
@@ -38,6 +39,7 @@ export const AssetSelectionModal = ({
     type,
     variant: 'modal',
     queryFilter,
+    useQueryPost,
   });
 
   return (

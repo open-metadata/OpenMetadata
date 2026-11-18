@@ -9,7 +9,8 @@ import org.openmetadata.service.Entity;
 public class TeamIndex implements SearchIndex {
   private static final String FIELD_USER_COUNT = "userCount";
   final Team team;
-  final Set<String> excludeFields = Set.of("owns", "users", "defaultRoles", "inheritedRoles");
+  final Set<String> excludeFields =
+      Set.of("owns", "users", "defaultRoles", "inheritedRoles", "profile.subscription");
 
   public TeamIndex(Team team) {
     this.team = team;
