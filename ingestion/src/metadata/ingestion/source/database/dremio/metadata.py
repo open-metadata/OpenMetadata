@@ -120,6 +120,7 @@ class DremioSource(CommonDbSourceService, MultiDBSource):
         else:
             schemas = self.inspector.get_schema_names()
 
+        # ADR:2026-11-18-dremio-schema-name-is-the-folder-path-without-its-space
         self.schema_paths = {}
         for schema_path in schemas:
             schema_name = self._remove_database_from_schema_name(schema_path)
