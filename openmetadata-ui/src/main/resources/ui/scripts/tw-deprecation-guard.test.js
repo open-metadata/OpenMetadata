@@ -209,6 +209,7 @@ for (const staged of [true, false]) {
             'const brand = "tw:bg-brand-500";',
             'const chain = "tw:[&_button]:bg-blue-50";',
             'const hex = { color: "#FF0000" };',
+            'const rgba = { color: "#1234" };',
             'const el = <div style={{ margin: 8 }} />;',
             'const trailing = "tw:bg-blue-50!";',
             'const darkOnly = "tw:dark:bg-blue-500";',
@@ -224,10 +225,11 @@ for (const staged of [true, false]) {
         assert.ok(result.out.includes('tw:bg-brand-500') || result.out.includes('Foo.tsx:2'), result.out);
         assert.ok(result.out.includes('Foo.tsx:3'), result.out); // variant chain
         assert.ok(result.out.includes('[hex-colour]'), result.out);
+        assert.ok(result.out.includes('Foo.tsx:5'), result.out); // 4-digit #RGBA shorthand
         assert.ok(result.out.includes('[inline-style]'), result.out);
-        assert.ok(result.out.includes('Foo.tsx:6'), result.out); // trailing ! still fails
-        assert.ok(!result.out.includes('Foo.tsx:7'), result.out); // dark: override allowed
-        assert.ok(!result.out.includes('Foo.tsx:8'), result.out); // hex in comment allowed
+        assert.ok(result.out.includes('Foo.tsx:7'), result.out); // trailing ! still fails
+        assert.ok(!result.out.includes('Foo.tsx:8'), result.out); // dark: override allowed
+        assert.ok(!result.out.includes('Foo.tsx:9'), result.out); // hex in comment allowed
       } finally {
         fs.rmSync(dir, { recursive: true, force: true });
       }
