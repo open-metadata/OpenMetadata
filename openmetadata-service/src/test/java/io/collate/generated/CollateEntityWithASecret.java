@@ -24,7 +24,7 @@ public class CollateEntityWithASecret {
     return name;
   }
 
-  public void setName(String name) {
+  public void setName(final String name) {
     this.name = name;
   }
 
@@ -34,7 +34,7 @@ public class CollateEntityWithASecret {
   }
 
   @MaskedField
-  public void setSecret(Object secret) {
+  public void setSecret(final Object secret) {
     this.secret = secret;
   }
 }

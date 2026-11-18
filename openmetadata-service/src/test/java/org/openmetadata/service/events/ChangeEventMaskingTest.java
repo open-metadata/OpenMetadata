@@ -106,7 +106,7 @@ class ChangeEventMaskingTest {
             .withEventType(EventType.ENTITY_UPDATED)
             .withEntityType("collateEntityWithASecret");
 
-    for (Object held : List.of(entity, JsonUtils.pojoToJson(entity))) {
+    for (final Object held : List.of(entity, JsonUtils.pojoToJson(entity))) {
       final JsonNode stored =
           storedEntity(ChangeEventMasking.masked(JsonUtils.pojoToJson(event.withEntity(held))));
 
