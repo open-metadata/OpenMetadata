@@ -13,9 +13,9 @@ and Temurin had not published 21.0.13.1. Amazon Corretto 21.0.13.1.2 had, as the
 `amazoncorretto` images.
 
 ## Decision
-- The server image jlinks its runtime from Corretto's generic Linux build, copied out of
-  `amazoncorretto:21-al2-generic` into a Debian builder. Not `amazoncorretto:21`: that is Amazon
-  Linux's own build, which links system freetype, libjpeg and libpng that distroless does not ship.
+- The server image jlinks its runtime in `amazoncorretto:21-al2-generic`, Corretto's generic
+  Linux build. Only the runtime leaves that stage. Not `amazoncorretto:21`: that is Amazon Linux
+  2023's own build, which links system freetype, libjpeg and libpng that distroless does not ship.
 - The k8s operator jlinks its runtime in `amazoncorretto:21-alpine`.
 - Both trust the CA list Corretto ships, as it ships it: OpenJDK's roots plus Amazon's own. Nothing
   is copied over it.

@@ -1,12 +1,12 @@
 # Amazon Corretto 21 for Alpine; see ADR:2026-11-18-shipped-jvm-images-run-on-corretto.
-# binutils: jlink --strip-debug runs objcopy.
 FROM amazoncorretto:21-alpine AS jre-builder
-RUN apk add --no-cache binutils
 
+# --strip-java-debug-attributes, not --strip-debug: Corretto ships its native libraries
+# stripped, and --strip-debug would need objcopy for nothing.
 # Headless: drop the X11 and sound natives, which link libraries this image does not have.
 RUN jlink \
       --add-modules ALL-MODULE-PATH \
-      --strip-debug \
+      --strip-java-debug-attributes \
       --no-man-pages \
       --no-header-files \
       --compress=zip-6 \

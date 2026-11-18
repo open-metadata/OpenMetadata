@@ -31,21 +31,17 @@ RUN mkdir -p /opt/openmetadata && \
     mkdir -p /shim/usr/bin && \
     ln -s /busybox/env /shim/usr/bin/env
 
-# Amazon Corretto 21's generic Linux build, from its official image. Not plain
-# `amazoncorretto:21`: that is Amazon Linux's own build, which links system freetype,
-# libjpeg and libpng that the runtime does not ship. See
-# ADR:2026-11-18-shipped-jvm-images-run-on-corretto.
-# binutils: jlink --strip-debug runs objcopy.
-FROM debian:13-slim AS jre-builder
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends binutils && \
-    rm -rf /var/lib/apt/lists/*
-COPY --from=amazoncorretto:21-al2-generic /usr/lib/jvm/java-21-amazon-corretto /opt/jdk
-ENV PATH="/opt/jdk/bin:${PATH}"
+# Amazon Corretto 21's generic Linux build, from its official image. Only the jlinked runtime
+# leaves this stage, not the image's Amazon Linux 2 base. Not plain `amazoncorretto:21`: that
+# is Amazon Linux 2023's own build, which links system freetype, libjpeg and libpng that the
+# runtime does not ship. See ADR:2026-11-18-shipped-jvm-images-run-on-corretto.
+FROM amazoncorretto:21-al2-generic AS jre-builder
 
+# --strip-java-debug-attributes, not --strip-debug: Corretto ships its native libraries
+# stripped, and --strip-debug would need objcopy for nothing.
 RUN jlink \
       --add-modules ALL-MODULE-PATH \
-      --strip-debug \
+      --strip-java-debug-attributes \
       --no-man-pages \
       --no-header-files \
       --compress=zip-6 \
