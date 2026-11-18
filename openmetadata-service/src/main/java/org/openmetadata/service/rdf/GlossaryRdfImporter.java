@@ -943,7 +943,35 @@ public class GlossaryRdfImporter {
 
   private String inverseRelationName(Resource property, Model model) {
     String inverse = firstResourceUri(property, model.getProperty(OWL, "inverseOf"));
+    if (inverse == null) {
+      // owl:inverseOf is symmetric: a file may declare only `A owl:inverseOf B`. When the
+      // importer registers B as the inverse target (the registration pass added by the
+      // dangling-inverse fix), B itself carries no owl:inverseOf statement, so without a
+      // reverse lookup B.inverse would stay unset. A source term whose UUID sorts after the
+      // target's is then canonicalised to B (GlossaryTermRepository.computeCanonicalRelationType)
+      // and applyInverse on B cannot flip it back, so the source shows B instead of its
+      // authored A. Resolve the partner that points back at this property so the pair is wired
+      // in both directions.
+      inverse = reverseInverseDeclaration(model, property);
+    }
     return inverse == null ? null : sanitizeRelationName(localName(inverse));
+  }
+
+  private String reverseInverseDeclaration(Model model, Resource property) {
+    if (property == null || !property.isURIResource()) {
+      return null;
+    }
+    String myUri = property.getURI();
+    Property inverseOf = model.getProperty(OWL, "inverseOf");
+    StmtIterator statements = model.listStatements(null, inverseOf, (RDFNode) null);
+    while (statements.hasNext()) {
+      Statement statement = statements.next();
+      RDFNode object = statement.getObject();
+      if (object.isURIResource() && myUri.equals(object.asResource().getURI())) {
+        return statement.getSubject().getURI();
+      }
+    }
+    return null;
   }
 
   private Set<String> existingRelationTypeNames() {

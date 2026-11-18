@@ -265,6 +265,59 @@ class GlossaryRdfImporterTest {
         "no message is surfaced for a fully-resolvable inverse: " + importer.importMessages());
   }
 
+  /**
+   * owl:inverseOf is symmetric, but a file may declare only one half ({@code A owl:inverseOf B}
+   * with {@code B a owl:ObjectProperty} and no {@code B owl:inverseOf A}). The registration pass
+   * still registers B as the inverse target; without wiring the reverse reference B.inverse stays
+   * null. A source term whose UUID sorts after the target's is then canonicalised to B (see
+   * GlossaryTermRepository.computeCanonicalRelationType) and applyInverse on B cannot flip it
+   * back, so the source shows B instead of its authored A. The importer must resolve the partner
+   * pointing back at B so the pair is wired in both directions.
+   */
+  @Test
+  void wiresReverseInverseWhenOnlyOneDirectionIsDeclared() {
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" .
+        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
+
+        hcp:prescribes a owl:ObjectProperty ;
+            rdfs:label "prescribes" ;
+            rdfs:domain hcp:Physician ;
+            rdfs:range hcp:Drug ;
+            owl:inverseOf hcp:prescribedBy .
+
+        hcp:prescribedBy a owl:ObjectProperty ;
+            rdfs:label "prescribed by" ;
+            rdfs:domain hcp:Drug ;
+            rdfs:range hcp:Physician .
+        """;
+    Model model = ModelFactory.createDefaultModel();
+    model.read(new StringReader(ontology), null, "TURTLE");
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    RelationshipType forward = importer.buildRelationType(model, "prescribes");
+    RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
+
+    assertNotNull(forward.getInverse(), "the forward half wires its declared inverse");
+    assertEquals("prescribedBy", forward.getInverse().getName());
+    assertNotNull(
+        reverse.getInverse(),
+        "the reverse half wires the partner that points back at it, "
+            + "so applyInverse can flip a canonicalised B back to the authored A");
+    assertEquals("prescribes", reverse.getInverse().getName());
+    assertNotNull(
+        reverse.getInverse().getId(), "the reverse inverse reference carries a stable id");
+    assertTrue(
+        importer.importMessages().isEmpty(),
+        "no message is surfaced for a fully-resolvable pair: " + importer.importMessages());
+  }
+
   @Test
   void parsesDatatypePropertiesAndMapsXsdTypes() {
     Model model = ModelFactory.createDefaultModel();

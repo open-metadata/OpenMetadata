@@ -894,6 +894,79 @@ public class GlossaryRdfImportIT {
     assertEquals("Physician", drug.getRelatedTerms().get(0).getTerm().getName());
   }
 
+  /**
+   * owl:inverseOf is symmetric, but a file may declare only one half ({@code A owl:inverseOf B}
+   * with {@code B a owl:ObjectProperty} and no {@code B owl:inverseOf A}). The importer must still
+   * register B and wire the reverse reference B.inverse = A, so that when a source term's UUID
+   * sorts after the target's and {@code computeCanonicalRelationType} flips the stored edge to B,
+   * {@code applyInverse} on the source side can flip it back to the authored A. Without the reverse
+   * wiring the source would show B instead of its authored A.
+   */
+  @Test
+  void importWiresReverseInverseWhenOnlyOneDirectionIsDeclared(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String prescribesName = relationshipTypeName(glossary.getName());
+    String prescribedByName = prescribesName + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(prescribesName));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(prescribedByName));
+
+    String ontology =
+        singleInverseOntologyWithObjectProperty(
+            glossary.getName(), prescribesName, prescribedByName);
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+
+    assertTrue(
+        result.path("relationTypesRegistered").asInt() >= 2,
+        "both inverse halves are registered even with one-directional owl:inverseOf: " + result);
+    assertEquals(
+        1, result.path("relationsAdded").asInt(), "the single asserted edge is wired: " + result);
+    assertFalse(
+        result
+            .path("messages")
+            .toString()
+            .toLowerCase()
+            .contains("leaving the inverse reference unset"),
+        "no inverse-dangle message is surfaced when the inverse target is declared: " + result);
+
+    // Both halves are registered and reference each other in both directions.
+    JsonNode prescribesType =
+        OBJECT_MAPPER.readTree(
+            get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribesName)
+                .body());
+    JsonNode prescribedByType =
+        OBJECT_MAPPER.readTree(
+            get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribedByName)
+                .body());
+    assertEquals(
+        prescribedByName,
+        prescribesType.path("inverse").path("name").asText(),
+        "the forward half wires its declared inverse");
+    assertEquals(
+        prescribesName,
+        prescribedByType.path("inverse").path("name").asText(),
+        "the reverse half wires the partner that points back at it");
+
+    // FROM side: physician authored 'prescribes' toward drug. Regardless of which UUID sorts
+    // after the other, the source must see its authored 'prescribes' (applyInverse flips a
+    // canonicalised prescribedBy back to prescribes when physician.id > drug.id).
+    GlossaryTerm physician = getTerm(glossary.getName() + ".Physician");
+    assertEquals(1, physician.getRelatedTerms().size(), "physician has the asserted edge");
+    TermRelation forwardEdge = physician.getRelatedTerms().get(0);
+    assertEquals(prescribesName, forwardEdge.getRelationType(), "FROM-side sees prescribes");
+    assertEquals("Drug", forwardEdge.getTerm().getName());
+
+    // TO side: drug sees the inverse perspective.
+    GlossaryTerm drug = getTerm(glossary.getName() + ".Drug");
+    assertEquals(1, drug.getRelatedTerms().size(), "drug has the inverse edge");
+    TermRelation inverseEdge = drug.getRelatedTerms().get(0);
+    assertEquals(
+        prescribedByName,
+        inverseEdge.getRelationType(),
+        "TO-side sees prescribedBy as the inverse");
+    assertEquals("Physician", inverseEdge.getTerm().getName());
+  }
+
   private String inversePairOntology(String glossaryName, String prescribes, String prescribedBy) {
     return String.format(
         """
@@ -939,6 +1012,40 @@ public class GlossaryRdfImportIT {
             owl:inverseOf hcp:%s .
         """,
         glossaryName, prescribes, prescribes, prescribedBy);
+  }
+
+  /**
+   * One-directional {@code owl:inverseOf} where the inverse target IS declared as an
+   * owl:ObjectProperty (so the importer registers it), but without the reverse
+   * {@code B owl:inverseOf A} declaration. This is the gap between
+   * {@link #inversePairOntology} (both halves declared in both directions) and
+   * {@link #singleInverseOntology} (target never declared): the importer registers both halves
+   * and must wire the reverse reference by resolving the partner that points back at B.
+   */
+  private String singleInverseOntologyWithObjectProperty(
+      String glossaryName, String prescribes, String prescribedBy) {
+    return String.format(
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/%s#> .
+
+        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" ; hcp:%s hcp:Drug .
+        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
+
+        hcp:%s a owl:ObjectProperty ;
+            rdfs:label "prescribes" ;
+            rdfs:domain hcp:Physician ;
+            rdfs:range hcp:Drug ;
+            owl:inverseOf hcp:%s .
+
+        hcp:%s a owl:ObjectProperty ;
+            rdfs:label "prescribed by" ;
+            rdfs:domain hcp:Drug ;
+            rdfs:range hcp:Physician .
+        """,
+        glossaryName, prescribes, prescribes, prescribedBy, prescribedBy);
   }
 
   private JsonNode importRdf(String glossaryName, boolean dryRun) throws Exception {
