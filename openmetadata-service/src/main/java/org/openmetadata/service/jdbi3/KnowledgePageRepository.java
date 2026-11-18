@@ -354,12 +354,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     return true;
   }
 
-  /** A child page is a descendant of the page whose FQN it extends. */
-  @Override
-  protected String fqnParentType() {
-    return Entity.PAGE;
-  }
-
   @Override
   public void setFullyQualifiedName(Page page) {
     if (page.getParent() == null) {

@@ -356,12 +356,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     return true;
   }
 
-  /** A file in a folder is a descendant of the folder whose FQN it extends. */
-  @Override
-  protected String fqnParentType() {
-    return Entity.FOLDER;
-  }
-
   @Override
   public void setFullyQualifiedName(ContextFile file) {
     if (file.getFolder() == null) {

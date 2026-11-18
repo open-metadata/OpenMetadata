@@ -6301,9 +6301,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * For a type that {@link #nestsUnderUnrelatedFqns()}, the type whose descendants its entities
-   * are when their FQN nests under its FQN (data models under their dashboard service, a page under
-   * its parent page), or {@code null}. A recursive delete of such a parent removes them with it.
+   * For a type that {@link #nestsUnderUnrelatedFqns()}, the type whose cascade-covered descendants
+   * its entities are when their FQN nests under its FQN (data models under their dashboard service),
+   * or {@code null}. Before a recursive delete from such a parent, they do not count as unrelated, so
+   * its descendants keep relying on its single prefix delete.
    */
   protected String fqnParentType() {
     return null;

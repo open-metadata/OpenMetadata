@@ -40,8 +40,8 @@ No hard delete removes another entity's tag labels or field relationships. Where
 some of the deleted entity's rows stay. These are the rows at an FQN another type has, which are
 that entity's too, plus the nested-part rows (columns, fields) under that FQN. Each hard delete
 costs two more queries, a recursive one two more before its cascade, and descendants that remove
-their own rows two more per batch of 50. A new type whose
-FQN can nest under an unrelated FQN must override `nestsUnderUnrelatedFqns()`, and
-`fqnParentType()` when it also nests under a parent's FQN as that parent's descendant. Recording the
-target's entity type on each row would make all of this exact, but that schema change is still
-deferred.
+their own rows two more per batch of 50. A new type whose FQN can nest under an unrelated FQN must
+override `nestsUnderUnrelatedFqns()`. If its entities are also the cascade-covered descendants of a
+parent type, it names that type in `fqnParentType()`; without it, deleting such a parent still
+removes the right rows, one descendant at a time. Recording the target's entity type on each row
+would make all of this exact, but that schema change is still deferred.
