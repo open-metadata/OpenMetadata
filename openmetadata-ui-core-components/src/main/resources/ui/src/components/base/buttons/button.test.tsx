@@ -284,6 +284,27 @@ describe('Button — icon size and color', () => {
     }
   });
 
+  // Its trailing icon keeps the 16px xs frame, so the regular xs padding holds.
+  it('keeps the xs padding on a trailing-only link-color icon button', () => {
+    render(
+      <Button
+        boxed
+        aria-label="More"
+        color="link-color"
+        iconTrailing={Edit01}
+        size="xs"
+      />
+    );
+
+    const button = screen.getByRole('button', { name: 'More' });
+
+    expect(button).toHaveClass(
+      'tw:data-icon-only:p-1.5',
+      'tw:in-data-input-wrapper:data-icon-only:p-1.75'
+    );
+    expect(button).not.toHaveClass('tw:data-icon-only:p-1.25');
+  });
+
   // Inside an InputGroup the button matches the input height: 30 / 40 / 44.
   it.each([
     ['xs', 'tw:in-data-input-wrapper:data-icon-only:p-1.75'],
