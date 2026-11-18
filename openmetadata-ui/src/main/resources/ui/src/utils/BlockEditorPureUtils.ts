@@ -236,6 +236,40 @@ export const formatClientContent = (content: string) => {
   return getSanitizeContent(doc.body.innerHTML);
 };
 
+export const getTrimmedHtmlContent = (html: string, limit: number) => {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+
+  if ((doc.body.textContent ?? '').length <= limit) {
+    return html;
+  }
+
+  const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+  let remaining = limit;
+  let node = walker.nextNode() as Text | null;
+
+  while (node && node.data.length <= remaining) {
+    remaining -= node.data.length;
+    node = walker.nextNode() as Text | null;
+  }
+
+  if (!node) {
+    return html;
+  }
+
+  const slicedText = node.data.slice(0, remaining);
+  const lastSpaceIndex = slicedText.lastIndexOf(' ');
+  node.data = `${
+    lastSpaceIndex > 0 ? slicedText.slice(0, lastSpaceIndex) : slicedText
+  }...`;
+
+  const range = doc.createRange();
+  range.setStartAfter(node);
+  range.setEnd(doc.body, doc.body.childNodes.length);
+  range.deleteContents();
+
+  return doc.body.innerHTML;
+};
+
 /**
  * Checks whether a block-editor HTML string represents empty content.
  * Treats null/undefined/empty strings, whitespace-only strings, and

@@ -17,10 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
   formatClientContent,
+  getTrimmedHtmlContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
 import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
-import { getTrimmedContent } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -47,32 +47,17 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 
   const handleReadMoreToggle = () => setReadMore((pre) => !pre);
 
-  // whether has read more content or not
-  const hasReadMore = useMemo(
-    () => enableSeeMoreVariant && markdown.length > maxLength,
-    [enableSeeMoreVariant, markdown, maxLength]
+  const trimmedContent = useMemo(
+    () =>
+      enableSeeMoreVariant
+        ? getTrimmedHtmlContent(content, maxLength)
+        : content,
+    [enableSeeMoreVariant, content, maxLength]
   );
 
-  /**
-   * if hasReadMore is true then value will be based on read more state
-   * else value will be content
-   *
-   * `hasReadMore` measures the raw markdown length, so the truncation must
-   * also operate on the raw markdown before it is converted to HTML. Slicing
-   * the converted HTML (the previous behaviour) lands the cut mid-markup-tag
-   * (`<a`, `<strong` fragments) and lets markup consume the `maxLength`
-   * budget, leaving a broken, garbled preview that silently drops links near
-   * the cut. Truncating markdown first yields well-formed HTML for `BlockEditor`.
-   */
-  const viewerValue = useMemo(() => {
-    if (hasReadMore) {
-      return readMore
-        ? content
-        : `${formatClientContent(getTrimmedContent(markdown, maxLength))}...`;
-    }
+  const hasReadMore = trimmedContent !== content;
 
-    return content;
-  }, [hasReadMore, markdown, maxLength, readMore, content]);
+  const viewerValue = readMore ? content : trimmedContent;
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));

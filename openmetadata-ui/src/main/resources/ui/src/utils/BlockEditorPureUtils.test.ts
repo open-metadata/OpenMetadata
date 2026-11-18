@@ -13,6 +13,7 @@
 import {
   formatClientContent,
   getHtmlStringFromMarkdownString,
+  getTrimmedHtmlContent,
   isHTMLString,
 } from './BlockEditorPureUtils';
 
@@ -563,5 +564,48 @@ describe('formatClientContent: mentions and hashtags', () => {
     expect(result).toContain('href="https://example.com/docs"');
     expect(result).toContain('Legacy documentation');
     expect(result).not.toContain('@null');
+  });
+});
+
+describe('getTrimmedHtmlContent', () => {
+  it('should return the content unchanged when it fits the limit', () => {
+    const html = '<p>Short <strong>bold</strong> text</p>';
+
+    expect(getTrimmedHtmlContent(html, 50)).toBe(html);
+  });
+
+  it('should keep bold formatting that crosses the cut', () => {
+    const html = formatClientContent(
+      'Intro **bold words continue here** tail and some more text after it'
+    );
+
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<p>Intro <strong>bold words...</strong></p>'
+    );
+  });
+
+  it('should keep a link whose label crosses the cut', () => {
+    const html = formatClientContent(
+      'See the [my long docs label](https://example.com/x) for details please'
+    );
+
+    expect(getTrimmedHtmlContent(html, 20)).toBe(
+      '<p>See the <a href="https://example.com/x" rel="noopener noreferrer">my long...</a></p>'
+    );
+  });
+
+  it('should count visible text, not markup, against the limit', () => {
+    const html =
+      '<p><a href="https://example.com/a/very/long/path">docs</a> and more words here</p>';
+
+    expect(getTrimmedHtmlContent(html, 15)).toBe(
+      '<p><a href="https://example.com/a/very/long/path">docs</a> and more...</p>'
+    );
+  });
+
+  it('should drop every block after the cut', () => {
+    const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
+
+    expect(getTrimmedHtmlContent(html, 10)).toBe('<p>First...</p>');
   });
 });
