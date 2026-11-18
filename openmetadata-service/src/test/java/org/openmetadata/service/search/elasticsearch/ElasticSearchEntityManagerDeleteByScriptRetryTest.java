@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.util.List;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.service.search.EntityManagementClient;
 import org.openmetadata.service.search.ScriptedDeleteRetryTestBase;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -78,6 +79,11 @@ class ElasticSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRe
   @Override
   protected void deleteByScript() throws Exception {
     manager.deleteByScript(index, SCRIPT, PARAMS);
+  }
+
+  @Override
+  protected EntityManagementClient manager() {
+    return manager;
   }
 
   @Override

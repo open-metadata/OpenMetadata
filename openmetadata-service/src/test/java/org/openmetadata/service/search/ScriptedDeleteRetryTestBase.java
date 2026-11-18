@@ -14,10 +14,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 
 public abstract class ScriptedDeleteRetryTestBase {
@@ -42,6 +45,15 @@ public abstract class ScriptedDeleteRetryTestBase {
   protected abstract void deleteByScript() throws Exception;
 
   protected abstract void deleteOnce() throws Exception;
+
+  protected abstract EntityManagementClient manager();
+
+  protected enum DeletePath {
+    FIELDS,
+    FQN_PREFIX,
+    RANGE,
+    RANGE_AND_TERM
+  }
 
   @BeforeEach
   void setUp() throws Exception {
@@ -84,6 +96,15 @@ public abstract class ScriptedDeleteRetryTestBase {
   void retriesAnUpdatedDocumentAgainstItsRefreshedVersion() throws Exception {
     rewriteWithoutRefresh();
     deleteByScript();
+    assertOnlyOtherTestCaseRemains();
+    assertEquals(List.of(1L, 0L), conflicts);
+  }
+
+  @ParameterizedTest
+  @EnumSource(DeletePath.class)
+  void everyDeleteByQueryRetriesAnUpdatedDocument(DeletePath path) throws Exception {
+    rewriteWithoutRefresh();
+    delete(path);
     assertOnlyOtherTestCaseRemains();
     assertEquals(List.of(1L, 0L), conflicts);
   }
@@ -182,7 +203,25 @@ public abstract class ScriptedDeleteRetryTestBase {
   }
 
   protected void rewriteWithoutRefresh() throws Exception {
-    request("PUT", index + "/_doc/held?refresh=false", "{\"testCaseFQN\":\"my_test\",\"value\":2}");
+    request("PUT", index + "/_doc/held?refresh=false", matchingDocument(2));
+  }
+
+  private void delete(DeletePath path) throws Exception {
+    EntityManagementClient manager = manager();
+    switch (path) {
+      case FIELDS -> manager.deleteEntityByFields(
+          List.of(index), List.of(Pair.of("testCaseFQN.keyword", "my_test")));
+      case FQN_PREFIX -> manager.deleteEntityByFQNPrefix(index, "svc.");
+      case RANGE -> manager.deleteByRangeQuery(index, "value", null, null, 50, null);
+      case RANGE_AND_TERM -> manager.deleteByRangeAndTerm(
+          index, "value", null, null, 50, null, "testCaseFQN.keyword", "my_test");
+    }
+  }
+
+  private static String matchingDocument(int value) {
+    return "{\"testCaseFQN\":\"my_test\",\"fullyQualifiedName\":\"svc.my_test\",\"value\":"
+        + value
+        + "}";
   }
 
   private void seed() throws Exception {
@@ -196,9 +235,13 @@ public abstract class ScriptedDeleteRetryTestBase {
       body.append("{\"index\":{\"_id\":\"")
           .append(id)
           .append("\"}}\n")
-          .append("{\"testCaseFQN\":\"my_test\",\"value\":1}\n");
+          .append(matchingDocument(1))
+          .append("\n");
     }
-    body.append("{\"index\":{\"_id\":\"keep\"}}\n{\"testCaseFQN\":\"another_test\"}\n");
+    body.append(
+        "{\"index\":{\"_id\":\"keep\"}}\n"
+            + "{\"testCaseFQN\":\"another_test\",\"fullyQualifiedName\":\"other.another_test\","
+            + "\"value\":100}\n");
     assertEquals(
         false,
         request("POST", index + "/_bulk?refresh=true", body.toString()).path("errors").asBoolean());
