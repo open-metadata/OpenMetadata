@@ -1072,12 +1072,10 @@ const TeamDetailsV1 = ({
                 updateTeamHandler={updateTeamHandler}
               />
 
-              <div className="d-flex flex-1 items-center justify-end w-min-0">
-                <LearningIcon
-                  pageId={LEARNING_PAGE_IDS.TEAMS}
-                  title={t('label.team-plural')}
-                />
-              </div>
+              <LearningIcon
+                pageId={LEARNING_PAGE_IDS.TEAMS}
+                title={t('label.team-plural')}
+              />
             </div>
 
             <Box

@@ -257,6 +257,20 @@ describe('UserPopOverCard Component', () => {
     expect(screen.getByTestId('testUser')).toHaveTextContent('Test User');
   });
 
+  it('should not fetch the user when a display name is passed', () => {
+    render(
+      <UserPopOverCard
+        showUserName
+        displayName="Test User"
+        userName="testUser"
+      />
+    );
+
+    expect(mockUseUserProfile).toHaveBeenCalledWith(
+      expect.objectContaining({ permission: false })
+    );
+  });
+
   it('should not fetch the user when it only renders an avatar', () => {
     render(<UserPopOverCard userName="testUser" />);
 

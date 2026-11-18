@@ -38,7 +38,7 @@ describe('UserRoles Component', () => {
     expect(screen.getByText('label.role-plural')).toBeInTheDocument();
     expect(screen.getByText('Role 1')).toBeInTheDocument();
     expect(screen.getByText('Role 2')).toBeInTheDocument();
-    expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.getByText('label.admin-superuser')).toBeInTheDocument();
   });
 
   it('should not render when no roles are available', () => {
@@ -53,6 +53,6 @@ describe('UserRoles Component', () => {
     render(<UserRoles user={userWithoutAdmin} />);
 
     expect(screen.getByText('Role 1')).toBeInTheDocument();
-    expect(screen.queryByText('Admin')).toBeNull();
+    expect(screen.queryByText('label.admin-superuser')).toBeNull();
   });
 });

@@ -21,6 +21,7 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
@@ -77,6 +78,7 @@ import org.openmetadata.schema.services.connections.database.StarRocksConnection
 import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
+import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.databricks.AzureADSetup;
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
@@ -130,6 +132,21 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
+          // GCPCredentials is typed, but its gcpConfig is a oneOf the credentials converter types.
+          Map.entry(
+              GcpCloudSqlConfig.class,
+              new NestedConfigClassConverter(
+                  GcpCloudSqlConfig.class, Map.of("gcpConfig", List.of(GCPCredentials.class)))),
+          Map.entry(
+              org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig.class,
+              new NestedConfigClassConverter(
+                  org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig.class,
+                  Map.of("securityConfig", List.of(GCPCredentials.class)))),
+          Map.entry(
+              SupersetApiConnection.class,
+              new NestedConfigClassConverter(
+                  SupersetApiConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               AlationConnection.class,
               new NestedConfigClassConverter(

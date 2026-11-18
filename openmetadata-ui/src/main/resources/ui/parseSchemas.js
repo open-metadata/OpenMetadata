@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 /* eslint-disable */
+// Its js-yaml 4 pin in package.json: ADR:2026-11-17-ref-parser-js-yaml-resolution-precedes-bare-js-yaml
 const { $RefParser } = require('@apidevtools/json-schema-ref-parser');
 const path = require('path');
 const fs = require('fs');
@@ -22,14 +23,19 @@ const cwd = process.cwd();
 const schemaDir =
   '../../../../../openmetadata-spec/src/main/resources/json/schema';
 
-const globalParserOptions = {
-  continueOnError: true,
-  dereference: {
-    circular: true,
+// Passed on every call: $RefParser ignores options given to its constructor.
+// Under 2020-12 it resolves `$ref`s against `$id`, and many spec `$id`s do not
+// match their file path, so drop them and resolve relative to the file instead.
+const parserOptions = {
+  parse: {
+    json: {
+      parse: ({ data }) =>
+        removeObjectByKey(JSON.parse(data.toString()), '$id'),
+    },
   },
 };
 
-const parser = new $RefParser(globalParserOptions);
+const parser = new $RefParser();
 
 // Every failure below is collected rather than thrown, so that one bad schema
 // does not hide the rest. The process still exits non-zero if this is non-empty:
@@ -65,24 +71,21 @@ async function parseSchema(filePath, destPath, shouldDereference = false) {
     const fileName = path.basename(filePath);
     process.chdir(fileDir);
 
-    let parsedSchema = await parser.parse(fileName);
+    let parsedSchema = await parser.parse(fileName, parserOptions);
     if (shouldDereference || fileName.startsWith('dbt')) {
-      parsedSchema = await parser.dereference(parsedSchema);
+      parsedSchema = await parser.dereference(parsedSchema, parserOptions);
     }
-    const api = await parser.bundle(parsedSchema);
+    const api = await parser.bundle(parsedSchema, parserOptions);
     const dirname = `${cwd}/${path.dirname(destPath)}`;
-    // `$id` and `$schema` are stripped for the same reason: what lands here is a
-    // dereferenced bundle, not the spec document it came from. Its `$id` no longer
-    // addresses anything, and a nested `$schema` is not even a keyword position.
-    // `$schema` matters more than tidiness though -- these bundles are fed to
+    // `$id` is already dropped at read time (parserOptions). `$schema` is stripped
+    // because what lands here is a dereferenced bundle, not the spec document it
+    // came from, where a nested `$schema` is not even a keyword position.
+    // It matters more than tidiness though -- these bundles are fed to
     // @rjsf/validator-ajv8, whose Ajv only carries the draft-07 meta-schema, and Ajv
     // fails closed on a dialect it does not know: one `no schema with key or ref ...`
     // error and every field silently stops being validated. Dropping the declaration
     // keeps Ajv on its default dialect, which is what these forms have always used.
-    const updatedAPIWithoutID = removeObjectByKey(
-      removeObjectByKey(api, '$id'),
-      '$schema'
-    );
+    const updatedAPIWithoutID = removeObjectByKey(api, '$schema');
 
     if (!fs.existsSync(dirname)) {
       try {
@@ -184,15 +187,11 @@ async function parseApplicationSchemas() {
         process.chdir(fileDir);
 
         // Parse and dereference the schema
-        let parsedSchema = await parser.parse(file);
-        parsedSchema = await parser.dereference(parsedSchema);
+        let parsedSchema = await parser.parse(file, parserOptions);
+        parsedSchema = await parser.dereference(parsedSchema, parserOptions);
 
-        // Same as parseSchema above: dereferenced output, so `$id` no longer
-        // addresses anything and `$schema` would put Ajv on a dialect it cannot load.
-        const updatedSchema = removeObjectByKey(
-          removeObjectByKey(parsedSchema, '$id'),
-          '$schema'
-        );
+        // Same as parseSchema above: `$schema` would put Ajv on a dialect it cannot load.
+        const updatedSchema = removeObjectByKey(parsedSchema, '$schema');
 
         // Change back to original directory
         process.chdir(originalCwd);

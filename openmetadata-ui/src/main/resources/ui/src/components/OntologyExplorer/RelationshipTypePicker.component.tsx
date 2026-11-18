@@ -376,8 +376,8 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
     <div
       className={classNames(
         isAiMode
-          ? 'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary'
-          : 'tw:flex tw:w-64 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary',
+          ? 'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-primary tw:bg-primary'
+          : 'tw:flex tw:w-64 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-primary tw:bg-primary',
         'tw:shadow-xl',
         className
       )}

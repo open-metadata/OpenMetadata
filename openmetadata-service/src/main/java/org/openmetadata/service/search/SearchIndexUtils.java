@@ -19,6 +19,7 @@ import jakarta.json.JsonValue;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -337,6 +338,16 @@ public final class SearchIndexUtils {
     upsert.values().removeIf(Objects::isNull);
     upsert.remove(SearchClient.FIELDS_TO_REMOVE);
     return upsert;
+  }
+
+  /**
+   * The fields an update document lists under {@code fieldsToRemove}. A scripted update removes
+   * them along with the fields of {@link SearchClient#FIELDS_TO_REMOVE_WHEN_NULL} it sets to null.
+   */
+  public static List<String> listedFieldsToRemove(Map<String, Object> doc) {
+    return doc.get(SearchClient.FIELDS_TO_REMOVE) instanceof Collection<?> fields
+        ? fields.stream().map(String::valueOf).toList()
+        : List.of();
   }
 
   public static Map<String, Object> stripDocMapIfOversized(
