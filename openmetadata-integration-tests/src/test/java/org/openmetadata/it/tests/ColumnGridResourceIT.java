@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -219,7 +220,10 @@ public class ColumnGridResourceIT {
     assertTrue(page1.getColumns().size() <= 2, "Should respect page size limit");
   }
 
-  /** Browsing table columns and topic fields together pages through each name exactly once. */
+  /**
+   * Browsing table columns and topic fields together pages through each name exactly once, with
+   * names that differ only in case in one row.
+   */
   @Test
   void test_getColumnGrid_browseAcrossColumnFieldsServesEachColumnOnce(TestNamespace ns)
       throws Exception {
@@ -231,7 +235,7 @@ public class ColumnGridResourceIT {
                 .withDomainType(CreateDomain.DomainType.AGGREGATE)
                 .withDescription("Scopes the multi-field browse walk"));
     List<String> domains = List.of(domain.getFullyQualifiedName());
-    String prefix = ns.shortPrefix() + "_browse_";
+    String prefix = (ns.shortPrefix() + "_browse_").toLowerCase(Locale.ROOT);
     String c0 = prefix + "c0";
     String c1 = prefix + "c1";
     String c2 = prefix + "c2";
@@ -270,7 +274,7 @@ public class ColumnGridResourceIT {
                     new MessageSchema()
                         .withSchemaType(SchemaType.JSON)
                         .withSchemaFields(
-                            Stream.of(c1, c3, c5, c8)
+                            Stream.of(c1, c3, c5, c8.toUpperCase(Locale.ROOT))
                                 .map(
                                     name ->
                                         new Field()
@@ -295,10 +299,14 @@ public class ColumnGridResourceIT {
       String cursorParam =
           cursor == null ? "" : "&cursor=" + URLEncoder.encode(cursor, StandardCharsets.UTF_8);
       ColumnGridResponse page = getColumnGrid(client, query + "&size=3" + cursorParam);
-      pages.add(page.getColumns().stream().map(ColumnGridItem::getColumnName).sorted().toList());
+      pages.add(
+          page.getColumns().stream()
+              .map(item -> item.getColumnName().toLowerCase(Locale.ROOT))
+              .sorted()
+              .toList());
       shared =
           page.getColumns().stream()
-              .filter(item -> c8.equals(item.getColumnName()))
+              .filter(item -> c8.equalsIgnoreCase(item.getColumnName()))
               .findFirst()
               .orElse(shared);
       cursor = page.getCursor();
@@ -307,86 +315,6 @@ public class ColumnGridResourceIT {
     assertEquals(List.of(List.of(c0, c1, c2), List.of(c3, c4, c5), List.of(c6, c8)), pages);
     assertNotNull(shared);
     assertEquals(2, shared.getTotalOccurrences());
-  }
-
-  @Test
-  void test_getColumnGrid_browseMergesCaseVariantNamesAcrossFields(TestNamespace ns)
-      throws Exception {
-    // The column-name keyword field uses the lowercase normalizer, so a table column "CustomerID"
-    // and a topic field "customerid" share one normalized bucket key. The browse path must merge
-    // them into a single grid row with combined occurrences so totalUniqueColumns (a
-    // case-insensitive cardinality) matches the row count and occurrences aren't split.
-    OpenMetadataClient client = SdkClients.adminClient();
-    Domain domain =
-        Domains.create(
-            new CreateDomain()
-                .withName(ns.prefix("case_variant_domain"))
-                .withDomainType(CreateDomain.DomainType.AGGREGATE)
-                .withDescription("Scopes the mixed-case browse walk"));
-    List<String> domains = List.of(domain.getFullyQualifiedName());
-    String tableColumnName = ns.shortPrefix() + "_CustomerID";
-    String topicFieldName = ns.shortPrefix() + "_customerid";
-
-    DatabaseSchema schema =
-        DatabaseSchemaTestFactory.createSimple(ns, DatabaseServiceTestFactory.createPostgres(ns));
-    client
-        .tables()
-        .create(
-            new CreateTable()
-                .withName(ns.prefix("case_variant_table"))
-                .withDatabaseSchema(schema.getFullyQualifiedName())
-                .withColumns(
-                    List.of(
-                        Columns.build(tableColumnName)
-                            .withType(ColumnDataType.VARCHAR)
-                            .withLength(255)
-                            .create()))
-                .withDomains(domains));
-    client
-        .topics()
-        .create(
-            new CreateTopic()
-                .withName(ns.prefix("case_variant_topic"))
-                .withService(MessagingServiceTestFactory.createKafka(ns).getFullyQualifiedName())
-                .withPartitions(1)
-                .withMessageSchema(
-                    new MessageSchema()
-                        .withSchemaType(SchemaType.JSON)
-                        .withSchemaFields(
-                            List.of(
-                                new Field()
-                                    .withName(topicFieldName)
-                                    .withDataType(FieldDataType.STRING))))
-                .withDomains(domains));
-
-    String query = "entityTypes=table,topic&domainId=" + domain.getId();
-    waitForSearchIndexRefresh(ns);
-    await("Wait for the case-variant columns to be indexed and merged")
-        .atMost(Duration.ofSeconds(45))
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () ->
-                assertEquals(
-                    1,
-                    getColumnGrid(client, query + "&size=100").getTotalUniqueColumns(),
-                    "case-variant names across fields must count as one unique column"));
-
-    ColumnGridResponse page = getColumnGrid(client, query + "&size=100");
-    assertNotNull(page.getColumns());
-    assertEquals(1, page.getColumns().size(), "case-variant names must merge into one grid row");
-    ColumnGridItem merged = page.getColumns().getFirst();
-    assertTrue(
-        merged.getColumnName().equalsIgnoreCase(tableColumnName),
-        "merged row should carry one of the original-cased names");
-    assertEquals(2, merged.getTotalOccurrences(), "both occurrences must be combined into one row");
-
-    List<String> occurrenceEntityTypes =
-        merged.getGroups().stream()
-            .flatMap(group -> group.getOccurrences().stream())
-            .map(ColumnOccurrenceRef::getEntityType)
-            .sorted()
-            .toList();
-    assertEquals(List.of("table", "topic"), occurrenceEntityTypes);
   }
 
   @Test

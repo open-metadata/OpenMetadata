@@ -31,6 +31,7 @@ import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -197,6 +198,33 @@ public interface ColumnAggregator {
   private static boolean mayHaveMore(List<String> keys, String lastName, int size) {
     return keys.size() >= size
         || (!keys.isEmpty() && KEYWORD_ORDER.compare(keys.getLast(), lastName) > 0);
+  }
+
+  /**
+   * Merge each field's page rows by bucket key, the unit browse pages and counts by, and name each
+   * row after its first occurrence. Table and topic keys are lowercase-normalized, so their case
+   * variants share a row; pipeline and ML model keys keep their case.
+   */
+  static Map<String, List<ColumnWithContext>> mergeRowsByBucketKey(
+      List<Map<String, List<ColumnWithContext>>> rowsByBucketKeyPerField) {
+    Map<String, List<ColumnWithContext>> rowsByBucketKey = new HashMap<>();
+    rowsByBucketKeyPerField.forEach(
+        rows ->
+            rows.forEach(
+                (bucketKey, occurrences) ->
+                    rowsByBucketKey
+                        .computeIfAbsent(bucketKey, key -> new ArrayList<>())
+                        .addAll(occurrences)));
+    Map<String, List<ColumnWithContext>> rowsByName = new HashMap<>();
+    rowsByBucketKey
+        .values()
+        .forEach(
+            occurrences ->
+                rowsByName
+                    .computeIfAbsent(
+                        occurrences.getFirst().column.getName(), name -> new ArrayList<>())
+                    .addAll(occurrences));
+    return rowsByName;
   }
 
   /** Saturating long → int cast for response totals. Caps at Integer.MAX_VALUE. */

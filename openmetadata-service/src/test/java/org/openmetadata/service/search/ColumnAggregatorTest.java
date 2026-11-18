@@ -25,15 +25,18 @@ import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.ColumnGridItem;
 import org.openmetadata.schema.api.data.ColumnGridResponse;
 import org.openmetadata.schema.api.data.ColumnMetadataGroup;
 import org.openmetadata.schema.api.data.MetadataStatus;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.ColumnAggregator.ColumnAggregationRequest;
+import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
 
 class ColumnAggregatorTest {
 
@@ -351,6 +354,29 @@ class ColumnAggregatorTest {
     assertEquals(Map.of(), ColumnAggregator.decodeBrowseCursor(base64("null")));
     assertEquals(
         Map.of(), ColumnAggregator.decodeBrowseCursor(base64("{\"columns.name.keyword\":null}")));
+  }
+
+  @Test
+  void mergeRowsByBucketKey_mergesOnlyOccurrencesThatShareABucketKey() {
+    Map<String, List<ColumnWithContext>> tableRows =
+        Map.of("customerid", List.of(occurrence("CustomerID", "table")));
+    Map<String, List<ColumnWithContext>> topicRows =
+        Map.of("customerid", List.of(occurrence("customerid", "topic")));
+    Map<String, List<ColumnWithContext>> pipelineRows =
+        Map.of(
+            "Extract", List.of(occurrence("Extract", "pipeline")),
+            "extract", List.of(occurrence("extract", "pipeline")));
+
+    Map<String, List<ColumnWithContext>> rows =
+        ColumnAggregator.mergeRowsByBucketKey(List.of(tableRows, topicRows, pipelineRows));
+
+    assertEquals(Set.of("CustomerID", "Extract", "extract"), rows.keySet());
+    assertEquals(2, rows.get("CustomerID").size());
+  }
+
+  private static ColumnWithContext occurrence(String columnName, String entityType) {
+    return new ColumnWithContext(
+        new Column().withName(columnName), entityType, null, null, null, null, null);
   }
 
   private static String base64(String json) {

@@ -263,30 +263,16 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
       Map<String, SearchResponse<JsonData>> responsesByField,
       Map<String, List<String>> fieldPathToEntityTypes,
       Set<String> pageKeys) {
-    // Bucket keys come from the column-name keyword field, which uses the lowercase normalizer, so
-    // two fields can return the same normalized key for different original-cased names (e.g. a
-    // table column "CustomerID" and a topic field "customerid"). parseBucketHits re-keys each
-    // field's buckets by the original-cased name from _source, so merging into a plain HashMap
-    // would
-    // split those case variants into separate grid rows while totalUniqueColumns (a
-    // case-insensitive
-    // cardinality) reports one. A case-insensitive TreeMap merges them — matching the cardinality
-    // and the tag/row-filter paths in this class — while the first field's original casing is
-    // retained as the display key.
-    Map<String, List<ColumnWithContext>> allColumnsByName =
-        new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
-    responsesByField.forEach(
-        (columnNameKeyword, response) -> {
-          String columnFieldPath =
-              resolveColumnFieldPath(fieldPathToEntityTypes.get(columnNameKeyword).getFirst());
-          parseCompositeAggResults(response, columnFieldPath, pageKeys)
-              .forEach(
-                  (name, columns) ->
-                      allColumnsByName
-                          .computeIfAbsent(name, k -> new ArrayList<>())
-                          .addAll(columns));
-        });
-    return allColumnsByName;
+    return ColumnAggregator.mergeRowsByBucketKey(
+        responsesByField.entrySet().stream()
+            .map(
+                field ->
+                    parseCompositeAggResults(
+                        field.getValue(),
+                        resolveColumnFieldPath(
+                            fieldPathToEntityTypes.get(field.getKey()).getFirst()),
+                        pageKeys))
+            .toList());
   }
 
   /**
@@ -1045,17 +1031,19 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   private Map<String, List<ColumnWithContext>> parseCompositeAggResults(
       SearchResponse<JsonData> response, String columnFieldPath, Set<String> pageKeys) {
-    Map<String, List<ColumnWithContext>> columnsByName = new HashMap<>();
+    Map<String, List<ColumnWithContext>> columnsByBucketKey = new HashMap<>();
     for (CompositeBucket bucket : compositeBuckets(response)) {
       String columnName = bucketKey(bucket);
       if (pageKeys.contains(columnName)
           && bucket.aggregations().containsKey(ColumnAggregator.AGG_SAMPLE_DOCS)) {
         TopHitsAggregate topHits =
             bucket.aggregations().get(ColumnAggregator.AGG_SAMPLE_DOCS).topHits();
-        parseBucketHits(columnName, topHits, columnFieldPath, columnsByName);
+        Map<String, List<ColumnWithContext>> bucketColumns = new HashMap<>();
+        parseBucketHits(columnName, topHits, columnFieldPath, bucketColumns);
+        bucketColumns.values().forEach(columns -> columnsByBucketKey.put(columnName, columns));
       }
     }
-    return columnsByName;
+    return columnsByBucketKey;
   }
 
   /** Parse top_hits from a single bucket (shared by composite and terms agg parsing). */
