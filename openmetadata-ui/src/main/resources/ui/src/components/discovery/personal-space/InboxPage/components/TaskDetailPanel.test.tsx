@@ -1898,7 +1898,14 @@ describe('TaskDetailPanel', () => {
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 
