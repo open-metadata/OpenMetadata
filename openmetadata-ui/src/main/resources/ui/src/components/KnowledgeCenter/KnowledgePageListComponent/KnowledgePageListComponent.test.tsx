@@ -12,6 +12,7 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
@@ -38,8 +39,10 @@ jest.mock('../../../context/LimitsProvider/useLimitsStore', () => ({
   }),
 }));
 
+let mockIsInView = false;
+
 jest.mock('../../../hooks/useElementInView', () => ({
-  useElementInView: () => [{ current: null }, false],
+  useElementInView: () => [{ current: null }, mockIsInView],
 }));
 
 jest.mock('../../../rest/knowledgeCenterAPI', () => ({
@@ -254,7 +257,53 @@ describe('KnowledgePageListComponent fetch failure and empty-state reporting', (
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsInView = false;
     mockGetList.mockResolvedValue({ data: [], paging: { total: 0 } });
+  });
+
+  it('restarts paging from offset 0 when Reload follows a failed load-more', async () => {
+    const page = (id: string) => ({
+      data: [{ id, name: id, fullyQualifiedName: id, pageType: 'article' }],
+      paging: { total: 100 },
+    });
+    mockGetList
+      .mockResolvedValueOnce(page('p1'))
+      .mockRejectedValueOnce(new Error('load-more failed'))
+      .mockResolvedValueOnce(page('p1'))
+      .mockResolvedValueOnce(page('p2'));
+    const element = (
+      <KnowledgePageListComponent
+        permissions={{ ViewAll: true } as OperationPermission}
+        restSortField="updatedAt"
+        onPageChange={jest.fn()}
+      />
+    );
+    const { rerender } = render(element, { wrapper: MemoryRouter });
+
+    await waitFor(() => expect(mockGetList).toHaveBeenCalledTimes(1));
+
+    mockIsInView = true;
+    rerender(element);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+    });
+
+    expect(mockGetList).toHaveBeenLastCalledWith(
+      expect.objectContaining({ offset: PAGE_SIZE_MEDIUM })
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    // Pre-fix the post-Reload load-more resumed at 2 * PAGE_SIZE_MEDIUM,
+    // skipping a page.
+    await waitFor(() =>
+      expect(
+        mockGetList.mock.calls.slice(0, 4).map(([args]) => args.offset)
+      ).toEqual([0, PAGE_SIZE_MEDIUM, 0, PAGE_SIZE_MEDIUM])
+    );
   });
 
   it('reports a non-empty state (false) to the parent when the list fetch rejects, not true', async () => {

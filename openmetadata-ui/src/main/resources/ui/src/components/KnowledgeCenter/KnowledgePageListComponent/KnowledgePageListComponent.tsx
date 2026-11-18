@@ -679,6 +679,11 @@ const KnowledgePageListComponent = forwardRef<
     ]);
 
     useEffect(() => {
+      // A failed page leaves the error view up; don't auto-retry it on every
+      // isLoadingMore flip — Reload restarts from offset 0 instead.
+      if (hasFetchFailed) {
+        return;
+      }
       const hasMore = knowledgePages.length < paging.total;
       const canLoadMore = isInView && hasMore && !isLoadingMore && !isLoading;
       if (canLoadMore && hasViewPermission) {
@@ -692,6 +697,7 @@ const KnowledgePageListComponent = forwardRef<
       knowledgePages.length,
       isLoadingMore,
       isLoading,
+      hasFetchFailed,
       hasViewPermission,
     ]);
 
@@ -783,7 +789,12 @@ const KnowledgePageListComponent = forwardRef<
 
     if (viewState === 'error') {
       return (
-        <KnowledgePageListErrorState onReload={() => fetchKnowledgePages(0)} />
+        <KnowledgePageListErrorState
+          onReload={() => {
+            setPageOffset(0);
+            fetchKnowledgePages(0);
+          }}
+        />
       );
     }
 

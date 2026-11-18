@@ -75,10 +75,23 @@ test.describe('Knowledge Center articles-page fetch-failure regression', () => {
     // the sidebar's own failure toast (the bug report mentions showEndpointToast)
     // would otherwise intercept the Reload button.
     await page.unroute(ARTICLES_PATH_RE);
+    const retryListResp = page.waitForResponse(
+      (r) =>
+        ARTICLES_PATH_RE.test(r.url()) &&
+        r.request().method() === 'GET' &&
+        !r.url().includes('/name/') &&
+        r.status() === 200
+    );
     await clickIgnoringToasts(page.getByRole('button', { name: 'Reload' }));
+    await retryListResp;
 
-    await expect(page.getByText('Something went wrong')).toBeHidden({
-      timeout: 30000,
-    });
+    // Assert a settled end state — "Something went wrong" is also hidden
+    // while the retry is still loading.
+    await expect(
+      page
+        .getByTestId('knowledge-page-listing')
+        .or(page.getByText('Write it once, let AI answer it forever'))
+    ).toBeVisible({ timeout: 30000 });
+    await expect(page.getByText('Something went wrong')).toBeHidden();
   });
 });
