@@ -82,7 +82,9 @@ class McpOntologyGovernanceIT extends McpTestBase {
             "glossaries",
             Map.of(
                 "name",
-                GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX + "__mcp_ontology_" + SUFFIX));
+                GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX + "__mcp_ontology_" + SUFFIX,
+                "description",
+                "Disposable MCP integration glossary"));
     restrictedGlossary =
         create(
             "glossaries",
@@ -91,6 +93,8 @@ class McpOntologyGovernanceIT extends McpTestBase {
                 GlossaryTestFactory.STATUS_TEST_GLOSSARY_PREFIX
                     + "__mcp_private_ontology_"
                     + SUFFIX,
+                "description",
+                "Disposable restricted MCP integration glossary",
                 "tags",
                 List.of(
                     Map.of(
@@ -291,6 +295,8 @@ class McpOntologyGovernanceIT extends McpTestBase {
             Map.of(
                 "name",
                 name + UUID.randomUUID(),
+                "description",
+                "Disposable MCP integration term",
                 "glossary",
                 scope.path("fullyQualifiedName").asText()));
     if (scope == restrictedGlossary) {
