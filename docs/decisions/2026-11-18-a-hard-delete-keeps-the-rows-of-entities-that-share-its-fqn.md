@@ -26,8 +26,12 @@ Before removing the rows at and under an FQN, a hard delete looks for entities i
   under an unrelated FQN (`EntityRepository.nestsUnderUnrelatedFqns()`): bare-name types, and data
   models with their fixed `model` segment. Past 100 such subtrees, the delete removes only the rows
   at the FQN.
-- If the root of a recursive hard delete shares its FQN, each descendant removes its own rows
-  instead of relying on the root's single prefix delete.
+- If the root of a recursive hard delete will keep rows under its FQN for an entity it leaves in
+  place (another type's entity with its FQN, or an unrelated entity nested under it), each
+  descendant removes its own rows instead of relying on the root's single prefix delete. This is
+  decided before the cascade, so entities of a type that nests under the root's type as its
+  descendants (`EntityRepository.fqnParentType()`, e.g. a dashboard service's data models) do not
+  count.
 - Probes run in batches of 50 FQNs. One statement looks for namesakes in every taggable type's
   table, and one looks for nested entities.
 
@@ -35,7 +39,9 @@ Before removing the rows at and under an FQN, a hard delete looks for entities i
 No hard delete removes another entity's tag labels or field relationships. Where rows are shared,
 some of the deleted entity's rows stay. These are the rows at an FQN another type has, which are
 that entity's too, plus the nested-part rows (columns, fields) under that FQN. Each hard delete
-costs two more queries, and a cascade costs two more per batch of 50 descendants. A new type whose
-FQN can nest under an unrelated FQN must override `nestsUnderUnrelatedFqns()`. Recording the
+costs two more queries, a recursive one two more before its cascade, and descendants that remove
+their own rows two more per batch of 50. A new type whose
+FQN can nest under an unrelated FQN must override `nestsUnderUnrelatedFqns()`, and
+`fqnParentType()` when it also nests under a parent's FQN as that parent's descendant. Recording the
 target's entity type on each row would make all of this exact, but that schema change is still
 deferred.

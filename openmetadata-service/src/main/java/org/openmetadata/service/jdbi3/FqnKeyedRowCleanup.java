@@ -43,9 +43,17 @@ final class FqnKeyedRowCleanup {
     this.taggable = taggable;
   }
 
-  /** Whether an entity of another type has {@code fqn}, and with it the same rows. */
-  boolean isSharedByAnotherType(String fqn) {
-    return taggable && !namesakeHashes(List.of(FullyQualifiedName.buildHash(fqn))).isEmpty();
+  /**
+   * Whether a recursive hard delete rooted at {@code fqn} keeps rows under it that its descendants
+   * hold, so that each descendant must remove its own. Asked before the cascade, while the root's
+   * descendants still exist, so the search leaves out the types whose entities nest under the
+   * root's type as its descendants.
+   */
+  boolean rootKeepsDescendantRows(String fqn) {
+    List<String> hashes = List.of(FullyQualifiedName.buildHash(fqn));
+    return taggable
+        && (!namesakeHashes(hashes).isEmpty()
+            || hasNestedHolders(hashes, tables(this::nestsUnrelatedToThisType)));
   }
 
   /** Deletes the rows each FQN's entity owns, probing in batches: few FQNs share anything. */
@@ -84,7 +92,9 @@ final class FqnKeyedRowCleanup {
     Map<String, OwnedRows> owned = new LinkedHashMap<>();
     if (taggable) {
       Set<String> namesakes = new HashSet<>(namesakeHashes(List.copyOf(hashes.values())));
-      boolean anyNested = hasNestedHolders(List.copyOf(hashes.values()));
+      boolean anyNested =
+          hasNestedHolders(
+              List.copyOf(hashes.values()), tables(EntityRepository::nestsUnderUnrelatedFqns));
       hashes.forEach(
           (fqn, hash) -> owned.put(fqn, ownedRows(hash, namesakes.contains(hash), anyNested)));
     } else {
@@ -111,14 +121,18 @@ final class FqnKeyedRowCleanup {
         bindings);
   }
 
-  private boolean hasNestedHolders(List<String> hashes) {
+  private boolean hasNestedHolders(List<String> hashes, List<EntityTable> nestingTables) {
     Map<String, String> bindings = bindAll("under", hashes, UNDER);
     return !listHashes(
-            tables(EntityRepository::nestsUnderUnrelatedFqns),
+            nestingTables,
             table ->
                 table.select() + " WHERE " + likeAny(table.hashColumn(), bindings) + " LIMIT 1",
             bindings)
         .isEmpty();
+  }
+
+  private boolean nestsUnrelatedToThisType(EntityRepository<?> repository) {
+    return repository.nestsUnderUnrelatedFqns() && !entityType.equals(repository.fqnParentType());
   }
 
   /** Entities under the hash, listed one past the cap so that hitting it shows. */
@@ -138,9 +152,9 @@ final class FqnKeyedRowCleanup {
       List<EntityTable> tables, Function<EntityTable, String> select, Map<String, String> binds) {
     List<String> hashes = List.of();
     if (!tables.isEmpty()) {
-      String query =
+      String probes =
           tables.stream().map(select).map(part -> "(" + part + ")").collect(joining(" UNION ALL "));
-      hashes = daoCollection.tagUsageDAO().listEntityFqnHashes(query, binds);
+      hashes = daoCollection.tagUsageDAO().listEntityFqnHashes(probes, binds);
     }
     return hashes;
   }
@@ -207,7 +221,7 @@ final class FqnKeyedRowCleanup {
 
   private record EntityTable(String name, String hashColumn) {
     String select() {
-      return "SELECT " + hashColumn + " FROM " + name;
+      return "SELECT " + hashColumn + " AS hash FROM " + name;
     }
   }
 

@@ -116,6 +116,12 @@ public class FolderRepository extends EntityRepository<Folder> {
     return true;
   }
 
+  /** A child folder is a descendant of the folder whose FQN it extends. */
+  @Override
+  protected String fqnParentType() {
+    return Entity.FOLDER;
+  }
+
   @Override
   public void setFullyQualifiedName(Folder folder) {
     if (folder.getParent() == null) {

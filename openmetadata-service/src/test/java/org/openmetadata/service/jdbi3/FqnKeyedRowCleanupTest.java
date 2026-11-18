@@ -6,6 +6,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -36,6 +38,8 @@ class FqnKeyedRowCleanupTest {
   private static final String FQN = "svc";
   private static final String HASH = FullyQualifiedName.buildHash(FQN);
   private static final String OWN_TABLE = "pipeline_service_entity";
+  private static final String DATA_MODEL_PROBE =
+      "(SELECT fqnHash AS hash FROM dashboard_data_model_entity WHERE (fqnHash LIKE :under0) LIMIT 1)";
 
   private final CollectionDAO daoCollection = mock(CollectionDAO.class);
   private final CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
@@ -54,10 +58,11 @@ class FqnKeyedRowCleanupTest {
         .thenAnswer(invocation -> found(invocation.getArgument(0)));
     List<EntityRepository<? extends EntityInterface<?>>> repositories =
         List.of(
-            repository(OWN_TABLE, "nameHash", true, false),
-            repository("database_service_entity", "nameHash", true, false),
-            repository("dashboard_data_model_entity", "fqnHash", true, true),
-            repository("user_entity", "nameHash", false, false));
+            repository(OWN_TABLE, "nameHash", true, false, null),
+            repository("database_service_entity", "nameHash", true, false, null),
+            repository(
+                "dashboard_data_model_entity", "fqnHash", true, true, Entity.DASHBOARD_SERVICE),
+            repository("user_entity", "nameHash", false, false, null));
     entity = mockStatic(Entity.class);
     entity.when(Entity::getEntityRepositories).thenReturn(repositories);
   }
@@ -114,7 +119,7 @@ class FqnKeyedRowCleanupTest {
 
   @Test
   void aTypeWithoutTagsDeletesItsFieldRelationshipsWithoutProbing() {
-    new FqnKeyedRowCleanup(daoCollection, Entity.TYPE, "type_entity", false).delete(List.of(FQN));
+    untaggableCleanup().delete(List.of(FQN));
 
     verify(fieldRelationshipDAO).deleteAllByPrefix(FQN, Entity.TYPE);
     verify(tagUsageDAO, never()).listEntityFqnHashes(anyString(), anyMap());
@@ -127,13 +132,12 @@ class FqnKeyedRowCleanupTest {
 
     String namesakeProbe = probes.get(0);
     assertTrue(
-        namesakeProbe.contains("SELECT nameHash FROM database_service_entity WHERE nameHash IN"));
+        namesakeProbe.contains(
+            "SELECT nameHash AS hash FROM database_service_entity WHERE nameHash IN"));
     assertTrue(namesakeProbe.contains("FROM dashboard_data_model_entity"));
     assertFalse(namesakeProbe.contains(OWN_TABLE), "its own table holds the entity being deleted");
     assertFalse(namesakeProbe.contains("user_entity"), "an untaggable type holds no tag labels");
-    assertEquals(
-        "(SELECT fqnHash FROM dashboard_data_model_entity WHERE (fqnHash LIKE :under0) LIMIT 1)",
-        probes.get(1));
+    assertEquals(DATA_MODEL_PROBE, probes.get(1));
   }
 
   @Test
@@ -147,13 +151,56 @@ class FqnKeyedRowCleanupTest {
   }
 
   @Test
-  void anFqnIsSharedWhenATaggableEntityOfAnotherTypeHasIt() {
+  void aCascadeRootKeepsDescendantRowsWhenAnotherTypeHasItsFqn() {
     namesakeHashes = List.of(HASH);
 
-    assertTrue(cleanup(true).isSharedByAnotherType(FQN));
-    assertFalse(
-        new FqnKeyedRowCleanup(daoCollection, Entity.TYPE, "type_entity", false)
-            .isSharedByAnotherType(FQN));
+    assertTrue(cleanup(true).rootKeepsDescendantRows(FQN));
+    assertFalse(untaggableCleanup().rootKeepsDescendantRows(FQN));
+  }
+
+  @Test
+  void aCascadeRootKeepsDescendantRowsWhenAnUnrelatedEntityNestsUnderIt() {
+    nestedHashes = List.of(HASH + ".model.m1");
+
+    assertTrue(cleanup(true).rootKeepsDescendantRows(FQN));
+    assertEquals(DATA_MODEL_PROBE, probes.get(1));
+  }
+
+  @Test
+  void aCascadeRootDoesNotCountItsOwnDescendantsAsNestedEntities() {
+    nestedHashes = List.of(HASH + ".model.m1");
+    FqnKeyedRowCleanup dashboardService =
+        new FqnKeyedRowCleanup(
+            daoCollection, Entity.DASHBOARD_SERVICE, "dashboard_service_entity", true);
+
+    assertFalse(dashboardService.rootKeepsDescendantRows(FQN));
+    assertEquals(1, probes.size(), "its data models are its own descendants, so only namesakes");
+  }
+
+  @Test
+  void theOutsideDeletesKeepTheRowsAtAndUnderEachKeptSubtree() {
+    CollectionDAO.TagUsageDAO tags = mock(CollectionDAO.TagUsageDAO.class, CALLS_REAL_METHODS);
+    doNothing().when(tags).deleteTagLabelsWhere(anyString(), anyMap());
+    CollectionDAO.FieldRelationshipDAO fields =
+        mock(CollectionDAO.FieldRelationshipDAO.class, CALLS_REAL_METHODS);
+    doNothing().when(fields).deleteAllByPrefixInternal(anyString(), anyMap());
+
+    tags.deleteTagLabelsByTargetPrefixOutside(FQN, List.of("k"));
+    fields.deleteAllByPrefixOutside(FQN, Entity.TABLE, List.of("k"));
+
+    verify(tags)
+        .deleteTagLabelsWhere(
+            "(targetFQNHash = :targetHash OR targetFQNHash LIKE :underTarget)"
+                + " AND NOT (targetFQNHash = :kept0 OR targetFQNHash LIKE :keptUnder0)",
+            Map.of(
+                "targetHash", HASH, "underTarget", HASH + ".%", "kept0", "k", "keptUnder0", "k.%"));
+    verify(fields)
+        .deleteAllByPrefixInternal(
+            "WHERE ((toFQNHash LIKE :prefix AND NOT (toFQNHash = :kept0 OR toFQNHash LIKE"
+                + " :keptUnder0)) OR (fromFQNHash LIKE :prefix AND NOT (fromFQNHash = :kept0 OR"
+                + " fromFQNHash LIKE :keptUnder0))) AND fromType <> :typeRow AND toType <> :typeRow",
+            Map.of(
+                "prefix", HASH + ".%", "typeRow", Entity.TYPE, "kept0", "k", "keptUnder0", "k.%"));
   }
 
   @Test
@@ -184,6 +231,10 @@ class FqnKeyedRowCleanupTest {
     return new FqnKeyedRowCleanup(daoCollection, Entity.PIPELINE_SERVICE, OWN_TABLE, taggable);
   }
 
+  private FqnKeyedRowCleanup untaggableCleanup() {
+    return new FqnKeyedRowCleanup(daoCollection, Entity.TYPE, "type_entity", false);
+  }
+
   private List<String> found(String probe) {
     probes.add(probe);
     List<String> found = nestedHashes;
@@ -197,7 +248,11 @@ class FqnKeyedRowCleanupTest {
 
   @SuppressWarnings("unchecked")
   private static EntityRepository<? extends EntityInterface<?>> repository(
-      String table, String hashColumn, boolean taggable, boolean nestsUnderUnrelatedFqns) {
+      String table,
+      String hashColumn,
+      boolean taggable,
+      boolean nestsUnderUnrelatedFqns,
+      String fqnParentType) {
     EntityRepository<? extends EntityInterface<?>> repository = mock(EntityRepository.class);
     EntityDAO<?> dao = mock(EntityDAO.class);
     when(dao.getTableName()).thenReturn(table);
@@ -205,6 +260,7 @@ class FqnKeyedRowCleanupTest {
     doReturn(dao).when(repository).getDao();
     when(repository.isSupportsTags()).thenReturn(taggable);
     when(repository.nestsUnderUnrelatedFqns()).thenReturn(nestsUnderUnrelatedFqns);
+    when(repository.fqnParentType()).thenReturn(fqnParentType);
     return repository;
   }
 }

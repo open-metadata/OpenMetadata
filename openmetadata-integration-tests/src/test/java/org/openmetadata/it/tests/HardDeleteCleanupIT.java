@@ -183,13 +183,34 @@ public class HardDeleteCleanupIT {
     assertEquals(
         List.of(PERSONAL_TAG),
         tagFqns(admin.pipelines().get(pipeline.getId().toString(), "tags").getTags()));
-    Table recreated = createTable(ns, sharedName, List.of());
-    Table reloaded = admin.tables().get(recreated.getId().toString(), "tags,columns");
-    assertEquals(
-        List.of(),
-        tagFqns(reloaded.getTags()),
-        "A table re-created at the deleted FQN must not inherit the deleted table's tags");
-    assertEquals(List.of(), tagFqns(reloaded.getColumns().get(0).getTags()));
+    assertHasNoTags(createTable(ns, sharedName, List.of()));
+  }
+
+  /** A metric's FQN is its bare name, so "service.db" hashes like the service's database. */
+  @Test
+  void hardDeletingADatabaseServiceKeepsTheTagsOfAMetricNamedLikeItsDatabaseAndRemovesItsOwn(
+      TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String serviceName = uniqueName("hd_sales_");
+    Table table = createTaggedTable(ns, serviceName);
+    Metric namedLikeTheDatabase =
+        admin
+            .metrics()
+            .create(
+                new CreateMetric()
+                    .withName(table.getDatabase().getFullyQualifiedName())
+                    .withTags(List.of(classificationTag(PERSONAL_TAG))));
+
+    try {
+      admin.databaseServices().delete(table.getService().getId().toString(), RECURSIVE_HARD_DELETE);
+
+      assertEquals(
+          List.of(PERSONAL_TAG),
+          tagFqns(admin.metrics().get(namedLikeTheDatabase.getId().toString(), "tags").getTags()));
+      assertHasNoTags(createTable(ns, serviceName, List.of()));
+    } finally {
+      admin.metrics().delete(namedLikeTheDatabase.getId().toString(), HARD_DELETE);
+    }
   }
 
   @Test
@@ -229,13 +250,7 @@ public class HardDeleteCleanupIT {
                     .withTags(List.of(classificationTag(PERSONAL_TAG)))
                     .withColumns(List.of(taggedColumn())));
     Chart namedLikeTheModelsSegment =
-        admin
-            .charts()
-            .create(
-                new CreateChart()
-                    .withName("model")
-                    .withService(service.getFullyQualifiedName())
-                    .withChartType(ChartType.Bar));
+        createChartNamedModel(service, List.of(classificationTag(PERSONAL_TAG)));
 
     admin.charts().delete(namedLikeTheModelsSegment.getId().toString(), HARD_DELETE);
 
@@ -243,6 +258,22 @@ public class HardDeleteCleanupIT {
         admin.dashboardDataModels().get(dataModel.getId().toString(), "tags,columns");
     assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getTags()));
     assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getColumns().get(0).getTags()));
+    Chart recreated = createChartNamedModel(service, List.of());
+    assertEquals(
+        List.of(),
+        tagFqns(admin.charts().get(recreated.getId().toString(), "tags").getTags()),
+        "A chart re-created at the deleted FQN must not inherit the deleted chart's tags");
+  }
+
+  private static Chart createChartNamedModel(DashboardService service, List<TagLabel> tags) {
+    return SdkClients.adminClient()
+        .charts()
+        .create(
+            new CreateChart()
+                .withName("model")
+                .withService(service.getFullyQualifiedName())
+                .withChartType(ChartType.Bar)
+                .withTags(tags));
   }
 
   /** A metric's FQN is its bare name, so "glossary.term" hashes like the glossary term's FQN. */
@@ -408,6 +439,16 @@ public class HardDeleteCleanupIT {
       gone = e.getStatusCode() == 404;
     }
     return gone;
+  }
+
+  private static void assertHasNoTags(Table recreated) {
+    Table reloaded =
+        SdkClients.adminClient().tables().get(recreated.getId().toString(), "tags,columns");
+    assertEquals(
+        List.of(),
+        tagFqns(reloaded.getTags()),
+        "A table re-created at a deleted FQN must not inherit the deleted table's tags");
+    assertEquals(List.of(), tagFqns(reloaded.getColumns().get(0).getTags()));
   }
 
   private static void assertKeepsItsTags(Table table) {

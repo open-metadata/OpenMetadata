@@ -674,7 +674,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    *       {@code service.id} / parent-id in a single delete-by-query;
    *   <li>satellites: the root's {@code cleanup()} deletes field_relationship / tag_usage for the
    *       whole subtree by FQN prefix in a single statement (only valid when descendant FQNs are
-   *       nested under the root FQN).
+   *       nested under the root FQN). When an entity the delete leaves in place holds rows under
+   *       the root's FQN, the root keeps them and each descendant removes its own instead (see
+   *       {@code CASCADE_ROOT_FQN_SHARED}).
    * </ul>
    *
    * <p>When {@code true}, {@link #bulkHardDeleteSubtree(List, String)} skips the per-entity search
@@ -4021,9 +4023,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Set while a recursive hard delete cascades under a root whose FQN an entity of another type
-   * shares. That root keeps the FQN-keyed rows at and under its FQN, which are the other entity's
-   * too, so each descendant removes its own instead of relying on the root's prefix delete.
+   * Set while a recursive hard delete cascades under a root that keeps some FQN-keyed rows under
+   * its FQN because an entity it leaves in place holds them: another type's entity with the same
+   * FQN, or one that nests under it. The root's prefix delete then misses its descendants' rows,
+   * so each descendant removes its own.
    */
   private static final ThreadLocal<Boolean> CASCADE_ROOT_FQN_SHARED = new ThreadLocal<>();
 
@@ -6061,7 +6064,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   private void deleteChildrenOf(T root, boolean recursive, boolean hardDelete, String deletedBy) {
     Boolean outerCascadeRootShared = CASCADE_ROOT_FQN_SHARED.get();
     CASCADE_ROOT_FQN_SHARED.set(
-        recursive && hardDelete && rootFqnIsSharedByAnotherType(root.getFullyQualifiedName()));
+        recursive && hardDelete && rootKeepsDescendantRows(root.getFullyQualifiedName()));
     try {
       deleteChildren(root.getId(), recursive, hardDelete, deletedBy);
     } finally {
@@ -6073,8 +6076,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
-  private boolean rootFqnIsSharedByAnotherType(String fqn) {
-    return shouldCleanupFqnDependents() && fqnKeyedRowCleanup().isSharedByAnotherType(fqn);
+  private boolean rootKeepsDescendantRows(String fqn) {
+    return shouldCleanupFqnDependents() && fqnKeyedRowCleanup().rootKeepsDescendantRows(fqn);
   }
 
   @Transaction
@@ -6295,6 +6298,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected boolean nestsUnderUnrelatedFqns() {
     return false;
+  }
+
+  /**
+   * For a type that {@link #nestsUnderUnrelatedFqns()}, the type whose descendants its entities
+   * are when their FQN nests under its FQN (data models under their dashboard service, a page under
+   * its parent page), or {@code null}. A recursive delete of such a parent removes them with it.
+   */
+  protected String fqnParentType() {
+    return null;
   }
 
   private FqnKeyedRowCleanup fqnKeyedRowCleanup() {
@@ -8983,8 +8995,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // deleteTagLabelsByTargetPrefix
     // on the root FQN covers every descendant), making these per-entity calls redundant — N no-op
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
-    // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
-    // keep the per-entity path.
+    // cleanup() prefix delete, unless the root keeps rows under its FQN for an entity the delete
+    // leaves in place (CASCADE_ROOT_FQN_SHARED). Types not FQN-nested under their delete root
+    // (e.g. flat-FQN teams) keep the per-entity path.
     if (shouldCleanupFqnDependents() && !reliesOnCascadeRootFqnCleanup()) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
         fqnKeyedRowCleanup()

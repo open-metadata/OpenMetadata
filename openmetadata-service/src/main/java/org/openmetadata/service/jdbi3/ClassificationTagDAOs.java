@@ -616,10 +616,13 @@ public interface ClassificationTagDAOs {
     void deleteTagLabelsWhere(
         @Define("condition") String condition, @BindMap Map<String, String> bindings);
 
-    /** Runs a query {@link FqnKeyedRowCleanup} builds over entity tables: one FQN hash per row. */
-    @SqlQuery("<query>")
+    /**
+     * Runs the probes {@link FqnKeyedRowCleanup} builds over entity tables, each selecting FQN
+     * hashes as {@code hash}.
+     */
+    @SqlQuery("SELECT probe.hash FROM (<probes>) probe")
     List<String> listEntityFqnHashes(
-        @Define("query") String query, @BindMap Map<String, String> bindings);
+        @Define("probes") String probes, @BindMap Map<String, String> bindings);
 
     @Deprecated(since = "Release 1.1")
     @ConnectionAwareSqlUpdate(
