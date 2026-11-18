@@ -813,7 +813,11 @@ describe('TaskTabNew Component', () => {
     await waitFor(() => {
       expect(getResolvedTaskFormSchema).toHaveBeenCalledWith(
         MOCK_APPROVAL_TASK.type,
-        MOCK_APPROVAL_TASK.category
+        MOCK_APPROVAL_TASK.category,
+        expect.objectContaining({
+          taskFormSchemaId: MOCK_APPROVAL_TASK.taskFormSchemaId,
+          payload: MOCK_APPROVAL_TASK.payload,
+        })
       );
     });
   });

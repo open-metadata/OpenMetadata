@@ -28,6 +28,7 @@ import { cloneDeep, uniqBy } from 'lodash';
 import { TaskAvailableTransition } from '../generated/entity/tasks/task';
 import { TagLabel } from '../generated/type/tagLabel';
 import {
+  getTaskFormSchemaById,
   JsonSchemaObject,
   resolveTaskFormSchema,
   TaskFormSchema,
@@ -74,11 +75,44 @@ const taskFormSchemaCache = new Map<
   Promise<TaskFormSchema | undefined>
 >();
 
+export interface TaskFormSchemaResolution {
+  /**
+   * Schema id stamped on the task by the backend's payload-aware resolver
+   * (`TaskFormSchemaRepository#resolve` -> `Task.taskFormSchemaId`). Preferred
+   * discriminator: when present, the schema is fetched by id, bypassing the
+   * ambiguous type+category list query entirely.
+   */
+  taskFormSchemaId?: string;
+  /**
+   * Raw task payload. Read for Suggestion tasks to disambiguate the two seeded
+   * Suggestion schemas (DescriptionSuggestion / TagSuggestion) by
+   * `payload.suggestionType`, mirroring the backend's
+   * `mapSuggestionTypeToSchema`. Ignored for non-Suggestion task types.
+   */
+  payload?: TaskPayload;
+}
+
+const normalizeSuggestionKey = (payload?: TaskPayload): string => {
+  const suggestionType = payload?.suggestionType;
+
+  return typeof suggestionType === 'string'
+    ? suggestionType.trim().toLowerCase()
+    : '';
+};
+
 export const getResolvedTaskFormSchema = async (
   taskType: TaskEntityType,
-  taskCategory: TaskCategory
+  taskCategory: TaskCategory,
+  resolution?: TaskFormSchemaResolution
 ) => {
-  const cacheKey = `${taskType}::${taskCategory}`;
+  // Cache key MUST include a discriminator. Suggestion tasks share one
+  // taskType+taskCategory binding, so a type+category-only key would cache
+  // the first-resolved variant (deterministically DescriptionSuggestion via
+  // the list endpoint) and reuse it for every other variant in-session,
+  // rendering tag suggestions with the description widget/label.
+  const cacheKey = `${taskType}::${taskCategory}::${
+    resolution?.taskFormSchemaId ?? ''
+  }::${normalizeSuggestionKey(resolution?.payload)}`;
   const existing = taskFormSchemaCache.get(cacheKey);
 
   if (existing) {
@@ -87,9 +121,27 @@ export const getResolvedTaskFormSchema = async (
 
   const resolverPromise = (async () => {
     try {
+      // Prefer the schema the backend already chose and stamped on the task:
+      // it is the most precise signal (covers future non-Suggestion variants
+      // that may share a binding too) and avoids the ambiguous list query.
+      if (resolution?.taskFormSchemaId) {
+        const byId = await getTaskFormSchemaById(resolution.taskFormSchemaId);
+
+        if (byId) {
+          return byId;
+        }
+      }
+
+      // Fall back to the (now payload-aware for Suggestion) list resolver, then
+      // the built-in defaults if the server has no configured schema. This is
+      // intentionally sequential: the list lookup only runs when fetch-by-id
+      // returned nothing (a fallback chain), so Promise.all would always make
+      // both calls even when the first succeeded.
+      // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- fallback chain
       const resolvedSchema = await resolveTaskFormSchema(
         taskType,
-        taskCategory
+        taskCategory,
+        resolution?.payload
       );
 
       return resolvedSchema ?? getDefaultTaskFormSchema(taskType, taskCategory);
@@ -107,6 +159,14 @@ export const getResolvedTaskFormSchema = async (
   taskFormSchemaCache.set(cacheKey, resolverPromise);
 
   return cloneDeep(await resolverPromise);
+};
+
+/**
+ * Clears the in-memory task form schema cache. Intended for tests and for
+ * callers that invalidate configured schemas mid-session.
+ */
+export const __resetTaskFormSchemaCache = () => {
+  taskFormSchemaCache.clear();
 };
 
 const getTransitionFormConfig = (
