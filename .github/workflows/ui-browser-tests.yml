@@ -43,7 +43,7 @@ env:
 jobs:
   select:
     name: select browser tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
       contents: read
@@ -145,7 +145,7 @@ jobs:
     name: browser tests + coverage (shard ${{ matrix.shard }})
     needs: select
     if: needs.select.outputs.mode != 'none'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -205,18 +205,16 @@ jobs:
         if: always() && steps.tests.outcome == 'failure'
         run: exit 1
 
-  # Merges the shards into one result. A pull request gets one comment: what
-  # ran and why, the result, and the changed code the tests executed. A full
-  # run publishes the impact map.
+  # Merges the shards into one result. A pull request gets one report (posted
+  # as a comment by ui-browser-tests-comment.yml): what ran and why, the
+  # result, and the changed code the tests executed. A full run publishes the
+  # impact map.
   browser-tests-report:
     name: browser tests + coverage
     needs: [select, browser-tests]
     if: always() && needs.select.outputs.mode != 'none' && needs.select.result == 'success'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
-    permissions:
-      contents: read
-      pull-requests: write
     steps:
       - uses: actions/checkout@v7
         with:
@@ -247,22 +245,22 @@ jobs:
             --junit src/test/browser/junit.xml \
             --coverage src/test/browser/coverage/coverage-final.json > "$RUNNER_TEMP/comment.md"
           cat "$RUNNER_TEMP/comment.md" >> "$GITHUB_STEP_SUMMARY"
-      # A fork PR's token cannot comment; its report stays in the job summary.
-      - name: Comment
-        if: always() && github.event.pull_request.head.repo.full_name == github.repository
-        continue-on-error: true
+      # Pull-request jobs are read-only, so the comment is posted by
+      # ui-browser-tests-comment.yml from this artifact once the run ends.
+      - name: Save the report for the comment
+        if: always() && github.event_name == 'pull_request'
         env:
-          GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
-        # Edit our own marked comment so each push updates it in place.
         run: |
-          id=$(gh api "repos/$GITHUB_REPOSITORY/issues/$PR/comments" --paginate \
-            --jq '[.[] | select(.body | startswith("<!-- ui-browser-tests -->"))][0].id // empty')
-          if [ -n "$id" ]; then
-            gh api -X PATCH "repos/$GITHUB_REPOSITORY/issues/comments/$id" -F body=@"$RUNNER_TEMP/comment.md" > /dev/null
-          else
-            gh pr comment "$PR" -R "$GITHUB_REPOSITORY" --body-file "$RUNNER_TEMP/comment.md"
-          fi
+          mkdir -p "$RUNNER_TEMP/browser-tests-comment"
+          cp "$RUNNER_TEMP/comment.md" "$RUNNER_TEMP/browser-tests-comment/comment.md"
+          echo "$PR" > "$RUNNER_TEMP/browser-tests-comment/pr-number"
+      - uses: actions/upload-artifact@v7
+        if: always() && github.event_name == 'pull_request'
+        with:
+          name: browser-tests-comment
+          path: ${{ runner.temp }}/browser-tests-comment/
+          retention-days: 3
       - uses: actions/download-artifact@v7
         if: needs.select.outputs.mode == 'all'
         with:
