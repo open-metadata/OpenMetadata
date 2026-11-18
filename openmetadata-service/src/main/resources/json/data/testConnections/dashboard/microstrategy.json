@@ -16,6 +16,12 @@
         "errorMessage": "Failed to fetch projects, please validate the credentials or validate if user has access to fetch projects",
         "shortCircuit": true,
         "mandatory": true
+      },
+      {
+        "name": "GetDashboards",
+        "description": "Search the dossiers of a project",
+        "errorMessage": "Failed to search dossiers, please validate that the user can browse the dossiers of its projects",
+        "mandatory": true
       }
     ]
 }

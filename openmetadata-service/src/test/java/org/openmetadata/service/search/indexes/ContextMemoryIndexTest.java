@@ -39,12 +39,28 @@ import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 
 class ContextMemoryIndexTest {
+  @Test
+  void anOrdinaryMemoryRewritePreservesExistingVectorFields() {
+    Map<String, Object> doc = new HashMap<>();
+    ContextMemoryIndex.VECTOR_FIELDS.forEach(field -> doc.put(field, "current-vector-value"));
+
+    new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(doc);
+
+    for (String field : ContextMemoryIndex.VECTOR_FIELDS) {
+      assertEquals("current-vector-value", doc.get(field), field);
+    }
+    assertTrue(
+        SearchClient.FIELDS_TO_REMOVE_WHEN_NULL.containsAll(ContextMemoryIndex.VECTOR_FIELDS));
+  }
 
   private static MockedStatic<Entity> entityStaticMock;
 
@@ -130,6 +146,36 @@ class ContextMemoryIndexTest {
     assertNull(doc.get("sourceAssistantMessage"));
   }
 
+  /**
+   * A write carries a memory's source as its source entity alone, so the index names that file as
+   * the source a filter can read; an article is no file.
+   */
+  @Test
+  void buildSearchIndexDoc_namesTheFileAWriteCarriesAsItsSource() {
+    EntityReference file =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.CONTEXT_FILE)
+            .withName("Published handbook");
+    entityStaticMock
+        .when(() -> Entity.getEntity(file, "", Include.NON_DELETED))
+        .thenReturn(new ContextFile().withId(file.getId()));
+    EntityReference page = new EntityReference().withId(UUID.randomUUID()).withType(Entity.PAGE);
+
+    Map<String, Object> fromFile =
+        new ContextMemoryIndex(baseMemory().withSourceEntity(file))
+            .buildSearchIndexDocInternal(new HashMap<>());
+    Map<String, Object> fromPage =
+        new ContextMemoryIndex(baseMemory().withSourceEntity(page))
+            .buildSearchIndexDocInternal(new HashMap<>());
+
+    assertNotNull(fromFile.get("sourceFile"));
+    assertEquals(file.getId(), ((EntityReference) fromFile.get("sourceFile")).getId());
+    assertEquals(
+        "Published handbook", ((EntityReference) fromFile.get("sourceFile")).getDisplayName());
+    assertNull(fromPage.get("sourceFile"), "an article is no file");
+  }
+
   @Test
   void buildSearchIndexDoc_nullUsageCountDefaultsToZero() {
     ContextMemory memory = baseMemory().withUsageCount(null);
@@ -137,6 +183,38 @@ class ContextMemoryIndexTest {
         new ContextMemoryIndex(memory).buildSearchIndexDocInternal(new HashMap<>());
 
     assertEquals(0, doc.get("usageCount"));
+  }
+
+  @Test
+  void aPrivateDocumentIsIndexedByIdRatherThanName() {
+    EntityReference file =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.CONTEXT_FILE)
+            .withName("Private handbook")
+            .withFullyQualifiedName("Private handbook")
+            .withDisplayName("Private handbook");
+    entityStaticMock
+        .when(() -> Entity.getEntity(file, "", Include.NON_DELETED))
+        .thenReturn(
+            new ContextFile()
+                .withId(file.getId())
+                .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+    ContextMemory memory =
+        baseMemory()
+            .withPrimaryEntity(file)
+            .withSourceEntity(file)
+            .withSourceFile(file)
+            .withRelatedEntities(List.of(file));
+
+    Map<String, Object> doc =
+        new ContextMemoryIndex(memory).buildSearchIndexDocInternal(JsonUtils.getMap(memory));
+
+    String indexed = JsonUtils.pojoToJson(doc);
+    assertFalse(indexed.contains("Private handbook"), indexed);
+    assertEquals(file.getId().toString(), doc.get(ContextMemoryIndex.FIELD_ANCHOR_ID));
+    assertEquals(file.getId(), ((EntityReference) doc.get("sourceFile")).getId());
+    assertEquals("Private handbook", memory.getSourceFile().getName());
   }
 
   @Test

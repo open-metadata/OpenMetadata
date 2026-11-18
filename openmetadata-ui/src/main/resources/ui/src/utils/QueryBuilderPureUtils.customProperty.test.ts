@@ -269,3 +269,26 @@ describe('custom property ES round trip', () => {
     ]);
   });
 });
+
+describe('text rule ES round trip', () => {
+  it.each([
+    ['name.keyword', 'regexp', ['.*orders.*']],
+    ['name.keyword', 'like', ['orders']],
+    ['name.keyword', 'not_like', ['orders']],
+    ['description', 'match_phrase', ['customer orders']],
+    ['description', 'not_match_phrase', ['customer orders']],
+  ])('%s %s', (field, operator, value) => {
+    const { value: saved } = formatQuery(
+      ruleTree(field, operator, value),
+      config,
+      SearchOutputType.ElasticSearch
+    );
+
+    expect(reparse(saved)).toEqual([
+      {
+        levels: [],
+        properties: expect.objectContaining({ field, operator, value }),
+      },
+    ]);
+  });
+});

@@ -1,0 +1,31 @@
+{
+  "abbreviation": "Brick",
+  "attribution": "Brick Schema 1.4.2. Copyright 2016-2026, Brick Consortium, Inc. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted under the BSD 3-Clause License. The name of the Brick Consortium may not be used to endorse products derived from this software without permission. Redistributed without changes.",
+  "bundled": true,
+  "description": "The Brick schema for building equipment, spaces, points and the relationships between them, published verbatim.",
+  "id": "brick",
+  "industry": "buildings-and-energy",
+  "layer": "L2",
+  "license": "BSD-3-Clause",
+  "licenseUrl": "https://opensource.org/licenses/BSD-3-Clause",
+  "modules": [
+    {
+      "conceptCount": 1794,
+      "dependencies": [],
+      "description": "Equipment, locations, points, collections and the Brick relationships.",
+      "format": "turtle",
+      "id": "brick",
+      "name": "Brick schema",
+      "relationshipCount": 2326,
+      "resourcePath": "rdf/ontology-packs/brick/brick.ttl",
+      "selectedByDefault": true,
+      "sha256": "c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0",
+      "sourceUrl": "https://brickschema.org/schema/1.4/Brick.ttl"
+    }
+  ],
+  "name": "Brick Schema",
+  "publisher": "Brick Consortium",
+  "sourceUrl": "https://brickschema.org/",
+  "standard": "Brick Schema 1.4",
+  "version": "1.4.2"
+}

@@ -51,10 +51,6 @@ test = [
     { include-group = "coverage" },
     { include-group = "dialect-compat" },
     { include-group = "exasol-test" },
-    "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl#sha256=5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310",
-    "es-core-news-md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl#sha256=478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2",
-    "it-core-news-md @ https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl#sha256=a731d2d8e7c5a7093ac42f88774ea2a2ad3d5809959eedee65632b3533f804ec",
-    "pl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl#sha256=4f433a556880c0b7ef01970e7c612c0e30103b893e6d26ed54672d8e056ad9b1",
     "pytest==9.0.3",
     "pytest-cov",
     "pytest-xdist~=3.5",
@@ -71,6 +67,13 @@ test = [
     "minio==7.2.5",
     "kafka-python==2.3.2",
     "locust~=2.32.0",
+]
+
+classification-models = [
+    "en-core-web-md @ https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl#sha256=5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310",
+    "es-core-news-md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl#sha256=478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2",
+    "it-core-news-md @ https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl#sha256=a731d2d8e7c5a7093ac42f88774ea2a2ad3d5809959eedee65632b3533f804ec",
+    "pl-core-news-md @ https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl#sha256=4f433a556880c0b7ef01970e7c612c0e30103b893e6d26ed54672d8e056ad9b1",
 ]
 
 exasol-test = [
@@ -109,6 +112,29 @@ name = "sqlalchemy-ibmi"
 version = "0.9.3"
 requires-dist = ["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]
 
+[[tool.uv.dependency-metadata]]
+name = "en-core-web-md"
+version = "3.8.0"
+requires-dist = []
+
+[[tool.uv.dependency-metadata]]
+name = "es-core-news-md"
+version = "3.8.0"
+requires-dist = []
+
+[[tool.uv.dependency-metadata]]
+name = "it-core-news-md"
+version = "3.8.0"
+requires-dist = []
+
+[[tool.uv.dependency-metadata]]
+name = "pl-core-news-md"
+version = "3.8.0"
+requires-dist = []
+
+[tool.openmetadata.python-environments]
+supported-python = ["3.10", "3.11", "3.12"]
+
 [tool.openmetadata.python-environments.profiles.runtime]
 groups = ["bootstrap"]
 extras = []
@@ -139,13 +165,15 @@ groups = ["test"]
 extras = ["all", "airflow", "great-expectations"]
 install-project = true
 
+[tool.openmetadata.python-environments.profiles.test-classification]
+groups = ["test", "classification-models"]
+extras = ["all", "airflow", "great-expectations"]
+install-project = true
+
 [tool.openmetadata.python-environments.profiles.coverage]
 groups = ["coverage"]
 extras = []
 install-project = false
-
-[tool.openmetadata.python-environments.classification-models]
-languages = ["en", "es", "it", "pl"]
 
 [tool.setuptools.dynamic]
 readme = { file = ["README.md"] }

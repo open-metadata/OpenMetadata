@@ -1830,45 +1830,32 @@ public class OpenSearchVectorService implements VectorIndexService {
   private static final JacksonJsonpMapper JACKSON_JSONP_MAPPER = new JacksonJsonpMapper(MAPPER);
 
   /**
-   * Per-entity input to {@link #getExistingEmbeddingsBatch(String, Map)}. {@code currentFingerprint}
-   * is a {@link Supplier} so the caller doesn't pay the MD5 + meta-text construction cost when the
-   * cheaper {@code updatedAt} fast-path resolves the match. {@code updatedAt} may be {@code null}
-   * for entities that don't expose it; in that case the supplier is consulted unconditionally.
-   */
-  public record EntityFingerprintInput(Long updatedAt, Supplier<String> currentFingerprint) {}
-
-  private static final List<String> FINGERPRINT_HEADER_FIELDS = List.of("fingerprint", "updatedAt");
-
-  /**
-   * Two-step batch fetch of cached embedding documents from {@code indexName}, scoped to entities
-   * whose cached state matches the caller-provided current state. Designed to keep large vector
-   * payloads off the wire for entities that will be re-embedded anyway.
+   * Two-step batch fetch of the stored embeddings a reindex may reuse, keyed by entity id. Designed
+   * to keep large vector payloads off the wire for entities that will be re-embedded anyway.
    *
-   * <p>Step 1 — {@code mget} {@code fingerprint} + {@code updatedAt} only for every requested ID,
-   * then decide which IDs "match":
-   *
-   * <ul>
-   *   <li>Fast path: cached {@code updatedAt} equals current {@code updatedAt} — the entity hasn't
-   *       been touched since the prior index, so the embedding is reusable without recomputing the
-   *       fingerprint.
-   *   <li>Fallback: the lazy fingerprint {@link Supplier} is invoked and compared against the
-   *       cached fingerprint.
-   * </ul>
+   * <p>Step 1 — {@code mget} only the stored {@code fingerprint} for every requested ID and keep
+   * the IDs whose fingerprint equals the current one (see {@link StoredEmbeddingReuse}).
    *
    * <p>Step 2 — issue a second {@code mget} that pulls the full embedding {@code _source} only for
    * matching IDs. Entries that don't match are dropped, and the caller can rely on every returned
    * value being safe to splice into a staged index document.
+   *
+   * @param currentFingerprintById each entity's current fingerprint, computed only when a stored
+   *     one exists
    */
   public Map<String, JsonNode> getExistingEmbeddingsBatch(
-      String indexName, Map<String, EntityFingerprintInput> currentById) {
-    if (currentById == null || currentById.isEmpty()) {
+      String indexName, Map<String, Supplier<String>> currentFingerprintById) {
+    if (currentFingerprintById == null || currentFingerprintById.isEmpty()) {
       return Collections.emptyMap();
     }
     try {
-      List<String> entityIds = new ArrayList<>(currentById.keySet());
+      List<String> entityIds = new ArrayList<>(currentFingerprintById.keySet());
       MgetResponse<JsonData> headerResponse =
           client.mget(
-              m -> m.index(indexName).ids(entityIds).sourceIncludes(FINGERPRINT_HEADER_FIELDS),
+              m ->
+                  m.index(indexName)
+                      .ids(entityIds)
+                      .sourceIncludes(StoredEmbeddingReuse.HEADER_FIELDS),
               JsonData.class);
 
       List<String> matchingIds = new ArrayList<>();
@@ -1884,11 +1871,9 @@ public class OpenSearchVectorService implements VectorIndexService {
         if (header == null || !header.isObject()) {
           continue;
         }
-        EntityFingerprintInput input = currentById.get(doc.id());
-        if (input == null) {
-          continue;
-        }
-        if (cachedStateMatches(header, input)) {
+        Supplier<String> currentFingerprint = currentFingerprintById.get(doc.id());
+        if (currentFingerprint != null
+            && StoredEmbeddingReuse.fingerprintMatches(doc.id(), header, currentFingerprint)) {
           matchingIds.add(doc.id());
         }
       }
@@ -1911,7 +1896,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           continue;
         }
         JsonNode cached = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
-        if (isSpliceable(cached)) {
+        if (StoredEmbeddingReuse.isSpliceable(cached)) {
           result.put(doc.id(), cached);
         }
       }
@@ -1920,35 +1905,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.error("Failed to batch get embeddings in index={}", indexName, e);
       return Collections.emptyMap();
     }
-  }
-
-  /**
-   * The splice-site contract: callers can rely on every returned entry being a JSON object whose
-   * {@code embedding} is a non-empty array and whose {@code fingerprint} is non-blank text.
-   * Anything else is dropped — silently, since these only fail on corrupt or partial cached docs
-   * that the caller will regenerate from scratch anyway.
-   */
-  private static boolean isSpliceable(JsonNode cached) {
-    if (cached == null || !cached.isObject()) {
-      return false;
-    }
-    JsonNode embedding = cached.path("embedding");
-    if (!embedding.isArray() || embedding.isEmpty()) {
-      return false;
-    }
-    JsonNode fingerprint = cached.path("fingerprint");
-    return fingerprint.isTextual() && !fingerprint.asText().isBlank();
-  }
-
-  private static boolean cachedStateMatches(JsonNode header, EntityFingerprintInput input) {
-    JsonNode cachedUpdatedAt = header.path("updatedAt");
-    if (cachedUpdatedAt.isIntegralNumber()
-        && input.updatedAt() != null
-        && cachedUpdatedAt.asLong() == input.updatedAt()) {
-      return true;
-    }
-    String cachedFp = header.path("fingerprint").asText(null);
-    return cachedFp != null && cachedFp.equals(input.currentFingerprint().get());
   }
 
   public void partialUpdateEntity(

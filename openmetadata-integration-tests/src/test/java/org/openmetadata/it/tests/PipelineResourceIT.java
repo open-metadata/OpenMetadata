@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.LongStream;
 import java.util.stream.Stream;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -912,6 +914,28 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   @Test
+  void test_pipelineScheduleIntervalUpdate_200_OK(TestNamespace ns) {
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_schedule_interval"));
+    request.setService(service.getFullyQualifiedName());
+    request.setScheduleInterval("0 2 * * *");
+
+    Pipeline pipeline = createEntity(request);
+    assertEquals("0 2 * * *", pipeline.getScheduleInterval());
+
+    // A cadence-only change must be stored, not just echoed in the response
+    pipeline.setScheduleInterval("0 */6 * * *");
+    Pipeline updated = patchEntity(pipeline.getId().toString(), pipeline);
+    assertEquals("0 */6 * * *", updated.getScheduleInterval());
+
+    Pipeline stored = getEntity(pipeline.getId().toString());
+    assertEquals("0 */6 * * *", stored.getScheduleInterval());
+    assertTrue(stored.getVersion() > pipeline.getVersion());
+  }
+
+  @Test
   void test_pipelineConcurrency_200_OK(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
@@ -1398,6 +1422,54 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
   }
 
   /**
+   * The status list always pages: without a limit it answers one default page, a limit above the
+   * maximum is refused, and 0 returns only the total. A whole range is read through the cursor.
+   */
+  @Test
+  void list_pipelineStatuses_pagedByDefault_200_OK(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline request = new CreatePipeline();
+    request.setName(ns.prefix("pipeline_status_pages"));
+    request.setService(service.getFullyQualifiedName());
+    request.setTasks(List.of(new Task().withName("task1").withDescription("Task 1")));
+    String fqn = createEntity(request).getFullyQualifiedName();
+    long baseTime = System.currentTimeMillis() - 3600000;
+    List<PipelineStatus> statuses =
+        LongStream.range(0, 12).mapToObj(run -> successfulStatus(baseTime + run * 1000)).toList();
+    client.pipelines().addBulkPipelineStatus(fqn, statuses);
+    long startTs = baseTime - 1;
+    long endTs = baseTime + 12000;
+
+    ResultList<PipelineStatus> firstPage = listPipelineStatuses(client, fqn, startTs, endTs, "");
+    assertEquals(10, firstPage.getData().size());
+    assertEquals(12, firstPage.getPaging().getTotal());
+    assertEquals(baseTime + 11000, firstPage.getData().getFirst().getTimestamp());
+    String after = encodeQueryValue(firstPage.getPaging().getAfter());
+    assertEquals(
+        List.of(baseTime + 1000, baseTime),
+        listPipelineStatuses(client, fqn, startTs, endTs, "&after=" + after).getData().stream()
+            .map(PipelineStatus::getTimestamp)
+            .toList());
+
+    ResultList<PipelineStatus> totalOnly =
+        listPipelineStatuses(client, fqn, startTs, endTs, "&limit=0");
+    assertTrue(totalOnly.getData().isEmpty());
+    assertEquals(12, totalOnly.getPaging().getTotal());
+
+    InvalidRequestException tooLarge =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> listPipelineStatuses(client, fqn, startTs, endTs, "&limit=1001"));
+    assertEquals(400, tooLarge.getStatusCode());
+    assertTrue(
+        tooLarge.getResponseBody().contains("must be less than or equal to 1000"),
+        tooLarge.getResponseBody());
+
+    assertEquals(12, client.pipelines().listPipelineStatuses(fqn, startTs, endTs).getData().size());
+  }
+
+  /**
    * A status push loads the pipeline without its relationship fields, so it must refresh only the
    * status in search. The bulk endpoint used to rebuild the whole document from that bare entity,
    * blanking owners, domains, tags and certification until the next reindex (#34044).
@@ -1616,6 +1688,15 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     String response =
         client.getHttpClient().executeForString(HttpMethod.GET, path.toString(), null);
     return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineSummary>>() {});
+  }
+
+  private ResultList<PipelineStatus> listPipelineStatuses(
+      OpenMetadataClient client, String fqn, long startTs, long endTs, String query) {
+    String path =
+        "/v1/pipelines/%s/status?startTs=%d&endTs=%d%s"
+            .formatted(encodeQueryValue(fqn), startTs, endTs, query);
+    String response = client.getHttpClient().executeForString(HttpMethod.GET, path, null);
+    return JsonUtils.readValue(response, new TypeReference<ResultList<PipelineStatus>>() {});
   }
 
   private String encodeQueryValue(String value) {

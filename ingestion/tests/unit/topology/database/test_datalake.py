@@ -469,8 +469,7 @@ class DatalakeUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_config)
         self.datalake_source = DatalakeSource.create(
@@ -673,8 +672,7 @@ class DatalakeGCSUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.datalake.metadata.DatalakeSource.test_connection")
     @patch("metadata.utils.credentials.validate_private_key")
     @patch("google.cloud.storage.Client")
-    def __init__(self, methodName, _, __, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, _, __, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_datalake_gcs_config)
         self.datalake_source = DatalakeSource.create(

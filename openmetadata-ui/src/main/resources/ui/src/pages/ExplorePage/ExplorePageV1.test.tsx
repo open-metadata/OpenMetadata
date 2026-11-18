@@ -144,6 +144,16 @@ describe('ExplorePageV1', () => {
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
   });
 
+  it('keeps no-text tab links searching all assets', async () => {
+    mockLocation.search = '';
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    expect(searchQuery).toHaveBeenCalledWith(
+      expect.objectContaining({ searchIndex: SearchIndex.DATA_ASSET })
+    );
+  });
+
   it('does not write a page size it cannot offer back to the shared URL', async () => {
     const mockNavigate = jest.fn();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);

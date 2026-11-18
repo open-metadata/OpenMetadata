@@ -14,6 +14,7 @@ import {
   Box,
   ButtonUtility,
   FeaturedIcon,
+  PageLayout,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import {
@@ -25,12 +26,11 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
-import { useCallback, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { TestCasePageTabs } from '../../../pages/IncidentManager/IncidentManager.interface';
 import { TEST_CASE_NEXT_RUN_QUERY_KEY } from '../../../pages/IncidentManager/IncidentManagerDetailPage/IncidentManagerDetailPage.constants';
@@ -52,6 +52,7 @@ import {
 } from '../../../utils/RouterUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { BetaBadge } from '../../common/Badge/Badge.component';
+import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
@@ -64,9 +65,11 @@ import IncidentManagerPageHeader from '../../DataQuality/IncidentManager/Inciden
 import TestCaseLastRunBanner from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/TestCaseLastRunBanner.component';
 import { useTestCaseIncidentHeader } from '../../DataQuality/IncidentManager/IncidentManagerPageHeader/useTestCaseIncidentHeader';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
-import { OBSERVABILITY_ROUTES } from '../observability.constants';
+import {
+  OBSERVABILITY_PAGE_LAYOUT_CLASS,
+  OBSERVABILITY_ROUTES,
+} from '../observability.constants';
 import { getObservabilityRootBreadcrumb } from '../observabilityBreadcrumb.utils';
-import ObservabilityPageShell from '../ObservabilityPageShell/ObservabilityPageShell';
 import RunTestCaseButton from './RunTestCaseButton/RunTestCaseButton';
 import './test-case-detail.less';
 import { TestCaseDetailProps } from './TestCaseDetail.types';
@@ -119,7 +122,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     handleDisplayNameChange,
     handleRestore,
     getEntityFeedCount,
-    setTestCase,
+    mergeTestCase,
   } = useTestCaseDetailPage({ isVersionPage });
   const incidentHeaderData = useTestCaseIncidentHeader({
     fetchTaskCount: getEntityFeedCount,
@@ -284,12 +287,6 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     return buildCrumbs();
   }, [t, testCase, isDimensionPage, dimensionKey, originBreadcrumb]);
 
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
-
-  const handleCopyEntityUrl = useCallback(async () => {
-    await onCopyToClipBoard(globalThis.location.href);
-  }, [onCopyToClipBoard]);
-
   if (isLoading) {
     return <Loader />;
   }
@@ -343,10 +340,14 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
 
   return (
     <>
-      <ObservabilityPageShell
-        className={classNames({ 'version-data': isVersionPage })}
-        data-testid="test-case-detail-page"
-        header={
+      <PageLayout
+        className={classNames(
+          OBSERVABILITY_PAGE_LAYOUT_CLASS,
+          classNames({ 'version-data': isVersionPage })
+        )}
+        data-testid="test-case-detail-page">
+        <DocumentTitle title={getPageTitle()} />
+        <PageLayout.Header>
           <Box
             className="tw:relative tw:rounded-xl tw:border tw:border-border-secondary tw:bg-primary tw:px-5 tw:py-4 data-assets-header-container"
             data-testid="test-case-header-container"
@@ -390,9 +391,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                   <TestCaseHeaderTitle
                     deleted={testCase.deleted}
                     displayName={displayName}
-                    hasCopied={hasCopied}
                     testCaseName={testCase.name}
-                    onCopy={handleCopyEntityUrl}
                   />
                 </Box>
                 <Box align="center" className="tw:shrink-0" gap={2}>
@@ -430,48 +429,49 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
               />
             </Box>
           </Box>
-        }
-        pageTitle={getPageTitle()}>
-        <div className="test-case-detail-tabs">
-          <Box
-            align="end"
-            // Reserve the expand button's height (40px + border) so the strip
-            // doesn't collapse and shift the tab body when the button unmounts
-            // on non-result tabs.
-            className="tw:min-h-10.25 tw:border-b tw:border-secondary"
-            gap={2}
-            justify="between">
-            <Tabs
-              className="tw:w-fit"
-              data-testid="tabs"
-              selectedKey={renderedActiveTab}
-              onSelectionChange={(key) => handleTabChange(String(key))}>
-              <Tabs.List size="sm" type="underline">
-                {tabs.map(({ labelProps, key, isBeta }) => (
-                  <Tabs.Item
-                    badge={toString(labelProps.count) || undefined}
-                    data-testid={labelProps.id}
-                    id={key}
-                    key={key}
-                    label={
-                      isBeta ? (
-                        <Box inline align="center" gap={1}>
-                          {labelProps.name}
-                          <BetaBadge />
-                        </Box>
-                      ) : (
-                        labelProps.name
-                      )
-                    }
-                  />
-                ))}
-              </Tabs.List>
-            </Tabs>
-            {renderExpandButton()}
-          </Box>
-          <div className="test-case-detail-tab-panel">{activeTabContent}</div>
-        </div>
-      </ObservabilityPageShell>
+        </PageLayout.Header>
+        <PageLayout.Content>
+          <div className="test-case-detail-tabs">
+            <Box
+              align="end"
+              // Reserve the expand button's height (40px + border) so the strip
+              // doesn't collapse and shift the tab body when the button unmounts
+              // on non-result tabs.
+              className="tw:min-h-10.25 tw:border-b tw:border-secondary"
+              gap={2}
+              justify="between">
+              <Tabs
+                className="tw:w-fit"
+                data-testid="tabs"
+                selectedKey={renderedActiveTab}
+                onSelectionChange={(key) => handleTabChange(String(key))}>
+                <Tabs.List size="sm" type="underline">
+                  {tabs.map(({ labelProps, key, isBeta }) => (
+                    <Tabs.Item
+                      badge={toString(labelProps.count) || undefined}
+                      data-testid={labelProps.id}
+                      id={key}
+                      key={key}
+                      label={
+                        isBeta ? (
+                          <Box inline align="center" gap={1}>
+                            {labelProps.name}
+                            <BetaBadge />
+                          </Box>
+                        ) : (
+                          labelProps.name
+                        )
+                      }
+                    />
+                  ))}
+                </Tabs.List>
+              </Tabs>
+              {renderExpandButton()}
+            </Box>
+            <div className="test-case-detail-tab-panel">{activeTabContent}</div>
+          </div>
+        </PageLayout.Content>
+      </PageLayout>
       {isVersionPage && (
         <EntityVersionTimeLine
           currentVersion={toString(version)}
@@ -486,7 +486,7 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
           open={isDimensionEdit}
           testCase={testCase}
           onClose={handleCancelDimension}
-          onUpdate={setTestCase}
+          onUpdate={mergeTestCase}
         />
       )}
     </>

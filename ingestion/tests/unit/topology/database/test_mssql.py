@@ -229,12 +229,7 @@ class MssqlUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
-    def __init__(
-        self,
-        methodName,  # noqa: N803
-        test_connection,
-    ) -> None:
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_mssql_config)
         self.mssql = MssqlSource.create(

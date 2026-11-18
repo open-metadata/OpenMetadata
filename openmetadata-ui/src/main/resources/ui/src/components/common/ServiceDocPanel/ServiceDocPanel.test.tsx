@@ -1642,15 +1642,6 @@ describe('CodeBlockComponent', () => {
     expect(screen.getByTestId('code-block-copy-icon')).toBeInTheDocument();
   });
 
-  it('should set data-copied to false initially', () => {
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
-
-    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-      'data-copied',
-      'false'
-    );
-  });
-
   it('should copy node text content to clipboard on click', async () => {
     render(<CodeBlockComponent {...mockNodeViewProps} />);
 
@@ -1661,21 +1652,20 @@ describe('CodeBlockComponent', () => {
     });
   });
 
-  it('should set data-copied to true after clicking copy', async () => {
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+  it('should show the copied state after clicking copy', async () => {
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
 
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
 
     await waitFor(() => {
-      expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-        'data-copied',
-        'true'
+      expect(screen.getByTestId('code-block-copy-icon').className).toContain(
+        'tw:bg-success-solid'
       );
     });
   });
 
   it('should remain in copied state after rapid clicks', async () => {
-    const { container } = render(<CodeBlockComponent {...mockNodeViewProps} />);
+    render(<CodeBlockComponent {...mockNodeViewProps} />);
 
     fireEvent.click(screen.getByTestId('code-block-copy-icon'));
 
@@ -1689,9 +1679,8 @@ describe('CodeBlockComponent', () => {
       expect(mockWriteText).toHaveBeenCalledTimes(2);
     });
 
-    expect(container.querySelector('.code-copy-button')).toHaveAttribute(
-      'data-copied',
-      'true'
+    expect(screen.getByTestId('code-block-copy-icon').className).toContain(
+      'tw:bg-success-solid'
     );
   });
 });

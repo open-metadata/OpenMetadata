@@ -15,16 +15,22 @@ package org.openmetadata.mcp.tools;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContextDefinition;
@@ -34,6 +40,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextAccess;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 class PersonaSearchScopeTest {
@@ -60,7 +68,7 @@ class PersonaSearchScopeTest {
   }
 
   @Test
-  void activePersonaDefinitionIsCompiledIntoTheSearchScope() {
+  void activePersonaDefinitionIsCompiledIntoTheSearchScope() throws IOException {
     ContextRule rule =
         new ContextRule()
             .withName("Finance tables")
@@ -70,18 +78,79 @@ class PersonaSearchScopeTest {
             .withFilteredInSearch(true);
     Persona persona =
         new Persona()
+            .withId(UUID.randomUUID())
             .withContextDefinition(
                 new PersonaContextDefinition().withEnabled(true).withRules(List.of(rule)));
     CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
 
-    try (MockedStatic<PersonaContextAccess> access = mockStatic(PersonaContextAccess.class)) {
+    try (MockedStatic<PersonaContextAccess> access = mockStatic(PersonaContextAccess.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class)) {
       access.when(() -> PersonaContextAccess.activePersona(securityContext)).thenReturn(persona);
+      SearchRepository repository = searchRepository();
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
 
       PersonaSearchScope scope = PersonaSearchScope.resolve(securityContext).orElseThrow();
 
       assertTrue(scope.entityTypes().contains(Entity.TABLE));
       assertTrue(scope.queryFilter().contains("service.name.keyword"));
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"{", "{\"regexp\":{\"name\":\"[broken\"}}"})
+  void invalidSavedRulesDoNotReplaceHealthySearchDefaults(String filter) throws IOException {
+    ContextRule broken =
+        new ContextRule()
+            .withName("Broken scope")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter(filter)
+            .withFilteredInSearch(true);
+    ContextRule healthy =
+        new ContextRule()
+            .withName("Finance dashboards")
+            .withEntityType(Entity.DASHBOARD)
+            .withQueryFilter(PERSONA_FILTER)
+            .withFilteredInSearch(true);
+    CatalogSecurityContext securityContext = mock(CatalogSecurityContext.class);
+    SearchRepository repository = searchRepository();
+    try (MockedStatic<PersonaContextAccess> access = mockStatic(PersonaContextAccess.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      for (boolean includeHealthy : List.of(true, false)) {
+        Persona persona =
+            new Persona()
+                .withId(UUID.randomUUID())
+                .withName("Saved search defaults")
+                .withContextDefinition(
+                    new PersonaContextDefinition()
+                        .withRules(includeHealthy ? List.of(broken, healthy) : List.of(broken)));
+        access.when(() -> PersonaContextAccess.activePersona(securityContext)).thenReturn(persona);
+        Optional<PersonaSearchScope> scope = PersonaSearchScope.resolve(securityContext);
+        assertEquals(includeHealthy, scope.isPresent());
+        if (includeHealthy) {
+          assertTrue(scope.orElseThrow().entityTypes().contains(Entity.DASHBOARD));
+          assertFalse(scope.orElseThrow().entityTypes().contains(Entity.TABLE));
+          assertFalse(scope.orElseThrow().queryFilter().contains("[broken"));
+          assertTrue(scope.orElseThrow().queryFilter().contains("finance"));
+        }
+      }
+    }
+  }
+
+  private static SearchRepository searchRepository() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    SearchClient client = mock(SearchClient.class);
+    when(repository.getSearchClient()).thenReturn(client);
+    when(repository.getIndexOrAliasName(anyString())).thenReturn("assets");
+    when(client.rawSearchRequest(anyString(), anyString(), anyString()))
+        .thenAnswer(
+            invocation ->
+                new SearchClient.RawSearchResponse(
+                    200,
+                    invocation.<String>getArgument(2).contains("[broken")
+                        ? "{\"valid\":false}"
+                        : "{\"valid\":true}"));
+    return repository;
   }
 
   @Test

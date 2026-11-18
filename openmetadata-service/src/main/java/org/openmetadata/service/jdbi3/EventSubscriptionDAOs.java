@@ -127,6 +127,13 @@ public interface EventSubscriptionDAOs {
     @RegisterRowMapper(SubscriberExtensionMapper.class)
     List<SubscriberExtension> listSubscriberExtensions(@Bind("id") String id);
 
+    @SqlQuery(
+        "SELECT id, extension, json FROM change_event_consumers "
+            + "WHERE id IN (<ids>) AND extension IN (<extensions>)")
+    @RegisterRowMapper(AlertExtensionMapper.class)
+    List<AlertExtension> listAlertsExtensions(
+        @BindList("ids") List<String> ids, @BindList("extensions") List<String> extensions);
+
     @SqlUpdate("DELETE FROM change_event_consumers WHERE id = :id AND extension = :extension")
     int deleteSubscriberExtension(@Bind("id") String id, @Bind("extension") String extension);
 
@@ -143,6 +150,16 @@ public interface EventSubscriptionDAOs {
     long databaseTimeMillis();
 
     record SubscriberExtension(String extension, String json) {}
+
+    record AlertExtension(String id, String extension, String json) {}
+
+    class AlertExtensionMapper implements RowMapper<AlertExtension> {
+      @Override
+      public AlertExtension map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new AlertExtension(
+            rs.getString("id"), rs.getString("extension"), rs.getString("json"));
+      }
+    }
 
     class SubscriberExtensionMapper implements RowMapper<SubscriberExtension> {
       @Override
