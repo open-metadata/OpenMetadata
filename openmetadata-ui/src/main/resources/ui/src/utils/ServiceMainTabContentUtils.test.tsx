@@ -15,6 +15,11 @@ import { ReactNode } from 'react';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
 import { UsageDetails } from '../generated/type/entityUsage';
+import {
+  ColumnType,
+  ColumnsType,
+} from '../components/common/Table/Table.interface';
+import { ServicePageData } from '../interface/platform/service.interface';
 import { getServiceMainTabColumns } from './ServiceMainTabContentUtils';
 import { getUsagePercentile } from './TablePureUtils';
 
@@ -52,11 +57,14 @@ jest.mock('../components/common/DisplayName/DisplayName', () => ({
 
 const USAGE_COLUMN_TITLE = 'label.usage';
 
-type UsageColumn = {
-  render: (usageSummary: UsageDetails | undefined) => ReactNode;
-};
+const isUsageColumn = (
+  c: ColumnsType<ServicePageData>[number]
+): c is ColumnType<ServicePageData> =>
+  'dataIndex' in c &&
+  typeof c.title === 'string' &&
+  c.title === USAGE_COLUMN_TITLE;
 
-const findUsageColumn = (): UsageColumn => {
+const findUsageColumn = (): ColumnType<ServicePageData> => {
   const columns = getServiceMainTabColumns(
     ServiceCategory.DATABASE_SERVICES,
     undefined,
@@ -65,21 +73,19 @@ const findUsageColumn = (): UsageColumn => {
     true
   );
 
-  const col = columns.find(
-    (c) => (c as { title?: unknown }).title === USAGE_COLUMN_TITLE
-  );
+  const col = columns.find(isUsageColumn);
 
   if (!col) {
     throw new Error('Usage column was not present in the columns array');
   }
 
-  return col as unknown as UsageColumn;
+  return col;
 };
 
 const renderCell = (node: ReactNode) => render(<>{node}</>).container;
 
-const hasUsageColumn = (columns: ReturnType<typeof getServiceMainTabColumns>) =>
-  columns.some((c) => (c as { title?: unknown }).title === USAGE_COLUMN_TITLE);
+const hasUsageColumn = (columns: ColumnsType<ServicePageData>) =>
+  columns.some(isUsageColumn);
 
 describe('getServiceMainTabColumns — Usage column', () => {
   beforeEach(() => {
@@ -137,7 +143,9 @@ describe('getServiceMainTabColumns — Usage column', () => {
     // produced.
     const usageColumn = findUsageColumn();
 
-    const container = renderCell(usageColumn.render(undefined));
+    const container = renderCell(
+      usageColumn.render(undefined, {} as ServicePageData, 0) as ReactNode
+    );
 
     expect(container.textContent).toBe(NO_DATA_PLACEHOLDER);
     expect(getUsagePercentile).not.toHaveBeenCalled();
@@ -150,9 +158,13 @@ describe('getServiceMainTabColumns — Usage column', () => {
     const usageColumn = findUsageColumn();
 
     const container = renderCell(
-      usageColumn.render({
-        weeklyStats: { percentileRank: 0 },
-      } as UsageDetails)
+      usageColumn.render(
+        {
+          weeklyStats: { percentileRank: 0 },
+        } as UsageDetails,
+        {} as ServicePageData,
+        0
+      ) as ReactNode
     );
 
     expect(container.textContent).toBe('PCTILE:0');

@@ -79,9 +79,7 @@ jest.mock('../../../../utils/TableColumn.util', () => ({
 // `getUsagePercentile`, verified above.
 jest.mock('../../../../utils/TablePureUtils', () => ({
   ...jest.requireActual('../../../../utils/TablePureUtils'),
-  getUsagePercentile: jest.fn(
-    (pctRank: number) => `PCTILE:${pctRank}`
-  ) as unknown as typeof getUsagePercentile,
+  getUsagePercentile: jest.fn((pctRank: number) => `PCTILE:${pctRank}`),
 }));
 
 // Task 8 Batch 3: this test suite is new (no prior coverage). RED evidence is documented
@@ -190,7 +188,9 @@ describe('DatabaseSchemaTable permission derivation', () => {
       mockPermissions = { ViewAll: true } as Partial<OperationPermission>;
       mockIsDatabaseDeleted = false;
       mockSchemasResponse = { data: [], paging: { total: 0 } };
-      (getUsagePercentile as unknown as jest.Mock).mockClear();
+      (
+        getUsagePercentile as jest.MockedFunction<typeof getUsagePercentile>
+      ).mockClear();
     });
 
     it('renders NO_DATA_PLACEHOLDER (not "0th pctile") when usageSummary is undefined', async () => {
