@@ -184,7 +184,7 @@ class _DiscardedArray(np.ndarray):
 def test_row_budget_filters_before_converting_across_chunks():
     discarded = np.array(["discarded"]).view(_DiscardedArray)
     frames = [
-        pd.DataFrame({"id": [0, 1], "values": [None, np.array(["first"])], "unused": [None, None]}),
+        pd.DataFrame({"id": [None, 1], "values": [None, np.array(["first"])], "unused": [None, None]}),
         pd.DataFrame({"id": [2, 3, 4], "values": [np.array(["filtered"]), np.array(["second"]), discarded]}),
     ]
     sampler = _datalake_sampler(frames, limit=2)
@@ -195,6 +195,38 @@ def test_row_budget_filters_before_converting_across_chunks():
     )
     assert cols == ["id", "values"]
     assert rows == [[1, ["first"]], [3, ["second"]]]
+
+
+@pytest.mark.parametrize("selected_columns", [False, True])
+@pytest.mark.parametrize("sample_query", [None, "id != 2"])
+def test_partial_null_rows_count_toward_global_budget(selected_columns, sample_query):
+    discarded = np.array(["discarded"]).view(_DiscardedArray)
+    frames = [
+        pd.DataFrame(
+            {
+                "id": [None, 1],
+                "values": [None, np.array(["first"])],
+                "missing": [None, np.nan],
+                "unused": ["ignored", "ignored"],
+            }
+        ),
+        pd.DataFrame(
+            {
+                "id": [2, 3, 4],
+                "values": [np.array(["filtered"]), np.array(["second"]), discarded],
+                "missing": [pd.NaT, pd.NaT, pd.NaT],
+                "unused": ["ignored", "ignored", "ignored"],
+            }
+        ),
+    ]
+    if not selected_columns:
+        frames = [frame.drop(columns="unused") for frame in frames]
+    sampler = _datalake_sampler(frames, limit=2)
+    columns = [SimpleNamespace(name=name) for name in ["id", "values", "missing"]] if selected_columns else None
+    cols, rows = sampler.get_col_row(sampler.raw_dataset, columns=columns, sample_query=sample_query)
+    assert cols == ["id", "values", "missing"]
+    second = [2, ["filtered"], None] if sample_query is None else [3, ["second"], None]
+    assert rows == [[1, ["first"], None], second]
 
 
 def test_zero_and_none_row_budget():
