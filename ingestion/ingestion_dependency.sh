@@ -86,4 +86,19 @@ rm -f /opt/airflow/airflow-webserver-monitor.pid
 echo "Starting Airflow 3.x components..."
 nohup airflow api-server --port 8080 > /opt/airflow/logs/api-server.log 2>&1 &
 nohup airflow dag-processor > /opt/airflow/logs/dag-processor.log 2>&1 &
-airflow scheduler
+
+# The scheduler is the container's foreground process, so when it exits the container
+# stops and takes the api-server down with it. Its startup can lose a MySQL connection
+# ("Lost connection to server during query"), so restart it before giving up.
+SCHEDULER_MAX_ATTEMPTS=${SCHEDULER_MAX_ATTEMPTS:-5}
+scheduler_attempt=1
+until airflow scheduler; do
+  scheduler_status=$?
+  if [ "${scheduler_attempt}" -ge "${SCHEDULER_MAX_ATTEMPTS}" ]; then
+    echo "Airflow scheduler exited with status ${scheduler_status} on attempt ${scheduler_attempt}/${SCHEDULER_MAX_ATTEMPTS}, giving up" >&2
+    exit "${scheduler_status}"
+  fi
+  scheduler_attempt=$((scheduler_attempt + 1))
+  echo "Airflow scheduler exited with status ${scheduler_status}, restarting (attempt ${scheduler_attempt}/${SCHEDULER_MAX_ATTEMPTS})" >&2
+  sleep 5
+done
