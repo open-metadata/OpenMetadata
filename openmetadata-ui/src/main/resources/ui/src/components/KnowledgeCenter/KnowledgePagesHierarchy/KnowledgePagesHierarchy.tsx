@@ -49,7 +49,7 @@ import {
 } from 'react';
 import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../../components/common/Loader/Loader';
 import { CREATE_PAGE_HASH } from '../../../constants/constants';
@@ -786,34 +786,31 @@ const KnowledgePagesHierarchy = forwardRef<
                       data-testid="drag-handle-icon"
                     />
                   )}
-                  {isQuickLink && onQuickLinkClick ? (
-                    <Box
-                      align="center"
-                      className="custom-group tw:min-w-0 tw:flex-1"
-                      justify="between">
-                      <button
-                        className="tw:gap-2 tw:cursor-pointer tw:border-none tw:bg-transparent tw:p-0 tw:text-left tw:truncate"
-                        data-isactive={isActive}
-                        data-testid={`page-node-${displayName}`}
-                        onClick={() =>
-                          onQuickLinkClick(node.fullyQualifiedName)
-                        }>
-                        {nodeContent}
-                      </button>
-                      {deleteButton}
-                    </Box>
-                  ) : (
-                    <Link
-                      className="tw:flex tw:items-center tw:min-w-0 tw:flex-1 custom-group tw:justify-between tw:gap-2 tw:cursor-pointer tw:hover:no-underline"
+                  <Box
+                    align="center"
+                    className="custom-group tw:min-w-0 tw:flex-1"
+                    justify="between">
+                    <Button
+                      ellipsis
+                      noTextPadding
+                      className="tw:min-w-0 tw:flex-1"
+                      color="link-primary"
                       data-isactive={isActive}
                       data-testid={`page-node-${displayName}`}
-                      to={contextCenterClassBase.getArticlePath(
-                        node.fullyQualifiedName
-                      )}>
+                      {...(isQuickLink && onQuickLinkClick
+                        ? {
+                            onPress: () =>
+                              onQuickLinkClick(node.fullyQualifiedName),
+                          }
+                        : {
+                            href: contextCenterClassBase.getArticlePath(
+                              node.fullyQualifiedName
+                            ),
+                          })}>
                       {nodeContent}
-                      {deleteButton}
-                    </Link>
-                  )}
+                    </Button>
+                    {deleteButton}
+                  </Box>
                 </>
               )}
             </Tree.ItemContent>
