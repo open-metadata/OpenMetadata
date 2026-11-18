@@ -255,6 +255,17 @@ public final class HeapBackpressure {
   }
 
   /**
+   * Number of workers queued waiting to acquire {@link #GATE_LOCK}; tests use it to wait until
+   * every other worker is parked behind the drainer before changing heap state, so the paced
+   * handoff is observed by all queued workers rather than being short-circuited by a late starter
+   * taking the healthy-heap fast path.
+   */
+  @VisibleForTesting
+  static int gateQueueLength() {
+    return GATE_LOCK.getQueueLength();
+  }
+
+  /**
    * Drains the gate while holding {@link #GATE_LOCK}. Only the lock holder runs this method, so
    * heap polls are serialized across all workers. Each worker re-checks on entry so a worker that
    * acquired the lock after the previous drainer already restored headroom can proceed without
@@ -305,10 +316,14 @@ public final class HeapBackpressure {
 
     // Heap is at/above PAUSE_ABOVE. Engage (or re-arm) the gate. The first engager installs the
     // shared deadline; later joiners share it, so the 30 s escape valve applies once per episode
-    // and cannot become a synchronized N-worker bypass.
+    // and cannot become a synchronized N-worker bypass. A joiner that arrives during a paced
+    // admission handoff (engaged=true, deadline cleared to 0 by the previous admission) must NOT
+    // reuse that zero deadline — it would skip the drain loop and allocate alongside the
+    // just-released worker. Re-arm a fresh deadline in that case so the worker drains.
     boolean firstEngager = !GATE_ENGAGED.getAndSet(true);
+    long existingDeadline = firstEngager ? 0L : GATE_DEADLINE_MS.get();
     long deadline;
-    if (firstEngager) {
+    if (firstEngager || existingDeadline == 0L) {
       deadline = System.currentTimeMillis() + maxWaitMs;
       GATE_DEADLINE_MS.set(deadline);
       LOG.warn(
@@ -317,7 +332,7 @@ public final class HeapBackpressure {
           maxBytes / (1024 * 1024),
           Math.round(PAUSE_ABOVE * 100));
     } else {
-      deadline = GATE_DEADLINE_MS.get();
+      deadline = existingDeadline;
     }
 
     long waited = 0;

@@ -436,6 +436,17 @@ class HeapBackpressureTest {
           .atMost(Duration.ofSeconds(3))
           .until(HeapBackpressure::gateEngaged);
 
+      // Wait until every other worker has reached the gate and is queued behind the drainer
+      // on GATE_LOCK before lowering heap. ready.countDown() fires before a worker reaches the
+      // gate, so a delayed starter could otherwise miss the lock queue, take the healthy-heap
+      // fast path once we drop usedRef, and return < paceMs apart from a paced worker — failing
+      // the spacing assertion even though the queued workers were paced correctly.
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> HeapBackpressure.gateQueueLength() == workers - 1);
+
       // Drop heap below RESUME_BELOW so the draining worker exits and installs the first pace.
       usedRef.set(60L);
 
@@ -467,6 +478,118 @@ class HeapBackpressureTest {
                 + "ms); without the paced handoff all workers would be "
                 + "admitted within a single heap-poll interval");
       }
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  /**
+   * After a successful drain the released worker installs a paced admission handoff: engaged=true,
+   * deadline cleared to 0, {@code nextAdmission=now+pace}. If the just-released worker's batch read
+   * pushes the heap back above {@code PAUSE_ABOVE} before the next queued worker is admitted, that
+   * worker — having waited out the pace under the lock — re-checks the heap, sees pressure, and
+   * must NOT reuse the zero deadline (it would skip the drain loop and allocate alongside the
+   * just-released worker, the exact OOM burst the gate exists to prevent). It must re-arm a fresh
+   * deadline and drain. This test raises heap usage during the pace window and asserts the fresh
+   * deadline is installed and observed in flight from inside the drain loop.
+   */
+  @Test
+  void awaitHeadroom_pacedHandoff_pressureReturnsDuringPaceWindow_rearmsFreshDeadline()
+      throws Exception {
+    int workers = 2;
+    long paceMs = 200L;
+    HeapBackpressure.setReleasePaceMsForTest(paceMs);
+    HeapBackpressure.setMaxWaitMsForTest(1_500L);
+    AtomicLong usedRef = new AtomicLong(90L); // both workers initially sample under-pressure heap
+    AtomicInteger completed = new AtomicInteger(0);
+    CountDownLatch ready = new CountDownLatch(workers);
+    AtomicLong capturedDeadline = new AtomicLong(0L);
+    AtomicLong capturedAt = new AtomicLong(0L);
+
+    Supplier<MemoryUsage> supplier =
+        () -> {
+          MemoryUsage usage = new MemoryUsage(0L, usedRef.get(), 100L, 100L);
+          // Capture the largest in-flight deadline observed under the lock. The fast-path call
+          // (before the lock is acquired) does not see the lock held and is excluded.
+          if (HeapBackpressure.gateLockHeldByCurrentThread()) {
+            long d = HeapBackpressure.gateDeadlineMs();
+            if (d > capturedDeadline.get()) {
+              capturedDeadline.set(d);
+              capturedAt.set(System.currentTimeMillis());
+            }
+          }
+          return usage;
+        };
+
+    ExecutorService pool = Executors.newFixedThreadPool(workers);
+    try {
+      for (int i = 0; i < workers; i++) {
+        pool.submit(
+            () -> {
+              ready.countDown();
+              HeapBackpressure.awaitHeadroom(supplier);
+              completed.incrementAndGet();
+              return null;
+            });
+      }
+      assertTrue(ready.await(2L, TimeUnit.SECONDS), "all workers should start");
+
+      // Wait until the first worker is parked in the drain loop and the second is queued on the
+      // lock, so the paced handoff is guaranteed to install (hasQueuedThreads()==true).
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(HeapBackpressure::gateEngaged);
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> HeapBackpressure.gateQueueLength() == workers - 1);
+
+      // Drainer exits: drops heap to headroom, installs paced handoff (engaged=true, deadline=0,
+      // nextAdmission=now+pace), releases the lock, and completes.
+      usedRef.set(60L);
+
+      // Wait for the drainer to release and complete; the second worker then acquires the lock
+      // and enters its pace wait (under the lock) for the full paceMs window.
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> completed.get() == 1);
+
+      // Raise heap back above PAUSE_ABOVE while the second worker is still inside its pace wait,
+      // so its post-pace re-check observes pressure. With paceMs=200ms there is a wide margin
+      // between the drainer's release and the second worker's post-pace heap re-check.
+      usedRef.set(90L);
+
+      // Assert the second worker re-armed a fresh deadline and entered the drain loop (the
+      // supplier under the lock observed it). Without the fix the deadline would stay at 0 and
+      // the worker would skip the drain and allocate immediately — capturedDeadline stays 0.
+      await()
+          .pollDelay(Duration.ZERO)
+          .pollInterval(Duration.ofMillis(5))
+          .atMost(Duration.ofSeconds(3))
+          .until(() -> capturedDeadline.get() > 0L);
+      long captured = capturedDeadline.get();
+      assertTrue(
+          captured > capturedAt.get(),
+          "captured deadline must be in the future at capture time (captured="
+              + captured
+              + ", capturedAt="
+              + capturedAt.get()
+              + ") — a zero/reused deadline would fail this");
+      assertTrue(
+          HeapBackpressure.gateEngaged(),
+          "gate must remain engaged while the second worker drains under the re-armed deadline");
+
+      // Let the second worker finish: drop heap to headroom so its drain loop exits.
+      usedRef.set(60L);
+
+      await()
+          .atMost(Duration.ofSeconds(5))
+          .untilAsserted(() -> assertEquals(workers, completed.get(), "all workers should exit"));
     } finally {
       pool.shutdownNow();
     }
