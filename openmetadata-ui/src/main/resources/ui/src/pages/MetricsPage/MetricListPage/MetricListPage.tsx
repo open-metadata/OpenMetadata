@@ -1649,6 +1649,8 @@ const MetricListPage = () => {
         entityType={METRIC_TABLE_PREFERENCE_KEY}
         fullWidthRowRender={renderFullWidthRow}
         locale={{ emptyText: getTablePlaceholder() }}
+        // The empty placeholder owns spacing in both list and card views.
+        paddedEmptyState={!isEmptyList}
         pagination={false}
         renderToolbar={renderToolbar}
         rowClassName={getMetricRowClassName}
