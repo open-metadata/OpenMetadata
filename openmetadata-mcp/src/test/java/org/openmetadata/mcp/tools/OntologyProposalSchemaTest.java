@@ -121,7 +121,9 @@ class OntologyProposalSchemaTest {
         .isEqualTo(RelationProvenance.AI_SUGGESTED);
     assertThat(request.getOperations().getFirst().getSourceMemoryIds()).hasSize(1);
     final OntologyChangeSet proposal =
-        new OntologyChangeSet().withOperations(request.getOperations());
+        new OntologyChangeSet()
+            .withOperations(request.getOperations())
+            .withUndoCursor(request.getOperations().size());
     OntologyChangeSetValidator.normalizeAndValidate(proposal);
     assertThat(proposal.getUndoCursor()).isEqualTo(1);
     proposal.getOperations().getFirst().setBaseVersion(null);
