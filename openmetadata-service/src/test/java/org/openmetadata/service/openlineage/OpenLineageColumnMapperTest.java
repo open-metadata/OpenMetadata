@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import jakarta.validation.Validation;
+import jakarta.validation.ValidatorFactory;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -110,8 +111,9 @@ class OpenLineageColumnMapperTest {
   void fieldWithoutTypeIsAccepted() {
     SchemaField untyped = new SchemaField().withName("c");
 
-    assertTrue(
-        Validation.buildDefaultValidatorFactory().getValidator().validate(untyped).isEmpty());
+    try (ValidatorFactory factory = Validation.buildDefaultValidatorFactory()) {
+      assertTrue(factory.getValidator().validate(untyped).isEmpty());
+    }
   }
 
   @Test
