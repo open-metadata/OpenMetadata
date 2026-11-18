@@ -17,6 +17,7 @@ from collections.abc import Iterable, Iterator
 
 from sqlalchemy.sql import text
 
+from metadata.entity_resolution.table_search import search_table_entities
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import (
     ColumnLineage,
@@ -25,7 +26,6 @@ from metadata.generated.schema.type.entityLineage import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.lineage.sql_lineage import search_table_entities
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.postgres.pgspider.queries import (

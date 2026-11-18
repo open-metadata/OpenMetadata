@@ -78,7 +78,7 @@ class BotTokenCheckTest {
 
   @Test
   void tokenRejectedByJwtFilterIsReportedAsRejected() {
-    when(jwtFilter.validateJwtAndGetClaims("stale"))
+    when(jwtFilter.verifySignatureOnly("stale"))
         .thenThrow(new AuthenticationException("Expired token!"));
 
     assertEquals(

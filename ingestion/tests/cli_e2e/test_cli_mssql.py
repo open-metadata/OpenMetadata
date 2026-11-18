@@ -13,8 +13,14 @@
 MSSQL E2E tests
 """
 
+import pytest
+
 from .common.test_cli_db import CliCommonDB  # noqa: TID252
 from .common_e2e_sqa_mixins import SQACommonMethods  # noqa: TID252
+
+# TODO: Remove skip once the E2E SQL Server has moved off EC2:
+# https://github.com/open-metadata/k8s-manifests/pull/429
+pytestmark = pytest.mark.skip(reason="Skipped: E2E SQL Server is being migrated off EC2")
 
 
 class MSSQLCliTest(CliCommonDB.TestSuite, SQACommonMethods):

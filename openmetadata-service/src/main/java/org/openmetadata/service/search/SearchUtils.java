@@ -369,13 +369,18 @@ public final class SearchUtils {
    */
   public static boolean shouldApplyRbacConditions(
       SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
-    return Boolean.TRUE.equals(
-            SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
-                .getGlobalSettings()
-                .getEnableAccessControl())
+    return isAccessControlEnabled()
         && subjectContext != null
         && !subjectContext.isAdmin()
         && rbacConditionEvaluator != null;
+  }
+
+  /** Whether "Enable Roles & Policies in Search" is on. */
+  public static boolean isAccessControlEnabled() {
+    return Boolean.TRUE.equals(
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class)
+            .getGlobalSettings()
+            .getEnableAccessControl());
   }
 
   public static SSLContext createElasticSearchSSLContext(
@@ -812,12 +817,15 @@ public final class SearchUtils {
    * input on non-alphanumeric characters ({@code token_chars: [letter, digit]}), so it reflects
    * the actual number of terms the ngram path will process for a fuzzy multi_match — which is
    * the driver of clause count, not whitespace word count.
+   *
+   * <p>The split uses {@code \p{L}\p{Nd}} rather than POSIX {@code \p{Alnum}} because
+   * {@code token_chars} is Unicode-aware, while POSIX character classes match US-ASCII only.
    */
   private static int analyzedSubTokenCount(String query) {
     if (query == null || query.isBlank()) {
       return 0;
     }
-    String[] parts = query.trim().split("[^\\p{Alnum}]+");
+    String[] parts = query.trim().split("[^\\p{L}\\p{Nd}]+");
     int count = 0;
     for (String p : parts) {
       if (!p.isEmpty()) count++;

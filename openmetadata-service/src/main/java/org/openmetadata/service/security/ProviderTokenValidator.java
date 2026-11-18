@@ -24,7 +24,9 @@ import java.util.function.Supplier;
  * valid signature does not say that on its own: Google and Microsoft Entra ID sign every
  * application's tokens with the same keys, so another application's ID token for the same person
  * verifies just as well. The audience must name one of our clients, and the issuer must be our
- * provider whenever its discovery document is known to the server.
+ * provider whenever its discovery document is known to the server. Without a discovery document,
+ * as for a public client, an Entra ID token must still come from the tenant the deployment names:
+ * a multi-tenant application registration accepts sign-ins from every tenant.
  */
 final class ProviderTokenValidator {
   private static final String TENANT_ID_PLACEHOLDER = "{tenantid}";
@@ -34,10 +36,18 @@ final class ProviderTokenValidator {
 
   private final Set<String> clientIds;
   private final Supplier<Optional<String>> providerIssuer;
+  private final String tenantId;
 
   ProviderTokenValidator(Set<String> clientIds, Supplier<Optional<String>> providerIssuer) {
+    this(clientIds, providerIssuer, null);
+  }
+
+  /** {@code tenantId} is the Entra ID tenant tokens must come from, or null for any tenant. */
+  ProviderTokenValidator(
+      Set<String> clientIds, Supplier<Optional<String>> providerIssuer, String tenantId) {
     this.clientIds = Set.copyOf(clientIds);
     this.providerIssuer = providerIssuer;
+    this.tenantId = tenantId;
   }
 
   /** For deployments with no OIDC client configured, where there is nothing to compare against. */
@@ -48,6 +58,18 @@ final class ProviderTokenValidator {
   void validate(DecodedJWT token) {
     requireIssuedToOurClient(token);
     providerIssuer.get().ifPresent(issuer -> requireIssuedBy(issuer, token));
+    requireOurTenant(token);
+  }
+
+  private void requireOurTenant(DecodedJWT token) {
+    if (tenantId == null) {
+      return;
+    }
+    String tokenTenant = token.getClaim(TENANT_ID_CLAIM).asString();
+    if (!SecurityUtil.sameIdentifier(tenantId, tokenTenant)) {
+      throw AuthenticationException.getInvalidTokenException(
+          String.format("Token tenant '%s' is not the tenant configured for sign-in", tokenTenant));
+    }
   }
 
   private void requireIssuedToOurClient(DecodedJWT token) {

@@ -1,14 +1,21 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.apache.hc.core5.util.Deadline;
+import org.apache.hc.core5.util.DeadlineTimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -167,5 +174,137 @@ class BulkCircuitBreakerTest {
     assertTrue(
         finalState == BulkCircuitBreaker.State.OPEN
             || finalState == BulkCircuitBreaker.State.CLOSED);
+  }
+
+  @Test
+  @DisplayName("half-open admits one probe at a time, then everything once it succeeds")
+  void halfOpenAdmitsASingleProbe() {
+    BulkCircuitBreaker fastBreaker = new BulkCircuitBreaker(1, 5000, 500);
+    fastBreaker.recordFailure();
+
+    await().atMost(Duration.ofSeconds(2)).until(fastBreaker::allowRequest);
+    assertEquals(BulkCircuitBreaker.State.HALF_OPEN, fastBreaker.getState());
+    assertFalse(fastBreaker.allowRequest(), "a second request must wait for the probe");
+
+    fastBreaker.recordSuccess();
+    assertTrue(fastBreaker.allowRequest());
+    assertTrue(fastBreaker.allowRequest());
+  }
+
+  @Test
+  @DisplayName("a probe that never reports back is replaced after three probe intervals")
+  void lostProbeIsReplaced() {
+    BulkCircuitBreaker fastBreaker = new BulkCircuitBreaker(1, 5000, 50);
+    fastBreaker.recordFailure();
+    await().atMost(Duration.ofSeconds(2)).until(fastBreaker::allowRequest);
+
+    await()
+        .atLeast(Duration.ofMillis(100))
+        .atMost(Duration.ofSeconds(2))
+        .until(fastBreaker::allowRequest);
+    assertEquals(BulkCircuitBreaker.State.HALF_OPEN, fastBreaker.getState());
+  }
+
+  @Test
+  @DisplayName("one bulk's retries count once toward opening the circuit")
+  void retriesOfOneBulkCountOnce() {
+    BulkCircuitBreaker twoBulks = new BulkCircuitBreaker(2, 5000, 1000);
+    RuntimeException rejected = new RuntimeException("es_rejected_execution_exception");
+
+    twoBulks.recordBulkFailure(rejected, 0);
+    twoBulks.recordBulkFailure(rejected, 1);
+    twoBulks.recordBulkFailure(rejected, 2);
+    twoBulks.recordBulkFailure(rejected, 3);
+    assertEquals(BulkCircuitBreaker.State.CLOSED, twoBulks.getState());
+
+    twoBulks.recordBulkFailure(rejected, 0);
+    assertEquals(BulkCircuitBreaker.State.OPEN, twoBulks.getState());
+  }
+
+  @Test
+  @DisplayName("waiting for a pooled connection never opens the circuit")
+  void poolWaitTimeoutsDoNotOpenTheCircuit() {
+    BulkCircuitBreaker sensitive = new BulkCircuitBreaker(1, 5000, 1000);
+
+    for (int attempt = 0; attempt < 5; attempt++) {
+      sensitive.recordBulkFailure(poolWaitTimeout(), 0);
+    }
+
+    assertEquals(BulkCircuitBreaker.State.CLOSED, sensitive.getState());
+  }
+
+  @Test
+  @DisplayName("a probe that only waited for the pool frees the probe slot without reopening")
+  void probeThatNeverReachedTheClusterFreesTheProbeSlot() {
+    BulkCircuitBreaker fastBreaker = new BulkCircuitBreaker(1, 5000, 50);
+    fastBreaker.recordFailure();
+    await().atMost(Duration.ofSeconds(2)).until(fastBreaker::allowRequest);
+
+    fastBreaker.recordBulkFailure(poolWaitTimeout(), 3);
+
+    assertEquals(BulkCircuitBreaker.State.HALF_OPEN, fastBreaker.getState());
+    assertTrue(fastBreaker.allowRequest(), "another request may probe straight away");
+  }
+
+  @Test
+  @DisplayName("a failed probe reopens the circuit even when it was a retry")
+  void failedRetryProbeReopens() {
+    BulkCircuitBreaker fastBreaker = new BulkCircuitBreaker(1, 5000, 50);
+    fastBreaker.recordFailure();
+    await().atMost(Duration.ofSeconds(2)).until(fastBreaker::allowRequest);
+
+    fastBreaker.recordBulkFailure(new RuntimeException("es_rejected_execution_exception"), 3);
+
+    assertEquals(BulkCircuitBreaker.State.OPEN, fastBreaker.getState());
+  }
+
+  @Test
+  @DisplayName("callers learn how long an open circuit stays shut")
+  void reportsHowLongAnOpenCircuitStaysShut() {
+    BulkCircuitBreaker pausing = new BulkCircuitBreaker(1, 5000, 1000);
+    assertEquals(0, pausing.millisUntilProbe());
+
+    pausing.recordFailure();
+    long untilProbe = pausing.millisUntilProbe();
+    assertTrue(untilProbe > 0 && untilProbe <= 1000, "remaining open time, got " + untilProbe);
+  }
+
+  @Test
+  @DisplayName("callers racing for a half-open circuit get exactly one probe")
+  void racingCallersShareASingleProbe() throws Exception {
+    int callers = 32;
+    ExecutorService pool = Executors.newFixedThreadPool(callers);
+    try {
+      for (int round = 0; round < 3; round++) {
+        BulkCircuitBreaker racing = new BulkCircuitBreaker(1, 5000, 500);
+        racing.recordFailure();
+        await().atMost(Duration.ofSeconds(3)).until(() -> racing.millisUntilProbe() == 0);
+
+        CountDownLatch start = new CountDownLatch(1);
+        List<Future<Boolean>> admissions = new ArrayList<>();
+        for (int caller = 0; caller < callers; caller++) {
+          admissions.add(
+              pool.submit(
+                  () -> {
+                    start.await();
+                    return racing.allowRequest();
+                  }));
+        }
+        start.countDown();
+
+        int probes = 0;
+        for (Future<Boolean> admission : admissions) {
+          probes += admission.get(5, TimeUnit.SECONDS) ? 1 : 0;
+        }
+        assertEquals(1, probes, "round " + round + " let several probes through");
+      }
+    } finally {
+      pool.shutdownNow();
+    }
+  }
+
+  private static DeadlineTimeoutException poolWaitTimeout() {
+    return DeadlineTimeoutException.from(
+        Deadline.fromUnixMilliseconds(System.currentTimeMillis() - 100));
   }
 }

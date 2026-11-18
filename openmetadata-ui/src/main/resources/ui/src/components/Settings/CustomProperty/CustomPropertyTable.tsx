@@ -17,6 +17,7 @@ import { ADD_CUSTOM_PROPERTIES_DOCS } from '../../../constants/docs.constants';
 import { OPERATION } from '../../../enums/common.enum';
 import { CustomProperty } from '../../../generated/type/customProperty';
 import { CustomPropertyChanges } from '../../../rest/metadataTypeAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import CreatePlaceholder from '../../common/EmptyPlaceholder/CreatePlaceholder';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import CustomPropertiesListTable from './CustomPropertiesListTable';
@@ -98,13 +99,14 @@ export const CustomPropertyTable: FC<CustomPropertyTableProp> = ({
         onEdit={handleEdit}
       />
       <ConfirmationModal
+        isDestructive
         bodyText={t('message.are-you-sure-delete-property', {
-          propertyName: selectedProperty.name,
+          propertyName: getEntityName(selectedProperty),
         })}
         cancelText={t('label.cancel')}
-        confirmText={t('label.confirm')}
+        confirmText={t('label.delete')}
         header={t('label.delete-property-name', {
-          propertyName: selectedProperty.name,
+          propertyName: getEntityName(selectedProperty),
         })}
         isLoading={isButtonLoading}
         visible={deleteCheck}

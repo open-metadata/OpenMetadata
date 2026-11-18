@@ -535,7 +535,7 @@ describe('EntitySearchSettings', () => {
     renderHeader();
     fireEvent.click(screen.getByTestId('restore-defaults-btn'));
     fireEvent.click(
-      await screen.findByTestId('restore-defaults-dialog-confirm')
+      await screen.findByTestId('restore-defaults-popover-confirm')
     );
 
     await waitFor(() =>
@@ -548,13 +548,28 @@ describe('EntitySearchSettings', () => {
     expect(getSettingsByType).toHaveBeenCalledTimes(2);
   });
 
+  it('keeps the restore confirmation open when restoring fails', async () => {
+    (restoreSettingsConfig as jest.Mock).mockRejectedValue(new Error('boom'));
+    await renderPage();
+    renderHeader();
+    fireEvent.click(screen.getByTestId('restore-defaults-btn'));
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByTestId('restore-defaults-popover-confirm')
+      );
+    });
+
+    expect(showErrorToast).toHaveBeenCalled();
+    expect(screen.getByTestId('restore-defaults-popover')).toBeInTheDocument();
+  });
+
   it('reports no success when the settings cannot be reloaded after restoring', async () => {
     await renderPage();
     (getSettingsByType as jest.Mock).mockRejectedValueOnce(new Error('boom'));
     renderHeader();
     fireEvent.click(screen.getByTestId('restore-defaults-btn'));
     fireEvent.click(
-      await screen.findByTestId('restore-defaults-dialog-confirm')
+      await screen.findByTestId('restore-defaults-popover-confirm')
     );
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
@@ -573,11 +588,11 @@ describe('EntitySearchSettings', () => {
     );
 
     await waitFor(() =>
-      expect(onNavigate).toHaveBeenCalledWith({
-        type: 'page',
-        page: 'search',
-        isEditing: false,
-      })
+      // A redirect replaces, so Back does not land on the stale link again.
+      expect(onNavigate).toHaveBeenCalledWith(
+        { type: 'page', page: 'search', isEditing: false },
+        { replace: true }
+      )
     );
 
     expect(getSettingsByType).not.toHaveBeenCalled();

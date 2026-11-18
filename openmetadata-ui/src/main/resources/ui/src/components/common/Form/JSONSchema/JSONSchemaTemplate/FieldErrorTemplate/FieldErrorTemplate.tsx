@@ -25,7 +25,7 @@ export const FieldErrorTemplate = <T,>(props: FieldErrorProps<T>) => {
       <ul>
         {errorList.map((error) => (
           <li
-            className="ant-form-item-explain-error"
+            className="form-field-error"
             key={`${props.schema.$id}-${props.idSchema.$id}`}>
             {error}
           </li>

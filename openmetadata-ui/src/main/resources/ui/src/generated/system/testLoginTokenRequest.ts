@@ -675,7 +675,8 @@ export interface AuthorizerConfiguration {
      */
     defaultOAuthRole?: string;
     /**
-     * Enable Secure Socket Connection.
+     * Deprecated — has no effect (ADR:2026-10-26-push-feed-handshakes-always-authenticate).
+     * Socket handshakes are always authenticated under every configuration.
      */
     enableSecureSocketConnection: boolean;
     /**

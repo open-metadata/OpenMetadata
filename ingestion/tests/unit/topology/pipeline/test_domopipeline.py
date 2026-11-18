@@ -3,15 +3,17 @@ Test Domo Dashboard using the topology
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
-from unittest import TestCase
 from unittest.mock import patch
+
+import pytest
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.entity.data.pipeline import (
     Pipeline,
     PipelineStatus,
+    StatusType,
     Task,
     TaskStatus,
 )
@@ -30,6 +32,10 @@ from metadata.ingestion.source.pipeline.domopipeline.metadata import Domopipelin
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_dataset.json"
 with open(mock_file_path, encoding="UTF-8") as file:  # noqa: PTH123
     mock_data: dict = json.load(file)
+
+failed_runs_file_path = Path(__file__).parent.parent.parent / "resources/datasets/domopipeline_failed_dataset.json"
+with open(failed_runs_file_path, encoding="UTF-8") as file:  # noqa: PTH123
+    failed_mock_data: list = json.load(file)
 
 MOCK_PIPELINE_SERVICE = PipelineService(
     id="86ff3c40-7c51-4ff5-9727-738cead28d9a",
@@ -142,23 +148,23 @@ EXPECTED_PIPELINE = [
         name="1",
         displayName="Nihar Dataflows",
         description="THis is description for Nihar dataflow",
-        sourceUrl=None,
+        sourceUrl="https://domain.domo.com/datacenter/dataflows/1/details#history",
         concurrency=None,
         pipelineLocation=None,
-        startDate=datetime(2022, 10, 7, 13, 20, 16),
+        startDate=datetime(2022, 10, 7, 13, 20, 16, tzinfo=timezone.utc),
         tasks=[
             Task(
                 name="1",
                 displayName="Nihar Dataflows",
                 fullyQualifiedName=None,
                 description="THis is description for Nihar dataflow",
-                sourceUrl=None,
+                sourceUrl="https://domain.domo.com/datacenter/dataflows/1/details#history",
                 downstreamTasks=None,
                 taskType=None,
                 taskSQL=None,
                 startDate=None,
                 endDate=None,
-                tags=None,
+                tags=[],
             )
         ],
         tags=None,
@@ -227,45 +233,88 @@ MOCK_PIPELINE_DETAILS = {
 }
 
 
-class DomoPipelineUnitTest(TestCase):
-    """
-    Implements the necessary methods to extract
-    Domo Pipeline Unit Test
-    """
-
-    @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("pydomo.Domo")
-    def __init__(self, methodName, domo_client, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
-        test_connection.return_value = False
-        domo_client.return_value = False
-        self.config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)
-        self.domopipeline = DomopipelineSource.create(
+@pytest.fixture
+def domopipeline_source():
+    with (
+        patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"),
+        patch("pydomo.Domo"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_domopipeline_config)
+        source = DomopipelineSource.create(
             mock_domopipeline_config["source"],
-            self.config.workflowConfig.openMetadataServerConfig,
+            config.workflowConfig.openMetadataServerConfig,
         )
-        self.domopipeline.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
-        self.domopipeline.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+        source.context.get().__dict__["pipeline"] = MOCK_PIPELINE.name.root
+        source.context.get().__dict__["pipeline_service"] = MOCK_PIPELINE_SERVICE.name.root
+        yield source
 
-    @patch("metadata.clients.domo_client.DomoClient.get_runs")
-    def test_pipeline(self, get_runs):
-        get_runs.return_value = mock_data
-        results = self.domopipeline.yield_pipeline(MOCK_PIPELINE_DETAILS)
-        pipeline_list = []
-        for result in results:
-            if isinstance(result, CreatePipelineRequest):
-                pipeline_list.append(result)  # noqa: PERF401
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE, pipeline_list)):  # noqa: B905
-            self.assertEqual(expected, original)
 
-    @patch("metadata.clients.domo_client.DomoClient.get_runs")
-    def test_yield_pipeline_status(self, get_runs):
-        get_runs.return_value = mock_data
-        pipeline_status_list = []
-        results = self.domopipeline.yield_pipeline_status(MOCK_PIPELINE_DETAILS)
-        for result in results:
-            if isinstance(result.right, OMetaPipelineStatus):
-                pipeline_status_list.append(result.right)  # noqa: PERF401
+@pytest.fixture
+def get_runs():
+    with patch("metadata.clients.domo_client.DomoClient.get_runs") as mock_get_runs:
+        yield mock_get_runs
 
-        for _, (expected, original) in enumerate(zip(EXPECTED_PIPELINE_STATUS, pipeline_status_list)):  # noqa: B905
-            self.assertEqual(expected, original)
+
+def test_pipeline(domopipeline_source):
+    results = list(domopipeline_source.yield_pipeline(MOCK_PIPELINE_DETAILS))
+
+    assert [result.right for result in results] == EXPECTED_PIPELINE
+
+
+def test_yield_pipeline_status(domopipeline_source, get_runs):
+    get_runs.return_value = mock_data
+    results = list(domopipeline_source.yield_pipeline_status(MOCK_PIPELINE_DETAILS))
+
+    assert [result.right for result in results] == EXPECTED_PIPELINE_STATUS
+
+
+def test_yield_pipeline_status_failed(domopipeline_source, get_runs):
+    get_runs.return_value = failed_mock_data
+    results = list(domopipeline_source.yield_pipeline_status(MOCK_PIPELINE_DETAILS))
+
+    statuses = [result.right for result in results]
+    assert len(statuses) == len(failed_mock_data)
+    assert all(isinstance(status, OMetaPipelineStatus) for status in statuses)
+
+    assert statuses[0].pipeline_status.executionStatus == StatusType.Failed
+    assert statuses[0].pipeline_status.taskStatus[0].executionStatus == StatusType.Failed
+    assert statuses[0].pipeline_status.taskStatus[0].name == "1"
+    assert statuses[0].pipeline_status.timestamp.root == 1665563192000
+    assert statuses[0].pipeline_fqn == "domopipeline_source_test.do_it_all_with_default_config"
+
+    assert statuses[1].pipeline_status.executionStatus == StatusType.Pending
+    assert statuses[1].pipeline_status.taskStatus[0].executionStatus == StatusType.Pending
+    assert statuses[1].pipeline_status.timestamp.root == 1665649592000
+
+
+@pytest.mark.parametrize(
+    ("state", "failed", "expected"),
+    [
+        pytest.param("SUCCESS", False, StatusType.Successful, id="success"),
+        pytest.param("success", False, StatusType.Successful, id="lowercase-success"),
+        pytest.param("FAILED_DATA_FLOW", False, StatusType.Failed, id="failed-state"),
+        pytest.param("CREATED", False, StatusType.Pending, id="created"),
+        pytest.param("RUNNING", False, StatusType.Pending, id="running"),
+        pytest.param("SOME_UNDOCUMENTED_STATE", False, StatusType.Pending, id="unknown-state"),
+        pytest.param("SOME_UNDOCUMENTED_STATE", True, StatusType.Failed, id="failed-flag"),
+        pytest.param(None, False, StatusType.Pending, id="missing-state"),
+        pytest.param(None, True, StatusType.Failed, id="missing-state-failed"),
+    ],
+)
+def test_yield_pipeline_status_state_mapping(domopipeline_source, get_runs, state, failed, expected):
+    run = {
+        "id": 1,
+        "beginTime": 1665476783000,
+        "endTime": 1665476792000,
+        "failed": failed,
+    }
+    if state is not None:
+        run["state"] = state
+    get_runs.return_value = [run]
+
+    results = list(domopipeline_source.yield_pipeline_status(MOCK_PIPELINE_DETAILS))
+
+    assert len(results) == 1
+    assert isinstance(results[0].right, OMetaPipelineStatus)
+    assert results[0].right.pipeline_status.executionStatus == expected
+    assert results[0].right.pipeline_status.taskStatus[0].executionStatus == expected

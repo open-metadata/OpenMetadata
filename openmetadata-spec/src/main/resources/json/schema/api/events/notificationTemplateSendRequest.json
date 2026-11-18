@@ -16,7 +16,8 @@
       "items": {
         "$ref": "../../events/eventSubscription.json#/definitions/destination"
       },
-      "minItems": 1
+      "minItems": 1,
+      "maxItems": 50
     }
   },
   "required": ["renderRequest", "destinations"],

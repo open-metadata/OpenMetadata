@@ -14,23 +14,31 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 import { useState } from 'react';
+import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Type } from '../../../../../../generated/entity/type';
 import type { CustomProperty } from '../../../../../../generated/type/customProperty';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesDetailPage from './CustomPropertiesDetailPage';
 import type { CustomPropertiesDetailPageProps } from './CustomPropertiesPanel.types';
 
-// The add button is pushed up to the modal header, so render it alongside.
+// The add button is pushed up to the modal header and the entity type is
+// owned by the panel, so stand in for both.
 const DetailPageWithHeader = (
-  props: Omit<CustomPropertiesDetailPageProps, 'onSetHeaderActions'>
+  props: Omit<
+    CustomPropertiesDetailPageProps,
+    'onSetHeaderActions' | 'onEntityTypeChange'
+  >
 ) => {
   const [headerActions, setHeaderActions] = useState<ReactNode>();
+  const [entityType, setEntityType] = useState(props.entityType);
 
   return (
     <>
       {headerActions}
       <CustomPropertiesDetailPage
         {...props}
+        entityType={entityType}
+        onEntityTypeChange={setEntityType}
         onSetHeaderActions={setHeaderActions}
       />
     </>
@@ -63,15 +71,14 @@ const mockEntityType = {
   customProperties: [mockProperty1, mockProperty2],
 };
 
-const mockGetTypeByFQN = jest.fn().mockResolvedValue(mockEntityType);
 const mockDeleteCustomPropertyByName = jest
   .fn()
   .mockResolvedValue(mockEntityType);
-const mockGetEntityPermission = jest.fn().mockResolvedValue({
+const fullPermission = {
   Create: true,
   EditAll: true,
   Delete: true,
-});
+} as unknown as OperationPermission;
 
 jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
@@ -79,19 +86,9 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('../../../../../../rest/metadataTypeAPI', () => ({
-  getTypeByFQN: (fqn: string) => mockGetTypeByFQN(fqn),
   deleteCustomPropertyByName: (fqn: string, name: string) =>
     mockDeleteCustomPropertyByName(fqn, name),
 }));
-
-jest.mock(
-  '../../../../../../context/PermissionProvider/PermissionProvider',
-  () => ({
-    usePermissionProvider: () => ({
-      getEntityPermission: mockGetEntityPermission,
-    }),
-  })
-);
 
 jest.mock('../../../../../../utils/PermissionsUtils', () => ({
   ...jest.requireActual('../../../../../../utils/PermissionsUtils'),
@@ -183,32 +180,6 @@ jest.mock(
     ),
   })
 );
-
-jest.mock('../../../../../common/DeleteModal/DeleteModal', () => ({
-  __esModule: true,
-  default: ({
-    open,
-    onDelete,
-    onCancel,
-    entityTitle,
-  }: {
-    open: boolean;
-    onDelete: () => void;
-    onCancel: () => void;
-    entityTitle?: string;
-  }) =>
-    open ? (
-      <div data-testid="delete-modal">
-        <span>{entityTitle}</span>
-        <button data-testid="confirm-delete-btn" onClick={onDelete}>
-          Confirm Delete
-        </button>
-        <button data-testid="cancel-delete-btn" onClick={onCancel}>
-          Cancel
-        </button>
-      </div>
-    ) : null,
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const TableCard = ({
@@ -319,6 +290,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ))}
       </div>
     ),
+    ConfirmPopover: jest.requireActual('@openmetadata/ui-core-components')
+      .ConfirmPopover,
     TableCard,
     Tabs,
   };
@@ -336,16 +309,11 @@ describe('CustomPropertiesDetailPage', () => {
     entityType: mockEntityType as unknown as Type,
     onAddProperty: mockOnAddProperty,
     onEditProperty: mockOnEditProperty,
+    permission: fullPermission,
   };
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetTypeByFQN.mockResolvedValue(mockEntityType);
-    mockGetEntityPermission.mockResolvedValue({
-      Create: true,
-      EditAll: true,
-      Delete: true,
-    });
   });
 
   it('renders the component with table', async () => {
@@ -383,9 +351,12 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('hides Add Property button when user lacks EditAll permission', async () => {
-    mockGetEntityPermission.mockResolvedValueOnce({ EditAll: false });
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={{ EditAll: false } as unknown as OperationPermission}
+      />
+    );
 
     await waitFor(() => {
       expect(
@@ -418,7 +389,7 @@ describe('CustomPropertiesDetailPage', () => {
     expect(mockOnEditProperty).toHaveBeenCalledWith(mockProperty1);
   });
 
-  it('opens delete modal when delete button is clicked', async () => {
+  it('opens the delete popover when delete button is clicked', async () => {
     render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
@@ -428,7 +399,12 @@ describe('CustomPropertiesDetailPage', () => {
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
 
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('delete-custom-property-popover')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('delete-custom-property-popover-title')
+    ).toHaveTextContent('label.delete-entity');
   });
 
   it('deletes the selected property by name when delete is confirmed', async () => {
@@ -440,7 +416,9 @@ describe('CustomPropertiesDetailPage', () => {
 
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
-    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-confirm')
+    );
 
     await waitFor(() => {
       expect(mockDeleteCustomPropertyByName).toHaveBeenCalledWith(
@@ -450,7 +428,7 @@ describe('CustomPropertiesDetailPage', () => {
     });
   });
 
-  it('closes delete modal when cancel is clicked', async () => {
+  it('closes the popover without deleting when cancel is clicked', async () => {
     render(<DetailPageWithHeader {...defaultProps} />);
 
     await waitFor(() => {
@@ -459,23 +437,17 @@ describe('CustomPropertiesDetailPage', () => {
 
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
-
-    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
-
-    fireEvent.click(screen.getByTestId('cancel-delete-btn'));
-
-    expect(screen.queryByTestId('delete-modal')).not.toBeInTheDocument();
-  });
-
-  it('shows error toast when getTypeByFQN fails', async () => {
-    const mockError = new Error('API Error');
-    mockGetTypeByFQN.mockRejectedValueOnce(mockError);
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-cancel')
+    );
 
     await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(mockError);
+      expect(
+        screen.queryByTestId('delete-custom-property-popover')
+      ).not.toBeInTheDocument();
     });
+
+    expect(mockDeleteCustomPropertyByName).not.toHaveBeenCalled();
   });
 
   it('drops the property locally when it was already removed elsewhere', async () => {
@@ -488,7 +460,9 @@ describe('CustomPropertiesDetailPage', () => {
     });
 
     fireEvent.click(screen.getAllByLabelText('label.delete')[0]);
-    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-confirm')
+    );
 
     await waitFor(() => {
       expect(screen.queryByTestId('row-stringProp')).not.toBeInTheDocument();
@@ -509,20 +483,27 @@ describe('CustomPropertiesDetailPage', () => {
 
     const deleteButtons = screen.getAllByLabelText('label.delete');
     fireEvent.click(deleteButtons[0]);
-    fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    fireEvent.click(
+      await screen.findByTestId('delete-custom-property-popover-confirm')
+    );
 
     await waitFor(() => {
       expect(showErrorToast).toHaveBeenCalledWith(mockError);
     });
+
+    // A failed delete keeps the confirmation open so the user can retry.
+    expect(
+      screen.getByTestId('delete-custom-property-popover')
+    ).toBeInTheDocument();
   });
 
   it('shows empty placeholder when entity has no custom properties', async () => {
     const emptyEntityType = { ...mockEntityType, customProperties: [] };
-    mockGetTypeByFQN.mockResolvedValueOnce(emptyEntityType);
 
     render(
       <DetailPageWithHeader
         entityType={emptyEntityType as unknown as Type}
+        permission={fullPermission}
         onAddProperty={mockOnAddProperty}
         onEditProperty={mockOnEditProperty}
       />
@@ -534,13 +515,18 @@ describe('CustomPropertiesDetailPage', () => {
   });
 
   it('passes the edit and delete permissions to the table', async () => {
-    mockGetEntityPermission.mockResolvedValueOnce({
-      Create: false,
-      EditAll: false,
-      Delete: true,
-    });
-
-    render(<DetailPageWithHeader {...defaultProps} />);
+    render(
+      <DetailPageWithHeader
+        {...defaultProps}
+        permission={
+          {
+            Create: false,
+            EditAll: false,
+            Delete: true,
+          } as unknown as OperationPermission
+        }
+      />
+    );
 
     await waitFor(() => {
       expect(screen.getByTestId('row-stringProp')).toBeInTheDocument();

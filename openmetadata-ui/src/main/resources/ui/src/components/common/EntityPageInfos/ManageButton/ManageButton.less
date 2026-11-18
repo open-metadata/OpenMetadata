@@ -13,7 +13,7 @@
 @import '../../../../styles/variables.less';
 
 .manage-button {
-  :is(.ant-space-item, .layout-space-item):first-child {
+  .layout-space-item:first-child {
     width: 40px;
     align-self: baseline;
   }
@@ -27,36 +27,13 @@
   width: 24px;
   display: flex;
   justify-content: center;
-
-  .ant-btn {
-    padding: 0 var(--om-space-4);
-  }
 }
 
 .manage-dropdown-button:hover,
 .manage-dropdown-button:focus {
-  .ant-btn {
-    .manage-dropdown-icon {
-      color: @primary-color;
-      opacity: 0.5;
-    }
-  }
   .manage-dropdown-icon {
     color: var(--tw-color-text-white);
     font-weight: var(--om-font-weight-semibold);
   }
   background-color: @primary-color;
-}
-
-.manage-dropdown-list-container {
-  .ant-dropdown-menu {
-    padding: var(--om-space-8) 0;
-    background: var(--tw-color-bg-primary);
-    border: 1px solid var(--om-legacy-color-dde3ea);
-    box-shadow: 1px 1px 3px var(--om-legacy-color-0-0-0-0-12);
-    border-radius: var(--om-radius-sm);
-    .ant-dropdown-menu-item {
-      padding: var(--om-space-5) var(--om-space-16);
-    }
-  }
 }

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import {
   Box,
@@ -59,13 +60,13 @@ import {
   getDiagnosticInfo,
   syncOffset,
 } from '../../../../../../rest/observabilityAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
+import { formatEventCount } from '../../../../../../utils/Alerts/AlertsUtilPure';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -78,7 +79,10 @@ import NotificationRecentEvents from './NotificationRecentEvents';
 
 interface NotificationAlertDetailProps {
   fqn: string;
-  onNavigate: (view: NotificationView) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   onNameResolved?: (name: string) => void;
   onSetHeaderActions?: (node: React.ReactNode) => void;
 }
@@ -116,10 +120,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         </Typography>
         {canEdit && !isEditing && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-description-btn"
             icon={Edit01}
-            size="xs"
             tooltip={String(
               t('label.edit-entity', { entity: t('label.description') })
             )}
@@ -181,7 +183,10 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.total-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {eventsRecord.totalEventsCount ?? 0}
+          {formatEventCount(
+            eventsRecord.totalEventsCount,
+            eventsRecord.countsAreLowerBound
+          )}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -189,7 +194,10 @@ const DiagnosticStatsSummary: FC<{
           {`${t('label.pending-entity', { entity: t('label.event-plural') })}:`}
         </Typography>
         <Typography size="text-sm" weight="medium">
-          {eventsRecord.pendingEventsCount ?? 0}
+          {formatEventCount(
+            eventsRecord.pendingEventsCount,
+            eventsRecord.countsAreLowerBound
+          )}
         </Typography>
       </Box>
       <Box align="center" direction="row" gap={1}>
@@ -207,36 +215,40 @@ const DiagnosticStatsSummary: FC<{
 // ─── Header actions builder ──────────────────────────────────────────────────
 
 function buildHeaderActions({
+  alertId,
+  alertName,
   canDelete,
   canEditAll,
   fqn,
+  handleAfterDelete,
   handleSync,
-  isDeleting,
   isSystemProvider,
   isSyncing,
   onNavigate,
-  setIsDeleteModalOpen,
   t,
 }: {
+  alertId?: string;
+  alertName: string;
   canDelete: boolean;
   canEditAll: boolean;
   fqn: string;
+  handleAfterDelete: () => void;
   handleSync: () => void;
-  isDeleting: boolean;
   isSystemProvider: boolean;
   isSyncing: boolean;
-  onNavigate: (view: NotificationView) => void;
-  setIsDeleteModalOpen: (open: boolean) => void;
+  onNavigate: (
+    view: NotificationView,
+    options?: SettingsNavigateOptions
+  ) => void;
   t: ReturnType<typeof useTranslation>['t'];
 }): React.ReactNode {
   return (
     <Box direction="row" gap={2}>
       <ButtonUtility
-        color="tertiary"
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
         isDisabled={isSyncing || !canEditAll}
-        size="xs"
+        size="lg"
         tooltip={String(
           canEditAll
             ? t('label.sync-alert-offset')
@@ -246,24 +258,31 @@ function buildHeaderActions({
       />
       {canEditAll && !isSystemProvider && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-alert-btn"
           icon={Edit01}
-          size="xs"
+          size="lg"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
         />
       )}
       {canDelete && !isSystemProvider && (
-        <ButtonUtility
-          color="tertiary"
-          data-testid="delete-alert-btn"
-          icon={Trash01}
-          isDisabled={isDeleting}
-          size="xs"
-          tooltip={String(t('label.delete'))}
-          onPress={() => setIsDeleteModalOpen(true)}
-        />
+        <DeleteEntityPopover
+          afterDeleteAction={handleAfterDelete}
+          allowSoftDelete={false}
+          data-testid="delete-alert-popover"
+          description={t('message.permanently-delete-common-message', {
+            entity: t('label.alert-lowercase'),
+          })}
+          entityId={alertId}
+          entityName={alertName}
+          entityType={EntityType.SUBSCRIPTION}>
+          <ButtonUtility
+            data-testid="delete-alert-btn"
+            icon={Trash01}
+            size="lg"
+            tooltip={String(t('label.delete'))}
+          />
+        </DeleteEntityPopover>
       )}
     </Box>
   );
@@ -308,10 +327,6 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
   // Sync
   const [isSyncing, setIsSyncing] = useState(false);
-
-  // Delete
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
   // Permissions
   const {
@@ -406,24 +421,10 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     }
   }, [fqn, t]);
 
-  const handleDelete = useCallback(async () => {
-    if (!alert) {
-      return;
-    }
-
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(alert),
-      alert.id ?? '',
-      EntityType.SUBSCRIPTION
-    );
-    setIsDeleting(false);
-    setIsDeleteModalOpen(false);
-
-    if (isSuccess) {
-      onNavigate({ type: 'list' });
-    }
-  }, [alert, onNavigate]);
+  const handleAfterDelete = useCallback(
+    () => onNavigate({ type: 'list' }, { replace: true }),
+    [onNavigate]
+  );
 
   const handleOwnerUpdate = useCallback(
     async (updatedOwners?: EntityReference[]) => {
@@ -451,6 +452,8 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
   const editOwnersPermission = canEditOwners;
 
+  const alertName = useMemo(() => (alert ? getEntityName(alert) : ''), [alert]);
+
   useEffect(() => {
     if (!alert) {
       return;
@@ -458,33 +461,33 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
 
     onSetHeaderActions?.(
       buildHeaderActions({
+        alertId: alert.id,
+        alertName,
         canDelete,
         canEditAll,
         fqn,
+        handleAfterDelete,
         handleSync,
-        isDeleting,
         isSystemProvider,
         isSyncing,
         onNavigate,
-        setIsDeleteModalOpen,
         t,
       })
     );
   }, [
     alert,
+    alertName,
     canDelete,
     canEditAll,
     fqn,
+    handleAfterDelete,
     handleSync,
-    isDeleting,
     isSystemProvider,
     isSyncing,
     onNavigate,
     onSetHeaderActions,
     t,
   ]);
-
-  const alertName = useMemo(() => (alert ? getEntityName(alert) : ''), [alert]);
 
   useEffect(() => {
     if (alertName) {
@@ -522,8 +525,9 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
         onStartEdit={() => setIsEditingDescription(true)}
       />
 
-      {/* Owners + event-stats summary row */}
-      <Card className="tw:mb-2" size="sm" variant="muted">
+      {/* Owners + event-stats summary row. shrink-0: Card is overflow-hidden, so as a flex
+          item it would otherwise collapse to fit a tall tab panel instead of the panel scrolling. */}
+      <Card className="tw:mb-2 tw:shrink-0" size="sm" variant="muted">
         <Card.Content className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6">
           <Box align="center" direction="row" gap={2}>
             <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
@@ -535,6 +539,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
               selectorContent={
                 <UserTeamSelectableList
                   hasPermission={editOwnersPermission}
+                  multiple={{ user: true, team: false }}
                   owner={alert?.owners}
                   onUpdate={handleOwnerUpdate}
                 />
@@ -547,7 +552,10 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
         </Card.Content>
       </Card>
 
-      <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>
+      <Tabs
+        className="tw:min-h-0 tw:flex-1"
+        selectedKey={activeTab}
+        onSelectionChange={handleTabChange}>
         <Tabs.List size="sm" type="underline">
           <Tabs.Item id={AlertDetailTabs.CONFIGURATION}>
             {t('label.configuration')}
@@ -560,17 +568,17 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           </Tabs.Item>
         </Tabs.List>
         <Tabs.Panel
-          className="tw:overflow-auto tw:py-4 tw:px-1"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.CONFIGURATION}>
           {alert && <NotificationAlertConfigView alertDetails={alert} />}
         </Tabs.Panel>
         <Tabs.Panel
-          className="tw:overflow-auto tw:py-4 tw:px-1"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.RECENT_EVENTS}>
           {alert && <NotificationRecentEvents alertDetails={alert} />}
         </Tabs.Panel>
         <Tabs.Panel
-          className="tw:overflow-auto tw:py-4 tw:px-1"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.DIAGNOSTIC_INFO}>
           <NotificationDiagnosticInfo
             diagnosticData={diagnosticData}
@@ -578,17 +586,6 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           />
         </Tabs.Panel>
       </Tabs>
-
-      <DeleteModal
-        entityTitle={alertName}
-        isDeleting={isDeleting}
-        message={t('message.permanently-delete-common-message', {
-          entity: alertName.toLowerCase(),
-        })}
-        open={isDeleteModalOpen}
-        onCancel={() => setIsDeleteModalOpen(false)}
-        onDelete={handleDelete}
-      />
     </Box>
   );
 };

@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  ButtonUtility,
   FormField,
   FormItemLabel,
   HookForm,
@@ -255,15 +256,14 @@ const ForeignKeyRow = ({
           </Select.ComboBox>
         )}
       </FormField>
-      <Button
-        aria-label={t('label.delete-entity', {
+      <ButtonUtility
+        className="tw:absolute tw:top-2.5 tw:right-3"
+        data-testid={`${index}-delete-constraint-button`}
+        icon={Trash01}
+        size="lg"
+        tooltip={t('label.delete-entity', {
           entity: t('label.constraint'),
         })}
-        className="tw:absolute tw:top-2.5 tw:right-3"
-        color="tertiary"
-        data-testid={`${index}-delete-constraint-button`}
-        iconLeading={Trash01}
-        size="xs"
         onPress={() => onRemove(index)}
       />
     </div>

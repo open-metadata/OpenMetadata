@@ -377,8 +377,6 @@ const ActivityThreadPanelBody: FC<ActivityThreadPanelBodyProp> = ({
         {showHeader && isConversationType && (
           <FeedPanelHeader
             hideCloseIcon
-            entityLink={selectedConversation?.about ?? threadLink}
-            noun={t('label.conversation-plural')}
             onCancel={() => onCancel?.()}
             onShowNewConversation={newConversationHandler}
           />

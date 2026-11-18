@@ -33,10 +33,6 @@ jest.mock('../ActivityFeedPanel/FeedPanelBodyV1', () =>
   jest.fn(() => <div data-testid="feed-panel-body" />)
 );
 
-jest.mock('../ActivityFeedPanel/ActivityPanelHeader', () =>
-  jest.fn(() => <div data-testid="activity-panel-header" />)
-);
-
 jest.mock('../ActivityFeedPanel/ActivityPanelBody', () =>
   jest.fn(() => <div data-testid="activity-panel-body" />)
 );
@@ -88,7 +84,7 @@ describe('ActivityFeedDrawer', () => {
 
     render(<ActivityFeedDrawer open />, { wrapper: MemoryRouter });
 
-    expect(screen.getByTestId('activity-panel-header')).toBeInTheDocument();
+    expect(screen.getByTestId('closeDrawer')).toBeInTheDocument();
     expect(screen.getByTestId('activity-panel-body')).toBeInTheDocument();
   });
 

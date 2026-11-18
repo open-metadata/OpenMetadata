@@ -261,7 +261,7 @@ export class CustomPropertiesPageObject extends RightPanelBase {
    * Call after navigating to Custom Properties tab (e.g. from assertTabInternalFieldsByAssetType).
    */
   async assertInternalFields(assetType?: string): Promise<void> {
-    const tabLabel = 'Custom Property';
+    const tabLabel = 'Custom Properties';
     const prefix = assetType ? `[Asset: ${assetType}] [Tab: ${tabLabel}] ` : '';
     await expect(
       this.customPropertiesContainer,

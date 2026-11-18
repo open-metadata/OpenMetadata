@@ -17,7 +17,7 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 
 /**
  * The security configuration as stored, secrets decrypted, with the JSON each of its two rows held
- * when it was read, so a write can check that nobody changed them in between.
+ * when it was read or written, so a later write can check that nobody changed them in between.
  */
 public record StoredSecurityConfiguration(
     SecurityConfiguration configuration, String authenticationJson, String authorizerJson) {}

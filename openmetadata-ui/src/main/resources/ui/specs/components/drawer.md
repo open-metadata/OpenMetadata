@@ -41,7 +41,6 @@ Parts: **scrim/overlay**, **panel** (surface), **header** (title + close icon),
 | Part | Token |
 | --- | --- |
 | Body padding | `--om-space-16` |
-| Header / footer elevation | `--om-legacy-color-10-13-18-0-04` (layered box-shadow; migration debt) |
 | Header / footer stacking | `--om-z-1` |
 | Scrim / overlay | `--om-color-bg-overlay`, `--om-z-overlay` |
 | Panel surface | `--om-color-bg-primary` (semantic default) |
@@ -65,29 +64,10 @@ Parts: **scrim/overlay**, **panel** (surface), **header** (title + close icon),
 | Closed | panel off-canvas (translated past right edge), scrim hidden |
 | Open | panel at rest; scrim `--om-color-bg-overlay` at `--om-z-overlay` |
 | Enter / exit | slide + fade — see [Motion](../foundations/motion.md) |
-| Header shadow | drops on scroll via `--om-legacy-color-10-13-18-0-04` |
 | Footer sticky | top shadow separates actions from scrolled body |
 | Dismiss | scrim click / Esc when `isDismissable` |
 
 ## Code example
-
-```less
-/* Layer 3 — reference Layer 2 tokens only */
-.custom-drawer-style {
-  .ant-drawer-body {
-    padding: var(--om-space-16);
-    overflow-x: hidden;
-  }
-  .ant-drawer-header {
-    box-shadow: 0px 9px 16px -4px var(--om-legacy-color-10-13-18-0-04);
-    z-index: var(--om-z-1);
-  }
-  .ant-drawer-footer {
-    box-shadow: 0px -13px 16px -4px var(--om-legacy-color-10-13-18-0-04);
-    z-index: var(--om-z-1);
-  }
-}
-```
 
 ```tsx
 import { SlideoutMenu } from '@openmetadata/ui-core-components';

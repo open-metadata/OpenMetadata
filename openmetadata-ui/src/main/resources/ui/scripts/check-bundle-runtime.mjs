@@ -26,8 +26,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 // Exports that are `undefined` in a healthy build, per chunk (name without
-// hash). antd's bundle exports one binding that is never assigned.
-const ALLOWED_UNDEFINED_EXPORTS = { 'vendor-antd': 1 };
+// hash).
+// - app-shell: lodash-es `sortBy` and `mergeWith`. CommonJS packages
+//   `require()` them (json-schema-merge-allof and json-schema-compare
+//   `lodash/sortBy`; lodash-es `defaultsDeep`, which json-schema-merge-allof
+//   requires, `mergeWith`), so Rolldown wraps them in a lazy initialiser. Every
+//   chunk that uses one (AdvancedSearchClassBase, TableProfilerUtils, ...)
+//   imports and runs that initialiser first; a route that uses neither sees
+//   them undefined. Until the product tour was removed, its CommonJS react-tour
+//   required all of lodash from the shell at startup, which initialised them.
+const ALLOWED_UNDEFINED_EXPORTS = { 'app-shell': 2 };
 const CONCURRENCY = 8;
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
@@ -102,6 +110,12 @@ const checkPage = async ({ module, file }) => {
     }
   });
   try {
+    // External telemetry must not delay this local module-evaluation check.
+    await context.route('**/*', (route) =>
+      new URL(route.request().url()).origin === origin
+        ? route.continue()
+        : route.abort()
+    );
     await page.goto(`${origin}/signin`, { waitUntil: 'load' });
     const importError = await page.evaluate(async (chunkUrl) => {
       try {

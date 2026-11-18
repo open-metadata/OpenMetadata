@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   SlideoutMenu,
   Tooltip,
   Typography,
@@ -465,13 +466,12 @@ const InspectorHeader = ({
       className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-3.5 tw:pt-3.5 tw:pb-3"
       gap={2}>
       {onBack && (
-        <Button
+        <ButtonUtility
           aria-label={t('label.back')}
-          color="tertiary"
           data-testid="inspector-back"
-          iconLeading={ChevronLeft}
-          size="sm"
-          onPress={onBack}
+          icon={ChevronLeft}
+          size="lg"
+          onClick={onBack}
         />
       )}
       {tile}
@@ -489,12 +489,13 @@ const InspectorHeader = ({
           {subtitle}
         </Typography>
       </Box>
-      <Button
+      {/* Named, not tooltipped: an open tooltip would take the Escape that
+          closes the inspector. */}
+      <ButtonUtility
         aria-label={t('label.close')}
-        color="tertiary"
-        iconLeading={XClose}
-        size="sm"
-        onPress={onClose}
+        icon={XClose}
+        size="lg"
+        onClick={onClose}
       />
     </Box>
   );

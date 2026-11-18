@@ -62,6 +62,10 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../test/unit/enUsTranslation';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
@@ -828,7 +832,7 @@ describe('ServiceDetailsPage', () => {
       });
     });
 
-    it('should navigate to forbidden page when access is denied', async () => {
+    it('should render the permission placeholder when access is denied', async () => {
       const mockNavigate = jest.fn();
       (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
@@ -841,10 +845,59 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
-          replace: true,
-        });
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
+
+      expect(
+        screen.queryByTestId('no-data-placeholder')
+      ).not.toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
+        replace: true,
+      });
+    });
+  });
+
+  describe('Permission message', () => {
+    it('names the requested service, not the one viewed before', async () => {
+      const error = new Error('Forbidden') as AxiosError;
+      error.response = { status: ClientErrors.FORBIDDEN } as AxiosResponse;
+      const page = () => (
+        <MemoryRouter>
+          <ServiceDetailsPage />
+        </MemoryRouter>
+      );
+      useEnUsTranslations();
+      try {
+        const view = render(page());
+        await act(async () => undefined);
+
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'other-service',
+        }));
+        (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+          Promise.reject(error)
+        );
+        await act(async () => {
+          view.rerender(page());
+        });
+
+        const placeholder = await screen.findByTestId(
+          'permission-error-placeholder'
+        );
+
+        expect(placeholder).toHaveTextContent('other-service');
+        expect(placeholder).not.toHaveTextContent('Test Service');
+      } finally {
+        useKeyEchoTranslations();
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'test-service',
+        }));
+        (getServiceByFQN as jest.Mock)
+          .mockReset()
+          .mockImplementation(() => Promise.resolve(mockServiceDetails));
+      }
     });
   });
 
@@ -1424,6 +1477,8 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('data-model-table')).toBeInTheDocument();
       });
+
+      expect(screen.getByText('label.data-model-plural')).toBeInTheDocument();
     });
 
     it('should render agents tab for metadata services', async () => {

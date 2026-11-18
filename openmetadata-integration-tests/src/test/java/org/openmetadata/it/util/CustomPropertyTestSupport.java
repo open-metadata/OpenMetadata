@@ -30,7 +30,13 @@ public final class CustomPropertyTestSupport {
   public static void registerStringProperty(
       OpenMetadataClient client, String entityType, String propertyName)
       throws JsonProcessingException {
-    Type stringType = getTypeByName(client, "string");
+    registerProperty(client, entityType, propertyName, "string");
+  }
+
+  public static void registerProperty(
+      OpenMetadataClient client, String entityType, String propertyName, String propertyType)
+      throws JsonProcessingException {
+    Type fieldType = getTypeByName(client, propertyType);
     Type owningType = getTypeByName(client, entityType);
     CustomProperty property =
         new CustomProperty()
@@ -38,9 +44,9 @@ public final class CustomPropertyTestSupport {
             .withDescription("Registered by an integration test")
             .withPropertyType(
                 new EntityReference()
-                    .withId(stringType.getId())
+                    .withId(fieldType.getId())
                     .withType("type")
-                    .withName("string"));
+                    .withName(propertyType));
     client
         .getHttpClient()
         .execute(HttpMethod.PUT, "/v1/metadata/types/" + owningType.getId(), property, Type.class);

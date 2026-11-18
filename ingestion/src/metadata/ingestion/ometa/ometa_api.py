@@ -794,6 +794,7 @@ class OpenMetadata(
         scope_params: dict[str, str] | None,
         live_fqns: Iterable[str],
         recursive: bool = True,
+        allow_empty_seen: bool = False,
     ) -> BulkOperationResult | None:
         """
         Ask the server to soft-delete entities of `entity` within a scope that were not reported
@@ -804,6 +805,10 @@ class OpenMetadata(
         connector sends `live_fqns` (the FQNs it produced this run); the server soft-deletes the
         in-scope entities that are not in that set.
 
+        An empty `live_fqns` deletes nothing unless `allow_empty_seen` marks it authoritative. The
+        flag is sent only with an empty `live_fqns`, the one case where it changes the outcome, so
+        servers that predate it never receive it otherwise.
+
         Returns the BulkOperationResult, or None when the server does not expose the endpoint
         (older server) so the caller can fall back to the legacy paginate-and-diff path.
         """
@@ -811,12 +816,15 @@ class OpenMetadata(
             raise ValueError("delete_stale_entities requires a scope, e.g. {'database': fqn}")
 
         scope_entity_type, scope_fqn = next(iter(scope_params.items()))
+        seen_fqns = list(live_fqns)
         request = {
             "scopeFqn": scope_fqn,
             "scopeEntityType": scope_entity_type,
-            "seenFqns": list(live_fqns),
+            "seenFqns": seen_fqns,
             "recursive": recursive,
         }
+        if allow_empty_seen and not seen_fqns:
+            request["allowEmptySeenFqns"] = True
         url = f"{self.get_suffix(entity)}/deleteStale"
         try:
             resp = self.client.delete(url, json=request)

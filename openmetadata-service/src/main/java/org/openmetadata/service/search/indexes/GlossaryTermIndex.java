@@ -8,6 +8,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 
 public class GlossaryTermIndex implements TaggableIndex {
+  private static final String FIELD_CHILDREN_COUNT = "childrenCount";
   final GlossaryTerm glossaryTerm;
 
   public GlossaryTermIndex(GlossaryTerm glossaryTerm) {
@@ -33,7 +34,13 @@ public class GlossaryTermIndex implements TaggableIndex {
   public Set<String> getRequiredReindexFields() {
     Set<String> fields = new java.util.HashSet<>(TaggableIndex.super.getRequiredReindexFields());
     fields.add("relatedTerms");
+    fields.add(FIELD_CHILDREN_COUNT);
     return java.util.Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Set<String> getFieldsLoadedOnWrite() {
+    return Set.of(FIELD_CHILDREN_COUNT);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

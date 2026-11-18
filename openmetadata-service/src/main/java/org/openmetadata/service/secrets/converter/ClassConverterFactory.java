@@ -21,9 +21,11 @@ import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
+import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
-import org.openmetadata.schema.security.credentials.AccessTokenAuth;
+import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
 import org.openmetadata.schema.security.credentials.BasicAuth;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
@@ -36,6 +38,7 @@ import org.openmetadata.schema.services.connections.api.OpenAPISchemaS3;
 import org.openmetadata.schema.services.connections.api.OpenAPISchemaURL;
 import org.openmetadata.schema.services.connections.api.RestConnection;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.OmniConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
@@ -75,6 +78,7 @@ import org.openmetadata.schema.services.connections.database.StarRocksConnection
 import org.openmetadata.schema.services.connections.database.TimescaleConnection;
 import org.openmetadata.schema.services.connections.database.TrinoConnection;
 import org.openmetadata.schema.services.connections.database.UnityCatalogConnection;
+import org.openmetadata.schema.services.connections.database.common.GcpCloudSqlConfig;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.database.databricks.AzureADSetup;
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
@@ -128,6 +132,21 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
+          // GCPCredentials is typed, but its gcpConfig is a oneOf the credentials converter types.
+          Map.entry(
+              GcpCloudSqlConfig.class,
+              new NestedConfigClassConverter(
+                  GcpCloudSqlConfig.class, Map.of("gcpConfig", List.of(GCPCredentials.class)))),
+          Map.entry(
+              org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig.class,
+              new NestedConfigClassConverter(
+                  org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig.class,
+                  Map.of("securityConfig", List.of(GCPCredentials.class)))),
+          Map.entry(
+              SupersetApiConnection.class,
+              new NestedConfigClassConverter(
+                  SupersetApiConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               AlationConnection.class,
               new NestedConfigClassConverter(
@@ -197,6 +216,11 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   MicrosoftAccessConnection.class,
                   Map.of("connection", List.of(S3Connection.class)))),
+          Map.entry(
+              MicroStrategyConnection.class,
+              new NestedConfigClassConverter(
+                  MicroStrategyConnection.class,
+                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               MongoDBConnection.class,
               new NestedConfigClassConverter(
@@ -285,8 +309,10 @@ public final class ClassConverterFactory {
               new NestedConfigClassConverter(
                   TableauPipelineConnection.class,
                   Map.of(
-                      "authType", List.of(BasicAuth.class, AccessTokenAuth.class),
-                      "sslConfig", List.of(ValidateSSLClientConfig.class)))));
+                      "authType",
+                      TableauConnectionClassConverter.CONNECTION_CLASSES,
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))));
 
   static {
     Map<Class<?>, ClassConverter> converters =
@@ -302,6 +328,11 @@ public final class ClassConverterFactory {
                 Map.entry(DremioConnection.class, new DremioConnectionClassConverter()),
                 Map.entry(DbtGCSConfig.class, new DbtGCSConfigClassConverter()),
                 Map.entry(DbtPipeline.class, new DbtPipelineClassConverter()),
+                Map.entry(
+                    StorageServiceMetadataPipeline.class,
+                    new StorageServiceMetadataPipelineClassConverter()),
+                Map.entry(
+                    StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),

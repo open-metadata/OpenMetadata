@@ -55,7 +55,12 @@ export type LineageConfigDepthField =
   | 'downstreamDepth'
   | 'nodesPerLayer';
 
-export type LineageConfigFormValues = Record<LineageConfigDepthField, string>;
+export type LineageConfigFormValues = Record<
+  LineageConfigDepthField,
+  string
+> & {
+  showTempTables: boolean;
+};
 
 export interface LineageConfigField {
   name: LineageConfigDepthField;
@@ -68,6 +73,8 @@ export interface LineageConfigField {
 export interface LineageConfigModalProps {
   visible: boolean;
   config: LineageConfig;
+  /** Only the entity Lineage canvas draws temp tables, so only it offers the switch. */
+  showTempTablesToggle?: boolean;
   onCancel: () => void;
   onSave: (config: LineageConfig) => void;
 }

@@ -27,7 +27,10 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STATUS_COLORS } from '../../../../constants/Color.constants';
 import { PAGE_SIZE_BASE } from '../../../../constants/constants';
-import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../../../constants/TestSuite.constant';
+import {
+  INCIDENT_STATUS_MENU_OPTIONS,
+  TEST_CASE_RESOLUTION_STATUS_LABELS,
+} from '../../../../constants/TestSuite.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   EntityReference,
@@ -293,7 +296,9 @@ const InlineTestCaseIncidentStatus = ({
       try {
         await transitionIncident(taskId, resolveRequest);
 
-        const refreshed = await getListTestCaseIncidentByStateId(taskId);
+        const refreshed = await getListTestCaseIncidentByStateId(taskId, {
+          limit: 1,
+        });
         const latest = refreshed?.data?.[0];
         if (latest) {
           onSubmit(latest);
@@ -484,7 +489,7 @@ const InlineTestCaseIncidentStatus = ({
       onAction={(key) =>
         handleStatusChange(key as TestCaseResolutionStatusTypes)
       }>
-      {Object.values(TestCaseResolutionStatusTypes).map((status) => (
+      {INCIDENT_STATUS_MENU_OPTIONS[statusType].map((status) => (
         <Dropdown.Item
           className={SELECTED_ITEM_CLASS}
           data-testid={`status-item-${status}`}
@@ -516,6 +521,7 @@ const InlineTestCaseIncidentStatus = ({
         direction="col"
         gap={2}>
         <Input
+          autoComplete="off"
           data-testid="assignee-search-input"
           placeholder={t('label.search')}
           size="sm"

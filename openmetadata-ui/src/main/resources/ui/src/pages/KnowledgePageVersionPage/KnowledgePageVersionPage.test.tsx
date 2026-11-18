@@ -75,12 +75,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   SkeletonParagraph: () => <div data-testid="skeleton-paragraph" />,
 }));
 
-jest.mock('antd', () => ({
-  Space: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="antd-space">{children}</div>
-  ),
-}));
-
 jest.mock('../../utils/ContextCenterClassBase', () => ({
   __esModule: true,
   default: {

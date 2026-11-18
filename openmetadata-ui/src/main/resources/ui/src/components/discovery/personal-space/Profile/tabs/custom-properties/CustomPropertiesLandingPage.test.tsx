@@ -11,18 +11,9 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import type { Type } from '../../../../../../generated/entity/type';
-import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesLandingPage from './CustomPropertiesLandingPage';
-
-const mockTableType = {
-  id: 'type-table',
-  name: 'table',
-  displayName: 'Table',
-  fullyQualifiedName: 'table',
-} as unknown as Type;
 
 const mockTableItem = {
   key: 'customProperties.table',
@@ -88,15 +79,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
     children,
     onClick,
     'data-testid': testId,
-    'aria-busy': ariaBusy,
   }: {
     children?: ReactNode;
     onClick?: () => void;
     'data-testid'?: string;
-    'aria-busy'?: React.AriaAttributes['aria-busy'];
   }) => (
     <div
-      aria-busy={ariaBusy}
       data-testid={testId}
       role="button"
       tabIndex={0}
@@ -145,10 +133,6 @@ describe('CustomPropertiesLandingPage', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    const { getTypeByFQN } = jest.requireMock(
-      '../../../../../../rest/metadataTypeAPI'
-    );
-    getTypeByFQN.mockResolvedValue(mockTableType);
 
     const globalSettingsClassBase = jest.requireMock(
       '../../../../../../utils/GlobalSettingsClassBase'
@@ -223,7 +207,7 @@ describe('CustomPropertiesLandingPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('calls getTypeByFQN and then onSelectEntityType when a card is clicked', async () => {
+  it('selects the entity type by fqn without fetching it', () => {
     const { getTypeByFQN } = jest.requireMock(
       '../../../../../../rest/metadataTypeAPI'
     );
@@ -235,32 +219,8 @@ describe('CustomPropertiesLandingPage', () => {
 
     fireEvent.click(screen.getByTestId('entity-type-card-table'));
 
-    await waitFor(() => {
-      expect(getTypeByFQN).toHaveBeenCalledWith('table');
-      expect(mockOnSelectEntityType).toHaveBeenCalledWith(mockTableType);
-    });
-  });
-
-  it('shows error toast when getTypeByFQN fails', async () => {
-    const mockError = new Error('API Error');
-    const { getTypeByFQN } = jest.requireMock(
-      '../../../../../../rest/metadataTypeAPI'
-    );
-    getTypeByFQN.mockRejectedValueOnce(mockError);
-
-    render(
-      <CustomPropertiesLandingPage
-        onSelectEntityType={mockOnSelectEntityType}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('entity-type-card-table'));
-
-    await waitFor(() => {
-      expect(showErrorToast).toHaveBeenCalledWith(mockError);
-    });
-
-    expect(mockOnSelectEntityType).not.toHaveBeenCalled();
+    expect(mockOnSelectEntityType).toHaveBeenCalledWith('table');
+    expect(getTypeByFQN).not.toHaveBeenCalled();
   });
 
   it('renders empty placeholder when category has no items', () => {
@@ -278,43 +238,6 @@ describe('CustomPropertiesLandingPage', () => {
     );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-  });
-
-  it('sets aria-busy on the card while loading', async () => {
-    const { getTypeByFQN } = jest.requireMock(
-      '../../../../../../rest/metadataTypeAPI'
-    );
-    const deferred = { resolve: (_value: Type) => {} };
-    getTypeByFQN.mockImplementationOnce(
-      () =>
-        new Promise((res) => {
-          deferred.resolve = res;
-        })
-    );
-
-    render(
-      <CustomPropertiesLandingPage
-        onSelectEntityType={mockOnSelectEntityType}
-      />
-    );
-
-    fireEvent.click(screen.getByTestId('entity-type-card-table'));
-
-    await waitFor(() => {
-      expect(screen.getByTestId('entity-type-card-table')).toHaveAttribute(
-        'aria-busy',
-        'true'
-      );
-    });
-
-    deferred.resolve(mockTableType);
-
-    await waitFor(() => {
-      expect(screen.getByTestId('entity-type-card-table')).not.toHaveAttribute(
-        'aria-busy',
-        'true'
-      );
-    });
   });
 
   it('lists user and team custom properties under their own group', () => {

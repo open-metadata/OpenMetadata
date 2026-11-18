@@ -53,6 +53,8 @@ const domain1 = new Domain();
 const domain2 = new Domain();
 const bundleTestSuite = new BundleTestSuiteClass();
 
+const LIST_PAGE_SIZE = 15;
+
 const createDeferred = () => {
   let resolveDeferred: () => void = () => undefined;
   const promise = new Promise<void>((resolve) => {
@@ -184,6 +186,12 @@ test('Searching the bundle suites list from a later page resets to the first pag
   // The list is sorted by last result, not relevance, so the target must be
   // the only suite the search matches for its row to be on the first page.
   const targetSuite = `pwpagingtarget${uuid()}`;
+  // Seeding a full page beside the target guarantees a page 2 at the
+  // 15-row list size, whatever else the server holds.
+  const seededSuites = [
+    targetSuite,
+    ...Array.from({ length: LIST_PAGE_SIZE }, () => `pwpagingfiller${uuid()}`),
+  ];
   const bundleSuiteListUrl = (query = '') =>
     `/api/v1/dataQuality/testSuites/search/list?testSuiteType=logical&includeEmptyTestSuites=true${query}`;
   const isBundleSuiteList = (url: URL) =>
@@ -191,15 +199,17 @@ test('Searching the bundle suites list from a later page resets to the first pag
     url.searchParams.get('testSuiteType') === 'logical';
 
   try {
-    const createResponse = await apiContext.post(
-      '/api/v1/dataQuality/testSuites',
-      { data: { name: targetSuite } }
+    const createResponses = await Promise.all(
+      seededSuites.map((name) =>
+        apiContext.post('/api/v1/dataQuality/testSuites', { data: { name } })
+      )
     );
 
-    expect(createResponse.status()).toBe(201);
+    expect(createResponses.map((response) => response.status())).toEqual(
+      seededSuites.map(() => 201)
+    );
 
-    // At one suite per page, page 2 only needs a second suite (beforeAll
-    // creates one), so wait until the list has two and the target is indexed.
+    // Wait until the list spans two pages and the target is indexed.
     await expect
       .poll(
         async () => {
@@ -212,7 +222,7 @@ test('Searching the bundle suites list from a later page resets to the first pag
           const targetTotal = (await targetResponse.json())?.paging?.total;
           const listTotal = (await listResponse.json())?.paging?.total;
 
-          return targetTotal > 0 && listTotal > 1;
+          return targetTotal > 0 && listTotal > LIST_PAGE_SIZE;
         },
         { timeout: 30_000, intervals: [1_000, 2_000, 5_000] }
       )
@@ -222,9 +232,10 @@ test('Searching the bundle suites list from a later page resets to the first pag
       const listResponse = page.waitForResponse((response) =>
         isBundleSuiteList(new URL(response.url()))
       );
-      await page.goto('/data-quality/test-suites/bundle-suites?pageSize=1', {
-        waitUntil: 'domcontentloaded',
-      });
+      await page.goto(
+        `/data-quality/test-suites/bundle-suites?pageSize=${LIST_PAGE_SIZE}`,
+        { waitUntil: 'domcontentloaded' }
+      );
       await listResponse;
       await waitForAllLoadersToDisappear(page);
 
@@ -263,10 +274,14 @@ test('Searching the bundle suites list from a later page resets to the first pag
       await expect(page.getByTestId('page-indicator')).toContainText('1 of');
     });
   } finally {
-    await apiContext.delete(
-      `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
-        targetSuite
-      )}?hardDelete=true&recursive=true`
+    await Promise.all(
+      seededSuites.map((name) =>
+        apiContext.delete(
+          `/api/v1/dataQuality/testSuites/name/${encodeURIComponent(
+            name
+          )}?hardDelete=true&recursive=true`
+        )
+      )
     );
     await afterAction();
   }

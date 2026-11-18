@@ -11,16 +11,12 @@
  *  limitations under the License.
  */
 import { TFunction } from 'i18next';
-import { ReactionsVariant } from '../../../../enums/reactions.enum';
 import { FeedCardFooterProps } from './FeedCardFooter.interface';
 
 export const isReplyButtonShown = (
   isReply: boolean,
   visibility: FeedCardFooterProps['componentsVisibility']
 ): boolean => !isReply && visibility?.showThreadIcon !== false;
-
-export const getReactionsVariant = (showReplyCount: boolean) =>
-  showReplyCount ? ReactionsVariant.Pill : ReactionsVariant.Default;
 
 // "Reply" while there are none, then how many: "1 Reply", "3 Replies".
 export const getReplyCountLabel = (count: number, t: TFunction): string => {

@@ -2,6 +2,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -11,6 +12,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -38,6 +40,9 @@ class OpenSearchBulkSinkSimpleTest {
   @BeforeEach
   void setUp() {
     lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     lenient().when(searchClient.getNewClient()).thenReturn(restHighLevelClient);
     lenient().when(searchRepository.getClusterAlias()).thenReturn("default");
     lenient().when(indexMapping.getIndexName("default")).thenReturn("test_index");
@@ -81,46 +86,69 @@ class OpenSearchBulkSinkSimpleTest {
    */
   @Test
   void semaphoreTimeoutRecordsPermanentFailureWithoutIncrementingActiveRequests() throws Exception {
-    OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(openSearchBulkSink);
+    // A zero bulk lifetime means its flush cannot wait at all for a free slot.
+    OpenSearchBulkSink sink =
+        new OpenSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 100, 10_000, 0));
+    try {
+      OpenSearchBulkSink.CustomBulkProcessor processor = getCustomBulkProcessor(sink);
 
-    // Shorten the wait so the test doesn't sleep a minute. 0 = immediate fail-fast on no-permit.
-    processor.setSemaphoreAcquireTimeoutSecondsForTesting(0L);
+      // Drain the semaphore so flushInternal cannot acquire a permit. The sink was constructed
+      // with concurrentRequests=2 (see setUp), so drain both.
+      BulkSendPermits sendPermits = getField(processor, "sendPermits", BulkSendPermits.class);
+      Semaphore semaphore = getField(sendPermits, "processorSlots", Semaphore.class);
+      semaphore.acquire(2);
+      int permitsBefore = semaphore.availablePermits();
 
-    // Drain the semaphore so flushInternal cannot acquire a permit. The sink was constructed
-    // with concurrentRequests=2 (see setUp), so drain both.
-    Semaphore semaphore = getField(processor, "concurrentRequestSemaphore", Semaphore.class);
-    semaphore.acquire(2);
-    int permitsBefore = semaphore.availablePermits();
+      AtomicInteger activeBulkRequests =
+          getField(processor, "activeBulkRequests", AtomicInteger.class);
+      AtomicLong totalFailed = getField(sink, "totalFailed", AtomicLong.class);
+      long failedBefore = totalFailed.get();
+      int activeBefore = activeBulkRequests.get();
 
-    AtomicInteger activeBulkRequests =
-        getField(processor, "activeBulkRequests", AtomicInteger.class);
-    AtomicLong totalFailed = getField(openSearchBulkSink, "totalFailed", AtomicLong.class);
-    long failedBefore = totalFailed.get();
-    int activeBefore = activeBulkRequests.get();
+      @SuppressWarnings("unchecked")
+      List<BulkOperation> buffer = getField(processor, "buffer", List.class);
+      buffer.add(mock(BulkOperation.class));
 
-    @SuppressWarnings("unchecked")
-    List<BulkOperation> buffer = getField(processor, "buffer", List.class);
-    buffer.add(mock(BulkOperation.class));
+      Method flushInternal =
+          OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
+      flushInternal.setAccessible(true);
+      flushInternal.invoke(processor);
 
-    Method flushInternal =
-        OpenSearchBulkSink.CustomBulkProcessor.class.getDeclaredMethod("flushInternal");
-    flushInternal.setAccessible(true);
-    flushInternal.invoke(processor);
+      // Permanent failure recorded — the 1 op we put in the buffer is now counted as failed.
+      assertEquals(failedBefore + 1, totalFailed.get(), "totalFailed must increment on timeout");
+      // Active bulk count must stay at the pre-flush value: we never entered the in-flight state.
+      assertEquals(
+          activeBefore,
+          activeBulkRequests.get(),
+          "activeBulkRequests must not increment when semaphore acquire times out");
+      // Permits unchanged — the failed acquire path must NOT release a permit it never took.
+      assertEquals(
+          permitsBefore,
+          semaphore.availablePermits(),
+          "permits must not change when tryAcquire returns false");
+      // Buffer drained — the failed batch shouldn't sit around to be re-flushed.
+      assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
+    } finally {
+      sink.close();
+    }
+  }
 
-    // Permanent failure recorded — the 1 op we put in the buffer is now counted as failed.
-    assertEquals(failedBefore + 1, totalFailed.get(), "totalFailed must increment on timeout");
-    // Active bulk count must stay at the pre-flush value: we never entered the in-flight state.
-    assertEquals(
-        activeBefore,
-        activeBulkRequests.get(),
-        "activeBulkRequests must not increment when semaphore acquire times out");
-    // Permits unchanged — the failed acquire path must NOT release a permit it never took.
-    assertEquals(
-        permitsBefore,
-        semaphore.availablePermits(),
-        "permits must not change when tryAcquire returns false");
-    // Buffer drained — the failed batch shouldn't sit around to be re-flushed.
-    assertTrue(buffer.isEmpty(), "buffer should be cleared after permanent failure");
+  @Test
+  void liveWritesBuildDocumentsOffTheReindexPool() throws Exception {
+    OpenSearchBulkSink live = new OpenSearchBulkSink(searchRepository, 10, 2, 1000000L);
+    OpenSearchBulkSink reindex =
+        new OpenSearchBulkSink(
+            searchRepository, 10, 2, 1000000L, new BulkRetryPolicy(3, 1_000, 10_000));
+    try {
+      // A reindex out of send slots blocks its doc-build tasks; live writes must not queue there.
+      assertNotSame(
+          getField(reindex, "docBuildExecutor", Executor.class),
+          getField(live, "docBuildExecutor", Executor.class));
+    } finally {
+      live.close();
+      reindex.close();
+    }
   }
 
   @SuppressWarnings("unchecked")

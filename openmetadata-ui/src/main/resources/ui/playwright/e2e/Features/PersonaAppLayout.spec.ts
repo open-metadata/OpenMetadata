@@ -39,6 +39,7 @@ import {
   createPersonaAppLayoutDoc,
   setDefaultPersona,
 } from '../../utils/persona';
+import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { performUserLogin } from '../../utils/user';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test as base } from '../fixtures/pages';
@@ -63,8 +64,7 @@ const signInAndSaveSession = async (browser: Browser, user: UserClass) => {
   // Signing in lands on the persona's default landing page. Checked here,
   // before the session is saved, because every test starts from that session.
   await expect(page).toHaveURL(GLOSSARY_URL);
-  // The auth token lives in IndexedDB, so it has to be saved too.
-  const session = await page.context().storageState({ indexedDB: true });
+  const session = await captureRecoverableStorageState(page.context());
   await afterAction();
 
   return session;

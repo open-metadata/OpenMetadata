@@ -50,6 +50,7 @@ class TransportTest {
   @Test
   void timeoutsAreClamped() {
     ClientBuilder builder = mock(ClientBuilder.class);
+    when(builder.withConfig(any())).thenReturn(builder);
     when(builder.connectTimeout(any(Long.class), any())).thenReturn(builder);
     when(builder.readTimeout(any(Long.class), any())).thenReturn(builder);
     when(builder.build()).thenReturn(mock(Client.class));
@@ -85,6 +86,7 @@ class TransportTest {
   void clientsCloseOnShutdown() {
     Client client = mock(Client.class);
     ClientBuilder builder = mock(ClientBuilder.class);
+    when(builder.withConfig(any())).thenReturn(builder);
     when(builder.connectTimeout(any(Long.class), any())).thenReturn(builder);
     when(builder.readTimeout(any(Long.class), any())).thenReturn(builder);
     when(builder.build()).thenReturn(client);

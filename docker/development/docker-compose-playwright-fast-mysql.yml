@@ -1,0 +1,51 @@
+services:
+  mysql:
+    image: ${PW_DATABASE_IMAGE:-mysql:8.0}
+    pull_policy: missing
+    restart: "no"
+    command:
+      - --sort_buffer_size=10M
+      - --skip-log-bin
+      - --innodb-flush-log-at-trx-commit=0
+    volumes:
+      - type: bind
+        source: ${PW_DATABASE_DATA_DIR:?PW_DATABASE_DATA_DIR is required}
+        target: /var/lib/mysql
+    healthcheck:
+      interval: 2s
+      timeout: 2s
+      retries: 60
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "1"
+        compress: "false"
+
+  elasticsearch:
+    image: ${PW_SEARCH_IMAGE:-docker.elastic.co/elasticsearch/elasticsearch:9.3.0}
+    restart: "no"
+    environment:
+      ES_JAVA_OPTS: -Xms2g -Xmx2g
+    volumes:
+      - type: bind
+        source: ${PW_SEARCH_DATA_DIR:?PW_SEARCH_DATA_DIR is required}
+        target: /usr/share/elasticsearch/data
+    healthcheck:
+      interval: 2s
+      timeout: 2s
+      retries: 90
+    ulimits:
+      nofile:
+        soft: 65536
+        hard: 65536
+    logging:
+      driver: local
+      options:
+        max-size: 10m
+        max-file: "1"
+        compress: "false"

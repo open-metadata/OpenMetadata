@@ -36,7 +36,6 @@ import type {
   Option,
 } from '../pages/TasksPage/TasksPage.interface';
 import { getEntityName } from './EntityNameUtils';
-import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 import { getOwnHandler } from './RecordUtils';
 
@@ -150,21 +149,6 @@ export const getColumnObjectByPath = (
   );
 };
 
-const TASK_FIELD_CONTAINER_MAP: Record<string, string> = {
-  'messageSchema.schemaFields': 'messageSchema',
-  'dataModel.columns': 'dataModel',
-  'requestSchema.schemaFields': 'requestSchema',
-  'responseSchema.schemaFields': 'responseSchema',
-};
-
-export const getNormalizedTaskFieldContainer = (field?: string | null) => {
-  if (!field) {
-    return undefined;
-  }
-
-  return TASK_FIELD_CONTAINER_MAP[field] ?? field;
-};
-
 export const getTaskFieldColumns = (
   entityType: EntityType,
   entityData: EntityData,
@@ -182,46 +166,6 @@ export const getTaskFieldColumns = (
     default:
       return getEntityColumnsDetails(entityType, entityData);
   }
-};
-
-export const getFormattedTaskFieldValue = (value?: string | null) => {
-  if (!value) {
-    return undefined;
-  }
-
-  if (!value.includes('.') || /^".*"$/.test(value)) {
-    return value;
-  }
-
-  return `"${value}"`;
-};
-
-export const getDescriptionTaskFieldPath = (
-  field?: string | null,
-  value?: string | null
-) => {
-  const container = getNormalizedTaskFieldContainer(field);
-  const formattedValue = getFormattedTaskFieldValue(value);
-
-  if (!container || !formattedValue) {
-    return EntityField.DESCRIPTION;
-  }
-
-  return `${container}${ENTITY_LINK_SEPARATOR}${formattedValue}${ENTITY_LINK_SEPARATOR}description`;
-};
-
-export const getTagTaskFieldPath = (
-  field?: string | null,
-  value?: string | null
-) => {
-  const container = getNormalizedTaskFieldContainer(field);
-  const formattedValue = getFormattedTaskFieldValue(value);
-
-  if (!container || !formattedValue) {
-    return undefined;
-  }
-
-  return `${container}.${formattedValue}`;
 };
 
 export const getEntityTaskDetails = (

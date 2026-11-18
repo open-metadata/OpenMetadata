@@ -25,20 +25,19 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { EventType } from '../../../generated/type/changeEvent';
 import type { AlertSelection } from '../../../hooks/useAlertSelection';
+import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import {
+  AlertAiFormChangeHandler,
+  AlertAiFormValue,
   ModifiedCreateEventSubscription,
   ModifiedDestination,
   ModifiedEventSubscription,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
-import type { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
+  RuleSectionField,
+} from '../../../utils/AlertsClassBase.interface';
 
 export type AlertAiFormMode = 'add' | 'edit' | 'view';
 
-export type AlertAiFormValue =
-  | ModifiedCreateEventSubscription
-  | ModifiedEventSubscription;
-
-export type RuleSectionField = 'actions' | 'filters';
+export type { AlertAiFormValue, RuleSectionField };
 
 export type AlertAiFormValidationErrors = Record<string, string>;
 
@@ -49,13 +48,7 @@ export interface AlertAiFormFieldsProps {
   // Accepts a value or a functional updater. Prefer the updater — it composes against the latest
   // state so rapid edits don't clobber each other. The value form stays assignable to the
   // value-only AlertAiTemplateSectionProps.onChange (Collate), so the two repos can merge in any order.
-  onChange?: (
-    valueOrUpdater:
-      | ModifiedCreateEventSubscription
-      | ((
-          prev: ModifiedCreateEventSubscription
-        ) => ModifiedCreateEventSubscription)
-  ) => void;
+  onChange?: AlertAiFormChangeHandler;
   /**
    * The chosen sources and what the server says they support. Every section reads it, so the
    * source picker, the filters, the triggers and the recipients never disagree.

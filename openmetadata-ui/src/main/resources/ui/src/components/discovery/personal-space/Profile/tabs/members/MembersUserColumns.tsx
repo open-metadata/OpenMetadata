@@ -36,7 +36,7 @@ import ProfileHashLink from './ProfileHashLink';
 
 type GoTo = (target: ProfileHashTarget) => void;
 
-// Username cell shared by the Users, Online-Users and Team-detail member tables —
+// Name cell shared by the Users, Online-Users and Team-detail member tables —
 // a UserPopOverCard that both links (href for new-tab) and navigates in-app.
 export const UserNameCell: FC<{ record: User; goTo: GoTo }> = ({
   record,
@@ -106,7 +106,7 @@ export const EntityLinksCell: FC<{
             size="xs">
             {t('label.plus-count-more', { count: items.length - LIST_CAP })}
           </Button>
-          <Popover className="tw:max-h-80! tw:overflow-scroll">
+          <Popover className="tw:overflow-y-auto" maxHeight={320}>
             <Box className="tw:p-3" direction="col" gap={1}>
               {items.slice(LIST_CAP).map(renderItem)}
             </Box>

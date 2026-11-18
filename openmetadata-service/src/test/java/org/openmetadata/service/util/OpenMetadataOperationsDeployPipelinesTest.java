@@ -148,4 +148,16 @@ class OpenMetadataOperationsDeployPipelinesTest {
     assertTrue(statuses.getFirst().get(3).startsWith("SKIPPED"));
     assertFalse(OpenMetadataOperations.hasDeployFailures(statuses));
   }
+
+  @Test
+  void onlyDeployedPipelinesAreKept() {
+    IngestionPipeline deployed = new IngestionPipeline().withName("a").withDeployed(true);
+    IngestionPipeline neverDeployed = new IngestionPipeline().withName("b").withDeployed(false);
+    IngestionPipeline unknown = new IngestionPipeline().withName("c");
+
+    List<IngestionPipeline> kept =
+        OpenMetadataOperations.keepDeployed(List.of(deployed, neverDeployed, unknown));
+
+    assertEquals(List.of("a"), kept.stream().map(IngestionPipeline::getName).toList());
+  }
 }

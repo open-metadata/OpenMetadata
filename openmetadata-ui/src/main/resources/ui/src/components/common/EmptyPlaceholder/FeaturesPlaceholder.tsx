@@ -10,21 +10,39 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
-import { EmptyPlaceholderVariantProps } from './EmptyPlaceholder.interface';
+import { Button, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { FeaturesPlaceholderProps } from './EmptyPlaceholder.interface';
 
 /**
  * Onboarding empty state: a title and description above feature columns
  * (`features`), with optional actions. Use it where a collection is empty
  * because the feature has not been set up yet, rather than for "no data".
+ * A feature with an `action` is one of the ways to start, and its title is
+ * the button that starts it.
  * Kept as a wrapper so every empty state shares one entry point
  * (ADR:2026-10-21-empty-states-render-through-the-placeholder-wrappers).
  *
  * The underlying `EmptyPlaceholder` is absolutely positioned, so the host
  * container must set `position: relative` for it to be visible.
  */
-const FeaturesPlaceholder = (props: EmptyPlaceholderVariantProps) => (
-  <EmptyPlaceholder variant="features" {...props} />
+const FeaturesPlaceholder = ({
+  features,
+  ...props
+}: FeaturesPlaceholderProps) => (
+  <EmptyPlaceholder
+    features={features?.map(({ action, title, ...feature }) => ({
+      ...feature,
+      title: action ? (
+        <Button size="sm" {...action}>
+          {title}
+        </Button>
+      ) : (
+        title
+      ),
+    }))}
+    variant="features"
+    {...props}
+  />
 );
 
 export default FeaturesPlaceholder;

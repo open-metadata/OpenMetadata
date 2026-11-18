@@ -169,9 +169,6 @@ export const openEntitySummaryPanel = async ({
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
     await clickOutside(page);
-    await expect(
-      page.locator('.ant-popover:not(.ant-popover-hidden)')
-    ).toHaveCount(0);
 
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.

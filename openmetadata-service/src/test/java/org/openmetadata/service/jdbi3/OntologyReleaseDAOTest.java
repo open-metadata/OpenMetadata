@@ -8,9 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -25,8 +27,63 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
+import org.openmetadata.service.ontology.OntologyReleaseRoles;
 
 class OntologyReleaseDAOTest {
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void roleCandidatesStayBoundedAndRetainAnOlderOpenReview(ConnectionType dialect) {
+    withStorage(
+        dialect,
+        storage -> {
+          final OntologyRelease olderReview =
+              storage.release(1).withSealedAt(2L).withEntityStatus(EntityStatus.IN_REVIEW);
+          final OntologyRelease newestReview =
+              storage.release(2).withSealedAt(2L).withEntityStatus(EntityStatus.IN_REVIEW);
+          final OntologyRelease active =
+              storage.release(3).withSealedAt(2L).withEntityStatus(EntityStatus.APPROVED);
+          final OntologyRelease approved =
+              storage.release(4).withSealedAt(2L).withEntityStatus(EntityStatus.APPROVED);
+          storage.insert(olderReview);
+          storage.insert(newestReview);
+          storage.insert(active);
+          storage.insert(approved);
+          assertEquals(1, storage.states().activate(storage.ontologyId(), active.getId(), 0));
+          for (int revision = 5; revision <= 64; revision++) {
+            storage.insert(storage.release(revision).withSealedAt(2L));
+          }
+          storage.insert(storage.release(65).withEntityStatus(EntityStatus.IN_REVIEW));
+          storage.insert(
+              storage
+                  .release(66)
+                  .withSealedAt(2L)
+                  .withDeleted(true)
+                  .withEntityStatus(EntityStatus.IN_REVIEW));
+          final List<String> ids = List.of(storage.ontologyId().toString());
+          assertEquals(4, storage.releases().listRoleCandidates(ids).size());
+          final OntologyReleaseRoles roles = new OntologyReleaseRoles(storage.dao());
+          final var initial = roles.read(List.of(storage.ontologyId())).get(storage.ontologyId());
+          assertEquals(64L, initial.latest().getReleaseRevision());
+          assertEquals(approved.getId(), initial.latestApproved().getId());
+          assertEquals(active.getId(), initial.active().getId());
+          assertEquals(newestReview.getId(), initial.inReview().getId());
+          storage.releases().update(newestReview.withEntityStatus(EntityStatus.REJECTED));
+          assertEquals(
+              olderReview.getId(),
+              roles
+                  .read(List.of(storage.ontologyId()))
+                  .get(storage.ontologyId())
+                  .inReview()
+                  .getId());
+          storage.releases().update(olderReview.withEntityStatus(EntityStatus.REJECTED));
+          assertNull(
+              roles.read(List.of(storage.ontologyId())).get(storage.ontologyId()).inReview());
+          assertEquals(3, storage.releases().listRoleCandidates(ids).size());
+        });
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = ConnectionType.class,
@@ -104,6 +161,46 @@ class OntologyReleaseDAOTest {
                   .releases()
                   .listMembers(release.getId(), "CONCEPT", member.getMemberId().toString(), 10)
                   .isEmpty());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void batchedInsertsLandEveryMemberOfAnUnsealedReleaseAndNoneOfASealedOne(ConnectionType dialect) {
+    withStorage(
+        dialect,
+        storage -> {
+          final OntologyRelease release = storage.release(1);
+          final List<OntologyReleaseMember> members =
+              IntStream.range(0, 1_201).mapToObj(i -> member(release)).toList();
+          storage.insert(release);
+          assertEquals(0, storage.releases().insertMembers(List.of()));
+          assertEquals(1_201, storage.releases().insertMembers(members));
+          assertThrows(
+              UnableToExecuteStatementException.class,
+              () -> storage.releases().insertMembers(members.subList(0, 1)));
+          release
+              .withContentDigest(OntologyReleaseManifest.digest(members))
+              .withMemberCount(members.size())
+              .withTotalBytes(
+                  members.stream().mapToLong(OntologyReleaseMember::getPayloadBytes).sum())
+              .withSealedAt(2L);
+          assertEquals(
+              1, storage.releases().seal(release.getId(), JsonUtils.pojoToJson(release), 1_201));
+          assertEquals(0, storage.releases().insertMembers(List.of(member(release))));
+          final List<OntologyReleaseMember> captured = new ArrayList<>();
+          String after = "";
+          List<OntologyReleaseMember> page;
+          do {
+            page = storage.releases().listMembers(release.getId(), "CONCEPT", after, 500);
+            captured.addAll(page);
+            after = page.isEmpty() ? after : page.getLast().getMemberId().toString();
+          } while (page.size() == 500);
+          assertEquals(1_201, captured.size());
+          assertEquals(release.getContentDigest(), OntologyReleaseManifest.digest(captured));
+          assertEquals(0.2, captured.getFirst().getSourceVersion());
         });
   }
 

@@ -100,7 +100,7 @@ final class OntologyTestDatabase {
           .filter(
               statement ->
                   statement.matches(
-                      "(?s).*CREATE TABLE IF NOT EXISTS (entity_relationship|entity_extension|openmetadata_settings|tag_usage|tag|glossary_entity|glossary_term_entity|change_event) \\(.*"))
+                      "(?s).*CREATE TABLE IF NOT EXISTS (entity_relationship|entity_extension|openmetadata_settings|tag_usage|tag|glossary_entity|glossary_term_entity|change_event|user_entity) \\(.*"))
           .forEach(handle::execute);
     }
     for (String version : List.of("1.6.0", "2.0.0", "2.1.0")) {
@@ -121,6 +121,7 @@ final class OntologyTestDatabase {
     migrateTableColumns(handle, dialect, "1.1.0", "tag_usage", "tagFQNHash");
     migrateTableColumns(handle, dialect, "1.1.0", "tag", "fqnHash");
     migrateTableColumns(handle, dialect, "1.1.0", "glossary_term_entity", "fqnHash");
+    migrateTableColumns(handle, dialect, "1.1.0", "user_entity", "nameHash");
     migrateTableColumns(handle, dialect, "1.10.0", "tag_usage", "reason");
     migrateTableColumns(handle, dialect, "1.11.0", "tag_usage", "targetfqnhash_lower");
     migrateTableColumns(handle, dialect, "1.11.5", "tag_usage", "appliedAt");
@@ -166,8 +167,10 @@ final class OntologyTestDatabase {
             .resolve("bootstrap/sql/migrations/native/2.1.0")
             .resolve(dialect == ConnectionType.MYSQL ? "mysql" : "postgres")
             .resolve("schemaChanges.sql");
+    // Only ontology statements: the rest of the file needs tables this database lacks.
     MigrationFile.parseSQLFile(migration.toFile(), dialect).stream()
         .dropWhile(statement -> !statement.contains("CREATE TABLE IF NOT EXISTS ontology_entity ("))
+        .filter(statement -> statement.toLowerCase(Locale.ROOT).contains("ontology"))
         .forEach(handle::execute);
   }
 

@@ -73,8 +73,10 @@ const TrackedAssetList: React.FC<TrackedAssetListProps> = ({
                   size="text-sm">
                   {asset.name}
                 </Typography>
+                {/* `ml-auto`: Typography's ellipsis wrapper does not take the
+                  name's `flex-1`, so the badge would otherwise hug the name. */}
                 <Badge
-                  className="tw:shrink-0"
+                  className="tw:ml-auto tw:shrink-0"
                   color={asset.hasChanged ? 'warning' : 'gray'}
                   size="sm"
                   type="pill-color">

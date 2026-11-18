@@ -1,7 +1,7 @@
 # Settings-modal panels sit on the muted step, and a muted container never nests another
 
-- **Status:** Accepted
-- **Revisions:** v1 2026-10-27 (initial)
+- **Status:** Accepted; incident-table scope superseded by ADR:2026-10-28-incident-tables-and-filters-use-the-muted-step
+- **Revisions:** v1 2026-10-27 (initial) · v2 2026-10-28 (incident-table exception)
 - **Deciders:** Rohit Jain
 - **Guard:** reviewer; `table.test.tsx` and `field-doc-popover.test.tsx` pin the muted variants
 - **Related:** open-metadata/openmetadata-collate#7851, ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only
@@ -57,3 +57,9 @@ A new settings-modal panel picks a variant instead of inventing a background. In
 surfaces stay white; only the frame shifts from the 8%-black `subtle` to the gray-200 `secondary`
 border. Revisit if the modal panel stops being the surface colour in dark mode, at which point
 the default step would no longer blend in.
+
+## Amendment — 2026-10-28
+
+ADR:2026-10-28-incident-tables-and-filters-use-the-muted-step adds a scoped exception to the
+modal-only restriction: incident tables and their shared filter band use the muted step on
+pages as well as in the incident drawer. The settings-modal and nesting rules above still apply.

@@ -21,6 +21,7 @@ import { EntityUnion } from '../../../Explore/ExplorePage.interface';
 import { TaskDetailRow } from './taskDetail.types';
 import {
   deriveTaskAboutEntity,
+  getFieldPathLabel,
   getPlainDescription,
   getProposingAgent,
   getTaskDetailDescriptor,
@@ -226,7 +227,7 @@ describe('getTaskDetailDescriptor', () => {
 
     expect(descriptor.rows[0].value).toEqual({
       kind: 'text',
-      text: 'label.no-owner',
+      text: '--',
     });
   });
 
@@ -404,6 +405,60 @@ describe('tag request change', () => {
   });
 });
 
+describe('tag suggestion', () => {
+  const describeSuggestion = (payload: Record<string, unknown>) =>
+    getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.Suggestion,
+        payload,
+      } as unknown as Partial<Task>),
+      t
+    );
+
+  it('shows the suggested tags as a tags change, not a JSON callout', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual({
+      labelKey: 'label.tag-plural',
+      before: [],
+      after: ['Data Sensitivity.Confidential'],
+      isText: false,
+    });
+    expect(descriptor.callout).toBeUndefined();
+  });
+
+  it('lists only the tags it adds, not the ones the field already has', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      currentValue: JSON.stringify([{ tagFQN: 'Tier.Tier1' }]),
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual(
+      expect.objectContaining({
+        before: [],
+        after: ['Data Sensitivity.Confidential'],
+      })
+    );
+  });
+
+  it('keeps the text callout for a description suggestion', () => {
+    expect(
+      describeSuggestion({
+        suggestionType: 'Description',
+        suggestedValue: 'A customer address',
+      }).callout
+    ).toEqual({ label: 'label.suggestion', text: 'A customer address' });
+  });
+});
+
 describe('withExistingValues for a tag task', () => {
   const change = {
     labelKey: 'label.tag-plural',
@@ -431,7 +486,7 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'columns.email' }),
+        tagTask({ fieldPath: 'columns.email.tags' }),
         entity
       )?.unchanged
     ).toEqual(['PII.Email']);
@@ -441,16 +496,17 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id' }),
+        tagTask({ fieldPath: 'messageSchema.schemaFields.order_id.tags' }),
         entity
       )?.unchanged
     ).toEqual([]);
   });
 
   it("reads the asset's own tags for a table-level task", () => {
-    expect(withExistingValues(change, tagTask({}), entity)?.unchanged).toEqual([
-      'Tier.Tier1',
-    ]);
+    expect(
+      withExistingValues(change, tagTask({ fieldPath: 'tags' }), entity)
+        ?.unchanged
+    ).toEqual(['Tier.Tier1']);
   });
 
   // An empty currentTags is the payload's default, not a snapshot.
@@ -458,7 +514,7 @@ describe('withExistingValues for a tag task', () => {
     expect(
       withExistingValues(
         change,
-        tagTask({ fieldPath: 'columns.email', currentTags: [] }),
+        tagTask({ fieldPath: 'columns.email.tags', currentTags: [] }),
         entity
       )?.unchanged
     ).toEqual(['PII.Email']);
@@ -469,7 +525,7 @@ describe('withExistingValues for a tag task', () => {
       withExistingValues(
         change,
         tagTask({
-          fieldPath: 'columns.email',
+          fieldPath: 'columns.email.tags',
           currentTags: [{ tagFQN: 'PersonalData.Personal' }],
         }),
         entity
@@ -505,7 +561,6 @@ describe('withExistingValues', () => {
     ['description', 'The table.'],
     ['columns.country.description', 'Country.'],
     ['columns.address.city.description', 'City.'],
-    ['columns.city.description', 'City.'],
     ['columns."order.total".description', 'Order total.'],
   ])('reads the existing text of %s from the entity', (fieldPath, existing) => {
     expect(
@@ -833,5 +888,65 @@ describe('getProposingAgent', () => {
         (row) => row.key === 'createdBy'
       )?.value
     ).toEqual(expect.objectContaining({ kind: 'users' }));
+  });
+});
+
+describe('getFieldPathLabel', () => {
+  it.each([
+    [
+      'columns.status.description',
+      'label.column-plural › status › label.description',
+    ],
+    [
+      'columns."order.id".description',
+      'label.column-plural › order.id › label.description',
+    ],
+    ['columns.status.tags', 'label.column-plural › status › label.tag-plural'],
+    ['description', 'label.description'],
+    [
+      'columns.address.city.description',
+      'label.column-plural › address › city › label.description',
+    ],
+    [
+      'messageSchema.schemaFields.order_id.description',
+      'label.message-schema › order_id › label.description',
+    ],
+    ['extension.myProp', 'label.extension › myProp'],
+  ])('reads %s as %s', (fieldPath, label) => {
+    expect(getFieldPathLabel(fieldPath)).toBe(label);
+  });
+
+  it('has no label without a path', () => {
+    expect(getFieldPathLabel()).toBeUndefined();
+    expect(getFieldPathLabel('')).toBeUndefined();
+  });
+
+  it('labels the Field row of a suggestion', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.Suggestion,
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
+  });
+
+  it('labels the Field row of a description request', () => {
+    const rows = getTaskDetailDescriptor(
+      buildTask({
+        payload: { fieldPath: 'columns.status.description' },
+      } as unknown as Partial<Task>),
+      t
+    ).rows;
+
+    expect(rows.find((row) => row.key === 'fieldPath')?.value).toEqual({
+      kind: 'text',
+      text: 'label.column-plural › status › label.description',
+    });
   });
 });

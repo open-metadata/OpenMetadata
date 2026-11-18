@@ -428,23 +428,37 @@ public interface SearchClient
           + renameNestedTagsScript("Classification")
           + TAG_RESEPARATION_SCRIPT;
 
+  // The selecting query is a prefix match, so it also picks up a sibling whose FQN merely starts
+  // with the same text (moving "Plan" would otherwise rewrite "Planning"). Rewrite only an FQN that
+  // equals the old parent or sits under it at a real "." boundary, so those siblings are a no-op.
+  // The outer variable is docFQN, not currentFQN: the tag fragment appended below declares its own
+  // currentFQN, and Painless rejects a redeclaration — reusing the name fails the whole script.
   String UPDATE_FQN_PREFIX_SCRIPT =
       """
-                  String updatedFQN = ctx._source.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
+                  String docFQN = ctx._source.fullyQualifiedName;
+                  if (docFQN != null &&
+                      (docFQN.equals(params.oldParentFQN) || docFQN.startsWith(params.oldParentFQN + '.'))) {
+                  String updatedFQN = params.newParentFQN + docFQN.substring(params.oldParentFQN.length());
                   ctx._source.fullyQualifiedName = updatedFQN;
                   ctx._source.fqnDepth = updatedFQN.splitOnToken('.').length;
                   if (ctx._source.containsKey('parent')) {
                     if (ctx._source.parent.containsKey('fullyQualifiedName')) {
                       String parentFQN = ctx._source.parent.fullyQualifiedName;
-                      ctx._source.parent.fullyQualifiedName = parentFQN.replace(params.oldParentFQN, params.newParentFQN);
+                      if (parentFQN != null &&
+                          (parentFQN.equals(params.oldParentFQN) || parentFQN.startsWith(params.oldParentFQN + '.'))) {
+                        ctx._source.parent.fullyQualifiedName = params.newParentFQN + parentFQN.substring(params.oldParentFQN.length());
+                      }
                     }
                   }
+                  }
                   if (ctx._source.containsKey('classification')) {
-                    if (ctx._source.classification.containsKey('fullyQualifiedName')) {
-                      ctx._source.classification.fullyQualifiedName = ctx._source.classification.fullyQualifiedName.replace(params.oldParentFQN, params.newParentFQN);
-                    }
-                    if (ctx._source.classification.containsKey('name')) {
-                      ctx._source.classification.name = params.newParentFQN;
+                    String classificationFQN = ctx._source.classification.fullyQualifiedName;
+                    if (classificationFQN != null &&
+                        (classificationFQN.equals(params.oldParentFQN) || classificationFQN.startsWith(params.oldParentFQN + '.'))) {
+                      ctx._source.classification.fullyQualifiedName = params.newParentFQN + classificationFQN.substring(params.oldParentFQN.length());
+                      if (ctx._source.classification.containsKey('name')) {
+                        ctx._source.classification.name = params.newParentFQN;
+                      }
                     }
                   }
                   if (ctx._source.containsKey('tags')) {
@@ -932,7 +946,21 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification", "metricGroup");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL =
+      Set.of(
+          "tier",
+          "certification",
+          "metricGroup",
+          "primaryEntity",
+          "sourceEntity",
+          "sourceFile",
+          "embedding",
+          "textToEmbed",
+          "textToLLMContext",
+          "fingerprint",
+          "parentId",
+          "chunkIndex",
+          "chunkCount");
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 
@@ -953,8 +981,8 @@ public interface SearchClient
    * Executes a low-level request against the search engine and returns the raw response (the body
    * may be JSON or, for {@code _cat/*}, plain text). Backs the typed {@code /v1/test-support/search}
    * endpoints so integration tests can inspect index internals (counts, aliases, {@code
-   * _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Not part of
-   * the normal query path.
+   * _cat/indices}) against a remote cluster without a direct {@code :9200} connection. Also used
+   * for engine-side validation of persona rule filters before persistence.
    */
   default RawSearchResponse rawSearchRequest(String method, String endpoint, String jsonBody)
       throws IOException {

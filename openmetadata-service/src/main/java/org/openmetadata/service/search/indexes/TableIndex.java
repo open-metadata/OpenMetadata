@@ -88,6 +88,7 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex, AI
       SearchIndexUtils.transformColumnExtensions(doc, Entity.TABLE_COLUMN);
     }
 
+    doc.put(ColumnSearchIndex.POLICY_TAGS_FIELD, SearchIndexUtils.policyTagFqns(table));
     doc.put("locationPath", table.getLocationPath());
     doc.put("aliases", table.getAliases());
     doc.put("schemaDefinition", table.getSchemaDefinition());

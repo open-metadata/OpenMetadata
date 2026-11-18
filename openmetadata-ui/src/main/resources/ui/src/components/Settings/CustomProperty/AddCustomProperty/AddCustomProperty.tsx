@@ -19,13 +19,13 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Column } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 import { GlobalSettingsMenuCategory } from '../../../../constants/GlobalSettings.constants';
 import {
   CUSTOM_PROPERTY_CATEGORY,
@@ -56,6 +56,8 @@ interface AddCustomPropertyProps {
   onSubmit?: (data: CustomProperty) => void;
   loading?: boolean;
   entityType?: EntityType;
+  /** The entity type already loaded by the caller; skips fetching it again. */
+  typeDetail?: Type;
   open?: boolean;
   onClose?: () => void;
 }
@@ -72,6 +74,7 @@ const AddCustomProperty = ({
   onSubmit,
   loading,
   entityType: entityTypeProp,
+  typeDetail: typeDetailProp,
   open,
   onClose,
   onCancel,
@@ -87,7 +90,12 @@ const AddCustomProperty = ({
   const entityType = entityTypeProp ?? entityTypeParam;
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [typeDetail, setTypeDetail] = useState<Type>();
+  const [fetchedTypeDetail, setTypeDetail] = useState<Type>();
+  const typeDetail = typeDetailProp ?? fetchedTypeDetail;
+  const existingNames = useMemo(
+    () => typeDetail?.customProperties?.map(({ name }) => name),
+    [typeDetail]
+  );
   const [propertyTypes, setPropertyTypes] = useState<Type[]>([]);
   const [activeField, setActiveField] = useState<string>('');
   const [isCreating, setIsCreating] = useState<boolean>(false);
@@ -173,10 +181,10 @@ const AddCustomProperty = ({
   const submit = form.handleSubmit(handleFormSubmit);
 
   useEffect(() => {
-    if (entityType) {
+    if (entityType && !typeDetailProp) {
       fetchTypeDetail(entityType);
     }
-  }, [entityType]);
+  }, [entityType, typeDetailProp]);
 
   useEffect(() => {
     fetchPropertyType();
@@ -200,6 +208,7 @@ const AddCustomProperty = ({
         onSubmit={submit}>
         <CustomPropertyFormFields
           descriptionKey={descriptionKey}
+          existingNames={existingNames}
           form={form}
           propertyTypes={propertyTypes}
           typeAddon={
@@ -214,7 +223,7 @@ const AddCustomProperty = ({
                   data-testid="applies-to"
                   size="md"
                   type="pill-color">
-                  <ColumnIcon height={14} width={14} />
+                  <Column size={14} />
                   {t('label.table-column')}
                 </Badge>
               </Box>

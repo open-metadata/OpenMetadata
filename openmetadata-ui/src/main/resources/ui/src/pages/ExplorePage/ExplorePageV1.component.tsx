@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { get, isEmpty, isNil, isString } from 'lodash';
 import Qs from 'qs';
@@ -23,7 +23,8 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { Link, useNavigate } from 'react-router-dom';
 import { withAdvanceSearch } from '../../components/AppRouter/withAdvanceSearch';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
 import { useAdvanceSearch } from '../../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
@@ -35,15 +36,15 @@ import {
 } from '../../components/Explore/ExplorePage.interface';
 import ExploreV1 from '../../components/ExploreV1/ExploreV1.component';
 import {
+  LIST_PAGE_SIZE_OPTIONS,
   PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
   ROUTES,
 } from '../../constants/constants';
 import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { Table } from '../../generated/entity/data/table';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useCurrentUserPreferences } from '../../hooks/currentUserStore/useCurrentUserStore';
 import { usePaging } from '../../hooks/paging/usePaging';
@@ -64,19 +65,15 @@ import {
 import { fetchEntityData, generateTabItems } from '../../utils/ExploreUtils';
 import { getExplorePath, getExploreTabPath } from '../../utils/RouterUtils';
 import searchClassBase from '../../utils/SearchClassBase';
+import { findShardedFamilies } from '../../utils/TableShardingUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from './ExplorePage.interface';
 
-const EXPLORE_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
-
 const ExplorePageV1: FC<unknown> = () => {
+  const { t } = useTranslation();
   const tabsInfo = searchClassBase.getTabsInfo();
   const EntityTypeSearchIndexMapping =
     searchClassBase.getEntityTypeSearchIndexMapping();
@@ -88,14 +85,14 @@ const ExplorePageV1: FC<unknown> = () => {
   const {
     preferences: { globalPageSize },
   } = useCurrentUserPreferences();
-  const defaultPageSize = EXPLORE_PAGE_SIZE_OPTIONS.includes(globalPageSize)
+  const defaultPageSize = LIST_PAGE_SIZE_OPTIONS.includes(globalPageSize)
     ? globalPageSize
     : PAGE_SIZE_BASE;
   // Handed to usePaging rather than corrected afterwards: correcting wrote the size back to the
   // shared URL, and this page stays mounted in app mode (KeepAliveRoutes), so it overwrote the
   // selection of whichever page the user was actually on.
   const { currentPage, handlePageChange, handlePageSizeChange, pageSize } =
-    usePaging(defaultPageSize, EXPLORE_PAGE_SIZE_OPTIONS);
+    usePaging(defaultPageSize, LIST_PAGE_SIZE_OPTIONS);
 
   const { tab } = useRequiredParams<UrlParams>();
 
@@ -287,13 +284,12 @@ const ExplorePageV1: FC<unknown> = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (!searchQueryParam) {
-      return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
-    }
-
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
+    if (!searchQueryParam) {
+      return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
+    }
     if (searchHitCounts && isNil(tabInfo)) {
       const activeKey = findActiveSearchIndex(
         searchHitCounts,
@@ -645,6 +641,43 @@ const ExplorePageV1: FC<unknown> = () => {
     performFetch();
   }, [fetchDependencies]);
 
+  const [shardedFamilies, setShardedFamilies] = useState<Table[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setShardedFamilies([]);
+    const combined = getCombinedQueryFilterObject(
+      advancedSearchQuickFilters,
+      browseQueryFilter
+    );
+    findShardedFamilies(
+      searchQueryParam ?? '',
+      queryFilter,
+      combined,
+      showDeleted,
+      controller.signal
+    )
+      .then((tables) => {
+        if (!controller.signal.aborted) {
+          setShardedFamilies(tables);
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) {
+          setShardedFamilies([]);
+        }
+      });
+
+    return () => {
+      controller.abort();
+    };
+  }, [
+    searchQueryParam,
+    queryFilter,
+    advancedSearchQuickFilters,
+    browseQueryFilter,
+    showDeleted,
+  ]);
+
   const handleAdvanceSearchQuickFiltersChange = useCallback(
     (filter?: QueryFilterInterface) => {
       setAdvancedSearchQuickFilters(filter);
@@ -656,6 +689,34 @@ const ExplorePageV1: FC<unknown> = () => {
   return (
     <ExploreV1
       activeTabKey={searchIndex}
+      additionalSearchResults={
+        shardedFamilies.length > 0 && (
+          <section aria-label={t('label.matching-sharded-families')}>
+            <Box className="tw:mb-4" direction="col" gap={3}>
+              <Typography size="text-sm" weight="semibold">
+                {t('label.matching-sharded-families')}
+              </Typography>
+              <Box direction="col" gap={2}>
+                {shardedFamilies.map((table) => (
+                  <Link
+                    key={table.id}
+                    to={`/table/${encodeURIComponent(
+                      table.fullyQualifiedName ?? ''
+                    )}`}>
+                    <Typography
+                      as="span"
+                      className="tw:break-all"
+                      color="brand"
+                      size="text-sm">
+                      {table.fullyQualifiedName}
+                    </Typography>
+                  </Link>
+                ))}
+              </Box>
+            </Box>
+          </section>
+        )
+      }
       aggregations={updatedAggregations}
       browseFields={browseFields}
       browseQueryFilter={browseQueryFilter}

@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyReleaseExportOptions.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyReleaseExportOptions",
+  "description": "Query options of a sealed ontology release export. Definitions come from the release. Bound asset links are the caller's current authorized operational metadata, so they are opt-in.",
+  "javaType": "org.openmetadata.schema.api.data.OntologyReleaseExportOptions",
+  "type": "object",
+  "properties": {
+    "includeInverses": {
+      "description": "Write the owl:inverseOf pairs the properties state.",
+      "type": "boolean",
+      "default": true
+    },
+    "includeBoundAssets": {
+      "description": "Write one link per binding from a concept to the asset it is bound to. Not available for CSV.",
+      "type": "boolean",
+      "default": false
+    },
+    "shaclGate": {
+      "description": "Refuse to export, with status 422 and the validation report, unless the release validates.",
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "additionalProperties": false
+}

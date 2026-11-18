@@ -11,9 +11,16 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { useState } from 'react';
 import { User } from '../../../../../../generated/entity/teams/user';
+import { deleteEntity } from '../../../../../../rest/miscAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { MembersUserDetailView, UserDetailTab } from './Members.types';
@@ -36,6 +43,24 @@ let mockCurrentUserName = 'admin';
 jest.mock('../../../../../../hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: { name: mockCurrentUserName } }),
 }));
+jest.mock('../../../../../../rest/miscAPI', () => ({
+  deleteEntity: jest.fn().mockResolvedValue({ status: 200, data: {} }),
+}));
+jest.mock('../../../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../../Auth/AuthProviders/AuthProvider', () => ({
+  useAuthProvider: () => ({ onLogoutHandler: jest.fn() }),
+}));
+jest.mock(
+  '../../../../../../context/AsyncDeleteProvider/AsyncDeleteProvider',
+  () => ({
+    useAsyncDeleteProvider: () => ({
+      handleOnAsyncEntityDeleteConfirm: jest.fn(),
+    }),
+  })
+);
 jest.mock('../../../UserAssets/useUserAssetCount', () => ({
   useUserAssetCount: (_user: unknown, kind: string) => mockCounts[kind],
 }));
@@ -55,7 +80,7 @@ interface HarnessProps {
   canDelete?: boolean;
   hiddenTabs?: ReadonlySet<UserDetailTab>;
   onTabChange?: jest.Mock;
-  onDelete?: jest.Mock;
+  afterDelete?: jest.Mock;
   onSetHeader?: jest.Mock;
 }
 
@@ -80,7 +105,7 @@ const Harness = (props: HarnessProps) => {
       canDelete: props.canDelete ?? true,
       hiddenTabs: props.hiddenTabs ?? new Set<UserDetailTab>(),
       onTabChange: props.onTabChange ?? jest.fn(),
-      onDelete: props.onDelete ?? jest.fn(),
+      afterDelete: props.afterDelete ?? jest.fn(),
       onSetHeader: props.onSetHeader ?? setHeader,
     };
   });
@@ -203,9 +228,9 @@ describe('useMembersUserDetailHeader', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers a Delete button for an active user', () => {
-    const onDelete = jest.fn();
-    renderHeader({ onDelete });
+  it('soft-deletes an active user from the Delete popover', async () => {
+    const afterDelete = jest.fn();
+    renderHeader({ afterDelete });
 
     expect(screen.queryByTestId('user-detail-kebab')).not.toBeInTheDocument();
     expect(
@@ -213,13 +238,27 @@ describe('useMembersUserDetailHeader', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('user-detail-delete-button'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-user-popover-confirm'));
+    });
 
-    expect(onDelete).toHaveBeenCalled();
+    expect(deleteEntity).toHaveBeenCalledWith('users', 'u-alice', true, false);
+    expect(afterDelete).toHaveBeenCalledWith(true, undefined);
   });
 
-  it('offers only Delete permanently for a deleted user', () => {
-    const onDelete = jest.fn();
-    renderHeader({ user: { ...ALICE, deleted: true }, onDelete });
+  it('does not delete when the Delete popover is cancelled', () => {
+    renderHeader();
+
+    fireEvent.click(screen.getByTestId('user-detail-delete-button'));
+    fireEvent.click(screen.getByTestId('delete-user-popover-cancel'));
+
+    expect(screen.queryByTestId('delete-user-popover')).not.toBeInTheDocument();
+    expect(deleteEntity).not.toHaveBeenCalled();
+  });
+
+  it('offers only a permanent delete for a deleted user', async () => {
+    const afterDelete = jest.fn();
+    renderHeader({ user: { ...ALICE, deleted: true }, afterDelete });
 
     expect(
       screen.queryByTestId('user-detail-delete-button')
@@ -231,7 +270,16 @@ describe('useMembersUserDetailHeader', () => {
 
     fireEvent.click(button);
 
-    expect(onDelete).toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('delete-user-popover-hard-delete')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('delete-user-popover-confirm'));
+    });
+
+    expect(deleteEntity).toHaveBeenCalledWith('users', 'u-alice', true, true);
+    expect(afterDelete).toHaveBeenCalledWith(false, undefined);
   });
 
   it('marks your own entry with a You badge', () => {

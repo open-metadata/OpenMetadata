@@ -28,3 +28,11 @@ describe('ContextCenterClassBase.getPageContainerClassName', () => {
     expect(contextCenterClassBase.getPageContainerClassName(true)).toBe('');
   });
 });
+
+describe('ContextCenterClassBase.getDocumentPath', () => {
+  it('previews the document in the documents list', () => {
+    expect(contextCenterClassBase.getDocumentPath('file id/1')).toBe(
+      '/context-center/documents?document=file%20id%2F1'
+    );
+  });
+});
