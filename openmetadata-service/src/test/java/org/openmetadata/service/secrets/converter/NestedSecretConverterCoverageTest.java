@@ -52,10 +52,7 @@ class NestedSecretConverterCoverageTest {
    * are never typed. The property no longer exists on main.
    */
   private static final Set<String> KNOWN_UNCONVERTIBLE =
-      Set.of(
-          "MetastoreConfig.connection",
-          "SampleDataStorageConfig.config",
-          "SapS4HanaConnection.authType");
+      Set.of("MetastoreConfig.connection", "SampleDataStorageConfig.config");
 
   private final Set<String> allowlistHits = new HashSet<>();
 
