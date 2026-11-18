@@ -141,13 +141,20 @@ class TestSuiteInterface(ABC):
             raise ValueError(f"Test definition {test_definition_id.root} must include entityType")
         entity_type: str = test_definition.entityType.value
 
+        # The builder is built outside the try so the except block can still reach its
+        # validator when parameter resolution below raises: the Aborted result it records
+        # needs `validator.execution_date` and `validator.get_test_case_result_object`.
         validator_builder = self._get_validator_builder(test_case, entity_type)
-        validator_builder.set_runtime_params(runtime_params_setters)
         validator: BaseTestValidator = validator_builder.validator
         # Timed here, around the whole call, so work a validator does before or after the base
-        # validation (runtime parameters, predicted values) is counted too.
+        # validation (runtime parameters, predicted values) is counted too. ``set_runtime_params``
+        # resolves parameters eagerly via each setter's ``get_parameters``, which can raise on
+        # user-reachable configurations (sharded tables, missing ``table2``, no key columns), so
+        # it sits inside the try so those errors are recorded as an Aborted result the UI can
+        # show instead of escaping ``run_test_case`` and leaving the test case with no result.
         start = time.perf_counter()
         try:
+            validator_builder.set_runtime_params(runtime_params_setters)
             test_result = validator.run_validation()
             test_result.duration = elapsed_ms(start)
             response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
