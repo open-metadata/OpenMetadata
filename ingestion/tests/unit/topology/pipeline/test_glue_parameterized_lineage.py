@@ -47,6 +47,7 @@ from metadata.ingestion.source.pipeline.gluepipeline.script_evaluator import (
     Resolved,
     ScriptReader,
     build_execution_slices,
+    merge_sides,
     parse_python_script,
 )
 from metadata.ingestion.source.pipeline.gluepipeline.script_parser import (
@@ -1487,8 +1488,12 @@ s3_df.write.jdbc("jdbc:postgresql://host:5432/analytics", f"audit_{mkt}")
         ):
             edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
 
-        # 2 sources (s3_container, orders_de) x 2 targets (summary_de, audit_de) = 4 correlated edges
-        assert len(edges) == 4
+        # Exact variable provenance links cat_df -> summary_de and s3_df -> audit_de without cross-frame edges
+        edge_pairs = {(model_str(e.fromEntity.id), model_str(e.toEntity.id)) for e in edges}
+        assert edge_pairs == {
+            (model_str(orders_ref.id), model_str(summary_ref.id)),
+            (model_str(s3_container.id), model_str(audit_ref.id)),
+        }
         # Cached script reused on second call
         assert glue_source._download_s3_script("s3://glue-scripts/polyglot.py") == script
 
@@ -2394,7 +2399,7 @@ for item in ["only"]:
         dim_fact_groups = parse_script_lineage_groups(dim_fact_script)
         assert len(dim_fact_groups) == 1
         assert dim_fact_groups[0].sources == Resolved(
-            (SnowflakeRef(table="DIM_COUNTRY"), SnowflakeRef(table="FACT_SALES"))
+            (SnowflakeRef(table="FACT_SALES"), SnowflakeRef(table="DIM_COUNTRY"))
         )
         assert dim_fact_groups[0].targets == Resolved((SnowflakeRef(table="CURATED_SALES"),))
 
@@ -2431,6 +2436,7 @@ for item in ["only"]:
         # 6. Nested sibling loops inside an outer market loop stay isolated per market
         nested_sibling_script = """
 for mkt in ["DE", "FR"]:
+    acc = []
     for part in ["A", "B"]:
         df = spark.read.format("snowflake").option("dbtable", f"RAW_{mkt}_{part}").load()
         acc.append(df)
@@ -2612,4 +2618,526 @@ for m in markets:
                 sources="absent",
                 targets=Resolved((S3Ref(path="s3://lake/out/"),)),
             )
+        ]
+
+
+class TestDataflowProvenanceAndReviewFixes:
+    def test_overwritten_frame_in_loop_links_only_reaching_assignment(self, glue_source: Any):
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED"}
+for name in ["RAW_DE", "RAW_FR"]:
+    df = spark.read.format("snowflake").options(**sf_options).option("dbtable", name).load()
+
+for item in ["only"]:
+    df.write.format("snowflake").options(**sf_options).option("dbtable", "OUT").save()
+"""
+        groups = parse_script_lineage_groups(script)
+        assert len(groups) == 1
+        assert groups[0].sources == Resolved((SnowflakeRef(table="RAW_FR", database="SALES_DB", schema="CURATED"),))
+        assert groups[0].targets == Resolved((SnowflakeRef(table="OUT", database="SALES_DB", schema="CURATED"),))
+
+        table_refs = {name: _make_table_ref(name) for name in ("RAW_DE", "RAW_FR", "OUT")}
+        workflow_details = {"Name": "overwrite_wf", "DefaultRunProperties": {}}
+        glue_source.job_name_list = {"overwrite_job"}
+        glue_source.glue.get_job.return_value = {
+            "Job": {"Command": {"ScriptLocation": "s3://glue-scripts/overwrite.py"}}
+        }
+        glue_source.glue.get_workflow_runs.return_value = {"Runs": []}
+        glue_source.glue.get_job_runs.return_value = {"JobRuns": []}
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(script)
+
+        with _wire_table_catalog(glue_source, table_refs):
+            edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
+
+        name_by_id = {model_str(ref.id): name for name, ref in table_refs.items()}
+        name_by_id[PIPELINE_UUID] = "PIPELINE"
+        pairs = {(name_by_id[model_str(e.fromEntity.id)], name_by_id[model_str(e.toEntity.id)]) for e in edges}
+        assert pairs == {("RAW_FR", "OUT")}
+
+    def test_sequential_and_post_loop_overwrites_vs_conditional_none_accumulation(self):
+        seq_script = """
+df = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+df = spark.read.format("snowflake").option("dbtable", "RAW_B").load()
+df.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        seq_groups = parse_script_lineage_groups(seq_script)
+        assert [(g.sources, g.targets) for g in seq_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_B"),)), Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        post_loop_script = """
+for name in ["RAW_A", "RAW_B"]:
+    df = spark.read.format("snowflake").option("dbtable", name).load()
+df.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        post_groups = parse_script_lineage_groups(post_loop_script)
+        assert [(g.sources, g.targets) for g in post_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_B"),)), Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        accum_script = """
+combined = None
+for name in ["RAW_A", "RAW_B"]:
+    df = spark.read.format("snowflake").option("dbtable", name).load()
+    combined = df if combined is None else combined.unionByName(df)
+combined.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        accum_groups = parse_script_lineage_groups(accum_script)
+        assert [(g.sources, g.targets) for g in accum_groups] == [
+            (
+                Resolved((SnowflakeRef(table="RAW_A"), SnowflakeRef(table="RAW_B"))),
+                Resolved((SnowflakeRef(table="OUT"),)),
+            )
+        ]
+
+    def test_merge_sides_and_accumulated_loops_preserve_unresolved_marker(self, glue_source: Any):
+        known_ref = SnowflakeRef(table="RAW_DE")
+        assert merge_sides([Resolved((known_ref,)), "unresolved"]) == "unresolved"
+        assert merge_sides(["unresolved", Resolved((known_ref,))]) == "unresolved"
+        assert merge_sides(["absent", Resolved((known_ref,)), "absent"]) == Resolved((known_ref,))
+
+        script = """
+sf_options = {"sfDatabase": "SALES_DB", "sfSchema": "CURATED"}
+frames = []
+for mkt in ["DE"]:
+    frames.append(spark.read.format("snowflake").options(**sf_options).option("dbtable", f"RAW_{mkt}").load())
+for mkt in ["FR"]:
+    frames.append(
+        spark.read.format("snowflake").options(**sf_options).option("dbtable", f"RAW_{unknown_fn(mkt)}").load()
+    )
+for out in ["OUT"]:
+    combined = frames[0].unionByName(frames[1])
+    combined.write.format("snowflake").options(**sf_options).option("dbtable", out).save()
+"""
+        groups = parse_script_lineage_groups(script)
+        assert len(groups) == 1
+        assert groups[0].sources == "unresolved"
+        assert groups[0].targets == Resolved((SnowflakeRef(table="OUT", database="SALES_DB", schema="CURATED"),))
+
+        table_refs = {name: _make_table_ref(name) for name in ("RAW_DE", "RAW_FR", "OUT")}
+        workflow_details = {"Name": "mixed_unknown_wf", "DefaultRunProperties": {}}
+        glue_source.job_name_list = {"mixed_unknown_job"}
+        glue_source.glue.get_job.return_value = {
+            "Job": {"Command": {"ScriptLocation": "s3://glue-scripts/mixed_unknown.py"}}
+        }
+        glue_source.glue.get_workflow_runs.return_value = {"Runs": []}
+        glue_source.glue.get_job_runs.return_value = {"JobRuns": []}
+        glue_source._s3_client.get_object.return_value = _mock_s3_body(script)
+
+        with _wire_table_catalog(glue_source, table_refs):
+            edges = [r.right.edge for r in glue_source.yield_pipeline_lineage_details(workflow_details) if r.right]
+        assert edges == []
+
+    def test_sql_columns_literals_ctes_and_overwritten_views_do_not_create_false_links(self):
+        # 1. Column & string literal named `amount` must not match temp view `amount`
+        col_vs_view_script = """
+for v in ["amount"]:
+    spark.read.format("snowflake").option("dbtable", "RAW_AMOUNT").load().createOrReplaceTempView(v)
+for v in ["other_view"]:
+    spark.read.format("snowflake").option("dbtable", "RAW_OTHER").load().createOrReplaceTempView(v)
+for out in ["OUT"]:
+    spark.sql("SELECT amount, 'amount' AS label FROM other_view WHERE amount > 0").write.format(
+        "snowflake"
+    ).option("dbtable", out).save()
+"""
+        col_groups = parse_script_lineage_groups(col_vs_view_script)
+        assert [(g.sources, g.targets) for g in col_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_OTHER"),)), Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        # 2. Querying an unregistered table/view leaves sources unresolved instead of matching column `amount`
+        unregistered_view_script = """
+for v in ["amount"]:
+    spark.read.format("snowflake").option("dbtable", "RAW_AMOUNT").load().createOrReplaceTempView(v)
+for out in ["OUT"]:
+    spark.sql("SELECT amount FROM other_view").write.format("snowflake").option("dbtable", out).save()
+"""
+        unreg_groups = parse_script_lineage_groups(unregistered_view_script)
+        assert [(g.sources, g.targets) for g in unreg_groups] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        # 3. CTE shadowing a temp view of the same name + temp view replacement across loop iterations
+        cte_and_replace_script = """
+for src in ["RAW_STALE", "RAW_REAL"]:
+    spark.read.format("snowflake").option("dbtable", src).load().createOrReplaceTempView("real_view")
+spark.read.format("snowflake").option("dbtable", "RAW_SHADOWED").load().createOrReplaceTempView("amount")
+spark.sql("WITH amount AS (SELECT id FROM real_view) SELECT * FROM amount AS a").write.format(
+    "snowflake"
+).option("dbtable", "OUT_CTE").save()
+"""
+        cte_groups = parse_script_lineage_groups(cte_and_replace_script)
+        assert [(g.sources, g.targets) for g in cte_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_REAL"),)), Resolved((SnowflakeRef(table="OUT_CTE"),)))
+        ]
+
+    def test_distinct_python_dict_keys_and_replacement_vs_accumulation(self):
+        # 1. Int key `1` vs str key `"1"` across subscript writes, subscript reads, and `.get()`
+        typed_key_script = """
+frames = {}
+fallback = spark.read.format("snowflake").option("dbtable", "RAW_FALLBACK").load()
+for k in [1]:
+    frames[k] = spark.read.format("snowflake").option("dbtable", "RAW_INT").load()
+for k in ["1"]:
+    frames[k] = spark.read.format("snowflake").option("dbtable", "RAW_STR").load()
+for k in ["1"]:
+    frames[k].write.format("snowflake").option("dbtable", "OUT_SUB").save()
+    frames.get(k).write.format("snowflake").option("dbtable", "OUT_GET").save()
+for k in [1]:
+    frames.get(k, fallback).write.format("snowflake").option("dbtable", "OUT_INT").save()
+frames.get("2", fallback).write.format("snowflake").option("dbtable", "OUT_MISS").save()
+"""
+        typed_groups = parse_script_lineage_groups(typed_key_script)
+        assert [(g.sources, g.targets) for g in typed_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_STR"),)), Resolved((SnowflakeRef(table="OUT_SUB"),))),
+            (Resolved((SnowflakeRef(table="RAW_STR"),)), Resolved((SnowflakeRef(table="OUT_GET"),))),
+            (Resolved((SnowflakeRef(table="RAW_INT"),)), Resolved((SnowflakeRef(table="OUT_INT"),))),
+            (Resolved((SnowflakeRef(table="RAW_FALLBACK"),)), Resolved((SnowflakeRef(table="OUT_MISS"),))),
+        ]
+
+        # Scalar lookup dict also preserves int `1` vs str `"1"`
+        scalar_dict_script = """
+TABLES = {1: "TBL_INT", "1": "TBL_STR"}
+ONLY_INT = {1: "TBL_INT"}
+df.write.format("snowflake").option("dbtable", TABLES["1"]).save()
+df.write.format("snowflake").option("dbtable", TABLES[1]).save()
+df.write.format("snowflake").option("dbtable", ONLY_INT.get("1", "TBL_FALLBACK")).save()
+"""
+        _, scalar_targets = parse_snowflake_refs(scalar_dict_script)
+        assert [t.table for t in scalar_targets] == ["TBL_STR", "TBL_INT", "TBL_FALLBACK"]
+
+        # 2. Dict per-key replacement vs setdefault vs list-per-key accumulation
+        replace_vs_accum_script = """
+frames = {}
+for src in ["RAW_OLD", "RAW_NEW"]:
+    frames["k"] = spark.read.format("snowflake").option("dbtable", src).load()
+frames["k"].write.format("snowflake").option("dbtable", "OUT_REPLACED").save()
+
+defaults = {}
+for src in ["RAW_FIRST", "RAW_SECOND"]:
+    defaults.setdefault("k", spark.read.format("snowflake").option("dbtable", src).load())
+defaults["k"].write.format("snowflake").option("dbtable", "OUT_SETDEFAULT").save()
+
+buckets = {}
+for src in ["RAW_P1", "RAW_P2"]:
+    buckets.setdefault("all", []).append(spark.read.format("snowflake").option("dbtable", src).load())
+union_all(buckets["all"]).write.format("snowflake").option("dbtable", "OUT_ACCUM").save()
+"""
+        rva_groups = parse_script_lineage_groups(replace_vs_accum_script)
+        assert [(g.sources, g.targets) for g in rva_groups] == [
+            (Resolved((SnowflakeRef(table="RAW_NEW"),)), Resolved((SnowflakeRef(table="OUT_REPLACED"),))),
+            (Resolved((SnowflakeRef(table="RAW_FIRST"),)), Resolved((SnowflakeRef(table="OUT_SETDEFAULT"),))),
+            (
+                Resolved((SnowflakeRef(table="RAW_P1"), SnowflakeRef(table="RAW_P2"))),
+                Resolved((SnowflakeRef(table="OUT_ACCUM"),)),
+            ),
+        ]
+
+    def test_ambiguous_branches_dynamic_loops_early_breaks_and_opaque_calls_return_unresolved(self):
+        # 1. Disagreeing if/else branch on frame assignment -> unresolved
+        branch_disagree = """
+if unknown_cond():
+    df = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+else:
+    df = spark.read.format("snowflake").option("dbtable", "RAW_B").load()
+df.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(branch_disagree)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        # 2. Agreeing transform branch preserves provenance
+        branch_agree = """
+df = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+if unknown_cond():
+    df = df.filter("amount > 0")
+df.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(branch_agree)] == [
+            (Resolved((SnowflakeRef(table="RAW_A"),)), Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        # 3. Dynamic loop reassigning frame before write -> unresolved
+        dyn_loop_rebind = """
+df = spark.read.format("snowflake").option("dbtable", "RAW_INIT").load()
+for tbl in dynamic_tables():
+    df = spark.read.format("snowflake").option("dbtable", tbl).load()
+df.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        dyn_groups = [g for g in parse_script_lineage_groups(dyn_loop_rebind) if g.targets != "unresolved"]
+        assert [(g.sources, g.targets) for g in dyn_groups] == [("unresolved", Resolved((SnowflakeRef(table="OUT"),)))]
+
+        # 4. Constant loop with conditional break reassigning frame -> unresolved
+        break_loop = """
+for name in ["RAW_A", "RAW_B"]:
+    df = spark.read.format("snowflake").option("dbtable", name).load()
+    if should_stop():
+        break
+df.write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(break_loop)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        # 5. Unknown dict key write invalidates prior dict entry -> unresolved
+        unknown_key_write = """
+frames = {"k": spark.read.format("snowflake").option("dbtable", "RAW_A").load()}
+frames[unknown_key()] = spark.read.format("snowflake").option("dbtable", "RAW_B").load()
+frames["k"].write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(unknown_key_write)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+        # 6. Opaque loader or binary join with opaque frame -> unresolved
+        opaque_join = """
+df1 = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+df1.join(load_mystery_df(), "id").write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(opaque_join)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
+    def test_helper_parameters_dict_items_loop_temp_view_lifecycle_and_container_aliases(self):
+        # 1. Helper function with parameter + `frames.items()` tuple unpacking loop
+        helper_items_script = """
+def read_market(mkt):
+    return spark.read.format("snowflake").option("dbtable", f"RAW_{mkt}").load()
+
+frames = {}
+for m in ["DE", "FR"]:
+    frames[m] = read_market(m)
+
+for m, frame in frames.items():
+    frame.write.format("snowflake").option("dbtable", f"CONTRACT_{m}").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(helper_items_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_DE"),)), Resolved((SnowflakeRef(table="CONTRACT_DE"),))),
+            (Resolved((SnowflakeRef(table="RAW_FR"),)), Resolved((SnowflakeRef(table="CONTRACT_FR"),))),
+        ]
+
+        # 2. Container alias survives unrelated `if` branch; external side-effect call invalidates dict `.get`
+        alias_and_opaque_proc_script = """
+frames = []
+alias = frames
+if unknown_cond():
+    marker = 1
+alias.append(spark.read.format("snowflake").option("dbtable", "RAW_ALIAS").load())
+union_all(frames).write.format("snowflake").option("dbtable", "OUT_ALIAS").save()
+
+by_key = {}
+fallback = spark.read.format("snowflake").option("dbtable", "RAW_FALLBACK").load()
+populate_externally(by_key)
+by_key.get("k", fallback).write.format("snowflake").option("dbtable", "OUT_OPAQUE_DICT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(alias_and_opaque_proc_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_ALIAS"),)), Resolved((SnowflakeRef(table="OUT_ALIAS"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_OPAQUE_DICT"),))),
+        ]
+
+        # 3. `spark.table` on registered temp view + global temp view + `dropTempView` invalidation
+        view_lifecycle_script = """
+spark.read.format("snowflake").option("dbtable", "RAW_LOCAL").load().createOrReplaceTempView("v_local")
+spark.read.format("snowflake").option("dbtable", "RAW_GLOBAL").load().createOrReplaceGlobalTempView("v_glob")
+spark.table("v_local").write.format("snowflake").option("dbtable", "OUT_LOCAL").save()
+spark.sql("SELECT `id` FROM global_temp.v_glob -- v_local").write.format("snowflake").option("dbtable", "OUT_GLOB").save()
+spark.catalog.dropTempView("v_local")
+spark.sql("SELECT * FROM v_local").write.format("snowflake").option("dbtable", "OUT_DROPPED").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(view_lifecycle_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_LOCAL"),)), Resolved((SnowflakeRef(table="OUT_LOCAL"),))),
+            (Resolved((SnowflakeRef(table="RAW_GLOBAL"),)), Resolved((SnowflakeRef(table="OUT_GLOB"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_DROPPED"),))),
+        ]
+
+    def test_dict_and_list_mutations_constructors_deletions_and_branch_joins(self):
+        # 1. Dict constructor, update, |=, |, pop, del, clear, tuple keys, values/keys views
+        dict_ops_script = """
+from functools import reduce
+from awsglue.transforms import Join
+
+d_init = {("DE", 1): spark.read.format("snowflake").option("dbtable", "RAW_DE_1").load()}
+d_str = {("DE", "1"): spark.read.format("snowflake").option("dbtable", "RAW_DE_STR").load()}
+merged = d_init | d_str
+merged[("DE", 1)].write.format("snowflake").option("dbtable", "OUT_TUP_INT").save()
+merged[("DE", "1")].write.format("snowflake").option("dbtable", "OUT_TUP_STR").save()
+
+copied = dict(d_init, extra=spark.read.format("snowflake").option("dbtable", "RAW_EXTRA").load())
+copied.update(other=spark.read.format("snowflake").option("dbtable", "RAW_OTHER").load())
+copied |= {"third": spark.read.format("snowflake").option("dbtable", "RAW_THIRD").load()}
+del copied["extra"]
+popped = copied.pop("other")
+popped.write.format("snowflake").option("dbtable", "OUT_POPPED").save()
+for k in copied.keys():
+    copied[k].write.format("snowflake").option("dbtable", "OUT_REMAINING").save()
+copied.clear()
+copied["fresh"] = spark.read.format("snowflake").option("dbtable", "RAW_FRESH").load()
+reduce(lambda a, b: a.unionByName(b), list_fn := [*copied.values()]).write.format("snowflake").option(
+    "dbtable", "OUT_VALUES"
+).save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(dict_ops_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_DE_1"),)), Resolved((SnowflakeRef(table="OUT_TUP_INT"),))),
+            (Resolved((SnowflakeRef(table="RAW_DE_STR"),)), Resolved((SnowflakeRef(table="OUT_TUP_STR"),))),
+            (Resolved((SnowflakeRef(table="RAW_OTHER"),)), Resolved((SnowflakeRef(table="OUT_POPPED"),))),
+            (Resolved((SnowflakeRef(table="RAW_DE_1"),)), Resolved((SnowflakeRef(table="OUT_REMAINING"),))),
+            (Resolved((SnowflakeRef(table="RAW_THIRD"),)), Resolved((SnowflakeRef(table="OUT_REMAINING"),))),
+            (Resolved((SnowflakeRef(table="RAW_FRESH"),)), Resolved((SnowflakeRef(table="OUT_VALUES"),))),
+        ]
+
+        # 2. List extend, +=, insert, pop, del, clear, Join.apply, and branch joins on dicts/lists
+        list_and_join_script = """
+from awsglue.transforms import Join
+
+frames = [spark.read.format("snowflake").option("dbtable", "RAW_STALE").load()]
+frames.clear()
+frames.extend([spark.read.format("snowflake").option("dbtable", "RAW_A").load()])
+frames += [spark.read.format("snowflake").option("dbtable", "RAW_DROP").load()]
+frames.insert(1, spark.read.format("snowflake").option("dbtable", "RAW_B").load())
+del frames[2]
+second = frames.pop(1)
+first = frames.pop()
+Join.apply(frame1=first, frame2=second, keys1=["id"], keys2=["id"]).write.format("snowflake").option(
+    "dbtable", "OUT_JOIN"
+).save()
+
+by_mkt = {"SHARED": first, "DIFF": first}
+seq = [first]
+if unknown_flag():
+    by_mkt["DIFF"] = second
+    by_mkt["ONLY_THEN"] = second
+    seq.append(second)
+by_mkt["SHARED"].write.format("snowflake").option("dbtable", "OUT_SHARED").save()
+by_mkt["DIFF"].write.format("snowflake").option("dbtable", "OUT_DIFF").save()
+by_mkt.get("ONLY_THEN", first).write.format("snowflake").option("dbtable", "OUT_ONLY_THEN").save()
+seq[0].write.format("snowflake").option("dbtable", "OUT_SEQ_MISMATCH").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(list_and_join_script)] == [
+            (
+                Resolved((SnowflakeRef(table="RAW_A"), SnowflakeRef(table="RAW_B"))),
+                Resolved((SnowflakeRef(table="OUT_JOIN"),)),
+            ),
+            (Resolved((SnowflakeRef(table="RAW_A"),)), Resolved((SnowflakeRef(table="OUT_SHARED"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_DIFF"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_ONLY_THEN"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_SEQ_MISMATCH"),))),
+        ]
+
+    def test_control_flow_conditions_try_except_finally_and_loop_step_bounds(self):
+        # 1. Static conditions (`__name__`, `in`/`not in`, `and`/`or`/`not`) + try/except/finally
+        control_script = """
+cache = {}
+if __name__ == "__main__":
+    for mkt in ["DE", "SKIP", "FR"]:
+        if mkt == "SKIP" or (not True):
+            continue
+        if mkt not in cache and mkt in ("DE", "FR"):
+            cache[mkt] = spark.read.format("snowflake").option("dbtable", f"RAW_{mkt}").load()
+
+try:
+    df_ok = cache["DE"]
+except Exception:
+    raise
+df_ok.write.format("snowflake").option("dbtable", "OUT_RERAISE").save()
+
+try:
+    df_ambig = cache["DE"]
+except RuntimeError as exc:
+    df_ambig = cache["FR"]
+finally:
+    df_final = cache["FR"]
+df_ambig.write.format("snowflake").option("dbtable", "OUT_AMBIG").save()
+df_final.write.format("snowflake").option("dbtable", "OUT_FINAL").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(control_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_DE"),)), Resolved((SnowflakeRef(table="OUT_RERAISE"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_AMBIG"),))),
+            (Resolved((SnowflakeRef(table="RAW_FR"),)), Resolved((SnowflakeRef(table="OUT_FINAL"),))),
+        ]
+
+        # 2. Nested constant loops exceeding MAX_TOTAL_LOOP_STEPS (256) bail out to unresolved
+        bounded_loop_script = """
+df = spark.read.format("snowflake").option("dbtable", "RAW_INIT").load()
+for i in range(20):
+    for j in range(20):
+        df = spark.read.format("snowflake").option("dbtable", f"RAW_{i}_{j}").load()
+df.write.format("snowflake").option("dbtable", "OUT_BOUNDED").save()
+"""
+        bounded_groups = parse_script_lineage_groups(bounded_loop_script)
+        out_bounded = [g for g in bounded_groups if g.targets == Resolved((SnowflakeRef(table="OUT_BOUNDED"),))]
+        assert len(out_bounded) == 1
+        assert out_bounded[0].sources == "unresolved"
+
+    def test_helper_defaults_recursion_guard_in_memory_frames_and_partial_s3_paths(self):
+        # 1. Helper defaults, keyword-only args, multi-return, recursive helper bailout, in-memory frames
+        helper_and_mem_script = """
+def load_table(prefix, suffix="MAIN", *, choose_alt=False):
+    primary = spark.read.format("snowflake").option("dbtable", f"{prefix}_{suffix}").load()
+    if choose_alt:
+        return spark.read.format("snowflake").option("dbtable", f"{prefix}_ALT").load()
+    return primary[["id", "amount"]]
+
+def recursive_mutator(bucket):
+    return recursive_mutator(bucket)
+
+load_table("RAW").write.format("snowflake").option("dbtable", "OUT_DEFAULT").save()
+load_table("RAW", choose_alt=True).write.format("snowflake").option("dbtable", "OUT_ALT").save()
+load_table("RAW", choose_alt=unknown_bool()).write.format("snowflake").option("dbtable", "OUT_BRANCH_RET").save()
+
+bucket = {"k": spark.read.format("snowflake").option("dbtable", "RAW_SAFE").load()}
+recursive_mutator(bucket)
+bucket.get("k").write.format("snowflake").option("dbtable", "OUT_RECURSIVE").save()
+
+spark.createDataFrame([], schema="id int").write.format("snowflake").option("dbtable", "OUT_INMEM").save()
+spark.range(5).unionByName(spark.emptyDataFrame).write.format("snowflake").option("dbtable", "OUT_RANGE").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(helper_and_mem_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_MAIN"),)), Resolved((SnowflakeRef(table="OUT_DEFAULT"),))),
+            (Resolved((SnowflakeRef(table="RAW_ALT"),)), Resolved((SnowflakeRef(table="OUT_ALT"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_BRANCH_RET"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_RECURSIVE"),))),
+            ("absent", Resolved((SnowflakeRef(table="OUT_INMEM"),))),
+            ("absent", Resolved((SnowflakeRef(table="OUT_RANGE"),))),
+        ]
+
+        # 2. Non-replace createTempView collision, DDL spark.sql invalidation, and partial-unknown S3 list
+        edge_cases_script = """
+spark.read.format("snowflake").option("dbtable", "RAW_V1").load().createTempView("dup_v")
+spark.read.format("snowflake").option("dbtable", "RAW_V2").load().createTempView("dup_v")
+spark.sql("SELECT * FROM dup_v").write.format("snowflake").option("dbtable", "OUT_DUP_VIEW").save()
+
+spark.read.format("snowflake").option("dbtable", "RAW_CLEAN").load().createOrReplaceTempView("clean_v")
+spark.sql("DROP VIEW IF EXISTS clean_v")
+spark.table("clean_v").write.format("snowflake").option("dbtable", "OUT_AFTER_DDL").save()
+
+df_partial = spark.read.parquet("s3://bucket/known", f"s3://bucket/{unknown_part()}")
+df_partial.write.parquet("s3://bucket/out_partial")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(edge_cases_script)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_DUP_VIEW"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_AFTER_DDL"),))),
+            ("unresolved", Resolved((S3Ref(path="s3://bucket/out_partial"),))),
+        ]
+
+        # 3. Dict unpacking (`{**d}`, `dict(**d)`), `spark.table("global_temp.x")`, `del x`, scalar `+=`, equal-len list join
+        unpack_and_glob_script = """
+spark.read.format("snowflake").option("dbtable", "RAW_GLOB").load().createOrReplaceGlobalTempView("vg")
+df_g = spark.table("global_temp.vg")
+base_map = {"g": df_g}
+unpacked = {**base_map}
+kw_copy = dict(**unpacked)
+suffix = "OUT"
+for part in ["_G"]:
+    suffix += part
+stale = df_g
+del stale
+pair = [df_g]
+if unknown_cond():
+    pair = [spark.read.format("snowflake").option("dbtable", "RAW_OTHER").load()]
+kw_copy["g"].write.format("snowflake").option("dbtable", suffix).save()
+pair[0].write.format("snowflake").option("dbtable", "OUT_PAIR").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(unpack_and_glob_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_GLOB"),)), Resolved((SnowflakeRef(table="OUT_G"),))),
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_PAIR"),))),
         ]

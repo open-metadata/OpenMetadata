@@ -29,6 +29,7 @@ logger = ingestion_logger()
 
 T = TypeVar("T")
 ScalarValue: TypeAlias = str | int | float | bool
+DictKey: TypeAlias = ScalarValue | None | tuple["DictKey", ...]
 
 SPARK_TERMINAL_PARAMETERS = {"path", "format", "schema", "mode", "partitionBy"}
 GLUE_IO_FLAT_METHODS = {
@@ -135,19 +136,16 @@ def side_from_refs(refs: Iterable[T], *, declared: bool) -> Side[T]:
 def merge_sides(sides: Iterable[Side[T]]) -> Side[T]:
     collected: list[T] = []
     seen: set[T] = set()
-    declared = False
     for side in sides:
         if side == "absent":
             continue
-        declared = True
-        if isinstance(side, Resolved):
-            for ref in side.refs:
-                if ref not in seen:
-                    seen.add(ref)
-                    collected.append(ref)
-    if collected:
-        return Resolved(tuple(collected))
-    return "unresolved" if declared else "absent"
+        if side == "unresolved":
+            return "unresolved"
+        for ref in side.refs:
+            if ref not in seen:
+                seen.add(ref)
+                collected.append(ref)
+    return Resolved(tuple(collected)) if collected else "absent"
 
 
 @dataclass(frozen=True)
@@ -222,7 +220,7 @@ class ParameterContext:
 
 @dataclass
 class DictValue:
-    entries: dict[str, object]
+    entries: dict[DictKey, object]
     opaque: bool = False
 
 
@@ -420,7 +418,10 @@ class ScriptBindings:
         if isinstance(target, ast.Name) and not self.is_shadowed(target):
             owner = self.owner_of(self.scope_of(target), target.id)
             self._changes.setdefault((owner, target.id), []).extend(
-                (text, UNKNOWN) if (text := literal_str(key)) else (unknown_key, None) for key in keys
+                (lit_key, UNKNOWN)
+                if (lit_key := _literal_dict_key(key)) is not _UNREADABLE_KEY
+                else (unknown_key, None)
+                for key in keys
             )
 
     def _container_of(self, node: ast.AST) -> ast.AST:
@@ -578,8 +579,33 @@ def _binding_pos(binding: _Binding) -> tuple[int, int]:
     return node_position(binding.statement)
 
 
+_UNREADABLE_KEY = object()
+
+
 def literal_str(node: ast.expr | None) -> str | None:
     return node.value if isinstance(node, ast.Constant) and isinstance(node.value, str) else None
+
+
+def _literal_dict_key(node: ast.expr | None) -> object:
+    if node is None:
+        return _UNREADABLE_KEY
+    if isinstance(node, ast.Constant):
+        if node.value is None:
+            return None
+        if isinstance(node.value, str):
+            return node.value if len(node.value) <= MAX_STRING_LENGTH else _UNREADABLE_KEY
+        if isinstance(node.value, (int, float, bool)):
+            return node.value
+        return _UNREADABLE_KEY
+    if isinstance(node, ast.Tuple) and len(node.elts) <= MAX_CANDIDATES * 4:
+        parts: list[DictKey] = []
+        for elt in node.elts:
+            part = _literal_dict_key(elt)
+            if part is _UNREADABLE_KEY:
+                return _UNREADABLE_KEY
+            parts.append(part)  # type: ignore[arg-type]
+        return tuple(parts)
+    return _UNREADABLE_KEY
 
 
 def literal_key_value_pairs(tree: ast.Module) -> Iterator[tuple[str | None, str | None]]:
@@ -651,12 +677,12 @@ def _apply_dict_changes(base: DictValue, changes: list[tuple[object, object]]) -
     entries = dict(base.entries)
     opaque = base.opaque
     for key, val in changes:
-        if key is OPAQUE:
+        if key is OPAQUE or key is _SEQUENCE_MUTATION:
             entries.clear()
             opaque = True
-        elif isinstance(key, str):
-            entries.pop(key, None)
-            entries[key] = val
+        else:
+            entries.pop(key, None)  # type: ignore[arg-type]
+            entries[key] = val  # type: ignore[index]
     return DictValue(entries=entries, opaque=opaque)
 
 
@@ -685,14 +711,14 @@ def _values_equal(left: object, right: object) -> bool:
 def _merge_dict_values(candidates: list[DictValue]) -> DictValue:
     if len(candidates) == 1:
         return DictValue(entries=dict(candidates[0].entries), opaque=candidates[0].opaque)
-    keys: list[str] = []
-    seen_keys: set[str] = set()
+    keys: list[DictKey] = []
+    seen_keys: set[DictKey] = set()
     for cand in candidates:
         for key in cand.entries:
             if key not in seen_keys:
                 seen_keys.add(key)
                 keys.append(key)
-    merged: dict[str, object] = {}
+    merged: dict[DictKey, object] = {}
     for key in keys:
         first = candidates[0].entries.get(key, UNKNOWN if candidates[0].opaque else ABSENT)
         agreed = first not in (UNKNOWN, ABSENT) and all(
@@ -739,15 +765,31 @@ class ScriptReader:
         context: ParameterContext | None = None,
         bindings: ScriptBindings | None = None,
         loop_overrides: Mapping[ast.For, ScalarValue] | None = None,
+        scope_overrides: Mapping[tuple[ast.AST, str], object] | None = None,
     ):
         self._tree = tree
         self._context = context
         self._shared_bindings = bindings
         self._loop_overrides: Mapping[ast.For, ScalarValue] = loop_overrides or {}
+        self._scope_overrides: Mapping[tuple[ast.AST, str], object] = scope_overrides or {}
         self._values: LRUCache[ast.Name, object] = LRUCache(maxsize=MEMO_SIZE)
         self._settings: LRUCache[ast.Name, list[tuple[object, object]]] = LRUCache(maxsize=MEMO_SIZE)
         self._resolving: set[ast.Name] = set()
         self._depth = 0
+
+    def with_overrides(
+        self,
+        *,
+        loop_overrides: Mapping[ast.For, ScalarValue] | None = None,
+        scope_overrides: Mapping[tuple[ast.AST, str], object] | None = None,
+    ) -> "ScriptReader":
+        return ScriptReader(
+            self._tree,
+            context=self._context,
+            bindings=self.bindings,
+            loop_overrides=self._loop_overrides if loop_overrides is None else loop_overrides,
+            scope_overrides=self._scope_overrides if scope_overrides is None else scope_overrides,
+        )
 
     @cached_property
     def _sys_argv_changed(self) -> bool:
@@ -761,6 +803,50 @@ class ScriptReader:
 
     def string(self, node: ast.expr | None) -> str | UnknownValue:
         return self.scalar_to_str(self._eval(node))
+
+    def int_value(self, node: ast.expr | None) -> int | None:
+        val = self._eval(node)
+        return val if isinstance(val, int) and not isinstance(val, bool) else None
+
+    def dict_key(self, node: ast.expr | None) -> DictKey | UnknownValue:
+        if node is None:
+            return UNKNOWN
+        if isinstance(node, ast.Constant) and node.value is None:
+            return None
+        return self._value_to_dict_key(self._eval(node))
+
+    @classmethod
+    def _value_to_dict_key(cls, val: object) -> DictKey | UnknownValue:
+        if val is None:
+            return None
+        if isinstance(val, str):
+            return val if len(val) <= MAX_STRING_LENGTH else UNKNOWN
+        if isinstance(val, (int, float, bool)):
+            return val
+        if isinstance(val, _TupleValue):
+            parts: list[DictKey] = []
+            for item in val.items:
+                converted = cls._value_to_dict_key(item)
+                if isinstance(converted, UnknownValue):
+                    return UNKNOWN
+                parts.append(converted)
+            return tuple(parts)
+        return UNKNOWN
+
+    def eval_for_override(self, node: ast.expr | None) -> object:
+        return self._eval(node)
+
+    def has_unresolved_string_item(self, node: ast.expr | None) -> bool:
+        if node is None:
+            return False
+        val = self._eval(node)
+        if isinstance(val, UnknownValue):
+            return True
+        if isinstance(val, str):
+            return False
+        if isinstance(val, (_TupleValue, _ListValue)):
+            return any(not isinstance(self.scalar_to_str(item), str) for item in val.items)
+        return True
 
     def string_list(self, node: ast.expr | None) -> list[str]:
         val = self._eval(node)
@@ -805,7 +891,7 @@ class ScriptReader:
         if isinstance(val, (_TupleValue, _ListValue)):
             return self._validated_scalars(val.items)
         if isinstance(val, DictValue) and not val.opaque and 1 <= len(val.entries) <= MAX_LOOP_UNROLLS:
-            return list(val.entries.keys())
+            return self._validated_scalars(val.entries.keys())
         return None
 
     def _sequence_from_range(self, call: ast.Call) -> list[ScalarValue] | None:
@@ -834,7 +920,7 @@ class ScriptReader:
             d = self._eval(func.value)
             if isinstance(d, DictValue) and not d.opaque and 1 <= len(d.entries) <= MAX_LOOP_UNROLLS:
                 if attr == "keys":
-                    return list(d.entries.keys())
+                    return self._validated_scalars(d.entries.keys())
                 return self._validated_scalars(d.entries.values())
         return None
 
@@ -863,6 +949,12 @@ class ScriptReader:
             return val
         return DictValue(entries={}, opaque=True)
 
+    def _dict_value_settings(self, d: DictValue) -> list[tuple[object, object]]:
+        items: list[tuple[object, object]] = [(OPAQUE, None)] if d.opaque else []
+        for key, value in d.entries.items():
+            items.append((key.lower(), self.scalar_to_str(value)) if isinstance(key, str) else (OPAQUE, None))
+        return items
+
     def settings(self, node: ast.expr | None) -> list[tuple[object, object]]:
         """Ordered case-insensitive (key, value) settings of a dict expression; [(OPAQUE, None)] when unlisted."""
         if isinstance(node, ast.Name):
@@ -871,17 +963,21 @@ class ScriptReader:
             return self._dict_literal_settings(node)
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "dict":
             return self._dict_call_settings(node)
-        d = self.dict_value(node)
-        items: list[tuple[object, object]] = [(OPAQUE, None)] if d.opaque else []
-        for key, value in d.entries.items():
-            items.append((key.lower(), self.scalar_to_str(value)))
-        return items
+        return self._dict_value_settings(self.dict_value(node))
 
     def _name_settings(self, node: ast.Name) -> list[tuple[object, object]]:
         if node in self._settings:
             return self._settings[node]
         if node in self._resolving:
             return [(OPAQUE, None)]
+        if self._scope_overrides and not self.bindings.is_shadowed(node):
+            scope = self.bindings.scope_of(node)
+            owner = self.bindings.owner_of(scope, node.id)
+            if (owner, node.id) in self._scope_overrides:
+                override_val = self._scope_overrides[(owner, node.id)]
+                return (
+                    self._dict_value_settings(override_val) if isinstance(override_val, DictValue) else [(OPAQUE, None)]
+                )
         loop_stmt = self.bindings.reaching_loop_statement(node)
         if loop_stmt is not None and loop_stmt in self._loop_overrides:
             return [(OPAQUE, None)]
@@ -989,9 +1085,16 @@ class ScriptReader:
             return self._values[node]
         if node in self._resolving:
             return UNKNOWN
+        if self._scope_overrides and not self.bindings.is_shadowed(node):
+            scope = self.bindings.scope_of(node)
+            owner = self.bindings.owner_of(scope, node.id)
+            if (owner, node.id) in self._scope_overrides:
+                val: object = self._scope_overrides[(owner, node.id)]
+                self._values[node] = val
+                return val
         loop_stmt = self.bindings.reaching_loop_statement(node)
         if loop_stmt is not None and loop_stmt in self._loop_overrides:
-            val: object = self._loop_overrides[loop_stmt]
+            val = self._loop_overrides[loop_stmt]
             self._values[node] = val
             return val
         self._resolving.add(node)
@@ -1144,7 +1247,7 @@ class ScriptReader:
         return formatted if len(formatted) <= MAX_STRING_LENGTH else UNKNOWN
 
     def _eval_dict_literal(self, node: ast.Dict) -> DictValue:
-        entries: dict[str, object] = {}
+        entries: dict[DictKey, object] = {}
         opaque = False
         for key, value in zip(node.keys, node.values, strict=True):
             if key is None:
@@ -1156,17 +1259,17 @@ class ScriptReader:
                     entries.pop(k, None)
                     entries[k] = v
             else:
-                key_text = self.string(key)
-                if isinstance(key_text, str):
-                    entries.pop(key_text, None)
-                    entries[key_text] = self._eval(value)
+                key_val = self.dict_key(key)
+                if not isinstance(key_val, UnknownValue):
+                    entries.pop(key_val, None)
+                    entries[key_val] = self._eval(value)
                 else:
                     entries.clear()
                     opaque = True
         return DictValue(entries=entries, opaque=opaque)
 
     def _eval_dict_call(self, node: ast.Call) -> DictValue:
-        entries: dict[str, object] = {}
+        entries: dict[DictKey, object] = {}
         opaque = False
         for arg in node.args:
             sub = self.dict_value(arg)
@@ -1179,9 +1282,10 @@ class ScriptReader:
         for keyword in node.keywords:
             if keyword.arg is None:
                 sub = self.dict_value(keyword.value)
-                if sub.opaque:
+                if sub.opaque or any(not isinstance(k, str) for k in sub.entries):
                     entries.clear()
                     opaque = True
+                    continue
                 for k, v in sub.entries.items():
                     entries.pop(k, None)
                     entries[k] = v
@@ -1195,8 +1299,8 @@ class ScriptReader:
             return UNKNOWN
         container = self._eval(node.value)
         if isinstance(container, DictValue):
-            key = self.string(node.slice)
-            if not isinstance(key, str):
+            key = self.dict_key(node.slice)
+            if isinstance(key, UnknownValue):
                 return UNKNOWN
             return container.entries.get(key, UNKNOWN)
         if isinstance(container, (_TupleValue, _ListValue)):
@@ -1226,8 +1330,8 @@ class ScriptReader:
             if attr == "get" and not node.keywords and 1 <= len(node.args) <= 2:
                 recv = self._eval(node.func.value)
                 if isinstance(recv, DictValue):
-                    key = self.string(node.args[0])
-                    if not isinstance(key, str):
+                    key = self.dict_key(node.args[0])
+                    if isinstance(key, UnknownValue):
                         return UNKNOWN
                     if key in recv.entries:
                         return recv.entries[key]
@@ -1255,7 +1359,7 @@ class ScriptReader:
             and "--WORKFLOW_RUN_ID" not in argv
         ):
             argv["--WORKFLOW_RUN_ID"] = _CURRENT_WORKFLOW_RUN
-        entries: dict[str, object] = {
+        entries: dict[DictKey, object] = {
             option.replace("-", "_"): argv.get(f"--{option}", UNKNOWN)
             for option in (*requested, *RESOLVED_OPTIONS_BUILTINS)
         }
@@ -1282,9 +1386,9 @@ class ScriptReader:
         for keyword in node.keywords:
             if keyword.arg is None:
                 sub = self.dict_value(keyword.value)
-                if sub.opaque:
+                if sub.opaque or any(not isinstance(k, str) for k in sub.entries):
                     return UNKNOWN
-                kwargs.update(sub.entries)
+                kwargs.update({k: v for k, v in sub.entries.items() if isinstance(k, str)})
             else:
                 kwargs[keyword.arg] = self._eval(keyword.value)
         if set(kwargs) != {"Name", "RunId"}:
@@ -1301,7 +1405,8 @@ class ScriptReader:
                 return UNKNOWN
         else:
             return UNKNOWN
-        run_props = DictValue(entries=dict(self._context.run_props), opaque=self._context.run_props_opaque)
+        run_props_entries: dict[DictKey, object] = dict(self._context.run_props)
+        run_props = DictValue(entries=run_props_entries, opaque=self._context.run_props_opaque)
         return DictValue(entries={"RunProperties": run_props}, opaque=False)
 
     def _collect_format_args(self, call: ast.Call) -> tuple[list[object], dict[str, object]] | None:
@@ -1319,9 +1424,10 @@ class ScriptReader:
         for keyword in call.keywords:
             if keyword.arg is None:
                 sub = self.dict_value(keyword.value)
-                if sub.opaque:
+                if sub.opaque or any(not isinstance(k, str) for k in sub.entries):
                     kw_args.clear()
-                kw_args.update(sub.entries)
+                    continue
+                kw_args.update({k: v for k, v in sub.entries.items() if isinstance(k, str)})
             else:
                 kw_args[keyword.arg] = self._eval(keyword.value)
         return pos_args, kw_args

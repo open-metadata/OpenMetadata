@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-13 (initial)
 - **Deciders:** GluePipeline connector maintainers (#37597)
-- **Guard:** `test_glue_parameterized_lineage.py` (`TestIssue37597WorkflowRunProperties`, `TestCrossRunCorrelationAndOneSidedEdges`, `TestSafetyAndBoundedResources`, `TestResolvedOptionsHonorRequestedOptions`, `TestNonOverridableArgumentsPrecedence`, `TestReviewerRegressions`)
+- **Guard:** `test_glue_parameterized_lineage.py` (`TestIssue37597WorkflowRunProperties`, `TestCrossRunCorrelationAndOneSidedEdges`, `TestSafetyAndBoundedResources`, `TestResolvedOptionsHonorRequestedOptions`, `TestNonOverridableArgumentsPrecedence`, `TestReviewerRegressions`, `TestDataflowProvenanceAndReviewFixes`)
 - **Related:** #37597, ADR:2026-10-22-glue-snowflake-refs-with-unknown-schema-link-only-unique-tables
 
 ## Context
@@ -38,10 +38,28 @@ Two failure modes must be avoided when resolving runtime parameters statically:
    `Workflow.LastRun` and defaults.
 - `script_evaluator.py` owns neutral AST binding resolution, bounded expression evaluation
   (`MAX_EXPR_DEPTH = 32`, `MAX_STRING_LENGTH = 4096`), scalar-preserving loop-slice expansion
-  (`MAX_LOOP_UNROLLS = 32`), and distinction between immutable tuples and mutable lists under alias
-  mutations. `snowflake_parser.py` and `script_parser.py` consume its public API, and
-  `script_parser.py` correlates both intra-slice calls and read/write dependencies split across
-  sibling loops into typed `LineageGroup` units (`sources` / `targets`: `Resolved | "absent" | "unresolved"`).
+  (`MAX_LOOP_UNROLLS = 32`), exact Python hashable dictionary key semantics (`1` vs `"1"`, tuples,
+  `None`), and distinction between immutable tuples and mutable lists under alias mutations.
+  `snowflake_parser.py` and `script_parser.py` consume its public API.
+- `script_parser.py` evaluates intra-script frame provenance in statement execution order across
+  unrolled constant `for` loops (`MAX_LOOP_UNROLLS = 32`, `MAX_TOTAL_LOOP_STEPS = 256`), non-recursive
+  helper calls (`MAX_CALL_DEPTH = 8`), and bounded containers (`MAX_CONTAINER_ITEMS = 128`) into typed
+  `LineageGroup` units (`sources` / `targets`: `Resolved | "absent" | "unresolved"`):
+  - Reassigning a variable, dictionary key, list index, or Spark temp view
+    (`createOrReplaceTempView`, `registerTempTable`) replaces its prior provenance; accumulating
+    operations (`.append`, `.extend`, `.insert`, `+=`, `.setdefault`, `.union` / `.unionByName` /
+    `.join` / `reduce`) combine contributing provenances; and unconsumed reads in scripts that perform
+    target writes emit no separate one-sided group.
+  - Dictionary writes and reads (`d[k]`, `.get()`, `.pop()`, `.setdefault()`) preserve Python key
+    values and types rather than coercing keys to strings.
+  - `spark.sql(...)` extracts table/view references from the SQL AST (`sqlglot` Spark dialect,
+    ignoring columns, literals, aliases, and CTEs) against live temp views, and `spark.table(...)`
+    checks live temp views before catalog resolution; dynamic SQL, parse errors, or unregistered SQL
+    tables evaluate to `"unresolved"`.
+  - `merge_sides` preserves `"unresolved"` whenever any merged input is `"unresolved"`, and any write
+    whose reaching source relationship cannot be established (disagreeing branches, dynamic or
+    early-exiting loops that rebind a frame/container/view, unknown dictionary keys, or opaque frame
+    calls) produces `sources = "unresolved"`.
 - `getResolvedOptions(sys.argv, [...])` mirrors `awsglue.utils`: the result holds only the requested
   options and Glue's built-in options, keyed by argparse dest (`--flag-name` -> `flag_name`), so
   `args.get("NOT_REQUESTED", "x")` is `"x"`. A requested option missing from the context is

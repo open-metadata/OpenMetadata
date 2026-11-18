@@ -13,28 +13,40 @@
 Lineage parser for AWS Glue PySpark/GlueContext scripts.
 
 Uses the neutral `script_evaluator` AST binding, expression, and execution-slice
-engine together with `snowflake_parser` to emit typed `LineageGroup` contracts
-as well as backward-compatible `ScriptLineageResult` summaries.
+engine together with `snowflake_parser` and flow-sensitive frame provenance
+tracking to emit typed `LineageGroup` contracts as well as backward-compatible
+`ScriptLineageResult` summaries.
 """
 
 import ast
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import TypeAlias
+from typing import Literal, TypeAlias
+
+import sqlglot
+from sqlglot import exp
+from sqlglot.errors import SqlglotError
+from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from metadata.ingestion.source.pipeline.gluepipeline.script_evaluator import (
     FUNCTIONS,
+    MAX_EXPR_DEPTH,
+    MAX_LOOP_UNROLLS,
+    MAX_STRING_LENGTH,
     OPAQUE,
     SPARK_TERMINAL_PARAMETERS,
+    UNKNOWN,
+    DictKey,
     DictValue,
-    ExecutionSlice,
     LineageGroup,
     ParameterContext,
     ParsedScript,
     Resolved,
-    ScriptBindings,
+    ScalarValue,
     ScriptReader,
     Side,
+    UnknownValue,
     build_execution_slices,
     merge_sides,
     parse_python_script,
@@ -79,8 +91,28 @@ TEMP_VIEW_METHODS = {
     "createOrReplaceGlobalTempView",
     "registerTempTable",
 }
-CONTAINER_ACCUMULATOR_METHODS = {"append", "extend", "insert", "update", "setdefault"}
-MAX_CHANNEL_PROPAGATION_PASSES = 16
+SPARK_BINARY_FRAME_METHODS = {
+    "join",
+    "crossJoin",
+    "union",
+    "unionAll",
+    "unionByName",
+    "intersect",
+    "intersectAll",
+    "subtract",
+    "exceptAll",
+}
+IN_MEMORY_FRAME_CONSTRUCTORS = {
+    "createDataFrame",
+    "createEmptyDataFrame",
+    "create_dynamic_frame_from_rdd",
+    "from_rdd",
+    "parallelize",
+}
+# ADR:2026-11-13-glue-parameterized-lineage-evaluates-per-run-context
+MAX_TOTAL_LOOP_STEPS = 256
+MAX_CALL_DEPTH = 8
+MAX_CONTAINER_ITEMS = 128
 
 # Uninterpolated format/f-string/percent/Scala template markers skipped by regex fallbacks
 UNRESOLVED_TEMPLATE_PATTERN = re.compile(r"\{[^{}]*\}|%[sd]|%\([^)]+\)[sd]|\$[A-Za-z_{]")
@@ -167,7 +199,6 @@ class JDBCRef:
 
 
 ScriptRef: TypeAlias = S3Ref | CatalogRef | JDBCRef | SnowflakeRef
-_ChannelKey: TypeAlias = tuple[object, ...]
 
 
 @dataclass
@@ -292,8 +323,7 @@ def parse_script_lineage_groups(
         ]
 
     try:
-        slices = build_execution_slices(parsed.tree, context=context, bindings=parsed.bindings)
-        return _analyze_slices_into_groups(parsed, slices, execution_id)
+        return _analyze_script_provenance(parsed, context=context, execution_id=execution_id)
     except RecursionError as exc:
         logger.debug("Glue script exceeded recursion limit during lineage group analysis: %s", exc)
         return []
@@ -390,401 +420,279 @@ def parse_glue_script(
     return result
 
 
-# --- Cross-Sibling-Loop Dependency Analysis ---
+# --- Flow-Sensitive Frame Provenance Analysis ---
+
+
+@dataclass(frozen=True)
+class _FrameVal:
+    side: Side[ScriptRef]
+
+
+@dataclass(frozen=True)
+class _ScalarVal:
+    value: DictKey
+
+
+class _OpaqueVal:
+    pass
+
+
+class _UnboundVal:
+    pass
+
+
+@dataclass(frozen=True)
+class _TupleVal:
+    items: tuple["_ProvVal", ...]
 
 
 @dataclass
-class _EvaluatedSlice:
-    slc: ExecutionSlice
-    sources: Side[ScriptRef]
-    targets: Side[ScriptRef]
-    loop_sources: Side[ScriptRef]
-    loop_produced_channels: set[_ChannelKey]
-    consumed_channels: set[_ChannelKey]
-    has_function_scoped_source: bool
-    has_function_scoped_target: bool
-    paired_as_source: bool = False
+class _ListVal:
+    items: list["_ProvVal"]
+    opaque: bool = False
+    contains_frames: bool = False
 
 
-def _can_flow_into(
-    source_idx: int,
-    source_item: _EvaluatedSlice,
-    target_idx: int,
-    target_item: _EvaluatedSlice,
-) -> bool:
-    """
-    A sibling source slice can feed a target slice when it precedes the target slice,
-    when either side lives inside a helper function (whose definition order is independent
-    of call order), or when both share an enclosing outer loop.
-    """
-    if source_idx < target_idx:
+@dataclass
+class _FrameDict:
+    entries: dict[DictKey, "_ProvVal"]
+    has_unknown_entries: bool = False
+    contains_frames: bool = False
+
+
+_ProvVal: TypeAlias = _FrameVal | _ScalarVal | _OpaqueVal | _UnboundVal | _TupleVal | _ListVal | _FrameDict
+_FlowStatus: TypeAlias = Literal["normal", "break", "continue", "return"]
+
+_OPAQUE_VAL = _OpaqueVal()
+_UNBOUND_VAL = _UnboundVal()
+_NONE_VAL = _ScalarVal(None)
+
+
+def _carries_frame(val: _ProvVal) -> bool:
+    if isinstance(val, _FrameVal):
         return True
-    if source_item.has_function_scoped_source or target_item.has_function_scoped_target:
-        return True
-    source_loops = {loop for loop, _ in source_item.slc.loop_overrides}
-    target_loops = {loop for loop, _ in target_item.slc.loop_overrides}
-    return bool(source_loops & target_loops)
+    if isinstance(val, _ListVal):
+        return val.contains_frames or any(_carries_frame(item) for item in val.items)
+    if isinstance(val, _FrameDict):
+        return val.contains_frames or any(_carries_frame(item) for item in val.entries.values())
+    if isinstance(val, _TupleVal):
+        return any(_carries_frame(item) for item in val.items)
+    return False
 
 
-def _analyze_slices_into_groups(
-    parsed: ParsedScript,
-    slices: list[ExecutionSlice],
-    execution_id: str,
-) -> list[LineageGroup[ScriptRef]]:
-    fallback = script_wide_snowflake_values(parsed.literal_pairs)
-    all_statements = _ordered_statements(parsed.tree)
-    evaluated: list[_EvaluatedSlice] = []
-
-    for slc in slices:
-        slice_result = ScriptLineageResult()
-        loop_source_result = ScriptLineageResult()
-        loop_source_calls: list[ast.Call] = []
-        target_calls: list[ast.Call] = []
-        for call in parsed.calls:
-            if not slc.call_included(call, parsed.bindings):
-                continue
-            call_result = ScriptLineageResult()
-            _extract_ast_call(call, slc.reader, fallback, call_result)
-            in_active_loop = (
-                slc.active_top_loop is not None and slc.active_top_loop in parsed.bindings.enclosing_for_loops(call)
-            )
-            if call_result.has_source_calls and (slc.active_top_loop is None or in_active_loop):
-                loop_source_calls.append(call)
-                _append_slice_result(loop_source_result, call_result)
-            if call_result.has_target_calls:
-                target_calls.append(call)
-            _append_slice_result(slice_result, call_result)
-
-        sources, targets = slice_result.to_sides()
-        if sources == "absent" and targets == "absent":
-            continue
-        loop_sources, _ = loop_source_result.to_sides()
-
-        active_stmts = [stmt for stmt in all_statements if _statement_included(stmt, slc, parsed.bindings)]
-        loop_produced = _compute_produced_channels(loop_source_calls, active_stmts, slc.reader, parsed.bindings)
-        consumed = _compute_consumed_channels(target_calls, active_stmts, slc.reader, parsed.bindings)
-        evaluated.append(
-            _EvaluatedSlice(
-                slc=slc,
-                sources=sources,
-                targets=targets,
-                loop_sources=loop_sources,
-                loop_produced_channels=loop_produced,
-                consumed_channels=consumed,
-                has_function_scoped_source=any(
-                    isinstance(parsed.bindings.scope_of(c), FUNCTIONS) for c in loop_source_calls
-                ),
-                has_function_scoped_target=any(
-                    isinstance(parsed.bindings.scope_of(c), FUNCTIONS) for c in target_calls
-                ),
-            )
-        )
-
-    for idx, item in enumerate(evaluated):
-        if item.targets == "absent" or not item.consumed_channels:
-            continue
-        matching_upstream = [
-            cand
-            for cand_idx, cand in enumerate(evaluated)
-            if cand_idx != idx
-            and cand.loop_sources != "absent"
-            and cand.targets == "absent"
-            and item.slc.compatible_with(cand.slc)
-            and _can_flow_into(cand_idx, cand, idx, item)
-            and bool(cand.loop_produced_channels & item.consumed_channels)
-        ]
-        if matching_upstream:
-            for cand in matching_upstream:
-                cand.paired_as_source = True
-            upstream_sides: list[Side[ScriptRef]] = [item.sources, *(cand.loop_sources for cand in matching_upstream)]
-            item.sources = merge_sides(upstream_sides)
-
-    groups: list[LineageGroup[ScriptRef]] = []
-    for item in evaluated:
-        if item.paired_as_source:
-            continue
-        groups.append(
-            LineageGroup(
-                execution_id=execution_id,
-                dependency_id=item.slc.slice_id,
-                sources=item.sources,
-                targets=item.targets,
-            )
-        )
-    return groups
+def _as_required_frame_side(val: _ProvVal) -> Side[ScriptRef]:
+    if isinstance(val, _FrameVal):
+        return val.side
+    if isinstance(val, _UnboundVal):
+        return "absent"
+    return "unresolved"
 
 
-def _ordered_statements(tree: ast.Module) -> list[ast.stmt]:
-    return sorted(
-        (node for node in ast.walk(tree) if isinstance(node, ast.stmt)),
-        key=lambda node: (getattr(node, "lineno", 0), getattr(node, "col_offset", 0)),
-    )
-
-
-def _statement_included(stmt: ast.stmt, slc: ExecutionSlice, bindings: ScriptBindings) -> bool:
-    if not slc.excluded_loops:
-        return True
-    if isinstance(stmt, ast.For) and stmt in slc.excluded_loops:
+def _prov_equal(left: _ProvVal, right: _ProvVal) -> bool:
+    if type(left) is not type(right):
         return False
-    return not any(loop in slc.excluded_loops for loop in bindings.enclosing_for_loops(stmt))
+    if isinstance(left, _FrameVal) and isinstance(right, _FrameVal):
+        return left.side == right.side
+    if isinstance(left, _ScalarVal) and isinstance(right, _ScalarVal):
+        return type(left.value) is type(right.value) and left.value == right.value
+    if isinstance(left, (_OpaqueVal, _UnboundVal)):
+        return True
+    if isinstance(left, _TupleVal) and isinstance(right, _TupleVal):
+        return len(left.items) == len(right.items) and all(
+            _prov_equal(a, b) for a, b in zip(left.items, right.items, strict=True)
+        )
+    if isinstance(left, _ListVal) and isinstance(right, _ListVal):
+        if left.opaque != right.opaque or len(left.items) != len(right.items):
+            return False
+        return not left.opaque and all(_prov_equal(a, b) for a, b in zip(left.items, right.items, strict=True))
+    if isinstance(left, _FrameDict) and isinstance(right, _FrameDict):
+        if left.has_unknown_entries or right.has_unknown_entries:
+            return False
+        if set(left.entries) != set(right.entries):
+            return False
+        return all(_prov_equal(left.entries[k], right.entries[k]) for k in left.entries)
+    return False
 
 
-def _store_target_channels(
-    target: ast.AST,
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> set[_ChannelKey]:
-    out: set[_ChannelKey] = set()
-    if isinstance(target, ast.Name) and not bindings.is_shadowed(target):
-        owner = bindings.owner_of(bindings.scope_of(target), target.id)
-        out.add(("var", id(owner), target.id))
-    elif (
-        isinstance(target, ast.Subscript)
-        and isinstance(target.value, ast.Name)
-        and not bindings.is_shadowed(target.value)
+def _clone_prov(val: _ProvVal, memo: dict[int, _ProvVal]) -> _ProvVal:
+    if isinstance(val, _ListVal):
+        obj_id = id(val)
+        if obj_id not in memo:
+            cloned = _ListVal(items=[], opaque=val.opaque, contains_frames=val.contains_frames)
+            memo[obj_id] = cloned
+            cloned.items = [_clone_prov(item, memo) for item in val.items]
+        return memo[obj_id]
+    if isinstance(val, _FrameDict):
+        obj_id = id(val)
+        if obj_id not in memo:
+            cloned_dict = _FrameDict(
+                entries={},
+                has_unknown_entries=val.has_unknown_entries,
+                contains_frames=val.contains_frames,
+            )
+            memo[obj_id] = cloned_dict
+            cloned_dict.entries = {k: _clone_prov(v, memo) for k, v in val.entries.items()}
+        return memo[obj_id]
+    if isinstance(val, _TupleVal):
+        return _TupleVal(tuple(_clone_prov(item, memo) for item in val.items))
+    return val
+
+
+def _join_frame_dicts(
+    left: _FrameDict,
+    right: _FrameDict,
+    pair_key: tuple[int, int],
+    pair_memo: dict[tuple[int, int], _ProvVal] | None,
+) -> _FrameDict:
+    joined_dict = _FrameDict(entries={}, has_unknown_entries=left.has_unknown_entries or right.has_unknown_entries)
+    if pair_memo is not None:
+        pair_memo[pair_key] = joined_dict
+    all_keys: list[DictKey] = [*left.entries.keys(), *(k for k in right.entries if k not in left.entries)]
+    merged_entries: dict[DictKey, _ProvVal] = {
+        k: _join_prov(left.entries[k], right.entries[k], pair_memo)
+        if k in left.entries and k in right.entries
+        else _FrameVal("unresolved")
+        for k in all_keys
+    }
+    joined_dict.entries = merged_entries
+    joined_dict.contains_frames = (
+        left.contains_frames or right.contains_frames or any(_carries_frame(v) for v in merged_entries.values())
+    )
+    return joined_dict
+
+
+def _join_list_vals(
+    left: _ListVal,
+    right: _ListVal,
+    pair_key: tuple[int, int],
+    pair_memo: dict[tuple[int, int], _ProvVal] | None,
+) -> _ListVal:
+    contains = left.contains_frames or right.contains_frames
+    if not left.opaque and not right.opaque and len(left.items) == len(right.items):
+        joined_list = _ListVal(items=[], opaque=False, contains_frames=contains)
+        if pair_memo is not None:
+            pair_memo[pair_key] = joined_list
+        joined_items = [_join_prov(a, b, pair_memo) for a, b in zip(left.items, right.items, strict=True)]
+        joined_list.items = joined_items
+        joined_list.contains_frames = contains or any(_carries_frame(v) for v in joined_items)
+        return joined_list
+    opaque_list = _ListVal(items=[], opaque=True, contains_frames=contains)
+    if pair_memo is not None:
+        pair_memo[pair_key] = opaque_list
+    return opaque_list
+
+
+def _join_prov(
+    left: _ProvVal,
+    right: _ProvVal,
+    pair_memo: dict[tuple[int, int], _ProvVal] | None = None,
+) -> _ProvVal:
+    pair_key = (id(left), id(right))
+    if (
+        pair_memo is not None
+        and pair_key in pair_memo
+        and isinstance(left, (_ListVal, _FrameDict))
+        and isinstance(right, (_ListVal, _FrameDict))
     ):
-        owner = bindings.owner_of(bindings.scope_of(target.value), target.value.id)
-        key = reader.string(target.slice)
-        if isinstance(key, str):
-            out.add(("item", id(owner), target.value.id, key))
-            out.add(("any_item", id(owner), target.value.id))
+        return pair_memo[pair_key]
+    if _prov_equal(left, right):
+        memo: dict[int, _ProvVal] = {}
+        cloned = _clone_prov(left, memo)
+        if pair_memo is not None and isinstance(left, (_ListVal, _FrameDict)):
+            pair_memo[pair_key] = cloned
+        return cloned
+    if isinstance(left, _FrameDict) and isinstance(right, _FrameDict):
+        return _join_frame_dicts(left, right, pair_key, pair_memo)
+    if isinstance(left, _ListVal) and isinstance(right, _ListVal):
+        return _join_list_vals(left, right, pair_key, pair_memo)
+    if isinstance(left, _TupleVal) and isinstance(right, _TupleVal) and len(left.items) == len(right.items):
+        return _TupleVal(tuple(_join_prov(a, b, pair_memo) for a, b in zip(left.items, right.items, strict=True)))
+    if _carries_frame(left) or _carries_frame(right):
+        return _FrameVal("unresolved")
+    return _OPAQUE_VAL
+
+
+def _join_view_maps(
+    left: dict[str, Side[ScriptRef]],
+    left_opaque: bool,
+    right: dict[str, Side[ScriptRef]],
+    right_opaque: bool,
+) -> tuple[dict[str, Side[ScriptRef]], bool]:
+    merged: dict[str, Side[ScriptRef]] = {}
+    for name in set(left) | set(right):
+        if name in left and name in right and left[name] == right[name]:
+            merged[name] = left[name]
         else:
-            out.add(("var", id(owner), target.value.id))
-            out.add(("any_item", id(owner), target.value.id))
-    elif isinstance(target, (ast.Tuple, ast.List)):
-        for elt in target.elts:
-            out.update(_store_target_channels(elt, reader, bindings))
-    return out
+            merged[name] = "unresolved"
+    return merged, (left_opaque or right_opaque)
 
 
-def _collect_keyed_lookup_channels(
-    expr: ast.AST,
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> tuple[set[_ChannelKey], set[int]]:
-    channels: set[_ChannelKey] = set()
-    keyed_bases: set[int] = set()
-    for node in ast.walk(expr):
-        if (
-            isinstance(node, ast.Subscript)
-            and isinstance(node.ctx, ast.Load)
-            and isinstance(node.value, ast.Name)
-            and not bindings.is_shadowed(node.value)
-        ):
-            owner = bindings.owner_of(bindings.scope_of(node.value), node.value.id)
-            key = reader.string(node.slice)
-            if isinstance(key, str):
-                keyed_bases.add(id(node.value))
-                channels.add(("item", id(owner), node.value.id, key))
-                channels.add(("var", id(owner), node.value.id))
-            else:
-                channels.add(("var", id(owner), node.value.id))
-                channels.add(("any_item", id(owner), node.value.id))
-        elif (
-            isinstance(node, ast.Call)
-            and isinstance(node.func, ast.Attribute)
-            and node.func.attr == "get"
-            and not node.keywords
-            and 1 <= len(node.args) <= 2
-            and isinstance(node.func.value, ast.Name)
-            and not bindings.is_shadowed(node.func.value)
-        ):
-            owner = bindings.owner_of(bindings.scope_of(node.func.value), node.func.value.id)
-            key = reader.string(node.args[0])
-            if isinstance(key, str):
-                keyed_bases.add(id(node.func.value))
-                channels.add(("item", id(owner), node.func.value.id, key))
-                channels.add(("var", id(owner), node.func.value.id))
-    return channels, keyed_bases
+@dataclass
+class _ExecState:
+    scope_envs: dict[int, dict[str, _ProvVal]]
+    loop_overrides: dict[ast.For, ScalarValue]
+    scope_overrides: dict[tuple[ast.AST, str], object]
+    temp_views: dict[str, Side[ScriptRef]] = field(default_factory=dict)
+    temp_views_opaque: bool = False
+    global_temp_views: dict[str, Side[ScriptRef]] = field(default_factory=dict)
+    global_temp_views_opaque: bool = False
+
+    def clone(self) -> "_ExecState":
+        memo: dict[int, _ProvVal] = {}
+        cloned_scopes = {
+            scope_id: {name: _clone_prov(val, memo) for name, val in env.items()}
+            for scope_id, env in self.scope_envs.items()
+        }
+        return _ExecState(
+            scope_envs=cloned_scopes,
+            loop_overrides=dict(self.loop_overrides),
+            scope_overrides=dict(self.scope_overrides),
+            temp_views=dict(self.temp_views),
+            temp_views_opaque=self.temp_views_opaque,
+            global_temp_views=dict(self.global_temp_views),
+            global_temp_views_opaque=self.global_temp_views_opaque,
+        )
 
 
-def _read_call_channels(node: ast.Call, reader: ScriptReader, bindings: ScriptBindings) -> set[_ChannelKey]:
-    if isinstance(node.func, ast.Attribute) and node.func.attr == "sql" and node.args:
-        sql_channels: set[_ChannelKey] = {("sql_view", "*")}
-        sql_text = reader.string(node.args[0])
-        if isinstance(sql_text, str):
-            for token in re.findall(r"[A-Za-z_][A-Za-z0-9_]*", sql_text):
-                sql_channels.add(("sql_view", token))
-        else:
-            sql_channels.add(("sql_view_any",))
-        return sql_channels
-    fn_def = bindings.resolve_function_def(node.func)
-    return {("func_return", id(fn_def))} if fn_def is not None else set()
+def _join_states(left: _ExecState, right: _ExecState) -> _ExecState:
+    pair_memo: dict[tuple[int, int], _ProvVal] = {}
+    joined_scopes: dict[int, dict[str, _ProvVal]] = {}
+    for scope_id in set(left.scope_envs) | set(right.scope_envs):
+        l_env = left.scope_envs.get(scope_id, {})
+        r_env = right.scope_envs.get(scope_id, {})
+        merged_env: dict[str, _ProvVal] = {}
+        for name in set(l_env) | set(r_env):
+            merged_env[name] = _join_prov(
+                l_env.get(name, _UNBOUND_VAL),
+                r_env.get(name, _UNBOUND_VAL),
+                pair_memo,
+            )
+        joined_scopes[scope_id] = merged_env
 
+    joined_overrides: dict[tuple[ast.AST, str], object] = {}
+    for key in set(left.scope_overrides) | set(right.scope_overrides):
+        lv = left.scope_overrides.get(key, UNKNOWN)
+        rv = right.scope_overrides.get(key, UNKNOWN)
+        joined_overrides[key] = lv if type(lv) is type(rv) and lv == rv else UNKNOWN
 
-def _read_expr_channels(
-    expr: ast.AST | None,
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> set[_ChannelKey]:
-    if expr is None:
-        return set()
-    channels, keyed_subscript_bases = _collect_keyed_lookup_channels(expr, reader, bindings)
-
-    for node in ast.walk(expr):
-        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and id(node) not in keyed_subscript_bases:
-            if bindings.is_shadowed(node):
-                continue
-            parent = bindings.parent_of(node)
-            if isinstance(parent, ast.Call) and parent.func is node:
-                continue
-            owner = bindings.owner_of(bindings.scope_of(node), node.id)
-            channels.add(("var", id(owner), node.id))
-            channels.add(("any_item", id(owner), node.id))
-        elif isinstance(node, ast.Call):
-            channels.update(_read_call_channels(node, reader, bindings))
-
-    if not channels and isinstance(expr, ast.Call):
-        channels.add(("opaque_handoff", id(bindings.scope_of(expr))))
-    return channels
-
-
-def _direct_source_call_channels(
-    call: ast.Call,
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> set[_ChannelKey]:
-    parent = bindings.parent_of(call)
-    if isinstance(parent, ast.Expr) and parent.value is call:
-        return set()
-
-    channels: set[_ChannelKey] = set()
-    cur: ast.AST = call
-    anc = parent
-    while anc is not None and not isinstance(anc, (*FUNCTIONS, ast.Module)):
-        if isinstance(anc, ast.Assign) and cur is anc.value:
-            for target in anc.targets:
-                channels.update(_store_target_channels(target, reader, bindings))
-        elif isinstance(anc, ast.AnnAssign) and cur is anc.value:
-            channels.update(_store_target_channels(anc.target, reader, bindings))
-        elif isinstance(anc, ast.NamedExpr) and cur is anc.value:
-            channels.update(_store_target_channels(anc.target, reader, bindings))
-        elif isinstance(anc, ast.Return):
-            scope = bindings.scope_of(anc)
-            if isinstance(scope, FUNCTIONS):
-                channels.add(("func_return", id(scope)))
-        elif isinstance(anc, ast.Call) and isinstance(anc.func, ast.Attribute):
-            attr = anc.func.attr
-            if attr in TEMP_VIEW_METHODS and (anc.func is cur or anc.func.value is cur):
-                view_name = reader.string(anc.args[0]) if anc.args else None
-                channels.add(("sql_view", view_name if isinstance(view_name, str) and view_name else "*"))
-                channels.add(("sql_view_any",))
-            elif (
-                attr in CONTAINER_ACCUMULATOR_METHODS
-                and cur in anc.args
-                and isinstance(anc.func.value, ast.Name)
-                and not bindings.is_shadowed(anc.func.value)
-            ):
-                owner = bindings.owner_of(bindings.scope_of(anc.func.value), anc.func.value.id)
-                channels.add(("var", id(owner), anc.func.value.id))
-                channels.add(("any_item", id(owner), anc.func.value.id))
-        if isinstance(anc, ast.stmt):
-            break
-        cur, anc = anc, bindings.parent_of(anc)
-
-    if not channels:
-        channels.add(("opaque_handoff", id(bindings.scope_of(call))))
-    return channels
-
-
-def _expr_call_statement_edges(
-    call: ast.Call,
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> list[tuple[set[_ChannelKey], set[_ChannelKey]]]:
-    edges: list[tuple[set[_ChannelKey], set[_ChannelKey]]] = []
-    if isinstance(call.func, ast.Attribute):
-        attr = call.func.attr
-        if attr in TEMP_VIEW_METHODS:
-            rhs = _read_expr_channels(call.func.value, reader, bindings)
-            if rhs:
-                view_name = reader.string(call.args[0]) if call.args else None
-                lhs: set[_ChannelKey] = {
-                    ("sql_view", view_name if isinstance(view_name, str) and view_name else "*"),
-                    ("sql_view_any",),
-                }
-                edges.append((rhs, lhs))
-        elif (
-            attr in CONTAINER_ACCUMULATOR_METHODS
-            and isinstance(call.func.value, ast.Name)
-            and not bindings.is_shadowed(call.func.value)
-        ):
-            owner = bindings.owner_of(bindings.scope_of(call.func.value), call.func.value.id)
-            rhs = set()
-            for arg in call.args:
-                rhs.update(_read_expr_channels(arg, reader, bindings))
-            if rhs:
-                edges.append(
-                    (rhs, {("var", id(owner), call.func.value.id), ("any_item", id(owner), call.func.value.id)})
-                )
-    fn_def = bindings.resolve_function_def(call.func)
-    if fn_def is not None:
-        for arg_expr, param in zip(call.args, fn_def.args.args, strict=False):
-            rhs = _read_expr_channels(arg_expr, reader, bindings)
-            if rhs:
-                edges.append((rhs, {("var", id(fn_def), param.arg)}))
-        for kw in call.keywords:
-            if kw.arg:
-                rhs = _read_expr_channels(kw.value, reader, bindings)
-                if rhs:
-                    edges.append((rhs, {("var", id(fn_def), kw.arg)}))
-    return edges
-
-
-def _statement_edges(
-    active_stmts: list[ast.stmt],
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> list[tuple[set[_ChannelKey], set[_ChannelKey]]]:
-    """Pairs `(rhs_channels, lhs_channels)` describing intra-script dataflow edges."""
-    edges: list[tuple[set[_ChannelKey], set[_ChannelKey]]] = []
-    for stmt in active_stmts:
-        if isinstance(stmt, ast.Assign):
-            rhs = _read_expr_channels(stmt.value, reader, bindings)
-            lhs: set[_ChannelKey] = set()
-            for target in stmt.targets:
-                lhs.update(_store_target_channels(target, reader, bindings))
-            if rhs and lhs:
-                edges.append((rhs, lhs))
-        elif isinstance(stmt, (ast.AnnAssign, ast.AugAssign)) and stmt.value is not None:
-            rhs = _read_expr_channels(stmt.value, reader, bindings)
-            lhs = _store_target_channels(stmt.target, reader, bindings)
-            if rhs and lhs:
-                edges.append((rhs, lhs))
-        elif isinstance(stmt, ast.Return) and stmt.value is not None:
-            scope = bindings.scope_of(stmt)
-            if isinstance(scope, FUNCTIONS):
-                rhs = _read_expr_channels(stmt.value, reader, bindings)
-                if rhs:
-                    edges.append((rhs, {("func_return", id(scope))}))
-        elif isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
-            edges.extend(_expr_call_statement_edges(stmt.value, reader, bindings))
-    return edges
-
-
-def _compute_produced_channels(
-    source_calls: list[ast.Call],
-    active_stmts: list[ast.stmt],
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> set[_ChannelKey]:
-    if not source_calls:
-        return set()
-    produced: set[_ChannelKey] = set()
-    for call in source_calls:
-        produced.update(_direct_source_call_channels(call, reader, bindings))
-    if not produced:
-        return produced
-    edges = _statement_edges(active_stmts, reader, bindings)
-    for _ in range(MAX_CHANNEL_PROPAGATION_PASSES):
-        added = False
-        for rhs, lhs in edges:
-            if (produced & rhs) and not lhs.issubset(produced):
-                produced.update(lhs)
-                added = True
-        if not added:
-            break
-    return produced
+    temp_views, temp_opaque = _join_view_maps(
+        left.temp_views, left.temp_views_opaque, right.temp_views, right.temp_views_opaque
+    )
+    global_views, global_opaque = _join_view_maps(
+        left.global_temp_views,
+        left.global_temp_views_opaque,
+        right.global_temp_views,
+        right.global_temp_views_opaque,
+    )
+    return _ExecState(
+        scope_envs=joined_scopes,
+        loop_overrides=dict(left.loop_overrides),
+        scope_overrides=joined_overrides,
+        temp_views=temp_views,
+        temp_views_opaque=temp_opaque,
+        global_temp_views=global_views,
+        global_temp_views_opaque=global_opaque,
+    )
 
 
 def _target_frame_expr(call: ast.Call) -> ast.expr | None:
@@ -815,53 +723,1696 @@ def _target_frame_expr(call: ast.Call) -> ast.expr | None:
     return None
 
 
-def _compute_consumed_channels(
-    target_calls: list[ast.Call],
-    active_stmts: list[ast.stmt],
-    reader: ScriptReader,
-    bindings: ScriptBindings,
-) -> set[_ChannelKey]:
-    if not target_calls:
-        return set()
-    consumed: set[_ChannelKey] = set()
-    for call in target_calls:
-        frame_expr = _target_frame_expr(call)
-        consumed.update(_read_expr_channels(frame_expr, reader, bindings))
-    if not consumed:
-        return consumed
-    edges = _statement_edges(active_stmts, reader, bindings)
-    for _ in range(MAX_CHANNEL_PROPAGATION_PASSES):
-        added = False
-        for rhs, lhs in edges:
-            if (consumed & lhs) and not rhs.issubset(consumed):
-                consumed.update(rhs)
-                added = True
-        if not added:
-            break
-    return consumed
+def _is_spark_table_read_call(call: ast.Call) -> ast.expr | None:
+    if not isinstance(call.func, ast.Attribute) or call.func.attr != "table":
+        return None
+    chain: list[ast.Call] = []
+    node: ast.expr = call.func.value
+    while isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+        chain.append(node)
+        node = node.func.value
+    if not chain and not (isinstance(node, ast.Attribute) and node.attr == "write"):
+        args = _call_args_map(call, ("tableName",))
+        return args.get("tableName")
+    if isinstance(node, ast.Attribute) and node.attr == "read":
+        args = _call_args_map(call, ("tableName",))
+        return args.get("tableName")
+    return None
 
 
-def _append_slice_result(target: ScriptLineageResult, delta: ScriptLineageResult) -> None:
-    target.has_source_calls = target.has_source_calls or delta.has_source_calls
-    target.has_target_calls = target.has_target_calls or delta.has_target_calls
-    for path in delta.s3_sources:
-        if path not in target.s3_sources:
-            target.s3_sources.append(path)
-    for path in delta.s3_targets:
-        if path not in target.s3_targets:
-            target.s3_targets.append(path)
-    for field_name in (
-        "catalog_sources",
-        "catalog_targets",
-        "jdbc_sources",
-        "jdbc_targets",
-        "snowflake_sources",
-        "snowflake_targets",
+def _extract_sql_query_tables(statement: exp.Query) -> list[tuple[str, str, str]] | None:
+    scopes = traverse_scope(statement)
+    if not scopes:
+        return []
+    tables: list[tuple[str, str, str]] = []
+    for scope in scopes:
+        for tbl in scope.tables or ():
+            source = scope.sources.get(tbl.alias_or_name)
+            if not tbl.db and not tbl.catalog and isinstance(source, Scope):
+                continue
+            if not tbl.name:
+                return None
+            tables.append((tbl.catalog or "", tbl.db or "", tbl.name))
+    return tables
+
+
+def _resolve_sql_table_list(tables: Sequence[tuple[str, str, str]], state: _ExecState) -> Side[ScriptRef]:
+    if not tables:
+        return "absent"
+    sides: list[Side[ScriptRef]] = []
+    for catalog, db, name in tables:
+        if catalog:
+            return "unresolved"
+        lowered = name.lower()
+        if db:
+            if db.lower() != "global_temp":
+                return "unresolved"
+            if lowered in state.global_temp_views:
+                sides.append(state.global_temp_views[lowered])
+            else:
+                return "unresolved"
+        elif lowered in state.temp_views:
+            sides.append(state.temp_views[lowered])
+        else:
+            return "unresolved"
+    return merge_sides(sides)
+
+
+def _resolve_spark_sql(sql_text: str, state: _ExecState) -> _FrameVal:
+    try:
+        statements = sqlglot.parse(sql_text, read="spark")
+    except SqlglotError:
+        state.temp_views.clear()
+        state.temp_views_opaque = True
+        return _FrameVal("unresolved")
+    if not statements or any(not isinstance(stmt, exp.Query) for stmt in statements):
+        state.temp_views.clear()
+        state.temp_views_opaque = True
+        return _FrameVal("unresolved")
+
+    collected_sides: list[Side[ScriptRef]] = []
+    for stmt in statements:
+        assert isinstance(stmt, exp.Query)
+        tables = _extract_sql_query_tables(stmt)
+        if tables is None:
+            return _FrameVal("unresolved")
+        collected_sides.append(_resolve_sql_table_list(tables, state))
+    return _FrameVal(merge_sides(collected_sides))
+
+
+class _ProvenanceAnalyzer:
+    """Flow-sensitive AST interpreter tracking reaching frame, container, and temp-view provenance."""
+
+    def __init__(
+        self,
+        parsed: ParsedScript,
+        context: ParameterContext | None,
+        execution_id: str,
     ):
-        dest_list = getattr(target, field_name)
-        for item in getattr(delta, field_name):
-            if item not in dest_list:
-                dest_list.append(item)
+        self._parsed = parsed
+        self._bindings = parsed.bindings
+        self._base_reader = ScriptReader(parsed.tree, context=context, bindings=parsed.bindings)
+        self._snowflake_fallback = script_wide_snowflake_values(parsed.literal_pairs)
+        self._execution_id = execution_id
+        self._target_groups: list[LineageGroup[ScriptRef]] = []
+        self._source_events: list[Side[ScriptRef]] = []
+        self._call_stack: list[ast.AST] = [parsed.tree]
+        self._total_loop_steps = 0
+        self._expr_depth = 0
+
+    def analyze(self) -> list[LineageGroup[ScriptRef]]:
+        state = _ExecState(scope_envs={id(self._parsed.tree): {}}, loop_overrides={}, scope_overrides={})
+        self._exec_block(self._parsed.tree.body, state, self._parsed.tree)
+        if self._target_groups:
+            return self._target_groups
+        return [
+            LineageGroup(
+                execution_id=self._execution_id,
+                dependency_id=f"slice_{idx}",
+                sources=src_side,
+                targets="absent",
+            )
+            for idx, src_side in enumerate(self._source_events)
+        ]
+
+    def _reader_for(self, state: _ExecState) -> ScriptReader:
+        if not state.loop_overrides and not state.scope_overrides:
+            return self._base_reader
+        return self._base_reader.with_overrides(
+            loop_overrides=state.loop_overrides,
+            scope_overrides=state.scope_overrides,
+        )
+
+    def _record_target_group(self, sources: Side[ScriptRef], targets: Side[ScriptRef]) -> None:
+        idx = len(self._target_groups)
+        self._target_groups.append(
+            LineageGroup(
+                execution_id=self._execution_id,
+                dependency_id=f"slice_{idx}",
+                sources=sources,
+                targets=targets,
+            )
+        )
+
+    def _exec_block(
+        self,
+        stmts: Sequence[ast.stmt],
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        break_states: list[_ExecState] | None = None,
+        continue_states: list[_ExecState] | None = None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None = None,
+    ) -> _FlowStatus:
+        for stmt in stmts:
+            status = self._exec_stmt(
+                stmt,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+            if status != "normal":
+                return status
+        return "normal"
+
+    def _exec_stmt(
+        self,
+        stmt: ast.stmt,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        break_states: list[_ExecState] | None = None,
+        continue_states: list[_ExecState] | None = None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None = None,
+    ) -> _FlowStatus:
+        if isinstance(stmt, ast.Assign):
+            rhs = self._eval_expr(stmt.value, state, scope)
+            for target in stmt.targets:
+                self._assign_target(target, rhs, state, scope)
+            return "normal"
+        if isinstance(stmt, ast.AnnAssign):
+            if stmt.value is not None:
+                self._assign_target(stmt.target, self._eval_expr(stmt.value, state, scope), state, scope)
+            return "normal"
+        if isinstance(stmt, ast.AugAssign):
+            self._exec_aug_assign(stmt, state, scope)
+            return "normal"
+        if isinstance(stmt, ast.Delete):
+            for target in stmt.targets:
+                self._exec_delete(target, state, scope)
+            return "normal"
+        if isinstance(stmt, ast.Expr):
+            self._eval_expr(stmt.value, state, scope)
+            if isinstance(stmt.value, ast.Call):
+                self._mark_opaque_side_effect_call(stmt.value, state, scope)
+            return "normal"
+        if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+            for alias in stmt.names:
+                if alias.name != "*":
+                    self._bind_name(alias.asname or alias.name.split(".")[0], _OPAQUE_VAL, state, scope)
+            return "normal"
+        if isinstance(stmt, FUNCTIONS):
+            return "normal"
+        return self._exec_control_stmt(
+            stmt,
+            state,
+            scope,
+            break_states=break_states,
+            continue_states=continue_states,
+            return_outcomes=return_outcomes,
+        )
+
+    def _exec_control_stmt(
+        self,
+        stmt: ast.stmt,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        break_states: list[_ExecState] | None,
+        continue_states: list[_ExecState] | None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
+    ) -> _FlowStatus:
+        if isinstance(stmt, ast.If):
+            return self._exec_if(
+                stmt,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+        if isinstance(stmt, ast.For):
+            self._exec_for(stmt, state, scope, return_outcomes=return_outcomes)
+            return "normal"
+        if isinstance(stmt, (ast.AsyncFor, ast.While)):
+            self._exec_dynamic_loop_body(stmt.body, stmt.orelse, None, state, scope)
+            return "normal"
+        if isinstance(stmt, (ast.With, ast.AsyncWith)):
+            for item in stmt.items:
+                ctx_val = self._eval_expr(item.context_expr, state, scope)
+                if item.optional_vars is not None:
+                    self._assign_target(item.optional_vars, ctx_val, state, scope)
+            return self._exec_block(
+                stmt.body,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+        if isinstance(stmt, ast.Try):
+            return self._exec_try(
+                stmt,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+        if isinstance(stmt, ast.Break):
+            if break_states is not None:
+                break_states.append(state.clone())
+            return "break"
+        if isinstance(stmt, ast.Continue):
+            if continue_states is not None:
+                continue_states.append(state.clone())
+            return "continue"
+        if isinstance(stmt, ast.Return):
+            ret_val = self._eval_expr(stmt.value, state, scope) if stmt.value is not None else _NONE_VAL
+            if return_outcomes is not None:
+                return_outcomes.append((state.clone(), ret_val))
+            return "return"
+        return "normal"
+
+    @staticmethod
+    def _overwrite_state_in_place(dest: _ExecState, src: _ExecState) -> None:
+        dest.scope_envs = src.scope_envs
+        dest.loop_overrides = src.loop_overrides
+        dest.scope_overrides = src.scope_overrides
+        dest.temp_views = src.temp_views
+        dest.temp_views_opaque = src.temp_views_opaque
+        dest.global_temp_views = src.global_temp_views
+        dest.global_temp_views_opaque = src.global_temp_views_opaque
+
+    @staticmethod
+    def _merge_state_list(states: Sequence[_ExecState]) -> _ExecState:
+        merged = states[0]
+        for extra in states[1:]:
+            merged = _join_states(merged, extra)
+        return merged
+
+    def _exec_if(
+        self,
+        stmt: ast.If,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        break_states: list[_ExecState] | None,
+        continue_states: list[_ExecState] | None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
+    ) -> _FlowStatus:
+        cond = self._eval_condition(stmt.test, state, scope)
+        if cond is True:
+            return self._exec_block(
+                stmt.body,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+        if cond is False:
+            return self._exec_block(
+                stmt.orelse,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+
+        then_state = state.clone()
+        else_state = state.clone()
+        then_status = self._exec_block(
+            stmt.body,
+            then_state,
+            scope,
+            break_states=break_states,
+            continue_states=continue_states,
+            return_outcomes=return_outcomes,
+        )
+        else_status = self._exec_block(
+            stmt.orelse,
+            else_state,
+            scope,
+            break_states=break_states,
+            continue_states=continue_states,
+            return_outcomes=return_outcomes,
+        )
+        if then_status == "normal" and else_status == "normal":
+            self._overwrite_state_in_place(state, _join_states(then_state, else_state))
+            return "normal"
+        if then_status == "normal":
+            self._overwrite_state_in_place(state, then_state)
+            return "normal"
+        if else_status == "normal":
+            self._overwrite_state_in_place(state, else_state)
+            return "normal"
+        return then_status if then_status == else_status else "return"
+
+    def _exec_try(
+        self,
+        stmt: ast.Try,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        break_states: list[_ExecState] | None,
+        continue_states: list[_ExecState] | None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
+    ) -> _FlowStatus:
+        pre_try = state.clone()
+        body_status = self._exec_block(
+            stmt.body,
+            state,
+            scope,
+            break_states=break_states,
+            continue_states=continue_states,
+            return_outcomes=return_outcomes,
+        )
+        if body_status == "normal" and stmt.orelse:
+            body_status = self._exec_block(
+                stmt.orelse,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+        surviving: list[_ExecState] = [state.clone()] if body_status == "normal" else []
+        for handler in stmt.handlers:
+            if len(handler.body) == 1 and isinstance(handler.body[0], ast.Raise):
+                continue
+            h_state = _join_states(pre_try, state)
+            if handler.name:
+                self._bind_name(handler.name, _OPAQUE_VAL, h_state, scope)
+            h_status = self._exec_block(
+                handler.body,
+                h_state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+            if h_status == "normal":
+                surviving.append(h_state)
+        if surviving:
+            self._overwrite_state_in_place(state, self._merge_state_list(surviving))
+            final_status: _FlowStatus = "normal"
+        else:
+            final_status = body_status
+        if stmt.finalbody:
+            fin_status = self._exec_block(
+                stmt.finalbody,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+            if fin_status != "normal":
+                return fin_status
+        return final_status
+
+    def _resolve_for_items(self, stmt: ast.For, state: _ExecState, scope: ast.AST) -> list[_ProvVal] | None:
+        if isinstance(stmt.iter, (ast.List, ast.Tuple, ast.Set)) and not stmt.iter.elts:
+            return []
+        reader = self._reader_for(state)
+        seq = reader.sequence(stmt.iter)
+        if seq is not None:
+            return [_ScalarVal(v) for v in seq]
+
+        iter_val = self._eval_expr(stmt.iter, state, scope)
+        if isinstance(iter_val, _TupleVal):
+            return list(iter_val.items) if len(iter_val.items) <= MAX_LOOP_UNROLLS else None
+        if isinstance(iter_val, _ListVal) and not iter_val.opaque:
+            return list(iter_val.items) if len(iter_val.items) <= MAX_LOOP_UNROLLS else None
+        if (
+            isinstance(iter_val, _FrameDict)
+            and not iter_val.has_unknown_entries
+            and len(iter_val.entries) <= MAX_LOOP_UNROLLS
+        ):
+            return [_ScalarVal(k) for k in iter_val.entries]
+        return None
+
+    @staticmethod
+    def _set_loop_override(stmt: ast.For, item: _ProvVal, state: _ExecState) -> None:
+        if (
+            isinstance(stmt.target, ast.Name)
+            and isinstance(item, _ScalarVal)
+            and isinstance(item.value, (str, int, float, bool))
+        ):
+            state.loop_overrides[stmt] = item.value
+        else:
+            state.loop_overrides.pop(stmt, None)
+
+    def _exec_for(
+        self,
+        stmt: ast.For,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
+    ) -> None:
+        items = self._resolve_for_items(stmt, state, scope)
+        if items is None or self._total_loop_steps + len(items) > MAX_TOTAL_LOOP_STEPS:
+            self._exec_dynamic_loop_body(stmt.body, stmt.orelse, stmt.target, state, scope, loop_node=stmt)
+            return
+        if not items:
+            if stmt.orelse:
+                self._exec_block(stmt.orelse, state, scope, return_outcomes=return_outcomes)
+            return
+
+        prev_loop_val = state.loop_overrides.get(stmt)
+        break_states: list[_ExecState] = []
+        broke_unconditionally = False
+
+        for item in items:
+            self._total_loop_steps += 1
+            self._set_loop_override(stmt, item, state)
+            self._assign_target(stmt.target, item, state, scope, record_scalar_override=True)
+            continue_states: list[_ExecState] = []
+            iter_status = self._exec_block(
+                stmt.body,
+                state,
+                scope,
+                break_states=break_states,
+                continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
+            if iter_status in ("break", "return"):
+                broke_unconditionally = True
+                break
+            if iter_status == "continue":
+                if continue_states:
+                    self._overwrite_state_in_place(state, self._merge_state_list(continue_states))
+                continue
+            if continue_states:
+                self._overwrite_state_in_place(state, self._merge_state_list([state, *continue_states]))
+
+        if prev_loop_val is not None:
+            state.loop_overrides[stmt] = prev_loop_val
+        else:
+            state.loop_overrides.pop(stmt, None)
+
+        if not broke_unconditionally and stmt.orelse:
+            self._exec_block(stmt.orelse, state, scope, return_outcomes=return_outcomes)
+
+        exit_candidates = break_states if broke_unconditionally else ([state, *break_states] if break_states else [])
+        if exit_candidates:
+            self._overwrite_state_in_place(state, self._merge_state_list(exit_candidates))
+
+    def _exec_dynamic_loop_body(
+        self,
+        body: Sequence[ast.stmt],
+        orelse: Sequence[ast.stmt],
+        target: ast.AST | None,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        loop_node: ast.For | None = None,
+    ) -> None:
+        before = state.clone()
+        iter_state = state.clone()
+        if loop_node is not None:
+            iter_state.loop_overrides.pop(loop_node, None)
+        if target is not None:
+            self._assign_target(target, _OPAQUE_VAL, iter_state, scope, record_scalar_override=True)
+        b_states: list[_ExecState] = []
+        c_states: list[_ExecState] = []
+        self._exec_block(body, iter_state, scope, break_states=b_states, continue_states=c_states)
+        joined = self._merge_state_list([before, iter_state, *b_states, *c_states])
+        if orelse:
+            orelse_state = joined.clone()
+            self._exec_block(orelse, orelse_state, scope)
+            joined = _join_states(joined, orelse_state)
+        self._overwrite_state_in_place(state, joined)
+
+    def _bind_name(
+        self,
+        name: str,
+        val: _ProvVal,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        record_scalar_override: bool = False,
+    ) -> None:
+        owner = self._bindings.owner_of(scope, name)
+        env = state.scope_envs.setdefault(id(owner), {})
+        env[name] = val
+        override_key = (owner, name)
+        is_scalar = isinstance(val, _ScalarVal) and isinstance(val.value, (str, int, float, bool))
+        if is_scalar:
+            assert isinstance(val, _ScalarVal)
+            state.scope_overrides[override_key] = val.value
+        elif record_scalar_override or override_key in state.scope_overrides:
+            state.scope_overrides[override_key] = UNKNOWN
+
+    def _assign_target(
+        self,
+        target: ast.AST,
+        val: _ProvVal,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        record_scalar_override: bool = False,
+    ) -> None:
+        if isinstance(target, ast.Name):
+            if not self._bindings.is_shadowed(target):
+                self._bind_name(target.id, val, state, scope, record_scalar_override=record_scalar_override)
+            return
+        if isinstance(target, (ast.Tuple, ast.List)):
+            self._assign_sequence_target(target.elts, val, state, scope, record_scalar_override=record_scalar_override)
+            return
+        if isinstance(target, ast.Subscript):
+            self._assign_subscript(target, val, state, scope)
+
+    def _assign_subscript(self, target: ast.Subscript, val: _ProvVal, state: _ExecState, scope: ast.AST) -> None:
+        container = self._eval_expr(target.value, state, scope)
+        if isinstance(container, _FrameDict):
+            if _carries_frame(val):
+                container.contains_frames = True
+            key = UNKNOWN if isinstance(target.slice, ast.Slice) else self._eval_dict_key(target.slice, state, scope)
+            if isinstance(key, UnknownValue) or len(container.entries) >= MAX_CONTAINER_ITEMS:
+                container.entries.clear()
+                container.has_unknown_entries = True
+            else:
+                container.entries.pop(key, None)
+                container.entries[key] = val
+        elif isinstance(container, _ListVal):
+            if _carries_frame(val):
+                container.contains_frames = True
+            idx = None if isinstance(target.slice, ast.Slice) else self._eval_int(target.slice, state, scope)
+            if not container.opaque and idx is not None and -len(container.items) <= idx < len(container.items):
+                container.items[idx] = val
+            else:
+                container.items.clear()
+                container.opaque = True
+
+    def _assign_sequence_target(
+        self,
+        elts: Sequence[ast.expr],
+        val: _ProvVal,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        record_scalar_override: bool = False,
+    ) -> None:
+        seq_items = val.items if isinstance(val, _TupleVal) or (isinstance(val, _ListVal) and not val.opaque) else None
+        if seq_items is not None and not any(isinstance(e, ast.Starred) for e in elts) and len(seq_items) == len(elts):
+            for elt, item in zip(elts, seq_items, strict=True):
+                self._assign_target(elt, item, state, scope, record_scalar_override=record_scalar_override)
+            return
+        fallback: _ProvVal = _FrameVal("unresolved") if _carries_frame(val) else _OPAQUE_VAL
+        for elt in elts:
+            inner = elt.value if isinstance(elt, ast.Starred) else elt
+            self._assign_target(inner, fallback, state, scope, record_scalar_override=record_scalar_override)
+
+    def _aug_assign_container(
+        self, stmt: ast.AugAssign, current: _ProvVal, rhs: _ProvVal, state: _ExecState, scope: ast.AST
+    ) -> bool:
+        if isinstance(stmt.op, ast.Add) and isinstance(current, _ListVal):
+            if _carries_frame(rhs):
+                current.contains_frames = True
+            rhs_items = (
+                list(rhs.items)
+                if isinstance(rhs, _TupleVal) or (isinstance(rhs, _ListVal) and not rhs.opaque)
+                else None
+            )
+            if (
+                not current.opaque
+                and rhs_items is not None
+                and len(current.items) + len(rhs_items) <= MAX_CONTAINER_ITEMS
+            ):
+                current.items.extend(rhs_items)
+            else:
+                current.items.clear()
+                current.opaque = True
+            return True
+        if isinstance(stmt.op, ast.Add) and isinstance(current, _TupleVal):
+            if isinstance(rhs, _TupleVal) and len(current.items) + len(rhs.items) <= MAX_CONTAINER_ITEMS:
+                self._assign_target(stmt.target, _TupleVal(current.items + rhs.items), state, scope)
+            else:
+                fallback = _FrameVal("unresolved") if (_carries_frame(current) or _carries_frame(rhs)) else _OPAQUE_VAL
+                self._assign_target(stmt.target, fallback, state, scope)
+            return True
+        if isinstance(stmt.op, ast.BitOr) and isinstance(current, _FrameDict):
+            if (
+                isinstance(rhs, _FrameDict)
+                and not rhs.has_unknown_entries
+                and len(current.entries) + len(rhs.entries) <= MAX_CONTAINER_ITEMS
+            ):
+                if rhs.contains_frames:
+                    current.contains_frames = True
+                for k, v in rhs.entries.items():
+                    current.entries.pop(k, None)
+                    current.entries[k] = v
+            else:
+                if _carries_frame(rhs):
+                    current.contains_frames = True
+                current.entries.clear()
+                current.has_unknown_entries = True
+            return True
+        return False
+
+    def _exec_aug_assign(self, stmt: ast.AugAssign, state: _ExecState, scope: ast.AST) -> None:
+        current = self._eval_expr(stmt.target, state, scope)
+        rhs = self._eval_expr(stmt.value, state, scope)
+        if self._aug_assign_container(stmt, current, rhs, state, scope):
+            return
+        if (
+            isinstance(stmt.op, ast.Add)
+            and isinstance(current, _ScalarVal)
+            and isinstance(rhs, _ScalarVal)
+            and isinstance(current.value, str)
+            and isinstance(rhs.value, str)
+            and len(current.value) + len(rhs.value) <= MAX_STRING_LENGTH
+        ):
+            self._assign_target(
+                stmt.target,
+                _ScalarVal(current.value + rhs.value),
+                state,
+                scope,
+                record_scalar_override=True,
+            )
+            return
+        if isinstance(current, _ListVal):
+            current.items.clear()
+            current.opaque = True
+        elif isinstance(current, _FrameDict):
+            current.entries.clear()
+            current.has_unknown_entries = True
+        fallback = _FrameVal("unresolved") if (_carries_frame(current) or _carries_frame(rhs)) else _OPAQUE_VAL
+        self._assign_target(stmt.target, fallback, state, scope, record_scalar_override=True)
+
+    def _exec_delete(self, target: ast.AST, state: _ExecState, scope: ast.AST) -> None:
+        if isinstance(target, ast.Name) and not self._bindings.is_shadowed(target):
+            owner = self._bindings.owner_of(scope, target.id)
+            env = state.scope_envs.get(id(owner))
+            if env is not None:
+                env.pop(target.id, None)
+            state.scope_overrides.pop((owner, target.id), None)
+        elif isinstance(target, ast.Subscript):
+            container = self._eval_expr(target.value, state, scope)
+            if isinstance(container, _FrameDict):
+                key = (
+                    UNKNOWN if isinstance(target.slice, ast.Slice) else self._eval_dict_key(target.slice, state, scope)
+                )
+                if isinstance(key, UnknownValue):
+                    container.entries.clear()
+                    container.has_unknown_entries = True
+                else:
+                    container.entries.pop(key, None)
+            elif isinstance(container, _ListVal):
+                idx = None if isinstance(target.slice, ast.Slice) else self._eval_int(target.slice, state, scope)
+                if not container.opaque and idx is not None and -len(container.items) <= idx < len(container.items):
+                    container.items.pop(idx)
+                else:
+                    container.items.clear()
+                    container.opaque = True
+
+    def _eval_dict_key(self, node: ast.expr | None, state: _ExecState, scope: ast.AST) -> DictKey | UnknownValue:
+        if node is None:
+            return UNKNOWN
+        dk = self._reader_for(state).dict_key(node)
+        if not isinstance(dk, UnknownValue):
+            return dk
+        val = self._eval_expr(node, state, scope)
+        if isinstance(val, _ScalarVal):
+            return val.value
+        if isinstance(val, _TupleVal):
+            parts: list[DictKey] = []
+            for item in val.items:
+                if not isinstance(item, _ScalarVal):
+                    return UNKNOWN
+                parts.append(item.value)
+            return tuple(parts)
+        return UNKNOWN
+
+    def _eval_int(self, node: ast.expr | None, state: _ExecState, scope: ast.AST) -> int | None:
+        if node is None:
+            return None
+        iv = self._reader_for(state).int_value(node)
+        if iv is not None:
+            return iv
+        val = self._eval_expr(node, state, scope)
+        if isinstance(val, _ScalarVal) and isinstance(val.value, int) and not isinstance(val.value, bool):
+            return val.value
+        return None
+
+    def _eval_condition(self, test: ast.expr, state: _ExecState, scope: ast.AST) -> bool | None:
+        if isinstance(test, ast.Constant) and isinstance(test.value, bool):
+            return test.value
+        if isinstance(test, ast.Name):
+            val = self._eval_expr(test, state, scope)
+            return val.value if isinstance(val, _ScalarVal) and isinstance(val.value, bool) else None
+        if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
+            inner = self._eval_condition(test.operand, state, scope)
+            return (not inner) if inner is not None else None
+        if isinstance(test, ast.BoolOp):
+            return self._eval_bool_op(test, state, scope)
+        if isinstance(test, ast.Compare) and len(test.ops) == 1 and len(test.comparators) == 1:
+            return self._eval_single_compare(test.left, test.ops[0], test.comparators[0], state, scope)
+        return None
+
+    def _eval_bool_op(self, test: ast.BoolOp, state: _ExecState, scope: ast.AST) -> bool | None:
+        if isinstance(test.op, ast.And):
+            all_true = True
+            for v in test.values:
+                cv = self._eval_condition(v, state, scope)
+                if cv is False:
+                    return False
+                if cv is None:
+                    all_true = False
+            return True if all_true else None
+        all_false = True
+        for v in test.values:
+            cv = self._eval_condition(v, state, scope)
+            if cv is True:
+                return True
+            if cv is None:
+                all_false = False
+        return False if all_false else None
+
+    def _eval_single_compare(
+        self,
+        left_expr: ast.expr,
+        op: ast.cmpop,
+        right_expr: ast.expr,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> bool | None:
+        if (
+            isinstance(op, (ast.Eq, ast.NotEq))
+            and isinstance(left_expr, ast.Name)
+            and left_expr.id == "__name__"
+            and not self._bindings.has_binding_in_scope(scope, "__name__")
+            and isinstance(right_expr, ast.Constant)
+            and isinstance(right_expr.value, str)
+        ):
+            eq = right_expr.value == "__main__"
+            return eq if isinstance(op, ast.Eq) else not eq
+
+        if isinstance(op, (ast.Is, ast.IsNot)):
+            return self._eval_is_none_compare(left_expr, op, right_expr, state, scope)
+        if isinstance(op, (ast.In, ast.NotIn)):
+            return self._eval_membership_compare(left_expr, op, right_expr, state, scope)
+        if isinstance(op, (ast.Eq, ast.NotEq)):
+            lk = self._eval_dict_key(left_expr, state, scope)
+            rk = self._eval_dict_key(right_expr, state, scope)
+            if not isinstance(lk, UnknownValue) and not isinstance(rk, UnknownValue):
+                equal = type(lk) is type(rk) and lk == rk
+                return equal if isinstance(op, ast.Eq) else not equal
+        return None
+
+    def _eval_is_none_compare(
+        self,
+        left_expr: ast.expr,
+        op: ast.cmpop,
+        right_expr: ast.expr,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> bool | None:
+        left_is_none = isinstance(left_expr, ast.Constant) and left_expr.value is None
+        right_is_none = isinstance(right_expr, ast.Constant) and right_expr.value is None
+        if not (left_is_none or right_is_none):
+            return None
+        other_val = self._eval_expr(right_expr if left_is_none else left_expr, state, scope)
+        if isinstance(other_val, (_OpaqueVal, _UnboundVal)):
+            return None
+        if isinstance(other_val, _FrameVal) and other_val.side == "unresolved":
+            return None
+        definitely_none = isinstance(other_val, _ScalarVal) and other_val.value is None
+        return definitely_none if isinstance(op, ast.Is) else not definitely_none
+
+    def _eval_membership_compare(
+        self,
+        left_expr: ast.expr,
+        op: ast.cmpop,
+        right_expr: ast.expr,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> bool | None:
+        container = self._eval_expr(right_expr, state, scope)
+        key = self._eval_dict_key(left_expr, state, scope)
+        if isinstance(key, UnknownValue):
+            return None
+        if isinstance(container, _FrameDict):
+            if key in container.entries:
+                present = True
+            elif container.has_unknown_entries:
+                return None
+            else:
+                present = False
+            return present if isinstance(op, ast.In) else not present
+        seq = self._reader_for(state).sequence(right_expr)
+        if seq is not None:
+            present = any(type(item) is type(key) and item == key for item in seq)
+            return present if isinstance(op, ast.In) else not present
+        return None
+
+    def _eval_expr(
+        self,
+        node: ast.expr | None,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        if node is None or self._expr_depth >= MAX_EXPR_DEPTH:
+            return _OPAQUE_VAL
+        self._expr_depth += 1
+        try:
+            if isinstance(node, ast.Constant):
+                if node.value is None:
+                    return _NONE_VAL
+                dk = self._reader_for(state).dict_key(node)
+                return _ScalarVal(dk) if not isinstance(dk, UnknownValue) else _OPAQUE_VAL
+            if isinstance(node, ast.Name):
+                return self._eval_name(node, state, scope)
+            if isinstance(node, ast.Subscript):
+                return self._eval_subscript(node, state, scope)
+            if isinstance(node, ast.BinOp):
+                return self._eval_binop(node, state, scope)
+            if isinstance(node, ast.Call):
+                return self._eval_call(node, state, scope)
+            if isinstance(node, ast.Attribute):
+                recv = self._eval_expr(node.value, state, scope)
+                if node.attr == "emptyDataFrame":
+                    return _FrameVal("absent")
+                return recv if isinstance(recv, _FrameVal) else _OPAQUE_VAL
+            if isinstance(node, ast.JoinedStr):
+                s = self._reader_for(state).string(node)
+                return _ScalarVal(s) if isinstance(s, str) else _OPAQUE_VAL
+            return self._eval_compound_expr(node, state, scope)
+        finally:
+            self._expr_depth -= 1
+
+    def _eval_compound_expr(self, node: ast.expr, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if isinstance(node, ast.Tuple):
+            return self._eval_tuple(node, state, scope)
+        if isinstance(node, ast.List):
+            return self._eval_list(node, state, scope)
+        if isinstance(node, ast.Dict):
+            return self._eval_dict_literal(node, state, scope)
+        if isinstance(node, ast.IfExp):
+            cond = self._eval_condition(node.test, state, scope)
+            if cond is True:
+                return self._eval_expr(node.body, state, scope)
+            if cond is False:
+                return self._eval_expr(node.orelse, state, scope)
+            return _join_prov(self._eval_expr(node.body, state, scope), self._eval_expr(node.orelse, state, scope))
+        if isinstance(node, ast.NamedExpr):
+            val = self._eval_expr(node.value, state, scope)
+            self._assign_target(node.target, val, state, scope)
+            return val
+        if isinstance(node, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
+            probe = self._eval_expr(node.elt, state.clone(), scope)
+            return _ListVal([], opaque=True, contains_frames=_carries_frame(probe))
+        if isinstance(node, ast.DictComp):
+            probe = self._eval_expr(node.value, state.clone(), scope)
+            return _FrameDict(entries={}, has_unknown_entries=True, contains_frames=_carries_frame(probe))
+        return _OPAQUE_VAL
+
+    def _eval_name(self, node: ast.Name, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if self._bindings.is_shadowed(node):
+            return _OPAQUE_VAL
+        owner = self._bindings.owner_of(scope, node.id)
+        env = state.scope_envs.get(id(owner))
+        if env is not None and node.id in env:
+            return env[node.id]
+        dk = self._reader_for(state).dict_key(node)
+        if not isinstance(dk, UnknownValue):
+            return _ScalarVal(dk)
+        if not self._bindings.has_binding_in_scope(scope, node.id):
+            return _UNBOUND_VAL
+        return _OPAQUE_VAL
+
+    def _expand_seq_elements(
+        self,
+        elts: Sequence[ast.expr],
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> tuple[list[_ProvVal], bool, bool]:
+        items: list[_ProvVal] = []
+        opaque = len(elts) > MAX_CONTAINER_ITEMS
+        contains_frames = False
+        if not opaque:
+            for elt in elts:
+                if isinstance(elt, ast.Starred):
+                    sub = self._eval_expr(elt.value, state, scope)
+                    if _carries_frame(sub):
+                        contains_frames = True
+                    if isinstance(sub, _TupleVal) or (isinstance(sub, _ListVal) and not sub.opaque):
+                        items.extend(sub.items)
+                    else:
+                        opaque = True
+                else:
+                    v = self._eval_expr(elt, state, scope)
+                    if _carries_frame(v):
+                        contains_frames = True
+                    items.append(v)
+        if len(items) > MAX_CONTAINER_ITEMS:
+            opaque = True
+        return items, opaque, contains_frames
+
+    def _eval_tuple(self, node: ast.Tuple, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        items, opaque, contains_frames = self._expand_seq_elements(node.elts, state, scope)
+        if opaque:
+            return _FrameVal("unresolved") if contains_frames else _OPAQUE_VAL
+        return _TupleVal(tuple(items))
+
+    def _eval_list(self, node: ast.List, state: _ExecState, scope: ast.AST) -> _ListVal:
+        items, opaque, contains_frames = self._expand_seq_elements(node.elts, state, scope)
+        if opaque:
+            return _ListVal(items=[], opaque=True, contains_frames=contains_frames)
+        return _ListVal(items=items, opaque=False, contains_frames=contains_frames)
+
+    def _eval_dict_literal(self, node: ast.Dict, state: _ExecState, scope: ast.AST) -> _FrameDict:
+        entries: dict[DictKey, _ProvVal] = {}
+        has_unk = len(node.keys) > MAX_CONTAINER_ITEMS
+        contains_frames = False
+        if not has_unk:
+            for k_node, v_node in zip(node.keys, node.values, strict=True):
+                val = self._eval_expr(v_node, state, scope)
+                if _carries_frame(val):
+                    contains_frames = True
+                if k_node is None:
+                    has_unk = self._unpack_dict_entry(v_node, val, entries, state) or has_unk
+                else:
+                    key = self._eval_dict_key(k_node, state, scope)
+                    if isinstance(key, UnknownValue):
+                        entries.clear()
+                        has_unk = True
+                    else:
+                        entries.pop(key, None)
+                        entries[key] = val
+        if len(entries) > MAX_CONTAINER_ITEMS:
+            entries.clear()
+            has_unk = True
+        return _FrameDict(entries=entries, has_unknown_entries=has_unk, contains_frames=contains_frames)
+
+    def _unpack_dict_entry(
+        self,
+        v_node: ast.expr,
+        val: _ProvVal,
+        entries: dict[DictKey, _ProvVal],
+        state: _ExecState,
+    ) -> bool:
+        if isinstance(val, _FrameDict):
+            if val.has_unknown_entries:
+                entries.clear()
+            for k, v in val.entries.items():
+                entries.pop(k, None)
+                entries[k] = v
+            return val.has_unknown_entries
+        dv = self._reader_for(state).dict_value(v_node)
+        if dv.opaque:
+            entries.clear()
+        for k, raw_v in dv.entries.items():
+            entries.pop(k, None)
+            s = ScriptReader.scalar_to_str(raw_v)
+            entries[k] = (
+                _ScalarVal(raw_v)  # type: ignore[arg-type]
+                if isinstance(raw_v, (str, int, float, bool)) and isinstance(s, str)
+                else _OPAQUE_VAL
+            )
+        return dv.opaque
+
+    def _eval_subscript(self, node: ast.Subscript, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        container = self._eval_expr(node.value, state, scope)
+        if isinstance(container, _FrameDict):
+            key = UNKNOWN if isinstance(node.slice, ast.Slice) else self._eval_dict_key(node.slice, state, scope)
+            if not isinstance(key, UnknownValue) and key in container.entries:
+                return container.entries[key]
+            return _FrameVal("unresolved")
+        if isinstance(container, (_ListVal, _TupleVal)):
+            is_opaque = isinstance(container, _ListVal) and container.opaque
+            if not isinstance(node.slice, ast.Slice) and not is_opaque:
+                idx = self._eval_int(node.slice, state, scope)
+                if idx is not None and -len(container.items) <= idx < len(container.items):
+                    return container.items[idx]
+            return _FrameVal("unresolved") if _carries_frame(container) else _OPAQUE_VAL
+        if isinstance(container, _FrameVal):
+            # `df[["c1", "c2"]]` projects columns on a DataFrame; `df["col"]` yields a Column expression
+            return container if isinstance(node.slice, (ast.List, ast.Tuple)) else _OPAQUE_VAL
+        dk = self._reader_for(state).dict_key(node)
+        return _ScalarVal(dk) if not isinstance(dk, UnknownValue) else _OPAQUE_VAL
+
+    def _eval_binop(self, node: ast.BinOp, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        left = self._eval_expr(node.left, state, scope)
+        right = self._eval_expr(node.right, state, scope)
+        if isinstance(node.op, ast.Add):
+            if isinstance(left, _TupleVal) and isinstance(right, _TupleVal):
+                if len(left.items) + len(right.items) <= MAX_CONTAINER_ITEMS:
+                    return _TupleVal(left.items + right.items)
+                return _FrameVal("unresolved") if (_carries_frame(left) or _carries_frame(right)) else _OPAQUE_VAL
+            if isinstance(left, _ListVal) and isinstance(right, _ListVal):
+                contains = left.contains_frames or right.contains_frames
+                if not left.opaque and not right.opaque and len(left.items) + len(right.items) <= MAX_CONTAINER_ITEMS:
+                    return _ListVal(left.items + right.items, opaque=False, contains_frames=contains)
+                return _ListVal([], opaque=True, contains_frames=contains)
+        if isinstance(node.op, ast.BitOr) and isinstance(left, _FrameDict) and isinstance(right, _FrameDict):
+            has_unk = left.has_unknown_entries or right.has_unknown_entries
+            entries = {} if right.has_unknown_entries else dict(left.entries)
+            for k, v in right.entries.items():
+                entries.pop(k, None)
+                entries[k] = v
+            return _FrameDict(
+                entries=entries,
+                has_unknown_entries=has_unk,
+                contains_frames=left.contains_frames or right.contains_frames,
+            )
+        dk = self._reader_for(state).dict_key(node)
+        return _ScalarVal(dk) if not isinstance(dk, UnknownValue) else _OPAQUE_VAL
+
+    def _try_extract_io_call(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal | None:
+        reader = self._reader_for(state)
+        table_arg = _is_spark_table_read_call(call)
+        if table_arg is not None:
+            return self._eval_spark_table_read(table_arg, reader, state)
+
+        call_result = ScriptLineageResult()
+        _extract_ast_call(call, reader, self._snowflake_fallback, call_result)
+        if call_result.has_target_calls:
+            _, tgt_side = call_result.to_sides()
+            frame_expr = _target_frame_expr(call)
+            src_side: Side[ScriptRef] = (
+                "absent" if frame_expr is None else _as_required_frame_side(self._eval_expr(frame_expr, state, scope))
+            )
+            self._record_target_group(src_side, tgt_side)
+            return _NONE_VAL
+        if call_result.has_source_calls:
+            src_side, _ = call_result.to_sides()
+            self._source_events.append(src_side)
+            return _FrameVal(src_side)
+        return None
+
+    def _eval_spark_table_read(self, table_arg: ast.expr, reader: ScriptReader, state: _ExecState) -> _FrameVal:
+        table_ref = reader.string(table_arg)
+        if not isinstance(table_ref, str) or not table_ref:
+            self._source_events.append("unresolved")
+            return _FrameVal("unresolved")
+        parts = [p.strip('"`') for p in table_ref.split(".")]
+        if len(parts) == 1:
+            vkey = parts[0].lower()
+            if vkey in state.temp_views:
+                return _FrameVal(state.temp_views[vkey])
+            if state.temp_views_opaque:
+                self._source_events.append("unresolved")
+                return _FrameVal("unresolved")
+        elif len(parts) == 2 and parts[0].lower() == "global_temp":
+            gkey = parts[1].lower()
+            if gkey in state.global_temp_views:
+                return _FrameVal(state.global_temp_views[gkey])
+            if state.global_temp_views_opaque:
+                self._source_events.append("unresolved")
+                return _FrameVal("unresolved")
+        cat_side: Side[ScriptRef] = Resolved((_catalog_ref_from_table_name(table_ref),))
+        self._source_events.append(cat_side)
+        return _FrameVal(cat_side)
+
+    def _eval_special_attr_call(
+        self,
+        call: ast.Call,
+        func: ast.Attribute,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal | None:
+        attr = func.attr
+        if attr in TEMP_VIEW_METHODS:
+            return self._exec_temp_view_registration(call, attr, state, scope)
+        if attr in ("dropTempView", "dropGlobalTempView"):
+            return self._exec_drop_temp_view(call, attr, state)
+        if attr == "sql":
+            self._eval_expr(func.value, state, scope)
+            if len(call.args) != 1 or call.keywords:
+                return _FrameVal("unresolved")
+            sql_text = self._reader_for(state).string(call.args[0])
+            if not isinstance(sql_text, str) or not sql_text.strip():
+                return _FrameVal("unresolved")
+            return _resolve_spark_sql(sql_text, state)
+        if attr in IN_MEMORY_FRAME_CONSTRUCTORS or (
+            attr == "range" and isinstance(func.value, ast.Name) and func.value.id in ("spark", "sqlContext")
+        ):
+            return _FrameVal("absent")
+        return None
+
+    def _eval_call(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        io_val = self._try_extract_io_call(call, state, scope)
+        if io_val is not None:
+            return io_val
+
+        if isinstance(call.func, ast.Attribute):
+            special = self._eval_special_attr_call(call, call.func, state, scope)
+            if special is not None:
+                return special
+
+        if (
+            isinstance(call.func, ast.Name)
+            and call.func.id == "dict"
+            and not self._bindings.is_shadowed(call.func)
+            and not self._bindings.has_binding_in_scope(scope, "dict")
+        ):
+            return self._eval_dict_constructor(call, state, scope)
+
+        fn_def = self._bindings.resolve_function_def(call.func)
+        if fn_def is not None:
+            return self._invoke_helper_function(fn_def, call, state, scope)
+
+        if isinstance(call.func, ast.Attribute):
+            return self._eval_receiver_method_call(call, call.func, state, scope)
+
+        if isinstance(call.func, ast.Name) and call.func.id == "reduce":
+            return self._eval_reduce_call(call, state, scope)
+
+        return self._eval_general_transform_call(None, call, state, scope)
+
+    def _eval_receiver_method_call(
+        self,
+        call: ast.Call,
+        func: ast.Attribute,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        recv = self._eval_expr(func.value, state, scope)
+        if isinstance(recv, _FrameDict):
+            return self._eval_frame_dict_method(recv, func.attr, call, state, scope)
+        if isinstance(recv, _ListVal):
+            return self._eval_list_method(recv, func.attr, call, state, scope)
+        if isinstance(recv, _FrameVal) and func.attr in SPARK_BINARY_FRAME_METHODS:
+            return self._eval_binary_frame_method(recv, call, state, scope)
+        if func.attr == "apply" and isinstance(func.value, ast.Name) and func.value.id == "Join":
+            return self._eval_glue_join_apply(call, state, scope)
+        if func.attr == "reduce":
+            return self._eval_reduce_call(call, state, scope)
+        return self._eval_general_transform_call(recv, call, state, scope)
+
+    def _exec_temp_view_registration(
+        self,
+        call: ast.Call,
+        attr: str,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        assert isinstance(call.func, ast.Attribute)
+        recv_val = self._eval_expr(call.func.value, state, scope)
+        src_side = _as_required_frame_side(recv_val)
+        args = _call_args_map(call, ("name",))
+        name_expr = args.get("name")
+        view_name = self._reader_for(state).string(name_expr) if name_expr is not None else UNKNOWN
+        is_global = "Global" in attr
+        is_replace = "OrReplace" in attr or attr == "registerTempTable"
+        target_map = state.global_temp_views if is_global else state.temp_views
+
+        if not isinstance(view_name, str) or not view_name:
+            target_map.clear()
+            if is_global:
+                state.global_temp_views_opaque = True
+            else:
+                state.temp_views_opaque = True
+            return _NONE_VAL
+
+        key = view_name.lower()
+        already_opaque = state.global_temp_views_opaque if is_global else state.temp_views_opaque
+        target_map[key] = "unresolved" if (not is_replace and (key in target_map or already_opaque)) else src_side
+        return _NONE_VAL
+
+    def _exec_drop_temp_view(self, call: ast.Call, attr: str, state: _ExecState) -> _ProvVal:
+        args = _call_args_map(call, ("viewName",))
+        name_expr = args.get("viewName")
+        view_name = self._reader_for(state).string(name_expr) if name_expr is not None else UNKNOWN
+        is_global = attr == "dropGlobalTempView"
+        target_map = state.global_temp_views if is_global else state.temp_views
+        if isinstance(view_name, str) and view_name:
+            target_map.pop(view_name.lower(), None)
+        else:
+            target_map.clear()
+            if is_global:
+                state.global_temp_views_opaque = True
+            else:
+                state.temp_views_opaque = True
+        return _NONE_VAL
+
+    def _eval_dict_constructor(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> _FrameDict:
+        entries: dict[DictKey, _ProvVal] = {}
+        has_unk = len(call.args) > 1
+        contains_frames = False
+        if len(call.args) == 1:
+            arg_val = self._eval_expr(call.args[0], state, scope)
+            if isinstance(arg_val, _FrameDict):
+                contains_frames = arg_val.contains_frames
+                if arg_val.has_unknown_entries:
+                    has_unk = True
+                else:
+                    entries.update(arg_val.entries)
+            else:
+                has_unk = True
+        for kw in call.keywords:
+            val = self._eval_expr(kw.value, state, scope)
+            if _carries_frame(val):
+                contains_frames = True
+            if kw.arg is None:
+                if (
+                    isinstance(val, _FrameDict)
+                    and not val.has_unknown_entries
+                    and all(isinstance(k, str) for k in val.entries)
+                ):
+                    for k, v in val.entries.items():
+                        entries.pop(k, None)
+                        entries[k] = v
+                else:
+                    entries.clear()
+                    has_unk = True
+            else:
+                entries.pop(kw.arg, None)
+                entries[kw.arg] = val
+        return _FrameDict(entries=entries, has_unknown_entries=has_unk, contains_frames=contains_frames)
+
+    def _eval_frame_dict_method(
+        self,
+        recv: _FrameDict,
+        attr: str,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        if attr == "get":
+            return self._dict_get(recv, call, state, scope)
+        if attr == "setdefault":
+            return self._dict_setdefault(recv, call, state, scope)
+        if attr == "pop":
+            return self._dict_pop(recv, call, state, scope)
+        if attr == "clear" and not call.args and not call.keywords:
+            recv.entries.clear()
+            recv.has_unknown_entries = False
+            recv.contains_frames = False
+            return _NONE_VAL
+        if attr == "update":
+            return self._dict_update(recv, call, state, scope)
+        if not call.args and not call.keywords and attr in ("values", "keys", "items"):
+            return self._dict_view_items(recv, attr)
+        return _FrameVal("unresolved") if _carries_frame(recv) else _OPAQUE_VAL
+
+    def _dict_get(self, recv: _FrameDict, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if call.keywords or not (1 <= len(call.args) <= 2):
+            return _FrameVal("unresolved")
+        key = self._eval_dict_key(call.args[0], state, scope)
+        default_val = self._eval_expr(call.args[1], state, scope) if len(call.args) == 2 else _NONE_VAL
+        if isinstance(key, UnknownValue):
+            return _FrameVal("unresolved")
+        if key in recv.entries:
+            return recv.entries[key]
+        return _FrameVal("unresolved") if recv.has_unknown_entries else default_val
+
+    def _dict_setdefault(self, recv: _FrameDict, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if call.keywords or not (1 <= len(call.args) <= 2):
+            recv.entries.clear()
+            recv.has_unknown_entries = True
+            return _FrameVal("unresolved")
+        key = self._eval_dict_key(call.args[0], state, scope)
+        default_val = self._eval_expr(call.args[1], state, scope) if len(call.args) == 2 else _NONE_VAL
+        if _carries_frame(default_val):
+            recv.contains_frames = True
+        if isinstance(key, UnknownValue) or len(recv.entries) >= MAX_CONTAINER_ITEMS:
+            recv.entries.clear()
+            recv.has_unknown_entries = True
+            return _FrameVal("unresolved")
+        if key in recv.entries:
+            return recv.entries[key]
+        if recv.has_unknown_entries:
+            recv.entries.pop(key, None)
+            return _FrameVal("unresolved")
+        recv.entries[key] = default_val
+        return default_val
+
+    def _dict_pop(self, recv: _FrameDict, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if call.keywords or not (1 <= len(call.args) <= 2):
+            recv.entries.clear()
+            recv.has_unknown_entries = True
+            return _FrameVal("unresolved")
+        key = self._eval_dict_key(call.args[0], state, scope)
+        default_val = self._eval_expr(call.args[1], state, scope) if len(call.args) == 2 else _FrameVal("unresolved")
+        if isinstance(key, UnknownValue):
+            recv.entries.clear()
+            recv.has_unknown_entries = True
+            return _FrameVal("unresolved")
+        if key in recv.entries:
+            return recv.entries.pop(key)
+        return _FrameVal("unresolved") if recv.has_unknown_entries else default_val
+
+    def _dict_update(self, recv: _FrameDict, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        updated = self._eval_dict_constructor(call, state, scope)
+        if updated.contains_frames:
+            recv.contains_frames = True
+        if updated.has_unknown_entries or len(recv.entries) + len(updated.entries) > MAX_CONTAINER_ITEMS:
+            recv.entries.clear()
+            recv.has_unknown_entries = True
+        else:
+            for k, v in updated.entries.items():
+                recv.entries.pop(k, None)
+                recv.entries[k] = v
+        return _NONE_VAL
+
+    @staticmethod
+    def _dict_view_items(recv: _FrameDict, attr: str) -> _ListVal:
+        if recv.has_unknown_entries:
+            return _ListVal(
+                [], opaque=True, contains_frames=(attr != "keys" and (recv.contains_frames or attr == "values"))
+            )
+        if attr == "keys":
+            return _ListVal([_ScalarVal(k) for k in recv.entries], opaque=False)
+        if attr == "values":
+            vals = list(recv.entries.values())
+            return _ListVal(
+                vals, opaque=False, contains_frames=recv.contains_frames or any(_carries_frame(x) for x in vals)
+            )
+        pairs: list[_ProvVal] = [_TupleVal((_ScalarVal(k), v)) for k, v in recv.entries.items()]
+        return _ListVal(pairs, opaque=False, contains_frames=recv.contains_frames)
+
+    def _eval_list_method(
+        self,
+        recv: _ListVal,
+        attr: str,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        if attr == "append" and len(call.args) == 1 and not call.keywords:
+            val = self._eval_expr(call.args[0], state, scope)
+            if _carries_frame(val):
+                recv.contains_frames = True
+            if not recv.opaque and len(recv.items) < MAX_CONTAINER_ITEMS:
+                recv.items.append(val)
+            else:
+                recv.items.clear()
+                recv.opaque = True
+            return _NONE_VAL
+
+        if attr == "extend" and len(call.args) == 1 and not call.keywords:
+            return self._list_extend(recv, call.args[0], state, scope)
+
+        if attr == "insert" and len(call.args) == 2 and not call.keywords:
+            idx = self._eval_int(call.args[0], state, scope)
+            val = self._eval_expr(call.args[1], state, scope)
+            if _carries_frame(val):
+                recv.contains_frames = True
+            if not recv.opaque and idx is not None and len(recv.items) < MAX_CONTAINER_ITEMS:
+                recv.items.insert(idx, val)
+            else:
+                recv.items.clear()
+                recv.opaque = True
+            return _NONE_VAL
+
+        if attr == "pop" and not call.keywords and len(call.args) <= 1:
+            return self._list_pop(recv, call, state, scope)
+
+        if attr == "clear" and not call.args and not call.keywords:
+            recv.items.clear()
+            recv.opaque = False
+            recv.contains_frames = False
+            return _NONE_VAL
+
+        for arg in call.args:
+            self._eval_expr(arg, state, scope)
+        recv.items.clear()
+        recv.opaque = True
+        return _FrameVal("unresolved") if recv.contains_frames else _OPAQUE_VAL
+
+    def _list_extend(self, recv: _ListVal, seq_arg: ast.expr, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        seq = self._eval_expr(seq_arg, state, scope)
+        if _carries_frame(seq):
+            recv.contains_frames = True
+        ext_items = (
+            list(seq.items) if isinstance(seq, _TupleVal) or (isinstance(seq, _ListVal) and not seq.opaque) else None
+        )
+        if not recv.opaque and ext_items is not None and len(recv.items) + len(ext_items) <= MAX_CONTAINER_ITEMS:
+            recv.items.extend(ext_items)
+        else:
+            recv.items.clear()
+            recv.opaque = True
+        return _NONE_VAL
+
+    def _list_pop(self, recv: _ListVal, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if not call.args and not recv.opaque and recv.items:
+            return recv.items.pop()
+        if call.args:
+            idx = self._eval_int(call.args[0], state, scope)
+            if not recv.opaque and idx is not None and -len(recv.items) <= idx < len(recv.items):
+                return recv.items.pop(idx)
+        recv.items.clear()
+        recv.opaque = True
+        return _FrameVal("unresolved") if recv.contains_frames else _OPAQUE_VAL
+
+    def _eval_binary_frame_method(
+        self,
+        recv: _FrameVal,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _FrameVal:
+        if any(isinstance(arg, ast.Starred) for arg in call.args):
+            return _FrameVal("unresolved")
+        args_map = _call_args_map(call, ("other",))
+        other_expr = args_map.get("other")
+        if other_expr is None:
+            return _FrameVal("unresolved")
+        other_val = self._eval_expr(other_expr, state, scope)
+        for arg in call.args[1:]:
+            self._eval_expr(arg, state, scope)
+        for kw in call.keywords:
+            if kw.arg != "other":
+                self._eval_expr(kw.value, state, scope)
+        return _FrameVal(merge_sides([recv.side, _as_required_frame_side(other_val)]))
+
+    def _eval_glue_join_apply(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> _FrameVal:
+        if any(isinstance(arg, ast.Starred) for arg in call.args) or any(kw.arg is None for kw in call.keywords):
+            return _FrameVal("unresolved")
+        args_map = _call_args_map(call, ("frame1", "frame2"))
+        f1_expr = args_map.get("frame1")
+        f2_expr = args_map.get("frame2")
+        if f1_expr is None or f2_expr is None:
+            return _FrameVal("unresolved")
+        s1 = _as_required_frame_side(self._eval_expr(f1_expr, state, scope))
+        s2 = _as_required_frame_side(self._eval_expr(f2_expr, state, scope))
+        return _FrameVal(merge_sides([s1, s2]))
+
+    def _eval_reduce_call(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        if call.keywords or not (2 <= len(call.args) <= 3):
+            return _FrameVal("unresolved")
+        seq_val = self._eval_expr(call.args[1], state, scope)
+        init_val = self._eval_expr(call.args[2], state, scope) if len(call.args) == 3 else None
+        items: Sequence[_ProvVal] | None = None
+        if isinstance(seq_val, _ListVal) and not seq_val.opaque:
+            items = seq_val.items
+        elif isinstance(seq_val, _TupleVal):
+            items = seq_val.items
+        if items is None or (not items and init_val is None):
+            return _FrameVal("unresolved")
+        sides: list[Side[ScriptRef]] = [_as_required_frame_side(item) for item in items]
+        if init_val is not None:
+            sides.append(_as_required_frame_side(init_val))
+        return _FrameVal(merge_sides(sides))
+
+    def _eval_general_transform_call(
+        self,
+        recv: _ProvVal | None,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        arg_vals: list[_ProvVal] = [*([recv] if recv is not None else [])]
+        arg_vals.extend(
+            self._eval_expr(arg.value if isinstance(arg, ast.Starred) else arg, state, scope) for arg in call.args
+        )
+        arg_vals.extend(self._eval_expr(kw.value, state, scope) for kw in call.keywords)
+
+        collected_sides: list[Side[ScriptRef]] = []
+        saw_frame_carrier = False
+        for v in arg_vals:
+            if isinstance(v, _FrameVal):
+                saw_frame_carrier = True
+                collected_sides.append(v.side)
+            elif isinstance(v, _ListVal) and _carries_frame(v):
+                saw_frame_carrier = True
+                if v.opaque or not v.items:
+                    collected_sides.append("unresolved")
+                else:
+                    collected_sides.extend(_as_required_frame_side(item) for item in v.items)
+            elif isinstance(v, _TupleVal) and _carries_frame(v):
+                saw_frame_carrier = True
+                collected_sides.extend(_as_required_frame_side(item) for item in v.items if _carries_frame(item))
+            elif isinstance(v, _FrameDict) and _carries_frame(v):
+                saw_frame_carrier = True
+                if v.has_unknown_entries or not v.entries:
+                    collected_sides.append("unresolved")
+                else:
+                    collected_sides.extend(_as_required_frame_side(item) for item in v.entries.values())
+
+        if saw_frame_carrier:
+            return _FrameVal(merge_sides(collected_sides))
+        dk = self._reader_for(state).dict_key(call)
+        return _ScalarVal(dk) if not isinstance(dk, UnknownValue) else _OPAQUE_VAL
+
+    def _mark_opaque_side_effect_call(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> None:
+        if self._bindings.resolve_function_def(call.func) is not None:
+            return
+        if isinstance(call.func, ast.Name) and call.func.id in ("print", "len", "dict", "list", "tuple", "reduce"):
+            return
+        if isinstance(call.func, ast.Attribute):
+            if call.func.attr in TEMP_VIEW_METHODS or call.func.attr in ("dropTempView", "dropGlobalTempView", "sql"):
+                return
+            if isinstance(call.func.value, ast.Name) and call.func.value.id in ("logger", "logging", "job"):
+                return
+            if isinstance(self._eval_expr(call.func.value, state.clone(), scope), (_FrameDict, _ListVal, _FrameVal)):
+                return
+        for arg in [*call.args, *(kw.value for kw in call.keywords)]:
+            inner = arg.value if isinstance(arg, ast.Starred) else arg
+            if isinstance(inner, ast.Name) and not self._bindings.is_shadowed(inner):
+                cb_fn = self._bindings.resolve_function_def(inner)
+                if cb_fn is not None:
+                    self._invalidate_function_effects(cb_fn, state)
+                    continue
+                owner = self._bindings.owner_of(scope, inner.id)
+                val = state.scope_envs.get(id(owner), {}).get(inner.id)
+                if isinstance(val, _FrameDict):
+                    val.entries.clear()
+                    val.has_unknown_entries = True
+                elif isinstance(val, _ListVal):
+                    val.items.clear()
+                    val.opaque = True
+
+    def _invalidate_function_effects(
+        self,
+        fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+        state: _ExecState,
+    ) -> None:
+        state.temp_views.clear()
+        state.temp_views_opaque = True
+        state.global_temp_views.clear()
+        state.global_temp_views_opaque = True
+        for node in ast.walk(fn_def):
+            if (
+                isinstance(node, ast.Name)
+                and not isinstance(node.ctx, ast.Load)
+                and not self._bindings.is_shadowed(node)
+            ):
+                fn_scope = self._bindings.scope_of(node)
+                owner = self._bindings.owner_of(fn_scope, node.id)
+                if owner is not fn_def and id(owner) in state.scope_envs:
+                    state.scope_envs[id(owner)][node.id] = _FrameVal("unresolved")
+
+    def _bail_helper_call(
+        self,
+        fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        for arg in [*call.args, *(kw.value for kw in call.keywords)]:
+            inner = arg.value if isinstance(arg, ast.Starred) else arg
+            arg_val = self._eval_expr(inner, state, scope)
+            if isinstance(arg_val, _FrameDict):
+                arg_val.entries.clear()
+                arg_val.has_unknown_entries = True
+            elif isinstance(arg_val, _ListVal):
+                arg_val.items.clear()
+                arg_val.opaque = True
+        self._invalidate_function_effects(fn_def, state)
+        return _FrameVal("unresolved")
+
+    def _bind_helper_arguments(
+        self,
+        fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> tuple[dict[str, _ProvVal], dict[str, object]] | None:
+        positional_params = [*fn_def.args.posonlyargs, *fn_def.args.args]
+        caller_reader = self._reader_for(state)
+        bound_prov: dict[str, _ProvVal] = {}
+        bound_reader_vals: dict[str, object] = {}
+
+        default_start = len(positional_params) - len(fn_def.args.defaults)
+        for idx, default_expr in enumerate(fn_def.args.defaults):
+            p_name = positional_params[default_start + idx].arg
+            bound_prov[p_name] = self._eval_expr(default_expr, state, scope)
+            bound_reader_vals[p_name] = caller_reader.eval_for_override(default_expr)
+
+        for kw_param, kw_default in zip(fn_def.args.kwonlyargs, fn_def.args.kw_defaults, strict=True):
+            if kw_default is not None:
+                bound_prov[kw_param.arg] = self._eval_expr(kw_default, state, scope)
+                bound_reader_vals[kw_param.arg] = caller_reader.eval_for_override(kw_default)
+
+        for param, arg_expr in zip(positional_params, call.args, strict=False):
+            bound_prov[param.arg] = self._eval_expr(arg_expr, state, scope)
+            bound_reader_vals[param.arg] = caller_reader.eval_for_override(arg_expr)
+
+        all_params = (*positional_params, *fn_def.args.kwonlyargs)
+        all_param_names = {p.arg for p in all_params}
+        for kw in call.keywords:
+            if kw.arg is None or kw.arg not in all_param_names:
+                return None
+            bound_prov[kw.arg] = self._eval_expr(kw.value, state, scope)
+            bound_reader_vals[kw.arg] = caller_reader.eval_for_override(kw.value)
+
+        if any(p.arg not in bound_prov for p in all_params):
+            return None
+        return bound_prov, bound_reader_vals
+
+    def _invoke_helper_function(
+        self,
+        fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+        call: ast.Call,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        positional_params = [*fn_def.args.posonlyargs, *fn_def.args.args]
+        if (
+            len(self._call_stack) >= MAX_CALL_DEPTH
+            or fn_def in self._call_stack
+            or fn_def.args.vararg
+            or fn_def.args.kwarg
+            or len(call.args) > len(positional_params)
+            or any(isinstance(a, ast.Starred) for a in call.args)
+            or any(kw.arg is None for kw in call.keywords)
+        ):
+            return self._bail_helper_call(fn_def, call, state, scope)
+
+        bound = self._bind_helper_arguments(fn_def, call, state, scope)
+        if bound is None:
+            return _FrameVal("unresolved")
+        bound_prov, bound_reader_vals = bound
+
+        prev_fn_env = state.scope_envs.get(id(fn_def))
+        prev_fn_overrides = {k: v for k, v in state.scope_overrides.items() if k[0] is fn_def}
+        for k in prev_fn_overrides:
+            state.scope_overrides.pop(k, None)
+
+        state.scope_envs[id(fn_def)] = dict(bound_prov)
+        for p_name, r_val in bound_reader_vals.items():
+            state.scope_overrides[(fn_def, p_name)] = r_val
+
+        self._call_stack.append(fn_def)
+        try:
+            return_outcomes: list[tuple[_ExecState, _ProvVal]] = []
+            end_status = self._exec_block(fn_def.body, state, fn_def, return_outcomes=return_outcomes)
+            if end_status == "normal":
+                return_outcomes.append((state.clone(), _NONE_VAL))
+            if not return_outcomes:
+                return _NONE_VAL
+            merged_state, merged_ret = return_outcomes[0]
+            for extra_state, extra_ret in return_outcomes[1:]:
+                merged_state = _join_states(merged_state, extra_state)
+                merged_ret = _join_prov(merged_ret, extra_ret)
+            self._overwrite_state_in_place(state, merged_state)
+            return merged_ret
+        finally:
+            self._call_stack.pop()
+            for k in [key for key in state.scope_overrides if key[0] is fn_def]:
+                state.scope_overrides.pop(k, None)
+            state.scope_overrides.update(prev_fn_overrides)
+            if prev_fn_env is not None:
+                state.scope_envs[id(fn_def)] = prev_fn_env
+            else:
+                state.scope_envs.pop(id(fn_def), None)
+
+
+def _analyze_script_provenance(
+    parsed: ParsedScript,
+    context: ParameterContext | None,
+    execution_id: str,
+) -> list[LineageGroup[ScriptRef]]:
+    return _ProvenanceAnalyzer(parsed, context=context, execution_id=execution_id).analyze()
 
 
 def _merge_call_result(
@@ -1072,16 +2623,27 @@ def _extract_glue_options_jdbc_ref(
 
 
 def _extract_s3_from_dict_value(reader: ScriptReader, conn_opts: DictValue) -> list[str]:
+    if conn_opts.opaque:
+        return []
     found: list[str] = []
     for key in ("paths", "path"):
-        raw = conn_opts.entries.get(key)
-        if isinstance(raw, str) and _is_s3_uri(raw):
-            found.append(raw)
+        if key not in conn_opts.entries:
+            continue
+        raw = conn_opts.entries[key]
+        if isinstance(raw, UnknownValue):
+            return []
+        if isinstance(raw, str):
+            if _is_s3_uri(raw):
+                found.append(raw)
         elif hasattr(raw, "items") and isinstance(getattr(raw, "items", None), tuple):
             for item in raw.items:  # type: ignore[union-attr]
                 s = reader.scalar_to_str(item)
-                if isinstance(s, str) and _is_s3_uri(s):
+                if isinstance(s, UnknownValue):
+                    return []
+                if _is_s3_uri(s):
                     found.append(s)
+        else:
+            return []
     return found
 
 
@@ -1221,11 +2783,17 @@ def _extract_spark_write_terminal(
 def _extract_spark_paths(call: ast.Call, reader: ScriptReader, options_map: dict[str, object]) -> list[str]:
     candidates: list[str] = []
     for arg in call.args:
+        if reader.has_unresolved_string_item(arg):
+            return []
         candidates.extend(reader.string_list(arg))
     for kw in call.keywords:
         if kw.arg in ("path", "paths"):
+            if reader.has_unresolved_string_item(kw.value):
+                return []
             candidates.extend(reader.string_list(kw.value))
     opt_path = options_map.get("path")
+    if isinstance(opt_path, UnknownValue):
+        return []
     if isinstance(opt_path, str):
         candidates.append(opt_path)
     return [p for p in candidates if _is_s3_uri(p)]
