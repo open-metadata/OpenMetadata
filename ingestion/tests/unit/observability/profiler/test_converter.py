@@ -490,20 +490,17 @@ def test_mariadb_time_override_does_not_leak_to_subsequent_orm_builds(mock_schem
     assert MariaDBMapTypes._TYPE_MAP[DataType.TIME] is CustomTypes.TIME.value
 
 
-def test_snowflake_mapper_does_not_mutate_shared_type_map():
-    """The Snowflake mapper used to call ``self._TYPE_MAP.update({DataType.BINARY:
-    CustomTypes.BYTES.value})`` in ``__init__``. BINARY was already mapped to that same
-    value on CommonMapTypes, so it was a value no-op, but it mutated the shared dict
-    structurally and was one value change away from the MariaDB TIME leak. The shared
-    dict must now be untouched by SnowflakeMapTypes instantiation."""
+def test_snowflake_mapper_preserves_shared_type_map_values():
+    """Snowflake mapper construction preserves shared mapping contents and the
+    inherited BINARY mapping.
+    """
     from metadata.profiler.orm.converter.snowflake.converter import SnowflakeMapTypes
 
     snapshot = dict(CommonMapTypes._TYPE_MAP)
 
-    SnowflakeMapTypes()  # used to call self._TYPE_MAP.update(...) on the shared dict
+    SnowflakeMapTypes()
 
     assert snapshot == CommonMapTypes._TYPE_MAP
-    # BINARY is still mapped (inherited from CommonMapTypes; no override needed)
     assert CommonMapTypes._TYPE_MAP[DataType.BINARY] is CustomTypes.BYTES.value
 
 
