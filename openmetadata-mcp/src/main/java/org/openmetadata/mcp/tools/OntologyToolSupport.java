@@ -77,9 +77,7 @@ final class OntologyToolSupport {
 
   static Map<String, Object> writeResult(
       final Response response, final CatalogSecurityContext context) {
-    if (response.getStatusInfo().getFamily() != Response.Status.Family.SUCCESSFUL) {
-      throw new WebApplicationException(response);
-    }
+    requireSuccess(response);
     final EntityInterface<?> entity = (EntityInterface<?>) response.getEntity();
     final String pendingHeader = response.getHeaderString(RestUtil.PENDING_CHANGE_HEADER);
     final UUID pending = pendingHeader == null ? null : UUID.fromString(pendingHeader);
@@ -92,6 +90,12 @@ final class OntologyToolSupport {
       result.put("_operation", "unchanged");
     }
     return McpResponseUtils.markHeld(result, pending);
+  }
+
+  static void requireSuccess(final Response response) {
+    if (response.getStatusInfo().getFamily() != Response.Status.Family.SUCCESSFUL) {
+      throw new WebApplicationException(response);
+    }
   }
 
   private static EventType eventType(final Response response) {

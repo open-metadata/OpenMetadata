@@ -155,12 +155,18 @@ public class PatchEntityTool implements McpTool {
 
   private static void requireGenericPatchLifecycle(String entityType) {
     if (DEDICATED_PATCH_LIFECYCLES.contains(entityType)) {
+      final String dedicatedApi =
+          Entity.ONTOLOGY_CHANGE_SET.equals(entityType)
+              ? "dedicated ontology change-set tools or authoring API"
+              : "dedicated OpenMetadata REST PATCH API";
       throw new IllegalArgumentException(
           "entityType '"
               + entityType
               + "' cannot be patched through patch_entity because its resource performs"
               + " additional authorization, scheduling, cleanup, or secret handling. Use its"
-              + " dedicated OpenMetadata REST PATCH API. Nothing was changed.");
+              + ' '
+              + dedicatedApi
+              + ". Nothing was changed.");
     }
     if (Entity.isTimeSeriesEntity(entityType)) {
       throw new IllegalArgumentException(

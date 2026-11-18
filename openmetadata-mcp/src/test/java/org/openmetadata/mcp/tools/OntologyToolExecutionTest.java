@@ -9,6 +9,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import java.util.Map;
@@ -225,6 +226,21 @@ class OntologyToolExecutionTest {
           .isInstanceOf(IllegalStateException.class)
           .hasMessageContaining("not configured");
     }
+  }
+
+  @Test
+  void releaseFailureRemainsAnErrorInsteadOfASuccessfulToolResult() {
+    final OntologyChangeSetResource proposals = mock(OntologyChangeSetResource.class);
+    final OntologyEditLockResource locks = mock(OntologyEditLockResource.class);
+    when(locks.release(any(), any(), any(), any())).thenReturn(Response.status(403).build());
+    assertThatThrownBy(
+            () ->
+                tool(OntologyTool.Action.LEASE, proposals, locks)
+                    .execute(
+                        mock(Authorizer.class),
+                        CONTEXT,
+                        Map.of("id", ID.toString(), "action", "RELEASE", "sessionId", "session")))
+        .isInstanceOf(WebApplicationException.class);
   }
 
   private static OntologyChangeSet changeSet(final OntologyChangeSetState state) {

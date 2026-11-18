@@ -155,6 +155,7 @@ final class OntologyTool implements TypedMcpTool<Object> {
     try (final Response response =
         locks.release(
             context, Entity.ONTOLOGY_CHANGE_SET, request.getResourceId(), request.getSessionId())) {
+      OntologyToolSupport.requireSuccess(response);
       return new ReleasedLease(
           request.getResourceId(), request.getSessionId(), response.getStatus() == 204);
     }

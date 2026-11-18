@@ -263,6 +263,11 @@ class OntologyToolContractTest {
             mock(Authorizer.class));
     assertThat(error.path("statusCode").asInt()).isEqualTo(400);
     assertThat(error.path("error").asText()).contains("dedicated");
+    if (tool.equals("patch_entity")) {
+      assertThat(error.path("error").asText())
+          .contains("ontology change-set tools")
+          .doesNotContain("REST PATCH API");
+    }
   }
 
   @Test
