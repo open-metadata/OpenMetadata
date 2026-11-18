@@ -12,13 +12,13 @@
  */
 import { render } from '@testing-library/react';
 import { ReactNode } from 'react';
+import {
+  ColumnsType,
+  ColumnType,
+} from '../components/common/Table/Table.interface';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import { ServiceCategory } from '../enums/service.enum';
 import { UsageDetails } from '../generated/type/entityUsage';
-import {
-  ColumnType,
-  ColumnsType,
-} from '../components/common/Table/Table.interface';
 import { ServicePageData } from '../interface/platform/service.interface';
 import { getServiceMainTabColumns } from './ServiceMainTabContentUtils';
 import { getUsagePercentile } from './TablePureUtils';
