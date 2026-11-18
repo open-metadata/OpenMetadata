@@ -202,6 +202,19 @@ describe('RichTextEditorPreviewerV1: formatted-description truncation', () => {
     expect(screen.getByText(/Some plain intro/)).toBeInTheDocument();
   });
 
+  it('should keep a mention crossing the cut whole with the ellipsis after it', async () => {
+    renderCollapsed(
+      'Intro [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure) tail text that keeps going',
+      10
+    );
+
+    await screen.findByText('@Infrastructure', {}, RENDER_TIMEOUT);
+
+    expect(screen.getByTestId('markdown-parser').textContent).toBe(
+      'Intro @Infrastructure...'
+    );
+  });
+
   it('should spend the preview budget on visible text, not markup', async () => {
     renderCollapsed(LONG_BOLD_PARAGRAPH, 200);
 

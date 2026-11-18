@@ -204,6 +204,9 @@ export const getHtmlStringFromMarkdownString = (content: string) => {
     : _convertMarkdownStringToHtmlString.makeHtml(content);
 };
 
+const MENTION_OR_HASHTAG_SELECTOR =
+  'a[data-type="mention"], a[data-type="hashtag"]';
+
 export const formatClientContent = (content: string) => {
   const parser = new DOMParser();
 
@@ -219,9 +222,7 @@ export const formatClientContent = (content: string) => {
 
   const doc = parser.parseFromString(processedContent, 'text/html');
 
-  const anchorTags = doc.querySelectorAll(
-    'a[data-type="mention"], a[data-type="hashtag"]'
-  );
+  const anchorTags = doc.querySelectorAll(MENTION_OR_HASHTAG_SELECTOR);
 
   anchorTags.forEach((tag) => {
     const label = tag.getAttribute('data-label');
@@ -234,6 +235,27 @@ export const formatClientContent = (content: string) => {
   });
 
   return getSanitizeContent(doc.body.innerHTML);
+};
+
+const cutTextNode = (node: Text, remaining: number): Node => {
+  const mentionOrHashtag = node.parentElement?.closest(
+    MENTION_OR_HASHTAG_SELECTOR
+  );
+
+  if (mentionOrHashtag) {
+    const ellipsis = node.ownerDocument.createTextNode('...');
+    mentionOrHashtag.after(ellipsis);
+
+    return ellipsis;
+  }
+
+  const slicedText = node.data.slice(0, remaining);
+  const lastSpaceIndex = slicedText.lastIndexOf(' ');
+  node.data = `${
+    lastSpaceIndex > 0 ? slicedText.slice(0, lastSpaceIndex) : slicedText
+  }...`;
+
+  return node;
 };
 
 export const getTrimmedHtmlContent = (html: string, limit: number) => {
@@ -256,14 +278,8 @@ export const getTrimmedHtmlContent = (html: string, limit: number) => {
     return html;
   }
 
-  const slicedText = node.data.slice(0, remaining);
-  const lastSpaceIndex = slicedText.lastIndexOf(' ');
-  node.data = `${
-    lastSpaceIndex > 0 ? slicedText.slice(0, lastSpaceIndex) : slicedText
-  }...`;
-
   const range = doc.createRange();
-  range.setStartAfter(node);
+  range.setStartAfter(cutTextNode(node, remaining));
   range.setEnd(doc.body, doc.body.childNodes.length);
   range.deleteContents();
 

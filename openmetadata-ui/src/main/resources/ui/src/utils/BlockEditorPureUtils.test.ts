@@ -603,6 +603,33 @@ describe('getTrimmedHtmlContent', () => {
     );
   });
 
+  it('should keep a mention crossing the cut whole and put the ellipsis after it', () => {
+    const html = formatClientContent(
+      'Intro [@Infrastructure](http://localhost:3000/settings/members/teams/Infrastructure) tail text here'
+    );
+    const doc = new DOMParser().parseFromString(
+      formatClientContent(getTrimmedHtmlContent(html, 10)),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe('Intro @Infrastructure...');
+    expect(doc.querySelector('a[data-type="mention"]')?.textContent).toBe(
+      '@Infrastructure'
+    );
+  });
+
+  it('should keep a hashtag crossing the cut whole and put the ellipsis after it', () => {
+    const html = formatClientContent(
+      'See [#table](http://localhost:3000/table/sample_data.ecommerce) here and more'
+    );
+    const doc = new DOMParser().parseFromString(
+      formatClientContent(getTrimmedHtmlContent(html, 8)),
+      'text/html'
+    );
+
+    expect(doc.body.textContent).toBe('See #sample_data.ecommerce...');
+  });
+
   it('should drop every block after the cut', () => {
     const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
 
