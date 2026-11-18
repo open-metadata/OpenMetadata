@@ -13,7 +13,6 @@
 import { Box, Button } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { RefObject, useCallback, useRef } from 'react';
-import { COUNT_BADGE_CLASS } from '../../../constants/common/countBadge.constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import UserPopOverCard from '../PopOverCard/UserPopOverCard';
@@ -73,7 +72,11 @@ const AvatarCarouselItem = ({
         </Button>
         {suggestionsCount > 0 && (
           <span
-            className={classNames(COUNT_BADGE_CLASS, 'tw:pointer-events-none')}>
+            className={classNames(
+              'tw:pointer-events-none tw:absolute tw:-top-1.5 tw:-right-1.5 tw:flex tw:h-3.5 tw:min-w-3.5',
+              'tw:items-center tw:justify-center tw:rounded-full tw:bg-error-solid tw:px-1',
+              'tw:text-[8px] tw:font-medium tw:text-white'
+            )}>
             {suggestionsCount > 99 ? '99+' : suggestionsCount}
           </span>
         )}
