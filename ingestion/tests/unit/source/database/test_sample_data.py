@@ -63,6 +63,15 @@ def test_sample_incident_sequences_start_with_a_failure_instead_of_reopening():
     assert [isinstance(record, OMetaTestCaseResultsSample) for record in records] == expected_failures
     assert all(record.test_case_results.testCaseStatus.value == "Failed" for record in failures)
     assert all(record.test_case_name for record in failures)
+    expected_severities = [
+        resolution["severity"]
+        for suite in source.tests_suites["tests"]
+        for test_case in suite["testCases"]
+        for sequence in test_case["resolutions"].values()
+        for resolution in sequence
+        if resolution["testCaseResolutionStatusType"] == "New"
+    ]
+    assert [record.incident_severity.value for record in failures] == expected_severities
     statuses = [record.test_case_resolution for record in records if not isinstance(record, OMetaTestCaseResultsSample)]
     assert all(record.testCaseResolutionStatusType.value != "New" for record in statuses)
     expected_statuses = [

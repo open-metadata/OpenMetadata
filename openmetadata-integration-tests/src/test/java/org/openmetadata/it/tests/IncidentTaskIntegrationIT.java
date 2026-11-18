@@ -20,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.tasks.IncidentWorkflowStages.RESOLVED_STAGE_ID;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -46,15 +47,18 @@ import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.tasks.Payload;
 import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
+import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
+import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskCategory;
@@ -695,6 +699,43 @@ public class IncidentTaskIntegrationIT {
     awaitIncidentTask(client, stateId, TaskEntityStatus.Open, "new", null);
   }
 
+  @ParameterizedTest
+  @CsvSource({"new,ack", "ack,resolved", "new,assign"})
+  void testAssignmentPatchedAfterReturningToTriageSurvivesLaterStages(
+      String returnStage, String nextStage, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    SharedEntities shared = SharedEntities.get();
+    TestCase testCase = createTestCase(client, ns, "patched-assignee-" + returnStage + nextStage);
+    createFailedTestResult(client, testCase);
+    Task task = awaitIncidentTaskForTestCase(client, testCase);
+    createTcrs(
+        client,
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(shared.USER1_REF));
+    client
+        .tasks()
+        .resolve(task.getId().toString(), new ResolveTask().withTransitionId(returnStage));
+    Task returned = client.tasks().get(task.getId().toString(), "assignees");
+    assertTrue(returned.getAssignees() == null || returned.getAssignees().isEmpty());
+    JsonNode patch =
+        JsonUtils.valueToTree(
+            List.of(Map.of("op", "add", "path", "/assignees", "value", List.of(shared.USER2_REF))));
+    client.tasks().patch(task.getId().toString(), patch);
+    if (!RESOLVED_STAGE_ID.equals(nextStage)) {
+      client
+          .tasks()
+          .resolve(task.getId().toString(), new ResolveTask().withTransitionId(nextStage));
+      Task advanced = client.tasks().get(task.getId().toString(), "assignees");
+      assertEquals(
+          List.of(shared.USER2.getId()),
+          advanced.getAssignees().stream().map(EntityReference::getId).toList());
+    }
+    resolveIncidentTask(client, task.getId());
+    awaitIncidentTask(
+        client, task.getId(), TaskEntityStatus.Completed, "resolved", shared.USER2.getName());
+  }
+
   @Test
   void testResolvedIncident_NewFailureOpensADistinctIncident(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -707,7 +748,8 @@ public class IncidentTaskIntegrationIT {
     resolveIncidentTask(client, firstStateId);
     awaitIncidentTask(client, firstStateId, TaskEntityStatus.Completed, "resolved", null);
 
-    createFailedTestResult(client, testCase);
+    TestCaseResult newFailure = createFailedTestResult(client, testCase);
+    assertNotNull(newFailure.getIncidentId());
 
     UUID[] secondStateId = new UUID[1];
     await()
@@ -727,7 +769,21 @@ public class IncidentTaskIntegrationIT {
               secondStateId[0] = fetched.getIncidentId();
             });
     assertLatestTcrsEventually(client, secondStateId[0], TestCaseResolutionStatusTypes.New, null);
+    assertEquals(secondStateId[0], newFailure.getIncidentId());
     List<TestCaseResolutionStatus> resolvedHistory = tcrsTimeline(client, firstStateId);
+    List<TestCaseResolutionStatus> newHistory = tcrsTimeline(client, secondStateId[0]);
+    client
+        .testCaseResolutionStatuses()
+        .patch(
+            newHistory.getLast().getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"add\",\"path\":\"/severity\",\"value\":\"Severity5\"}]"));
+    List<TestCaseResolutionStatus> prioritizedHistory = tcrsTimeline(client, secondStateId[0]);
+    assertEquals(newHistory.size(), prioritizedHistory.size());
+    assertEquals(Severity.Severity5, prioritizedHistory.getLast().getSeverity());
+    assertEquals(
+        TestCaseResolutionStatusTypes.New,
+        prioritizedHistory.getLast().getTestCaseResolutionStatusType());
     createTcrs(client, testCase, TestCaseResolutionStatusTypes.Ack, null);
     createTcrs(
         client,
@@ -873,13 +929,12 @@ public class IncidentTaskIntegrationIT {
         .count();
   }
 
-  private void createFailedTestResult(OpenMetadataClient client, TestCase testCase) {
-    org.openmetadata.schema.api.tests.CreateTestCaseResult failedResult =
-        new org.openmetadata.schema.api.tests.CreateTestCaseResult();
+  private TestCaseResult createFailedTestResult(OpenMetadataClient client, TestCase testCase) {
+    CreateTestCaseResult failedResult = new CreateTestCaseResult();
     failedResult.setTimestamp(System.currentTimeMillis());
     failedResult.setTestCaseStatus(TestCaseStatus.Failed);
     failedResult.setResult("Test failed - triggering incident");
-    client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
+    return client.testCaseResults().create(testCase.getFullyQualifiedName(), failedResult);
   }
 
   private Task awaitIncidentTaskForTestCase(OpenMetadataClient client, TestCase testCase) {

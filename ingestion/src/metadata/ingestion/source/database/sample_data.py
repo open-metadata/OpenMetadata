@@ -2457,6 +2457,7 @@ class SampleDataSource(Source):  # pylint: disable=too-many-instance-attributes,
                                 left=None,
                                 right=OMetaTestCaseResultsSample(
                                     test_case_name=test_case_fqn,
+                                    incident_severity=resolution["severity"],
                                     test_case_results=TestCaseResult(
                                         timestamp=Timestamp(int(time.time() * 1000)),
                                         testCaseStatus=TestCaseStatus.Failed,
