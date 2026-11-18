@@ -39,6 +39,17 @@ public interface ColumnAggregator {
   int MAX_PATTERN_SEARCH_NAMES = 10000;
 
   /**
+   * Page size used when paginating the browse path's per-group composite name aggregation. The
+   * composite {@code after_key} is consumed to completion per group, so a modest batch keeps
+   * each round-trip bounded while letting browse exceed the {@link #MAX_PATTERN_SEARCH_NAMES}
+   * cap that the pattern path's single terms-agg is subject to.
+   */
+  int NAMES_BATCH_SIZE = 1000;
+
+  /** Key name used for the single terms source in the browse path's composite aggregation. */
+  String COMPOSITE_SOURCE_NAME = "col";
+
+  /**
    * Number of sample docs pulled per column-name bucket to populate occurrences. Caps
    * {@code ColumnGridItem.totalOccurrences}; columns appearing in more entities than this
    * undercount.

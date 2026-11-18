@@ -365,6 +365,56 @@ public class ColumnGridResourceIT {
             + ") must be served exactly once; got "
             + seenNames.size());
     assertEquals(totalTestColumns, totalServed, "no test column should be re-served");
+
+    // (3) Browse-only cursor walk (no columnNamePattern). Section (2) routes through the
+    //     pattern path, which already used offset pagination before this PR — so a buggy
+    //     browse implementation that respects page-1 size but skips or repeats columns on
+    //     later pages would still pass section (2). This walk paginates the browse path
+    //     (entityTypes=table,topic, no pattern) to completion and asserts every test column
+    //     is served exactly once. The shared index carries columns from other concurrent
+    //     tests, so a larger page size keeps the walk bounded; non-test columns are filtered
+    //     out of the assertion by the test prefix.
+    String browseQuery = "size=100&entityTypes=table,topic";
+    String testPrefix = ns.prefix("mgpag_");
+    java.util.Set<String> seenBrowseNames = new java.util.HashSet<>();
+    String browseCursor = null;
+    int browsePages = 0;
+    while (true) {
+      String query =
+          browseQuery
+              + (browseCursor != null
+                  ? "&cursor=" + URLEncoder.encode(browseCursor, StandardCharsets.UTF_8)
+                  : "");
+      ColumnGridResponse browsePage = getColumnGrid(client, query);
+      assertNotNull(
+          browsePage.getColumns(), "browse page " + browsePages + " columns should not be null");
+      for (ColumnGridItem item : browsePage.getColumns()) {
+        if (item.getColumnName().startsWith(testPrefix)) {
+          assertTrue(
+              seenBrowseNames.add(item.getColumnName()),
+              "Duplicate column '"
+                  + item.getColumnName()
+                  + "' served across browse pages — regression");
+        }
+      }
+      browseCursor = browsePage.getCursor();
+      browsePages++;
+      if (browseCursor == null || browsePage.getColumns().isEmpty()) {
+        break;
+      }
+      if (browsePages > 500) {
+        org.junit.jupiter.api.Assertions.fail(
+            "Browse pagination did not terminate after 500 pages (size=100)");
+      }
+    }
+
+    assertEquals(
+        totalTestColumns,
+        seenBrowseNames.size(),
+        "browse cursor walk must serve every test column ("
+            + totalTestColumns
+            + ") exactly once; got "
+            + seenBrowseNames.size());
   }
 
   @Test

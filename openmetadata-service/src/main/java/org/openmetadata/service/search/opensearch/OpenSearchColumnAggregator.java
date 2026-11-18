@@ -48,6 +48,10 @@ import os.org.opensearch.client.opensearch._types.FieldValue;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeBucket;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsAggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.aggregations.TopHitsAggregate;
@@ -166,7 +170,15 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
     Map<String, List<String>> fieldPathToEntityTypes = groupByFieldPath(entityTypes);
 
+    // Display set: case-insensitive merged names. TreeSet with CASE_INSENSITIVE_ORDER dedupes
+    // names that differ only by case (e.g. "Extract"/"extract") so the page count and
+    // totalUniqueColumns reflect the merged view the grid shows.
     Set<String> allMatchingNames = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+    // Every original spelling seen across groups, keyed by lowercase, so the page data query
+    // can fetch every case variant the display set merged. Without this, only the single
+    // spelling the TreeSet kept for each merged name reaches the data query, and the other
+    // spellings' occurrences (e.g. tasks named "Extract" and "extract") silently disappear.
+    Map<String, Set<String>> spellingsByLowerCase = new HashMap<>();
     long totalOccurrencesAcrossGroups = 0;
 
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
@@ -177,7 +189,12 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       try {
         ColumnAggregator.NamesWithCount result =
             executeNamesQuery(query, indexes, columnNameKeyword, regex);
-        allMatchingNames.addAll(result.names());
+        for (String name : result.names()) {
+          allMatchingNames.add(name);
+          spellingsByLowerCase
+              .computeIfAbsent(name.toLowerCase(Locale.ROOT), k -> new TreeSet<>())
+              .add(name);
+        }
         totalOccurrencesAcrossGroups += result.totalDocCount();
       } catch (OpenSearchException e) {
         if (!isIndexNotFoundException(e)) {
@@ -200,6 +217,21 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
       return buildResponse(new ArrayList<>(), null, false, totalUniqueColumns, totalOccurrences);
     }
 
+    // All original spellings for the names on this page, so case variants are fetched even
+    // though the display set merges them. Mapped back to the page display name after the
+    // fetch so the merged grid item keeps one canonical key instead of splitting per spelling.
+    List<String> pageQueryNames = new ArrayList<>();
+    Map<String, String> spellingToDisplayName = new HashMap<>();
+    for (String pageName : pageNames) {
+      Set<String> variants = spellingsByLowerCase.get(pageName.toLowerCase(Locale.ROOT));
+      if (variants != null) {
+        pageQueryNames.addAll(variants);
+        for (String v : variants) {
+          spellingToDisplayName.put(v, pageName);
+        }
+      }
+    }
+
     Map<String, List<ColumnWithContext>> allColumnsByName = new HashMap<>();
 
     for (Map.Entry<String, List<String>> entry : fieldPathToEntityTypes.entrySet()) {
@@ -210,11 +242,14 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
 
       try {
         Map<String, List<ColumnWithContext>> columnsByName =
-            executePageDataQuery(query, indexes, columnNameKeyword, columnFieldPath, pageNames);
+            executePageDataQuery(
+                query, indexes, columnNameKeyword, columnFieldPath, pageQueryNames);
 
         for (Map.Entry<String, List<ColumnWithContext>> colEntry : columnsByName.entrySet()) {
+          String displayName =
+              spellingToDisplayName.getOrDefault(colEntry.getKey(), colEntry.getKey());
           allColumnsByName
-              .computeIfAbsent(colEntry.getKey(), k -> new ArrayList<>())
+              .computeIfAbsent(displayName, k -> new ArrayList<>())
               .addAll(colEntry.getValue());
         }
       } catch (OpenSearchException e) {
@@ -718,26 +753,29 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
   }
 
   /**
-   * Phase 1: Get all matching column names using terms agg with optional include regex (no
-   * top_hits). When {@code regex} is null the aggregation is unfiltered, which is the browse path
-   * (every unique column name in the group's index).
+   * Phase 1: Get all matching column names. The browse path ({@code regex == null}) paginates
+   * every distinct name via a composite aggregation whose {@code after_key} is consumed to
+   * completion within this single group — so browse is not capped at
+   * {@link ColumnAggregator#MAX_PATTERN_SEARCH_NAMES} (10,000) the way the pattern path is.
+   * The pattern path keeps the capped terms-agg with regex include (unchanged pre-PR behavior).
    */
   private ColumnAggregator.NamesWithCount executeNamesQuery(
       Query query, List<String> indexes, String columnNameKeyword, String regex)
       throws IOException {
+
+    if (regex == null) {
+      return executeBrowseNamesQuery(query, indexes, columnNameKeyword);
+    }
+
     Aggregation termsAgg =
         Aggregation.of(
             a ->
                 a.terms(
-                    t -> {
-                      t.field(columnNameKeyword)
-                          .size(ColumnAggregator.MAX_PATTERN_SEARCH_NAMES)
-                          .order(List.of(Map.of(ColumnAggregator.AGG_KEY_ORDER, SortOrder.Asc)));
-                      if (regex != null) {
-                        t.include(inc -> inc.regexp(regex));
-                      }
-                      return t;
-                    }));
+                    t ->
+                        t.field(columnNameKeyword)
+                            .size(ColumnAggregator.MAX_PATTERN_SEARCH_NAMES)
+                            .order(List.of(Map.of(ColumnAggregator.AGG_KEY_ORDER, SortOrder.Asc)))
+                            .include(inc -> inc.regexp(regex))));
 
     SearchRequest searchRequest =
         SearchRequest.of(
@@ -763,6 +801,74 @@ public class OpenSearchColumnAggregator implements ColumnAggregator {
         LOG.warn(
             "Column name pattern matched at least {} distinct names; results truncated",
             ColumnAggregator.MAX_PATTERN_SEARCH_NAMES);
+      }
+    }
+    return new ColumnAggregator.NamesWithCount(names, totalDocCount);
+  }
+
+  /**
+   * Browse-path phase 1: paginate every distinct column name in the group's index via a composite
+   * aggregation. The composite {@code after_key} is only valid within this single group's key
+   * space, so it is consumed to completion here and never shared across groups (the bug the
+   * page-data offset cursor fixes for paging). Returns every distinct name plus the per-name
+   * doc_count so {@code totalOccurrences} is exact and browse is not capped at
+   * {@link ColumnAggregator#MAX_PATTERN_SEARCH_NAMES}.
+   */
+  private ColumnAggregator.NamesWithCount executeBrowseNamesQuery(
+      Query query, List<String> indexes, String columnNameKeyword) throws IOException {
+
+    CompositeAggregationSource source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(columnNameKeyword).order(SortOrder.Asc)));
+
+    List<String> names = new ArrayList<>();
+    long totalDocCount = 0;
+    Map<String, FieldValue> afterKey = null;
+
+    while (true) {
+      CompositeAggregation.Builder cBuilder =
+          new CompositeAggregation.Builder()
+              .size(ColumnAggregator.NAMES_BATCH_SIZE)
+              .sources(Map.of(ColumnAggregator.COMPOSITE_SOURCE_NAME, source));
+      if (afterKey != null) {
+        cBuilder.after(afterKey);
+      }
+
+      Aggregation compositeAgg = Aggregation.of(a -> a.composite(cBuilder.build()));
+
+      SearchRequest searchRequest =
+          SearchRequest.of(
+              s ->
+                  s.index(indexes)
+                      .query(query)
+                      .aggregations(ColumnAggregator.AGG_MATCHING_COLUMNS, compositeAgg)
+                      .size(0));
+
+      SearchResponse<JsonData> response = client.search(searchRequest, JsonData.class);
+
+      if (response.aggregations() == null
+          || !response.aggregations().containsKey(ColumnAggregator.AGG_MATCHING_COLUMNS)) {
+        break;
+      }
+      CompositeAggregate composite =
+          response.aggregations().get(ColumnAggregator.AGG_MATCHING_COLUMNS).composite();
+      List<CompositeBucket> buckets = composite.buckets().array();
+      if (buckets.isEmpty()) {
+        break;
+      }
+      for (CompositeBucket bucket : buckets) {
+        FieldValue keyValue = bucket.key().get(ColumnAggregator.COMPOSITE_SOURCE_NAME);
+        if (keyValue != null && keyValue.isString()) {
+          names.add(keyValue.stringValue());
+        }
+        totalDocCount += bucket.docCount();
+      }
+      if (buckets.size() < ColumnAggregator.NAMES_BATCH_SIZE) {
+        break;
+      }
+      afterKey = composite.afterKey();
+      if (afterKey == null) {
+        break;
       }
     }
     return new ColumnAggregator.NamesWithCount(names, totalDocCount);
