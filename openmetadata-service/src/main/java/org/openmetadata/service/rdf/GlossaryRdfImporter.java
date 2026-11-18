@@ -643,7 +643,7 @@ public class GlossaryRdfImporter {
       applyRelationTypes(toAdd, dryRun);
     }
     if (allowGlobalSchemaChanges && !dryRun) {
-      persistRelationTypes(updates.values());
+      persistRelationTypeUpdates(updates.values());
     }
   }
 
@@ -667,6 +667,14 @@ public class GlossaryRdfImporter {
     known.putAll(toAdd);
     Map<String, RelationshipType> updates = new LinkedHashMap<>();
     for (RelationshipType type : toAdd.values()) {
+      if (isSymmetric(type)) {
+        // A symmetric property is its own inverse; preserve the self-reference set by
+        // applyCharacteristics and do not rewire it to a declared named inverse. OWL 2 DL
+        // treats `A owl:inverseOf B` on a symmetric `A` as an equivalent-property axiom, not
+        // a separate inverse, so wiring A to B would both lose the symmetry and trip the
+        // validator's "symmetric must be its own inverse" check.
+        continue;
+      }
       if (type.getInverse() != null) {
         wireInversePartner(model, type, known, updates);
       }
@@ -700,6 +708,11 @@ public class GlossaryRdfImporter {
     if (partner == null) {
       return false;
     }
+    if (isSymmetric(partner)) {
+      // A symmetric partner keeps its self-inverse; it can still be named as this type's
+      // inverse without the partner's own inverse being rewritten (see completeInversePartner).
+      return true;
+    }
     String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
     String partnerInverse = inverseName(partner);
     return (inverseIri == null || URI.create(inverseIri).equals(partner.getRdfPredicate()))
@@ -708,6 +721,10 @@ public class GlossaryRdfImporter {
 
   private void completeInversePartner(
       RelationshipType type, RelationshipType partner, Map<String, RelationshipType> updates) {
+    if (isSymmetric(partner)) {
+      // The partner is its own inverse; do not overwrite that self-reference.
+      return;
+    }
     EntityReference inverse = partner.getInverse();
     if (inverse == null
         || !type.getName().equals(inverse.getName())
@@ -718,6 +735,11 @@ public class GlossaryRdfImporter {
       partner.setUpdatedAt(System.currentTimeMillis());
       updates.put(partner.getName(), partner);
     }
+  }
+
+  private boolean isSymmetric(RelationshipType type) {
+    return type.getCharacteristics() != null
+        && type.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC);
   }
 
   private String inverseName(RelationshipType type) {
@@ -983,6 +1005,44 @@ public class GlossaryRdfImporter {
       }
     }
     result.setRelationTypesRegistered(result.getRelationTypesRegistered() + added);
+  }
+
+  private void persistRelationTypeUpdates(Collection<RelationshipType> intended) {
+    // Existing partners are claimed against the snapshot taken in registerRelationTypes, but
+    // persisted later through a whole-entity createOrUpdate. Re-fetch each partner right before
+    // writing so a concurrent import that already set its inverse (or edited unrelated fields)
+    // is not silently overwritten — only the inverse field is mutated on the fresh state, and
+    // a partner whose inverse no longer matches the snapshot is left untouched.
+    RelationshipTypeRepository repository =
+        (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
+    RelationshipTypeResolver resolver =
+        new RelationshipTypeResolver(Entity.getCollectionDAO().relationshipTypeDAO());
+    for (RelationshipType intendedType : intended) {
+      RelationshipType current;
+      try {
+        current = resolver.require(intendedType.getId());
+      } catch (BadRequestException notRegistered) {
+        addMessage(
+            "Relationship type '"
+                + intendedType.getName()
+                + "' disappeared before its inverse could be completed; skipping");
+        continue;
+      }
+      EntityReference currentInverse = current.getInverse();
+      EntityReference intendedInverse = intendedType.getInverse();
+      if (currentInverse != null && !intendedInverse.getId().equals(currentInverse.getId())) {
+        addMessage(
+            "Inverse of relationship type '"
+                + intendedType.getName()
+                + "' was already set by another import; leaving it unchanged");
+        continue;
+      }
+      current.setInverse(intendedInverse);
+      current.setUpdatedBy(user);
+      current.setUpdatedAt(System.currentTimeMillis());
+      repository.prepareInternal(current, false);
+      repository.createOrUpdate(uriInfo, current, user);
+    }
   }
 
   private void persistTerms(

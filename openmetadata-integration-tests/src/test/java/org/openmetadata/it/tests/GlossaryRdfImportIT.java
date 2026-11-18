@@ -866,6 +866,67 @@ public class GlossaryRdfImportIT {
     assertEquals(before, getRelationshipType(inverse));
   }
 
+  @Test
+  void importPreservesSymmetricSelfInverseWhenNamedInverseIsDeclared(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossarySymmetric");
+    String forward = relationshipTypeName(glossary.getName());
+    String inverse = forward + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
+
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/%s#> .
+        hcp:Term0 a skos:Concept ; hcp:%s hcp:Term1 .
+        hcp:Term1 a skos:Concept ; hcp:%s hcp:Term2 .
+        hcp:Term2 a skos:Concept ; hcp:%s hcp:Term0 .
+        hcp:%s a owl:ObjectProperty ; a owl:SymmetricProperty ; owl:inverseOf hcp:%s .
+        hcp:%s a owl:ObjectProperty .
+        """
+            .formatted(glossary.getName(), forward, forward, forward, forward, inverse, inverse);
+
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+
+    assertEquals(2, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    JsonNode forwardType = getRelationshipType(forward);
+    JsonNode inverseType = getRelationshipType(inverse);
+    // A symmetric property is its own inverse; the declared named inverse must not overwrite
+    // that self-reference (which would trip the validator).
+    assertEquals(forward, forwardType.path("inverse").path("name").asText());
+    assertEquals(forwardType.path("id"), forwardType.path("inverse").path("id"));
+    // The named inverse still points back at the symmetric property.
+    assertEquals(forward, inverseType.path("inverse").path("name").asText());
+    assertEquals(forwardType.path("id"), inverseType.path("inverse").path("id"));
+    // Symmetry flips the reverse direction back to the authored predicate, so each term
+    // sees forward edges to both its neighbours.
+    for (int index = 0; index < 3; index++) {
+      GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
+      String next = "Term" + ((index + 1) % 3);
+      String previous = "Term" + ((index + 2) % 3);
+      assertTrue(
+          term.getRelatedTerms().stream()
+              .anyMatch(
+                  edge ->
+                      forward.equals(edge.getRelationType())
+                          && next.equals(edge.getTerm().getName())),
+          "term " + index + " missing forward edge to " + next);
+      assertTrue(
+          term.getRelatedTerms().stream()
+              .anyMatch(
+                  edge ->
+                      forward.equals(edge.getRelationType())
+                          && previous.equals(edge.getTerm().getName())),
+          "term " + index + " missing symmetric reverse edge to " + previous);
+      assertTrue(
+          term.getRelatedTerms().stream().noneMatch(edge -> inverse.equals(edge.getRelationType())),
+          "named inverse must not appear on symmetric edges");
+    }
+  }
+
   private RelationshipType createExistingPartner(Glossary glossary, String name, String inverse) {
     return SdkClients.adminClient()
         .relationshipTypes()
