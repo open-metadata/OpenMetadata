@@ -309,6 +309,15 @@ public class GlossaryRdfImporter {
     result.getMessages().add(message);
   }
 
+  /**
+   * Package-private accessor for unit tests that exercise the in-memory parse path (e.g.
+   * {@link #buildRelationType(Model, String)}) and need to assert that non-fatal issues such as
+   * an unset inverse reference were surfaced on the import result rather than silently dropped.
+   */
+  List<String> importMessages() {
+    return result.getMessages();
+  }
+
   private Model parseModel(String rdf, String format) {
     OntologyInputFormat inputFormat = OntologyInputFormat.resolve(format);
     rejectExternalEntities(rdf, inputFormat.jenaLanguage());
@@ -632,13 +641,44 @@ public class GlossaryRdfImporter {
 
   private void registerRelationTypes(Model model, List<TermIntent> intents, boolean dryRun) {
     Set<String> existing = existingRelationTypeNames();
-    Map<String, RelationshipType> toAdd = new LinkedHashMap<>();
+    // Pre-compute the set of relation type names that will exist after this import: types
+    // already registered, every predicate used on a term edge, and the inverse targets of
+    // those predicates when they are declared as an owl:ObjectProperty in the ontology. The
+    // importer stamps the inverse reference with a deterministic id only when the inverse
+    // name is in this set; otherwise it leaves the inverse unset, avoiding a dangling
+    // reference that would break TO-side relatedTerms reads (see
+    // GlossaryTermRepository.applyInverse) and silently drop edges whose canonical stored
+    // type is the inverse (see GlossaryTermRepository.computeCanonicalRelationType).
+    Set<String> registerableNames = new LinkedHashSet<>(existing);
+    Map<String, String> primaryPredicates = new LinkedHashMap<>();
     for (TermIntent intent : intents) {
       for (RelationIntent relation : intent.relations) {
-        collectCustomRelationType(
-            model, relation.relationshipType(), relation.predicateIri(), existing, toAdd);
+        if (registerableNames.add(relation.relationshipType())) {
+          primaryPredicates.put(relation.relationshipType(), relation.predicateIri());
+        }
       }
     }
+    // owl:inverseOf targets used nowhere else in the file are never registered as a side
+    // effect of the primary pass; collecting them here when their property is declared lets
+    // the inverse reference on the primary type resolve instead of dangling.
+    Map<String, String> inverseTargets = new LinkedHashMap<>();
+    for (Map.Entry<String, String> entry : primaryPredicates.entrySet()) {
+      String inverseIri = inversePredicateIri(model, entry.getValue());
+      if (inverseIri != null && isDeclaredObjectProperty(model, inverseIri)) {
+        String inverseName = sanitizeRelationName(localName(inverseIri));
+        if (registerableNames.add(inverseName)) {
+          inverseTargets.put(inverseName, inverseIri);
+        }
+      }
+    }
+
+    Map<String, RelationshipType> toAdd = new LinkedHashMap<>();
+    primaryPredicates.forEach(
+        (name, iri) ->
+            collectCustomRelationType(model, name, iri, existing, toAdd, registerableNames));
+    inverseTargets.forEach(
+        (name, iri) ->
+            collectCustomRelationType(model, name, iri, existing, toAdd, registerableNames));
     if (!toAdd.isEmpty()) {
       applyRelationTypes(toAdd, dryRun);
     }
@@ -662,22 +702,51 @@ public class GlossaryRdfImporter {
       String relationName,
       String predicateIri,
       Set<String> existing,
-      Map<String, RelationshipType> toAdd) {
+      Map<String, RelationshipType> toAdd,
+      Set<String> registerableNames) {
     if (existing.contains(relationName) || toAdd.containsKey(relationName)) {
       return;
     }
-    toAdd.put(relationName, buildRelationType(model, relationName, predicateIri));
+    toAdd.put(
+        relationName, buildRelationType(model, relationName, predicateIri, registerableNames));
   }
 
   RelationshipType buildRelationType(Model model, String relationName) {
     Resource property = findObjectProperty(model, relationName);
     String predicateIri =
         property == null ? "https://open-metadata.org/ontology/" + relationName : property.getURI();
-    return buildRelationType(model, relationName, predicateIri);
+    return buildRelationType(model, relationName, predicateIri, defaultRegisterableNames(model));
+  }
+
+  /**
+   * Names that the importer treats as resolvable when stamping inverse references for an
+   * ad-hoc {@link #buildRelationType(Model, String)} call: every predicate declared as an
+   * {@code owl:ObjectProperty} in the model. The full import path (see {@link
+   * #registerRelationTypes}) instead builds the set from already-registered types, predicates
+   * used on term edges, and their declared inverse targets, so the inverse reference stamps an
+   * id only when its referent will actually exist after the import.
+   */
+  private Set<String> defaultRegisterableNames(Model model) {
+    Set<String> names = new LinkedHashSet<>();
+    Resource objectProperty = model.getResource(OWL + "ObjectProperty");
+    var properties =
+        model.listResourcesWithProperty(model.getProperty(RDF, "type"), objectProperty);
+    while (properties.hasNext()) {
+      Resource property = properties.next();
+      if (property.isURIResource()) {
+        names.add(sanitizeRelationName(localName(property.getURI())));
+      }
+    }
+    return names;
   }
 
   private RelationshipType buildRelationType(
       Model model, String relationName, String predicateIri) {
+    return buildRelationType(model, relationName, predicateIri, defaultRegisterableNames(model));
+  }
+
+  private RelationshipType buildRelationType(
+      Model model, String relationName, String predicateIri, Set<String> registerableNames) {
     Resource property = model.getResource(predicateIri);
     URI predicate = URI.create(predicateIri);
     RelationshipType type =
@@ -702,18 +771,22 @@ public class GlossaryRdfImporter {
             .withProvider(ProviderType.USER)
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
-    enrichFromObjectProperty(model, type, property, relationName);
+    enrichFromObjectProperty(model, type, property, relationName, registerableNames);
     return type;
   }
 
   private void enrichFromObjectProperty(
-      Model model, RelationshipType type, Resource property, String relationName) {
+      Model model,
+      RelationshipType type,
+      Resource property,
+      String relationName,
+      Set<String> registerableNames) {
     if (property != null) {
       String label = firstLiteral(property, model, RDFS + "label");
       String description = firstLiteral(property, model, RDFS + "comment", SKOS + "definition");
       type.withDisplayName(nullOrEmpty(label) ? relationName : label)
           .withDescription(nullOrEmpty(description) ? relationName : description)
-          .withInverse(inverseReference(property, model))
+          .withInverse(inverseReference(property, model, relationName, registerableNames))
           .withDomain(semanticReferences(property, model.getProperty(RDFS, "domain")))
           .withRange(semanticReferences(property, model.getProperty(RDFS, "range")));
       applyCharacteristics(model, type, property);
@@ -800,17 +873,41 @@ public class GlossaryRdfImporter {
         .collect(Collectors.toUnmodifiableSet());
   }
 
-  private EntityReference inverseReference(Resource property, Model model) {
+  private EntityReference inverseReference(
+      Resource property, Model model, String relationName, Set<String> registerableNames) {
     String inverseName = inverseRelationName(property, model);
-    EntityReference inverse =
-        inverseName == null
-            ? null
-            : new EntityReference()
-                .withId(RelationshipTypeIds.stableId(inverseName))
-                .withName(inverseName)
-                .withFullyQualifiedName(inverseName)
-                .withType(Entity.RELATIONSHIP_TYPE);
-    return inverse;
+    if (inverseName == null) {
+      return null;
+    }
+    if (!registerableNames.contains(inverseName)) {
+      // Stamping a locally minted id for an inverse relationship type that is never
+      // registered would persist a dangling inverse reference and break TO-side
+      // relatedTerms reads (applyInverse calls require(inverseName) at read time) as well
+      // as silently drop edges whose canonical stored type is the inverse
+      // (computeCanonicalRelationType flips to the inverse, then require throws). Leave the
+      // inverse unset and surface the skip so the import result reports the loss of inverse
+      // wiring instead of silently persisting it.
+      addMessage(
+          String.format(
+              "Inverse relationship type '%s' declared for predicate '%s' is not registered and "
+                  + "is not declared as an owl:ObjectProperty in this ontology; leaving the "
+                  + "inverse reference unset on relationship type '%s'",
+              inverseName, property.getURI(), relationName));
+      return null;
+    }
+    return new EntityReference()
+        .withId(RelationshipTypeIds.stableId(inverseName))
+        .withName(inverseName)
+        .withFullyQualifiedName(inverseName)
+        .withType(Entity.RELATIONSHIP_TYPE);
+  }
+
+  private String inversePredicateIri(Model model, String predicateIri) {
+    return firstResourceUri(model.getResource(predicateIri), model.getProperty(OWL, "inverseOf"));
+  }
+
+  private boolean isDeclaredObjectProperty(Model model, String iri) {
+    return hasRdfType(model, model.getResource(iri), OWL + "ObjectProperty");
   }
 
   private boolean hasRdfType(Model model, Resource resource, String typeUri) {

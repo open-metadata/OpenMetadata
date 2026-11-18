@@ -870,11 +870,47 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void applyInverse(TermRelation relation) {
-    String inverseName = relationshipTypeResolver.inverseName(relation.getRelationType());
-    if (inverseName != null) {
-      RelationshipType inverse = relationshipTypeResolver.require(inverseName);
+    applyInverse(relation, relationshipTypeResolver);
+  }
+
+  /**
+   * Flips a stored relation from the FROM entity's perspective to this (the TO) entity's
+   * perspective, when the stored relationship type declares an inverse.
+   *
+   * <p>Fail-soft by design: a stored {@link RelationshipType} whose inverse points at an
+   * unregistered name (the RDF glossary importer could create this state before the
+   * dangling-inverse fix — and the public REST API could recreate it if it bypassed the {@code
+   * RelationshipTypeRepository.hydrate} guard) used to throw {@code BadRequestException: Relationship
+   * type 'X' is not registered} from {@code setFields → getRelatedTerms → applyInverse →
+   * require(inverseName)}, turning a single bad edge into a permanent 400 on every {@code
+   * ?fields=relatedTerms} read of the affected term. Skip the inversion (and log) instead so
+   * the rest of the term reading still succeeds; the relation keeps its stored perspective
+   * rather than no perspective at all.
+   */
+  static void applyInverse(TermRelation relation, RelationshipTypeResolver resolver) {
+    String inverseName;
+    try {
+      inverseName = resolver.inverseName(relation.getRelationType());
+    } catch (BadRequestException | EntityNotFoundException ex) {
+      LOG.warn(
+          "Skipping inverse for relation type '{}': the stored relationship type is not "
+              + "registered; keeping the stored perspective on relatedTerms",
+          relation.getRelationType());
+      return;
+    }
+    if (inverseName == null) {
+      return;
+    }
+    try {
+      RelationshipType inverse = resolver.require(inverseName);
       relation.setRelationType(inverseName);
       relation.setRelationshipType(inverse.getEntityReference());
+    } catch (BadRequestException | EntityNotFoundException ex) {
+      LOG.warn(
+          "Skipping inverse for relation type '{}': inverse '{}' is not registered; keeping "
+              + "the stored perspective on relatedTerms",
+          relation.getRelationType(),
+          inverseName);
     }
   }
 

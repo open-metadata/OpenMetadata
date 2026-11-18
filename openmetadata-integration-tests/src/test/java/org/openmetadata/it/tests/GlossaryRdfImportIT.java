@@ -53,6 +53,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.ontology.RelationshipTypeIds;
@@ -780,6 +781,164 @@ public class GlossaryRdfImportIT {
         2,
         nTriples.lines().filter(line -> line.startsWith(child)).count(),
         "both broader edges must survive import and export");
+  }
+
+  /**
+   * When the ontology declares both halves of an {@code owl:inverseOf} pair as owl:ObjectProperty,
+   * the importer must register both relationship types and wire the inverse reference in both
+   * directions, so TO-side relatedTerms reads see the inverse perspective (the exact scenario the
+   * dangling-inverse bug broke before the fix).
+   */
+  @Test
+  void importRegistersInversePairAndWiresBothSidesOfRelatedTerms(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String prescribesName = relationshipTypeName(glossary.getName());
+    String prescribedByName = prescribesName + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(prescribesName));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(prescribedByName));
+
+    String ontology = inversePairOntology(glossary.getName(), prescribesName, prescribedByName);
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+
+    assertTrue(
+        result.path("relationTypesRegistered").asInt() >= 2,
+        "both inverse halves are registered: " + result);
+    assertEquals(
+        1, result.path("relationsAdded").asInt(), "the single asserted edge is wired: " + result);
+    assertFalse(
+        result
+            .path("messages")
+            .toString()
+            .toLowerCase()
+            .contains("leaving the inverse reference unset"),
+        "no inverse-dangle message is surfaced when both halves are declared: " + result);
+
+    assertEquals(
+        200,
+        get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribesName)
+            .statusCode(),
+        "prescribes is registered");
+    assertEquals(
+        200,
+        get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribedByName)
+            .statusCode(),
+        "prescribedBy is registered");
+
+    // FROM side: physician authored 'prescribes' toward drug.
+    GlossaryTerm physician = getTerm(glossary.getName() + ".Physician");
+    assertEquals(1, physician.getRelatedTerms().size(), "physician has the asserted edge");
+    TermRelation forwardEdge = physician.getRelatedTerms().get(0);
+    assertEquals(prescribesName, forwardEdge.getRelationType(), "FROM-side sees prescribes");
+    assertEquals("Drug", forwardEdge.getTerm().getName());
+
+    // TO side: this read used to throw HTTP 400 ("Relationship type 'prescribedBy' is not
+    // registered") before the importer fix; it now succeeds and shows the inverse perspective.
+    GlossaryTerm drug = getTerm(glossary.getName() + ".Drug");
+    assertEquals(1, drug.getRelatedTerms().size(), "drug has the inverse edge");
+    TermRelation inverseEdge = drug.getRelatedTerms().get(0);
+    assertEquals(
+        prescribedByName,
+        inverseEdge.getRelationType(),
+        "TO-side sees prescribedBy as the inverse");
+    assertEquals("Physician", inverseEdge.getTerm().getName());
+  }
+
+  /**
+   * When the ontology declares {@code owl:inverseOf} on a predicate whose inverse target is NOT
+   * declared as an owl:ObjectProperty anywhere in the file, the importer must leave the inverse
+   * reference unset and surface the loss of inverse wiring, so neither TO-side relatedTerms
+   * reads (the bug report's HTTP 400 scenario) nor canonical-type-flipped edges silently drop.
+   */
+  @Test
+  void importLeavesInverseUnsetAndKeepsRelatedTermsReadableWhenTargetNotDeclared(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String prescribesName = relationshipTypeName(glossary.getName());
+    String prescribedByName = prescribesName + "Inverse";
+    // Only the primary half is registered for cleanup; the inverse target was never declared so
+    // the importer must not register it.
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(prescribesName));
+
+    String ontology = singleInverseOntology(glossary.getName(), prescribesName, prescribedByName);
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+
+    assertTrue(
+        result.get("messages").toString().contains(prescribedByName),
+        "the dropped inverse wiring is surfaced in the result: " + result);
+    assertEquals(
+        200,
+        get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribesName)
+            .statusCode(),
+        "prescribes is registered");
+    assertEquals(
+        404,
+        get(SdkClients.getServerUrl() + "/v1/relationshipTypes/name/" + prescribedByName)
+            .statusCode(),
+        "prescribedBy is not registered because it was never declared as an ObjectProperty");
+
+    // FROM side is unaffected and remains readable.
+    GlossaryTerm physician = getTerm(glossary.getName() + ".Physician");
+    assertEquals(1, physician.getRelatedTerms().size(), "the asserted edge persists on the FROM");
+    assertEquals(prescribesName, physician.getRelatedTerms().get(0).getRelationType());
+
+    // TO side previously returned HTTP 400 with "Relationship type 'prescribedBy' is not
+    // registered"; after the fix the read succeeds because the inverse reference was never
+    // stamped (no inverse to fail soft on, no flip to a non-existent inverse on this edge).
+    GlossaryTerm drug = getTerm(glossary.getName() + ".Drug");
+    assertEquals(1, drug.getRelatedTerms().size(), "the TO-side relatedTerms read still returns");
+    assertEquals(
+        prescribesName,
+        drug.getRelatedTerms().get(0).getRelationType(),
+        "the stored perspective is shown when no inverse is registered");
+    assertEquals("Physician", drug.getRelatedTerms().get(0).getTerm().getName());
+  }
+
+  private String inversePairOntology(String glossaryName, String prescribes, String prescribedBy) {
+    return String.format(
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/%s#> .
+
+        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" ; hcp:%s hcp:Drug .
+        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
+
+        hcp:%s a owl:ObjectProperty ;
+            rdfs:label "prescribes" ;
+            rdfs:domain hcp:Physician ;
+            rdfs:range hcp:Drug ;
+            owl:inverseOf hcp:%s .
+
+        hcp:%s a owl:ObjectProperty ;
+            rdfs:label "prescribed by" ;
+            rdfs:domain hcp:Drug ;
+            rdfs:range hcp:Physician ;
+            owl:inverseOf hcp:%s .
+        """,
+        glossaryName, prescribes, prescribes, prescribedBy, prescribedBy, prescribes);
+  }
+
+  private String singleInverseOntology(
+      String glossaryName, String prescribes, String prescribedBy) {
+    return String.format(
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/%s#> .
+
+        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" ; hcp:%s hcp:Drug .
+        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
+
+        hcp:%s a owl:ObjectProperty ;
+            rdfs:label "prescribes" ;
+            rdfs:domain hcp:Physician ;
+            rdfs:range hcp:Drug ;
+            owl:inverseOf hcp:%s .
+        """,
+        glossaryName, prescribes, prescribes, prescribedBy);
   }
 
   private JsonNode importRdf(String glossaryName, boolean dryRun) throws Exception {

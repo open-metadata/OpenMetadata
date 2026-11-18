@@ -75,6 +75,12 @@ class GlossaryRdfImporterTest {
           rdfs:range hcp:Drug ;
           owl:inverseOf hcp:prescribedBy .
 
+      hcp:prescribedBy a owl:ObjectProperty ;
+          rdfs:label "prescribed by" ;
+          rdfs:domain hcp:Drug ;
+          rdfs:range hcp:Physician ;
+          owl:inverseOf hcp:prescribes .
+
       hcp:hasNpiNumber a owl:DatatypeProperty ;
           rdfs:label "has NPI number" ;
           rdfs:domain hcp:HealthcareProvider ;
@@ -180,6 +186,83 @@ class GlossaryRdfImporterTest {
         type.getCharacteristics().contains(RelationshipCharacteristic.FUNCTIONAL),
         "owl:FunctionalProperty -> functional characteristic");
     assertEquals(1, type.getCardinality().getSourceMax());
+  }
+
+  /**
+   * The importer must NOT stamp an inverse reference whose referent will never exist. Before the
+   * fix it stamped {@code RelationshipTypeIds.stableId("prescribedBy")} for an inverse target that
+   * was never declared as an ObjectProperty in the ontology; the resulting dangling reference
+   * broke TO-side {@code relatedTerms} reads ({@code applyInverse} → {@code require} threw) and
+   * silently dropped edges whose canonical stored type was the inverse. This test pins the
+   * non-regression: the inverse stays null and the importer surfaces a message so the loss of
+   * inverse wiring is reported rather than silently persisted.
+   */
+  @Test
+  void leavesInverseUnsetWhenTargetIsNotDeclaredAsObjectProperty() {
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" .
+        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
+
+        hcp:prescribes a owl:ObjectProperty ;
+            rdfs:label "prescribes" ;
+            rdfs:domain hcp:Physician ;
+            rdfs:range hcp:Drug ;
+            owl:inverseOf hcp:prescribedBy .
+        """;
+    Model model = ModelFactory.createDefaultModel();
+    model.read(new StringReader(ontology), null, "TURTLE");
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    RelationshipType type = importer.buildRelationType(model, "prescribes");
+
+    assertNull(type.getInverse(), "an undeclared inverse target must not produce a reference");
+    assertEquals(1, importer.importMessages().size(), "the dropped inverse wiring is surfaced");
+    assertTrue(
+        importer.importMessages().get(0).contains("prescribedBy"),
+        "the message identifies the missing inverse target: " + importer.importMessages());
+  }
+
+  @Test
+  void stampsInverseReferenceWhenInverseTargetIsDeclaredAsObjectProperty() {
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix owl:  <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+
+        hcp:Physician a skos:Concept ; skos:prefLabel "Physician" .
+        hcp:Drug a skos:Concept ; skos:prefLabel "Drug" .
+
+        hcp:prescribes a owl:ObjectProperty ;
+            rdfs:label "prescribes" ;
+            rdfs:domain hcp:Physician ;
+            rdfs:range hcp:Drug ;
+            owl:inverseOf hcp:prescribedBy .
+
+        hcp:prescribedBy a owl:ObjectProperty ;
+            rdfs:label "prescribed by" ;
+            rdfs:domain hcp:Drug ;
+            rdfs:range hcp:Physician .
+        """;
+    Model model = ModelFactory.createDefaultModel();
+    model.read(new StringReader(ontology), null, "TURTLE");
+    GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+
+    RelationshipType type = importer.buildRelationType(model, "prescribes");
+
+    assertNotNull(type.getInverse(), "a declared inverse target produces a reference");
+    assertEquals("prescribedBy", type.getInverse().getName());
+    assertNotNull(type.getInverse().getId(), "the inverse reference carries a stable id");
+    assertTrue(
+        importer.importMessages().isEmpty(),
+        "no message is surfaced for a fully-resolvable inverse: " + importer.importMessages());
   }
 
   @Test
