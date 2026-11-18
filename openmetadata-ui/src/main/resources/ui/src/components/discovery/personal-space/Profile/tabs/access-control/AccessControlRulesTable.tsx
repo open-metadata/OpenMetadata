@@ -24,6 +24,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import {
   Effect,
@@ -50,7 +51,8 @@ interface AccessControlRulesTableProps {
   onDelete: (ruleName: string) => Promise<boolean>;
 }
 
-const formatList = (items?: string[]) => items?.join(', ') || '--';
+const formatList = (items?: string[]) =>
+  items?.join(', ') || NO_DATA_PLACEHOLDER;
 
 const EffectCell = ({ effect }: { effect: Rule['effect'] }) => (
   <Typography
@@ -124,7 +126,7 @@ const AccessControlRulesTable: FC<AccessControlRulesTableProps> = ({
         return rule.description ? (
           <RichTextEditorPreviewerV1 markdown={rule.description} />
         ) : (
-          '--'
+          NO_DATA_PLACEHOLDER
         );
       default:
         return (

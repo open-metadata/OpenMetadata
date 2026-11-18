@@ -34,6 +34,13 @@ export interface AssetsTabsProps {
   addDisabledMessage?: string;
   preloadedData?: SearchedDataProps['data'];
   skipSearch?: boolean;
+  /**
+   * Route the asset search through `POST /v1/search/query` (searchAPI.searchQueryPost)
+   * instead of the GET path. Set this for callers whose `queryFilter` can grow large
+   * enough to overflow the server's request-line size limit — e.g. the metric Assets
+   * tab, which embeds every linked asset id in an `ids` filter.
+   */
+  useQueryPost?: boolean;
 }
 
 export interface AssetNoDataPlaceholderProps {

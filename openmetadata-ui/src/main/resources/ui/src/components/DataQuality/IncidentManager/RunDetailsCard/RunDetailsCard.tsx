@@ -36,7 +36,10 @@ import {
   tableQueryFn,
   tableQueryKey,
 } from '../../../../rest/queries/tableQuery';
-import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import {
+  formatDateTime,
+  formatDuration,
+} from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getRunScopeBadges,
@@ -60,7 +63,6 @@ import {
 } from './RunDetailsCard.constants';
 import {
   ComparisonBar,
-  formatRunDuration,
   getRunDetails,
   getSelectedRun,
   isTimeoutError,
@@ -81,7 +83,7 @@ const RunDuration = ({
 }) => {
   const { t } = useTranslation();
   // The slot stays for a run with no duration yet, a queued one, as in the mock.
-  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
+  const text = isUndefined(duration) ? NO_VALUE : formatDuration(duration);
 
   return (
     <Box
@@ -242,12 +244,13 @@ const knownOrQuiet = (
   labelKey: string,
   testId: string,
   value: string | undefined,
-  className = PRIMARY_VALUE
+  className = PRIMARY_VALUE,
+  unknownValue = NO_VALUE
 ): DetailCell => ({
   className: quietWhenUnknown(value ?? NO_VALUE, className),
   labelKey,
   testId,
-  value: value ?? NO_VALUE,
+  value: value ?? unknownValue,
 });
 
 /** "1.20% (120 row(s))", led by the threshold's own unit so the two read alike. */
@@ -292,20 +295,23 @@ const getRowCountableCells = (
   ];
 };
 
-const getStatisticalCells = ({
-  threshold,
-  configuredRange,
-  effectiveRange,
-}: RunThresholdData): DetailCell[] => {
+const getStatisticalCells = (
+  { threshold, configuredRange, effectiveRange }: RunThresholdData,
+  t: TFunction
+): DetailCell[] => {
   const cells = [
     knownOrQuiet(
       'label.configured-range',
       'run-details-configured-range',
-      configuredRange
+      configuredRange,
+      PRIMARY_VALUE,
+      t('label.unavailable')
     ),
   ];
-  // Without a tolerance the effective range is the configured one.
-  if (threshold > 0) {
+  // Without a tolerance the effective range is the configured one. A run that
+  // recorded no tolerance may have widened its range, so the range it was
+  // judged against is shown rather than guessed at.
+  if (isUndefined(threshold) || threshold > 0) {
     cells.push(
       knownOrQuiet(
         'label.effective-range',
@@ -316,6 +322,25 @@ const getStatisticalCells = ({
   }
 
   return cells;
+};
+
+/**
+ * The tolerance the run applied, as the run itself recorded it. A run from an
+ * agent that predates the snapshot recorded none, and the test case's current
+ * setting is not the one that run was judged by, so the cell says so rather
+ * than naming a number.
+ */
+const formatRunThreshold = (
+  { threshold, isPercentage, noun }: RunThresholdData,
+  t: TFunction
+): string | undefined => {
+  if (isUndefined(threshold)) {
+    return undefined;
+  }
+
+  return threshold > 0
+    ? formatThresholdAmount(threshold, isPercentage, noun, t)
+    : t('label.no-tolerance');
 };
 
 /**
@@ -340,20 +365,20 @@ const RunThreshold = ({
     return null;
   }
 
-  const { semantic, threshold, isPercentage, noun } = data;
+  const { semantic } = data;
+  const appliedThreshold = formatRunThreshold(data, t);
   const cells: DetailCell[] = [
     {
-      className: PRIMARY_VALUE,
+      className: isUndefined(appliedThreshold)
+        ? 'tw:text-quaternary'
+        : PRIMARY_VALUE,
       labelKey: 'label.threshold',
       testId: 'run-details-threshold',
-      value:
-        threshold > 0
-          ? formatThresholdAmount(threshold, isPercentage, noun, t)
-          : t('label.no-tolerance'),
+      value: appliedThreshold ?? t('label.unavailable'),
     },
     ...(semantic === ThresholdTestSemantic.RowCountable
       ? getRowCountableCells(data, valueClassName, t)
-      : getStatisticalCells(data)),
+      : getStatisticalCells(data, t)),
   ];
 
   return (

@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import { getTypeByFQN } from '../../../../../../rest/metadataTypeAPI';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import CustomPropertiesPanel from './CustomPropertiesPanel';
@@ -30,9 +30,9 @@ const setLocationHash = (hash: string) =>
 
 const renderPanel = () =>
   render(
-    <MemoryRouter>
+    <BrowserRouter>
       <CustomPropertiesPanel onHeaderChange={mockOnHeaderChange} />
-    </MemoryRouter>
+    </BrowserRouter>
   );
 
 const mockProperty = {

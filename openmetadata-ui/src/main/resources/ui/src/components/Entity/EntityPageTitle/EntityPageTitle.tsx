@@ -10,19 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Badge,
-  Box,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useClipboard } from '../../../hooks/useClipBoard';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 
 export interface EntityPageTitleProps {
   name: string;
@@ -46,7 +40,6 @@ export const EntityPageTitle = ({
   testId,
 }: EntityPageTitleProps) => {
   const { t } = useTranslation();
-  const { onCopyToClipBoard, hasCopied } = useClipboard('', 2000);
   const hasDisplayName = !isEmpty(displayName);
   // Version views pass getTextDiff HTML; render its diff spans as elements.
   const displayNameNode = renderHighlightedText(displayName);
@@ -101,18 +94,16 @@ export const EntityPageTitle = ({
               {t('label.deleted')}
             </Badge>
           )}
-          <ButtonUtility
-            data-testid="entity-header-copy-button"
-            icon={Copy01}
-            size="lg"
-            tooltip={
-              hasCopied
-                ? t('message.link-copy-to-clipboard')
-                : t('label.copy-item', { item: t('label.url-uppercase') })
-            }
-            onClick={() => onCopyToClipBoard(globalThis.location.href)}
-          />
-          {actions}
+          <Box align="center" gap={1}>
+            <CopyButton
+              testId="entity-header-copy-button"
+              tooltip={t('label.copy-item', {
+                item: t('label.url-uppercase'),
+              })}
+              value={globalThis.location.href}
+            />
+            {actions}
+          </Box>
         </Box>
       </Box>
       <Box align="center" className="tw:h-8 tw:shrink-0 tw:self-start" gap={3}>

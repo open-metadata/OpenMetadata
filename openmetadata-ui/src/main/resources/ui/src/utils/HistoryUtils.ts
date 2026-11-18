@@ -14,6 +14,6 @@ export const getBasePath = () => {
   const basePath: unknown = Reflect.get(globalThis, 'BASE_PATH');
 
   return typeof basePath === 'string' && basePath !== '${basePath}'
-    ? basePath.slice(0, -1)
+    ? basePath.replace(/\/+$/, '')
     : '';
 };
