@@ -22,6 +22,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../hooks/user-profile/useUserProfile';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { userPermissions } from '../../../utils/PermissionsUtils';
+import userClassBase from '../../../utils/UserClassBase';
 import Loader from '../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
@@ -52,8 +53,25 @@ const TRANSPARENT_BACKGROUND: CSSProperties = {
 
 const SMALL_LOADER_SIZES: CoreAvatarSize[] = ['xxs', 'xs'];
 
-const isBotLogo = (profileURL: string | null, user?: User) =>
-  Boolean(profileURL && user?.isBot);
+// A bot draws its registered icon, else its logo; `undefined` means not a bot
+// avatar. Initials stay off the icon case: Avatar draws them ahead of the icon.
+const getBotAvatar = (
+  profileURL: string | null,
+  initials: string,
+  user?: User
+):
+  | Pick<ComponentProps<typeof Avatar>, 'initials' | 'placeholderIcon' | 'src'>
+  | undefined => {
+  if (!user?.isBot) {
+    return undefined;
+  }
+  const placeholderIcon = userClassBase.getBotIcon(user.name);
+  if (placeholderIcon) {
+    return { placeholderIcon };
+  }
+
+  return profileURL ? { src: profileURL, initials } : undefined;
+};
 
 // Resolve the effective Avatar size: prefer the defined `size`, otherwise map
 // the legacy numeric `width` to the nearest defined size (default `sm`).
@@ -225,15 +243,15 @@ const ProfilePicture = ({
     );
   }
 
-  if (isBotLogo(profileURL, user)) {
+  const botAvatar = getBotAvatar(profileURL, character, user);
+  if (botAvatar) {
     return (
       <Avatar
+        {...botAvatar}
         className={className}
         contrastBorder={false}
         data-testid="profile-avatar"
-        initials={character}
         size={avatarSize}
-        src={profileURL}
         style={TRANSPARENT_BACKGROUND}
       />
     );

@@ -10,10 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { FC } from 'react';
+
+type BotIcon = FC<{ className?: string }>;
+
 class UserClassBase {
   protected botLogos: Record<string, string> = {};
+  protected botIcons: Record<string, BotIcon> = {};
   public getBotLogo(botName: string) {
     return this.botLogos[botName];
+  }
+
+  // An icon component wins over a logo URL: it follows the theme and needs no fetch.
+  public getBotIcon(botName: string): BotIcon | undefined {
+    return this.botIcons[botName];
   }
 }
 
@@ -21,3 +31,4 @@ const userClassBase = new UserClassBase();
 
 export default userClassBase;
 export { UserClassBase };
+export type { BotIcon };

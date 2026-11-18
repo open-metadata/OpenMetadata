@@ -13,6 +13,7 @@
 
 import { Avatar } from '@openmetadata/ui-core-components';
 import { findByTestId, render } from '@testing-library/react';
+import userClassBase from '../../../utils/UserClassBase';
 import ProfilePicture from './ProfilePicture';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -214,6 +215,31 @@ describe('Test ProfilePicture component', () => {
     expect(props.contrastBorder).toBe(false);
     expect(props.style).toEqual({ backgroundColor: 'transparent' });
     expect(props.className).toBe('custom');
+  });
+
+  it('draws a bot icon in place of the logo when one is registered', () => {
+    const BotIcon = () => null;
+    const getBotIcon = jest
+      .spyOn(userClassBase, 'getBotIcon')
+      .mockReturnValue(BotIcon);
+    mockUseUserProfile.mockReturnValue([
+      '/bot-logo.svg',
+      false,
+      { isBot: true, name: 'aiautomationapplicationbot' },
+    ]);
+    (Avatar as jest.Mock).mockClear();
+
+    render(<ProfilePicture {...mockData} />);
+
+    const props = (Avatar as jest.Mock).mock.calls[0][0];
+
+    expect(getBotIcon).toHaveBeenCalledWith('aiautomationapplicationbot');
+    expect(props.placeholderIcon).toBe(BotIcon);
+    expect(props.src).toBeUndefined();
+    expect(props.initials).toBeUndefined();
+    expect(props.contrastBorder).toBe(false);
+
+    getBotIcon.mockRestore();
   });
 
   it('keeps the tinted, outlined avatar for a bot without a logo', () => {
