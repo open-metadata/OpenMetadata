@@ -270,6 +270,7 @@ export const DatabaseSchemaTable = ({
             displayName={renderHighlightedText(
               highlightSearchText(record.displayName, searchValue)
             )}
+            entityName={record.name}
             hasEditPermission={allowEditDisplayNamePermission}
             id={record.id ?? ''}
             key={record.id}
