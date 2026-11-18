@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -37,6 +38,8 @@ import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.DatatypeIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.RelationIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
@@ -44,6 +47,7 @@ import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
 /** Unit tests for the OWL/SKOS &rarr; glossary-term parsing in {@link GlossaryRdfImporter}. */
 class GlossaryRdfImporterTest {
   private static final String HCP = "http://example.com/ontology/hcp#";
+  private static final String SKOS_RELATED = "http://www.w3.org/2004/02/skos/core#related";
 
   private static final String ONTOLOGY =
       """
@@ -246,7 +250,12 @@ class GlossaryRdfImporterTest {
   @Test
   void wireInversePartnersResolvesAGovernedPredicateInsteadOfItsLocalName() {
     String ontology =
-        "@prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix hcp: <http://example.com/ontology/hcp#> . hcp:authored a owl:ObjectProperty ; owl:inverseOf hcp:inverse . hcp:inverse a owl:ObjectProperty .";
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:authored a owl:ObjectProperty ; owl:inverseOf hcp:inverse .
+        hcp:inverse a owl:ObjectProperty .
+        """;
     Model model = ModelFactory.createDefaultModel();
     try {
       model.read(new StringReader(ontology), null, "TURTLE");
@@ -264,6 +273,45 @@ class GlossaryRdfImporterTest {
           inverse.getInverse(), "The inverse must resolve the governed predicate identity");
       assertEquals(governed.getName(), inverse.getInverse().getName());
       assertEquals(governed.getId(), inverse.getInverse().getId());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void collectRelationTypesRegistersOnePredicateOnceAcrossEdgeAndInverseSlots() {
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:mirrors a owl:ObjectProperty ; owl:inverseOf skos:related .
+        hcp:T0 a skos:Concept ; skos:related hcp:T1 ; hcp:mirrors hcp:T1 .
+        hcp:T1 a skos:Concept .
+        """;
+    CollectionDAO.RelationshipTypeDAO registry = mock(CollectionDAO.RelationshipTypeDAO.class);
+    GlossaryRdfImporter importer =
+        new GlossaryRdfImporter(
+            null,
+            "test",
+            true,
+            () -> ShaclValidationMode.OFF,
+            () -> new RelationshipTypeResolver(registry));
+    Model model = ModelFactory.createDefaultModel();
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      Map<String, RelationshipType> added =
+          importer.collectRelationTypes(
+              model, importer.buildTermIntents(model), new LinkedHashMap<>());
+      List<String> related =
+          added.values().stream()
+              .filter(type -> URI.create(SKOS_RELATED).equals(type.getRdfPredicate()))
+              .map(RelationshipType::getName)
+              .toList();
+      assertEquals(List.of("skosRelated"), related);
+      importer.wireInversePartners(model, added, Map.of());
+      assertEquals("skosRelated", added.get("mirrors").getInverse().getName());
+      assertEquals("mirrors", added.get("skosRelated").getInverse().getName());
     } finally {
       model.close();
     }

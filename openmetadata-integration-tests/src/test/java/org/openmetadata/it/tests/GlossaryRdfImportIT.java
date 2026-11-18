@@ -973,15 +973,20 @@ public class GlossaryRdfImportIT {
     assertEquals("Governed definition", getRelationshipType(governed).path("description").asText());
   }
 
-  @Test
-  void importDoesNotRejectAValidPairForAnUnwiredInvalidDeclaration(TestNamespace ns)
-      throws Exception {
-    Glossary glossary = GlossaryTestFactory.createSimple(ns);
-    String alpha = relationshipTypeName(glossary.getName()) + "Alpha";
+  @ParameterizedTest(name = "invalid claimer sorts before the valid one: {0}")
+  @ValueSource(booleans = {false, true})
+  void importDoesNotRejectAValidPairForAnUnwiredInvalidDeclaration(
+      boolean invalidSortsFirst, TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "unwired" + invalidSortsFirst);
+    String base = relationshipTypeName(glossary.getName());
+    String alpha = base + "Alpha";
     String beta = alpha + "Beta";
-    String gamma = alpha + "Gamma";
-    for (String name : List.of(alpha, beta, gamma))
+    // The unclaimed partner pairs with the first claiming IRI in sort order; cover both orders.
+    String gamma = invalidSortsFirst ? base + "AGamma" : alpha + "Gamma";
+    assertEquals(invalidSortsFirst, gamma.compareTo(alpha) < 0);
+    for (String name : List.of(alpha, beta, gamma)) {
       relationshipTypeIds.add(RelationshipTypeIds.stableId(name));
+    }
     String ontology =
         inverseCycleOntology(glossary.getName(), alpha, beta, "declared")
             + "hcp:"

@@ -779,7 +779,6 @@
       "description": "The RDF store, SPARQL, linked data.",
       "sources": [
         "openmetadata-service/src/main/java/org/openmetadata/service/rdf/**",
-        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/GlossaryRdfImportConcurrencyIT.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Rdf*",
