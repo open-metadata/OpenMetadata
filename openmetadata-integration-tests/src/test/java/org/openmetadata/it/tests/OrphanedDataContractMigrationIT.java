@@ -244,7 +244,11 @@ public class OrphanedDataContractMigrationIT {
                             .bind("toId", contractId.toString())
                             .bind("toEntity", Entity.DATA_CONTRACT)
                             .execute());
-          } catch (Exception ignored) {
+          } catch (org.jdbi.v3.core.JdbiException e) {
+            LOG.warn(
+                "Best-effort cleanup of residual relationship rows for contract {} failed: {}",
+                contractId,
+                e.getMessage());
           }
         });
 
