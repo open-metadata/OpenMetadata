@@ -10,10 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { diffLines, type Change } from 'diff';
-import { isEmpty } from 'lodash';
+import { diffArrays, diffLines, type Change } from 'diff';
+import { isEmpty, uniqBy } from 'lodash';
 import type { TagLabel } from '../generated/type/tagLabel';
 import { TaskEntityType, type Task as TaskEntity } from '../rest/tasksAPI';
+import { isTagsTaskType } from './TaskActionUtils';
 
 export const getDescriptionDiff = (
   oldValue: string,
@@ -21,6 +22,15 @@ export const getDescriptionDiff = (
 ): Change[] => {
   return diffLines(oldValue, newValue);
 };
+
+// Parsed tag labels are fresh objects, so compare them by tagFQN, not identity.
+export const diffTagLabels = (
+  currentTags: TagLabel[],
+  suggestedTags: TagLabel[]
+) =>
+  diffArrays(currentTags, suggestedTags, {
+    comparator: (left, right) => left.tagFQN === right.tagFQN,
+  });
 
 export interface NormalizedTaskPayload {
   fieldPath?: string;
@@ -54,16 +64,23 @@ export const getNormalizedTaskPayload = (
   task: TaskEntity
 ): NormalizedTaskPayload => {
   const payload = task.payload;
-  const isTagTask = task.type === TaskEntityType.TagUpdate;
+  const isTagTask = isTagsTaskType(task);
   const fieldPath = payload?.fieldPath ?? payload?.field;
   const currentDescription =
     payload?.currentDescription ?? payload?.currentValue;
-  const newDescription = payload?.newDescription ?? payload?.suggestedValue;
+  const newDescription = isTagTask
+    ? undefined
+    : payload?.newDescription ?? payload?.suggestedValue;
 
   const currentTags = parseTaskTags(
     payload?.currentTags ?? (payload?.currentValue as string | undefined)
   );
-  const tagsToAdd = parseTaskTags(payload?.tagsToAdd as TagLabel[] | undefined);
+  // The server adds a Tag suggestion's tags to the field's current ones.
+  const tagsToAdd = parseTaskTags(
+    isTagTask && task.type === TaskEntityType.Suggestion
+      ? payload?.suggestedValue
+      : (payload?.tagsToAdd as TagLabel[] | undefined)
+  );
   const tagsToRemove = parseTaskTags(
     payload?.tagsToRemove as TagLabel[] | undefined
   );
@@ -71,12 +88,15 @@ export const getNormalizedTaskPayload = (
 
   const suggestedTags =
     tagsToAdd.length > 0 || tagsToRemove.length > 0 || currentTags.length > 0
-      ? [
-          ...currentTags.filter(
-            (tag) => !tagsToRemove.some((item) => item.tagFQN === tag.tagFQN)
-          ),
-          ...tagsToAdd,
-        ]
+      ? uniqBy(
+          [
+            ...currentTags.filter(
+              (tag) => !tagsToRemove.some((item) => item.tagFQN === tag.tagFQN)
+            ),
+            ...tagsToAdd,
+          ],
+          'tagFQN'
+        )
       : suggestedTagsFromLegacyPayload;
 
   const suggestedValue = isTagTask

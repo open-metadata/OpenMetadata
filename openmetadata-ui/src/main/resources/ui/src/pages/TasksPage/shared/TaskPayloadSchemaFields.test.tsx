@@ -26,7 +26,12 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
-import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import TaskPayloadSchemaFields from './TaskPayloadSchemaFields';
 

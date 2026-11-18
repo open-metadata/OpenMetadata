@@ -119,6 +119,7 @@ import { getErrorText } from '../../../../utils/StringUtils';
 import {
   GLOSSARY_TASK_ACTION_LIST,
   INCIDENT_TASK_ACTION_LIST,
+  isTagsTaskType,
   TASK_ACTION_COMMON_ITEM,
   TASK_ACTION_LIST,
 } from '../../../../utils/TaskActionUtils';
@@ -126,6 +127,7 @@ import {
   fetchOptions,
   generateOptions,
 } from '../../../../utils/TaskAssigneeUtils';
+import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
 import {
   applyTaskFormSchemaDefaults,
   getDefaultTaskFormSchema,
@@ -144,7 +146,6 @@ import {
   isTaskPendingFurtherApproval,
   isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
-import { resolveCommentPermissions } from '../../../../utils/TaskCommentUtils';
 import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import TaskCommentCard from '../../../ActivityFeed/ActivityFeedCardNew/TaskCommentCard.component';
@@ -366,7 +367,7 @@ export const TaskTabNew = ({
       uiSchema: getTaskTransitionUiSchema(taskFormSchema, selectedTransition),
     };
   }, [isWorkflowDrivenTask, selectedTransition, taskFormSchema]);
-  const isTaskTags = taskHandler.type === 'tagUpdate';
+  const isTaskTags = taskHandler.type === 'tagUpdate' || isTagsTaskType(task);
   const isTaskApprovalRequest = taskHandler.type === 'approval';
   const isTaskRecognizerFeedbackApproval =
     taskHandler.type === 'feedbackApproval';

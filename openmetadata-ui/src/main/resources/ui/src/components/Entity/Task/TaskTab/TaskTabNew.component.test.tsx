@@ -352,7 +352,6 @@ jest.mock('../../../../utils/EntityLink', () => {
 
 jest.mock('../../../../utils/TaskActionUtils', () => ({
   ...jest.requireActual('../../../../utils/TaskActionUtils'),
-  isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
 }));
@@ -475,7 +474,6 @@ describe('TaskTabNew Component', () => {
       getResolvedTaskFormSchema,
     } = require('../../../../utils/TaskFormSchemaUtils');
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
     } = require('../../../../utils/TaskActionUtils');
@@ -499,7 +497,6 @@ describe('TaskTabNew Component', () => {
         )
       )
     );
-    isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
     isRecognizerFeedbackTask.mockReturnValue(false);
   });
@@ -595,10 +592,8 @@ describe('TaskTabNew Component', () => {
 
   it('should render schema-driven description payload details for description tasks', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
     const descriptionTask: Task = {
@@ -961,10 +956,8 @@ describe('TaskTabNew Component', () => {
 
   it('should display the task information for approval tasks with suggestion data', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
     await act(async () => {

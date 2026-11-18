@@ -16,6 +16,7 @@ import { ReactComponent as EditSuggestionIcon } from '../assets/svg/edit-new.svg
 import { ReactComponent as CloseIcon } from '../assets/svg/ic-close-circle.svg';
 import { ReactComponent as CheckIcon } from '../assets/svg/ic-tick-circle.svg';
 import { TaskType } from '../generated/entity/feed/thread';
+import { SuggestionType } from '../generated/type/suggestionPayload';
 import {
   TaskActionMode,
   type TaskAction,
@@ -84,8 +85,11 @@ export const isTagsTask = (taskType: TaskType) =>
 export const isDescriptionTaskType = (taskType: TaskEntityType) =>
   [TaskEntityType.DescriptionUpdate].includes(taskType);
 
-export const isTagsTaskType = (taskType: TaskEntityType) =>
-  [TaskEntityType.TagUpdate].includes(taskType);
+// A Suggestion task carries its proposed tags as a JSON string in suggestedValue.
+export const isTagsTaskType = (task: Pick<TaskEntity, 'type' | 'payload'>) =>
+  task.type === TaskEntityType.TagUpdate ||
+  (task.type === TaskEntityType.Suggestion &&
+    task.payload?.suggestionType === SuggestionType.Tag);
 
 export const isRecognizerFeedbackTask = (task: TaskEntity) => {
   const taskType = task.type as unknown as string;
