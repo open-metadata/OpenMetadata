@@ -78,6 +78,30 @@ class McpContextDiscoveryGuidanceTest {
             "Context Center Memories", "Approved", "deleted", "primaryEntity", "relatedEntities");
   }
 
+  @Test
+  void memoryDiscoveryRequiresResolvingAndPinningRelevantAnchors() {
+    assertThat(listedTools.get("search_metadata").path("description").asText())
+        .contains(
+            "keyword-only",
+            "non-owners",
+            "discover the relevant anchor",
+            "fields='id'",
+            "repeat",
+            "primaryEntity.id",
+            "keyword clause inside queryFilter");
+  }
+
+  @Test
+  void anchorFilterHelpExplainsTheSelfContainedKeywordExample() {
+    assertThat(
+            listedTools
+                .get("search_metadata")
+                .at("/inputSchema/properties/queryFilter/description")
+                .asText())
+        .contains("combined with", "query='*'", "multi_match", "question", "answer")
+        .doesNotContain("overrides the 'query'");
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {"search_metadata", "get_entity_details", "company_context", "find_context"})

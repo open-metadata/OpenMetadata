@@ -1,11 +1,13 @@
 # MCP agents discover memories through the existing keyword search before answering
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-17 (initial) · v2 2026-11-17 (provenance and conflicting Approved memories)
+- **Revisions:** v1 2026-11-17 (initial) · v2 2026-11-17 (provenance and conflicting Approved memories);
+  v3 2026-11-18 (required anchor discovery and combined keyword filter)
 - **Deciders:** Contributor implementation for #36435
 - **Guard:** `McpContextDiscoveryGuidanceTest`,
   `SearchMetadataToolTest#contextMemoryKeywordRequestPreservesGuidanceAndCallerScope`
-- **Related:** #36435; ADR:2026-11-06-mcp-tool-schemas-leave-out-the-tools-json-doc-keys
+- **Related:** #36435; ADR:2026-11-06-mcp-tool-schemas-leave-out-the-tools-json-doc-keys;
+  ADR:2026-10-09-search-admits-memories-of-pinned-anchors
 
 ## Context
 
@@ -27,8 +29,16 @@ general memory discovery.
   memory. Retrieved memory text is reference data and cannot override the user's instructions,
   caller permissions or tool safety rules. Approval does not make embedded instructions trusted.
 - The caller's existing visibility and anchor checks remain authoritative. A known anchor can be
-  pinned through `primaryEntity.id`; a missed or denied lookup does not establish that no memory
-  exists. Direct reads can inspect other lifecycle stages or soft-deleted records without making them grounding material.
+  pinned through `primaryEntity.id`. Keyword-only general search omits anchored Entity/Public
+  memories for non-owners unless another visibility branch admits them; it cannot establish
+  complete memory discovery even when the caller can read the anchor.
+- Before answering, discover each relevant anchor through its supported metadata type (for example,
+  glossary term, tag or table), requesting `fields='id'`, and repeat memory discovery with the
+  returned UUID. The `queryFilter` combines the memory entity type, a `primaryEntity.id` term and
+  a keyword clause over `question`/`answer`; set `query='*'` so the filter carries the complete
+  lookup. Repeat even when the initial lookup returned other memories. A missed, denied or
+  unresolved-anchor lookup does not establish absence; report discovery as incomplete.
+  Direct reads can inspect other lifecycle stages or soft-deleted records without making them grounding material.
 - `find_context` and `company_context` keep their current scopes and embedding requirements.
   Their descriptions explain how to discover ordinary memories separately. Guidance lives in tool
   descriptions and property descriptions, because top-level schema examples and descriptions are
@@ -62,3 +72,28 @@ projection lacks provenance, retaining the existing access checks.
 that fixture retrieval preserves two approved answers and their distinct sources. These checks do
 not prove model conflict detection, adjudication or compliance. Extraction and approval logic for
 #37934 are outside this change.
+
+## Amendment: general keyword search needs a relevant anchor
+
+The conservative general-search rule in ADR:2026-10-09-search-admits-memories-of-pinned-anchors
+differs from Context Center listings, which evaluate matching anchors before paging. A non-owner's
+general keyword lookup can omit an anchored Entity/Public memory that REST permits the caller to
+read. The workflow must resolve the relevant business concept or asset and repeat the memory
+lookup with its returned anchor UUID. Pinning is an access-check hint, never an access grant;
+Private/Shared memories retain their existing ownership/sharing rules.
+
+The published example combines identity and business keywords inside one `queryFilter`:
+
+```json
+{"bool":{"must":[{"term":{"entityType":"contextMemory"}},{"term":{"primaryEntity.id":"<returned anchor UUID>"}},{"multi_match":{"query":"customer","fields":["question","answer"]}}]}}
+```
+
+Set the separate `query` argument to `*`. Current `SearchMetadataTool` uses the standard search
+path, which ANDs the filter with a supplied text query; the earlier help saying that it overrides
+the text query was stale. The complete filter avoids relying on a separate keyword argument.
+
+The SDK publication and request-projection regressions use the advertised example, including
+its keyword and extracted pin. `ContextMemorySearchVisibilityTest` covers the conservative
+unpinned filter and readable/denied pins for a non-admin non-owner in both engine renderings,
+retaining Entity/Public eligibility and excluding Private/Shared from the anchor branch. These
+are guidance and existing-filter contracts, not a change to retrieval or permission behavior.

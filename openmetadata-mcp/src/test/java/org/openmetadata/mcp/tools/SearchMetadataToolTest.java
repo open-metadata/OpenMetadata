@@ -32,6 +32,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.mcp.McpUtils;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.search.security.ContextMemoryAnchorPins;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.mask.PIIMasker;
@@ -388,6 +390,58 @@ class SearchMetadataToolTest {
                 Entity.CONTEXT_FILE,
                 "fullyQualifiedName",
                 source)));
+  }
+
+  @Test
+  void publishedAnchorExampleRetainsKeywordsAndCallerInTheSearchRequest() throws Exception {
+    final String marker = "Anchored-memory example with query='*': ";
+    final String description =
+        McpUtils.getToolProperties("json/data/mcp/tools.json").stream()
+            .filter(tool -> tool.name().equals("search_metadata"))
+            .map(JsonUtils::valueToTree)
+            .findFirst()
+            .orElseThrow()
+            .at("/inputSchema/properties/queryFilter/description")
+            .asText();
+    assertTrue(description.contains(marker), "the published workflow needs an executable example");
+    final String anchorId = UUID.randomUUID().toString();
+    final String queryFilter =
+        description
+            .substring(description.indexOf(marker) + marker.length())
+            .replace("<returned anchor UUID>", anchorId);
+    final JsonNode clause = JsonUtils.readTree(queryFilter);
+    assertEquals(Entity.CONTEXT_MEMORY, clause.at("/bool/must/0/term/entityType").asText());
+    assertEquals(anchorId, clause.at("/bool/must/1/term/primaryEntity.id").asText());
+    assertEquals("customer", clause.at("/bool/must/2/multi_match/query").asText());
+    assertEquals(
+        JsonUtils.valueToTree(List.of("question", "answer")),
+        clause.at("/bool/must/2/multi_match/fields"));
+    when(searchRepository.getIndexMapping(Entity.CONTEXT_MEMORY))
+        .thenReturn(mock(IndexMapping.class));
+    when(searchRepository.getIndexOrAliasName(Entity.CONTEXT_MEMORY))
+        .thenReturn("context_memory_search_index");
+    when(searchRepository.search(any(), any(SubjectContext.class)))
+        .thenAnswer(
+            invocation -> {
+              final SearchRequest request = invocation.getArgument(0);
+              final SubjectContext subject = invocation.getArgument(1);
+              assertEquals("*", request.getQuery());
+              assertEquals(clause, JsonUtils.readTree(request.getQueryFilter()).path("query"));
+              assertEquals(List.of(anchorId), ContextMemoryAnchorPins.of(request));
+              assertEquals(mockUser.getId(), subject.user().getId());
+              assertFalse(subject.isAdmin());
+              return Response.ok("{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}").build();
+            });
+    try (MockedStatic<SubjectCache> subjects = mockStatic(SubjectCache.class)) {
+      subjects.when(() -> SubjectCache.getUserContext("test-user")).thenReturn(mockUser);
+      final Map<String, Object> result =
+          searchMetadataTool.execute(
+              authorizer,
+              securityContext,
+              Map.of(
+                  "entityType", Entity.CONTEXT_MEMORY, "query", "*", "queryFilter", queryFilter));
+      assertEquals(0, result.get("returnedCount"));
+    }
   }
 
   @Test
