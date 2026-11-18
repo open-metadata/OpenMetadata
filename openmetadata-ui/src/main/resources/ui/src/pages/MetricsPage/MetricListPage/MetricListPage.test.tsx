@@ -361,6 +361,35 @@ describe('MetricListPage', () => {
     dispatchEventSpy.mockRestore();
   });
 
+  it('offers every metric status in the status filter with its own label', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockResolvedValue(
+      buildSearchResponse([
+        { id: 'r1', name: 'rejected_metric', entityStatus: 'Rejected' },
+      ])
+    );
+
+    renderPage();
+
+    await screen.findByText('rejected_metric');
+
+    const expectedLabels: Record<EntityStatus, string> = {
+      [EntityStatus.Approved]: 'label.approved',
+      [EntityStatus.Archived]: 'label.archived',
+      [EntityStatus.Deprecated]: 'label.deprecated',
+      [EntityStatus.Draft]: 'label.draft',
+      [EntityStatus.InReview]: 'label.in-review',
+      [EntityStatus.Rejected]: 'label.rejected',
+      [EntityStatus.Unprocessed]: 'label.unprocessed',
+    };
+
+    for (const [status, label] of Object.entries(expectedLabels)) {
+      expect(
+        await screen.findByTestId(`status-option-${status}`)
+      ).toHaveTextContent(label);
+    }
+  });
+
   it('filters the listing by status via a server-side search query', async () => {
     const { searchQuery } = require('../../../rest/searchAPI');
     searchQuery.mockImplementation((req: { queryFilter?: unknown }) => {
