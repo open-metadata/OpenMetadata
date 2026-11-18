@@ -767,7 +767,7 @@ const SchemaTable = () => {
       return (
         <div className="d-inline-flex flex-column hover-icon-group tw:max-w-full">
           <div className="d-inline-flex items-start gap-1 flex-column">
-            <div className="d-inline-flex items-baseline">
+            <div className="d-inline-flex items-center">
               {prepareConstraintIcon({
                 columnName: name,
                 columnConstraint: record.constraint,

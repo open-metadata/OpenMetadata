@@ -347,6 +347,7 @@ export const prepareConstraintIcon = ({
   columnName,
   columnConstraint,
   tableConstraints,
+  labelSourceConstraints = tableConstraints,
   iconClassName,
   iconWidth,
   isColumnConstraintAdded,
@@ -357,6 +358,7 @@ export const prepareConstraintIcon = ({
   columnName: string;
   columnConstraint?: string;
   tableConstraints?: TableConstraint[];
+  labelSourceConstraints?: TableConstraint[];
   iconClassName?: string;
   iconWidth?: string;
   isColumnConstraintAdded?: boolean;
@@ -378,6 +380,12 @@ export const prepareConstraintIcon = ({
   );
   const compositeUniqueConstraints =
     tableConstraints?.filter(
+      ({ constraintType, columns }) =>
+        constraintType === ConstraintType.Unique && (columns?.length ?? 0) > 1
+    ) ?? [];
+
+  const compositeLabelConstraints =
+    labelSourceConstraints?.filter(
       ({ constraintType, columns }) =>
         constraintType === ConstraintType.Unique && (columns?.length ?? 0) > 1
     ) ?? [];
@@ -411,20 +419,30 @@ export const prepareConstraintIcon = ({
       ))
     : null;
 
-  const compositeConstraintEls = compositeUniqueConstraints.map(
-    ({ columns }, index) =>
-      columns?.includes(columnName) ? (
-        <Fragment key={JSON.stringify(columns)}>
-          {getConstraintIcon({
-            constraint: ConstraintType.Unique,
-            compositeGroup: { columns, label: getConstraintGroupLabel(index) },
-            className: iconClassName ?? 'm-r-xs',
-            width: iconWidth,
-            isConstraintAdded: isTableConstraintAdded,
-            isConstraintDeleted: isTableConstraintDeleted,
-          })}
-        </Fragment>
-      ) : null
+  const compositeConstraintEls = compositeUniqueConstraints.map(({ columns }) =>
+    columns?.includes(columnName) ? (
+      <Fragment key={JSON.stringify(columns)}>
+        {getConstraintIcon({
+          constraint: ConstraintType.Unique,
+          compositeGroup: {
+            columns,
+            label: getConstraintGroupLabel(
+              compositeLabelConstraints.findIndex(
+                (constraint) =>
+                  constraint.columns?.length === columns.length &&
+                  columns.every((column) =>
+                    constraint.columns?.includes(column)
+                  )
+              )
+            ),
+          },
+          className: iconClassName ?? 'm-r-xs',
+          width: iconWidth,
+          isConstraintAdded: isTableConstraintAdded,
+          isConstraintDeleted: isTableConstraintDeleted,
+        })}
+      </Fragment>
+    ) : null
   );
 
   return (
