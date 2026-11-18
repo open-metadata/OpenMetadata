@@ -226,7 +226,7 @@ describe('WorkflowHeader — System badge', () => {
     jest.clearAllMocks();
   });
 
-  it('allows editing incident settings without offering suspension or claiming settings are locked', () => {
+  it('allows editing incident settings while explaining the system workflow restriction', () => {
     mockUseWorkflowModeContext.mockReturnValue(
       buildContextMock({ isNoOp: true })
     );
@@ -244,7 +244,7 @@ describe('WorkflowHeader — System badge', () => {
     expect(screen.getByTestId('system-workflow-badge')).toBeInTheDocument();
     expect(screen.getByTestId('tooltip')).toHaveAttribute(
       'data-title',
-      'message.auto-assign-owners-help'
+      'message.system-workflow-edit-restriction'
     );
   });
 

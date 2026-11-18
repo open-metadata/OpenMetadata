@@ -233,11 +233,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
       isNoOp && (
         <Tooltip
           placement="top"
-          title={t(
-            showEditButton || showSaveButton
-              ? 'message.auto-assign-owners-help'
-              : 'message.system-workflow-edit-restriction'
-          )}>
+          title={t('message.system-workflow-edit-restriction')}>
           <TooltipTrigger>
             <Badge
               color="gray"
@@ -249,7 +245,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           </TooltipTrigger>
         </Tooltip>
       ),
-    [isNoOp, showEditButton, showSaveButton, t]
+    [isNoOp, t]
   );
 
   const editTitleButton = useMemo(

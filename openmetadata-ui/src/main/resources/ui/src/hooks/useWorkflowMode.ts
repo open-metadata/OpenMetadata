@@ -13,12 +13,12 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { TEST_CASE_RESOLUTION_WORKFLOW_NAME } from '../constants/WorkflowBuilder.constants';
 import {
   Type,
   WorkflowDefinition,
 } from '../generated/governance/workflows/workflowDefinition';
 import workflowClassBase from '../utils/WorkflowClassBase';
+import { isIncidentSettingsWorkflow } from '../utils/WorkflowConfigUtils';
 
 export type WorkflowMode = 'view' | 'edit';
 
@@ -68,9 +68,7 @@ const getWorkflowEditingState = (
   const isNoOpTrigger = getIsNoOpTrigger(workflowDefinition);
   const editEnabled = isEditMode && !isNoOpTrigger;
   const viewEnabled = isViewMode && !isNoOpTrigger;
-  const hasIncidentSettings =
-    isNoOpTrigger &&
-    workflowDefinition?.name === TEST_CASE_RESOLUTION_WORKFLOW_NAME;
+  const hasIncidentSettings = isIncidentSettingsWorkflow(workflowDefinition);
   const settingsEditEnabled = isEditMode && hasIncidentSettings;
 
   return {

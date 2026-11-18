@@ -17,7 +17,6 @@ import { omit } from 'lodash';
 import { Edge, Node } from 'reactflow';
 import {
   ScheduleConfig,
-  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
   WorkflowType,
 } from '../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
@@ -38,6 +37,7 @@ import { showErrorToast, showSuccessToast } from '../utils/ToastUtils';
 import {
   getGitSinkTriggerConfig,
   isGitSinkNode,
+  isIncidentSettingsWorkflow,
 } from '../utils/WorkflowConfigUtils';
 import {
   getNodeConfiguration,
@@ -796,10 +796,7 @@ export const buildWorkflowForSave = async (
   const startNode = nodes.find((node) => node.type === NodeType.StartEvent);
   const startNodeConfig = (startNode?.data || {}) as NodeConfigWithMetadata;
 
-  if (
-    workflowDefinition?.name === TEST_CASE_RESOLUTION_WORKFLOW_NAME &&
-    getValidTriggerObject(workflowDefinition)?.type === Type.NoOp
-  ) {
+  if (workflowDefinition && isIncidentSettingsWorkflow(workflowDefinition)) {
     // System incident stages are not round-trippable through the generic graph editor.
     return {
       name: workflowDefinition.name,
@@ -871,9 +868,6 @@ export const buildWorkflowForSave = async (
     edges: workflowEdges,
     config: {
       ...workflowDefinition?.config,
-      ...(startNodeConfig.autoAssignOwners !== undefined && {
-        autoAssignOwners: startNodeConfig.autoAssignOwners,
-      }),
       storeStageStatus: triggerType === Type.EventBasedEntity,
     },
   };

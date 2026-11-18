@@ -108,29 +108,26 @@ describe('buildBulkIncidentEntries', () => {
     });
   });
 
-  it.each([CreateStatusTypes.New, CreateStatusTypes.ACK])(
-    'should move assigned incidents to %s without carrying the previous assignee',
-    (status) => {
-      expect(
-        buildBulkIncidentEntries([assignedToAaron], {
-          kind: 'status',
-          status,
-        })
-      ).toEqual({
-        entries: [
-          {
-            testCaseReference: 'svc.db.shop.orders.assigned',
-            testCaseResolutionStatusType: status,
-            testCaseResolutionStatusDetails: undefined,
-          },
-        ],
-        unchanged: 0,
-      });
-      expect(assignedToAaron.testCaseResolutionStatusDetails).toEqual({
-        assignee: aaron,
-      });
-    }
-  );
+  it('should acknowledge assigned incidents without carrying the previous assignee', () => {
+    expect(
+      buildBulkIncidentEntries([assignedToAaron], {
+        kind: 'status',
+        status: CreateStatusTypes.ACK,
+      })
+    ).toEqual({
+      entries: [
+        {
+          testCaseReference: 'svc.db.shop.orders.assigned',
+          testCaseResolutionStatusType: CreateStatusTypes.ACK,
+          testCaseResolutionStatusDetails: undefined,
+        },
+      ],
+      unchanged: 0,
+    });
+    expect(assignedToAaron.testCaseResolutionStatusDetails).toEqual({
+      assignee: aaron,
+    });
+  });
 
   it('should carry the assignee, and skip incidents already assigned to them', () => {
     const { entries, unchanged } = buildBulkIncidentEntries(

@@ -163,6 +163,9 @@ describe('TestCaseStatusModal component', () => {
       await screen.findByTestId('test-case-failure-reason')
     ).toBeInTheDocument();
     expect(screen.getByLabelText('RichTextEditor')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /label.status/ })
+    ).toHaveTextContent('label.resolved');
   });
 
   it('should call onCancel function, on click of cancel button', async () => {

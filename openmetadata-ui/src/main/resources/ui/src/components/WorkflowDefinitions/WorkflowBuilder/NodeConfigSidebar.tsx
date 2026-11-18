@@ -22,7 +22,6 @@ import { Node } from 'reactflow';
 import {
   AVAILABLE_OPTIONS,
   DEFAULT_QUALITY_BANDS,
-  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
@@ -44,6 +43,7 @@ import {
   buildEntityFieldGroups,
   getGitSinkTriggerNodeConfig,
   getTriggerDataAssets,
+  isIncidentSettingsWorkflow,
   validateWorkflowConfig,
   withExtensionPrefix,
 } from '../../../utils/WorkflowConfigUtils';
@@ -75,7 +75,9 @@ const computeStartNodeConfig = (
 ): NodeConfig => {
   const baseConfig: NodeConfig = {
     ...getInitialNodeConfig(node, workflowDefinition, null),
-    autoAssignOwners: resolveAutoAssignOwners(node, workflowDefinition),
+    ...(isIncidentSettingsWorkflow(workflowDefinition) && {
+      autoAssignOwners: resolveAutoAssignOwners(node, workflowDefinition),
+    }),
   };
 
   if (workflowMetadata) {
@@ -135,9 +137,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
     allowScheduledTrigger,
     isNoOp,
   } = useWorkflowModeContext();
-  const isIncidentWorkflow =
-    (workflowMetadata?.name ?? workflowDefinition?.name) ===
-    TEST_CASE_RESOLUTION_WORKFLOW_NAME;
+  const isIncidentWorkflow = isIncidentSettingsWorkflow(workflowDefinition);
   const [isUpdating, setIsUpdating] = useState(false);
   const [backendConfig, setBackendConfig] = useState(() =>
     getBackendConfig(node)

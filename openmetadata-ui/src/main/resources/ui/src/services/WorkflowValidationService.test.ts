@@ -76,6 +76,19 @@ const savedConfig = async (nodes: Node[], workflow: WorkflowDefinition) =>
 
 describe('WorkflowValidationService.buildWorkflowForSave', () => {
   it.each([true, false])(
+    'does not copy incident assignment %s from a start node into an unrelated workflow',
+    async (autoAssignOwners) => {
+      const saved = await buildWorkflowForSave(
+        [startNode({ ...editedStartNode('').data, autoAssignOwners })],
+        [],
+        savedWorkflow({})
+      );
+
+      expect(saved.config).toEqual({ storeStageStatus: true });
+    }
+  );
+
+  it.each([true, false])(
     'saves incident owner assignment %s without rebuilding its system workflow',
     async (autoAssignOwners) => {
       const workflow: WorkflowDefinition = {

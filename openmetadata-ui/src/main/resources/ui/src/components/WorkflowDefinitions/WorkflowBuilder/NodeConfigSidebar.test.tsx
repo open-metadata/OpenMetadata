@@ -20,6 +20,7 @@ import {
 } from '../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { NodeType } from '../../../generated/governance/workflows/elements/nodeType';
+import { Type } from '../../../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../../../interface/workflow-builder-components.interface';
 import { NodeConfigSidebar } from './NodeConfigSidebar';
 
@@ -191,6 +192,15 @@ describe('NodeConfigSidebar trigger of a workflow with a Git sink', () => {
 });
 
 describe('NodeConfigSidebar owner assignment', () => {
+  it('does not add incident assignment settings when saving an unrelated workflow', async () => {
+    const onSave = await renderSidebar(false);
+
+    fireEvent.click(screen.getByTestId('save-node-configuration-button'));
+
+    expect(onSave).toHaveBeenCalledTimes(1);
+    expect(onSave.mock.calls[0][1]).not.toHaveProperty('autoAssignOwners');
+  });
+
   it('saves system incident settings without requiring trigger data assets', async () => {
     mockUseWorkflowModeContext.mockReturnValue({
       ...FULL_WORKFLOW_MODE,
@@ -212,6 +222,7 @@ describe('NodeConfigSidebar owner assignment', () => {
         workflowDefinition={{
           name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
           description: '',
+          trigger: { type: Type.NoOp, config: {} },
           config: { autoAssignOwners: true, storeStageStatus: true },
         }}
         onClose={jest.fn()}
@@ -252,6 +263,7 @@ describe('NodeConfigSidebar owner assignment', () => {
         workflowDefinition: {
           name: TEST_CASE_RESOLUTION_WORKFLOW_NAME,
           description: '',
+          trigger: { type: Type.NoOp, config: {} },
           config: { autoAssignOwners: initialValue, storeStageStatus: true },
         },
         onClose: jest.fn(),
