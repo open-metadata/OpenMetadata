@@ -1608,6 +1608,37 @@ describe('ServiceDetailsPage', () => {
         ).toHaveTextContent(ingestionRunnerName);
       });
     });
+
+    it('should pass the ingestion runner when extra info loads after the service', async () => {
+      const ingestionRunnerName = 'IngestionRunner1';
+      let isExtraInfoLoaded = false;
+      let finishExtraInfo: () => void = noop;
+      (mockServiceUtil.getExtraInfo as jest.Mock).mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            finishExtraInfo = () => {
+              isExtraInfoLoaded = true;
+              resolve();
+            };
+          })
+      );
+      (mockServiceUtil.getServiceExtraInfo as jest.Mock).mockImplementation(
+        () => (isExtraInfoLoaded ? { name: ingestionRunnerName } : null)
+      );
+      (useRequiredParams as jest.Mock).mockImplementation(() => ({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      }));
+
+      await renderComponent();
+      await act(async () => finishExtraInfo());
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('test-connection-extra-info')
+        ).toHaveTextContent(ingestionRunnerName);
+      });
+    });
   });
 
   describe('Utility Function Integration', () => {
