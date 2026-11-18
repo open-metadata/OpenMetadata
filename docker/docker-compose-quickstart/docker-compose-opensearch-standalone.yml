@@ -17,7 +17,8 @@ services:
       - DISABLE_INSTALL_DEMO_CONFIG=true
       
       # JVM memory settings - adjust based on your system
-      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx4g
+      # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+      - OPENSEARCH_JAVA_OPTS=-Xms2g -Xmx4g -XX:-UseBASE64Intrinsics
       
       # Performance settings
       - indices.memory.index_buffer_size=20%

@@ -141,6 +141,13 @@ if [ -z "$OPENMETADATA_JVM_PERFORMANCE_OPTS" ]; then
     -Djava.awt.headless=true"
 fi
 
+# CVE-2026-114938: on x86-64 CPUs with AVX-512 VBMI, HotSpot's Base64 decode intrinsic writes past
+# its output array on some malformed inputs. With the intrinsic off, java.util.Base64 runs its plain
+# Java decoder. This comes before the OPENMETADATA_*_OPTS on the command line, so
+# -XX:+UseBASE64Intrinsics in any of them turns it back on. Remove it once every supported JDK has
+# the fix (21.0.13.1 for Java 21).
+JVM_SECURITY_ARGS="-XX:-UseBASE64Intrinsics"
+
 #Application classname
 APP_CLASS="org.openmetadata.service.OpenMetadataApplication"
 
@@ -150,7 +157,7 @@ if [ "x$DAEMON_MODE" = "xtrue" ]; then
     # emits what logback already writes to the rotated logs/openmetadata.log. Silence the console
     # so this file only collects JVM and pre-logback output. CONSOLE_LOG_LEVEL=TRACE restores it.
     export CONSOLE_LOG_LEVEL="${CONSOLE_LOG_LEVEL:-OFF}"
-    nohup $JAVA $JAVA_TOOL_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
+    nohup $JAVA $JAVA_TOOL_ARGS $JVM_SECURITY_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@" > "$CONSOLE_OUTPUT_FILE" 2>&1 < /dev/null &
 else
-    exec $JAVA $JAVA_TOOL_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
+    exec $JAVA $JAVA_TOOL_ARGS $JVM_SECURITY_ARGS $OPENMETADATA_HEAP_OPTS $OPENMETADATA_JVM_PERFORMANCE_OPTS $OPENMETADATA_GC_LOG_OPTS -cp $CLASSPATH $OPENMETADATA_OPTS "$APP_CLASS" "server" "$@"
 fi

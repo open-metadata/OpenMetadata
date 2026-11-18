@@ -75,7 +75,8 @@ spec:
             - name: JVM_ARGS
               # Equal min/max heap keeps the page-cache budget predictable; GC logs
               # rotate on the data volume for post-incident diagnosis.
-              value: "-Xms4g -Xmx4g -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m"
+              # -XX:-UseBASE64Intrinsics: CVE-2026-114938; drop it once the image's JDK has the fix.
+              value: "-Xms4g -Xmx4g -Xlog:gc*:file=/fuseki-data/gc.log:time,uptime:filecount=3,filesize=10m -XX:-UseBASE64Intrinsics"
           volumeMounts:
             - name: fuseki-data
               mountPath: /fuseki-data
