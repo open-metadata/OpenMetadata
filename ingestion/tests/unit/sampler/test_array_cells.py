@@ -12,24 +12,35 @@
 Test that the datalake and storage samplers return parquet list cells as lists (#36878).
 """
 
+import json
 import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, Mock, patch
 from uuid import uuid4
 
 import numpy as np
 import pandas as pd
+import pyarrow as pa
+import pyarrow.parquet as pq
+import pytest
 
 from metadata.generated.schema.entity.data.container import Container, FileFormat
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
-from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table
+from metadata.generated.schema.entity.data.table import ColumnName, DataType, Table, TableData
 from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
     DatalakeConnection,
+    LocalConfig,
 )
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.mixins.container_mixin import OMetaContainerMixin
+from metadata.ingestion.ometa.mixins.table_mixin import _sanitize_sample_data_value
+from metadata.pii.algorithms.preprocessing import preprocess_values
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
+from metadata.readers.dataframe.parquet import ParquetDataFrameReader
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.sampler.sampler_config import DatabaseSamplerConfig
+from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.sampler.storage.sampler import StorageSampler
 
 
@@ -150,3 +161,89 @@ class TestStorageSamplerArrayCells:
             sample_data = sampler.fetch_sample_data(columns=None)
 
         _assert_lists(sample_data.rows)
+
+
+def _datalake_sampler(frames, limit=100):
+    with patch("metadata.sampler.pandas.sampler.get_ssl_connection", return_value=FakeConnection()):
+        sampler = DatalakeSampler(
+            service_connection_config=DatalakeConnection(configSource={}),
+            ometa_client=None,
+            entity=TABLE_ENTITY,
+            config=DatabaseSamplerConfig(),
+        )
+    sampler._table = DatalakeColumnWrapper(dataframes=lambda: iter(frames), columns=None, raw_data=None)
+    sampler.sample_limit = limit
+    return sampler
+
+
+class _DiscardedArray(np.ndarray):
+    def tolist(self):
+        raise AssertionError("A discarded row was converted")
+
+
+def test_row_budget_filters_before_converting_across_chunks():
+    discarded = np.array(["discarded"]).view(_DiscardedArray)
+    frames = [
+        pd.DataFrame({"id": [0, 1], "values": [None, np.array(["first"])], "unused": [None, None]}),
+        pd.DataFrame({"id": [2, 3, 4], "values": [np.array(["filtered"]), np.array(["second"]), discarded]}),
+    ]
+    sampler = _datalake_sampler(frames, limit=2)
+    cols, rows = sampler.get_col_row(
+        sampler.raw_dataset,
+        columns=[SimpleNamespace(name="id"), SimpleNamespace(name="values")],
+        sample_query="id != 2",
+    )
+    assert cols == ["id", "values"]
+    assert rows == [[1, ["first"]], [3, ["second"]]]
+
+
+def test_zero_and_none_row_budget():
+    frame = pd.DataFrame({"values": [np.array(["first"]), np.array(["second"])]})
+    assert _datalake_sampler([frame], limit=0).fetch_sample_data().rows == []
+    assert _datalake_sampler([frame], limit=None).fetch_sample_data().rows == [[["first"]], [["second"]]]
+
+
+@pytest.mark.parametrize("sampler_kind", ["datalake", "storage"])
+@pytest.mark.parametrize("physical_type", ["timestamp", "timestamp_utc", "timestamp_new_york", "map"])
+def test_physical_parquet_nested_values_survive_consumers(tmp_path, sampler_kind, physical_type):
+    if physical_type.startswith("timestamp"):
+        timezone = {"timestamp": None, "timestamp_utc": "UTC", "timestamp_new_york": "America/New_York"}[physical_type]
+        value_type = pa.list_(pa.timestamp("ns", tz=timezone))
+        values = [[pd.Timestamp("2026-01-02T03:04:05.123456789", tz=timezone), None]]
+        # PyArrow normalizes nested timezone timestamps to UTC before returning numpy cells.
+        timestamp = (
+            "2026-01-02T08:04:05.123456789" if timezone == "America/New_York" else "2026-01-02T03:04:05.123456789"
+        )
+        expected = [timestamp, None]
+        expected_text = [timestamp]
+    else:
+        value_type = pa.list_(pa.map_(pa.string(), pa.list_(pa.string())))
+        values = [[[("contact", ["jane@example.com"]), ("contact", ["bob@example.com"])]]]
+        expected = [[["contact", ["jane@example.com"]], ["contact", ["bob@example.com"]]]]
+        expected_text = ["contact", "jane@example.com", "contact", "bob@example.com"]
+    path = tmp_path / "nested.parquet"
+    pq.write_table(pa.table({"values": pa.array(values, type=value_type)}), path)
+    parquet_file = pq.ParquetFile(path)
+    assert parquet_file.schema_arrow.field("values").type == value_type
+    reader = ParquetDataFrameReader(config_source=LocalConfig(), client=None)
+    frames = list(reader._read_parquet_in_batches(parquet_file, batch_size=1))
+    if sampler_kind == "datalake":
+        sample = _datalake_sampler(frames).fetch_sample_data()
+    else:
+        with patch("metadata.sampler.storage.sampler.fetch_dataframe_first_chunk", return_value=iter(frames)):
+            sample = _ParquetStorageSampler(
+                service_connection_config=MagicMock(), ometa_client=None, entity=CONTAINER_ENTITY
+            ).fetch_sample_data(columns=None)
+    assert sample.rows == [[expected]]
+    assert preprocess_values([sample.rows[0][0]]) == expected_text
+    table_payload = TableData(columns=sample.columns, rows=[[_sanitize_sample_data_value(sample.rows[0][0])]])
+    assert json.loads(table_payload.model_dump_json())["rows"] == [[expected]]
+    container_payload = OMetaContainerMixin()._serialize_sample_data(sample, "service.contacts")
+    assert container_payload is not None
+    assert json.loads(container_payload)["rows"] == [[expected]]
+
+
+def test_object_array_timestamps_and_native_sequences_preserve_scalar_values():
+    values = np.array([np.datetime64("2026-01-02T03:04:05.000000001"), np.datetime64("NaT")], dtype=object)
+    normalized = SamplerInterface._array_to_list({"values": (values, [1, True, "text", None])})
+    assert normalized == {"values": [["2026-01-02T03:04:05.000000001", None], [1, True, "text", None]]}

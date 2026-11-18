@@ -129,7 +129,9 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 cols = chunk.columns.tolist()
             if sample_query is not None:
                 chunk = chunk.query(sample_query)  # noqa: PLW2901
-            rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
+            remaining = None if self.sample_limit is None else self.sample_limit - len(rows)
+            eligible = chunk[cols].dropna().iloc[:remaining]
+            rows.extend(self._fetch_rows(eligible))
             if len(rows) >= (self.sample_limit or 100):
                 break
         return cols, rows
