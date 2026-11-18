@@ -63,7 +63,6 @@ import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigrati
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
-import org.openmetadata.service.migration.utils.v210.RelationshipTypeReferenceRepair;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
@@ -135,8 +134,6 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(EntityExtensionCollationAlignment.class);
         MockedStatic<ContextFileFqnRepair> contextFileFqnRepair =
             mockStatic(ContextFileFqnRepair.class);
-        MockedStatic<RelationshipTypeReferenceRepair> relationshipTypeRepair =
-            mockStatic(RelationshipTypeReferenceRepair.class);
         // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -199,9 +196,6 @@ class IngestionPipelineMigrationEntryPointTest {
                   handle, connectionType));
       // Released versions stored misnamed Context Center files, so both engines repair them.
       contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
-      // Clusters built from main before the delete guard may hold types deleted while in use.
-      relationshipTypeRepair.verify(
-          () -> RelationshipTypeReferenceRepair.repair(handle, connectionType, collectionDAO));
     }
   }
 

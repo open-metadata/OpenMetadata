@@ -129,19 +129,89 @@ public class RelationshipTypeDeleteGuardIT {
     String first = relationTypeName(ns, "legacyPrecedes");
     String second = relationTypeName(ns, "legacyFollows");
     JsonNode original = settingsRelationTypes();
-    assertEquals(200, putSettings(withLegacyPair(original, first, second)).status());
-    RelationshipType referrer = createType(relationTypeName(ns, "outsider"), first);
+    try {
+      assertEquals(200, putSettings(withLegacyTypes(original, pair(first, second))).status());
+      RelationshipType referrer = createType(relationTypeName(ns, "outsider"), first);
 
-    Reply refused = putSettings(original);
+      Reply refused = putSettings(original);
 
-    assertRejectedAsInUse(refused, "'" + referrer.getName() + "' (inverse)");
-    assertTrue(settingsRelationTypes().toString().contains(first), "the setting was not saved");
-    assertLive(asType(getTypeByName(first)));
+      assertRejectedAsInUse(refused, "'" + referrer.getName() + "' (inverse)");
+      assertTrue(settingsRelationTypes().toString().contains(first), "the setting was not saved");
+      assertLive(asType(getTypeByName(first)));
 
-    assertEquals(200, deleteType(referrer.getId(), true).status());
-    assertEquals(200, putSettings(original).status());
-    assertEquals(404, getTypeByName(first).status());
-    assertEquals(404, getTypeByName(second).status());
+      assertEquals(200, deleteType(referrer.getId(), true).status());
+      ObjectNode forwardReference = typeRequest(second, first).put("replacedBy", "notYet" + second);
+      assertEquals(200, putType(forwardReference).status());
+      assertEquals(200, putSettings(original).status());
+      assertEquals(404, getTypeByName(first).status());
+      assertEquals(404, getTypeByName(second).status());
+    } finally {
+      putSettings(original);
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void theDeprecatedSettingsWriteMayDropOneSideOfAPairWhileClearingTheOthersInverse(
+      TestNamespace ns) {
+    String first = relationTypeName(ns, "legacyCauses");
+    String second = relationTypeName(ns, "legacyCausedBy");
+    JsonNode original = settingsRelationTypes();
+    try {
+      assertEquals(200, putSettings(withLegacyTypes(original, pair(first, second))).status());
+
+      Reply reply = putSettings(withLegacyTypes(original, List.of(legacyType(first, null))));
+
+      assertEquals(200, reply.status(), reply.message());
+      assertEquals(404, getTypeByName(second).status());
+      assertLive(asType(getTypeByName(first)));
+    } finally {
+      putSettings(original);
+    }
+  }
+
+  @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
+  void theDeprecatedSettingsWriteBringsBackAListedSoftDeletedTypeBeforeAnotherNamesIt(
+      TestNamespace ns) {
+    String first = relationTypeName(ns, "legacyOwns");
+    String second = relationTypeName(ns, "legacyOwnedBy");
+    JsonNode original = settingsRelationTypes();
+    try {
+      assertEquals(
+          200, putSettings(withLegacyTypes(original, List.of(legacyType(second, null)))).status());
+      RelationshipType deleted = asType(getTypeByName(second));
+      assertEquals(200, deleteType(deleted.getId(), false).status());
+
+      Reply reply =
+          putSettings(
+              withLegacyTypes(
+                  original, List.of(legacyType(first, second), legacyType(second, null))));
+
+      assertEquals(200, reply.status(), reply.message());
+      assertLive(deleted);
+      assertLive(asType(getTypeByName(first)));
+    } finally {
+      putSettings(original);
+    }
+  }
+
+  @Test
+  void namesThatDifferOnlyInCaseNeverCountEachOthersRelations(TestNamespace ns) {
+    String name = relationTypeName(ns, "cites");
+    RelationshipType lower = createType(name, null);
+    RelationshipType upper =
+        createType(Character.toUpperCase(name.charAt(0)) + name.substring(1), null);
+    UUID paper = createTerm(glossary, ns.shortPrefix("paper"));
+    UUID source = createTerm(glossary, ns.shortPrefix("source"));
+    assertEquals(200, relate(paper, source, lower.getName()).status());
+
+    assertEquals(200, deleteType(upper.getId(), true).status());
+    assertRejectedAsInUse(deleteType(lower.getId(), true), "used by 1 glossary term relation");
   }
 
   @ParameterizedTest
@@ -236,23 +306,30 @@ public class RelationshipTypeDeleteGuardIT {
     return reply.body().path("config_value").path("relationTypes");
   }
 
-  private static ArrayNode withLegacyPair(JsonNode relationTypes, String first, String second) {
+  private static List<ObjectNode> pair(String first, String second) {
+    return List.of(legacyType(first, second), legacyType(second, first));
+  }
+
+  private static ArrayNode withLegacyTypes(JsonNode relationTypes, List<ObjectNode> added) {
     ArrayNode updated = ((ArrayNode) relationTypes).deepCopy();
-    updated.add(legacyType(first, second));
-    updated.add(legacyType(second, first));
+    added.forEach(updated::add);
     return updated;
   }
 
   private static ObjectNode legacyType(String name, String inverse) {
-    return MAPPER
-        .createObjectNode()
-        .put("name", name)
-        .put("displayName", name)
-        .put("description", "Legacy relation type " + name)
-        .put("inverseRelation", inverse)
-        .put("category", "associative")
-        .put("isSystemDefined", false)
-        .put("color", "#6941c6");
+    ObjectNode type =
+        MAPPER
+            .createObjectNode()
+            .put("name", name)
+            .put("displayName", name)
+            .put("description", "Legacy relation type " + name)
+            .put("category", "associative")
+            .put("isSystemDefined", false)
+            .put("color", "#6941c6");
+    if (inverse != null) {
+      type.put("inverseRelation", inverse);
+    }
+    return type;
   }
 
   private static Reply putSettings(JsonNode relationTypes) {

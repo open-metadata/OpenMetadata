@@ -1,9 +1,9 @@
-# A relationship type in use cannot be deleted, and the upgrade restores the ones that were
+# A relationship type in use cannot be deleted
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Ontology Studio team
-- **Guard:** `RelationshipTypeDeleteGuardIT`, `RelationshipTypeReferenceRepairMigrationIT`, `RelationshipTypeReferencesTest`, `RelationshipTypeRepairPlannerTest`, `RelationshipTypeRdfWriterTest`
+- **Guard:** `RelationshipTypeDeleteGuardIT`, `RelationshipTypeReferencesTest`, `RelationshipTypeRdfWriterTest`, `LegacyRelationshipTypeSynchronizerTest`
 - **Related:** #38112, ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
 
 ## Context
@@ -24,22 +24,16 @@ were protected from deletion.
    by FQN to a type that does not exist yet stays allowed (the UI creates an inverse pair that
    way); the ontology export omits such an axiom instead of failing.
 3. The deprecated settings write removes several types at once: the whole removal is checked before
-   the setting is saved, and references among the removed types do not block it.
+   the setting is saved, against the definitions that write saves, and references among the removed
+   types do not block it. A listed type that is soft-deleted is brought back before the others.
 4. Dependents are never cascaded: deleting or retyping relations, or clearing an `inverse`, would
    drop or silently reinterpret what users stored.
-5. Every 2.1.0 data migration runs `RelationshipTypeReferenceRepair`, a fixed point that puts an
-   install in the state rule 1 would have left it: starting from live types and stored relations,
-   a soft-deleted type still in use is undeleted (and what it references, in turn), and a
-   hard-deleted one is recreated under its old id and name as a deprecated custom placeholder whose
-   description says why. When a type names it as `inverse`, the placeholder names that type back
-   in the same shape, named or not, so relations read as before. A soft-deleted type only other
-   soft-deleted types use stays deleted. References without an id are never recreated.
+5. No repair ships for types deleted earlier: that was possible only on unreleased 2.1/main builds
+   and the 2.1.0 pre-releases, and restoring the type (soft delete) or recreating it under the same
+   name, with its inverse, through the API (hard delete) makes those reads work again.
 
 ## Consequences
 Reads stay consistent without tolerant fallbacks. To delete a type, an admin first removes the
 relations and the references to it; a mutual inverse pair needs one side's `inverse` cleared first
-(the deprecated settings write removes a pair in one call). A placeholder's original predicate and
-semantics are lost and must be redefined or the type deleted once unused; RDF triples written under
-the old predicate stay until the RDF store is rebuilt, and search shows repaired types after the
-next reindex. A concurrent relation write and type delete are each validated on their own, not
-locked against each other.
+(the deprecated settings write removes a pair in one call). A concurrent relation write and type
+delete are each validated on their own, not locked against each other.

@@ -17,6 +17,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -47,11 +48,26 @@ public final class LegacyRelationshipTypeSynchronizer {
       final UriInfo uriInfo,
       final String updatedBy) {
     final List<RelationshipType> relationshipTypes = mapper.map(updated, updatedBy);
-    relationshipTypes.forEach(type -> upsert(uriInfo, updatedBy, type));
+    final Set<String> softDeleted = softDeletedNames(relationshipTypes);
+    // A listed type that is soft-deleted comes back first, so another listed type may name it.
+    relationshipTypes.stream()
+        .sorted(Comparator.comparing(type -> !softDeleted.contains(type.getName())))
+        .forEach(type -> upsert(uriInfo, updatedBy, type));
     final Set<String> removedNames = removedNames(previous, updated);
     if (!removedNames.isEmpty()) {
       repository.deleteTogether(updatedBy, removedNames);
     }
+  }
+
+  private Set<String> softDeletedNames(final List<RelationshipType> relationshipTypes) {
+    return relationshipTypes.stream()
+        .map(RelationshipType::getName)
+        .filter(
+            name -> {
+              final RelationshipType existing = repository.findByNameOrNull(name, Include.ALL);
+              return existing != null && Boolean.TRUE.equals(existing.getDeleted());
+            })
+        .collect(Collectors.toUnmodifiableSet());
   }
 
   private void upsert(

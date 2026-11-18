@@ -84,7 +84,7 @@ public final class RelationshipTypeReferences {
    * A reference names a type by id once it was resolved, and only by FQN when it was written before
    * its target existed, so both are compared; the name covers references built from a name alone.
    */
-  public static boolean names(final EntityReference reference, final RelationshipType type) {
+  private static boolean names(final EntityReference reference, final RelationshipType type) {
     final boolean byId = reference.getId() != null && reference.getId().equals(type.getId());
     final boolean byFqn =
         reference.getFullyQualifiedName() != null

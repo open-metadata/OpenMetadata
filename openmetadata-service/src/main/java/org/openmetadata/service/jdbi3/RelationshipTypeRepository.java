@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -265,21 +266,33 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   /**
    * The deprecated settings endpoint removes several types in one write, an inverse pair among
-   * them, so references between the removed types do not block it. Call before the write is saved.
+   * them, so references between the removed types do not block it. It runs before the write is
+   * saved, so the definitions the same write saves replace the stored ones.
    */
-  public void requireRemovableTogether(final Collection<String> names) {
-    final List<RelationshipType> types = listIncludingDeleted();
+  public void requireRemovableTogether(
+      final Collection<String> names, final List<RelationshipType> writtenTogether) {
+    final List<RelationshipType> types = overlay(listIncludingDeleted(), writtenTogether);
     final List<RelationshipType> removed = removableNamed(types, names);
     final Set<UUID> removedIds = ids(removed);
     removed.forEach(type -> requireUnreferenced(type, types, removedIds));
   }
 
   public void deleteTogether(final String deletedBy, final Collection<String> names) {
-    requireRemovableTogether(names);
+    requireRemovableTogether(names, List.of());
     final List<RelationshipType> removed = removableNamed(listIncludingDeleted(), names);
     final Set<UUID> removedIds = ids(removed);
     removed.forEach(type -> detachReferencesTo(type, removedIds));
     removed.forEach(type -> delete(deletedBy, type.getId(), false, true));
+  }
+
+  private static List<RelationshipType> overlay(
+      final List<RelationshipType> stored, final List<RelationshipType> written) {
+    final Set<String> writtenNames =
+        written.stream().map(RelationshipType::getName).collect(Collectors.toUnmodifiableSet());
+    return Stream.concat(
+            stored.stream().filter(type -> !writtenNames.contains(type.getName())),
+            written.stream())
+        .toList();
   }
 
   private static List<RelationshipType> removableNamed(
@@ -298,18 +311,18 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   private void detachReferencesTo(final RelationshipType type, final Set<UUID> removedIds) {
     final boolean isDetached =
         RelationshipTypeReferences.heldBy(type).stream()
-            .noneMatch(reference -> removedIds.contains(reference.target().getId()));
+            .noneMatch(reference -> isRemoved(reference.target(), removedIds));
     if (!isDetached) {
       type.setInverse(keepUnless(type.getInverse(), removedIds));
       type.setReplacedBy(keepUnless(type.getReplacedBy(), removedIds));
       type.setPropertyChain(
           listOrEmpty(type.getPropertyChain()).stream()
-                  .anyMatch(reference -> removedIds.contains(reference.getId()))
+                  .anyMatch(reference -> isRemoved(reference, removedIds))
               ? List.of()
               : type.getPropertyChain());
       type.setDisjointWith(
           setOrEmpty(type.getDisjointWith()).stream()
-              .filter(reference -> !removedIds.contains(reference.getId()))
+              .filter(reference -> !isRemoved(reference, removedIds))
               .collect(Collectors.toUnmodifiableSet()));
       daoCollection.relationshipTypeDAO().update(type);
       invalidateCacheForEntity(entityType, type.getId(), type.getFullyQualifiedName());
@@ -318,7 +331,12 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   private static EntityReference keepUnless(
       final EntityReference reference, final Set<UUID> removedIds) {
-    return reference == null || removedIds.contains(reference.getId()) ? null : reference;
+    return reference == null || isRemoved(reference, removedIds) ? null : reference;
+  }
+
+  /** A reference written by FQN before its target existed has no id and names no removed type. */
+  private static boolean isRemoved(final EntityReference reference, final Set<UUID> removedIds) {
+    return reference.getId() != null && removedIds.contains(reference.getId());
   }
 
   private static Set<EntityReference> setOrEmpty(final Set<EntityReference> references) {
