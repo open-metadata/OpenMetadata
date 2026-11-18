@@ -223,9 +223,10 @@ const withDomainOnSearchBody = (
   config: InternalAxiosRequestConfig,
   activeDomain: string
 ): InternalAxiosRequestConfig => {
-  const body = config.data as
-    | { index?: string | string[]; queryFilter?: string }
-    | undefined;
+  // A request replayed after a token refresh carries the body axios already serialized.
+  const body = (
+    typeof config.data === 'string' ? JSON.parse(config.data) : config.data
+  ) as { index?: string | string[]; queryFilter?: string } | undefined;
   config.data = {
     ...body,
     queryFilter: scopeSearchFilter(

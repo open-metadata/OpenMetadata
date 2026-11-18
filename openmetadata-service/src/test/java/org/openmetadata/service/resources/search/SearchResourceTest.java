@@ -71,15 +71,15 @@ class SearchResourceTest {
   @ParameterizedTest
   @CsvSource({"-25, 25, from", "0, -1, size", ", -1, size"})
   void searchPostRejectsNegativePaginationWithoutSearching(
-      Integer from, Integer size, String rejectedField) {
-    SearchRepository searchRepository = mock(SearchRepository.class);
+      final Integer from, final Integer size, final String rejectedField) {
+    final SearchRepository searchRepository = mock(SearchRepository.class);
     try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
       entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      SearchResource resource = new SearchResource(mock(Authorizer.class));
-      SearchRequest request =
+      final SearchResource resource = new SearchResource(mock(Authorizer.class));
+      final SearchRequest request =
           new SearchRequest().withQuery("*").withIndex("table").withFrom(from).withSize(size);
 
-      BadRequestException error =
+      final BadRequestException error =
           assertThrows(
               BadRequestException.class,
               () -> resource.searchPost(mock(SecurityContext.class), request));

@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -58,16 +59,20 @@ class SearchQueryPostIT {
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
   private static final ObjectMapper MAPPER = JsonUtils.getObjectMapper();
+  private static final String SEARCH_QUERY_PATH = "/v1/search/query";
+  private static final String TABLE_INDEX = "table";
+  private static final String QUERY = "query";
+  private static final String INDEX = "index";
+  private static final String FROM = "from";
+  private static final String SIZE = "size";
+  private static final String QUERY_FILTER = "queryFilter";
+  private static final String HITS = "hits";
 
   @Test
   void postSearchQueryReturnsSearchResponse(final TestNamespace ns) throws Exception {
     // A trivial ids filter that matches nothing real; we only assert the shape and a 200.
-    final ObjectNode body = MAPPER.createObjectNode();
-    body.put("query", "*");
-    body.put("index", "table");
-    body.put("from", 0);
-    body.put("size", 5);
-    body.put("queryFilter", "{\"query\":{\"bool\":{\"must\":[{\"ids\":{\"values\":[]}}]}}}");
+    final ObjectNode body = searchBody(0, 5);
+    body.put(QUERY_FILTER, "{\"query\":{\"bool\":{\"must\":[{\"ids\":{\"values\":[]}}]}}}");
 
     final HttpResponse<String> response = postSearchQuery(body);
 
@@ -77,8 +82,8 @@ class SearchQueryPostIT {
         "POST /v1/search/query must return 200 for a trivial filter. body=" + response.body());
 
     final JsonNode json = MAPPER.readTree(response.body());
-    assertTrue(json.has("hits"), "response must carry `hits` (SearchResponse shape)");
-    assertTrue(json.path("hits").has("total"), "hits.total must be present");
+    assertTrue(json.has(HITS), "response must carry `hits` (SearchResponse shape)");
+    assertTrue(json.path(HITS).has("total"), "hits.total must be present");
     // aggregations may be a present-but-null key when includeAggregations defaults; assert the
     // key exists at least, matching the GET contract documented by the search listeners.
     assertTrue(
@@ -88,11 +93,7 @@ class SearchQueryPostIT {
 
   @Test
   void postSearchQueryRejectsNegativePagination(final TestNamespace ns) throws Exception {
-    final ObjectNode body = MAPPER.createObjectNode();
-    body.put("query", "*");
-    body.put("index", "table");
-    body.put("from", -1);
-    body.put("size", 10);
+    final ObjectNode body = searchBody(-1, 10);
 
     final HttpResponse<String> response = postSearchQuery(body);
 
@@ -104,11 +105,7 @@ class SearchQueryPostIT {
         response.body().contains("from must be greater than or equal to 0"),
         "error message must name the rejected field. body=" + response.body());
 
-    final ObjectNode sizeBody = MAPPER.createObjectNode();
-    sizeBody.put("query", "*");
-    sizeBody.put("index", "table");
-    sizeBody.put("from", 0);
-    sizeBody.put("size", -1);
+    final ObjectNode sizeBody = searchBody(0, -1);
 
     final HttpResponse<String> sizeResponse = postSearchQuery(sizeBody);
     assertEquals(
@@ -139,15 +136,11 @@ class SearchQueryPostIT {
     final ObjectNode idsClause = MAPPER.createObjectNode();
     idsClause.set("values", ids);
     bool.set("must", MAPPER.createArrayNode().add(MAPPER.createObjectNode().set("ids", idsClause)));
-    filter.set("query", MAPPER.createObjectNode().set("bool", bool));
+    filter.set(QUERY, MAPPER.createObjectNode().set("bool", bool));
     final String queryFilter = MAPPER.writeValueAsString(filter);
 
-    final ObjectNode body = MAPPER.createObjectNode();
-    body.put("query", "*");
-    body.put("index", "table");
-    body.put("from", 0);
-    body.put("size", 10);
-    body.put("queryFilter", queryFilter);
+    final ObjectNode body = searchBody(0, 10);
+    body.put(QUERY_FILTER, queryFilter);
 
     final HttpResponse<String> postResponse = postSearchQuery(body);
     assertEquals(
@@ -156,16 +149,19 @@ class SearchQueryPostIT {
         "POST must accept the over-8KiB filter in the body. body=" + postResponse.body());
 
     final JsonNode json = MAPPER.readTree(postResponse.body());
-    assertTrue(json.has("hits"), "POST must return SearchResponse shape, not 414/400/431");
+    assertTrue(json.has(HITS), "POST must return SearchResponse shape, not 414/400/431");
     // The filter lists non-existent ids, so the matched hit count is 0 — but the response must
     // still be a well-formed SearchResponse, not a 414/400/431.
-    assertEquals(0, json.path("hits").path("total").path("value").asInt(-1));
+    assertEquals(0, json.path(HITS).path("total").path("value").asInt(-1));
 
     // The same filter via GET must fail — that's the bug, and the existence of the POST variant
     // is the fix. The endpoint returns 414 (Jetty Request-URI Too Long), or 400/431 depending on
     // the fronting proxy; the only acceptable outcomes here are 4xx that are NOT 200.
     final String getUrl =
-        "/v1/search/query?q=*&index=table&from=0&size=10&deleted=false&query_filter="
+        SEARCH_QUERY_PATH
+            + "?q=*&index="
+            + TABLE_INDEX
+            + "&from=0&size=10&deleted=false&query_filter="
             + URLEncoder.encode(queryFilter, StandardCharsets.UTF_8);
     final HttpResponse<String> getResponse = httpGet(getUrl);
     assertTrue(
@@ -180,9 +176,18 @@ class SearchQueryPostIT {
             + " silently green without exercising the fix.");
   }
 
+  private static ObjectNode searchBody(final int from, final int size) {
+    final ObjectNode body = MAPPER.createObjectNode();
+    body.put(QUERY, "*");
+    body.put(INDEX, TABLE_INDEX);
+    body.put(FROM, from);
+    body.put(SIZE, size);
+    return body;
+  }
+
   private HttpResponse<String> postSearchQuery(final JsonNode body) throws Exception {
     final HttpRequest request =
-        baseRequest("/v1/search/query")
+        baseRequest(SEARCH_QUERY_PATH)
             .POST(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(body)))
             .build();
     return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
@@ -194,8 +199,8 @@ class SearchQueryPostIT {
 
   private HttpRequest.Builder baseRequest(final String path) {
     return HttpRequest.newBuilder()
-        .uri(URI.create(org.openmetadata.it.util.SdkClients.getServerUrl() + path))
-        .header("Authorization", "Bearer " + org.openmetadata.it.util.SdkClients.getAdminToken())
+        .uri(URI.create(SdkClients.getServerUrl() + path))
+        .header("Authorization", "Bearer " + SdkClients.getAdminToken())
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
         .timeout(Duration.ofSeconds(30));

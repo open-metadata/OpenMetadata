@@ -243,21 +243,11 @@ public class SearchResource {
           boolean includeAggregations)
       throws IOException {
 
-    if (nullOrEmpty(query)) {
-      query = "*";
-    }
-    // Add Domain Filter
-    List<EntityReference> domains = new ArrayList<>();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (!subjectContext.isAdmin()) {
-      domains = subjectContext.getUserDomains();
-    }
-
-    SearchRequest request =
+    final SearchRequest request =
         new SearchRequest()
             .withQuery(query)
             .withSize(size)
-            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
+            .withIndex(index)
             .withFrom(from)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
@@ -269,14 +259,10 @@ public class SearchResource {
             .withIncludeSourceFields(includeSourceFields)
             .withExcludeSourceFields(excludeSourceFields)
             .withIsHierarchy(getHierarchy)
-            .withDomains(domains)
-            .withApplyDomainFilter(
-                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
-
-    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
+    return executeSearch(securityContext, request);
   }
 
   @POST
@@ -302,53 +288,29 @@ public class SearchResource {
                     schema = @Schema(implementation = SearchResponse.class)))
       })
   public Response searchPost(
-      @Context SecurityContext securityContext,
-      @RequestBody(description = "Search request body", required = true) @Valid SearchRequest body)
+      @Context final SecurityContext securityContext,
+      @RequestBody(description = "Search request body", required = true) @Valid
+          final SearchRequest body)
       throws IOException {
-
-    // Validate pagination up front so a nonsense body never reaches the search engine. The
-    // GET path relies on @Min on the @QueryParam; the body fields have no bean-validation
-    // annotations, so mirror the previewSearch guard.
+    // The GET route validates pagination with @Min on its params; the body has no such annotations.
     requireNonNegative("from", body.getFrom());
     requireNonNegative("size", body.getSize());
+    return executeSearch(securityContext, body);
+  }
 
-    String query = body.getQuery();
-    if (nullOrEmpty(query)) {
-      query = "*";
-    }
-
-    // The body is untrusted for authorization-relevant fields. Domain scope comes from the
-    // caller's security context (same as the GET path), and the index name is normalized to
-    // its alias so a caller cannot address a raw index by name.
-    List<EntityReference> domains = new ArrayList<>();
-    SubjectContext subjectContext = getSubjectContext(securityContext);
-    if (!subjectContext.isAdmin()) {
-      domains = subjectContext.getUserDomains();
-    }
-
-    SearchRequest request =
-        new SearchRequest()
-            .withQuery(query)
-            .withSize(body.getSize())
-            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(body.getIndex()))
-            .withFrom(body.getFrom())
-            .withQueryFilter(body.getQueryFilter())
-            .withPostFilter(body.getPostFilter())
-            .withFetchSource(body.getFetchSource())
-            .withTrackTotalHits(body.getTrackTotalHits())
-            .withSortFieldParam(body.getSortFieldParam())
-            .withDeleted(body.getDeleted())
-            .withSortOrder(body.getSortOrder())
-            .withIncludeSourceFields(body.getIncludeSourceFields())
-            .withExcludeSourceFields(body.getExcludeSourceFields())
-            .withIsHierarchy(body.getIsHierarchy())
-            .withDomains(domains)
-            .withApplyDomainFilter(
-                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
-            .withSearchAfter(body.getSearchAfter())
-            .withExplain(body.getExplain())
-            .withIncludeAggregations(body.getIncludeAggregations());
-
+  /**
+   * Runs a search for either route. Domain scope comes from the caller's security context, never
+   * from the request, and the index is resolved to its alias so a raw index cannot be addressed.
+   */
+  private Response executeSearch(final SecurityContext securityContext, final SearchRequest request)
+      throws IOException {
+    final SubjectContext subjectContext = getSubjectContext(securityContext);
+    final boolean isAdmin = subjectContext.isAdmin();
+    request
+        .withQuery(nullOrEmpty(request.getQuery()) ? "*" : request.getQuery())
+        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
+        .withDomains(isAdmin ? new ArrayList<>() : subjectContext.getUserDomains())
+        .withApplyDomainFilter(!isAdmin && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
     return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
   }
 
