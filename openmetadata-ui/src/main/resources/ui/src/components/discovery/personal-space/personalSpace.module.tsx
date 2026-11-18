@@ -40,7 +40,9 @@ const gatedInbox = (
  * `activity` / `tasks` sub-tabs render the shared {@link InboxPage} shell
  * behind the {@link PersonalSpaceGate} view-permission gate; the active tab is
  * derived from the path. My Data has no route here: the user menu opens it in
- * the personal-space modal, and `AppModeRoutes` redirects `/my-data` to `/`.
+ * the personal-space modal, and `/my-data` falls through to the shell's page
+ * table, which renders the home landing page. It is not a redirect, so
+ * hash-link modals such as `/my-data#notification/alerts` still open.
  *
  * The Inbox is a single tabbed page, so it is registered as ONE `/inbox/*`
  * route rather than one route per sub-tab. Separate per-tab routes would each
