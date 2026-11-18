@@ -96,6 +96,10 @@ public class RdfLiveProjectionIT {
     Entity.getCollectionDAO()
         .appExtensionTimeSeriesDao()
         .insert(JsonUtils.pojoToJson(completed), STATUS);
+    // A suite server that started with RDF off degraded the projection (#36440); the completed
+    // rebuild this record stands for would have repaired it.
+    final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+    health.markRebuilt(health.failureVersion());
   }
 
   @AfterAll

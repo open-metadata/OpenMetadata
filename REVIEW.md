@@ -97,6 +97,35 @@ Every finding carries three parts: the **trigger** (an input or state that occur
     falls back to an untyped `Map` hides secrets from the secret walkers.
   - Never pass an exception cause that carries a URI or credential to the logger.
 
+### CI credentials and PR code
+
+ADR:2026-11-10-pr-jobs-never-receive-credentials supersedes the earlier same-repository exception.
+Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow changes.
+
+- **New or modified `pull_request` jobs run without secrets.** This applies to fork, same-repository,
+  and Dependabot PRs. Do not expose repository, organization, or environment secrets. The built-in
+  `GITHUB_TOKEN` is allowed with read-only permissions. Checkouts of PR code set
+  `persist-credentials: false`. Do not grant `id-token: write` or use runners with credentials that
+  PR code can reach.
+- **Trace indirect credential access.** Read the job's callers, reusable workflows, composite
+  actions, and scripts. Check `secrets: inherit`, secret-backed inputs and environment variables,
+  generated tokens, and cloud authentication. Treat credentials in another step on the same runner
+  as reachable by PR code. Log masking does not prevent exfiltration.
+- **Exclude PRs from jobs that need secrets.** In workflows with multiple event triggers, require
+  an explicit job condition that excludes `pull_request` before credentials become available.
+  Run those checks on trusted branch pushes or nightly runs. An approved merge group may run them
+  against its immutable SHA when the queue is enabled. Labels, earlier approvals, and same-repository
+  guards do not exempt a `pull_request` job from this rule.
+- **Keep privileged automation separate from PR execution.** `pull_request_target` and privileged
+  `workflow_run` jobs must not execute PR code, scripts, artifacts, or caches. A downstream dispatch
+  must not give unapproved PR code access to secrets. Trace the executed ref through every dispatch
+  and checkout. Report a credential path that violates these rules as a 🔴 security finding. Include
+  the event, executed ref, and credential source.
+- **Keep manual checkouts in their event's cache scope.** A read-only `GITHUB_TOKEN` does not
+  remove the runner's cache-write capability. A manual run on `main` must not execute a separately
+  supplied PR or branch while using `main`'s cache scope. Generation workflows check out the event
+  SHA on manual runs. Use `pull_request` for PR code so its caches remain scoped to that PR.
+
 ### Writes and data integrity
 
 - **Writes keep what the caller did not send.**
@@ -291,6 +320,17 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
 
 ### UI
 
+- **No duplicate component or variant.** A new UI component implementing a concept the tree already
+  has (empty state, status badge, confirm dialog, skeleton, search input, date range, pagination —
+  the canon table is `.claude/rules/single-source.md`) is a 🔴 unless the PR says why the canonical
+  one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
+  is a prop/variant on the original, or a core-component extension. Name the existing component in
+  the finding. A sanctioned migration's successor is done only when the old variant's importer count
+  is zero and the file is deleted.
+- **No new page scaffold.** New pages use the ui-core `PageLayout`
+  (`PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header`/`.PageHeader` +
+  `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
+  mechanism is a finding.
 - **antd → core migrations keep behavior.** List each implicit antd behavior or default the call
   site relied on, and carry it over:
   - z-index: the core overlay is `z-50`, an antd drawer is 1000, so a dialog can open under a drawer;
@@ -478,7 +518,8 @@ Ask which assertion goes red if the fix is reverted. The shapes seen in this win
 PR CI runs Java unit tests only. The ITs and Playwright run in the merge queue, so run them with
 `make java_affected_run` and `make playwright_affected_run`. Also check:
 
-- that `skip-pr-checks` or a missing `safe to test` label did not skip the job;
+- that `skip-pr-checks` did not skip the job, nor a fork or Dependabot origin (those PRs skip the jobs that
+  need secrets: Sonar, the Collate build, the data-access-request e2e);
 - that a path filter did not skip the only relevant suite;
 - that a new spec directory is collected by a Playwright project;
 - that each new IT and source file is owned in the impact maps.

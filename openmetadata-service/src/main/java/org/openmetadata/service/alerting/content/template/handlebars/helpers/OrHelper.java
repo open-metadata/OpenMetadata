@@ -67,6 +67,7 @@ public class OrHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{or }}")
-                    .withExample("{{#if (or hasUpdates hasAdds)}}Changes detected{{/if}}")));
+                    .withExample(
+                        "{{#if (or entity.owners entity.domains)}}Has an owner or domain{{/if}}")));
   }
 }

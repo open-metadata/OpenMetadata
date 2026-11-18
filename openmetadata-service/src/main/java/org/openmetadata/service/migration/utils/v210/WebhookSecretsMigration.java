@@ -16,31 +16,33 @@ package org.openmetadata.service.migration.utils.v210;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 
 /**
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
- * form new writes store: in the entity row, each secret encrypted for the destination or profile
- * webhook that holds it, and in its versions, the change descriptions recorded with them and the
- * stored change events, the mask, since nothing sends from those. Plaintext is encrypted for its
- * webhook. Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and
- * OAuth2 credentials of an alert destination, when it is stored nowhere else ({@link
- * StoredCiphertextCopies}); any other value stays as stored and is entered again before its
- * webhook sends. Values already in that form are kept, so running it again changes nothing. The
- * rules it applies are frozen in {@link StoredWebhookSecrets}; a row it cannot read stops the step
- * with an error that names the row.
+ * form new writes store: in the entity row, each secret encrypted with the configured Fernet keys,
+ * and in its versions, the change descriptions recorded with them and the stored change events, the
+ * mask, since nothing sends from those. The rules it applies are frozen in {@link
+ * StoredWebhookSecrets}; a row it cannot read stops the step with an error that names the row.
+ *
+ * <p>A value at a field releases before 2.1 sent as stored is encrypted as it is, so encrypting
+ * again what a run already wrote would change it: each step runs once, in one transaction with the
+ * marker that records it, and a run that stops part way leaves nothing behind.
  */
 @Slf4j
 public final class WebhookSecretsMigration {
-  public static final String PROFILE_STEP_NAME = "bindProfileWebhookSecrets";
-  public static final String ALERT_STEP_NAME = "bindAlertDestinationSecrets";
+  // Not the step names a 2.1 pre-release recorded, so a database that ran one runs these too.
+  public static final String PROFILE_STEP_NAME = "encryptProfileWebhookSecrets";
+  public static final String ALERT_STEP_NAME = "encryptAlertDestinationSecrets";
   private static final int PAGE_SIZE = 500;
   private static final String USER = "user";
   private static final String TEAM = "team";
@@ -48,12 +50,43 @@ public final class WebhookSecretsMigration {
 
   private WebhookSecretsMigration() {}
 
-  public static void bindProfileWebhookSecrets(Handle handle, ConnectionType connectionType) {
+  /** Runs the profile step once for {@code version}, in one transaction with its marker. */
+  public static void encryptProfileWebhookSecrets(
+      Handle handle, String version, ConnectionType connectionType) {
+    onceInOneTransaction(
+        handle,
+        version,
+        PROFILE_STEP_NAME,
+        transaction -> encryptProfiles(transaction, connectionType));
+  }
+
+  /** Runs the alert step once for {@code version}, in one transaction with its marker. */
+  public static void encryptAlertDestinationSecrets(
+      Handle handle, String version, ConnectionType connectionType) {
+    onceInOneTransaction(
+        handle,
+        version,
+        ALERT_STEP_NAME,
+        transaction -> encryptAlertDestinations(transaction, connectionType));
+  }
+
+  private static void onceInOneTransaction(
+      Handle handle, String version, String stepName, Consumer<Handle> step) {
+    handle.useTransaction(
+        transaction ->
+            DataMigrationStep.runOnce(
+                transaction.attach(MigrationDAO.class),
+                version,
+                stepName,
+                () -> step.accept(transaction)));
+  }
+
+  private static void encryptProfiles(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
-      rewriteById(handle, sql, "user_entity", row -> secrets.bindProfileEntity(USER, row));
-      rewriteById(handle, sql, "team_entity", row -> secrets.bindProfileEntity(TEAM, row));
+      rewriteById(handle, sql, "user_entity", row -> secrets.encryptProfileEntity(USER, row));
+      rewriteById(handle, sql, "team_entity", row -> secrets.encryptProfileEntity(TEAM, row));
       rewriteVersions(handle, sql, "user_entity", USER, StoredWebhookSecrets::maskProfileEntity);
       rewriteVersions(handle, sql, "team_entity", TEAM, StoredWebhookSecrets::maskProfileEntity);
       rewriteChangeEvents(
@@ -61,16 +94,11 @@ public final class WebhookSecretsMigration {
     }
   }
 
-  public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
+  private static void encryptAlertDestinations(Handle handle, ConnectionType connectionType) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
-      Set<String> storedElsewhere = StoredCiphertextCopies.find(handle, connectionType);
-      rewriteById(
-          handle,
-          sql,
-          "event_subscription_entity",
-          row -> secrets.bindAlert(row, storedElsewhere::contains));
+      rewriteById(handle, sql, "event_subscription_entity", secrets::encryptAlert);
       rewriteVersions(
           handle, sql, "event_subscription_entity", ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
@@ -108,7 +136,7 @@ public final class WebhookSecretsMigration {
       }
       rewritten += execute(batch);
     } while (rows.size() == PAGE_SIZE);
-    LOG.info("Bound the webhook secrets of {} rows of {}", rewritten, table);
+    LOG.info("Encrypted the webhook secrets of {} rows of {}", rewritten, table);
   }
 
   /**

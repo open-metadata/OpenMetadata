@@ -204,6 +204,24 @@ class BuildEntityUrlHelperTest {
   }
 
   @Test
+  void metadataExample_rendersEntityLink() throws IOException {
+    String example = new BuildEntityUrlHelper().getMetadata().getUsages().get(0).getExample();
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "service.db.schema.users",
+            "name", "users");
+
+    String url =
+        extractHref(
+            sandbox.render(
+                "<a href=\"" + example + "\">link</a>",
+                Map.of("event", Map.of("entityType", "table"), "entity", entity)));
+
+    assertEquals(BASE_URL + "/table/service.db.schema.users", url);
+  }
+
+  @Test
   void testCaseTaskLink_pointsToIssuesTab() throws IOException {
     String url = extractHref(renderFeedLink(Entity.TEST_CASE, "service.db.schema.tc1", "tasks"));
 
@@ -227,6 +245,26 @@ class BuildEntityUrlHelperTest {
     String url = extractHref(renderFeedLink("table", "service.db.schema.users", "tasks"));
 
     assertEquals(BASE_URL + "/table/service.db.schema.users/activity_feed/tasks", url);
+  }
+
+  @Test
+  void task_linksToTaskPage() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "TASK-00761",
+            "name", "Approval required for ClaimEventFeature");
+
+    String url = extractHref(render(Entity.TASK, entity));
+
+    assertEquals(BASE_URL + "/tasks/TASK-00761", url);
+  }
+
+  @Test
+  void taskLink_withView_staysOnTaskPage() throws IOException {
+    String url = extractHref(renderFeedLink(Entity.TASK, "TASK-00761", "tasks"));
+
+    assertEquals(BASE_URL + "/tasks/TASK-00761", url);
   }
 
   @Test

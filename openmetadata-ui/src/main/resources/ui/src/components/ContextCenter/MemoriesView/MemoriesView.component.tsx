@@ -21,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Copy01,
   DotsVertical,
   Edit01,
   NoFilterFunnel,
@@ -48,9 +47,9 @@ import { getMemoryCitations } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { stripMarkdown } from '../../../utils/RichTextStringUtils';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
-import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
   MemoryActionsProps,
@@ -308,9 +307,7 @@ const MemoryRowActions: FC<MemoryRowActionsProps> = ({
 
   return (
     <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-      <CopyLinkButton url={memoryUrl}>
-        <Copy01 data-icon aria-hidden="true" />
-      </CopyLinkButton>
+      <CopyButton value={memoryUrl} />
       {canActOnMemory && canEdit && onEditMemory && (
         <ButtonUtility
           data-testid="edit-memory-btn"

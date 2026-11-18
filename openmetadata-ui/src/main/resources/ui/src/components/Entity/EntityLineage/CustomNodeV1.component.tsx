@@ -177,6 +177,9 @@ const SceneDrillButton = ({
       tooltip={drillLabel}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {
         event.stopPropagation();
+        // The drilled scene unmounts this button; blurring first closes its
+        // focus tooltip, which otherwise stays on screen without an anchor.
+        event.currentTarget.blur();
         onDrill(node);
       }}
     />
@@ -184,6 +187,7 @@ const SceneDrillButton = ({
 };
 
 const CustomNodeV1 = (props: NodeProps) => {
+  const { t } = useTranslation();
   const { data, type } = props;
 
   const { onNodeCollapse, loadChildNodesHandler, onNodeClick } =
@@ -467,7 +471,7 @@ const CustomNodeV1 = (props: NodeProps) => {
       style={{ width: nodeWidth }}>
       {isRootNode && (
         <div className={badgeClass}>
-          <div className="lineage-node-badge" />
+          <div className="lineage-node-badge">{t('label.base')}</div>
         </div>
       )}
       <div

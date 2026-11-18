@@ -78,7 +78,7 @@ public final class DestinationValidation {
   // secret sent again, is the same configuration.
   private static JsonNode whatAUserConfigures(SubscriptionDestination destination) {
     ObjectNode content =
-        (ObjectNode) JsonUtils.valueToTree(DestinationSecrets.decrypted(destination));
+        (ObjectNode) JsonUtils.valueToTree(DestinationSecrets.decryptedOrAsStored(destination));
     content.remove(NOT_PART_OF_WHAT_A_USER_CONFIGURES);
     return withoutEmptyValues(content);
   }

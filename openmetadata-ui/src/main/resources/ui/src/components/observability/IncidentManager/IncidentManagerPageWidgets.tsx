@@ -13,8 +13,11 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PROFILER_FILTER_RANGE } from '../../../constants/profiler.constant';
+import {
+  OPEN_INCIDENT_STATUS_TYPES,
+  RESOLVED_INCIDENT_STATUS_TYPES,
+} from '../../../constants/TestSuite.constant';
 import { IncidentTimeMetricsType } from '../../../enums/DataQuality.enum';
-import { TestCaseResolutionStatusTypes } from '../../../generated/tests/testCaseResolutionStatus';
 import {
   getCurrentMillis,
   getEndOfDayInMillis,
@@ -41,20 +44,23 @@ const IncidentManagerPageWidgets = () => {
       <div className="tw:grid tw:grid-cols-1 tw:gap-6 tw:md:grid-cols-2 tw:xl:grid-cols-4">
         <IncidentTypeAreaChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
+          description={t('message.open-incident-card-description')}
           height={60}
-          incidentStatusType={TestCaseResolutionStatusTypes.New}
+          incidentStatusTypes={OPEN_INCIDENT_STATUS_TYPES}
           name="open-incident"
           title={t('label.open-incident-plural')}
         />
         <IncidentTypeAreaChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
+          description={t('message.resolved-incident-card-description')}
           height={60}
-          incidentStatusType={TestCaseResolutionStatusTypes.Resolved}
+          incidentStatusTypes={RESOLVED_INCIDENT_STATUS_TYPES}
           name="resolved-incident"
           title={t('label.resolved-incident-plural')}
         />
         <IncidentTimeChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
+          description={t('message.response-time-card-description')}
           height={60}
           incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESPONSE}
           name="response-time"
@@ -62,6 +68,7 @@ const IncidentManagerPageWidgets = () => {
         />
         <IncidentTimeChartWidget
           chartFilter={DEFAULT_RANGE_DATA}
+          description={t('message.resolution-time-card-description')}
           height={60}
           incidentMetricType={IncidentTimeMetricsType.TIME_TO_RESOLUTION}
           name="resolution-time"

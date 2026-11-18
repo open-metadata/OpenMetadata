@@ -47,6 +47,16 @@ export const CONTEXT_CENTER_RETIRED_QUERY_NAME_QUERY_KEY = [
   'context-center-retired-query-name',
 ];
 
+/** Whether memories can be extracted now: one read a page, again once a minute old and after a 409. */
+export const CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY = [
+  'context-center-extraction-availability',
+];
+
+/** A document's Extract or Retry, keyed by user and document, so every surface showing it shares it. */
+export const CONTEXT_CENTER_MEMORY_EXTRACTION_MUTATION_KEY = [
+  'context-center-memory-extraction',
+];
+
 /**
  * Converge a badge-count query after an async (`202`) delete: poll `hasLanded`
  * until the deleted row is gone, then refetch once and keep the server's
