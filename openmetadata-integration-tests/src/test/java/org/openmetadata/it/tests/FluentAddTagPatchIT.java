@@ -16,27 +16,27 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
-import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.wrappers.FluentTable;
 
 /**
@@ -77,18 +77,11 @@ class FluentAddTagPatchIT {
   private static String newTagFqn;
 
   @BeforeAll
-  static void setupSdkDefaultClient() {
-    OpenMetadataClient admin = SdkClients.adminClient();
-    Tables.setDefaultClient(admin);
+  static void setup() {
     existingTagFqn = SharedEntities.get().PERSONAL_DATA_TAG_LABEL.getTagFQN();
     newTagFqn = SharedEntities.get().PII_SENSITIVE_TAG_LABEL.getTagFQN();
     assertNotNull(existingTagFqn, "SharedEntities must expose a pre-existing classification tag");
     assertNotNull(newTagFqn, "SharedEntities must expose a second classification tag for the add");
-  }
-
-  @AfterAll
-  static void clearSdkDefaultClient() {
-    Tables.setDefaultClient(null);
   }
 
   @Test
@@ -108,14 +101,13 @@ class FluentAddTagPatchIT {
 
     // 2. Apply a pre-existing classification tag directly via a JSON-Patch (this is what a user
     //    or governance process would have done previously — the stored entity has one tag).
-    com.fasterxml.jackson.databind.node.ArrayNode patch =
-        com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.arrayNode();
+    ArrayNode patch = JsonNodeFactory.instance.arrayNode();
     patch.add(
-        com.fasterxml.jackson.databind.node.JsonNodeFactory.instance
+        JsonNodeFactory.instance
             .objectNode()
             .put("op", "add")
             .put("path", "/tags/-")
-            .set("value", org.openmetadata.schema.utils.JsonUtils.valueToTree(classificationTag(existingTagFqn))));
+            .set("value", JsonUtils.valueToTree(classificationTag(existingTagFqn))));
     admin.tables().patch(table.getId(), patch);
 
     // Sanity: stored entity now carries exactly the pre-existing tag.
@@ -161,7 +153,9 @@ class FluentAddTagPatchIT {
   }
 
   private static List<String> tagFqns(List<TagLabel> tags) {
-    if (tags == null) return List.of();
+    if (tags == null) {
+      return List.of();
+    }
     return tags.stream().map(TagLabel::getTagFQN).toList();
   }
 }

@@ -120,7 +120,7 @@ class FluentAddTagPatchRegressionTest {
   private static Object invokeGetter(Object entity, String getter) {
     try {
       return entity.getClass().getMethod(getter).invoke(entity);
-    } catch (Exception e) {
+    } catch (ReflectiveOperationException e) {
       throw new AssertionError("Unable to call " + getter + " on " + entity.getClass(), e);
     }
   }
