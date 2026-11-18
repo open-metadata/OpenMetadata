@@ -16,7 +16,6 @@ import json
 import os
 import sys
 import tempfile
-import time
 from datetime import date, datetime
 from io import StringIO
 from types import SimpleNamespace
@@ -660,27 +659,7 @@ def test_usage_binding_resolves_physical_shards_and_join_targets(source_type):
 _USAGE_DATE_UTC_MS = 1749081600000
 
 
-@pytest.fixture
-def utc_negative_host_tz(monkeypatch):
-    """Force the process into a UTC-negative host timezone (America/New_York).
-
-    A naive ``datetime.fromtimestamp`` (no ``tz`` arg) decodes the staged
-    UTC-midnight epoch in host-local time, rendering the previous calendar
-    day. This fixture is what makes the off-by-one-day bug reproducible.
-    """
-    previous = os.environ.get("TZ")
-    monkeypatch.setenv("TZ", "America/New_York")
-    time.tzset()
-    yield
-    if previous is None:
-        monkeypatch.delenv("TZ", raising=False)
-    else:
-        monkeypatch.setenv("TZ", previous)
-    time.tzset()
-
-
-@pytest.mark.skipif(not hasattr(time, "tzset"), reason="requires time.tzset (Unix)")
-def test_published_usage_date_is_utc_not_host_local(utc_negative_host_tz):
+def test_published_usage_date_is_utc_not_host_local(local_tz):
     """UsageRequest.date must be the UTC calendar day of the staged epoch.
 
     The staged epoch is produced by the query parser via the UTC-attaching
@@ -688,6 +667,7 @@ def test_published_usage_date_is_utc_not_host_local(utc_negative_host_tz):
     ``datetime.fromtimestamp`` would shift 2025-06-05 back to 2025-06-04; the
     sink must instead decode it as UTC and publish 2025-06-05.
     """
+    local_tz("America/New_York")
     assert datetime_to_timestamp(datetime.strptime("2025-06-05", "%Y-%m-%d"), milliseconds=True) == _USAGE_DATE_UTC_MS
 
     table = Table(
@@ -718,14 +698,14 @@ def test_published_usage_date_is_utc_not_host_local(utc_negative_host_tz):
     assert not sink.status.failures
 
 
-@pytest.mark.skipif(not hasattr(time, "tzset"), reason="requires time.tzset (Unix)")
-def test_published_join_start_date_is_utc_not_host_local(utc_negative_host_tz):
+def test_published_join_start_date_is_utc_not_host_local(local_tz):
     """TableJoins.startDate must be the UTC calendar day of the staged epoch.
 
     Under ``America/New_York`` a naive ``datetime.fromtimestamp`` would shift
     the startDate for 2025-06-05 back to 2025-06-04; the sink must instead
     decode it as UTC.
     """
+    local_tz("America/New_York")
     table = Table(
         id=uuid4(),
         name="test_table",
