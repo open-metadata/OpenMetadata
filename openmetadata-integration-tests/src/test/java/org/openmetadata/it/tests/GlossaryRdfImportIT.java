@@ -1037,6 +1037,7 @@ public class GlossaryRdfImportIT {
         planned.toString());
     assertTrue(relationshipTypeById(deleted.getId()).path("deleted").asBoolean());
 
+    long restoredAfter = System.currentTimeMillis();
     JsonNode result = importRdfBody(glossary.getName(), ontology);
 
     assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
@@ -1053,6 +1054,20 @@ public class GlossaryRdfImportIT {
     }
     assertInversePair(forward, deleted.getName());
     assertCyclePerspectives(glossary, forward, deleted.getName());
+    assertTrue(
+        restoreEventsSince(deleted.getId(), restoredAfter), "the restore is recorded as an event");
+  }
+
+  private boolean restoreEventsSince(UUID id, long timestamp) {
+    RelationshipTypeTestSupport.Reply reply =
+        RelationshipTypeTestSupport.send(
+            "GET", "/v1/events?entityRestored=relationshipType&timestamp=" + timestamp, null);
+    assertEquals(200, reply.status(), reply.message());
+    boolean found = false;
+    for (JsonNode event : reply.body().path("data")) {
+      found |= id.toString().equals(event.path("entityId").asText());
+    }
+    return found;
   }
 
   @Test
@@ -1099,6 +1114,47 @@ public class GlossaryRdfImportIT {
           term.getRelatedTerms().stream().noneMatch(edge -> inverse.equals(edge.getRelationType())),
           "named inverse must not appear on symmetric edges");
     }
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void importSkipsANameHeldByADeletedTypeOnAnotherPredicate(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossaryNameHeld" + dryRun);
+    String authored = relationshipTypeName(glossary.getName());
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(authored));
+    URI oldPredicate = URI.create("http://example.com/elsewhere/" + glossary.getName() + "#old");
+    RelationshipType held =
+        SdkClients.adminClient()
+            .relationshipTypes()
+            .create(
+                new CreateRelationshipType()
+                    .withName(authored)
+                    .withDisplayName("Held name")
+                    .withDescription("Governed on another predicate")
+                    .withRdfPredicate(oldPredicate)
+                    .withCategory(RelationshipTypeCategory.CUSTOM)
+                    .withPaletteKey(RelationshipPaletteKey.BLUE));
+    relationshipTypeIds.add(held.getId());
+    assertEquals(200, RelationshipTypeTestSupport.deleteType(held.getId(), false).status());
+
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            inverseCycleOntology(glossary.getName(), authored, "unused", "none"),
+            dryRun);
+
+    assertTrue(
+        result
+            .path("messages")
+            .toString()
+            .contains("held by a deleted relationship type on " + oldPredicate),
+        result.toString());
+    assertEquals(0, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(0, result.path("relationsAdded").asInt(), result.toString());
+    JsonNode stored = relationshipTypeById(held.getId());
+    assertTrue(stored.path("deleted").asBoolean(), stored.toString());
+    assertEquals(oldPredicate.toString(), stored.path("rdfPredicate").asText());
   }
 
   /**

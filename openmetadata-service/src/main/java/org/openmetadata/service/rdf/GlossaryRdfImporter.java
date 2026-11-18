@@ -176,6 +176,8 @@ public class GlossaryRdfImporter {
   private final Set<String> rejectedPredicates = new HashSet<>();
   // Soft-deleted types a dry run plans against as restored, by predicate; a real import restores.
   private final Map<String, RelationshipType> restorableByPredicate = new HashMap<>();
+  // Soft-deleted types the import leaves deleted; a new type may not take one's name.
+  private List<RelationshipType> remainingSoftDeleted = List.of();
   private final Map<String, EntityReference> termRefByIri = new HashMap<>();
   private final Map<String, String> termFqnByIri = new HashMap<>();
   private final Map<String, String> iriByFqn = new HashMap<>();
@@ -704,7 +706,18 @@ public class GlossaryRdfImporter {
    */
   private void restoreSoftDeletedRelationTypes(
       Model model, List<TermIntent> intents, boolean dryRun) {
-    for (RelationshipType type : softDeletedRelationTypesNamed(model, intents)) {
+    List<RelationshipType> softDeleted =
+        Entity.getCollectionDAO().relationshipTypeDAO().listIncludingDeleted().stream()
+            .map(json -> JsonUtils.readValue(json, RelationshipType.class))
+            .filter(type -> Boolean.TRUE.equals(type.getDeleted()))
+            .toList();
+    List<RelationshipType> toRestore =
+        SoftDeletedRelationTypes.namedBy(
+            namedPredicates(model, intents),
+            softDeleted,
+            predicate -> registry.get().findByPredicate(predicate) != null);
+    remainingSoftDeleted = softDeleted.stream().filter(type -> !toRestore.contains(type)).toList();
+    for (RelationshipType type : toRestore) {
       if (dryRun) {
         RelationshipType restored =
             JsonUtils.deepCopy(type, RelationshipType.class)
@@ -713,33 +726,34 @@ public class GlossaryRdfImporter {
         restorableByPredicate.put(restored.getRdfPredicate().toString(), restored);
         addMessage("Relationship type '" + type.getName() + "' is deleted and would be restored");
       } else {
-        relationshipTypeRepository().restoreEntity(user, type.getId());
-        addMessage("Relationship type '" + type.getName() + "' was deleted and has been restored");
+        restore(type);
       }
     }
   }
 
-  private List<RelationshipType> softDeletedRelationTypesNamed(
-      Model model, List<TermIntent> intents) {
-    Map<String, String> namesByPredicate = new LinkedHashMap<>();
+  /** Restores the type and records the restore as a change event, as the restore endpoint does. */
+  private void restore(RelationshipType type) {
+    RelationshipTypeRepository repository = relationshipTypeRepository();
+    PutResponse<RelationshipType> response = repository.restoreEntity(user, type.getId());
+    if (response != null) {
+      repository.storeChangeEventForAsyncOperation(
+          response.getEntity(), EventType.ENTITY_RESTORED, false, user);
+    }
+    addMessage("Relationship type '" + type.getName() + "' was deleted and has been restored");
+  }
+
+  private Set<String> namedPredicates(Model model, List<TermIntent> intents) {
+    Set<String> predicates = new LinkedHashSet<>();
     for (TermIntent intent : intents) {
       for (RelationIntent relation : intent.relations) {
-        namesByPredicate.putIfAbsent(relation.predicateIri(), relation.relationshipType());
+        predicates.add(relation.predicateIri());
         String inverseIri = inversePredicateIri(model, relation.predicateIri());
         if (inverseIri != null) {
-          namesByPredicate.putIfAbsent(inverseIri, relationTypeFor(inverseIri));
+          predicates.add(inverseIri);
         }
       }
     }
-    List<RelationshipType> softDeleted =
-        Entity.getCollectionDAO().relationshipTypeDAO().listIncludingDeleted().stream()
-            .map(json -> JsonUtils.readValue(json, RelationshipType.class))
-            .filter(type -> Boolean.TRUE.equals(type.getDeleted()))
-            .toList();
-    return SoftDeletedRelationTypes.namedBy(
-        namesByPredicate,
-        softDeleted,
-        predicate -> registry.get().findByPredicate(predicate) != null);
+    return predicates;
   }
 
   private void collectRelationPair(
@@ -1157,11 +1171,31 @@ public class GlossaryRdfImporter {
 
   private void rejectInvalidDefinitions(Model model, Map<String, RelationshipType> newTypes) {
     Map<UUID, String> invalid = invalidDefinitions(newTypes.values());
+    rejectNamesHeldByDeletedTypes(newTypes.values(), invalid);
     expandDeclaredInverseRejections(model, newTypes.values(), invalid);
     newTypes.values().stream()
         .filter(type -> invalid.containsKey(type.getId()))
         .forEach(type -> rejectedPredicates.add(type.getRdfPredicate().toString()));
     skipInvalidTypes(newTypes, invalid);
+  }
+
+  /**
+   * A new type named like a soft-deleted type on another predicate would overwrite that type when
+   * saved, so it is skipped and the deleted type is left to be restored or renamed.
+   */
+  private void rejectNamesHeldByDeletedTypes(
+      Collection<RelationshipType> newTypes, Map<UUID, String> invalid) {
+    for (RelationshipType type : newTypes) {
+      SoftDeletedRelationTypes.holdingNameElsewhere(
+              type.getName(), type.getRdfPredicate(), remainingSoftDeleted)
+          .ifPresent(
+              holder ->
+                  invalid.putIfAbsent(
+                      type.getId(),
+                      "the name is held by a deleted relationship type on "
+                          + holder.getRdfPredicate()
+                          + "; restore or rename it"));
+    }
   }
 
   private void rejectInvalidRelationPairs(

@@ -41,6 +41,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
@@ -181,6 +182,51 @@ public class RelationshipTypeDeleteGuardIT {
     assertEquals(partner.getName(), inverseOf(deleted.getId()));
     assertEquals(deleted.getName(), inverseOf(partner.getId()));
     assertAllSucceed(relationReads(glossary));
+  }
+
+  @Test
+  void restoringALiveTypeIsRefusedAndChangesNothing(TestNamespace ns) {
+    RelationshipType target = createType(relationTypeName(ns, "target"), null);
+    RelationshipType owner = createType(relationTypeName(ns, "owner"), target.getName());
+    double ownerVersion = asType(getType(owner.getId())).getVersion();
+
+    Reply reply = restoreType(owner.getId());
+
+    assertEquals(400, reply.status(), reply.message());
+    assertTrue(reply.message().contains("is not in deleted state"), reply.message());
+    assertNull(inverseOf(target.getId()));
+    assertEquals(ownerVersion, asType(getType(owner.getId())).getVersion());
+  }
+
+  @Test
+  void aRestoredApiPairReadsItsRelationsAsOneNeverDeleted(TestNamespace ns) {
+    List<RelationshipType> restored =
+        createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
+    List<RelationshipType> control =
+        createInversePair(relationTypeName(ns, "contains"), relationTypeName(ns, "within"));
+    assertEquals(200, deleteType(restored.getFirst().getId(), false).status());
+    assertEquals(200, restoreType(restored.getFirst().getId()).status());
+
+    assertEquals(
+        inverseShape(control.getLast()),
+        inverseShape(restored.getLast()),
+        "the link back is written as the pair was");
+    assertEquals(readsFromBothEnds(ns, control, "c"), readsFromBothEnds(ns, restored, "r"));
+  }
+
+  @Test
+  void aTermRelationNamingADeletedTypeSaysToRestoreIt(TestNamespace ns) {
+    RelationshipType retired = createType(relationTypeName(ns, "retired"), null);
+    assertEquals(200, deleteType(retired.getId(), false).status());
+    UUID from = createTerm(glossary, ns.shortPrefix("from"));
+    UUID to = createTerm(glossary, ns.shortPrefix("to"));
+
+    Reply reply = relate(from, to, retired.getName());
+
+    assertEquals(400, reply.status(), reply.message());
+    assertTrue(
+        reply.message().contains("'" + retired.getName() + "' is deleted; restore it first"),
+        reply.message());
   }
 
   @ParameterizedTest
@@ -332,7 +378,9 @@ public class RelationshipTypeDeleteGuardIT {
 
       assertEquals(200, reply.status(), reply.message());
       assertEquals(404, getTypeByName(second).status());
-      assertLive(asType(getTypeByName(first)));
+      RelationshipType kept = asType(getTypeByName(first));
+      assertLive(kept);
+      assertNull(inverseOf(kept.getId()));
     } finally {
       putSettings(original);
     }
@@ -479,6 +527,47 @@ public class RelationshipTypeDeleteGuardIT {
     assertEquals(400, reply.status(), reply.message());
     assertTrue(reply.message().contains("can not be deleted"), reply.message());
     assertLive(broader);
+  }
+
+  /** Which fields the type's stored inverse reference carries. */
+  private static List<String> inverseShape(RelationshipType type) {
+    List<String> fields = new ArrayList<>();
+    getType(type.getId()).body().path("inverse").fieldNames().forEachRemaining(fields::add);
+    return fields.stream().sorted().toList();
+  }
+
+  /**
+   * Relates two new terms with the pair's first type, authored from the higher and from the lower
+   * term id, and returns what each end reads, with type names replaced by their role in the pair.
+   */
+  private List<String> readsFromBothEnds(
+      TestNamespace ns, List<RelationshipType> pair, String tag) {
+    List<String> reads = new ArrayList<>();
+    for (boolean fromHigher : List.of(true, false)) {
+      UUID one = createTerm(glossary, ns.shortPrefix(tag + fromHigher + "one"));
+      UUID two = createTerm(glossary, ns.shortPrefix(tag + fromHigher + "two"));
+      UUID lower = one.compareTo(two) < 0 ? one : two;
+      UUID higher = one.compareTo(two) < 0 ? two : one;
+      UUID from = fromHigher ? higher : lower;
+      UUID to = fromHigher ? lower : higher;
+      assertEquals(200, relate(from, to, pair.getFirst().getName()).status());
+      reads.add(
+          roles(relationTypesTowards(from, to), pair)
+              + "/"
+              + roles(relationTypesTowards(to, from), pair));
+    }
+    return reads;
+  }
+
+  private static String roles(List<String> types, List<RelationshipType> pair) {
+    return types.stream()
+        .map(
+            type ->
+                type.equals(pair.getFirst().getName())
+                    ? "first"
+                    : type.equals(pair.getLast().getName()) ? "second" : type)
+        .toList()
+        .toString();
   }
 
   private static JsonNode settingsRelationTypes() {

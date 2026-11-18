@@ -216,6 +216,18 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     referenceGuard.beforeDelete(entity, deletedBy);
   }
 
+  /**
+   * A restore links a partner back or clears the type's inverse, which on a live type would change
+   * how its relations read, so only a deleted type is restored.
+   */
+  @Override
+  public void validateRestore(final UUID id) {
+    if (!Boolean.TRUE.equals(find(id, Include.ALL).getDeleted())) {
+      throw new BadRequestException(
+          String.format("Entity %s:%s is not in deleted state", entityType, id));
+    }
+  }
+
   @Override
   protected void postRestore(final RelationshipType entity) {
     super.postRestore(entity);

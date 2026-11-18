@@ -84,19 +84,27 @@ class RelationshipTypeReferencesTest {
   }
 
   @Test
-  void onlyAnInverseIsABackLink() {
+  void referencesToRemovedTypesAreDroppedEvenWhenWrittenByFqnAlone() {
+    final RelationshipType kept = type("kept");
+    final EntityReference byFqnAlone =
+        new EntityReference()
+            .withType(Entity.RELATIONSHIP_TYPE)
+            .withFullyQualifiedName(target.getFullyQualifiedName());
     final RelationshipType owner =
         type("owner")
-            .withInverse(byId(target))
-            .withReplacedBy(byId(target))
-            .withPropertyChain(List.of(byId(target)))
-            .withDisjointWith(Set.of(byId(target)));
+            .withReplacedBy(byFqnAlone)
+            .withInverse(byId(kept))
+            .withPropertyChain(List.of(byId(kept), byId(target)))
+            .withDisjointWith(Set.of(byId(kept), byId(target)));
 
-    assertEquals(
-        List.of(true, false, false, false),
-        RelationshipTypeReferences.referencesTo(target, List.of(owner)).stream()
-            .map(Reference::isInverseBackLink)
-            .toList());
+    final RelationshipType detached =
+        RelationshipTypeReferences.withoutReferencesTo(owner, List.of(target));
+
+    assertEquals(null, detached.getReplacedBy());
+    assertEquals(byId(kept), detached.getInverse());
+    assertEquals(List.of(), detached.getPropertyChain());
+    assertEquals(Set.of(byId(kept)), detached.getDisjointWith());
+    assertEquals(byFqnAlone, owner.getReplacedBy());
   }
 
   @Test

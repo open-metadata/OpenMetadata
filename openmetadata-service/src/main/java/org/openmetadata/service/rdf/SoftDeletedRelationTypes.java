@@ -14,13 +14,13 @@
 package org.openmetadata.service.rdf;
 
 import java.net.URI;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.function.Predicate;
 import org.openmetadata.schema.entity.data.RelationshipType;
 
@@ -33,33 +33,45 @@ final class SoftDeletedRelationTypes {
   private SoftDeletedRelationTypes() {}
 
   /**
-   * For each predicate the import names: the soft-deleted type holding the predicate, the most
-   * recently changed one if several do; otherwise the soft-deleted type holding the name the import
-   * would register, which a new type could not take. Nothing is chosen while a live type holds the
-   * named predicate or the chosen type's own one, so a restore cannot put two live types on one
-   * predicate. Liveness is looked up only for a predicate a soft-deleted type was found for.
+   * For each predicate the import names that no live type holds, the soft-deleted type holding it,
+   * the most recently changed one if several do; one type per predicate, so a restore cannot put
+   * two live types on one predicate. A type matching only by name is never restored: its
+   * predicate differs from the authored one, and restoring it would move the authored edges onto
+   * it. Liveness is looked up only for a predicate a soft-deleted type was found for.
    */
   static List<RelationshipType> namedBy(
-      final Map<String, String> namesByPredicate,
+      final Collection<String> predicates,
       final List<RelationshipType> softDeleted,
       final Predicate<URI> isLivePredicate) {
-    final Map<UUID, RelationshipType> named = new LinkedHashMap<>();
-    namesByPredicate.forEach(
-        (predicate, name) -> {
-          final URI iri = URI.create(predicate);
-          holder(iri, name, softDeleted)
-              .filter(type -> !isLivePredicate.test(iri))
-              .filter(type -> !isLivePredicate.test(type.getRdfPredicate()))
-              .ifPresent(type -> named.putIfAbsent(type.getId(), type));
-        });
+    final Map<URI, RelationshipType> named = new LinkedHashMap<>();
+    predicates.stream()
+        .map(URI::create)
+        .distinct()
+        .forEach(
+            predicate ->
+                holder(predicate, softDeleted)
+                    .filter(type -> !isLivePredicate.test(predicate))
+                    .ifPresent(type -> named.put(predicate, type)));
     return List.copyOf(named.values());
   }
 
+  /**
+   * The soft-deleted type holding {@code name} on a predicate other than {@code predicate}: a new
+   * type registered under that name would overwrite it, and restoring it would remap the authored
+   * predicate, so the import skips the name instead.
+   */
+  static Optional<RelationshipType> holdingNameElsewhere(
+      final String name, final URI predicate, final List<RelationshipType> softDeleted) {
+    return softDeleted.stream()
+        .filter(type -> name.equals(type.getName()))
+        .filter(type -> !predicate.equals(type.getRdfPredicate()))
+        .findFirst();
+  }
+
   private static Optional<RelationshipType> holder(
-      final URI predicate, final String name, final List<RelationshipType> softDeleted) {
+      final URI predicate, final List<RelationshipType> softDeleted) {
     return softDeleted.stream()
         .filter(type -> predicate.equals(type.getRdfPredicate()))
-        .max(Comparator.comparing(type -> Objects.requireNonNullElse(type.getUpdatedAt(), 0L)))
-        .or(() -> softDeleted.stream().filter(type -> name.equals(type.getName())).findFirst());
+        .max(Comparator.comparing(type -> Objects.requireNonNullElse(type.getUpdatedAt(), 0L)));
   }
 }

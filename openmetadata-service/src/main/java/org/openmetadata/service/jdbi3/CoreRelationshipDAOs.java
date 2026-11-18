@@ -1444,13 +1444,18 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    /** Names compare binary on MySQL, as on Postgres, so a type never counts another's rows. */
+    /**
+     * Names compare binary on MySQL, as on Postgres, so a type never counts another's rows.
+     * relationType takes the database character set, which can be utf8mb3 or latin1, where
+     * utf8mb4_bin is not a valid collation, so it is converted to utf8mb4 first.
+     */
     @ConnectionAwareSqlQuery(
         value =
             "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
                 + "AND toEntity = :entity AND relation = :relation "
                 + "AND (relationshipTypeId = :relationshipTypeId "
-                + "OR relationType COLLATE utf8mb4_bin = :relationshipTypeName)",
+                + "OR CONVERT(relationType USING utf8mb4) COLLATE utf8mb4_bin "
+                + "= :relationshipTypeName)",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =

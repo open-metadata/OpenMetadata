@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import jakarta.ws.rs.BadRequestException;
 import java.util.Collection;
 import java.util.List;
@@ -168,7 +166,7 @@ final class RelationshipTypeReferenceGuard {
     if (inverse != null && !RelationshipTypeReferences.refersTo(inverse, entity)) {
       final RelationshipType partner = findReferenced(inverse);
       if (isRelinkable(partner)) {
-        changeInverse(partner, entity.getEntityReference(), entity.getUpdatedBy());
+        changeInverse(partner, backLinkTo(entity), entity.getUpdatedBy());
       } else if (!isPairedWith(partner, entity)) {
         final RelationshipType unlinked = changeInverse(entity, null, entity.getUpdatedBy());
         entity
@@ -177,6 +175,20 @@ final class RelationshipTypeReferenceGuard {
             .withChangeDescription(unlinked.getChangeDescription());
       }
     }
+  }
+
+  /**
+   * The partner's link back takes the shape of the restored type's own inverse reference, the shape
+   * the pair was written in: references written through the API carry no name, and the inverse is
+   * applied to relations by name, so a named link on one side only would read them differently.
+   */
+  private static EntityReference backLinkTo(final RelationshipType restored) {
+    final EntityReference link =
+        new EntityReference()
+            .withId(restored.getId())
+            .withType(Entity.RELATIONSHIP_TYPE)
+            .withFullyQualifiedName(restored.getFullyQualifiedName());
+    return restored.getInverse().getName() == null ? link : link.withName(restored.getName());
   }
 
   /** The inverse {@code type} keeps when it is restored, as {@link #afterRestore} decides it. */
@@ -207,12 +219,19 @@ final class RelationshipTypeReferenceGuard {
     removed.forEach(type -> requireRemovable(type, types, removedIds));
   }
 
+  /**
+   * Runs as one transaction, so a delete refused by a concurrent change leaves every removed type in
+   * place instead of a partial removal.
+   */
   void deleteTogether(final String deletedBy, final Collection<String> names) {
-    requireRemovableTogether(names, List.of());
-    final List<RelationshipType> removed = removableNamed(listIncludingDeleted(), names);
-    final Set<UUID> removedIds = ids(removed);
-    removed.forEach(type -> detachReferencesTo(type, removedIds));
-    removed.forEach(type -> repository.delete(deletedBy, type.getId(), false, true));
+    repository.executeInTransaction(
+        () -> {
+          requireRemovableTogether(names, List.of());
+          final List<RelationshipType> removed = removableNamed(listIncludingDeleted(), names);
+          removed.forEach(type -> detachReferencesTo(type, removed));
+          removed.forEach(type -> repository.delete(deletedBy, type.getId(), false, true));
+          return null;
+        });
   }
 
   private static List<RelationshipType> overlay(
@@ -237,37 +256,19 @@ final class RelationshipTypeReferenceGuard {
     return types.stream().map(RelationshipType::getId).collect(Collectors.toUnmodifiableSet());
   }
 
-  /** Drops references to other types being removed in the same write, so each delete passes. */
-  private void detachReferencesTo(final RelationshipType type, final Set<UUID> removedIds) {
-    final boolean isDetached =
-        RelationshipTypeReferences.heldBy(type).stream()
-            .noneMatch(reference -> isRemoved(reference.target(), removedIds));
-    if (!isDetached) {
-      type.setInverse(keepUnless(type.getInverse(), removedIds));
-      type.setReplacedBy(keepUnless(type.getReplacedBy(), removedIds));
-      type.setPropertyChain(
-          listOrEmpty(type.getPropertyChain()).stream()
-                  .anyMatch(reference -> isRemoved(reference, removedIds))
-              ? List.of()
-              : type.getPropertyChain());
-      type.setDisjointWith(
-          setOrEmpty(type.getDisjointWith()).stream()
-              .filter(reference -> !isRemoved(reference, removedIds))
-              .collect(Collectors.toUnmodifiableSet()));
-      daoCollection.relationshipTypeDAO().update(type);
+  /**
+   * Drops references to other types being removed in the same write, so each delete passes whatever
+   * the order. A reference written by FQN before its target existed has no id and is matched by
+   * FQN or name.
+   */
+  private void detachReferencesTo(
+      final RelationshipType type, final List<RelationshipType> removed) {
+    final RelationshipType detached = RelationshipTypeReferences.withoutReferencesTo(type, removed);
+    if (!detached.equals(type)) {
+      daoCollection.relationshipTypeDAO().update(detached);
       EntityRepository.invalidateCacheForEntity(
           Entity.RELATIONSHIP_TYPE, type.getId(), type.getFullyQualifiedName());
     }
-  }
-
-  private static EntityReference keepUnless(
-      final EntityReference reference, final Set<UUID> removedIds) {
-    return reference == null || isRemoved(reference, removedIds) ? null : reference;
-  }
-
-  /** A reference written by FQN before its target existed has no id and names no removed type. */
-  private static boolean isRemoved(final EntityReference reference, final Set<UUID> removedIds) {
-    return reference.getId() != null && removedIds.contains(reference.getId());
   }
 
   private static Set<EntityReference> setOrEmpty(final Set<EntityReference> references) {

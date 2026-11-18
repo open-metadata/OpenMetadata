@@ -33,16 +33,23 @@ were protected from deletion.
    restored type's inverse is cleared. A one-way link would read a relation authored as the restored
    type from the higher term id back as the partner. The restored type holds no relation (it could
    not be deleted with one or gain one while deleted), so clearing its inverse changes no reading,
-   while re-linking a used partner would change how the partner's relations read.
+   while re-linking a used partner would change how the partner's relations read. The link back
+   takes the shape of the restored type's own inverse reference (with or without a name), the shape
+   the pair was written in. Only a deleted type can be restored; restoring a live one is rejected
+   with 400 before anything is written.
 4. A create or update whose references name a soft-deleted type is rejected with 400. A reference
    by FQN to a type that does not exist yet stays allowed (the UI creates an inverse pair that
    way); the ontology export omits such an axiom instead of failing. An RDF import that names the
-   predicate of a soft-deleted type restores that type first
-   (ADR:2026-11-18-rdf-import-registers-governed-inverse-components).
+   predicate of a soft-deleted type restores that type first, and skips a new type whose name a
+   soft-deleted type holds on another predicate
+   (ADR:2026-11-18-rdf-import-registers-governed-inverse-components). A term relation naming a
+   soft-deleted type is rejected with the same "is deleted; restore it first" message.
 5. The deprecated settings write removes several types at once: the whole removal is checked before
    the setting is saved, against the definitions that write saves, and references among the removed
-   types do not block it. A kept type's inverse naming a removed type is cleared as in rule 2. A
-   listed type that is soft-deleted is brought back before the others.
+   types do not block it, whether they hold them by id or by FQN alone. A kept type's inverse naming
+   a removed type is cleared as in rule 2. A listed type that is soft-deleted is brought back before
+   the others. The removal runs in one transaction, so a delete refused by a concurrent change
+   leaves every type in place rather than a partial removal; the setting itself is saved first.
 6. Dependents are never cascaded: relations are never deleted or retyped, and an `inverse` is cleared
    only when no relation reads through it.
 7. No repair ships for types deleted earlier: that was possible only on unreleased 2.1/main builds
@@ -55,6 +62,13 @@ works and leaves the other side without an inverse; relations added to it afterw
 read as that type at both ends, like any type without an inverse. Restoring the deleted side links
 the pair again while the other side is still unused. When both sides were deleted, restoring the one
 deleted last first and then the other rebuilds the pair; the other order leaves both without an
-inverse. To delete a type that relations or other definitions use, an admin first removes them. A
-concurrent relation write and type delete are each validated on their own, not locked against each
-other.
+inverse. To delete a type that relations or other definitions use, an admin first removes them.
+
+A relation write and a type delete are each validated on their own, not locked against each other.
+Any glossary editor writing relations can race an admin's delete for as long as the writer's
+transaction is open: a relation stored as the type (or as a partner whose inverse the delete
+clears) after the delete counted relations commits next to a deleted type. The outcome is the
+original failure for that glossary: its term reads, list, edits and ontology export fail with 400
+until the type is restored (soft delete) or recreated under its name (hard delete). MySQL compares
+type names in binary after converting the stored name to utf8mb4, since the column takes the
+database character set.

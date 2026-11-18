@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.net.URI;
 import java.util.List;
-import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -33,55 +33,49 @@ class SoftDeletedRelationTypesTest {
 
     assertEquals(
         List.of(governed),
-        SoftDeletedRelationTypes.namedBy(
-            Map.of(PART_OF, "partOf"), List.of(governed), predicate -> false));
+        SoftDeletedRelationTypes.namedBy(List.of(PART_OF), List.of(governed), predicate -> false));
   }
 
   @Test
-  void thePredicateWinsOverTheNameAndTheLatestOfSeveralHoldersIsChosen() {
-    final RelationshipType sameName = deleted("partOf", "http://example.org/other#partOf", 9L);
+  void onlyTheLatestOfSeveralTypesOnOnePredicateComesBack() {
     final RelationshipType older = deleted("componentOf", PART_OF, 1L);
-    final RelationshipType newer = deleted("piecesOf", PART_OF, 5L);
+    final RelationshipType newer = deleted("hasPart", PART_OF, 5L);
 
+    // The import also names a predicate whose local name is the older type's name.
     assertEquals(
         List.of(newer),
         SoftDeletedRelationTypes.namedBy(
-            Map.of(PART_OF, "partOf"), List.of(sameName, older, newer), predicate -> false));
+            List.of(PART_OF, "http://example.org/other#componentOf"),
+            List.of(older, newer),
+            predicate -> false));
   }
 
   @Test
-  void theNameIsUsedWhenNoTypeHoldsThePredicate() {
+  void aTypeMatchingOnlyByNameIsNeverRestoredAndHoldsItsName() {
     final RelationshipType sameName = deleted("partOf", "http://example.org/other#partOf", 1L);
 
     assertEquals(
-        List.of(sameName),
-        SoftDeletedRelationTypes.namedBy(
-            Map.of(PART_OF, "partOf"), List.of(sameName), predicate -> false));
+        List.of(),
+        SoftDeletedRelationTypes.namedBy(List.of(PART_OF), List.of(sameName), predicate -> false));
+    assertEquals(
+        Optional.of(sameName),
+        SoftDeletedRelationTypes.holdingNameElsewhere(
+            "partOf", URI.create(PART_OF), List.of(sameName)));
+    assertEquals(
+        Optional.empty(),
+        SoftDeletedRelationTypes.holdingNameElsewhere(
+            "partOf", URI.create("http://example.org/other#partOf"), List.of(sameName)));
   }
 
   @Test
   void aPredicateALiveTypeHoldsIsNeverRestored() {
     final RelationshipType governed = deleted("componentOf", PART_OF, 1L);
-    final RelationshipType sameName = deleted("hasPart", "http://example.org/other#hasPart", 1L);
-    final Set<URI> live =
-        Set.of(URI.create(PART_OF), URI.create("http://example.org/other#hasPart"));
+    final Set<URI> live = Set.of(URI.create(PART_OF));
 
     assertEquals(
         List.of(),
         SoftDeletedRelationTypes.namedBy(
-            Map.of(PART_OF, "partOf", HAS_PART, "hasPart"),
-            List.of(governed, sameName),
-            live::contains));
-  }
-
-  @Test
-  void aTypeNamedTwiceIsRestoredOnce() {
-    final RelationshipType governed = deleted("partOf", PART_OF, 1L);
-
-    assertEquals(
-        List.of(governed),
-        SoftDeletedRelationTypes.namedBy(
-            Map.of(PART_OF, "partOf", HAS_PART, "partOf"), List.of(governed), predicate -> false));
+            List.of(PART_OF, HAS_PART), List.of(governed), live::contains));
   }
 
   private static RelationshipType deleted(

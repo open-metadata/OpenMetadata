@@ -19,9 +19,11 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 
 /**
  * The references one relationship type holds to others: {@code inverse}, {@code replacedBy}, each
@@ -103,6 +105,36 @@ public final class RelationshipTypeReferences {
     final boolean byName =
         reference.getName() != null && reference.getName().equals(type.getName());
     return byId || byFqn || byName;
+  }
+
+  /**
+   * A copy of {@code owner} without its references to any of {@code removed}. A property chain
+   * naming one is dropped whole, since a chain without a member means something else.
+   */
+  public static RelationshipType withoutReferencesTo(
+      final RelationshipType owner, final Collection<RelationshipType> removed) {
+    final RelationshipType copy = JsonUtils.deepCopy(owner, RelationshipType.class);
+    copy.setInverse(keptUnlessRemoved(copy.getInverse(), removed));
+    copy.setReplacedBy(keptUnlessRemoved(copy.getReplacedBy(), removed));
+    copy.setPropertyChain(
+        listOrEmpty(copy.getPropertyChain()).stream().anyMatch(ref -> isRemoved(ref, removed))
+            ? List.of()
+            : copy.getPropertyChain());
+    copy.setDisjointWith(
+        setOrEmpty(copy.getDisjointWith()).stream()
+            .filter(reference -> !isRemoved(reference, removed))
+            .collect(Collectors.toUnmodifiableSet()));
+    return copy;
+  }
+
+  private static EntityReference keptUnlessRemoved(
+      final EntityReference reference, final Collection<RelationshipType> removed) {
+    return reference == null || isRemoved(reference, removed) ? null : reference;
+  }
+
+  private static boolean isRemoved(
+      final EntityReference reference, final Collection<RelationshipType> removed) {
+    return removed.stream().anyMatch(type -> refersTo(reference, type));
   }
 
   public static String inUseMessage(

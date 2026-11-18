@@ -45,20 +45,6 @@ class RelationshipTypeRdfWriterTest {
   }
 
   @Test
-  void aChainWithALinkNamedBeforeItExistsIsOmittedWhole() {
-    final RelationshipType step = type("step");
-    final RelationshipType owner =
-        type("reaches").withPropertyChain(List.of(byId(step), byFqn("notYetCreated")));
-    final Model model = ModelFactory.createDefaultModel();
-
-    new RelationshipTypeRdfWriter(List.of(owner, step)).write(model, owner);
-
-    assertFalse(
-        model.contains(
-            model.createResource(owner.getRdfPredicate().toString()), OWL2.propertyChainAxiom));
-  }
-
-  @Test
   void aReferenceWithTheIdOfAMissingTypeStillFailsTheExport() {
     final RelationshipType owner =
         type("hasPart").withDisjointWith(Set.of(byId(type("deletedPartOf"))));

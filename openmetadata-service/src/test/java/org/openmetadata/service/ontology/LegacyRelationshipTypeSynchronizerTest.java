@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +34,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -61,25 +63,18 @@ class LegacyRelationshipTypeSynchronizerTest {
   }
 
   @Test
-  void deletesNamesPresentInPreviousButAbsentFromUpdatedSettings() {
-    when(repository.findByNameOrNull("keeps", Include.ALL)).thenReturn(null);
-    GlossaryTermRelationSettings previous = settings("keeps", "governs");
-    GlossaryTermRelationSettings updated = settings("keeps");
-
-    synchronizer.synchronize(previous, updated, null, UPDATED_BY);
-
-    verify(repository).deleteTogether(UPDATED_BY, Set.of("governs"));
-  }
-
-  @Test
-  void removesEveryDroppedNameInOneCallSoAnInversePairCanGoTogether() {
+  void removesEveryDroppedNameTogetherOnlyAfterTheKeptTypesAreWritten() {
     when(repository.findByNameOrNull("keeps", Include.ALL)).thenReturn(null);
     GlossaryTermRelationSettings previous = settings("keeps", "partOf", "hasPart");
     GlossaryTermRelationSettings updated = settings("keeps");
 
     synchronizer.synchronize(previous, updated, null, UPDATED_BY);
 
-    verify(repository).deleteTogether(UPDATED_BY, Set.of("partOf", "hasPart"));
+    // Kept definitions are written first, so the removal is checked against what they now say,
+    // and an inverse pair is removed in one call so neither half blocks the other.
+    InOrder order = inOrder(repository);
+    order.verify(repository).createOrUpdate(isNull(), any(RelationshipType.class), eq(UPDATED_BY));
+    order.verify(repository).deleteTogether(UPDATED_BY, Set.of("partOf", "hasPart"));
   }
 
   @Test
