@@ -53,6 +53,8 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.security.Authorizer;
 
 class TestCaseSearchMaskerTest {
+  private static final String INSPECTION_QUERY =
+      "SELECT ssn FROM customers WHERE ssn = 'synthetic_forbidden_value'";
   private static final String TEST_INDEX = "cluster_test_case_search_index";
   private static final String RESULT_INDEX = "cluster_test_case_result_search_index";
   private static final String TABLE_FQN = "service.db.schema.customers";
@@ -142,6 +144,9 @@ class TestCaseSearchMaskerTest {
                                 .withName("thresholds")
                                 .withField("parameterValues.value.keyword"),
                             new Aggregation()
+                                .withName("inspection")
+                                .withField("inspectionQuery.keyword"),
+                            new Aggregation()
                                 .withName("computed")
                                 .withScript("doc['description'].value"))))
             .withAssetTypeConfigurations(
@@ -159,6 +164,7 @@ class TestCaseSearchMaskerTest {
                     "sterms#thresholds",
                         Map.of("buckets", List.of(Map.of("key", "private_parameter"))),
                     "computed", Map.of("buckets", List.of(Map.of("key", "private_description"))),
+                    "inspection", Map.of("buckets", List.of(Map.of("key", INSPECTION_QUERY))),
                     "measure", Map.of("buckets", List.of(Map.of("key", "private_result"))),
                     "tags.tagFQN", Map.of("buckets", List.of(Map.of("key", "Public")))));
     assertTrue(TestCaseAggregationMasker.filterAutomatic(aggregations, settings));
@@ -439,8 +445,14 @@ class TestCaseSearchMaskerTest {
   @Test
   void masksSearchSourcesHighlightsAndStoredFieldsWithoutChangingTheCachedBody() {
     ObjectNode sensitive = hit(TEST_INDEX, testCaseSource());
-    sensitive.putObject("highlight").put("description", "Sensitive description");
-    sensitive.putObject("fields").put("parameterValues.value", "^078-");
+    sensitive
+        .putObject("highlight")
+        .put("description", "Sensitive description")
+        .put("inspectionQuery", INSPECTION_QUERY);
+    sensitive
+        .putObject("fields")
+        .put("parameterValues.value", "^078-")
+        .put("inspectionQuery", INSPECTION_QUERY);
     ObjectNode plain = hit("cluster_table_search_index", testCaseSource());
     Response original = response(sensitive, plain);
     String cachedBody = (String) original.getEntity();
@@ -451,6 +463,7 @@ class TestCaseSearchMaskerTest {
       JsonNode source = hits.get(0).path("_source");
       assertEquals("ssn_format [MASKED]", source.path("name").asText());
       assertFalse(source.has("description"));
+      assertFalse(hits.get(0).toString().contains(INSPECTION_QUERY));
       assertFalse(source.has("parameterValues"));
       assertFalse(source.has("testCaseResult"));
       assertFalse(source.has("incidentStatus"));
@@ -458,7 +471,48 @@ class TestCaseSearchMaskerTest {
       assertFalse(hits.get(0).has("fields"));
       assertEquals(
           "Sensitive description", hits.get(1).path("_source").path("description").asText());
+      assertEquals(INSPECTION_QUERY, hits.get(1).path("_source").path("inspectionQuery").asText());
       assertEquals(cachedBody, original.getEntity());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true,true", "false,false"})
+  void keepsInspectionQueryForAuthorizedAndNonSensitiveSearches(
+      boolean authorized, boolean sensitive) {
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext context = mock(SecurityContext.class);
+    when(authorizer.authorizePII(context, List.of())).thenReturn(authorized);
+    Response original = response(hit(TEST_INDEX, testCaseSource()));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, TABLE_FQN, "owners,tags,columns", Include.ALL))
+          .thenReturn(
+              new Table()
+                  .withOwners(List.of())
+                  .withColumns(
+                      List.of(
+                          new Column()
+                              .withName("ssn")
+                              .withTags(
+                                  sensitive
+                                      ? List.of(
+                                          new TagLabel().withTagFQN(PIIMasker.SENSITIVE_PII_TAG))
+                                      : List.of()))));
+      Response visible =
+          TestCaseSearchMasker.mask(original, authorizer, context, TEST_INDEX, RESULT_INDEX);
+      assertEquals(
+          INSPECTION_QUERY,
+          JsonUtils.readTree((String) visible.getEntity())
+              .path("hits")
+              .path("hits")
+              .get(0)
+              .path("_source")
+              .path("inspectionQuery")
+              .asText());
     }
   }
 
@@ -658,6 +712,8 @@ class TestCaseSearchMaskerTest {
   @CsvSource({
     "false, testCaseResult.testResultValue.value.keyword",
     "false, parameterValues.value.keyword",
+    "false, inspectionQuery",
+    "false, inspectionQuery.keyword",
     "true, testResultValue.value.keyword"
   })
   void rejectsSortsThatWouldReturnFilteredValuesInCursors(boolean result, String sortField) {
@@ -688,8 +744,12 @@ class TestCaseSearchMaskerTest {
   }
 
   @ParameterizedTest
-  @ValueSource(booleans = {false, true})
-  void keepsPermittedCursorsAndAuthorizedSorts(boolean authorized) {
+  @CsvSource({
+    "false, name.keyword",
+    "true, testCaseResult.testResultValue.value.keyword",
+    "true, inspectionQuery.keyword"
+  })
+  void keepsPermittedCursorsAndAuthorizedSorts(boolean authorized, String sortField) {
     SearchRepository repository = mock(SearchRepository.class);
     when(repository.getIndexOrAliasName(Entity.TEST_CASE)).thenReturn(TEST_INDEX);
     when(repository.getIndexOrAliasName(Entity.TEST_CASE_RESULT)).thenReturn(RESULT_INDEX);
@@ -701,11 +761,14 @@ class TestCaseSearchMaskerTest {
     try (MockedStatic<Entity> entity = mockTable()) {
       Response visible =
           TestCaseSearchMasker.mask(
-              response(hit),
-              authorizer,
-              securityContext,
-              repository,
-              authorized ? "testCaseResult.testResultValue.value.keyword" : "name.keyword");
+              response(hit), authorizer, securityContext, repository, sortField);
+      JsonNode source =
+          JsonUtils.readTree((String) visible.getEntity())
+              .path("hits")
+              .path("hits")
+              .get(0)
+              .path("_source");
+      assertEquals(authorized ? INSPECTION_QUERY : "", source.path("inspectionQuery").asText());
       assertEquals(
           hit.path("sort"),
           JsonUtils.readTree((String) visible.getEntity())
@@ -748,6 +811,7 @@ class TestCaseSearchMaskerTest {
         "name", "ssn_format",
         "entityLink", linkedTestCase().getEntityLink(),
         "description", "Sensitive description",
+        "inspectionQuery", INSPECTION_QUERY,
         "parameterValues", List.of(Map.of("name", "regex", "value", "^078-")),
         "incidentStatus", Map.of("failureSummary", "Incident details"),
         "testCaseResult", Map.of("result", "Sensitive failure"));

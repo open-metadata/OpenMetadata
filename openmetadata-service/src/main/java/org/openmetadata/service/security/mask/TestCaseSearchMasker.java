@@ -44,6 +44,7 @@ public final class TestCaseSearchMasker {
       List.of(
           "description",
           "parameterValues",
+          "inspectionQuery",
           "testCaseResult",
           "incidentStatus",
           "textToEmbed",
