@@ -110,6 +110,7 @@ const TableV2 = <T extends object>(
     dragAndDropHooks,
     'data-testid': dataTestId,
     scroll,
+    paddedEmptyState = true,
     ...rest
   }: TableV2Props<T>,
   ref: Ref<HTMLDivElement> | null | undefined
@@ -761,7 +762,11 @@ const TableV2 = <T extends object>(
               <UntitledTable.Body
                 renderEmptyState={() =>
                   isLoading ? null : (
-                    <div className="tw:py-8 tw:text-center tw:text-sm tw:text-fg-tertiary">
+                    <div
+                      className={classNames(
+                        'tw:text-center tw:text-sm tw:text-fg-tertiary',
+                        { 'tw:py-8': paddedEmptyState }
+                      )}>
                       {(rest.locale?.emptyText as ReactNode) ??
                         t('label.no-data')}
                     </div>

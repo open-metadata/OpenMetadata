@@ -41,6 +41,8 @@ export interface TableComponentProps<T> extends TableProps<T> {
    */
   onRowAction?: (key: React.Key) => void;
   'data-testid'?: string;
+  /** Disable when a custom empty placeholder supplies its own vertical spacing. */
+  paddedEmptyState?: boolean;
 }
 
 export interface TableColumnDropdownList {
