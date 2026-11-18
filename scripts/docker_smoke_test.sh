@@ -140,7 +140,7 @@ else
   fail "the java runtime did not report Java 21: $(echo "$version" | head -3 | tr '\n' ' ')"
 fi
 
-# ADR:2026-11-18-shipped-jvm-images-take-the-jdk-from-a-pinned-corretto-build: the runtime
+# ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list: the runtime
 # carries the November 2026 OpenJDK security fixes, which start at 21.0.13.1.
 runtime="$(echo "$version" | sed -n 's/.*version "\([0-9][0-9.]*\)".*/\1/p' | head -1)"
 if [ -n "$runtime" ] && [ "$(printf '%s\n' 21.0.13.1 "$runtime" | sort -V | head -1)" = "21.0.13.1" ]; then

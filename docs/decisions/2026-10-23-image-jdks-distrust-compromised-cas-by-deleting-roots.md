@@ -1,7 +1,7 @@
 # Image JDKs distrust a compromised CA by deleting its roots from cacerts, not by fingerprint-blocking its intermediates
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes) · v3 2026-11-18 (the server and operator JDK is Corretto)
+- **Revisions:** v1 2026-10-23 (initial) · v2 2026-10-26 (three more roots that Oracle's JDK removes) · v3 2026-11-18 (the server and operator run on Corretto)
 - **Deciders:** @mohityadav766
 - **Guard:** the image build, which the step fails while any root in its list is still in the JDK's `cacerts`; `reviewer` for the rest
 - **Related:** #36087, #36088, open-metadata/openmetadata-collate#7792, open-metadata/openmetadata-collate#7816, open-metadata/ai-platform#1856, #36234, #36235
@@ -46,7 +46,6 @@ Services. The step now lists six roots: the three from v1 plus G1, G2 and AAA.
   21.0.13. Temurin is not known to remove G1, G2 or AAA, so the step can only be dropped once no
   base ships any root in its list.
 
-**v3, 2026-11-18.** The server and k8s operator images now take their JDK from Amazon Corretto
-(ADR:2026-11-18-shipped-jvm-images-take-the-jdk-from-a-pinned-corretto-build). Corretto
-21.0.13.1.2 ships none of the six roots, so there the step deletes nothing and stays as the check
-that they remain absent. The olivaw and oss-scanner images still run on Temurin.
+**v3, 2026-11-18.** The server and k8s operator images now run on Amazon Corretto but keep
+Temurin's `cacerts` (ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list). The step runs on that list unchanged. The olivaw and oss-scanner images
+still run on Temurin.

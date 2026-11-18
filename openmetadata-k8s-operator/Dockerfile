@@ -1,24 +1,7 @@
-# Amazon Corretto for Alpine (musl), pinned to the SHA-256s in its release notes
-# (https://github.com/corretto/corretto-21/releases/tag/21.0.13.1.2); see
-# ADR:2026-11-18-shipped-jvm-images-take-the-jdk-from-a-pinned-corretto-build.
+# Amazon Corretto 21 for Alpine; see ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list.
 # binutils: jlink --strip-debug runs objcopy.
-FROM alpine:3 AS jre-builder
-ARG TARGETARCH
-RUN set -eu; \
-    version=21.0.13.1.2; \
-    case "$TARGETARCH" in \
-      amd64) arch=x64; sha256=a671ae063e57662ca230c4f8b17456ad13bf1e8593bd95e6ab80c74d5b8c1aa7 ;; \
-      arm64) arch=aarch64; sha256=87bb147c89a3d614fbe4d27e62fb324e87685d0c5425dee59af1fa553bc8ba45 ;; \
-      *) echo "no Corretto build for $TARGETARCH" >&2; exit 1 ;; \
-    esac; \
-    apk add --no-cache binutils curl; \
-    curl -fsSL --retry 3 -o /tmp/jdk.tar.gz \
-      "https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-alpine-linux-$arch.tar.gz"; \
-    echo "$sha256  /tmp/jdk.tar.gz" | sha256sum -c -; \
-    mkdir /opt/jdk; \
-    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
-    rm /tmp/jdk.tar.gz
-ENV PATH="/opt/jdk/bin:${PATH}"
+FROM amazoncorretto:21-alpine AS jre-builder
+RUN apk add --no-cache binutils
 
 # Headless: drop the X11 and sound natives, which link libraries this image does not have.
 RUN jlink \
@@ -30,6 +13,10 @@ RUN jlink \
       --output /javaruntime && \
     rm -f /javaruntime/lib/libawt_xawt.so /javaruntime/lib/libjawt.so \
       /javaruntime/lib/libsplashscreen.so /javaruntime/lib/libjsound.so
+
+# The trust store stays the one this image shipped on Temurin, built from Mozilla's CA list.
+# Corretto's own list leaves out some of those roots.
+COPY --from=eclipse-temurin:21-jre-alpine /opt/java/openjdk/lib/security/cacerts /javaruntime/lib/security/cacerts
 
 FROM alpine:3
 

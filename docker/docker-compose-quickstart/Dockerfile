@@ -40,35 +40,25 @@ RUN mkdir -p /opt/openmetadata && \
 
 # A vendor JDK rather than the runtime's own distro package. What matters is not
 # the builder image's glibc but what the JDK binaries jlink copies were linked
-# against: Corretto builds those for portability, so the output requires at most
-# GLIBC_2.17. Building the same runtime from debian:13-slim +
-# openjdk-21-jdk-headless raises that floor to GLIBC_2.38 for no size win, which
-# would pin the image to trixie-era bases and break on any rollback to debian 12.
+# against: Corretto's generic build targets GLIBC_2.17 for portability. Building
+# the same runtime from debian:13-slim + openjdk-21-jdk-headless raises that floor
+# to GLIBC_2.38 for no size win, which would pin the image to trixie-era bases and
+# break on any rollback to debian 12.
 # Unlike Temurin, Corretto links the system zlib: `base` ships libz.so.1.
 #
 # ALL-MODULE-PATH on purpose: the app reaches deep into the JDK at runtime
 # (dropwizard yaml -> java.beans, postgresql -> java.sql + java.naming), and a
 # pruned module only fails on the code path that needed it.
-# Amazon Corretto, pinned to the SHA-256s in its release notes
-# (https://github.com/corretto/corretto-21/releases/tag/21.0.13.1.2); see
-# ADR:2026-11-18-shipped-jvm-images-take-the-jdk-from-a-pinned-corretto-build. binutils: jlink --strip-debug runs objcopy.
+# Amazon Corretto 21's generic Linux build, from its official image. Not plain
+# `amazoncorretto:21`: that is Amazon Linux's own build, which links system freetype,
+# libjpeg and libpng that the runtime does not ship. See
+# ADR:2026-11-18-shipped-jvm-images-run-on-corretto-and-keep-temurins-ca-list.
+# binutils: jlink --strip-debug runs objcopy.
 FROM debian:13-slim AS jre-builder
-ARG TARGETARCH
-RUN set -eu; \
-    version=21.0.13.1.2; \
-    case "$TARGETARCH" in \
-      amd64) arch=x64; sha256=2aaa2a9a43143b20ff0b28c8d0da27407b97dc40b160d9a2f60a26965815e948 ;; \
-      arm64) arch=aarch64; sha256=55751c47c7e3be3b33af43ccdcf3a6f4814d308390b7400477594d421bd16a53 ;; \
-      *) echo "no Corretto build for $TARGETARCH" >&2; exit 1 ;; \
-    esac; \
-    apt-get update; \
-    apt-get install -y --no-install-recommends binutils ca-certificates curl; \
-    curl -fsSL --retry 3 -o /tmp/jdk.tar.gz \
-      "https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz"; \
-    echo "$sha256  /tmp/jdk.tar.gz" | sha256sum -c -; \
-    mkdir /opt/jdk; \
-    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
-    rm -rf /tmp/jdk.tar.gz /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends binutils && \
+    rm -rf /var/lib/apt/lists/*
+COPY --from=amazoncorretto:21-al2-generic /usr/lib/jvm/java-21-amazon-corretto /opt/jdk
 ENV PATH="/opt/jdk/bin:${PATH}"
 
 RUN jlink \
@@ -78,6 +68,10 @@ RUN jlink \
       --no-header-files \
       --compress=zip-6 \
       --output /javaruntime
+
+# The trust store stays Temurin's, built from Mozilla's CA list. Corretto's own list leaves out
+# roots this image trusted before, so swapping it in would change which TLS endpoints validate.
+COPY --from=eclipse-temurin:21-jdk /opt/java/openjdk/lib/security/cacerts /javaruntime/lib/security/cacerts
 
 # CVE-2026-91403 (ADR:2026-10-23-image-jdks-distrust-compromised-cas-by-deleting-roots):
 # eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
