@@ -57,14 +57,19 @@ jest.mock('../components/common/DisplayName/DisplayName', () => ({
 
 const USAGE_COLUMN_TITLE = 'label.usage';
 
+type UsageColumn = Omit<ColumnType<ServicePageData>, 'render'> & {
+  render: NonNullable<ColumnType<ServicePageData>['render']>;
+};
+
 const isUsageColumn = (
   c: ColumnsType<ServicePageData>[number]
-): c is ColumnType<ServicePageData> =>
+): c is UsageColumn =>
   'dataIndex' in c &&
   typeof c.title === 'string' &&
-  c.title === USAGE_COLUMN_TITLE;
+  c.title === USAGE_COLUMN_TITLE &&
+  typeof c.render === 'function';
 
-const findUsageColumn = (): ColumnType<ServicePageData> => {
+const findUsageColumn = (): UsageColumn => {
   const columns = getServiceMainTabColumns(
     ServiceCategory.DATABASE_SERVICES,
     undefined,
