@@ -32,6 +32,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.AuditLogEntityTypeIndex;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
@@ -70,6 +71,8 @@ class WorkflowRedeployEntryPointTest {
             mockStatic(DataProductDomainContainmentRepair.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
             mockStatic(McpGrantUserNameIndexes.class);
+        MockedStatic<AuditLogEntityTypeIndex> auditLogIndex =
+            mockStatic(AuditLogEntityTypeIndex.class);
         MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
             mockStatic(EntityExtensionCollationAlignment.class)) {
       migration.runDataMigration();
@@ -86,6 +89,9 @@ class WorkflowRedeployEntryPointTest {
           () -> McpGrantUserNameIndexes.addOnMySql(handle), times(mySqlStepRuns));
       collationAlignment.verify(
           () -> EntityExtensionCollationAlignment.alignOnMySql(handle), times(mySqlStepRuns));
+      auditLogIndex.verify(() -> AuditLogEntityTypeIndex.addOnMySql(handle), times(mySqlStepRuns));
+      auditLogIndex.verify(
+          () -> AuditLogEntityTypeIndex.addOnPostgres(handle), times(1 - mySqlStepRuns));
     }
   }
 
