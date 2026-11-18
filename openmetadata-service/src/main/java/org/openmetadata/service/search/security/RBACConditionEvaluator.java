@@ -36,6 +36,7 @@ import org.springframework.expression.spel.standard.SpelExpressionParser;
 
 @Slf4j
 public class RBACConditionEvaluator {
+  private static final String POLICY_TAGS_FIELD = "policyTags";
 
   private final QueryBuilderFactory queryBuilderFactory;
   private final ExpressionParser spelParser = new SpelExpressionParser();
@@ -345,28 +346,26 @@ public class RBACConditionEvaluator {
   public void matchAnyTag(List<String> tags, ConditionCollector collector) {
     List<OMQueryBuilder> tagQueries = new ArrayList<>();
     for (String tag : tags) {
-      OMQueryBuilder tagQuery;
-      if (tag.startsWith("Tier")) {
-        tagQuery = queryBuilderFactory.termQuery("tier.tagFQN", tag);
-      } else {
-        tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      }
-      tagQueries.add(tagQuery);
+      tagQueries.addAll(carriesTag(tag));
     }
-    OMQueryBuilder tagQueryCombined;
-    if (tagQueries.size() == 1) {
-      tagQueryCombined = tagQueries.get(0);
-    } else {
-      tagQueryCombined = queryBuilderFactory.boolQuery().should(tagQueries);
-    }
-    collector.addMust(tagQueryCombined);
+    collector.addMust(queryBuilderFactory.boolQuery().should(tagQueries));
   }
 
   public void matchAllTags(List<String> tags, ConditionCollector collector) {
     for (String tag : tags) {
-      OMQueryBuilder tagQuery = queryBuilderFactory.termQuery("tags.tagFQN", tag);
-      collector.addMust(tagQuery);
+      collector.addMust(queryBuilderFactory.boolQuery().should(carriesTag(tag)));
     }
+  }
+
+  /**
+   * A document carries a tag in its own labels or in {@code policyTags}, the access-only list of
+   * the tags its entity's inline children carry (the columns of a column's table), so a tag rule
+   * decides here as it does on the entity's own endpoints.
+   */
+  private List<OMQueryBuilder> carriesTag(String tag) {
+    return List.of(
+        queryBuilderFactory.termQuery(tag.startsWith("Tier") ? "tier.tagFQN" : "tags.tagFQN", tag),
+        queryBuilderFactory.termQuery(POLICY_TAGS_FIELD, tag));
   }
 
   /**

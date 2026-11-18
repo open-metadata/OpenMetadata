@@ -325,7 +325,7 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
     ? getEntityName(selectedPersona)
     : t('label.default');
   const userRole = currentUser?.isAdmin
-    ? t('label.admin')
+    ? t('label.admin-superuser')
     : getEntityName(currentUser?.roles?.[0]);
   const currentLocale = i18n.language;
   const allPersonas = useMemo(
@@ -417,7 +417,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ai-user-menu-profile"
             id="profile"
             textValue={displayName}
-            onAction={() => setHash('profile')}>
+            onAction={() =>
+              setHash('profile', undefined, undefined, { push: true })
+            }>
             <Box align="center" gap={3}>
               <ProfilePicture
                 className="tw:*:font-medium"
@@ -603,7 +605,9 @@ const AIUserMenu: React.FC<AIUserMenuProps> = ({ collapsed = false }) => {
             data-testid="ask-user-menu-settings"
             id="settings"
             textValue={t('label.setting-plural')}
-            onAction={() => setHash('preferences')}>
+            onAction={() =>
+              setHash('preferences', undefined, undefined, { push: true })
+            }>
             <MenuRow icon={Settings} label={t('label.setting-plural')} />
           </Dropdown.Item>
 

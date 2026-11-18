@@ -41,8 +41,10 @@
  */
 
 import {
+  ButtonUtility,
   MUTED_TABLE_SURFACE_CLASSES,
   PaginationCardWithControls,
+  Popover,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
 import {
@@ -52,7 +54,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, isEqual, noop } from 'lodash';
-import type { ComponentProps } from 'react';
+import type { ComponentProps, MouseEvent } from 'react';
 import React, {
   forwardRef,
   ReactElement,
@@ -65,15 +67,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import {
-  Button as AriaButton,
-  ColumnResizer,
-  Dialog,
-  Popover,
-  ResizableTableContainer,
-} from 'react-aria-components';
+import { ColumnResizer, ResizableTableContainer } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { twMerge } from 'tailwind-merge';
+import { PAGE_SIZE_BASE } from '../../../constants/constants';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import {
   getCustomizeColumnDetails,
@@ -151,7 +148,7 @@ type CustomPaginationProps = NonNullable<
 type PaginationContract<T> =
   | {
       customPaginationProps?: never;
-      pagination?: TableComponentProps<T>['pagination'];
+      pagination?: NonNullable<TableComponentProps<T>['pagination']>;
     }
   | { customPaginationProps?: CustomPaginationProps; pagination: false };
 
@@ -162,7 +159,7 @@ type TableV2Props<T extends object> = Omit<
   PaginationContract<T> &
   TableV2ExtensionProps<T>;
 
-const DEFAULT_PAGE_SIZE = 10;
+const DEFAULT_PAGE_SIZE = PAGE_SIZE_BASE;
 const DEFAULT_INDENT_PX = 12;
 const EXPANDER_GUTTER_PX = 16;
 
@@ -382,22 +379,24 @@ const HeaderFilterTrigger = ({
       onKeyDown={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
       onPointerDown={(e) => e.stopPropagation()}>
-      <AriaButton
+      <ButtonUtility
         aria-label="filter"
-        className="tw:ml-1 tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:inline-flex tw:items-center"
+        className="tw:ml-1"
         data-testid="filter-trigger"
+        icon={icon}
         ref={triggerRef}
-        onPress={() => onOpenChange(!isOpen)}>
-        {icon}
-      </AriaButton>
+        size="xs"
+        onPress={() => onOpenChange(!isOpen)}
+      />
+      {/* offset 8 is react-aria's default, which the filter opened at before core. */}
       <Popover
+        aria-label="filter"
         isOpen={isOpen}
+        offset={8}
         placement="bottom right"
         triggerRef={triggerRef}
         onOpenChange={onOpenChange}>
-        <Dialog aria-label="filter" className="tw:outline-none">
-          {children}
-        </Dialog>
+        {children}
       </Popover>
     </span>
   );
@@ -766,21 +765,18 @@ const ExpandControl = <T extends object>({
     }
 
     return (
-      <button
+      <ButtonUtility
         aria-expanded={isExpanded}
         aria-label={isExpanded ? t('label.collapse') : t('label.expand')}
-        className="tw:p-0 tw:bg-transparent tw:border-0 tw:cursor-pointer tw:mr-1 tw:inline-flex"
+        className="tw:mr-1"
         data-testid="expand-icon"
-        onClick={(e) => {
+        icon={isExpanded ? ChevronDown : ChevronRight}
+        size="xs"
+        onClick={(e: MouseEvent) => {
           e.stopPropagation();
           onToggle(record, rowKey);
-        }}>
-        {isExpanded ? (
-          <ChevronDown className="tw:size-4" />
-        ) : (
-          <ChevronRight className="tw:size-4" />
-        )}
-      </button>
+        }}
+      />
     );
   }
 
@@ -796,7 +792,7 @@ const ExpandControl = <T extends object>({
     );
   }
 
-  return <span className="tw:inline-block tw:w-4 tw:mr-1" />;
+  return <span className="tw:inline-block tw:w-5 tw:mr-1" />;
 };
 
 interface SizeChangerProps {
@@ -1762,7 +1758,7 @@ const TableV2 = <T extends object>(
         'table-container tw:rounded-xl',
         rest.variant === 'muted'
           ? MUTED_CONTAINER_CLASSES
-          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody_tr:hover_td]:bg-secondary',
+          : 'tw:border tw:border-utility-gray-200 tw:[&_tbody:not([data-empty])_tr:hover_td]:bg-secondary',
         rest.containerClassName
       )}
       ref={ref}>
@@ -1970,10 +1966,7 @@ const TableV2 = <T extends object>(
                             <div
                               // Caps at ~264px and scrolls, like the filter
                               // dropdown it replaced.
-                              className={classNames(
-                                'tw:bg-overlay-surface tw:shadow-lg tw:outline-1 tw:outline-secondary_alt tw:rounded-lg',
-                                'tw:max-h-[264px] tw:max-w-80 tw:overflow-auto'
-                              )}
+                              className="tw:max-h-[264px] tw:max-w-80 tw:overflow-auto"
                               data-testid="filter-dropdown"
                               style={{ minWidth: '200px' }}>
                               {typeof colType.filterDropdown === 'function'

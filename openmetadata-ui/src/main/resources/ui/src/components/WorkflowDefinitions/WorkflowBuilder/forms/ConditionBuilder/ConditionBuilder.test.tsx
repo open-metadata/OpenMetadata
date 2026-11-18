@@ -137,7 +137,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
     }
   );
 
-  return { Autocomplete, Button, Card, Input, Select, Toggle };
+  const ButtonUtility = (props: {
+    onClick?: () => void;
+    isDisabled?: boolean;
+    tooltip?: string;
+    'data-testid'?: string;
+  }) => (
+    <button
+      aria-label={props.tooltip}
+      data-testid={props['data-testid']}
+      disabled={props.isDisabled}
+      onClick={props.onClick}
+    />
+  );
+
+  return { Autocomplete, Button, ButtonUtility, Card, Input, Select, Toggle };
 });
 
 jest.mock('react-i18next', () => ({

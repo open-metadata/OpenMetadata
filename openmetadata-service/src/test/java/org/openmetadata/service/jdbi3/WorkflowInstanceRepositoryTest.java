@@ -14,6 +14,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,6 +25,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.governance.workflows.ApprovalOutcome;
+import org.openmetadata.schema.governance.workflows.ApprovalOutcomeDecision;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -37,6 +40,7 @@ class WorkflowInstanceRepositoryTest {
 
   private static final String STOP_REASON = "Terminated by admin: sink running";
   private static final String PROCESS_ENDED = "processEnded";
+  private static final String APPROVALS = "approvals";
   private static final Map<String, Object> SINK_EXCEPTION =
       Map.of(
           WorkflowVariableHandler.getNamespacedVariableName(
@@ -121,6 +125,34 @@ class WorkflowInstanceRepositoryTest {
               Map<String, Object> document = storedDocument();
               Map<String, Object> variables = storedVariables(document);
               variables.put(PROCESS_ENDED, true);
+              document.put("variables", variables);
+              storedJson.set(JsonUtils.pojoToJson(document));
+              return 1;
+            });
+    when(timeSeriesDao.recordEndFromOutside(anyString(), anyString(), anyLong(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              setStoredFields(invocation.getArgument(1), invocation.getArgument(2));
+              Map<String, Object> document = storedDocument();
+              Map<String, Object> variables = storedVariables(document);
+              variables.put("terminationReason", invocation.getArgument(3));
+              document.put("variables", variables);
+              storedJson.set(JsonUtils.pojoToJson(document));
+              return 1;
+            });
+    when(timeSeriesDao.appendApproval(anyString(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              Map<String, Object> document = storedDocument();
+              Map<String, Object> variables = storedVariables(document);
+              List<Object> approvals = new ArrayList<>();
+              // The stored document is read back as plain JSON, so its approvals are a list of
+              // maps.
+              if (variables.get(APPROVALS) instanceof List<?> stored) {
+                approvals.addAll(stored);
+              }
+              approvals.add(JsonUtils.readValue(invocation.getArgument(1), Map.class));
+              variables.put(APPROVALS, approvals);
               document.put("variables", variables);
               storedJson.set(JsonUtils.pojoToJson(document));
               return 1;
@@ -272,6 +304,30 @@ class WorkflowInstanceRepositoryTest {
     assertEquals(WorkflowStatus.FINISHED, storedInstance().getStatus());
     assertEquals(Optional.empty(), repository.findStopRequest(workflowInstanceId));
     verify(stateRepository, never()).markRunningStatesAsFailed(any(UUID.class), anyString());
+  }
+
+  @Test
+  void aDecidedApprovalStepOutlivesTheRunBeingSuperseded() {
+    storeRunningInstance();
+    repository.recordApproval(
+        workflowInstanceId,
+        new ApprovalOutcome()
+            .withId(UUID.randomUUID())
+            .withNode("Review")
+            .withDecision(ApprovalOutcomeDecision.APPROVED)
+            .withDecidedBy(List.of("ana"))
+            .withDecidedAt(7L));
+
+    repository.markInstanceAsSuperseded(workflowInstanceId, "newer run");
+
+    Map<String, Object> variables = storedInstance().getVariables();
+    assertEquals(WorkflowStatus.SUPERSEDED, storedInstance().getStatus());
+    assertEquals("newer run", variables.get("terminationReason"));
+    assertEquals(
+        List.of("Review"),
+        JsonUtils.convertObjects(variables.get(APPROVALS), ApprovalOutcome.class).stream()
+            .map(ApprovalOutcome::getNode)
+            .toList());
   }
 
   @Test

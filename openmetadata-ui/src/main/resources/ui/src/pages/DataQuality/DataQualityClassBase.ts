@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactComponent as TestCaseIcon } from '../../assets/svg/all-activity-v2.svg';
-import { ReactComponent as DashboardIcon } from '../../assets/svg/ic-dashboard.svg';
-import { ReactComponent as TestSuiteIcon } from '../../assets/svg/icon-test-suite.svg';
+import {
+  All,
+  DashboardLayout,
+  TestSuite,
+} from '@openmetadata/ui-core-components/icons';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
 import { TestCases } from '../../components/DataQuality/TestCases/TestCases.component';
 import { TestSuites } from '../../components/DataQuality/TestSuite/TestSuiteList/TestSuites.component';
@@ -36,7 +38,7 @@ class DataQualityClassBase {
         key: DataQualityPageTabs.DASHBOARD,
         id: 'dashboard',
         label: i18n.t('label.summary'),
-        icon: DashboardIcon,
+        icon: DashboardLayout,
         description: i18n.t('label.data-health-overview'),
       },
       {
@@ -48,7 +50,7 @@ class DataQualityClassBase {
         description: i18n.t('label.data-health-by-entity', {
           entity: i18n.t('label.test-case-plural'),
         }),
-        icon: TestCaseIcon,
+        icon: All,
       },
       {
         key: DataQualityPageTabs.TEST_SUITES,
@@ -59,7 +61,7 @@ class DataQualityClassBase {
           entity: i18n.t('label.test-suite-plural'),
         }),
         id: 'by-test-suites',
-        icon: TestSuiteIcon,
+        icon: TestSuite,
       },
     ];
   }

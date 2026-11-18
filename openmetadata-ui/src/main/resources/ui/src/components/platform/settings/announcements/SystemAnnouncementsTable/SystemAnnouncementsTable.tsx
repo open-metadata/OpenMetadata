@@ -39,8 +39,8 @@ import classNames from 'classnames';
 import { DateTime } from 'luxon';
 import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../constants/constants';
 import {
-  SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
   SYSTEM_ANNOUNCEMENT_STATUS_LABEL_KEYS,
   SYSTEM_ANNOUNCEMENT_STATUS_ORDER,
 } from '../../../../../constants/platform/systemAnnouncements.constants';
@@ -67,7 +67,7 @@ import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDelet
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
-import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 
 type ColumnId =
   | 'type'
@@ -149,13 +149,7 @@ const RowActions = ({
 
   return (
     <Dropdown.Root>
-      {/* Core draws the focus outline while the button is pressed, and the
-          menu trigger stays pressed for as long as the menu is open. Only a
-          keyboard focus keeps the ring. */}
       <Dropdown.DotsButton
-        className={({ isFocusVisible, isPressed }) =>
-          isPressed && !isFocusVisible ? 'tw:outline-0' : ''
-        }
         data-testid={`announcement-actions-${announcement.name}`}
         ref={actionsButtonRef}
       />
@@ -290,14 +284,11 @@ const SystemAnnouncementsTable = ({
       }
       case 'author':
         return announcement.createdBy ? (
-          <Box align="center" className="tw:min-w-0" gap={2}>
-            <ProfilePicture name={announcement.createdBy} size="xs" />
-            <Typography
-              className="tw:truncate tw:text-secondary"
-              size="text-sm">
-              {announcement.createdBy}
-            </Typography>
-          </Box>
+          <UserPopOverCard
+            showUserName
+            className="tw:min-w-0 tw:overflow-hidden tw:text-sm tw:text-secondary"
+            userName={announcement.createdBy}
+          />
         ) : null;
       case 'startTime':
         return <DateCell value={announcement.startTime} />;
@@ -411,6 +402,7 @@ const SystemAnnouncementsTable = ({
             aria-label={t('label.search-for-type', {
               type: t('label.announcement-plural'),
             })}
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="announcement-search"
             icon={Search}
@@ -504,11 +496,11 @@ const SystemAnnouncementsTable = ({
             </Table.Body>
           </Table>
         </div>
-        {total > pageSize && (
+        {total > 0 && (
           <PaginationCardWithControls
             page={page}
             pageSize={pageSize}
-            pageSizeOptions={SYSTEM_ANNOUNCEMENT_PAGE_SIZES}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={pageCount}
             onPageChange={goToPage}
             onPageSizeChange={setPageSize}

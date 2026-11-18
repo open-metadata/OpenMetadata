@@ -13,26 +13,37 @@
 
 import {
   Button,
+  ButtonUtility,
   Dropdown,
   Grid,
   Label,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronCollapseVertical,
+  Edit01,
+  Sort,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
+import { groupBy, isEmpty, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  Key,
+  lazy,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconSortIndicator } from '../../../assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as IconSort } from '../../../assets/svg/ic-sort-both.svg';
 import {
   ENTITY_PATH,
   INITIAL_PAGING_VALUE,
   NO_DATA_PLACEHOLDER,
-  PAGE_SIZE_LARGE,
 } from '../../../constants/constants';
 import {
   COLUMN_CONSTRAINT_TYPE_OPTIONS,
@@ -83,6 +94,7 @@ import {
 } from '../../../utils/EntitySearchUtils';
 import { getEntityColumnFQN } from '../../../utils/FeedUtilsPure';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
   findColumnByEntityLink,
@@ -99,7 +111,7 @@ import {
 } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { PagingHandlerParams } from '../../common/NextPrevious/NextPrevious.interface';
@@ -110,7 +122,6 @@ import {
 } from '../../common/Table/Table.interface';
 import Table from '../../common/Table/TableV2';
 import TestCaseStatusSummaryIndicator from '../../common/TestCaseStatusSummaryIndicator/TestCaseStatusSummaryIndicator.component';
-import { WidgetEditButton } from '../../common/WidgetActionButton/WidgetActionButton';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -159,7 +170,7 @@ const SchemaTable = () => {
     showPagination,
     paging,
     handlePagingChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const { filters, setFilters } = useTableFilters({
     columnSearch: undefined as string | undefined,
@@ -175,9 +186,6 @@ const SchemaTable = () => {
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
-  const [prevTableColumns, setPrevTableColumns] = useState<
-    Column[] | undefined
-  >();
   const {
     entityFqn: tableFqn,
     columnFqn: columnPart,
@@ -196,6 +204,7 @@ const SchemaTable = () => {
     openColumnDetailPanel,
     setDisplayedColumns,
   } = useGenericContext<TableType>();
+  const syncedTableColumnsRef = useRef(table?.columns);
 
   useFqnDeepLink({
     data: table.columns || [],
@@ -213,6 +222,17 @@ const SchemaTable = () => {
       deleted: table?.deleted,
     }),
     [testCaseSummary, table]
+  );
+
+  const testCountsByColumnFqn = useMemo(
+    () =>
+      new Map(
+        testCaseCounts.map((count) => [
+          getEntityColumnFQN(count.entityLink ?? ''),
+          count,
+        ])
+      ),
+    [testCaseCounts]
   );
 
   useScrollToElement(
@@ -267,7 +287,7 @@ const SchemaTable = () => {
       }
     };
 
-    fetchColumnTypeDetail();
+    void fetchColumnTypeDetail();
 
     return () => {
       cancelled = true;
@@ -407,12 +427,12 @@ const SchemaTable = () => {
   };
 
   useEffect(() => {
-    fetchTestCaseSummary();
+    void fetchTestCaseSummary();
   }, [tableFqn]);
 
   useEffect(() => {
     if (searchText || hasTagFilter) {
-      searchTableColumns(searchText, currentPage, sortBy, sortOrder);
+      void searchTableColumns(searchText, currentPage, sortBy, sortOrder);
     }
   }, [
     searchText,
@@ -427,7 +447,7 @@ const SchemaTable = () => {
     if (searchText || hasTagFilter) {
       return;
     }
-    fetchTableColumns(currentPage, sortBy, sortOrder);
+    void fetchTableColumns(currentPage, sortBy, sortOrder);
   }, [
     tableFqn,
     pageSize,
@@ -445,38 +465,33 @@ const SchemaTable = () => {
     }
   }, [tableColumns]);
 
+  // Propagates column edits made elsewhere (e.g. the column detail panel writes to the
+  // table query cache) into the loaded page. Reference equality so the first load (and
+  // unchanged refetches) skip a second setTableColumns, which re-rendered the whole table.
+  // Assumes every writer to the table query cache replaces the `columns` array; mutating
+  // it in place and then calling setQueryData would be skipped here.
   useEffect(() => {
-    if (!hasInitialLoad || !table?.columns) {
+    if (
+      !hasInitialLoad ||
+      !table?.columns ||
+      table.columns === syncedTableColumnsRef.current
+    ) {
       return;
     }
 
-    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+    syncedTableColumnsRef.current = table.columns;
 
-    if (!columnsChanged) {
-      return;
-    }
+    const updatesByFqn = new Map(
+      table.columns.map((col) => [col.fullyQualifiedName, col])
+    );
+    setTableColumns((prev) =>
+      prev.map((col) => {
+        const update = updatesByFqn.get(col.fullyQualifiedName);
 
-    setPrevTableColumns(table.columns);
-
-    const updatedColumns = table.columns;
-    setTableColumns((prev) => {
-      // Create a deep clone to avoid mutation of the previous state during updates
-      let newColumns = [...prev];
-      updatedColumns?.forEach((updatedCol) => {
-        // Recursively remove empty children from the update object
-        const [cleanUpdate] = pruneEmptyChildren([updatedCol]);
-
-        // Use the utility to recursively find and update the column in the nested structure
-        newColumns = updateColumnInNestedStructure(
-          newColumns,
-          updatedCol.fullyQualifiedName ?? '',
-          cleanUpdate
-        );
-      });
-
-      return newColumns;
-    });
-  }, [table?.columns, hasInitialLoad, prevTableColumns]);
+        return update ? { ...col, ...pruneEmptyChildren([update])[0] } : col;
+      })
+    );
+  }, [table?.columns, hasInitialLoad]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -566,24 +581,24 @@ const SchemaTable = () => {
     }
   };
 
-  const handleTagSelection = async (
-    selectedTags: EntityTags[],
-    editColumnTag: Column
-  ) => {
-    if (selectedTags && editColumnTag.fullyQualifiedName) {
-      try {
-        await updateColumnDetails(
-          editColumnTag.fullyQualifiedName,
-          {
-            tags: selectedTags,
-          },
-          'tags'
-        );
-      } catch (error) {
-        showErrorToast(error as AxiosError);
+  const handleTagSelection = useCallback(
+    async (selectedTags: EntityTags[], editColumnTag: Column) => {
+      if (selectedTags && editColumnTag.fullyQualifiedName) {
+        try {
+          await updateColumnDetails(
+            editColumnTag.fullyQualifiedName,
+            {
+              tags: selectedTags,
+            },
+            'tags'
+          );
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+        }
       }
-    }
-  };
+    },
+    [updateColumnDetails]
+  );
 
   const handleExtensionUpdate = useCallback(
     async (record: Column, updatedExtension: Column['extension']) => {
@@ -770,19 +785,25 @@ const SchemaTable = () => {
             </div>
             <div className="d-flex items-center gap-2">
               {editDisplayNamePermission && (
-                <WidgetEditButton
-                  compact
+                <ButtonUtility
                   className="hover-cell-icon"
                   data-testid="edit-displayName-button"
-                  title={t('label.edit')}
+                  icon={Edit01}
+                  size="xs"
+                  tooltip={t('label.edit')}
                   onClick={() => handleEditDisplayNameClick(record)}
                 />
               )}
               {record.fullyQualifiedName && (
-                <CopyLinkButton
-                  entityType={EntityType.TABLE}
-                  fieldFqn={record.fullyQualifiedName}
+                <CopyButton
+                  className="hover-cell-icon"
+                  isDisabled={!record.fullyQualifiedName}
+                  size="xs"
                   testId="copy-column-link-button"
+                  value={getEntityDetailsUrl(
+                    EntityType.TABLE,
+                    record.fullyQualifiedName ?? ''
+                  )}
                 />
               )}
             </div>
@@ -803,19 +824,14 @@ const SchemaTable = () => {
   );
 
   const renderDataQuality = useCallback(
-    (_: string, record: Column) => {
-      const testCounts = testCaseCounts.find((column) => {
-        return isEqual(
-          getEntityColumnFQN(column.entityLink ?? ''),
-          record.fullyQualifiedName
-        );
-      });
-
-      return (
-        <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
-      );
-    },
-    [testCaseCounts]
+    (_: string, record: Column) => (
+      <TestCaseStatusSummaryIndicator
+        testCaseStatusCounts={testCountsByColumnFqn.get(
+          record.fullyQualifiedName ?? ''
+        )}
+      />
+    ),
+    [testCountsByColumnFqn]
   );
 
   const customPropertyColumns: ColumnsType<Column> = useMemo(
@@ -844,24 +860,26 @@ const SchemaTable = () => {
       {
         title: (
           <Button
+            className={classNames(
+              sortBy === 'name' && 'tw:*:data-icon:text-utility-brand-600'
+            )}
             color="tertiary"
             data-testid="name-column-header"
+            iconTrailing={
+              <ChevronCollapseVertical
+                className={classNames(
+                  'tw:transition-transform',
+                  sortOrder === 'desc' && 'tw:rotate-180'
+                )}
+                data-icon="trailing"
+                data-testid="sort-indicator"
+              />
+            }
             onClick={handleColumnHeaderSortToggle}>
             <Typography
               className={sortBy === 'name' ? 'text-primary font-medium' : ''}>
               {t('label.name')}
             </Typography>
-            <IconSortIndicator
-              className="m-l-xss"
-              data-testid="sort-indicator"
-              height={12}
-              style={{
-                color: sortBy === 'name' ? 'var(--primary-color)' : '#6B7280',
-                transform: sortOrder === 'desc' ? 'rotate(180deg)' : 'none',
-                transition: 'transform 0.2s ease',
-              }}
-              width={8}
-            />
           </Button>
         ),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
@@ -992,8 +1010,8 @@ const SchemaTable = () => {
             entity: t('label.constraint'),
           }),
         })}
-        selectedKey={editConstraint ?? null}
-        onSelectionChange={(key) =>
+        value={editConstraint ?? null}
+        onChange={(key) =>
           setEditConstraint(
             key === NO_CONSTRAINT_KEY ? undefined : (key as Constraint)
           )
@@ -1011,7 +1029,7 @@ const SchemaTable = () => {
   );
 
   const handleEditTable = () => {
-    navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
+    void navigate(getEntityBulkEditPath(EntityType.TABLE, tableFqn));
   };
 
   useEffect(() => {
@@ -1086,7 +1104,7 @@ const SchemaTable = () => {
                 <Button
                   color="tertiary"
                   data-testid="sort-dropdown"
-                  iconLeading={<IconSort height={14} width={14} />}
+                  iconLeading={Sort}
                   size="sm">
                   {t('label.sort')}
                 </Button>

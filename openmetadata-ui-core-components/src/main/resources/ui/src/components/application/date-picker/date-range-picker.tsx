@@ -183,7 +183,7 @@ export const DateRangePicker = ({
         }
         offset={4}
         placement="bottom right">
-        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-overlay-surface tw:shadow-raised">
+        <AriaDialog className="tw:flex tw:rounded-2xl tw:bg-floating tw:shadow-raised">
           {({ close }) => (
             <>
               <div className="tw:hidden tw:w-38 tw:flex-col tw:gap-0.5 tw:border-r tw:border-solid tw:border-secondary tw:p-3 tw:lg:flex">

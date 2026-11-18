@@ -16,6 +16,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import CoreArrayField from './CoreArrayField';
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
+  Check: () => <span>check-icon</span>,
   Copy01: () => <span>copy-icon</span>,
   XClose: () => <span>x-icon</span>,
 }));
@@ -36,6 +37,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       <button aria-label={tooltip} onClick={() => onPress?.()}>
         {Icon && <Icon />}
         {children}
+      </button>
+    )
+  ),
+  ButtonUtility: jest.fn(
+    ({
+      'aria-label': ariaLabel,
+      icon: Icon,
+      tooltip,
+      onClick,
+    }: {
+      'aria-label'?: string;
+      icon?: React.ElementType;
+      tooltip?: string;
+      onClick?: (e: React.MouseEvent) => void;
+    }) => (
+      <button aria-label={ariaLabel ?? tooltip} onClick={onClick}>
+        {Icon && <Icon />}
       </button>
     )
   ),

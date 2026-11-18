@@ -25,11 +25,7 @@ import {
 } from '../rest/tasksAPI';
 import { fetchOptions } from './TaskAssigneeUtils';
 import {
-  getDescriptionTaskFieldPath,
   getEntityTableName,
-  getFormattedTaskFieldValue,
-  getNormalizedTaskFieldContainer,
-  getTagTaskFieldPath,
   getTaskAssignee,
   getTaskEntityFQN,
   getTaskMessage,
@@ -356,7 +352,7 @@ describe('Tests for getNormalizedTaskPayload', () => {
       status: TaskEntityStatus.Open,
       priority: TaskPriority.Medium,
       payload: {
-        fieldPath: 'columns::email::tags',
+        fieldPath: 'columns.email.tags',
         currentTags: [
           {
             tagFQN: 'PII.Sensitive',
@@ -392,84 +388,6 @@ describe('Tests for getNormalizedTaskPayload', () => {
     ]);
     expect(payload.suggestedValue).toContain('PersonalData.Personal');
     expect(payload.isSuggestionEmpty).toBe(false);
-  });
-});
-
-describe('Tests for task field path helpers', () => {
-  it('should normalize nested task field containers for schema-backed assets', () => {
-    expect(getNormalizedTaskFieldContainer('messageSchema.schemaFields')).toBe(
-      'messageSchema'
-    );
-    expect(getNormalizedTaskFieldContainer('dataModel.columns')).toBe(
-      'dataModel'
-    );
-    expect(getNormalizedTaskFieldContainer('requestSchema.schemaFields')).toBe(
-      'requestSchema'
-    );
-    expect(getNormalizedTaskFieldContainer('responseSchema.schemaFields')).toBe(
-      'responseSchema'
-    );
-  });
-
-  it('should preserve simple values and quote nested field paths', () => {
-    expect(getFormattedTaskFieldValue('shop_id')).toBe('shop_id');
-    expect(getFormattedTaskFieldValue('default.name.last_name')).toBe(
-      '"default.name.last_name"'
-    );
-  });
-
-  it('should build description task field paths for tables, topics, containers, and api endpoints', () => {
-    expect(getDescriptionTaskFieldPath('columns', 'address.street_name')).toBe(
-      'columns::"address.street_name"::description'
-    );
-    expect(
-      getDescriptionTaskFieldPath(
-        'messageSchema.schemaFields',
-        'default.name.last_name'
-      )
-    ).toBe('messageSchema::"default.name.last_name"::description');
-    expect(
-      getDescriptionTaskFieldPath('dataModel.columns', 'department.id')
-    ).toBe('dataModel::"department.id"::description');
-    expect(
-      getDescriptionTaskFieldPath(
-        'requestSchema.schemaFields',
-        'default.name.first_name'
-      )
-    ).toBe('requestSchema::"default.name.first_name"::description');
-    expect(
-      getDescriptionTaskFieldPath(
-        'responseSchema.schemaFields',
-        'default.name.first_name'
-      )
-    ).toBe('responseSchema::"default.name.first_name"::description');
-  });
-
-  it('should build tag task field paths for tables, topics, containers, and api endpoints', () => {
-    expect(getTagTaskFieldPath('columns', 'address.street_name')).toBe(
-      'columns."address.street_name"'
-    );
-    expect(
-      getTagTaskFieldPath(
-        'messageSchema.schemaFields',
-        'default.name.first_name'
-      )
-    ).toBe('messageSchema."default.name.first_name"');
-    expect(getTagTaskFieldPath('dataModel.columns', 'department.id')).toBe(
-      'dataModel."department.id"'
-    );
-    expect(
-      getTagTaskFieldPath(
-        'requestSchema.schemaFields',
-        'default.name.first_name'
-      )
-    ).toBe('requestSchema."default.name.first_name"');
-    expect(
-      getTagTaskFieldPath(
-        'responseSchema.schemaFields',
-        'default.name.first_name'
-      )
-    ).toBe('responseSchema."default.name.first_name"');
   });
 });
 

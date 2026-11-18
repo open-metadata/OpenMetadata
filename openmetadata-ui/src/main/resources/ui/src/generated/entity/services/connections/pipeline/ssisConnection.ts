@@ -22,7 +22,7 @@ export interface SsisConnection {
     /**
      * Underlying storage connection
      */
-    packageConnection:           S3Connection | string;
+    packageConnection:           Connection | string;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
@@ -191,9 +191,11 @@ export enum MssqlType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface Connection {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -213,7 +215,15 @@ export interface S3Connection {
     /**
      * Service Type
      */
-    type?: S3Type;
+    type?: Type;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
@@ -269,11 +279,46 @@ export interface AWSCredentials {
 }
 
 /**
+ * Azure Credentials
+ *
+ * Azure Cloud Credentials
+ */
+export interface AzureCredentials {
+    /**
+     * Account Name of your storage account
+     */
+    accountName?: string;
+    /**
+     * Your Service Principal App ID (Client ID)
+     */
+    clientId?: string;
+    /**
+     * Your Service Principal Password (Client Secret)
+     */
+    clientSecret?: string;
+    /**
+     * Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default
+     */
+    scopes?: string;
+    /**
+     * Tenant ID of your Azure Subscription
+     */
+    tenantId?: string;
+    /**
+     * Key Vault Name
+     */
+    vaultName?: string;
+}
+
+/**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
-export enum S3Type {
+export enum Type {
+    Adls = "ADLS",
     S3 = "S3",
 }
 

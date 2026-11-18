@@ -213,7 +213,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   /** Assign directory roles to a user that is about to be created. */
   private void assignLdapRoles(String userDn, User user) {
     try {
-      getRoleForLdap(userDn, user, false);
+      getRoleForLdap(userDn, user);
     } catch (JsonProcessingException ex) {
       LOG.error(
           "Failed to assign roles from LDAP for user {} due to {}",
@@ -222,15 +222,18 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
+  /** Returns whether the roles or the admin flag changed, so the provisioner saves either. */
   private boolean syncLdapRoles(String userDn, User user) {
     List<EntityReference> previousRoles = normalizeRoles(user.getRoles());
+    boolean wasAdmin = Boolean.TRUE.equals(user.getIsAdmin());
     try {
-      getRoleForLdap(userDn, user, false);
+      getRoleForLdap(userDn, user);
     } catch (JsonProcessingException ex) {
       LOG.error(
           "Failed to sync roles from LDAP for user {} due to {}", user.getName(), ex.getMessage());
     }
-    return !Objects.equals(previousRoles, normalizeRoles(user.getRoles()));
+    return !Objects.equals(previousRoles, normalizeRoles(user.getRoles()))
+        || wasAdmin != Boolean.TRUE.equals(user.getIsAdmin());
   }
 
   private List<EntityReference> normalizeRoles(List<EntityReference> roles) {
@@ -448,10 +451,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   /**
-   * Getting user's roles according to the mapping between ldap groups and roles
+   * Sets the user's roles and admin flag from the directory groups the user is in now, a user in no
+   * group included. The caller saves the user. A configured admin principal stays admin.
    */
-  private void getRoleForLdap(String userDn, User user, Boolean reAssign)
-      throws JsonProcessingException {
+  private void getRoleForLdap(String userDn, User user) throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =
@@ -468,21 +471,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getAllAttributeName());
       SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
 
-      // if user don't belong to any group, assign empty role list to it
-      if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
-        if (Boolean.TRUE.equals(reAssign)) {
-          user.setRoles(this.getReassignRoles(user, new ArrayList<>(0), Boolean.FALSE));
-          UserUtil.addOrUpdateUser(user);
-        }
-        return;
-      }
-
-      // get the role mapping from LDAP configuration
       Map<String, List<String>> roleMapping =
-          JsonUtils.readValue(ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
+          CollectionUtils.isEmpty(searchResult.getSearchEntries())
+              ? Map.of()
+              : JsonUtils.readValue(
+                  ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
       List<EntityReference> roleReferenceList = new ArrayList<>();
 
-      boolean adminFlag = Boolean.FALSE;
+      boolean adminFlag = isUserAdmin(user.getEmail(), user.getName());
 
       // match the user's ldap groups with the role mapping according to groupDN
       for (SearchResultEntry searchResultEntry : searchResult.getSearchEntries()) {
@@ -522,10 +518,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                           LinkedHashMap::new))
                   .values());
       user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
-
-      if (Boolean.TRUE.equals(reAssign)) {
-        UserUtil.addOrUpdateUser(user);
-      }
     } catch (Exception ex) {
       LOG.warn(
           "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
@@ -686,14 +678,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       throw new AuthenticationException("Refresh token expired. Please login again.");
     }
 
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // Used once, as in BasicAuthenticator: a token deleted while this request ran is not renewed.
     RefreshToken newRefreshToken =
         TokenUtil.getRefreshTokenForLDAP(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
-
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 

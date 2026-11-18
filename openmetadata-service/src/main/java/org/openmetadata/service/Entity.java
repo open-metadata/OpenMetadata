@@ -485,7 +485,8 @@ public final class Entity {
         entity.toLowerCase(Locale.ROOT), entity);
     EntityTimeSeriesInterface.ENTITY_TYPE_TO_CLASS_MAP.put(entity.toLowerCase(Locale.ROOT), clazz);
     ENTITY_LIST.add(entity);
-    EntityIndexCapabilityRegistry.register(EntityIndexCapability.forTimeSeries(entity));
+    EntityIndexCapabilityRegistry.register(
+        EntityIndexCapability.forTimeSeries(entity, entityRepository.getSearchDeletedField()));
 
     LOG.debug("Registering entity time series {} {}", clazz, entity);
   }

@@ -37,6 +37,7 @@ import org.openmetadata.service.alerting.audience.Recipients;
 import org.openmetadata.service.alerting.channel.Channel;
 import org.openmetadata.service.alerting.channel.DeliveryMemory;
 import org.openmetadata.service.alerting.channel.Destination;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
 import org.openmetadata.service.alerting.channel.IsolatedSends;
 import org.openmetadata.service.alerting.channel.SendStatus;
 import org.openmetadata.service.alerting.content.EventContent;
@@ -202,7 +203,7 @@ final class ChannelDispatch {
     if (config instanceof SubscriptionAction action) {
       receivers = action;
     } else if (config != null) {
-      receivers = channel.configRules().receiversOf(destination);
+      receivers = channel.configRules().receiversOf(DestinationSecrets.decrypted(destination));
     }
     return receivers;
   }

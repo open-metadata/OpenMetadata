@@ -24,7 +24,12 @@ import {
   HelperTextType,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Column,
+  Dimension,
+  Edit01,
+  Table as TableIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, isEmpty, snakeCase } from 'lodash';
@@ -39,9 +44,6 @@ import {
 } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
-import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
   AGGREGATE_PAGE_SIZE_LARGE,
   MAX_NAME_LENGTH,
@@ -656,13 +658,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         description: t('label.test-applied-on-entity', {
           entity: t('label.column-lowercase'),
         }),
-        icon: <ColumnIcon />,
+        icon: <Column size={24} />,
       },
       {
         value: TestLevel.COLUMN_DIMENSION,
         label: t('label.dimension-level'),
         description: t('label.column-with-dimension'),
-        icon: <DimensionIcon />,
+        icon: <Dimension />,
         isBeta: true,
       },
     ],

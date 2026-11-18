@@ -49,15 +49,15 @@ import {
   type Destination,
 } from '../../../generated/events/eventSubscription';
 import type { AlertSelection } from '../../../hooks/useAlertSelection';
-import {
-  ModifiedCreateEventSubscription,
-  ModifiedDestination,
-} from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { testAlertDestination } from '../../../rest/alertsAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import type { SelectionSupport } from '../../../utils/Alerts/AlertSelectionUtil';
 import { AlertSourceSearch } from '../../../utils/Alerts/AlertSourceSearch';
 import alertsClassBase from '../../../utils/AlertsClassBase';
+import {
+  ModifiedCreateEventSubscription,
+  ModifiedDestination,
+} from '../../../utils/AlertsClassBase.interface';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import AlertAiDestinationItem from './AlertAiDestinationItem.component';
 import AlertAiDestinationSection from './AlertAiDestinationSection.component';
@@ -209,6 +209,7 @@ interface MockCoreProps {
   id?: string;
   onButtonClick?: (e: React.MouseEvent<HTMLButtonElement>) => void;
   onBlur?: () => void;
+  onClick?: () => void;
   onChange?: (value: string | boolean) => void;
   onItemCleared?: (key: string) => void;
   onItemInserted?: (key: string) => void;
@@ -384,6 +385,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
       <button data-testid={testId} disabled={isDisabled} onClick={onPress}>
         {children}
       </button>
+    ),
+    ButtonUtility: ({
+      'data-testid': testId,
+      isDisabled,
+      onClick,
+    }: MockCoreProps) => (
+      <button data-testid={testId} disabled={isDisabled} onClick={onClick} />
     ),
     Card: ({ children, className, 'data-testid': testId }: MockCoreProps) => (
       <section className={className} data-testid={testId}>

@@ -22,7 +22,7 @@ import { performAdminLogin } from '../../../utils/admin';
  *
  * Tests task workflows for Pipeline entities including:
  * - Entity-level description tasks
- * - Pipeline task description tasks (tasks::taskName::description)
+ * - Pipeline task description tasks (tasks.taskName.description)
  * - Ownership update tasks for pipelines
  * - Tier update tasks for pipelines
  * - Domain update tasks for pipelines
@@ -147,7 +147,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
       const newTaskDescription = 'Updated pipeline task description from task';
 
       // Create DescriptionUpdate task for pipeline task
-      // Format: tasks::taskName::description
+      // Format: tasks.taskName.description
       const taskResponse = await apiContext.post('/api/v1/tasks', {
         data: {
           about: `<#E::pipeline::${pipeline.entityResponseData?.fullyQualifiedName}>`,
@@ -155,7 +155,7 @@ test.describe('Task Creation and Resolution - Pipeline Entity', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `tasks::${pipelineTaskName}::description`,
+            fieldPath: `tasks.${pipelineTaskName}.description`,
             newDescription: newTaskDescription,
           },
         },

@@ -27,6 +27,12 @@ import { searchRoles } from '../../../../rest/rolesAPIV1';
 import CreateUser from './CreateUser.component';
 import { CreateUserProps } from './CreateUser.interface';
 
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
 jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockReturnValue({
     state: { isAdminPage: false },

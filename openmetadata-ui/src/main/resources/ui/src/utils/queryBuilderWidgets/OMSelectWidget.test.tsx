@@ -29,15 +29,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ComboBox?: (props: {
       isDisabled?: boolean;
       items?: { id: string; label: string }[];
+      selectedKey?: string | null;
       onOpenChange?: (isOpen: boolean) => void;
       onInputChange?: (value: string) => void;
     }) => JSX.Element;
   } = ({ isDisabled }) =>
     ReactModule.createElement('button', { disabled: isDisabled }, 'select');
-  Select.ComboBox = ({ isDisabled, items, onOpenChange, onInputChange }) =>
+  Select.ComboBox = ({
+    isDisabled,
+    items,
+    selectedKey,
+    onOpenChange,
+    onInputChange,
+  }) =>
     ReactModule.createElement(
       'div',
-      null,
+      // String() keeps null and undefined apart: they are a controlled empty selection and an uncontrolled one.
+      { 'data-selected-key': String(selectedKey) },
       ReactModule.createElement(
         'button',
         {
@@ -94,6 +102,68 @@ describe('OMSelectWidget', () => {
     render(<OMSelectWidget {...baseProps} readonly />);
 
     expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('searches static options by label and restores them when cleared', () => {
+    render(
+      <OMSelectWidget
+        {...baseProps}
+        showSearch
+        listValues={[
+          { value: 'table', title: 'Table' },
+          { value: 'testCase', title: 'Test Case' },
+        ]}
+      />
+    );
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'tEsT' },
+    });
+
+    expect(screen.getByTestId('options')).toHaveTextContent('Test Case');
+    expect(screen.getByTestId('options')).not.toHaveTextContent('Table');
+
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: '' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+  });
+
+  it('restores static options when reopened with the toggle', () => {
+    render(<OMSelectWidget {...baseProps} showSearch />);
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Option 2' },
+    });
+
+    expect(screen.getByTestId('options').children).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+
+    expect(screen.getByTestId('options').children).toHaveLength(2);
+  });
+
+  it('uses updated static labels when the selection is echoed into the input', () => {
+    const { rerender } = render(
+      <OMSelectWidget {...baseProps} showSearch value="opt1" />
+    );
+    rerender(
+      <OMSelectWidget
+        {...baseProps}
+        showSearch
+        listValues={[
+          { value: 'opt1', title: 'Renamed option' },
+          { value: 'opt2', title: 'Option 2' },
+        ]}
+        value="opt1"
+      />
+    );
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'Renamed option' },
+    });
+
+    expect(screen.getByTestId('options')).toHaveTextContent('Renamed option');
+    expect(screen.getByTestId('options').children).toHaveLength(2);
   });
 
   it('restores the full option list from cache when the dropdown is reopened', async () => {
@@ -157,6 +227,99 @@ describe('OMSelectWidget', () => {
 
     expect(screen.getByTestId('options').children).toHaveLength(2);
     expect(asyncFetch).toHaveBeenCalledTimes(callsBeforeReopen);
+  });
+
+  it('reloads options when the async fetcher changes for the same field', async () => {
+    const firstFetch = jest.fn().mockResolvedValue({
+      values: [{ value: 'old', title: 'Old option' }],
+    });
+    const nextFetch = jest.fn().mockResolvedValue({
+      values: [{ value: 'new', title: 'New option' }],
+    });
+    const { rerender } = render(
+      <OMSelectWidget {...baseProps} useAsyncSearch asyncFetch={firstFetch} />
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('Old option')
+    );
+
+    rerender(
+      <OMSelectWidget {...baseProps} useAsyncSearch asyncFetch={nextFetch} />
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('New option')
+    );
+
+    expect(screen.getByTestId('options')).not.toHaveTextContent('Old option');
+  });
+
+  it('preserves searched options on rerender when the fetcher is unchanged', async () => {
+    const asyncFetch = jest.fn().mockImplementation((search: string) =>
+      Promise.resolve({
+        values: search
+          ? [{ value: 'match', title: 'Matching option' }]
+          : [{ value: 'default', title: 'Default option' }],
+      })
+    );
+    const { rerender } = render(
+      <OMSelectWidget {...baseProps} useAsyncSearch asyncFetch={asyncFetch} />
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('Default option')
+    );
+    fireEvent.change(screen.getByRole('combobox'), {
+      target: { value: 'match' },
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('options')).toHaveTextContent('Matching option')
+    );
+
+    rerender(
+      <OMSelectWidget
+        {...baseProps}
+        useAsyncSearch
+        asyncFetch={asyncFetch}
+        placeholder="Updated placeholder"
+      />
+    );
+
+    expect(screen.getByTestId('options')).toHaveTextContent('Matching option');
+    expect(screen.getByTestId('options')).not.toHaveTextContent(
+      'Default option'
+    );
+    expect(asyncFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('keeps the async select controlled when its value is cleared', async () => {
+    const asyncProps = {
+      ...baseProps,
+      useAsyncSearch: true,
+      asyncFetch: jest
+        .fn()
+        .mockResolvedValue({ values: [{ value: 'opt1', title: 'Option 1' }] }),
+      listValues: undefined,
+    } as unknown as SelectWidgetProps;
+    const { container, rerender } = render(
+      <OMSelectWidget {...asyncProps} value="opt1" />
+    );
+    const comboBox = () =>
+      container.querySelector('[data-selected-key]') as HTMLElement;
+
+    await waitFor(() =>
+      expect(screen.getByTestId('options').children).toHaveLength(1)
+    );
+
+    expect(comboBox()).toHaveAttribute('data-selected-key', 'opt1');
+
+    // An undefined selectedKey makes React Aria own the selection, and clearing the input (Cmd+Delete) then looped
+    // until React threw "Maximum update depth exceeded".
+    rerender(<OMSelectWidget {...asyncProps} value={null} />);
+
+    expect(comboBox()).toHaveAttribute('data-selected-key', 'null');
+
+    rerender(<OMSelectWidget {...asyncProps} value={undefined} />);
+
+    expect(comboBox()).toHaveAttribute('data-selected-key', 'null');
   });
 
   it('still searches when the user types something other than the selection', async () => {

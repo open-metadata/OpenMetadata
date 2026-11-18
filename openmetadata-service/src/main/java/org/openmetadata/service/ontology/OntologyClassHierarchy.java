@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.net.URI;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -11,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.OWL2;
 import org.openmetadata.schema.OntologyDefinition;
@@ -88,12 +90,8 @@ public final class OntologyClassHierarchy {
 
   private void validateProperty(
       final OntologyProperty property, final Consumer<OntologyProfileViolation> findings) {
-    if (property.getKind() != OntologyPropertyKind.ANNOTATION) {
-      listOrEmpty(property.getDomain()).forEach(iri -> requireClass(iri, "/domain", findings));
-    }
-    if (property.getKind() == OntologyPropertyKind.OBJECT) {
-      listOrEmpty(property.getRange()).forEach(iri -> requireClass(iri, "/range", findings));
-    } else if (property.getKind() == OntologyPropertyKind.DATA) {
+    classPositions(property).forEach(position -> requireClass(position, findings));
+    if (property.getKind() == OntologyPropertyKind.DATA) {
       listOrEmpty(property.getRange()).stream()
           .filter(iri -> !OwlDatatypeSupport.isSupported(iri))
           .forEach(
@@ -117,9 +115,7 @@ public final class OntologyClassHierarchy {
   private void validateAxiom(
       final OntologyAxiom axiom, final Consumer<OntologyProfileViolation> findings) {
     validateIndividualIdentity(axiom, findings);
-    if (isClassAxiom(axiom)) {
-      requireClass(axiom.getSubjectIri(), "/subjectIri", findings);
-    }
+    subjectPositions(axiom).forEach(position -> requireClass(position, findings));
     if (axiom.getAxiomType() == OntologyAxiomType.SUBCLASS_OF
         && axiom.getSubjectIri() != null
         && cyclicSubjects.contains(axiom.getSubjectIri().toString())) {
@@ -148,41 +144,82 @@ public final class OntologyClassHierarchy {
   private void validateExpressions(
       final List<OntologyExpression> expressions,
       final Consumer<OntologyProfileViolation> findings) {
+    expressionPositions(
+            expressions,
+            iri -> isDataProperty(iri, properties),
+            () ->
+                add(
+                    findings,
+                    OntologyProfileViolationCode.INVALID_EXPRESSION_SHAPE,
+                    "/expressions",
+                    "Class expression traversal exceeds 10000 steps"))
+        .forEach(position -> requireClass(position, findings));
+  }
+
+  /**
+   * Every IRI an axiom must state as a class, with the path a finding reports. Individuals are not
+   * class positions, so the subject and target of an assertion are left out.
+   */
+  public static List<ClassPosition> classPositions(
+      final OntologyAxiom axiom, final Predicate<URI> isDataProperty, final Runnable onOverflow) {
+    final List<ClassPosition> positions = new ArrayList<>(subjectPositions(axiom));
+    positions.addAll(expressionPositions(axiom.getExpressions(), isDataProperty, onOverflow));
+    return positions;
+  }
+
+  /** The IRIs a property must state as classes: its domain, and its range when it is an object. */
+  public static List<ClassPosition> classPositions(final OntologyProperty property) {
+    final List<ClassPosition> positions = new ArrayList<>();
+    if (property.getKind() != OntologyPropertyKind.ANNOTATION) {
+      listOrEmpty(property.getDomain())
+          .forEach(iri -> positions.add(new ClassPosition("/domain", iri)));
+    }
+    if (property.getKind() == OntologyPropertyKind.OBJECT) {
+      listOrEmpty(property.getRange())
+          .forEach(iri -> positions.add(new ClassPosition("/range", iri)));
+    }
+    return positions;
+  }
+
+  private static List<ClassPosition> subjectPositions(final OntologyAxiom axiom) {
+    return isClassAxiom(axiom)
+        ? List.of(new ClassPosition("/subjectIri", axiom.getSubjectIri()))
+        : List.of();
+  }
+
+  private static List<ClassPosition> expressionPositions(
+      final List<OntologyExpression> expressions,
+      final Predicate<URI> isDataProperty,
+      final Runnable onOverflow) {
+    final List<ClassPosition> positions = new ArrayList<>();
     final var pending = new ArrayDeque<Expression>();
     listOrEmpty(expressions).forEach(value -> pending.add(new Expression(value, false)));
     int visited = 0;
     while (!pending.isEmpty()) {
       if (++visited > MAX_EXPRESSION_STEPS || pending.size() > MAX_EXPRESSION_STEPS) {
-        add(
-            findings,
-            OntologyProfileViolationCode.INVALID_EXPRESSION_SHAPE,
-            "/expressions",
-            "Class expression traversal exceeds 10000 steps");
+        onOverflow.run();
         break;
       }
-      validateExpression(pending.removeLast(), pending, findings);
+      final Expression current = pending.removeLast();
+      final OntologyExpression value = current.value();
+      if (value == null) {
+        continue;
+      }
+      if (value.getKind() == OntologyExpressionKind.NAMED_CLASS && !current.datatype()) {
+        positions.add(new ClassPosition("/expressions/classIri", value.getClassIri()));
+      }
+      listOrEmpty(value.getOperands())
+          .forEach(operand -> pending.add(new Expression(operand, current.datatype())));
+      if (value.getFiller() != null) {
+        pending.add(new Expression(value.getFiller(), isDataProperty.test(value.getPropertyIri())));
+      }
     }
+    return positions;
   }
 
-  private void validateExpression(
-      final Expression current,
-      final ArrayDeque<Expression> pending,
-      final Consumer<OntologyProfileViolation> findings) {
-    final OntologyExpression value = current.value();
-    if (value == null) {
-      return;
-    }
-    if (value.getKind() == OntologyExpressionKind.NAMED_CLASS && !current.datatype()) {
-      requireClass(value.getClassIri(), "/expressions/classIri", findings);
-    }
-    listOrEmpty(value.getOperands())
-        .forEach(operand -> pending.add(new Expression(operand, current.datatype())));
-    if (value.getFiller() != null) {
-      pending.add(new Expression(value.getFiller(), isDataProperty(value.getPropertyIri())));
-    }
-  }
-
-  private boolean isDataProperty(final URI iri) {
+  /** Whether a property IRI is a data property, by its declaration or by fixed vocabulary. */
+  public static boolean isDataProperty(
+      final URI iri, final Map<String, OntologyProperty> properties) {
     final OntologyProperty property = iri == null ? null : properties.get(iri.toString());
     return property != null
         ? property.getKind() == OntologyPropertyKind.DATA
@@ -192,7 +229,9 @@ public final class OntologyClassHierarchy {
   }
 
   private void requireClass(
-      final URI iri, final String path, final Consumer<OntologyProfileViolation> findings) {
+      final ClassPosition position, final Consumer<OntologyProfileViolation> findings) {
+    final URI iri = position.iri();
+    final String path = position.path();
     if (iri != null && !isClass(iri)) {
       final boolean declared = concepts.containsKey(iri.toString());
       add(
@@ -209,14 +248,18 @@ public final class OntologyClassHierarchy {
 
   private boolean isClass(final URI iri) {
     return iri != null
-        && (BUILTIN_CLASSES.contains(iri.toString())
-            || OwlEntityDeclarations.vocabularyKind(iri.toString())
-                == OwlEntityDeclarations.EntityKind.CLASS
+        && (isVocabularyClass(iri.toString())
             || concepts.getOrDefault(iri.toString(), List.of()).stream()
                 .anyMatch(
                     concept ->
                         concept.getConceptType() == OntologyConceptType.OWL_CLASS
                             || concept.getConceptType() == OntologyConceptType.BOTH));
+  }
+
+  /** owl:Thing, owl:Nothing and the SKOS classes: classes no ontology has to declare. */
+  public static boolean isVocabularyClass(final String iri) {
+    return BUILTIN_CLASSES.contains(iri)
+        || OwlEntityDeclarations.vocabularyKind(iri) == OwlEntityDeclarations.EntityKind.CLASS;
   }
 
   private static boolean isClassAxiom(final OntologyAxiom axiom) {
@@ -327,6 +370,8 @@ public final class OntologyClassHierarchy {
             .withSeverity(OntologyProfileViolationSeverity.ERROR)
             .withMessage(message));
   }
+
+  public record ClassPosition(String path, URI iri) {}
 
   private record Expression(OntologyExpression value, boolean datatype) {}
 

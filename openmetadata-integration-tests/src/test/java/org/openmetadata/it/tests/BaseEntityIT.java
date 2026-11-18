@@ -2621,6 +2621,50 @@ public abstract class BaseEntityIT<T extends EntityInterface<?>, K> {
     assertNotNull(fetched2.getLifeCycle().getCreated(), "Lifecycle should have created info");
   }
 
+  @Test
+  void patch_entityLifeCycleMergesObservedBounds(TestNamespace ns) {
+    if (!supportsLifeCycle || !supportsPatch) return;
+    T original = createEntity(createMinimalRequest(ns));
+    original.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(
+                new org.openmetadata.schema.type.AccessDetails()
+                    .withTimestamp(2000L)
+                    .withAccessedByAProcess("initial"))
+            .withUpdated(new org.openmetadata.schema.type.AccessDetails().withTimestamp(3000L)));
+    T first = patchEntity(original.getId().toString(), original);
+    first.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(
+                new org.openmetadata.schema.type.AccessDetails()
+                    .withTimestamp(1000L)
+                    .withAccessedByAProcess("earlier"))
+            .withUpdated(new org.openmetadata.schema.type.AccessDetails().withTimestamp(4000L))
+            .withAccessed(new org.openmetadata.schema.type.AccessDetails().withTimestamp(5000L)));
+    T second = patchEntity(first.getId().toString(), first);
+    second.setLifeCycle(
+        new org.openmetadata.schema.type.LifeCycle()
+            .withCreated(
+                new org.openmetadata.schema.type.AccessDetails()
+                    .withTimestamp(6000L)
+                    .withAccessedByAProcess("later"))
+            .withUpdated(new org.openmetadata.schema.type.AccessDetails().withTimestamp(2000L)));
+    patchEntity(second.getId().toString(), second);
+    T stored = getEntityWithFields(original.getId().toString(), "lifeCycle");
+    assertEquals(1000L, stored.getLifeCycle().getCreated().getTimestamp());
+    assertEquals("earlier", stored.getLifeCycle().getCreated().getAccessedByAProcess());
+    assertEquals(4000L, stored.getLifeCycle().getUpdated().getTimestamp());
+    assertEquals(5000L, stored.getLifeCycle().getAccessed().getTimestamp());
+    assertEquals(original.getId(), stored.getId());
+    assertEquals(
+        JsonUtils.pojoToJsonNode(original).get("createdAt"),
+        JsonUtils.pojoToJsonNode(stored).get("createdAt"));
+    assertEquals(
+        JsonUtils.pojoToJsonNode(original).get("createdBy"),
+        JsonUtils.pojoToJsonNode(stored).get("createdBy"));
+    assertEquals(original.getVersion(), stored.getVersion());
+  }
+
   /**
    * Test: a life cycle timestamp before the Unix epoch is the year-0001 placeholder older ingestion
    * clients send; it is dropped on write while the real aspects next to it are kept.

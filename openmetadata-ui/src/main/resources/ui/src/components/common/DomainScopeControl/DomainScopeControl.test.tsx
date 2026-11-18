@@ -236,7 +236,7 @@ describe('DomainScopeControl', () => {
     expect(mockDomainSelectableList).not.toHaveBeenCalled();
   });
 
-  it('restricts the menu to the user domains when access is restricted', async () => {
+  it('restricts the menu to the user domains, with All Domains, when access is restricted', async () => {
     storeState = {
       ...storeState,
       isDomainRestricted: true,
@@ -246,7 +246,7 @@ describe('DomainScopeControl', () => {
 
     const props = lastMenuProps();
 
-    expect(props.showAllDomains).toBe(false);
+    expect(props.showAllDomains).toBe(true);
     expect(props.restrictedDomains).toEqual([complianceDomain, demoDomain]);
   });
 

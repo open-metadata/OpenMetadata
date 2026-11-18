@@ -48,13 +48,6 @@ public class TagBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public TagBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateTag request without executing it.
    */
   public CreateTag build() {

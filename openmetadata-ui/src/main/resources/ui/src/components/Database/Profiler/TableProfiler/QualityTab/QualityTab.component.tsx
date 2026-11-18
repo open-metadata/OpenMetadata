@@ -19,9 +19,9 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AbortedTests,
-  FailedTests,
   SuccessfulTests,
-  TotalTests,
+  TestSuite,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
@@ -89,6 +89,7 @@ export const QualityTab = () => {
     testCasePaging,
     table,
     testCaseSummary,
+    isTableDeleted,
   } = useTableProfiler();
   const { getResourceLimit } = useLimitStore();
   const { permissions: globalPermissions } = usePermissionProvider();
@@ -180,7 +181,7 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.total') }),
         key: 'total-tests',
         value: tests.total,
-        icon: TotalTests,
+        icon: TestSuite,
       },
       {
         title: t('label.test-plural-type', { type: t('label.successful') }),
@@ -192,7 +193,7 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.failed') }),
         key: 'failed-tests',
         value: tests.failed,
-        icon: FailedTests,
+        icon: XCircle,
       },
       {
         title: t('label.test-plural-type', { type: t('label.aborted') }),
@@ -529,7 +530,7 @@ export const QualityTab = () => {
                 </Box>
                 <ManageButton
                   canDelete={false}
-                  deleted={table?.deleted ?? false}
+                  deleted={isTableDeleted}
                   displayName={t('label.manage-entity', {
                     entity: t('label.test-case-plural'),
                   })}
@@ -543,7 +544,7 @@ export const QualityTab = () => {
             </Box>
           )}
 
-          {!isTestCaseTab && ingestionPipelineCount > 0 && (
+          {!isTestCaseTab && !isTableDeleted && ingestionPipelineCount > 0 && (
             <Button
               className="tw:ml-auto tw:shrink-0"
               data-testid="add-pipeline-button"
@@ -577,6 +578,7 @@ export const QualityTab = () => {
 
         {qualityTab === EntityTabs.PIPELINE && (
           <TestSuitePipelineTab
+            deleted={isTableDeleted}
             key={pipelineListKey}
             showAddPipelineButton={false}
             testSuite={testSuite}

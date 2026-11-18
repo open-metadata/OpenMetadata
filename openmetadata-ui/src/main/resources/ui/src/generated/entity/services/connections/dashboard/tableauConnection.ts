@@ -70,6 +70,9 @@ export interface TableauConnection {
  * Basic Auth Credentials
  *
  * Access Token Auth Credentials
+ *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
  */
 export interface AuthenticationTypeForTableau {
     /**
@@ -78,6 +81,9 @@ export interface AuthenticationTypeForTableau {
     password?: string;
     /**
      * Username to access the service.
+     *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
      */
     username?: string;
     /**
@@ -88,6 +94,18 @@ export interface AuthenticationTypeForTableau {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * Client ID of the Tableau connected app.
+     */
+    clientId?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
 }
 
 /**

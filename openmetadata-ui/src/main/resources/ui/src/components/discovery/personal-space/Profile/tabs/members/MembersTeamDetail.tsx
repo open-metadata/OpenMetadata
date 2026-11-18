@@ -17,7 +17,7 @@ import {
   TableCard,
   Tabs,
 } from '@openmetadata/ui-core-components';
-import { Policy, Reorder, Role } from '@openmetadata/ui-core-components/icons';
+import { Policy, Role } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty } from 'lodash';
@@ -38,7 +38,6 @@ import { useNavigate } from 'react-router-dom';
 import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE,
   ROUTES,
 } from '../../../../../../constants/constants';
 import { ExportTypes } from '../../../../../../constants/Export.constants';
@@ -56,6 +55,8 @@ import { User } from '../../../../../../generated/entity/teams/user';
 import { EntityReference } from '../../../../../../generated/entity/type';
 import { Include } from '../../../../../../generated/type/include';
 import { Paging } from '../../../../../../generated/type/paging';
+import { useAuth } from '../../../../../../hooks/authHooks';
+import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
 import { usePaging } from '../../../../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -73,7 +74,11 @@ import {
   patchTeamDetail,
   restoreTeam,
 } from '../../../../../../rest/teamsAPI';
-import { getUsers, updateUserDetail } from '../../../../../../rest/userAPI';
+import {
+  getUserById,
+  getUsers,
+  updateUserDetail,
+} from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
 import type { TabContribution } from '../../../../../../utils/ExtensionPointTypes';
@@ -131,13 +136,6 @@ const CustomPropertiesList = withSuspenseFallback(
   lazy(() => import('../../customProperties/CustomPropertiesList'))
 );
 
-// The global `.drag-icon { width: 6px }` LESS rule is tuned for the legacy 8×15
-// drag.svg; the square 20×20 Reorder icon collapses to ~6px there. An inline
-// size beats the unlayered LESS rule so the handle stays usable.
-const ReorderDragIcon: FC<{ className?: string }> = ({ className }) => (
-  <Reorder className={className} style={{ height: 16, width: 16 }} />
-);
-
 // The inline role/policy add flow is identical bar the team field it writes to.
 type InlineAddField = 'defaultRoles' | 'policies';
 
@@ -163,7 +161,8 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   const { getContributions } = useApplicationsProvider();
   const { permissions: globalPermissions } = usePermissionProvider();
   const { showModal } = useEntityExportModalProvider();
-  const { currentUser } = useApplicationStore();
+  const { currentUser, updateCurrentUser } = useApplicationStore();
+  const { isAdminUser = false } = useAuth();
   const closePersonalSpace = usePersonalSpaceStore((state) => state.close);
   const { goTo, state: hashState, updateParams } = useSettingsHash();
 
@@ -186,10 +185,11 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
   // The team menu lives in the page header; the delete popover anchors to it.
   const teamMenuTriggerRef = useRef<HTMLButtonElement>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  // Sub-team paging is local, not `usePaging`: that hook keeps its page in URL
-  // params the Users tab already uses, and most team types show both tabs.
+  // The sub-team page is local, not `usePaging`: that hook keeps its page in URL
+  // params the Users tab already uses, and most team types show both tabs. The
+  // page size is the saved one, so a pick here also resizes the Users tab.
   const [teamsPage, setTeamsPage] = useState(INITIAL_PAGING_VALUE);
-  const [teamsPageSize, setTeamsPageSize] = useState(PAGE_SIZE);
+  const [teamsPageSize, setTeamsPageSize] = usePageSizeState();
   const [teamsPaging, setTeamsPaging] = useState<Paging>({ total: 0 });
   // Kept apart from `teamsPaging`, whose total labels the tab with every sub-team.
   const [teamsSearchTotal, setTeamsSearchTotal] = useState(0);
@@ -409,6 +409,9 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
           pageSize: teamsPageSize,
           searchIndex: SearchIndex.TEAM,
           includeDeleted: showDeletedTeam,
+          // Without a term, pages stand in for the name-ordered list, so they
+          // keep its order; a typed search keeps relevance order.
+          ...(query ? {} : { sortField: 'name.keyword', sortOrder: 'asc' }),
           queryFilter: {
             query: { bool: { must: [{ term: { 'parents.id': team.id } }] } },
           },
@@ -677,7 +680,16 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
       newPage > teamsPage ? CursorType.AFTER : CursorType.BEFORE;
     const cursor = teamsPaging[cursorType];
 
-    if (Math.abs(newPage - teamsPage) !== 1 || !cursor) {
+    // ponytail: some backend builds list teams with a total but no cursor;
+    // the search index then serves the page by number, in the same name order.
+    // Its documents carry no user/sub-team counts. Drop this once the teams
+    // list returns cursors everywhere.
+    if (!cursor) {
+      void searchChildTeams('', newPage);
+
+      return;
+    }
+    if (Math.abs(newPage - teamsPage) !== 1) {
       return;
     }
 
@@ -772,44 +784,54 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     void handlePatchTeam({ ...team, isJoinable: !team.isJoinable });
   }, [team, handlePatchTeam]);
 
-  const handleJoinTeam = useCallback(async () => {
-    if (!team || !currentUser) {
-      return;
-    }
-    const currentTeams = currentUser.teams ?? [];
-    const updatedUser = {
-      ...currentUser,
-      teams: [
-        ...currentTeams,
-        { id: team.id, type: EntityType.TEAM } as EntityReference,
-      ],
-    };
-    try {
-      const patch = compare(currentUser, updatedUser);
-      await updateUserDetail(currentUser.id, patch);
-      showSuccessToast(
-        t('server.join-team-success', { team: getEntityName(team) })
-      );
-      void fetchTeam();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [team, currentUser, t, fetchTeam]);
+  const updateOwnTeams = useCallback(
+    async (
+      changeTeams: (teams: EntityReference[]) => EntityReference[],
+      successKey: string
+    ) => {
+      if (!team || !currentUser) {
+        return;
+      }
+      try {
+        const updatedUser = await getUserById(currentUser.id, {
+          fields: TabSpecificField.TEAMS,
+        }).then((user) =>
+          updateUserDetail(
+            user.id,
+            compare(user, { ...user, teams: changeTeams(user.teams ?? []) })
+          )
+        );
+        updateCurrentUser(updatedUser);
+        showSuccessToast(t(successKey, { team: getEntityName(team) }));
+        void fetchTeam();
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [team, currentUser, updateCurrentUser, t, fetchTeam]
+  );
 
-  const handleLeaveTeam = useCallback(async () => {
-    if (!team || !currentUser) {
-      return;
-    }
-    try {
-      await deleteUserFromTeam(team.id, currentUser.id);
-      showSuccessToast(
-        t('server.leave-team-success', { team: getEntityName(team) })
-      );
-      void fetchTeam();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, [team, currentUser, t, fetchTeam]);
+  const handleJoinTeam = useCallback(
+    () =>
+      team &&
+      updateOwnTeams(
+        (teams) => [
+          ...teams,
+          { id: team.id, type: EntityType.TEAM } as EntityReference,
+        ],
+        'server.join-team-success'
+      ),
+    [team, updateOwnTeams]
+  );
+
+  const handleLeaveTeam = useCallback(
+    () =>
+      updateOwnTeams(
+        (teams) => teams.filter(({ id }) => id !== team?.id),
+        'server.leave-team-success'
+      ),
+    [team, updateOwnTeams]
+  );
 
   const handleTeamExport = useCallback(() => {
     if (!team?.name) {
@@ -1040,7 +1062,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
 
   const childTeamExpandable = useMemo<ExpandableConfig<Team>>(
     () => ({
-      ...getTableExpandableConfig<Team>(true, undefined, ReorderDragIcon),
+      ...getTableExpandableConfig<Team>(true),
       onExpand: (isOpen, record) => {
         if (isOpen) {
           void handleTeamExpand(record);
@@ -1261,6 +1283,7 @@ const MembersTeamDetail: FC<MembersTeamDetailProps> = ({
     isGroupType,
     isOrgType,
     isCurrentUserMember,
+    isAdminUser,
     onEditNameValueChange: setEditNameValue,
     onStartEditName: (value) => {
       setEditNameValue(value);

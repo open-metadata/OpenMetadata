@@ -354,7 +354,8 @@ class OntologyDerivedStatusStorageTest {
   }
 
   private static void activate(Fixture fixture, OntologyRelease release) {
-    new OntologyReleaseActivation(fixture.ontologies, Clock.systemUTC(), ignored -> {})
+    new OntologyReleaseActivation(
+            fixture.ontologies, fixture.releases, Clock.systemUTC(), ignored -> {})
         .activate(
             fixture.ontology.getId(),
             new ActivateOntologyRelease()

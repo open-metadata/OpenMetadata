@@ -12,9 +12,9 @@
  */
 
 import { FeaturedIcon, PageLayout } from '@openmetadata/ui-core-components';
+import { Inbox01 } from '@openmetadata/ui-core-components/icons';
 import React, { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as InboxIcon } from '../../../../assets/svg/ask-collate-nav-bar/inbox-header.svg';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
@@ -47,7 +47,7 @@ const InboxPage: React.FC<InboxPageProps> = ({ tabs, content }) => {
         icon={
           <FeaturedIcon
             color="brand"
-            icon={InboxIcon}
+            icon={Inbox01}
             shape="square"
             size="md"
             theme="dark"

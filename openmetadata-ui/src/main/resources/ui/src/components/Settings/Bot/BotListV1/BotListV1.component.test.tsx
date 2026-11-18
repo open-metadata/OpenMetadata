@@ -88,11 +88,19 @@ jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
+const mockUseAuth = jest.fn();
+
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuth: () => mockUseAuth(),
+}));
+
 const mockGetBots = getBots as jest.MockedFunction<typeof getBots>;
 const mockSearchQuery = searchQuery as jest.MockedFunction<typeof searchQuery>;
 
 beforeEach(() => {
   jest.clearAllMocks();
+
+  mockUseAuth.mockReturnValue({ isAdminUser: false, isFirstTimeUser: false });
 
   mockGetBots.mockResolvedValue({
     data: MOCK_BOTS,
@@ -133,7 +141,32 @@ describe('BotListV1', () => {
     );
   });
 
+  it('leaves email out of the bot search for non-admins', async () => {
+    render(<BotListV1 {...mockProps} />, { wrapper: MemoryRouter });
+
+    await waitFor(() => {
+      expect(mockGetBots).toHaveBeenCalled();
+    });
+
+    const searchInput = await screen.findByTestId('searchbar');
+    await act(async () => {
+      fireEvent.change(searchInput, { target: { value: 'testbot' } });
+    });
+
+    await waitFor(() => {
+      const botSearch = mockSearchQuery.mock.calls
+        .map((call) =>
+          JSON.stringify((call[0] as { queryFilter?: unknown }).queryFilter)
+        )
+        .find((filter) => filter.includes('*testbot*'));
+
+      expect(botSearch).toContain('fullyQualifiedName.keyword');
+      expect(botSearch).not.toContain('email.keyword');
+    });
+  });
+
   it('searches bot user index with wildcard across name, displayName, fqn, email', async () => {
+    mockUseAuth.mockReturnValue({ isAdminUser: true, isFirstTimeUser: false });
     mockSearchQuery.mockResolvedValueOnce({
       hits: {
         total: { value: 1 },

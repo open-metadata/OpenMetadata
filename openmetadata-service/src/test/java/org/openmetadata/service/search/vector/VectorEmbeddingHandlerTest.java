@@ -1,13 +1,17 @@
 package org.openmetadata.service.search.vector;
 
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,6 +120,39 @@ class VectorEmbeddingHandlerTest {
           .clearEntityEmbedding("context_memory_search_index", entity.getId().toString());
       verify(vectorIndexService, never()).updateEntityEmbeddings(any(), anyString());
     }
+  }
+
+  @Test
+  void aReferenceRefreshKeepsAnAlreadyCurrentEmbedding() {
+    EntityInterface<?> entity = createMockEntity(Entity.TABLE);
+    float[] embedding = new float[] {1};
+    Map<String, Object> stored = new HashMap<>();
+    stored.put("embedding", embedding);
+    doAnswer(
+            call -> {
+              stored.clear();
+              return null;
+            })
+        .when(vectorIndexService)
+        .clearEntityEmbedding(anyString(), anyString());
+    SearchRepository search = mock(SearchRepository.class);
+    IndexMapping mapping = mock(IndexMapping.class);
+
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(search);
+      entities.when(() -> Entity.isVectorEmbeddable(entity)).thenReturn(true);
+      when(search.getIndexMapping(Entity.TABLE)).thenReturn(mapping);
+      when(search.getClusterAlias()).thenReturn("");
+      when(mapping.getIndexName("")).thenReturn("table_search_index");
+      String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      when(vectorIndexService.getExistingFingerprint(
+              "table_search_index", entity.getId().toString()))
+          .thenReturn(fingerprint);
+
+      handler.invalidateStaleEmbedding(entity);
+    }
+
+    assertSame(embedding, stored.get("embedding"));
   }
 
   @Test

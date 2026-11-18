@@ -423,7 +423,9 @@ export interface Connection {
      */
     s3StagingDir?: string;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
     workgroup?: string;
     /**
@@ -990,6 +992,10 @@ export interface Connection {
     salesforceApiVersion?: string;
     /**
      * Domain of Salesforce instance
+     *
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**

@@ -84,6 +84,7 @@ export const EntityHeader = ({
         deleted={entityData.deleted}
         displayName={entityData.displayName}
         displayNameClassName={displayNameClassName}
+        entityType={entityType}
         entityUrl={entityUrl}
         handleFollowingClick={handleFollowingClick}
         icon={icon}

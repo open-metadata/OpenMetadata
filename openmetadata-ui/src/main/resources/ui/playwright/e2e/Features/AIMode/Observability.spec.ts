@@ -22,12 +22,16 @@ import {
 } from '../../../utils/common';
 import { expectFormHint } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { loginAsIsolatedAdmin } from '../../../utils/isolatedDomainUser';
+import {
+  openTestDefinitionDetailsFromLibrary,
+  withTestDefinitionAndTestCase,
+} from '../../../utils/testCases';
 import { enableAiAppMode, redirectToAiModeHomePage } from '../../Utils/appMode';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
 });
-
 test.describe('AI mode Observability', () => {
   test.beforeEach(async ({ page }) => {
     await enableAiAppMode(page);
@@ -44,6 +48,22 @@ test.describe('AI mode Observability', () => {
     });
 
     await expect(page).toHaveURL(/\/observability\/data-quality/);
+  });
+
+  test('should open a test definition from its name and list its test cases', async ({
+    page,
+  }) => {
+    await redirectToAiModeHomePage(page);
+    await withTestDefinitionAndTestCase(
+      page,
+      ({ definitionFqn, testCaseName }) =>
+        openTestDefinitionDetailsFromLibrary(
+          page,
+          '/observability/test-library',
+          definitionFqn,
+          testCaseName
+        )
+    );
   });
 
   test.describe('Page Rendering', () => {
@@ -340,39 +360,53 @@ test.describe('AI mode Observability', () => {
   });
 
   test.describe('Data Quality Tab Navigation', () => {
-    test('tabs should navigate within AI mode', async ({ page }) => {
-      await page.goto('/observability/data-quality', {
-        waitUntil: 'domcontentloaded',
-      });
-      await waitForAllLoadersToDisappear(page);
+    test('tabs should navigate within AI mode', async ({ browser }) => {
+      // Use a fresh session: the saved setup session can expire before this case runs.
+      const { page, afterAction } = await loginAsIsolatedAdmin(browser);
 
-      // Verify all tabs are present
-      await expect(page.getByRole('tab', { name: 'Summary' })).toBeVisible();
-      await expect(page.getByRole('tab', { name: 'Test Cases' })).toBeVisible();
-      await expect(
-        page.getByRole('tab', { name: 'Test Suites' })
-      ).toBeVisible();
+      try {
+        await enableAiAppMode(page);
+        await page.goto('/observability/data-quality', {
+          waitUntil: 'domcontentloaded',
+        });
+        await waitForAllLoadersToDisappear(page);
 
-      // Navigate to Test Cases — should stay in AI mode
-      await page.getByRole('tab', { name: 'Test Cases' }).click();
-      await waitForAllLoadersToDisappear(page);
+        // Verify all tabs are present
+        await expect(page.getByRole('tab', { name: 'Summary' })).toBeVisible();
+        await expect(
+          page.getByRole('tab', { name: 'Test Cases' })
+        ).toBeVisible();
+        await expect(
+          page.getByRole('tab', { name: 'Test Suites' })
+        ).toBeVisible();
 
-      await expect(page).toHaveURL(/\/observability\/data-quality\/test-cases/);
-      await expect(page.getByTestId('ask-sidebar')).toBeVisible();
+        // Navigate to Test Cases — should stay in AI mode
+        await page.getByRole('tab', { name: 'Test Cases' }).click();
+        await waitForAllLoadersToDisappear(page);
 
-      // Navigate to Test Suites — should stay in AI mode
-      await page.getByRole('tab', { name: 'Test Suites' }).click();
-      await waitForAllLoadersToDisappear(page);
+        await expect(page).toHaveURL(
+          /\/observability\/data-quality\/test-cases/
+        );
+        await expect(page.getByTestId('ask-sidebar')).toBeVisible();
 
-      await expect(page).toHaveURL(
-        /\/observability\/data-quality\/test-suites/
-      );
+        // Navigate to Test Suites — should stay in AI mode
+        await page.getByRole('tab', { name: 'Test Suites' }).click();
+        await waitForAllLoadersToDisappear(page);
 
-      // Navigate back to Summary — should stay in AI mode
-      await page.getByRole('tab', { name: 'Summary' }).click();
-      await waitForAllLoadersToDisappear(page);
+        await expect(page).toHaveURL(
+          /\/observability\/data-quality\/test-suites/
+        );
 
-      await expect(page).toHaveURL(/\/observability\/data-quality\/dashboard/);
+        // Navigate back to Summary — should stay in AI mode
+        await page.getByRole('tab', { name: 'Summary' }).click();
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(page).toHaveURL(
+          /\/observability\/data-quality\/dashboard/
+        );
+      } finally {
+        await afterAction();
+      }
     });
 
     test('Test Suites sub-tabs should navigate within AI mode', async ({

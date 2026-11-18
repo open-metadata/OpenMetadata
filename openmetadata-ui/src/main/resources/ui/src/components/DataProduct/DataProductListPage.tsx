@@ -19,9 +19,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Globe01,
+  DataProduct as DataProductIcon,
   NoSearch,
-  Package,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
@@ -35,12 +34,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { PageViewMode } from '../../generated/type/personaPreferences';
+import { useSavedPageSize } from '../../hooks/paging/useSavedPageSize';
 import { usePersonaViewMode } from '../../hooks/platform/usePersonaViewMode';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
@@ -48,16 +48,17 @@ import dataProductClassBase from '../../utils/DataProduct/DataProductClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getVisibleStatusColumns } from '../../utils/EntityStatusUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
+import { getViewPageSizeOptions } from '../../utils/PaginationUtils';
 import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
-  COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
   renderDomainClassificationTagsCell,
   renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
+  renderDomainsCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -123,39 +124,32 @@ const renderDataProductNameCell = (
   );
 };
 
-const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
-  const domains = entity.domains;
-  if (!domains?.length) {
-    return <Typography size="text-sm">{NO_DATA}</Typography>;
-  }
-  const domain = domains[0];
-
-  return (
-    <Box
-      align="center"
-      className={COMPACT_CELL_CLIP_CLASS}
-      direction="row"
-      gap={1}>
-      <Globe01 size={16} style={{ flexShrink: 0 }} />
-      <Typography
-        className={CLIPPED_NAME_CLASS}
-        ellipsis={{
-          tooltip: renderBreakableTooltip(domain.displayName || domain.name),
-        }}
-        size="text-sm">
-        {domain.displayName || domain.name}
-      </Typography>
-    </Box>
-  );
-};
-
 const DataProductListPage = ({
   renderPageHeader,
 }: DataProductListPageProps) => {
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const dataProductListing = useDataProductListingData({ enableNlq: isAiMode });
+  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
+  const [selectedView, setView] = useState<PageViewMode>();
+  const view = selectedView ?? personaView;
+  const listingPageSizeOptions = getViewPageSizeOptions(view);
+  const { savedPageSize: listingPageSize } = useSavedPageSize(
+    listingPageSizeOptions
+  );
+  const dataProductListing = useDataProductListingData({
+    enableNlq: isAiMode,
+    pageSize: listingPageSize,
+    pageSizeOptions: listingPageSizeOptions,
+  });
+  const { resetPaging } = dataProductListing;
+  const handleViewChange = useCallback(
+    (nextView: PageViewMode) => {
+      setView(nextView);
+      resetPaging?.();
+    },
+    [resetPaging]
+  );
   const { permissions } = usePermissionProvider();
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
@@ -235,9 +229,6 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const personaView = usePersonaViewMode(VIEW_MODE_PAGE.DataProducts);
-  const [selectedView, setView] = useState<PageViewMode>();
-  const view = selectedView ?? personaView;
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const extraColumns = useMemo(
@@ -277,7 +268,7 @@ const DataProductListPage = ({
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
-          return renderDataProductDomainCell(entity);
+          return renderDomainsCell(entity);
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':
@@ -361,7 +352,7 @@ const DataProductListPage = ({
                 : undefined
             }
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<DataProductIcon className="tw:text-fg-brand-primary" />}
             title={t('label.no-data-products-yet')}
           />
         </div>
@@ -474,7 +465,7 @@ const DataProductListPage = ({
             )}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            <ViewToggle value={view} onChange={setView} />
+            <ViewToggle value={view} onChange={handleViewChange} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

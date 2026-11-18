@@ -212,3 +212,45 @@ class RunnerTest(TestCase):
             self.raw_runner.select_first_from_table(Column(User.name.name))
 
         self.raw_runner.profile_sample_query = None
+
+
+@pytest.mark.parametrize("raw_kind", ["table", "orm"])
+def test_table_reference_uses_raw_physical_table(raw_kind):
+    from sqlalchemy import MetaData, Table
+    from sqlalchemy.orm import Session
+
+    physical = Table("Order.Items", MetaData(), Column("id", Integer, primary_key=True))
+    raw = physical if raw_kind == "table" else type("Physical", (Base,), {"__table__": physical})
+    with Session(create_engine("sqlite://")) as session:
+        runner = QueryRunner(session, User, raw, profile_sample_query="SELECT * FROM decoy")
+        assert runner.get_table_reference() == '"Order.Items"'
+
+
+@pytest.mark.parametrize("raw", [None, "orders", object()])
+def test_table_reference_rejects_missing_physical_table_before_connection(raw):
+    session = Mock()
+    runner = QueryRunner(session, User, raw)
+    with pytest.raises(ValueError, match="physical SQLAlchemy Table"):
+        runner.get_table_reference()
+    session.connection.assert_not_called()
+
+
+@pytest.mark.parametrize("source_schema,target_schema", [("logical", "main"), (None, "main"), ("logical", None)])
+def test_table_reference_uses_connection_schema_translation(source_schema, target_schema):
+    from sqlalchemy import MetaData, Table
+    from sqlalchemy.orm import Session
+
+    engine = create_engine("sqlite://")
+    physical = Table("orders", MetaData(), Column("id", Integer), schema=source_schema)
+    with (
+        engine.connect().execution_options(schema_translate_map={source_schema: target_schema}) as connection,
+        Session(connection) as session,
+    ):
+        runner = QueryRunner(session, User, physical)
+        physical.metadata.create_all(connection)
+        session.execute(physical.insert(), [{"id": 1}])
+        assert runner.get_table_reference() == "main.orders"
+        from sqlalchemy import select, text
+
+        assert session.execute(select(physical.c.id)).scalar() == 1
+        assert session.execute(text(f"SELECT id FROM {runner.get_table_reference()}")).scalar() == 1
