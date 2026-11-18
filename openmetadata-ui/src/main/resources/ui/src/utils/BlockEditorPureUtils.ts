@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { findLastIndex, isEmpty } from 'lodash';
 import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
@@ -210,6 +210,8 @@ const MENTION_OR_HASHTAG_SELECTOR =
 const PREVIEW_BLOCK_SELECTOR =
   'p, li, h1, h2, h3, h4, h5, h6, pre, blockquote, tr';
 
+const BLOCK_ELEMENT_SELECTOR = `${PREVIEW_BLOCK_SELECTOR}, ul, ol, table, thead, tbody, tfoot, th, td, div, hr`;
+
 const MAX_PREVIEW_BLOCKS = 3;
 
 export const formatClientContent = (content: string) => {
@@ -269,25 +271,94 @@ const cutTextNode = (node: Text, remaining: number): Node => {
   return node;
 };
 
-const findPreviewCut = (body: HTMLElement, limit: number) => {
+const isBlockElement = (node: Node | null) =>
+  node?.nodeType === Node.ELEMENT_NODE &&
+  (node as Element).matches(BLOCK_ELEMENT_SELECTOR);
+
+const isPreviewNode = (node: Node) => {
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    return node.nodeName === 'BR';
+  }
+
+  if (node.textContent?.trim()) {
+    return true;
+  }
+
+  return (
+    Boolean(node.parentElement?.closest(PREVIEW_BLOCK_SELECTOR)) &&
+    !isBlockElement(node.previousSibling) &&
+    !isBlockElement(node.nextSibling)
+  );
+};
+
+const splitPreformattedLines = (body: HTMLElement) => {
+  body.querySelectorAll('pre').forEach((pre) => {
+    const walker = body.ownerDocument.createTreeWalker(
+      pre,
+      NodeFilter.SHOW_TEXT
+    );
+
+    for (
+      let node = walker.nextNode() as Text | null;
+      node;
+      node = walker.nextNode() as Text | null
+    ) {
+      const lineEnd = node.data.indexOf('\n');
+
+      if (lineEnd !== -1 && lineEnd < node.data.length - 1) {
+        node.splitText(lineEnd + 1);
+      }
+    }
+  });
+};
+
+const startsNewLine = (text: Text, previous: Text | null) =>
+  Boolean(previous?.data.endsWith('\n') && text.parentElement?.closest('pre'));
+
+const getPreviewNodes = (body: HTMLElement) => {
+  splitPreformattedLines(body);
+
   const walker = body.ownerDocument.createTreeWalker(
     body,
-    NodeFilter.SHOW_TEXT,
+    NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT,
     (node) =>
-      node.textContent?.trim() ||
-      node.parentElement?.closest(PREVIEW_BLOCK_SELECTOR)
-        ? NodeFilter.FILTER_ACCEPT
-        : NodeFilter.FILTER_SKIP
+      isPreviewNode(node) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_SKIP
+  );
+  const nodes: Node[] = [];
+
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    nodes.push(node);
+  }
+
+  return nodes;
+};
+
+const getPreviewBlock = (text: Text) =>
+  text.parentElement?.closest(PREVIEW_BLOCK_SELECTOR) ?? null;
+
+const findPreviewCut = (body: HTMLElement, limit: number) => {
+  const nodes = getPreviewNodes(body);
+  const lastTextIndex = findLastIndex(nodes, (node) =>
+    Boolean(node.nodeType === Node.TEXT_NODE && node.textContent?.trim())
   );
   let remaining = limit;
   let blockCount = 0;
-  let currentBlock: Element | null = null;
+  let currentBlock: Element | null | undefined;
   let previous: Text | null = null;
-  let node = walker.nextNode() as Text | null;
 
-  while (node) {
-    const next = walker.nextNode() as Text | null;
-    const block = node.parentElement?.closest(PREVIEW_BLOCK_SELECTOR) ?? null;
+  for (const [index, node] of nodes.slice(0, lastTextIndex + 1).entries()) {
+    if (node.nodeType !== Node.TEXT_NODE) {
+      currentBlock = undefined;
+
+      continue;
+    }
+
+    const text = node as Text;
+    const block = getPreviewBlock(text);
+
+    if (startsNewLine(text, previous)) {
+      currentBlock = undefined;
+    }
 
     if (block !== currentBlock) {
       currentBlock = block;
@@ -299,15 +370,14 @@ const findPreviewCut = (body: HTMLElement, limit: number) => {
     }
 
     if (
-      node.data.length > remaining ||
-      (node.data.length === remaining && next)
+      text.data.length > remaining ||
+      (text.data.length === remaining && index < lastTextIndex)
     ) {
-      return { node, remaining };
+      return { node: text, remaining };
     }
 
-    remaining -= node.data.length;
-    previous = node;
-    node = next;
+    remaining -= text.data.length;
+    previous = text;
   }
 
   return undefined;

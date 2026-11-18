@@ -664,6 +664,44 @@ describe('getTrimmedHtmlContent', () => {
     expect(trimmed?.length).toBeLessThanOrEqual(353);
   });
 
+  it('should count a quoted section with two paragraphs as two blocks', () => {
+    const html =
+      '<blockquote>\n<p>First</p>\n<p>Second</p>\n</blockquote>\n<p>Third</p>';
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+  });
+
+  it('should count line breaks inside a paragraph as separate lines', () => {
+    const html = formatClientContent('one\ntwo\nthree\nfour\nfive');
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(
+      '<p>one<br>\ntwo<br>\nthree...</p>'
+    );
+  });
+
+  it('should count each table row as one block', () => {
+    const html = formatClientContent(
+      '| a | b |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |'
+    );
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+  });
+
+  it('should return the content unchanged when only a trailing line break follows the limit', () => {
+    const html = '<p>Hello<br></p>';
+
+    expect(getTrimmedHtmlContent(html, 5)).toBe(html);
+  });
+
+  it('should count each line of a code block as one line', () => {
+    const html =
+      '<pre><code>line one\nline two\nline three\nline four\n</code></pre>';
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(
+      '<pre><code>line one\nline two\nline three...</code></pre>'
+    );
+  });
+
   it('should drop every block after the cut', () => {
     const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
 
