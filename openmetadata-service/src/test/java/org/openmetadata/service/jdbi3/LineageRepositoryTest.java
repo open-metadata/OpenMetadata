@@ -172,9 +172,9 @@ class LineageRepositoryTest {
 
   @Test
   void aCompletedLineageDeletionCannotRemoveAReplacementEdge() throws Exception {
-    SearchClient client = searchRepository.getSearchClient();
-    AtomicBoolean indexed = new AtomicBoolean(true);
-    List<Runnable> backgroundTasks = new ArrayList<>();
+    final SearchClient client = searchRepository.getSearchClient();
+    final AtomicBoolean indexed = new AtomicBoolean(true);
+    final List<Runnable> backgroundTasks = new ArrayList<>();
     doAnswer(
             call -> {
               backgroundTasks.add(() -> indexed.set(false));
@@ -190,7 +190,7 @@ class LineageRepositoryTest {
         .when(client)
         .updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
     when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
-    Method delete =
+    final Method delete =
         LineageRepository.class.getDeclaredMethod(
             "deleteLineageFromSearch",
             EntityReference.class,

@@ -1,11 +1,13 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -15,6 +17,7 @@ import static org.mockito.Mockito.when;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -214,7 +217,7 @@ class LineageUtilTest {
   }
 
   @Test
-  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved() {
+  void removeDataProductsLineageDeletesRelationshipAndSearchEntryWhenLastEdgeIsRemoved() throws Exception {
     UUID entityId = UUID.randomUUID();
     EntityReference dataProduct = entityRef(Entity.DATA_PRODUCT, UUID.randomUUID(), "dp.updated");
     EntityReference downstreamProduct =
@@ -239,6 +242,11 @@ class LineageUtilTest {
                 .build());
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
 
+    when(searchRepository.getIndexOrAliasName(SearchClient.GLOBAL_SEARCH_ALIAS)).thenReturn("all");
+    final AtomicBoolean indexed = new AtomicBoolean(true);
+    doAnswer(call -> { indexed.set(false); return null; })
+        .when(searchClient).updateChildren(any(List.class), any(String.class), any(List.class), any(Pair.class));
+
     try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
       mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
       mockedEntity.when(Entity::getSearchRepository).thenReturn(searchRepository);
@@ -251,6 +259,8 @@ class LineageUtilTest {
 
       LineageUtil.removeDataProductsLineage(entityId, Entity.TABLE, List.of(dataProduct));
 
+      assertFalse(indexed.get(), "Derived lineage removal must finish before returning");
+
       verify(relationshipDAO)
           .delete(
               eq(dataProduct.getId()),
@@ -259,16 +269,12 @@ class LineageUtilTest {
               eq(Entity.DATA_PRODUCT),
               eq(Relationship.UPSTREAM.ordinal()));
 
-      ArgumentCaptor<Pair<String, String>> fieldCaptor = ArgumentCaptor.forClass(Pair.class);
       ArgumentCaptor<Pair<String, Map<String, Object>>> updateCaptor =
           ArgumentCaptor.forClass(Pair.class);
       verify(searchClient)
           .updateChildren(
-              eq(SearchClient.GLOBAL_SEARCH_ALIAS), fieldCaptor.capture(), updateCaptor.capture());
-      assertEquals("upstreamLineage.docUniqueId", fieldCaptor.getValue().getLeft());
-      assertEquals(
-          dataProduct.getId() + "--->" + downstreamProduct.getId(),
-          fieldCaptor.getValue().getRight());
+              eq(List.of("all")), eq("upstreamLineage.docUniqueId"),
+              eq(List.of(dataProduct.getId() + "--->" + downstreamProduct.getId())), updateCaptor.capture());
       assertEquals(SearchClient.REMOVE_LINEAGE_SCRIPT, updateCaptor.getValue().getLeft());
       assertEquals(
           dataProduct.getId() + "--->" + downstreamProduct.getId(),

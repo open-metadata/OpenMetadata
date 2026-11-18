@@ -18,7 +18,7 @@ import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.search.SearchUtils;
 
 @ExtendWith(TestNamespaceExtension.class)
@@ -26,13 +26,13 @@ import org.openmetadata.service.search.SearchUtils;
 public class LineageIndexWriteOrderIT {
 
   @Test
-  void deletionIsIndexedBeforeItsResponseAndAReplacementIsRetained(TestNamespace ns)
+  void deletionIsIndexedBeforeItsResponseAndAReplacementIsRetained(final TestNamespace ns)
       throws Exception {
-    var schema = DatabaseSchemaTestFactory.createSimple(ns);
-    Table from = TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "from");
-    Table to = TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "to");
-    var client = SdkClients.adminClient();
-    var edge =
+    final var schema = DatabaseSchemaTestFactory.createSimple(ns);
+    final Table from = TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "from");
+    final Table to = TableTestFactory.createWithName(ns, schema.getFullyQualifiedName(), "to");
+    final var client = SdkClients.adminClient();
+    final var edge =
         new AddLineage()
             .withEdge(
                 new EntitiesEdge()
@@ -52,13 +52,11 @@ public class LineageIndexWriteOrderIT {
     assertEquals(from.getId(), indexedEdges(to).getFirst().getFromEntity().getId());
   }
 
-  private static List<EsLineageData> indexedEdges(Table table) throws Exception {
-    try (var response =
-        Entity.getSearchRepository()
-            .getSearchClient()
-            .getDocByID("table", table.getId().toString())) {
-      assertEquals(200, response.getStatus());
-      return SearchUtils.getUpstreamLineageListIfExist(JsonUtils.getMap(response.getEntity()));
-    }
+  private static List<EsLineageData> indexedEdges(final Table table) throws Exception {
+    final String document =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/v1/search/get/table/doc/" + table.getId(), null);
+    return SearchUtils.getUpstreamLineageListIfExist(JsonUtils.getMapFromJson(document));
   }
 }
