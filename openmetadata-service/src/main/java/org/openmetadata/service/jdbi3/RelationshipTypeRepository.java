@@ -13,8 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-
 import jakarta.ws.rs.BadRequestException;
 import java.util.Collection;
 import java.util.List;
@@ -22,28 +20,21 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
-import org.openmetadata.service.ontology.RelationshipTypeReferences;
-import org.openmetadata.service.ontology.RelationshipTypeReferences.PartnerUse;
-import org.openmetadata.service.ontology.RelationshipTypeReferences.Reference;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.RelationshipTypeValidator;
 import org.openmetadata.service.resources.ontology.RelationshipTypeResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.PostCommitActionQueue;
 
 @Repository
 public class RelationshipTypeRepository extends EntityRepository<RelationshipType> {
@@ -53,6 +44,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   private final RelationshipTypeResolver resolver;
   private final RelationshipTypeGraphValidator graphValidator;
   private final OntologyChangeEventPublisher eventPublisher;
+  private final RelationshipTypeReferenceGuard referenceGuard;
 
   public RelationshipTypeRepository() {
     super(
@@ -70,6 +62,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
                     .relationshipTypeDAO()
                     .findEntityById(id, Include.NON_DELETED));
     eventPublisher = new OntologyChangeEventPublisher();
+    referenceGuard = new RelationshipTypeReferenceGuard(this);
   }
 
   @Override
@@ -86,7 +79,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     entity.setFullyQualifiedName(entity.getName());
     applyDefaults(entity);
     hydrateReferences(entity);
-    rejectDeletedReferences(entity);
+    referenceGuard.rejectDeletedReferences(entity);
     RelationshipTypeValidator.validate(entity);
     validateUniquePredicate(entity);
     graphValidator.validate(entity);
@@ -171,33 +164,6 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     return reference;
   }
 
-  /** A reference to a soft-deleted type would leave every read through it failing. */
-  private void rejectDeletedReferences(final RelationshipType entity) {
-    for (final Reference reference : RelationshipTypeReferences.heldBy(entity)) {
-      final RelationshipType target = findReferenced(reference.target());
-      if (target != null && Boolean.TRUE.equals(target.getDeleted())) {
-        throw new BadRequestException(
-            "Relationship type '"
-                + target.getName()
-                + "' named in "
-                + reference.field().jsonName()
-                + " is deleted; restore it first");
-      }
-    }
-  }
-
-  private RelationshipType findReferenced(final EntityReference reference) {
-    final List<RelationshipType> byId =
-        reference.getId() == null
-            ? List.of()
-            : daoCollection
-                .relationshipTypeDAO()
-                .findEntitiesByIds(List.of(reference.getId()), Include.ALL);
-    return !byId.isEmpty() || reference.getFullyQualifiedName() == null
-        ? byId.stream().findFirst().orElse(null)
-        : findByNameOrNull(reference.getFullyQualifiedName(), Include.ALL);
-  }
-
   @Override
   public void storeEntity(final RelationshipType entity, final boolean update) {
     store(entity, update);
@@ -247,202 +213,33 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
       throw new BadRequestException(
           "System relationship type '" + entity.getName() + "' cannot be deleted");
     }
-    requireRemovable(entity, listIncludingDeleted(), Set.of())
-        .forEach(partner -> changeInverse(partner, null, deletedBy));
+    referenceGuard.beforeDelete(entity, deletedBy);
   }
 
-  /**
-   * Rejects the delete while anything but an inverse back-link references {@code entity}, or a
-   * relation is stored as it or as a partner whose back-link the delete would clear, and returns
-   * those live partners. ADR:2026-11-18-a-relationship-type-in-use-cannot-be-deleted
-   */
-  private List<RelationshipType> requireRemovable(
-      final RelationshipType entity,
-      final List<RelationshipType> types,
-      final Set<UUID> removedTogether) {
-    final List<Reference> references =
-        RelationshipTypeReferences.referencesTo(entity, types).stream()
-            .filter(reference -> !removedTogether.contains(reference.owner().getId()))
-            .toList();
-    final List<Reference> blocking =
-        references.stream().filter(reference -> !reference.isInverseBackLink()).toList();
-    final List<RelationshipType> partners = livePartners(references);
-    final List<PartnerUse> partnerUses = partnerUses(partners);
-    final int relationCount = relationsStoredAs(entity);
-    if (!blocking.isEmpty() || relationCount > 0 || !partnerUses.isEmpty()) {
-      throw new BadRequestException(
-          RelationshipTypeReferences.inUseMessage(entity, blocking, relationCount, partnerUses));
-    }
-    return partners;
-  }
-
-  /**
-   * A soft-deleted partner keeps its back-link; restoring it unlinks the inverse when the deleted
-   * type is gone.
-   */
-  private static List<RelationshipType> livePartners(final List<Reference> references) {
-    return references.stream()
-        .filter(Reference::isInverseBackLink)
-        .map(Reference::owner)
-        .filter(RelationshipTypeRepository::isLive)
-        .toList();
-  }
-
-  private List<PartnerUse> partnerUses(final List<RelationshipType> partners) {
-    return partners.stream()
-        .map(partner -> new PartnerUse(partner.getName(), relationsStoredAs(partner)))
-        .filter(use -> use.relationCount() > 0)
-        .toList();
-  }
-
-  private int relationsStoredAs(final RelationshipType type) {
-    return daoCollection
-        .relationshipDAO()
-        .countRelationsOfType(
-            Entity.GLOSSARY_TERM, Relationship.RELATED_TO.ordinal(), type.getId(), type.getName());
-  }
-
-  private static boolean isLive(final RelationshipType type) {
-    return type != null && !Boolean.TRUE.equals(type.getDeleted());
-  }
-
-  /**
-   * Stores {@code type} with a new inverse as a versioned change that fails with 412 if the type
-   * changed since it was read, and records it as a change event once the write commits.
-   */
-  private RelationshipType changeInverse(
-      final RelationshipType type, final EntityReference inverse, final String updatedBy) {
-    final RelationshipType updated =
-        JsonUtils.deepCopy(type, RelationshipType.class).withInverse(inverse);
-    updated.setUpdatedBy(updatedBy);
-    updated.setUpdatedAt(System.currentTimeMillis());
-    final EntityUpdater updater = getUpdater(type, updated, Operation.PUT, null, true);
-    updater.updateWithOptimisticLocking();
-    updated.setChangeDescription(updater.getIncrementalChangeDescription());
-    final EventType changeType = updater.getChangeType();
-    PostCommitActionQueue.runOrDefer(
-        () -> storeChangeEventForAsyncOperation(updated, changeType, false, updatedBy));
-    return updated;
-  }
-
-  /**
-   * A restored type keeps its inverse only as one half of a pair, since a one-way link reads a
-   * relation authored as this type from the higher term id back as its partner. A live partner with
-   * no inverse and no stored relation is linked back; otherwise the restored type's inverse is
-   * cleared, which changes no relation because a deleted type holds none.
-   */
   @Override
   protected void postRestore(final RelationshipType entity) {
     super.postRestore(entity);
-    final EntityReference inverse = entity.getInverse();
-    if (inverse != null && !RelationshipTypeReferences.refersTo(inverse, entity)) {
-      final RelationshipType partner = findReferenced(inverse);
-      if (isRelinkable(partner)) {
-        changeInverse(partner, entity.getEntityReference(), entity.getUpdatedBy());
-      } else if (!isPairedWith(partner, entity)) {
-        final RelationshipType unlinked = changeInverse(entity, null, entity.getUpdatedBy());
-        entity
-            .withInverse(null)
-            .withVersion(unlinked.getVersion())
-            .withChangeDescription(unlinked.getChangeDescription());
-      }
-    }
+    referenceGuard.afterRestore(entity);
   }
 
-  private boolean isRelinkable(final RelationshipType partner) {
-    return isLive(partner) && partner.getInverse() == null && relationsStoredAs(partner) == 0;
-  }
-
-  private static boolean isPairedWith(final RelationshipType partner, final RelationshipType type) {
-    return isLive(partner)
-        && partner.getInverse() != null
-        && RelationshipTypeReferences.refersTo(partner.getInverse(), type);
+  /** The inverse {@code type} keeps when it is restored. */
+  public EntityReference inverseKeptOnRestore(final RelationshipType type) {
+    return referenceGuard.inverseKeptOnRestore(type);
   }
 
   /**
    * The deprecated settings endpoint removes several types in one write, an inverse pair among
    * them, so references between the removed types do not block it, and a kept type's back-link to
-   * a removed one is cleared as the type API's delete clears it. It runs before the write is
-   * saved, so the definitions the same write saves replace the stored ones.
+   * a removed one is cleared as the type API's delete clears it. It runs before the write is saved,
+   * so the definitions the same write saves replace the stored ones.
    */
   public void requireRemovableTogether(
       final Collection<String> names, final List<RelationshipType> writtenTogether) {
-    final List<RelationshipType> types = overlay(listIncludingDeleted(), writtenTogether);
-    final List<RelationshipType> removed = removableNamed(types, names);
-    final Set<UUID> removedIds = ids(removed);
-    removed.forEach(type -> requireRemovable(type, types, removedIds));
+    referenceGuard.requireRemovableTogether(names, writtenTogether);
   }
 
   public void deleteTogether(final String deletedBy, final Collection<String> names) {
-    requireRemovableTogether(names, List.of());
-    final List<RelationshipType> removed = removableNamed(listIncludingDeleted(), names);
-    final Set<UUID> removedIds = ids(removed);
-    removed.forEach(type -> detachReferencesTo(type, removedIds));
-    removed.forEach(type -> delete(deletedBy, type.getId(), false, true));
-  }
-
-  private static List<RelationshipType> overlay(
-      final List<RelationshipType> stored, final List<RelationshipType> written) {
-    final Set<String> writtenNames =
-        written.stream().map(RelationshipType::getName).collect(Collectors.toUnmodifiableSet());
-    return Stream.concat(
-            stored.stream().filter(type -> !writtenNames.contains(type.getName())),
-            written.stream())
-        .toList();
-  }
-
-  private static List<RelationshipType> removableNamed(
-      final List<RelationshipType> types, final Collection<String> names) {
-    return types.stream()
-        .filter(type -> names.contains(type.getName()))
-        .filter(type -> !Boolean.TRUE.equals(type.getSystemDefined()))
-        .toList();
-  }
-
-  private static Set<UUID> ids(final List<RelationshipType> types) {
-    return types.stream().map(RelationshipType::getId).collect(Collectors.toUnmodifiableSet());
-  }
-
-  /** Drops references to other types being removed in the same write, so each delete passes. */
-  private void detachReferencesTo(final RelationshipType type, final Set<UUID> removedIds) {
-    final boolean isDetached =
-        RelationshipTypeReferences.heldBy(type).stream()
-            .noneMatch(reference -> isRemoved(reference.target(), removedIds));
-    if (!isDetached) {
-      type.setInverse(keepUnless(type.getInverse(), removedIds));
-      type.setReplacedBy(keepUnless(type.getReplacedBy(), removedIds));
-      type.setPropertyChain(
-          listOrEmpty(type.getPropertyChain()).stream()
-                  .anyMatch(reference -> isRemoved(reference, removedIds))
-              ? List.of()
-              : type.getPropertyChain());
-      type.setDisjointWith(
-          setOrEmpty(type.getDisjointWith()).stream()
-              .filter(reference -> !isRemoved(reference, removedIds))
-              .collect(Collectors.toUnmodifiableSet()));
-      daoCollection.relationshipTypeDAO().update(type);
-      invalidateCacheForEntity(entityType, type.getId(), type.getFullyQualifiedName());
-    }
-  }
-
-  private static EntityReference keepUnless(
-      final EntityReference reference, final Set<UUID> removedIds) {
-    return reference == null || isRemoved(reference, removedIds) ? null : reference;
-  }
-
-  /** A reference written by FQN before its target existed has no id and names no removed type. */
-  private static boolean isRemoved(final EntityReference reference, final Set<UUID> removedIds) {
-    return reference.getId() != null && removedIds.contains(reference.getId());
-  }
-
-  private static Set<EntityReference> setOrEmpty(final Set<EntityReference> references) {
-    return references == null ? Set.of() : references;
-  }
-
-  private List<RelationshipType> listIncludingDeleted() {
-    return daoCollection.relationshipTypeDAO().listIncludingDeleted().stream()
-        .map(json -> JsonUtils.readValue(json, RelationshipType.class))
-        .toList();
+    referenceGuard.deleteTogether(deletedBy, names);
   }
 
   @Override
