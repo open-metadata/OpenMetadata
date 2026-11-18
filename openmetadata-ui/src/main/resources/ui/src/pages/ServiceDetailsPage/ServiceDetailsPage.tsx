@@ -1431,19 +1431,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
-  const isTestingDisabled = useMemo(
-    () =>
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  // Wait for the extra info, or a test started meanwhile goes out without the service's runner.
+  const isTestingDisabled = useMemo(() => {
+    const isOpenMetadataService =
+      isMetadataService && decodedServiceFQN === OPEN_METADATA;
+
+    return (
+      !isExtraInfoLoaded ||
       !servicePermission.EditAll ||
-      (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
-      isUndefined(connectionDetails),
-    [
-      servicePermission,
-      serviceCategory,
-      decodedServiceFQN,
-      connectionDetails,
-      isMetadataService,
-    ]
-  );
+      isOpenMetadataService ||
+      isUndefined(connectionDetails)
+    );
+  }, [
+    isExtraInfoLoaded,
+    servicePermission,
+    serviceCategory,
+    decodedServiceFQN,
+    connectionDetails,
+    isMetadataService,
+  ]);
 
   const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
     useMemo(() => {
@@ -1731,8 +1739,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
       workflowStatesData?.mainInstanceState.startedAt,
     ]
   );
-
-  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
 
   // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
   const extraInfoData = useMemo(() => {
