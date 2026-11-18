@@ -868,9 +868,11 @@ public class GlossaryRdfImportIT {
     assertEquals(before, getRelationshipType(inverse));
   }
 
-  @Test
-  void importSkipsInvalidInversePairWithoutSavingEitherHalf(TestNamespace ns) throws Exception {
-    Glossary glossary = GlossaryTestFactory.createWithName(ns, "invalidInversePair");
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void importSkipsInvalidInversePairWithoutSavingEitherHalf(boolean dryRun, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "invalidInversePair" + dryRun);
     String forward = relationshipTypeName(glossary.getName());
     String inverse = forward + "Inverse";
     String independent = forward + "Independent";
@@ -886,17 +888,22 @@ public class GlossaryRdfImportIT {
             + independent
             + " hcp:Term1 .\n";
 
-    JsonNode result = importRdfBody(glossary.getName(), ontology);
+    JsonNode result = importRdfBody(glossary.getName(), ontology, dryRun);
 
     assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
     assertEquals(1, result.path("relationsAdded").asInt(), result.toString());
     assertTrue(result.path("messages").toString().contains("incompatible"), result.toString());
     assertRelationshipTypeMissing(forward);
     assertRelationshipTypeMissing(inverse);
-    assertEquals(independent, getRelationshipType(independent).path("name").asText());
-    GlossaryTerm term = getTerm(glossary.getName() + ".Term0");
-    assertEquals(1, term.getRelatedTerms().size());
-    assertEquals(independent, term.getRelatedTerms().getFirst().getRelationType());
+    if (dryRun) {
+      assertRelationshipTypeMissing(independent);
+      assertEquals(404, termStatus(glossary.getName() + ".Term0"));
+    } else {
+      assertEquals(independent, getRelationshipType(independent).path("name").asText());
+      GlossaryTerm term = getTerm(glossary.getName() + ".Term0");
+      assertEquals(1, term.getRelatedTerms().size());
+      assertEquals(independent, term.getRelatedTerms().getFirst().getRelationType());
+    }
   }
 
   @Test
@@ -917,7 +924,11 @@ public class GlossaryRdfImportIT {
     assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
     assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
     assertRelationshipTypeMissing("exactMatch");
-    assertEquals(synonym, getRelationshipType("synonym"));
+    JsonNode after = getRelationshipType("synonym");
+    assertEquals(synonym.path("id"), after.path("id"));
+    assertEquals(synonym.path("rdfPredicate"), after.path("rdfPredicate"));
+    assertEquals(synonym.path("inverse").path("id"), after.path("inverse").path("id"));
+    assertEquals(synonym.path("characteristics"), after.path("characteristics"));
     assertTrue(getRelationshipType(forward).path("inverse").isMissingNode());
     for (int index = 0; index < 3; index++) {
       GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
@@ -926,6 +937,68 @@ public class GlossaryRdfImportIT {
           term.getRelatedTerms().stream()
               .allMatch(relation -> forward.equals(relation.getRelationType())));
     }
+  }
+
+  @Test
+  void importReusesTheGovernedNameOfAnAuthoredPredicate(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String alias = relationshipTypeName(glossary.getName()) + "Alias";
+    String governed = alias + "Governed";
+    String inverse = alias + "Inverse";
+    RelationshipType existing =
+        SdkClients.adminClient()
+            .relationshipTypes()
+            .create(
+                new CreateRelationshipType()
+                    .withName(governed)
+                    .withDisplayName(governed)
+                    .withDescription("Governed definition")
+                    .withRdfPredicate(
+                        URI.create(
+                            "http://example.com/ontology/" + glossary.getName() + "#" + alias))
+                    .withCategory(RelationshipTypeCategory.CUSTOM)
+                    .withPaletteKey(RelationshipPaletteKey.VIOLET));
+    relationshipTypeIds.add(existing.getId());
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(alias));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            inverseCycleOntology(glossary.getName(), alias, inverse, "declared"));
+    assertEquals(1, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    assertRelationshipTypeMissing(alias);
+    assertInversePair(governed, inverse);
+    assertCyclePerspectives(glossary, governed, inverse);
+    assertEquals("Governed definition", getRelationshipType(governed).path("description").asText());
+  }
+
+  @Test
+  void importDoesNotRejectAValidPairForAnUnwiredInvalidDeclaration(TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String alpha = relationshipTypeName(glossary.getName()) + "Alpha";
+    String beta = alpha + "Beta";
+    String gamma = alpha + "Gamma";
+    for (String name : List.of(alpha, beta, gamma))
+      relationshipTypeIds.add(RelationshipTypeIds.stableId(name));
+    String ontology =
+        inverseCycleOntology(glossary.getName(), alpha, beta, "declared")
+            + "hcp:"
+            + gamma
+            + " a owl:ObjectProperty, owl:ReflexiveProperty, owl:IrreflexiveProperty ; owl:inverseOf hcp:"
+            + beta
+            + " .\n"
+            + "hcp:Term0 hcp:"
+            + gamma
+            + " hcp:Term1 .\n";
+    JsonNode result = importRdfBody(glossary.getName(), ontology);
+    assertEquals(2, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    assertTrue(result.path("messages").toString().contains(gamma), result.toString());
+    assertRelationshipTypeMissing(gamma);
+    assertInversePair(alpha, beta);
+    assertCyclePerspectives(glossary, alpha, beta);
   }
 
   private void assertRelationshipTypeMissing(String name) throws Exception {

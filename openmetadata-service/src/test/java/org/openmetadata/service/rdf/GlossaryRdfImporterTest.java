@@ -243,6 +243,32 @@ class GlossaryRdfImporterTest {
     }
   }
 
+  @Test
+  void wireInversePartnersResolvesAGovernedPredicateInsteadOfItsLocalName() {
+    String ontology =
+        "@prefix owl: <http://www.w3.org/2002/07/owl#> . @prefix hcp: <http://example.com/ontology/hcp#> . hcp:authored a owl:ObjectProperty ; owl:inverseOf hcp:inverse . hcp:inverse a owl:ObjectProperty .";
+    Model model = ModelFactory.createDefaultModel();
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+      RelationshipType governed =
+          importer
+              .buildRelationType(model, "authored")
+              .withName("governedAuthored")
+              .withFullyQualifiedName("governedAuthored");
+      RelationshipType inverse = importer.buildRelationType(model, "inverse");
+      Map<String, RelationshipType> added = new LinkedHashMap<>();
+      added.put(inverse.getName(), inverse);
+      importer.wireInversePartners(model, added, Map.of(governed.getName(), governed));
+      assertNotNull(
+          inverse.getInverse(), "The inverse must resolve the governed predicate identity");
+      assertEquals(governed.getName(), inverse.getInverse().getName());
+      assertEquals(governed.getId(), inverse.getInverse().getId());
+    } finally {
+      model.close();
+    }
+  }
+
   private void assertInversePair(String declaration) {
     String ontology =
         """
