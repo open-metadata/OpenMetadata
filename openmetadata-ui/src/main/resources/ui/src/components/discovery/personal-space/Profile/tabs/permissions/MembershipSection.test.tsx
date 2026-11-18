@@ -71,7 +71,7 @@ describe('MembershipSection', () => {
     expect(screen.getByText('CoreTeam')).toBeInTheDocument();
     expect(screen.getByText('Analyst')).toBeInTheDocument();
     // isAdmin surfaces a synthetic Admin role chip.
-    expect(screen.getByText('label.admin')).toBeInTheDocument();
+    expect(screen.getByText('label.admin-superuser')).toBeInTheDocument();
     // Both rows carry an "Admin-managed" tag.
     expect(screen.getAllByText('label.admin-managed').length).toBe(2);
   });
@@ -86,6 +86,6 @@ describe('MembershipSection', () => {
 
     expect(screen.getByText('message.no-teams-assigned')).toBeInTheDocument();
     expect(screen.getByText('message.no-roles-assigned')).toBeInTheDocument();
-    expect(screen.queryByText('label.admin')).not.toBeInTheDocument();
+    expect(screen.queryByText('label.admin-superuser')).not.toBeInTheDocument();
   });
 });
