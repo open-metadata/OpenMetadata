@@ -73,25 +73,47 @@ final class RelationshipTypeRepairPlanner {
     this.clock = clock;
   }
 
+  /**
+   * Demands start from live types and stored relations; a type this undeletes adds its own
+   * references, until nothing new comes back. A soft-deleted type only another soft-deleted type
+   * references stays deleted: nothing reads through it.
+   */
   Plan plan(final List<StoredRelationType> storedRelationTypes) {
-    final Map<String, List<Demand>> demandsByTarget =
-        Stream.concat(referenceDemands(), relationDemands(storedRelationTypes))
-            .collect(
-                Collectors.groupingBy(
-                    RelationshipTypeRepairPlanner::targetKey,
-                    LinkedHashMap::new,
-                    Collectors.toList()));
     final List<RelationshipType> restored = new ArrayList<>();
     final List<RelationshipType> recreated = new ArrayList<>();
     final List<String> unresolved = new ArrayList<>();
-    demandsByTarget.values().forEach(demands -> resolve(demands, restored, recreated, unresolved));
-    linkPlaceholderInverses(recreated);
-    return new Plan(List.copyOf(restored), List.copyOf(recreated), List.copyOf(unresolved));
+    List<Demand> pending =
+        Stream.concat(referenceDemands(live(types)), relationDemands(storedRelationTypes)).toList();
+    while (!pending.isEmpty()) {
+      final int restoredBefore = restored.size();
+      byTarget(pending)
+          .values()
+          .forEach(demands -> resolve(demands, restored, recreated, unresolved));
+      pending =
+          referenceDemands(restored.subList(restoredBefore, restored.size()).stream()).toList();
+    }
+    linkPlaceholderInverses(recreated, restored);
+    return new Plan(
+        List.copyOf(restored), List.copyOf(recreated), unresolved.stream().distinct().toList());
   }
 
-  /** References written before their target existed carry no id; deletion never produced them. */
-  private Stream<Demand> referenceDemands() {
-    return types.stream()
+  private static Stream<RelationshipType> live(final List<RelationshipType> types) {
+    return types.stream().filter(type -> !Boolean.TRUE.equals(type.getDeleted()));
+  }
+
+  private static Map<String, List<Demand>> byTarget(final List<Demand> demands) {
+    return demands.stream()
+        .collect(
+            Collectors.groupingBy(
+                RelationshipTypeRepairPlanner::targetKey, LinkedHashMap::new, Collectors.toList()));
+  }
+
+  /**
+   * A reference without an id was written by FQN before its target existed; nothing proves the
+   * target ever existed, so it is not recreated (the ontology export omits it instead).
+   */
+  private static Stream<Demand> referenceDemands(final Stream<RelationshipType> owners) {
+    return owners
         .flatMap(type -> RelationshipTypeReferences.heldBy(type).stream())
         .filter(reference -> reference.target().getId() != null)
         .map(RelationshipTypeRepairPlanner::demand);
@@ -126,7 +148,7 @@ final class RelationshipTypeRepairPlanner {
       final List<RelationshipType> recreated,
       final List<String> unresolved) {
     final Demand first = demands.getFirst();
-    final Optional<RelationshipType> existing = find(first);
+    final Optional<RelationshipType> existing = find(first, recreated);
     if (existing.isPresent()) {
       restoreIfDeleted(existing.get(), restored);
     } else if (first.name() == null) {
@@ -136,11 +158,13 @@ final class RelationshipTypeRepairPlanner {
     }
   }
 
-  private Optional<RelationshipType> find(final Demand demand) {
+  private Optional<RelationshipType> find(
+      final Demand demand, final List<RelationshipType> recreated) {
+    final List<RelationshipType> known = Stream.concat(recreated.stream(), types.stream()).toList();
     final Optional<RelationshipType> byName =
-        types.stream().filter(type -> Objects.equals(type.getName(), demand.name())).findFirst();
+        known.stream().filter(type -> Objects.equals(type.getName(), demand.name())).findFirst();
     return byName.or(
-        () -> types.stream().filter(type -> Objects.equals(type.getId(), demand.id())).findFirst());
+        () -> known.stream().filter(type -> Objects.equals(type.getId(), demand.id())).findFirst());
   }
 
   private void restoreIfDeleted(
@@ -222,26 +246,32 @@ final class RelationshipTypeRepairPlanner {
   /**
    * Relations authored as {@code A} from the higher id are stored as {@code inverse(A)}; pointing a
    * recreated inverse back at {@code A} keeps those relations reading as authored from both ends.
+   * The back-link copies the shape of {@code A}'s own reference: relation reads follow an inverse
+   * only through its name, so a nameless one, as REST writes it, must stay nameless.
    */
-  private void linkPlaceholderInverses(final List<RelationshipType> recreated) {
+  private void linkPlaceholderInverses(
+      final List<RelationshipType> recreated, final List<RelationshipType> restored) {
+    final List<RelationshipType> partners =
+        Stream.concat(live(types), restored.stream())
+            .filter(type -> type.getInverse() != null)
+            .sorted(Comparator.comparing(RelationshipType::getName))
+            .toList();
     for (final RelationshipType placeholder : recreated) {
-      types.stream()
-          .filter(type -> type.getInverse() != null)
+      partners.stream()
           .filter(type -> RelationshipTypeReferences.names(type.getInverse(), placeholder))
-          .sorted(
-              Comparator.comparing(
-                      (RelationshipType type) -> Boolean.TRUE.equals(type.getDeleted()))
-                  .thenComparing(RelationshipType::getName))
           .findFirst()
-          .ifPresent(partner -> placeholder.setInverse(reference(partner)));
+          .ifPresent(
+              partner ->
+                  placeholder.setInverse(
+                      reference(partner, partner.getInverse().getName() != null)));
     }
   }
 
-  private static EntityReference reference(final RelationshipType type) {
+  private static EntityReference reference(final RelationshipType type, final boolean isNamed) {
     return new EntityReference()
         .withId(type.getId())
         .withType(Entity.RELATIONSHIP_TYPE)
-        .withName(type.getName())
+        .withName(isNamed ? type.getName() : null)
         .withFullyQualifiedName(type.getFullyQualifiedName());
   }
 

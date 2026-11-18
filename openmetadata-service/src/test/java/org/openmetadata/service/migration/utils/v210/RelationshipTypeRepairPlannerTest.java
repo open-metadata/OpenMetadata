@@ -191,6 +191,75 @@ class RelationshipTypeRepairPlannerTest {
     assertTrue(plan.unresolved().isEmpty());
   }
 
+  @Test
+  void aSoftDeletedPairNothingLiveUsesStaysDeleted() {
+    final RelationshipType first = type("precedes").withDeleted(true);
+    final RelationshipType second = type("follows").withDeleted(true);
+    first.setInverse(reference(second));
+    second.setInverse(reference(first));
+
+    assertTrue(plan(List.of(first, second), List.of()).isEmpty());
+  }
+
+  @Test
+  void anUndeletedTypeBringsBackTheDeletedTypesItReferences() {
+    final RelationshipType deepest = type("ancestorOf").withDeleted(true);
+    final RelationshipType middle =
+        type("parentOf").withDeleted(true).withReplacedBy(reference(deepest));
+    final RelationshipType owner = type("childOf").withInverse(reference(middle));
+
+    final Plan plan = plan(List.of(owner, middle, deepest), List.of());
+
+    assertEquals(
+        List.of("parentOf", "ancestorOf"),
+        plan.restored().stream().map(RelationshipType::getName).toList());
+  }
+
+  @Test
+  void aBackLinkKeepsThePartnersNamelessReferenceShape() {
+    final UUID missingId = UUID.randomUUID();
+    final RelationshipType owner =
+        type("hasPart")
+            .withInverse(
+                new EntityReference()
+                    .withId(missingId)
+                    .withType(Entity.RELATIONSHIP_TYPE)
+                    .withFullyQualifiedName("partOf"));
+
+    final Plan plan = plan(List.of(owner), List.of());
+
+    final EntityReference backLink = plan.recreated().getFirst().getInverse();
+    assertEquals(owner.getId(), backLink.getId());
+    assertEquals("hasPart", backLink.getFullyQualifiedName());
+    assertNull(backLink.getName(), "a nameless partner reference never inverted relations");
+  }
+
+  @Test
+  void aTypeRecreatedForOneDemandIsNotRecreatedAgainForAnother() {
+    final UUID missingId = UUID.randomUUID();
+    final RelationshipType deleted =
+        type("cites")
+            .withDeleted(true)
+            .withInverse(
+                new EntityReference()
+                    .withId(missingId)
+                    .withType(Entity.RELATIONSHIP_TYPE)
+                    .withName("citedBy")
+                    .withFullyQualifiedName("citedBy"));
+
+    final Plan plan =
+        plan(
+            List.of(deleted),
+            List.of(
+                new StoredRelationType(deleted.getId(), "cites"),
+                new StoredRelationType(missingId, "citedBy")));
+
+    assertEquals(
+        List.of("cites"), plan.restored().stream().map(RelationshipType::getName).toList());
+    assertEquals(
+        List.of("citedBy"), plan.recreated().stream().map(RelationshipType::getName).toList());
+  }
+
   private static Plan plan(
       final List<RelationshipType> types, final List<StoredRelationType> stored) {
     return new RelationshipTypeRepairPlanner(types, CLOCK).plan(stored);

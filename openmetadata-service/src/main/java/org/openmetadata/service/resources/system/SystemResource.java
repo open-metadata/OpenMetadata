@@ -2016,6 +2016,10 @@ public class SystemResource {
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+    // The setting is saved before its types are deleted, so a delete the guard would refuse has to
+    // be refused here, while nothing is written yet.
+    ((RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE))
+        .requireRemovableTogether(removedRelationTypes);
   }
 
   private static int relationTypeUsage(

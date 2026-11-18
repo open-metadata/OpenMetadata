@@ -91,11 +91,7 @@ public class Migration extends MigrationProcessImpl {
     migrateRelationshipTypes(handle, MYSQL);
     // Relationship types deleted while still in use left their relations unreadable; the delete is
     // guarded now, and this undeletes or recreates the types those relations still name.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        RelationshipTypeReferenceRepair.STEP_NAME,
-        () -> RelationshipTypeReferenceRepair.repair(handle, MYSQL));
+    RelationshipTypeReferenceRepair.repair(handle, MYSQL, collectionDAO);
     copyConceptBindingsToRows(handle, MYSQL);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the

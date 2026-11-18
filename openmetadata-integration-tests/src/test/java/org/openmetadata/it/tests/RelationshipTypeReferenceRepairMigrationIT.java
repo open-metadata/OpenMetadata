@@ -23,8 +23,11 @@ import static org.openmetadata.it.util.RelationshipTypeTestSupport.createType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.deleteType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.getType;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.getTypeByName;
+import static org.openmetadata.it.util.RelationshipTypeTestSupport.importInversePair;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.relate;
 import static org.openmetadata.it.util.RelationshipTypeTestSupport.relationReads;
+import static org.openmetadata.it.util.RelationshipTypeTestSupport.relationTypeName;
+import static org.openmetadata.it.util.RelationshipTypeTestSupport.relationTypesTowards;
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
@@ -54,7 +58,8 @@ import org.openmetadata.service.migration.utils.v210.RelationshipTypeReferenceRe
  * types still used it, and their reads failed with 400. The 2.1.0 migration undeletes or recreates
  * those types.
  */
-// Sequential: the repair sweeps every relationship type in the database.
+// Isolated: the repair sweeps every relationship type and clears the shared entity caches.
+@Isolated
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 class RelationshipTypeReferenceRepairMigrationIT {
@@ -66,11 +71,11 @@ class RelationshipTypeReferenceRepairMigrationIT {
 
   @Test
   void aSoftDeletedTypeStillInUseIsUndeleted(TestNamespace ns) {
-    Glossary glossary = GlossaryTestFactory.createSimple(ns);
-    RelationshipType cites = createType(ns.shortPrefix("cites"), null);
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, ns.uniqueShortId());
+    RelationshipType cites = createType(relationTypeName(ns, "cites"), null);
     UUID paper = createTerm(glossary, ns.shortPrefix("paper"));
     UUID source = createTerm(glossary, ns.shortPrefix("source"));
-    assertEquals(201, relate(paper, source, cites.getName()).status());
+    assertEquals(200, relate(paper, source, cites.getName()).status());
     softDeleteAsMainDid(cites);
     assertSomeFail(relationReads(glossary, paper, source));
 
@@ -85,14 +90,14 @@ class RelationshipTypeReferenceRepairMigrationIT {
 
   @Test
   void aHardDeletedInverseIsRecreatedAsADeprecatedPlaceholder(TestNamespace ns) {
-    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, ns.uniqueShortId());
     List<RelationshipType> pair =
-        createInversePair(ns.shortPrefix("hasPart"), ns.shortPrefix("partOf"));
+        createInversePair(relationTypeName(ns, "hasPart"), relationTypeName(ns, "partOf"));
     RelationshipType owner = pair.getFirst();
     RelationshipType inverse = pair.getLast();
     UUID whole = createTerm(glossary, ns.shortPrefix("whole"));
     UUID part = createTerm(glossary, ns.shortPrefix("part"));
-    assertEquals(201, relate(whole, part, owner.getName()).status());
+    assertEquals(200, relate(whole, part, owner.getName()).status());
     hardDeleteAsMainDid(inverse);
     assertSomeFail(relationReads(glossary, whole, part));
 
@@ -109,9 +114,31 @@ class RelationshipTypeReferenceRepairMigrationIT {
   }
 
   @Test
+  void aHardDeletedImportedInverseIsRecreatedAndRelationsReadAsBefore(TestNamespace ns) {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, ns.uniqueShortId());
+    String first = relationTypeName(ns, "contains");
+    String second = relationTypeName(ns, "containedIn");
+    List<UUID> terms = importInversePair(glossary, first, second);
+    RelationshipType inverse = asType(getTypeByName(second));
+    List<String> fromWhole = relationTypesTowards(terms.getFirst(), terms.getLast());
+    List<String> fromPart = relationTypesTowards(terms.getLast(), terms.getFirst());
+    hardDeleteAsMainDid(inverse);
+    assertSomeFail(relationReads(glossary, terms.getFirst(), terms.getLast()));
+
+    repair();
+
+    RelationshipType placeholder = asType(getTypeByName(second));
+    assertEquals(inverse.getId(), placeholder.getId());
+    assertEquals(first, placeholder.getInverse().getName());
+    assertAllSucceed(relationReads(glossary, terms.getFirst(), terms.getLast()));
+    assertEquals(fromWhole, relationTypesTowards(terms.getFirst(), terms.getLast()));
+    assertEquals(fromPart, relationTypesTowards(terms.getLast(), terms.getFirst()));
+  }
+
+  @Test
   void aSecondRunChangesNothing(TestNamespace ns) {
-    RelationshipType cites = createType(ns.shortPrefix("cited"), null);
-    RelationshipType owner = createType(ns.shortPrefix("citedBy"), cites.getName());
+    RelationshipType cites = createType(relationTypeName(ns, "cited"), null);
+    RelationshipType owner = createType(relationTypeName(ns, "citedBy"), cites.getName());
     softDeleteAsMainDid(cites);
     repair();
     RelationshipType afterFirst = asType(getType(cites.getId()));
@@ -154,7 +181,9 @@ class RelationshipTypeReferenceRepairMigrationIT {
             ? ConnectionType.MYSQL
             : ConnectionType.POSTGRES;
     TestSuiteBootstrap.getJdbi()
-        .useHandle(handle -> RelationshipTypeReferenceRepair.repair(handle, engine));
+        .useHandle(
+            handle ->
+                RelationshipTypeReferenceRepair.repair(handle, engine, Entity.getCollectionDAO()));
     EntityRepository.CACHE_WITH_ID.invalidateAll();
     EntityRepository.CACHE_WITH_NAME.invalidateAll();
   }

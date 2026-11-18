@@ -201,7 +201,7 @@ class IngestionPipelineMigrationEntryPointTest {
       contextFileFqnRepair.verify(() -> ContextFileFqnRepair.repairAll(handle, connectionType));
       // Clusters built from main before the delete guard may hold types deleted while in use.
       relationshipTypeRepair.verify(
-          () -> RelationshipTypeReferenceRepair.repair(handle, connectionType));
+          () -> RelationshipTypeReferenceRepair.repair(handle, connectionType, collectionDAO));
     }
   }
 

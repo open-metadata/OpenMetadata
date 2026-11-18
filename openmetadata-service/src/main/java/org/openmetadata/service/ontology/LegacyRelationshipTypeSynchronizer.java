@@ -48,7 +48,10 @@ public final class LegacyRelationshipTypeSynchronizer {
       final String updatedBy) {
     final List<RelationshipType> relationshipTypes = mapper.map(updated, updatedBy);
     relationshipTypes.forEach(type -> upsert(uriInfo, updatedBy, type));
-    removedNames(previous, updated).forEach(name -> delete(updatedBy, name));
+    final Set<String> removedNames = removedNames(previous, updated);
+    if (!removedNames.isEmpty()) {
+      repository.deleteTogether(updatedBy, removedNames);
+    }
   }
 
   private void upsert(
@@ -63,13 +66,6 @@ public final class LegacyRelationshipTypeSynchronizer {
       relationshipType.setReviewers(existing.getReviewers());
     }
     repository.createOrUpdate(uriInfo, relationshipType, updatedBy);
-  }
-
-  private void delete(final String updatedBy, final String name) {
-    final RelationshipType existing = repository.findByNameOrNull(name, Include.ALL);
-    if (existing != null && !Boolean.TRUE.equals(existing.getSystemDefined())) {
-      repository.delete(updatedBy, existing.getId(), false, true);
-    }
   }
 
   private static Set<String> removedNames(

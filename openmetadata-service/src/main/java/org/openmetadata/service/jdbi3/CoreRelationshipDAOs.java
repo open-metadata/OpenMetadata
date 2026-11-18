@@ -1444,10 +1444,21 @@ public interface CoreRelationshipDAOs {
         @Bind("toEntity") String toEntity,
         @Bind("relation") int relation);
 
-    @SqlQuery(
-        "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity AND toEntity = :entity "
-            + "AND relation = :relation AND (relationshipTypeId = :relationshipTypeId "
-            + "OR relationType = :relationshipTypeName)")
+    /** Names compare binary on MySQL, as on Postgres, so a type never counts another's rows. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
+                + "AND toEntity = :entity AND relation = :relation "
+                + "AND (relationshipTypeId = :relationshipTypeId "
+                + "OR relationType COLLATE utf8mb4_bin = :relationshipTypeName)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT COUNT(*) FROM entity_relationship WHERE fromEntity = :entity "
+                + "AND toEntity = :entity AND relation = :relation "
+                + "AND (relationshipTypeId = :relationshipTypeId "
+                + "OR relationType = :relationshipTypeName)",
+        connectionType = POSTGRES)
     int countRelationsOfType(
         @Bind("entity") String entity,
         @Bind("relation") int relation,

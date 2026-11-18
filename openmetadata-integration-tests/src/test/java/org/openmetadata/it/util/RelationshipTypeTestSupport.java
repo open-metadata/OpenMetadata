@@ -161,8 +161,84 @@ public final class RelationshipTypeTestSupport {
     return replies;
   }
 
+  /**
+   * Imports two concepts related through {@code first} and its declared inverse {@code second}.
+   * The importer writes named inverse references, so relation reads follow the inverse and one
+   * direction is stored as {@code second}; REST-created pairs carry no names and never invert.
+   */
+  public static List<UUID> importInversePair(Glossary glossary, String first, String second) {
+    String turtle =
+        "@prefix skos: <http://www.w3.org/2004/02/skos/core#> .\n"
+            + "@prefix owl: <http://www.w3.org/2002/07/owl#> .\n"
+            + "@prefix x: <http://example.org/"
+            + UUID.randomUUID()
+            + "#> .\n"
+            + "x:T0 a skos:Concept ; skos:prefLabel \"T0\" .\n"
+            + "x:T1 a skos:Concept ; skos:prefLabel \"T1\" .\n"
+            + "x:T0 x:"
+            + first
+            + " x:T1 .\nx:T1 x:"
+            + second
+            + " x:T0 .\n"
+            + "x:"
+            + first
+            + " a owl:ObjectProperty ; owl:inverseOf x:"
+            + second
+            + " .\nx:"
+            + second
+            + " a owl:ObjectProperty ; owl:inverseOf x:"
+            + first
+            + " .\n";
+    Reply reply =
+        send(
+            "PUT",
+            "/v1/glossaries/name/"
+                + glossary.getFullyQualifiedName()
+                + "/importRdf?dryRun=false&format=turtle",
+            turtle,
+            "text/turtle");
+    assertEquals(200, reply.status(), reply.message());
+    return List.of(termId(glossary, "T0"), termId(glossary, "T1"));
+  }
+
+  /**
+   * A unique type name usable both as a term relation type, which must start with a letter and
+   * hold only letters and digits, and as an RDF predicate's local name, which the importer keeps.
+   */
+  public static String relationTypeName(TestNamespace ns, String base) {
+    return base + ns.shortPrefix(base).replaceAll("[^A-Za-z0-9]", "");
+  }
+
+  private static UUID termId(Glossary glossary, String name) {
+    Reply reply =
+        send(
+            "GET", "/v1/glossaryTerms/name/" + glossary.getFullyQualifiedName() + "." + name, null);
+    assertEquals(200, reply.status(), reply.message());
+    return UUID.fromString(reply.body().path("id").asText());
+  }
+
+  /** The relation types a term shows towards {@code other}, as its relatedTerms read returns them. */
+  public static List<String> relationTypesTowards(UUID term, UUID other) {
+    Reply reply = send("GET", "/v1/glossaryTerms/" + term + "?fields=relatedTerms", null);
+    assertEquals(200, reply.status(), reply.message());
+    List<String> types = new ArrayList<>();
+    reply
+        .body()
+        .path("relatedTerms")
+        .forEach(
+            relation -> {
+              if (other.toString().equals(relation.path("term").path("id").asText())) {
+                types.add(relation.path("relationType").asText());
+              }
+            });
+    return types.stream().sorted().toList();
+  }
+
   public static Reply send(String method, String path, String body) {
-    String contentType = "PATCH".equals(method) ? JSON_PATCH : JSON;
+    return send(method, path, body, "PATCH".equals(method) ? JSON_PATCH : JSON);
+  }
+
+  private static Reply send(String method, String path, String body, String contentType) {
     HttpRequest request =
         HttpRequest.newBuilder(URI.create(SdkClients.getServerUrl() + path))
             .timeout(Duration.ofSeconds(90))

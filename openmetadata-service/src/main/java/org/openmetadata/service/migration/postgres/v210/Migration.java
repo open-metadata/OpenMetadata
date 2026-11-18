@@ -86,11 +86,7 @@ public class Migration extends MigrationProcessImpl {
     migrateRelationshipTypes(handle, POSTGRES);
     // Relationship types deleted while still in use left their relations unreadable; the delete is
     // guarded now, and this undeletes or recreates the types those relations still name.
-    runOnce(
-        migrationDAO,
-        getVersion(),
-        RelationshipTypeReferenceRepair.STEP_NAME,
-        () -> RelationshipTypeReferenceRepair.repair(handle, POSTGRES));
+    RelationshipTypeReferenceRepair.repair(handle, POSTGRES, collectionDAO);
     copyConceptBindingsToRows(handle, POSTGRES);
     // Reconcile the persisted entityRulesSettings so upgraded instances allow queries to carry the
     // multiple domains they inherit from their associated tables. Fresh installs get this from the
