@@ -11,10 +11,17 @@
  *  limitations under the License.
  */
 
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { TagLabel } from '../generated/entity/data/container';
-import { Column, DataType, Table } from '../generated/entity/data/table';
+import {
+  Column,
+  ConstraintType,
+  DataType,
+  Table,
+} from '../generated/entity/data/table';
 import { EntityReference } from '../generated/type/entityReference';
 import { LabelType, State, TagSource } from '../generated/type/tagLabel';
 import { MOCK_TABLE, MOCK_TABLE_DBT } from '../mocks/TableData.mock';
@@ -25,6 +32,7 @@ import {
   findColumnByEntityLink,
   getCertificationTag,
   getColumnOptionsFromTableColumn,
+  getConstraintGroupLabel,
   getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   getNestedSectionTitle,
@@ -44,7 +52,7 @@ import {
   updateFieldExtension,
 } from '../utils/TablePureUtils';
 import { getTableDetailPageBaseTabs } from '../utils/TableTabsUtils';
-import { getEntityIcon } from '../utils/TableUtils';
+import { getEntityIcon, prepareConstraintIcon } from '../utils/TableUtils';
 import EntityLink from './EntityLink';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { extractTableColumns } from './TablePureUtils';
@@ -2577,5 +2585,142 @@ describe('getNestedSectionTitle', () => {
     expect(getNestedSectionTitle(entityType)).toBe(
       'label.nested-column-plural'
     );
+  });
+});
+
+describe('getConstraintGroupLabel', () => {
+  it.each([
+    [0, 'A'],
+    [25, 'Z'],
+    [26, 'AA'],
+    [51, 'AZ'],
+    [52, 'BA'],
+    [701, 'ZZ'],
+    [702, 'AAA'],
+  ])('labels group %i as %s', (index, expected) => {
+    expect(getConstraintGroupLabel(index)).toBe(expected);
+  });
+});
+
+describe('prepareConstraintIcon composite unique constraints', () => {
+  const compositeConstraints: Table['tableConstraints'] = [
+    { constraintType: ConstraintType.Unique, columns: ['external_ref'] },
+    {
+      constraintType: ConstraintType.Unique,
+      columns: ['warehouse_id', 'item_code'],
+    },
+    {
+      constraintType: ConstraintType.Unique,
+      columns: ['item_code', 'locale'],
+    },
+    {
+      constraintType: ConstraintType.Unique,
+      columns: ['external_ref', 'region'],
+    },
+  ];
+
+  it('shows a lettered badge for every composite group containing the column', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          tableConstraints: compositeConstraints,
+        })}
+      </>
+    );
+
+    expect(screen.getAllByTestId('constraint-icon-unique')).toHaveLength(2);
+    expect(
+      screen.getByRole('button', {
+        name: /constraint A: warehouse_id, item_code/,
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /constraint B: item_code, locale/ })
+    ).toBeInTheDocument();
+  });
+
+  it('uses the same letter for a group across its member columns', () => {
+    const { rerender } = render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'locale',
+          tableConstraints: compositeConstraints,
+        })}
+      </>
+    );
+
+    expect(screen.getByText('B')).toBeInTheDocument();
+
+    rerender(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'warehouse_id',
+          tableConstraints: compositeConstraints,
+        })}
+      </>
+    );
+
+    expect(screen.getByText('A')).toBeInTheDocument();
+  });
+
+  it('keeps individual uniqueness distinct from composite membership', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'external_ref',
+          tableConstraints: compositeConstraints,
+        })}
+      </>
+    );
+
+    expect(screen.getAllByTestId('constraint-icon-unique')).toHaveLength(2);
+    expect(
+      screen.getAllByRole('button').map((button) => button.textContent)
+    ).toEqual(['C']);
+  });
+
+  it('preserves a column constraint alongside composite membership', () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          columnConstraint: 'NOT_NULL',
+          tableConstraints: [
+            {
+              constraintType: ConstraintType.Unique,
+              columns: ['warehouse_id', 'item_code'],
+            },
+          ],
+        })}
+      </>
+    );
+
+    expect(screen.getByTestId('constraint-icon-not-null')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: /warehouse_id, item_code/ })
+    ).toBeInTheDocument();
+  });
+
+  it('lists the group columns in the tooltip', async () => {
+    render(
+      <>
+        {prepareConstraintIcon({
+          columnName: 'item_code',
+          tableConstraints: compositeConstraints,
+        })}
+      </>
+    );
+
+    await userEvent.hover(
+      screen.getByRole('button', { name: /constraint A/ })
+    );
+
+    expect(
+      await screen.findByText('warehouse_id + item_code')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('message.composite-unique-constraint-description')
+    ).toBeInTheDocument();
   });
 });
