@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
+import { Tabs } from '../../application/tabs/tabs';
 import { Button } from '../buttons/button';
 import { Tooltip } from './tooltip';
 
@@ -276,6 +277,35 @@ describe('Tooltip — disabled trigger', () => {
     expect(wrapper).toHaveAttribute('tabindex', '0');
     expect(screen.getByTestId('d').closest('button')).toBe(
       screen.getByTestId('d')
+    );
+  });
+
+  // react-aria's `<Focusable>` runs a development-only focusability check that
+  // calls getComputedStyle; inside the Tabs collection the trigger is rendered
+  // into a window-less document, so that check threw and crashed the page.
+  it('renders a disabled child in the Tabs actions slot', () => {
+    render(
+      <Tabs>
+        <Tabs.List
+          actions={
+            <Tooltip title="No tasks">
+              <Button isDisabled data-testid="tasks">
+                Tasks
+              </Button>
+            </Tooltip>
+          }
+          aria-label="Sections"
+          type="underline"
+          variant="card">
+          <Tabs.Item id="one">One</Tabs.Item>
+        </Tabs.List>
+        <Tabs.Panel id="one">Panel</Tabs.Panel>
+      </Tabs>
+    );
+
+    expect(screen.getByTestId('tasks').parentElement).toHaveAttribute(
+      'tabindex',
+      '0'
     );
   });
 

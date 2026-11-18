@@ -1092,6 +1092,9 @@ class RdfIndexAppTest {
         verify(mockRdfRepository).compact(any());
         verify(mockRdfRepository, never()).reloadOntologies();
         assertEquals(EventPublisherJob.Status.FAILED, jobConfig.getStatus());
+        assertTrue(
+            jobConfig.getFailure().getMessage().contains("Fuseki refused the update"),
+            jobConfig.getFailure().getMessage());
       } finally {
         doNothing().when(mockRdfRepository).clearAllAsMaintenance(any());
       }

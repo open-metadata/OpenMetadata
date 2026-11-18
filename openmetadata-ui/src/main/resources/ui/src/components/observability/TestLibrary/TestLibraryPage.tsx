@@ -20,6 +20,7 @@ import DocumentTitle from '../../common/DocumentTitle/DocumentTitle';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
+import TestDefinitionDetailsPanel from '../../TestLibrary/TestDefinitionDetailsPanel/TestDefinitionDetailsPanel';
 import TestDefinitionForm from '../../TestLibrary/TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from '../../TestLibrary/TestDefinitionList/TestDefinitionTable.component';
 import { useTestDefinitionListPage } from '../../TestLibrary/TestDefinitionList/useTestDefinitionListPage';
@@ -66,6 +67,11 @@ const TestLibraryPage = () => {
     handleDeleteCancel,
     handleFormSuccess,
     handleFormCancel,
+    viewedDefinition,
+    canEditViewedDefinition,
+    openDetails,
+    closeDetails,
+    editFromDetails,
   } = useTestDefinitionListPage();
 
   if (!viewPermission) {
@@ -151,6 +157,7 @@ const TestLibraryPage = () => {
               onEdit={handleEdit}
               onEnableToggle={handleEnableToggle}
               onSortChange={handleSortChange}
+              onView={openDetails}
             />
           </div>
         </PageLayout.Content>
@@ -161,6 +168,13 @@ const TestLibraryPage = () => {
         open={isFormVisible}
         onCancel={handleFormCancel}
         onSuccess={handleFormSuccess}
+      />
+
+      <TestDefinitionDetailsPanel
+        canEdit={canEditViewedDefinition}
+        testDefinition={viewedDefinition}
+        onClose={closeDetails}
+        onEdit={editFromDetails}
       />
 
       <DeleteModal

@@ -75,6 +75,22 @@ def python_matrix(project):
     }
 
 
+def test_matrix(project, event):
+    """Select unit, static-check and coverage interpreters from supported versions."""
+    full_suite = event == "schedule"
+    matrix = python_matrix(project)
+    versions = matrix["python-versions"]
+    lowest = min(versions, key=lambda v: tuple(map(int, v.split("."))))
+    highest = matrix["discovery-python"]
+    return {
+        "versions": versions if full_suite else [highest],
+        "run-integration": event != "pull_request",
+        "latest-version": highest,
+        "static-version": lowest,
+        "coverage-version": lowest if full_suite else highest,
+    }
+
+
 def discover(project):
     """Read model requirements and matching static metadata without application imports."""
     config = read_project(project)
@@ -184,6 +200,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     matrix = commands.add_parser("matrix")
     matrix.add_argument("--project", type=Path, required=True)
+    tests = commands.add_parser("test-matrix")
+    tests.add_argument("--project", type=Path, required=True)
+    tests.add_argument("--event", choices=("pull_request", "merge_group", "schedule"), required=True)
     discovery = commands.add_parser("discover")
     discovery.add_argument("--project", type=Path, required=True)
     verification = commands.add_parser("verify")
@@ -200,6 +219,8 @@ def main():
     args = parser.parse_args()
     if args.command == "matrix":
         sys.stdout.write(json.dumps(python_matrix(args.project)) + "\n")
+    elif args.command == "test-matrix":
+        sys.stdout.write(json.dumps(test_matrix(args.project, args.event)) + "\n")
     elif args.command == "discover":
         sys.stdout.write(json.dumps(discover(args.project)) + "\n")
     elif args.command == "prepare":

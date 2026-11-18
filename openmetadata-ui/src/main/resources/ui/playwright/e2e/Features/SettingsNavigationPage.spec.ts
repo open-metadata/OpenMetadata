@@ -292,6 +292,50 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     }
   });
 
+  // React Aria only wires keyboard drag-start through a `slot="drag"` button,
+  // so each draggable row must render Tree.DragButton (WCAG 2.1.1).
+  test('keyboard users can reorder navigation items via the drag handle button (a11y regression)', async ({
+    page,
+  }) => {
+    await redirectToHomePage(page);
+    await setUserDefaultPersona(page, persona.responseData.displayName);
+    await navigateToPersonaNavigation(page);
+
+    const treegrid = page.getByRole('treegrid');
+    await expect(treegrid).toBeVisible();
+
+    const dragHandles = treegrid.getByRole('button', { name: 'Move' });
+    await expect(dragHandles.filter({ visible: true })).not.toHaveCount(0);
+
+    const rowOrder = () =>
+      treegrid
+        .locator('[role="row"][data-key]')
+        .evaluateAll((rows) => rows.map((row) => row.getAttribute('data-key')));
+
+    const homeRow = treegrid.getByRole('row', { name: 'Home', exact: true });
+    await homeRow.focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(homeRow.getByRole('button', { name: 'Move' })).toBeFocused();
+
+    const dropTarget = (name: string) =>
+      treegrid.getByRole('button', { name, exact: true });
+
+    await page.keyboard.press('Enter');
+    await expect(dropTarget('Insert between Home and Explore')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(dropTarget('Drop on Explore')).toBeFocused();
+    await page.keyboard.press('ArrowDown');
+    await expect(
+      dropTarget('Insert between Explore and Lineage')
+    ).toBeFocused();
+    await page.keyboard.press('Enter');
+
+    await expect(page.getByTestId('save-button')).toBeEnabled();
+    await expect
+      .poll(async () => (await rowOrder()).slice(0, 2))
+      .toEqual(['/explore', '/my-data']);
+  });
+
   test('should handle multiple items being hidden at once', async ({
     page,
   }) => {

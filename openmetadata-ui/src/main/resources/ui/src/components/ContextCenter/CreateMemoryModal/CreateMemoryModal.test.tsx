@@ -552,24 +552,6 @@ describe('CreateMemoryModal', () => {
     );
   });
 
-  it('leaves an empty owner display name to UserPopOverCard', async () => {
-    renderViewOnly({
-      id: 'memory-id',
-      name: 'owned-policy',
-      owners: [
-        { id: 'owner-id', type: 'user', name: 'alice', displayName: '' },
-      ],
-      updatedBy: 'alice',
-      updatedAt: 1767225600000,
-    });
-
-    expect(await screen.findByText('label.owner')).toBeInTheDocument();
-    expect(UserPopOverCard).toHaveBeenCalledWith(
-      expect.objectContaining({ displayName: undefined, userName: 'alice' }),
-      expect.anything()
-    );
-  });
-
   it('keeps the update date when a legacy memory has no updater', () => {
     const memory: ContextMemory = {
       id: 'memory-id',

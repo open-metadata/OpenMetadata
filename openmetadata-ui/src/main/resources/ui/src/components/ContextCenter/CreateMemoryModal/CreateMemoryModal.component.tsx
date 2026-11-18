@@ -307,7 +307,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <UserPopOverCard
             showUserName
             className="tw:text-primary"
-            displayName={memoryToEdit.owners[0].displayName || undefined}
+            displayName={memoryToEdit.owners[0].displayName}
             profileWidth={16}
             type={
               memoryToEdit.owners[0].type === EntityType.TEAM

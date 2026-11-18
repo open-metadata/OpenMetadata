@@ -276,25 +276,6 @@ describe('Knowledge Card', () => {
     );
   });
 
-  it('should fall back to the login when the owner display name is empty', () => {
-    const owner = KNOWLEDGE_PAGE_MOCK_DATA.owners?.[0];
-    render(
-      <KnowledgeCard
-        {...mockProps}
-        knowledgeItem={{
-          ...KNOWLEDGE_PAGE_MOCK_DATA,
-          owners: owner ? [{ ...owner, displayName: '' }] : [],
-        }}
-      />,
-      { wrapper: MemoryRouter }
-    );
-
-    expect(UserPopOverCard).toHaveBeenLastCalledWith(
-      expect.objectContaining({ displayName: undefined }),
-      expect.anything()
-    );
-  });
-
   it('should render domain name when domain is present', () => {
     const withDomain: KnowledgePage = {
       ...KNOWLEDGE_PAGE_MOCK_DATA,

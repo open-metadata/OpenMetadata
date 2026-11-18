@@ -42,7 +42,7 @@ const defaultProps: IncidentTypeAreaChartWidgetProps = {
   ],
   name: 'Incident Type',
   title: 'Incident Type Area Chart Widget',
-  description: 'Incidents on the latest day with activity',
+  description: 'Incidents with daily activity',
 };
 
 describe('IncidentTypeAreaChartWidget', () => {

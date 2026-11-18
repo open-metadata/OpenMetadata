@@ -34,7 +34,10 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
+import {
+  LIST_PAGE_SIZE_OPTIONS,
+  NO_DATA_PLACEHOLDER,
+} from '../../../../../../constants/constants';
 import {
   NO_PERMISSION_FOR_ACTION,
   NO_PERMISSION_TO_VIEW,
@@ -314,7 +317,7 @@ const AccessControlPoliciesPanel: React.FC<AccessControlPoliciesPanelProps> = ({
     const hasMore = listLength > LIST_CAP;
 
     if (!roles?.length) {
-      return '--';
+      return NO_DATA_PLACEHOLDER;
     }
 
     return (
