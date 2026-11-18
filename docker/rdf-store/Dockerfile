@@ -42,7 +42,9 @@ ENV FUSEKI_BASE=/fuseki
 # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD into shiro.ini at
 # container start. Without this, operators could not override the default
 # Fuseki credentials via environment variables.
+# The compose health checks call curl or wget.
 RUN apt-get update && apt-get install -y \
+    curl \
     wget \
     gettext-base \
     && rm -rf /var/lib/apt/lists/*

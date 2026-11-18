@@ -23,6 +23,11 @@ ENV PATH="${JAVA_HOME}/bin:${PATH}"
 ENV LANG=C.UTF-8
 COPY --from=jre-builder /javaruntime ${JAVA_HOME}
 
+# The quickstart compose files health-check Fuseki with curl or wget.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl wget \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set Fuseki version and paths
 ENV FUSEKI_VERSION=6.2.0
 ENV FUSEKI_HOME=/fuseki
