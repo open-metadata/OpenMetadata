@@ -4021,6 +4021,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Set while a recursive hard delete cascades under a root whose FQN an entity of another type
+   * shares. That root keeps the FQN-keyed rows at and under its FQN, which are the other entity's
+   * too, so each descendant removes its own instead of relying on the root's prefix delete.
+   */
+  private static final ThreadLocal<Boolean> CASCADE_ROOT_FQN_SHARED = new ThreadLocal<>();
+
+  private boolean reliesOnCascadeRootFqnCleanup() {
+    return descendantsCoveredByAncestorCascade
+        && !Boolean.TRUE.equals(CASCADE_ROOT_FQN_SHARED.get());
+  }
+
+  /**
    * De-duplication key for a deferred Redis-L2 cache invalidation. Equality is on {@code
    * (entityType, id)} only so repeated relationship writes touching the same entity collapse to one
    * invalidation when the transaction ends; the {@code fqn} is carried along (best non-null wins) so
@@ -5939,7 +5951,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       try {
-        deleteChildren(original.getId(), recursive, hardDelete, deletedBy);
+        deleteChildrenOf(original, recursive, hardDelete, deletedBy);
 
         EventType changeType;
         T updated = loadForDelete(original.getId());
@@ -6043,6 +6055,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Validate entity
     T entity = find(id, ALL);
     return delete(updatedBy, entity, recursive, hardDelete);
+  }
+
+  /** Runs {@link #deleteChildren} with the cascade told whether this root's FQN is shared. */
+  private void deleteChildrenOf(T root, boolean recursive, boolean hardDelete, String deletedBy) {
+    Boolean outerCascadeRootShared = CASCADE_ROOT_FQN_SHARED.get();
+    CASCADE_ROOT_FQN_SHARED.set(
+        recursive && hardDelete && rootFqnIsSharedByAnotherType(root.getFullyQualifiedName()));
+    try {
+      deleteChildren(root.getId(), recursive, hardDelete, deletedBy);
+    } finally {
+      if (outerCascadeRootShared == null) {
+        CASCADE_ROOT_FQN_SHARED.remove();
+      } else {
+        CASCADE_ROOT_FQN_SHARED.set(outerCascadeRootShared);
+      }
+    }
+  }
+
+  private boolean rootFqnIsSharedByAnotherType(String fqn) {
+    return shouldCleanupFqnDependents() && fqnKeyedRowCleanup().isSharedByAnotherType(fqn);
   }
 
   @Transaction
@@ -6181,14 +6213,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // field_relationship in opposite orders is an AB-BA deadlock the database cannot avoid for us.
     // Neither table depends on the other here; only the feed-artifact ordering above is required.
     if (shouldCleanupFqnDependents()) {
-      daoCollection
-          .fieldRelationshipDAO()
-          .deleteAllByPrefix(entityInterface.getFullyQualifiedName(), entityType);
-      if (supportsTags) {
-        daoCollection
-            .tagUsageDAO()
-            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-      }
+      fqnKeyedRowCleanup().delete(List.of(entityInterface.getFullyQualifiedName()));
     }
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -6260,6 +6285,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   protected boolean shouldCleanupFqnDependents() {
     return supportsTags;
+  }
+
+  /**
+   * Whether an FQN of this type can nest under an FQN that none of its ancestors has: a bare name
+   * with dots ("sales.revenue"), or a fixed segment after the parent (data models under
+   * "service.model"). Such an entity sits under the FQN of an unrelated entity, so a hard delete of
+   * that entity keeps its FQN-keyed rows (see {@link FqnKeyedRowCleanup}).
+   */
+  protected boolean nestsUnderUnrelatedFqns() {
+    return false;
+  }
+
+  private FqnKeyedRowCleanup fqnKeyedRowCleanup() {
+    return new FqnKeyedRowCleanup(daoCollection, entityType, dao.getTableName(), supportsTags);
   }
 
   /**
@@ -8946,15 +8985,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // round-trips for an N-entity subtree. Skip them for cascade-covered types and rely on the root
     // cleanup() prefix delete. Types not FQN-nested under their delete root (e.g. flat-FQN teams)
     // keep the per-entity path.
-    if (shouldCleanupFqnDependents() && !descendantsCoveredByAncestorCascade) {
+    if (shouldCleanupFqnDependents() && !reliesOnCascadeRootFqnCleanup()) {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
-        for (T entity : entities) {
-          String fqn = entity.getFullyQualifiedName();
-          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn, entityType);
-          if (supportsTags) {
-            daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
-          }
-        }
+        fqnKeyedRowCleanup()
+            .delete(entities.stream().map(EntityInterface::getFullyQualifiedName).toList());
       }
     }
     try (var ignored = phase("bulkHardDeleteUsage")) {

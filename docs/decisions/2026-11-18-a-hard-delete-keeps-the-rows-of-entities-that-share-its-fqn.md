@@ -1,0 +1,41 @@
+# A hard delete keeps the rows of entities that share its FQN
+
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-18 (initial)
+- **Deciders:** Mohit Yadav
+- **Guard:** `HardDeleteCleanupIT`, `FqnKeyedRowCleanupTest`
+- **Related:** ADR:2026-11-03-a-hard-delete-removes-only-rows-of-the-deleted-entity,
+  open-metadata/openmetadata-collate#8646
+
+## Context
+`tag_usage` and `field_relationship` key their rows by FQN hash and record no entity type. A hard
+delete removed every row at and under the deleted entity's FQN, and an FQN is unique only within a
+type. Hard-deleting a pipeline service named like a database service therefore removed the tags
+and tiers of every table in the database service, with no version or change description. The
+same happened to a table when a stored procedure with its FQN was deleted. It happened to dashboard
+data models (`service.model.name`) when a chart named `model` was deleted. And it happened to a
+metric whose bare name (`glossary.term`) is a glossary term's FQN when the glossary was deleted.
+
+## Decision
+Before removing the rows at and under an FQN, a hard delete looks for entities it leaves in place
+(`FqnKeyedRowCleanup`):
+- If an entity of another taggable type has the same FQN, the rows at that FQN are its rows too,
+  and it may own rows under the FQN. The delete removes none of them.
+- Entities that nest under the FQN without being its descendants keep the rows at and under their
+  own FQNs, and the delete removes the rest. The search covers only types whose FQN can nest
+  under an unrelated FQN (`EntityRepository.nestsUnderUnrelatedFqns()`): bare-name types, and data
+  models with their fixed `model` segment. Past 100 such subtrees, the delete removes only the rows
+  at the FQN.
+- If the root of a recursive hard delete shares its FQN, each descendant removes its own rows
+  instead of relying on the root's single prefix delete.
+- Probes run in batches of 50 FQNs. One statement looks for namesakes in every taggable type's
+  table, and one looks for nested entities.
+
+## Consequences
+No hard delete removes another entity's tag labels or field relationships. Where rows are shared,
+some of the deleted entity's rows stay. These are the rows at an FQN another type has, which are
+that entity's too, plus the nested-part rows (columns, fields) under that FQN. Each hard delete
+costs two more queries, and a cascade costs two more per batch of 50 descendants. A new type whose
+FQN can nest under an unrelated FQN must override `nestsUnderUnrelatedFqns()`. Recording the
+target's entity type on each row would make all of this exact, but that schema change is still
+deferred.
