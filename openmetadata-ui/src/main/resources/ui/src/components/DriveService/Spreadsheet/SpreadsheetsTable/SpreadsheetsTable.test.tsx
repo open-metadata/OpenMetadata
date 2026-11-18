@@ -19,7 +19,6 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
-import { EntityType } from '../../../../enums/entity.enum';
 import { CursorType } from '../../../../enums/pagination.enum';
 import { Spreadsheet } from '../../../../generated/entity/data/spreadsheet';
 import {
@@ -513,7 +512,7 @@ describe('SpreadsheetsTable', () => {
         entityType?: string;
       };
 
-      expect(passedProps.entityType).toBe(EntityType.SPREADSHEET);
+      expect(passedProps.entityType).toBe('driveSpreadsheetsTable');
       expect(passedProps.entityType).not.toBe('dashboardDataModelTable');
     });
   });

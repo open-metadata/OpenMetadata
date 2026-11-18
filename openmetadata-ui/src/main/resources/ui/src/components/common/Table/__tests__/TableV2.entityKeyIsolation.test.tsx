@@ -10,12 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
-import { ReactNode } from 'react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react';
+import { ContextType, ReactNode } from 'react';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { usePersistentStorage } from '../../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { createGenericContext } from '../../../Customization/GenericProvider/GenericContext';
 import { ColumnsType } from '../Table.interface';
 import TableV2 from '../TableV2';
 
@@ -101,29 +110,29 @@ describe('TableV2 column-visibility preference-key isolation', () => {
     usePersistentStorage.setState({ preferences: {} });
   });
 
-  it('persists Files (entityType=file) selections under its own key, not the shared Data Models key', () => {
-    renderTable('file');
+  it('persists Files (entityType=driveFilesTable) selections under its own key, not the shared Data Models key', () => {
+    renderTable('driveFilesTable');
 
     toggleColumn('description');
 
-    expect(storedSelection('file')).toEqual(['name', 'tags']);
+    expect(storedSelection('driveFilesTable')).toEqual(['name', 'tags']);
     expect(storedSelection('dashboardDataModelTable')).toBeUndefined();
   });
 
-  it('persists Spreadsheets (entityType=spreadsheet) selections under its own key, not the shared Data Models key', () => {
-    renderTable('spreadsheet');
+  it('persists Spreadsheets (entityType=driveSpreadsheetsTable) selections under its own key, not the shared Data Models key', () => {
+    renderTable('driveSpreadsheetsTable');
 
     toggleColumn('description');
 
-    expect(storedSelection('spreadsheet')).toEqual(['name', 'tags']);
+    expect(storedSelection('driveSpreadsheetsTable')).toEqual(['name', 'tags']);
     expect(storedSelection('dashboardDataModelTable')).toBeUndefined();
   });
 
   it('does not leak a Files customization into the Data Models table', () => {
-    renderTable('file');
+    renderTable('driveFilesTable');
     toggleColumn('description');
 
-    expect(storedSelection('file')).toEqual(['name', 'tags']);
+    expect(storedSelection('driveFilesTable')).toEqual(['name', 'tags']);
 
     const { unmount } = render(
       <DndProvider backend={HTML5Backend}>
@@ -148,13 +157,47 @@ describe('TableV2 column-visibility preference-key isolation', () => {
   });
 
   it('keeps Files and Spreadsheets customizations independent of each other', () => {
-    renderTable('file');
+    renderTable('driveFilesTable');
     toggleColumn('description');
 
-    expect(storedSelection('file')).toEqual(['name', 'tags']);
+    expect(storedSelection('driveFilesTable')).toEqual(['name', 'tags']);
 
-    expect(storedSelection('spreadsheet')).toBeUndefined();
+    expect(storedSelection('driveSpreadsheetsTable')).toBeUndefined();
     expect(storedSelection('dashboardDataModelTable')).toBeUndefined();
+  });
+
+  it('does not leak a Files list customization into the file schema table (keyed by type=file)', () => {
+    renderTable('driveFilesTable');
+    toggleColumn('description');
+
+    expect(storedSelection('driveFilesTable')).toEqual(['name', 'tags']);
+    expect(storedSelection('file')).toBeUndefined();
+
+    cleanup();
+    const GenericContext = createGenericContext();
+    render(
+      <GenericContext.Provider
+        value={
+          {
+            permissions: DEFAULT_ENTITY_PERMISSION,
+            type: 'file',
+          } as ContextType<typeof GenericContext>
+        }>
+        <TableV2
+          columns={COLUMNS}
+          dataSource={ROWS}
+          defaultVisibleColumns={ALL_VISIBLE}
+          pagination={false}
+          rowKey="name"
+          staticVisibleColumns={['name']}
+        />
+      </GenericContext.Provider>,
+      { wrapper }
+    );
+
+    expect(
+      screen.getByRole('columnheader', { hidden: true, name: /Description/ })
+    ).toBeInTheDocument();
   });
 
   it('does not carry over a legacy shared-bucket selection into the Drive tables (G7)', () => {
@@ -165,12 +208,12 @@ describe('TableV2 column-visibility preference-key isolation', () => {
       'tags',
     ]);
 
-    renderTable('file');
+    renderTable('driveFilesTable');
 
     expect(
       screen.getByRole('columnheader', { hidden: true, name: /Description/ })
     ).toBeInTheDocument();
-    expect(storedSelection('file')).toBeUndefined();
+    expect(storedSelection('driveFilesTable')).toBeUndefined();
   });
 
   it('still persists the Data Models table under the shared literal key (regression-safe)', () => {
@@ -182,7 +225,7 @@ describe('TableV2 column-visibility preference-key isolation', () => {
       'name',
       'tags',
     ]);
-    expect(storedSelection('file')).toBeUndefined();
-    expect(storedSelection('spreadsheet')).toBeUndefined();
+    expect(storedSelection('driveFilesTable')).toBeUndefined();
+    expect(storedSelection('driveSpreadsheetsTable')).toBeUndefined();
   });
 });

@@ -19,7 +19,6 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
-import { EntityType } from '../../../../enums/entity.enum';
 import { CursorType } from '../../../../enums/pagination.enum';
 import { File } from '../../../../generated/entity/data/file';
 import {
@@ -437,7 +436,7 @@ describe('FilesTable', () => {
         entityType?: string;
       };
 
-      expect(passedProps.entityType).toBe(EntityType.FILE);
+      expect(passedProps.entityType).toBe('driveFilesTable');
       expect(passedProps.entityType).not.toBe('dashboardDataModelTable');
     });
   });
