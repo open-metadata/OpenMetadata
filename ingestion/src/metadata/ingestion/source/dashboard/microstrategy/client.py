@@ -337,7 +337,8 @@ class MicroStrategyClient:
     def cube_behind(self, dataset_id: str) -> str:
         """
         The cube whose SQL a dataset was read from: the source cube of a report built on one,
-        else the dataset itself. Known once the dataset's SQL was requested.
+        else the dataset itself. Known right after the dataset's SQL was requested; the caller
+        keeps it, since the report cache may later evict it.
         """
         return self._report_cubes.get(dataset_id) or dataset_id
 

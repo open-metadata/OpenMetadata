@@ -379,7 +379,12 @@ class MicrostrategySource(DashboardServiceSource):
                     parsed.tables, service_name, database_name, schema_name, table_name
                 ):
                     columns_lineage = self._safe_column_lineage(
-                        dashboard_details.projectId, dataset, parsed.read_columns, table_entity, datamodel_entity
+                        dashboard_details.projectId,
+                        dataset,
+                        parsed.read_columns,
+                        table_entity,
+                        datamodel_entity,
+                        parsed.cube,
                     )
                     yield Either(
                         left=None,
@@ -444,7 +449,8 @@ class MicrostrategySource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
             columns = frozenset()
-        return ParsedCube(tables=tables, read_columns=columns)
+        # Kept with the parse, which outlives the client's report cache.
+        return ParsedCube(tables=tables, read_columns=columns, cube=self.client.cube_behind(cube_id))
 
     def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
         """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
@@ -462,12 +468,14 @@ class MicrostrategySource(DashboardServiceSource):
         cube_reads: frozenset[SourceColumn],
         table_entity: Table,
         datamodel_entity: DashboardDataModel,
+        sql_cube: str | None = None,
     ) -> list[ColumnLineage]:
         """
         Column lineage from one table to a data model. A data model column is matched on the
         warehouse columns the cube SQL reads: through its schema attribute's form expressions, or
         for a Data Import cube on its name, which the import derives from the column. Metrics of a
         schema cube are left out: the API does not tell which fact column a metric aggregates.
+        ``sql_cube`` is the cube the SQL came from, whose type decides how objects are matched.
         """
         schema = getattr(table_entity.databaseSchema, "name", None)
         database = getattr(table_entity.database, "name", None)
@@ -479,10 +487,7 @@ class MicrostrategySource(DashboardServiceSource):
         if not reads:
             return []
         table_entity = self._with_columns(table_entity)
-        data_import = (
-            self.client.get_dataset_subtype(project_id, self.client.cube_behind(dataset.id))
-            in DATA_IMPORT_CUBE_SUBTYPES
-        )
+        data_import = self.client.get_dataset_subtype(project_id, sql_cube or dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
         targets = self._data_model_columns(dataset, datamodel_entity)
         # A dataset may list one object more than once; it is still one data model column.
         objects = {available_object.id: available_object for available_object in dataset.availableObjects or []}
