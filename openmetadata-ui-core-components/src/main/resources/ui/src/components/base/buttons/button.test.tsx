@@ -249,6 +249,39 @@ describe('Button — icon size and color', () => {
     expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
   });
 
+  // Inside an InputGroup the button matches the input height: 30 / 40 / 44.
+  it.each([
+    ['xs', 'tw:in-data-input-wrapper:data-icon-only:p-1.75'],
+    ['md', 'tw:in-data-input-wrapper:data-icon-only:p-2.75'],
+    ['lg', 'tw:in-data-input-wrapper:data-icon-only:p-3.25'],
+  ] as const)(
+    'pads a %s icon-only button to the input height inside an InputGroup',
+    (size, padding) => {
+      render(
+        <div data-input-wrapper>
+          <Button aria-label="Edit" iconLeading={Edit01} size={size} />
+        </div>
+      );
+
+      expect(screen.getByRole('button', { name: 'Edit' })).toHaveClass(padding);
+    }
+  );
+
+  it('keeps the 6px label gap on an lg button inside an InputGroup', () => {
+    render(
+      <div data-input-wrapper>
+        <Button iconLeading={Edit01} size="lg">
+          Edit
+        </Button>
+      </div>
+    );
+
+    const button = screen.getByRole('button', { name: 'Edit' });
+
+    expect(button).toHaveClass('tw:gap-1');
+    expect(button).not.toHaveClass('tw:in-data-input-wrapper:gap-1.5');
+  });
+
   it('keeps the drawn stroke weight when an icon is scaled down', () => {
     render(<Button iconLeading={Edit01}>Edit</Button>);
 

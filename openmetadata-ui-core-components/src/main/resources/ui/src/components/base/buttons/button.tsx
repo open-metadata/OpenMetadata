@@ -74,12 +74,13 @@ export const styles = sortCx({
   // Heights and icon frames follow the Figma "Icons in buttons" spec
   // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec).
   // Leading and trailing icons share one frame per height: 16 at xs, 18 at
-  // sm–lg, 20 at xl. Icon-only padding is 1px wider than text padding so the
-  // smaller frame keeps the button height. The visible icon→label gap is
-  // 6px at every size: `gap-1` plus the label's `px-0.5`; unboxed links drop
-  // that padding, so `linkRoot` is `gap-1.5`. Icons draw
-  // in the middle 16 of 20 units, so the spec's fixed 2px frame padding needs
-  // svg padding on smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
+  // sm–lg, 20 at xl. At xs–lg the icon-only padding (also inside an
+  // InputGroup) is 1px wider than text padding so the smaller frame keeps the
+  // button height. The visible icon→label gap is 6px at every size, also
+  // inside an InputGroup: `gap-1` plus the label's `px-0.5`; unboxed links
+  // drop that padding, so `linkRoot` is `gap-1.5`. Icons draw in the middle 16
+  // of 20 units, so the spec's fixed 2px frame padding needs svg padding on
+  // smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
   sizes: {
     // Compact — 28px; 16px icon frame.
     xs: {
