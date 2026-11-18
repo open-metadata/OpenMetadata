@@ -8959,9 +8959,6 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
 
-    @SqlQuery("SELECT json FROM change_event ce where ce.offset > :offset")
-    List<String> listUnprocessedEvents(@Bind("offset") long offset);
-
     @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
@@ -9092,6 +9089,71 @@ public interface CollectionDAO {
     @RegisterRowMapper(ChangeEventRecordMapper.class)
     List<ChangeEventRecord> listWithOffset(
         @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+
+    /** How many bytes a change event's stored JSON takes, read without loading the JSON. */
+    record ChangeEventSize(long offset, long bytes) {}
+
+    /** The most bytes of change event JSON one bounded read loads, except that it loads one. */
+    long MAX_BYTES_PER_READ = 8L * 1024 * 1024;
+
+    /**
+     * The first change events after {@code afterOffset} in offset order: at most {@code limit} of
+     * them and {@link #MAX_BYTES_PER_READ} bytes, because each event embeds a whole entity.
+     */
+    default List<ChangeEventRecord> listWithOffsetWithinBudget(int limit, long afterOffset) {
+      List<Long> offsets =
+          offsetsWithinBudget(listSizesAfter(limit, afterOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : listByOffsets(offsets);
+    }
+
+    /** The leading offsets whose sizes add up to at most {@code maxBytes}, and always the first. */
+    static List<Long> offsetsWithinBudget(List<ChangeEventSize> sizes, long maxBytes) {
+      List<Long> offsets = new ArrayList<>();
+      long bytes = 0;
+      for (ChangeEventSize size : sizes) {
+        bytes += size.bytes();
+        if (!offsets.isEmpty() && bytes > maxBytes) {
+          break;
+        }
+        offsets.add(size.offset());
+      }
+      return List.copyOf(offsets);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event "
+                + "WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listSizesAfter(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` IN (<offsets>) "
+                + "ORDER BY `offset` ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" IN (<offsets>) "
+                + "ORDER BY \"offset\" ASC",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listByOffsets(@BindList("offsets") List<Long> offsets);
+  }
+
+  class ChangeEventSizeMapper implements RowMapper<ChangeEventDAO.ChangeEventSize> {
+    @Override
+    public ChangeEventDAO.ChangeEventSize map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventSize(rs.getLong("offset"), rs.getLong("bytes"));
+    }
   }
 
   class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
