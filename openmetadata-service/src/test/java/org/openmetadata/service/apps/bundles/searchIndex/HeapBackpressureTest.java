@@ -149,14 +149,24 @@ class HeapBackpressureTest {
 
   @Test
   void awaitHeadroom_publicNoArgReturnsWithoutBlockingJmxSampledHeap() {
-    // Smoke test: the public no-arg entrypoint delegates to MEMORY.getHeapMemoryUsage. In a unit
-    // test the heap is well below the 80% ceiling on any reasonable CI JVM, so the call should
-    // return immediately without engaging the gate.
+    // Smoke test: the public no-arg entrypoint delegates to MEMORY.getHeapMemoryUsage. On a
+    // healthy runner JVM it fast-paths and returns immediately; on a runner whose heap happens
+    // to be at/above the pause threshold mid-suite (this test runs inside a 30-minute, 18k-test
+    // JVM), it engages the gate and drains within the configured escape valve instead of
+    // wedging. What we can assert independent of the runner's heap state is that it returns
+    // within the test escape-valve bound (set in @BeforeEach) and leaves no engaged gate behind.
+    long maxWaitMs = 2_000L; // matches the @BeforeEach setMaxWaitMsForTest(2_000L)
     long start = System.nanoTime();
     HeapBackpressure.awaitHeadroom();
     long elapsedMs = (System.nanoTime() - start) / 1_000_000L;
-    assertTrue(elapsedMs < 1_000L, "public awaitHeadroom must be near-instant on a healthy heap");
-    assertFalse(HeapBackpressure.gateEngaged());
+    assertTrue(
+        elapsedMs < maxWaitMs + 2_000L,
+        "public awaitHeadroom must return within the escape-valve bound (took "
+            + elapsedMs
+            + "ms); a wedge would exceed this");
+    assertFalse(
+        HeapBackpressure.gateEngaged(),
+        "public awaitHeadroom must not leave the gate engaged after returning");
   }
 
   // ---------------------------------------------------------------------------
