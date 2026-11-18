@@ -1475,6 +1475,19 @@ class TestColumnLineage:
         assert len(server.requests_to("/model/attributes/")) == 2
         assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
 
+    def test_a_report_keeps_its_cube_after_the_report_cache_evicts_it(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779, "R1": 768})
+        _report_route(server, "R1", source=IMPORT_CUBE)
+        server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
+        source = _source(client)
+        source.get_query_parser_type = MagicMock(return_value=None)
+
+        parsed = source._parse_cube("P", "R1", Dialect.BIGQUERY)
+        client._report_cubes.clear()
+
+        assert parsed.cube == IMPORT_CUBE
+        assert client.cube_behind("R1") == "R1"
+
     # A report built on the Data Import cube is matched like the cube: on names.
     @pytest.mark.parametrize("dataset_id", [IMPORT_CUBE, "R1"])
     def test_the_lineage_edge_carries_the_column_pairs(self, server, client, dataset_id):
