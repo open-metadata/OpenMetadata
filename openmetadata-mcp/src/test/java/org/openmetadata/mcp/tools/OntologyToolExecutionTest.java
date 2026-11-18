@@ -116,7 +116,7 @@ class OntologyToolExecutionTest {
                       "For review",
                       "operations",
                       List.of()));
-      assertThat(((Map<?, ?>) result).get("state")).isEqualTo("DRAFT");
+      assertThat(JsonUtils.valueToTree(result).path("state").asText()).isEqualTo("DRAFT");
     }
   }
 
@@ -157,7 +157,7 @@ class OntologyToolExecutionTest {
                   CONTEXT,
                   Map.of(
                       "id", ID.toString(), "lease", Map.of("sessionId", "session", "version", 7)));
-      assertThat(((Map<?, ?>) submitted).get("state")).isEqualTo("SUBMITTED");
+      assertThat(JsonUtils.valueToTree(submitted).path("state").asText()).isEqualTo("SUBMITTED");
     }
   }
 

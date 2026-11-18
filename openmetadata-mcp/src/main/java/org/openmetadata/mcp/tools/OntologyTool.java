@@ -113,13 +113,20 @@ final class OntologyTool implements TypedMcpTool<Object> {
     try (final Response response =
         resource(OntologyChangeSetResource.class)
             .create(uriInfo.apply(context), context, request)) {
-      return OntologyToolSupport.writeResult(response, context);
+      return changeSetAcknowledgement(response, context);
     }
   }
 
   private Object readChangeSet(
       final CatalogSecurityContext context, final OntologyChangeSetPaging.Request request) {
     return OntologyChangeSetPaging.read(getChangeSet(context, request.id()), request);
+  }
+
+  private Object changeSetAcknowledgement(
+      final Response response, final CatalogSecurityContext context) {
+    final Map<String, Object> outcome = OntologyToolSupport.writeResult(response, context);
+    return OntologyChangeSetPaging.acknowledgement(
+        (OntologyChangeSet) response.getEntity(), outcome);
   }
 
   private OntologyChangeSet getChangeSet(final CatalogSecurityContext context, final UUID id) {
@@ -141,7 +148,7 @@ final class OntologyTool implements TypedMcpTool<Object> {
                 context,
                 request.id(),
                 new OntologyChangeSetCommand().withLease(request.lease()))) {
-      return OntologyToolSupport.writeResult(response, context);
+      return changeSetAcknowledgement(response, context);
     }
   }
 

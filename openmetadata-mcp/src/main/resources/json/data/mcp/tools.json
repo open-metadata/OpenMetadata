@@ -1153,7 +1153,7 @@
     {
       "name": "create_ontology_change_set",
       "title": "Create an ontology proposal",
-      "description": "Create a DRAFT OntologyChangeSet with typed operations through the canonical scope-authorized creation API and normal limits. This only stores a proposal; it does not apply operations or publish an ontology release. Choose either glossaries (FQNs) or a native ontology FQN. Retain sourceMemoryIds, rationale, confidence and modelId where applicable. Then get_ontology_change_set, acquire an explicit ontology_change_set_lease and submit_ontology_change_set. The server stamps the caller and DRAFT state. No admin shortcut or RDF requirement. For an existing target, first call get_entity_details with includeVersion=true and use its current version as baseVersion; never guess a version.",
+      "description": "Create a DRAFT OntologyChangeSet with typed operations through the canonical scope-authorized creation API and normal limits. This only stores a proposal; it does not apply operations or publish an ontology release. Choose either glossaries (FQNs) or a native ontology FQN. Retain sourceMemoryIds, rationale, confidence and modelId where applicable. Then get_ontology_change_set, acquire an explicit ontology_change_set_lease and submit_ontology_change_set. Returns a compact acknowledgement with id, state, counts and the canonical write outcome; read operation details in get_ontology_change_set pages. The server stamps the caller and DRAFT state. No admin shortcut or RDF requirement. For an existing target, first call get_entity_details with includeVersion=true and use its current version as baseVersion; never guess a version.",
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,
@@ -1403,7 +1403,7 @@
     {
       "name": "submit_ontology_change_set",
       "title": "Submit an ontology proposal",
-      "description": "Transition an existing DRAFT OntologyChangeSet to SUBMITTED through canonical scope authorization and the current caller-owned edit lease. Read the proposal first; provide the sessionId and version returned by ontology_change_set_lease. Submission stores review intent, not approval, application, release publication or guaranteed reviewer-task creation. Existing governance and review must continue through the normal OpenMetadata UI/API; this tool never applies changes. Release the lease after submission. Works without RDF.",
+      "description": "Transition an existing DRAFT OntologyChangeSet to SUBMITTED through canonical scope authorization and the current caller-owned edit lease. Read the proposal first; provide the sessionId and version returned by ontology_change_set_lease. Submission stores review intent, not approval, application, release publication or guaranteed reviewer-task creation. Existing governance and review must continue through the normal OpenMetadata UI/API; this tool never applies changes. Returns a compact acknowledgement with id, state, counts and the canonical write outcome; use get_ontology_change_set pages for details. Release the lease after submission. Works without RDF.",
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,

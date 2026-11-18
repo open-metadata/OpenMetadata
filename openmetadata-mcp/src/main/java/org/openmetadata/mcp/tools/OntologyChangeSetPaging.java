@@ -37,6 +37,18 @@ final class OntologyChangeSetPaging {
 
   private OntologyChangeSetPaging() {}
 
+  static ObjectNode acknowledgement(
+      final OntologyChangeSet proposal, final Map<String, Object> outcome) {
+    final ObjectNode response = metadata(proposal);
+    for (final String key : List.of("_operation", "changed", "changeRequestId")) {
+      if (outcome.containsKey(key)) {
+        response.set(key, JsonUtils.valueToTree(outcome.get(key)));
+      }
+    }
+    response.put("readTool", "get_ontology_change_set");
+    return response;
+  }
+
   static ObjectNode read(final OntologyChangeSet proposal, final Request request) {
     final List<?> items = request.section().items(proposal);
     final String snapshot = fingerprint(proposal, request.section());

@@ -1,7 +1,7 @@
 # MCP ontology proposals reuse the authorized REST actions
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial); v2 2026-11-18 (bounded proposal reads)
+- **Revisions:** v1 2026-11-18 (initial); v2 2026-11-18 (bounded proposal reads and write acknowledgements)
 - **Deciders:** Contributor implementation for #33459
 - **Guard:** `OntologyToolDiscoveryTest`, `OntologyToolContractTest`, `OntologyToolExecutionTest`,
   `OntologyProposalSchemaTest`, `OntologyChangeSetPagingTest`, `CollectionRegistryTest`,
@@ -60,6 +60,11 @@ and normal entity limits, and submission requires a current caller-owned edit le
   contract, a single item that cannot fit with required metadata under `maxResponseChars` cannot be split into whole-item pages and
   remains an explicit oversized response requiring the REST API. No rationale or payload is
   silently cut and no response limit or permission is relaxed.
+- Create and submit return compact acknowledgements with identity, lifecycle, item counts and the
+  canonical write outcome, including pending-change IDs for approval holds. They do not echo the
+  operation timeline or application results: large successful writes must retain the ID needed
+  for paged reads instead of becoming a data-less response-budget notice. Normal validation,
+  status handling and change-event publication run before this projection.
 - `ontology_change_set_lease` explicitly acquires, renews or releases a lease. It requires a
   readable draft and uses the normal edit-lock resource's edit authorization. Renewing requires
   the current version; no foreign lease is stolen or implicitly replaced. Submission takes the

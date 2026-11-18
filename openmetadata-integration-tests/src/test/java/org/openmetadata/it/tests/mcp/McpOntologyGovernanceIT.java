@@ -238,6 +238,9 @@ class McpOntologyGovernanceIT extends McpTestBase {
     final Map<String, Object> values = new HashMap<>(proposal(glossary));
     values.put("operations", operations);
     final JsonNode draft = call("create_ontology_change_set", values, editorToken);
+    assertThat(draft.path("truncated").asBoolean()).isFalse();
+    assertThat(draft.path("id").asText()).isNotBlank();
+    assertThat(draft.path("operationCount").asInt()).isEqualTo(60);
     track("ontologyChangeSets", draft);
     final JsonNode stored =
         get(
@@ -266,12 +269,32 @@ class McpOntologyGovernanceIT extends McpTestBase {
     }
     assertThat(more).isFalse();
     assertThat(reconstructed).hasSize(60);
-    assertThat(OBJECT_MAPPER.valueToTree(reconstructed)).isEqualTo(stored.path("operations"));
+    assertThat(OBJECT_MAPPER.<JsonNode>valueToTree(reconstructed))
+        .isEqualTo(stored.path("operations"));
     assertThat(
             get("ontologyChangeSets/" + draft.path("id").asText(), JsonNode.class)
                 .path("state")
                 .asText())
         .isEqualTo("DRAFT");
+    final String id = draft.path("id").asText();
+    final JsonNode lease = acquire(id, "large-proposal-session", editorToken);
+    final JsonNode submitted =
+        call("submit_ontology_change_set", Map.of("id", id, "lease", token(lease)), editorToken);
+    assertThat(submitted.path("truncated").asBoolean()).isFalse();
+    assertThat(submitted.path("id").asText()).isEqualTo(id);
+    assertThat(submitted.path("state").asText()).isEqualTo("SUBMITTED");
+    assertThat(submitted.path("operationCount").asInt()).isEqualTo(60);
+    assertThat(submitted.path("operations")).isEmpty();
+    assertThat(
+            get("ontologyChangeSets/" + id + "?fields=operations", JsonNode.class)
+                .path("operations"))
+        .isEqualTo(stored.path("operations"));
+    final JsonNode released =
+        call(
+            "ontology_change_set_lease",
+            Map.of("id", id, "action", "RELEASE", "sessionId", "large-proposal-session"),
+            editorToken);
+    assertThat(released.path("released").asBoolean()).isTrue();
   }
 
   @Test

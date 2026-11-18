@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ForbiddenException;
+import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -24,9 +25,11 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.OntologyChangeApplicationResult;
 import org.openmetadata.schema.type.OntologyChangeOperation;
@@ -40,12 +43,93 @@ import org.openmetadata.service.resources.ontology.OntologyChangeSetResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.util.RestUtil;
 
 /** Real tool dispatch/budgeting with a canonical REST boundary double, not live RBAC or storage. */
 class OntologyChangeSetPagingTest {
   private static final UUID ID = UUID.fromString("4df2f4e7-c158-45bb-98d2-741c2d99736b");
   private static final CatalogSecurityContext CONTEXT =
       new CatalogSecurityContext(() -> "alice", "https", "Bearer", Set.of(), false);
+
+  @ParameterizedTest
+  @ValueSource(strings = {"created", "updated", "unchanged", "pendingApproval"})
+  void largeWriteAcknowledgementsRetainIdentityAndCanonicalOutcome(final String outcome) {
+    final OntologyChangeSet proposal =
+        proposal(60)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("state")
+                                .withOldValue("DRAFT")
+                                .withNewValue("SUBMITTED"))));
+    final OntologyChangeSetResource resource = mock(OntologyChangeSetResource.class);
+    final UUID pendingId = UUID.randomUUID();
+    final boolean create = outcome.equals("created");
+    final var response =
+        Response.status(create ? 201 : outcome.equals("pendingApproval") ? 202 : 200)
+            .entity(proposal);
+    if (!create) {
+      response.header(
+          RestUtil.CHANGE_CUSTOM_HEADER,
+          outcome.equals("unchanged")
+              ? EventType.ENTITY_NO_CHANGE.value()
+              : EventType.ENTITY_UPDATED.value());
+    }
+    if (outcome.equals("pendingApproval")) {
+      response.header(RestUtil.PENDING_CHANGE_HEADER, pendingId);
+    }
+    when(resource.get(any(), any(), any(), any(), any())).thenReturn(proposal);
+    when(resource.create(any(), any(), any(CreateOntologyChangeSet.class)))
+        .thenReturn(response.build());
+    when(resource.submit(any(), any(), any(), any())).thenReturn(response.build());
+    final OntologyTool action =
+        tool(resource, create ? OntologyTool.Action.CREATE_CHANGE_SET : OntologyTool.Action.SUBMIT);
+    final Map<String, Object> values =
+        create
+            ? Map.of(
+                "name",
+                "reviewedProposal",
+                "displayName",
+                "Review",
+                "description",
+                "For review",
+                "operations",
+                JsonUtils.getMap(proposal).get("operations"))
+            : Map.of("id", ID.toString(), "lease", Map.of("sessionId", "alice", "version", 1));
+    try (final var events = mockStatic(McpChangeEventUtil.class)) {
+      final JsonNode acknowledgement =
+          wire(
+              action, values, create ? "create_ontology_change_set" : "submit_ontology_change_set");
+      assertThat(acknowledgement.path("truncated").asBoolean()).isFalse();
+      assertThat(acknowledgement.path("id").asText()).isEqualTo(ID.toString());
+      assertThat(acknowledgement.path("state").asText()).isEqualTo("DRAFT");
+      assertThat(acknowledgement.path("operationCount").asInt()).isEqualTo(60);
+      assertThat(acknowledgement.path("operations")).isEmpty();
+      assertThat(acknowledgement.path("_operation").asText()).isEqualTo(outcome);
+      assertThat(acknowledgement.path("readTool").asText()).isEqualTo("get_ontology_change_set");
+      if (outcome.equals("pendingApproval")) {
+        assertThat(acknowledgement.path("changeRequestId").asText())
+            .isEqualTo(pendingId.toString());
+        assertThat(acknowledgement.has("changed")).isFalse();
+        events.verifyNoInteractions();
+      } else {
+        assertThat(acknowledgement.path("changed"))
+            .isEqualTo(JsonUtils.valueToTree(List.of("state")));
+        events.verify(
+            () ->
+                McpChangeEventUtil.publishChangeEvent(
+                    proposal,
+                    create
+                        ? EventType.ENTITY_CREATED
+                        : outcome.equals("unchanged")
+                            ? EventType.ENTITY_NO_CHANGE
+                            : EventType.ENTITY_UPDATED,
+                    "alice"));
+      }
+    }
+  }
 
   @Test
   void defaultReadOfSixtyMaximumLengthRationalesRemainsReadable() {
@@ -380,6 +464,11 @@ class OntologyChangeSetPagingTest {
   }
 
   private static OntologyTool tool(final OntologyChangeSetResource resource) {
+    return tool(resource, OntologyTool.Action.GET_CHANGE_SET);
+  }
+
+  private static OntologyTool tool(
+      final OntologyChangeSetResource resource, final OntologyTool.Action action) {
     final OntologyTool.Resources resources =
         new OntologyTool.Resources() {
           @Override
@@ -388,14 +477,19 @@ class OntologyChangeSetPagingTest {
           }
         };
     return new OntologyTool(
-        OntologyTool.Action.GET_CHANGE_SET,
+        action,
         resources,
         context -> OntologyToolSupport.uriInfo("https://catalog.example", "/api", context));
   }
 
   private static JsonNode wire(final OntologyTool tool, final Map<String, Object> values) {
+    return wire(tool, values, "get_ontology_change_set");
+  }
+
+  private static JsonNode wire(
+      final OntologyTool tool, final Map<String, Object> values, final String name) {
     final Object raw = tool.execute(mock(Authorizer.class), CONTEXT, values);
-    final var result = DefaultToolContext.applyBudget(raw, "get_ontology_change_set");
+    final var result = DefaultToolContext.applyBudget(raw, name);
     assertThat(result.json().length()).isLessThanOrEqualTo(McpResponseTrim.maxResponseChars());
     return JsonUtils.valueToTree(result.payload());
   }
