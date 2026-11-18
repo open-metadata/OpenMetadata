@@ -1,0 +1,29 @@
+python:
+  - ingestion/**
+  - scripts/prepare_classification_models.py
+  - .github/actions/prepare-classification-models/**
+  - .github/actions/prepare-classification-model/**
+  - .github/workflows/warm-classification-models.yml
+  - .github/workflows/py-cli-e2e-tests-v2.yml
+  - .github/workflows/py-cli-e2e-tests.yml
+  - .github/scripts/prepare_python_coverage.py
+  - .github/actions/setup-openmetadata-test-environment/action.yml
+  - openmetadata-spec/**
+  - openmetadata-service/src/main/java/org/openmetadata/service/resources/**
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java
+  - openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java
+  - .github/workflows/ci-*.yml
+  - .github/workflows/py-unit.yml
+  - .github/workflows/py-integration.yml
+  - .github/python-ci/**
+  - .github/actions/python-*/**
+  - scripts/python_ci.py
+  - .github/scripts/run_python_suite.py
+  - .github/scripts/run_cli_e2e.sh
+  - .github/scripts/python_ci_diagnostics.sh
+  - .github/scripts/classify_test_outcome.py
+  - .github/scripts/tests/test_python_ci.py
+  - Makefile
+static:
+  - openmetadata-airflow-apis/**

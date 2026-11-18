@@ -1,0 +1,36 @@
+name: Run model-free Python static checks
+description: Run model-free Python static checks
+inputs:
+  python-version:
+    description: python-version
+    required: true
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-openmetadata-test-environment
+      with:
+        python-version: ${{ inputs.python-version }}
+        install-server: 'false'
+    - name: Check Python formatting and lint
+      run: |
+        source env/bin/activate
+        make py_format_check
+      shell: bash
+    - name: Run Static Checks
+      run: |
+        set -o pipefail
+        source env/bin/activate
+        cd ingestion
+        nox --no-venv -s static-checks 2>&1 | tee static-checks-run.log
+      shell: bash
+    - name: Upload static check log
+      if: ${{ always() }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: py-static-checks
+        path: ingestion/static-checks-run.log
+        if-no-files-found: warn
+        retention-days: 14
+    - name: Check Python CI contracts
+      run: env PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 env/bin/python -m pytest -q --noconftest .github/scripts/tests/test_python_ci.py
+      shell: bash

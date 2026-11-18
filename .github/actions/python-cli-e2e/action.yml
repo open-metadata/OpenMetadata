@@ -1,0 +1,54 @@
+name: Run connector E2E tests and collect subprocess coverage
+description: Run connector E2E tests and collect subprocess coverage
+inputs:
+  connector:
+    description: connector
+    required: true
+  python-version:
+    description: python-version
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Run CLI E2E Python Tests & record coverage
+      id: e2e-test
+      shell: bash
+      env:
+        E2E_TEST: ${{ inputs.connector }}
+      run: bash .github/scripts/run_cli_e2e.sh
+    - name: Upload coverage artifact for CLI E2E tests
+      if: ${{ !cancelled() }}
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: cli-coverage-${{ inputs.python-version }}-${{ inputs.connector }}
+        path: .coverage.${{ inputs.connector }}
+        include-hidden-files: true
+    - name: Classify Python CLI E2E test outcome
+      if: ${{ always() }}
+      env:
+        CLI_E2E_OUTCOME: ${{ steps.e2e-test.outcome }}
+        E2E_TEST: ${{ inputs.connector }}
+        TEST_PROFILE: python-cli-e2e
+        TEST_LANE: ${{ inputs.connector }}
+      run: |
+        python3 .github/scripts/classify_test_outcome.py \
+          --exit-code "$(cat ingestion/cli-e2e-test-exit-code.txt 2>/dev/null || true)" \
+          --step-outcome "$CLI_E2E_OUTCOME" \
+          --report-glob 'ingestion/junit/test-results-*.xml' \
+          --diagnostic-glob 'ingestion/*-test-run.log' \
+          --output ingestion/ci-diagnostics/outcome.json
+      shell: bash
+    - name: Upload tests artifact
+      if: ${{ always() }}
+      continue-on-error: true
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+      with:
+        name: tests-${{ inputs.python-version }}-${{ inputs.connector }}
+        path: |
+          ingestion/junit/test-results-*.xml
+          ingestion/ci-diagnostics/outcome.json
+          ingestion/*-test-run.log
+        if-no-files-found: warn
+        retention-days: 14
+        compression-level: 1

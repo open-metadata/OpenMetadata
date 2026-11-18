@@ -1,0 +1,36 @@
+name: Collect and normalize nightly Python coverage and JUnit reports
+description: Collect and normalize nightly Python coverage and JUnit reports
+inputs:
+  python-version:
+    description: python-version
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install coverage dependencies
+      run: |
+        make python_tools
+        ingestion/.nox/bootstrap/bin/nox -f ingestion/noxfile.py -s install -- coverage --environment "$PWD/env"
+      shell: bash
+    - name: Download coverage artifacts
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      with:
+        pattern: '*coverage-*'
+        path: artifacts
+    - name: Download CLI test results
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      with:
+        pattern: tests-*
+        path: test-artifacts
+    - name: Download unit and integration test results
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      with:
+        pattern: py-*-test-results-*
+        path: test-artifacts
+    - name: Generate report
+      run: env/bin/python .github/scripts/prepare_python_coverage.py
+      shell: bash

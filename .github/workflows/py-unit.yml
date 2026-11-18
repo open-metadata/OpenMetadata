@@ -1,0 +1,63 @@
+#  Copyright 2021 Collate
+#  Licensed under the Apache License, Version 2.0 (the "License");
+#  you may not use this file except in compliance with the License.
+#  You may obtain a copy of the License at
+#  http://www.apache.org/licenses/LICENSE-2.0
+#  Unless required by applicable law or agreed to in writing, software
+#  distributed under the License is distributed on an "AS IS" BASIS,
+#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+#  See the License for the specific language governing permissions and
+#  limitations under the License.
+
+name: Python unit tests
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        type: string
+        required: true
+      ref:
+        type: string
+        required: true
+      collect-coverage:
+        type: boolean
+        required: false
+        default: false
+      run-e2e-meta:
+        type: boolean
+        required: false
+        default: false
+permissions:
+  contents: read
+jobs:
+  py-unit-tests:
+    name: Unit Tests (${{ inputs.python-version }})
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ inputs.python-version }}
+          classification-models: 'true'
+          install-server: 'false'
+      - name: Run offline E2E framework tests
+        if: ${{ inputs.run-e2e-meta }}
+        run: |
+          source env/bin/activate
+          cd ingestion
+          env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
+            python -m pytest tests/cli_e2e_v2/meta -q
+        shell: bash
+      - name: Run unit tests
+        uses: ./.github/actions/python-suite
+        with:
+          suite: unit
+          test-profile: python-unit
+          artifact-name: py-unit-test-results-${{ inputs.python-version }}
+          collect-coverage: ${{ inputs.collect-coverage }}
+          coverage-name: coverage-unit-${{ inputs.python-version }}

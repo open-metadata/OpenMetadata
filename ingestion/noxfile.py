@@ -260,8 +260,10 @@ def lint(session):
             "datamodel_generation.py",
             "update_version.py",
             "prepare_classification_models.py",
+            "python_ci.py",
         )
     )
+    sources.extend(str(ROOT / ".github/scripts" / name) for name in ("run_python_suite.py", "tests/test_python_ci.py"))
     session.run(
         str(python.parent / "ruff"),
         "check",
