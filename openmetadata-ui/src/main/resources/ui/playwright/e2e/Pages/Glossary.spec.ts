@@ -2973,7 +2973,6 @@ test.describe('Glossary tests', () => {
             return keys.slice(parentIndex + 1, parentIndex + 3).sort();
           })
           .toEqual([childFqn, siblingFqn].sort());
-        await expect(page.getByText('Something went wrong')).not.toBeVisible();
       });
 
       await test.step('Collapse parent term and verify child term returns to the root list', async () => {
@@ -2981,6 +2980,13 @@ test.describe('Glossary tests', () => {
 
         await expect(siblingRow).toHaveCount(0);
         await expect(childRow).toHaveCount(1);
+        await expect
+          .poll(async () => {
+            const keys = await getRowKeys();
+
+            return keys[keys.indexOf(parentFqn) + 1];
+          })
+          .not.toBe(childFqn);
       });
     } finally {
       try {

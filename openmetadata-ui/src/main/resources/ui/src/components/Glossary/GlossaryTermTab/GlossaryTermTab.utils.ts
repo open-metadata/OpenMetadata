@@ -196,6 +196,30 @@ const hydrateTermSubtree = (
   };
 };
 
+// A child's FQN is always its parent's FQN + '.' + name, so checking every
+// '.'-bounded prefix finds a root ancestor. Prefixes that cut inside a quoted
+// segment never match a real FQN, so they are harmless lookups.
+const hasRootDescendantOfAnotherRoot = (
+  terms: ModifiedGlossaryTerm[]
+): boolean => {
+  const rootFqns = new Set(
+    terms.map((term) => term.fullyQualifiedName).filter(Boolean)
+  );
+
+  return terms.some(({ fullyQualifiedName: fqn }) => {
+    if (!fqn) {
+      return false;
+    }
+    for (let i = fqn.indexOf('.'); i !== -1; i = fqn.indexOf('.', i + 1)) {
+      if (rootFqns.has(fqn.slice(0, i))) {
+        return true;
+      }
+    }
+
+    return false;
+  });
+};
+
 // Reconciles flat search matches with expanded ancestor subtrees so a term
 // rendered under an expanded ancestor is suppressed at root while expanded,
 // carries over any already-loaded grandchildren, and reappears at root if
@@ -206,6 +230,24 @@ export const reconcileGlossaryTermHierarchy = (
 ): ModifiedGlossaryTerm[] => {
   if (!Array.isArray(terms) || terms.length === 0) {
     return [];
+  }
+
+  // Only a flat search page can list a term at root and under an ancestor;
+  // otherwise skip the tree copy so row identities survive expand/collapse.
+  if (!hasRootDescendantOfAnotherRoot(terms)) {
+    const seenFqns = new Set<string>();
+
+    return terms.filter(({ fullyQualifiedName: fqn }) => {
+      if (!fqn) {
+        return true;
+      }
+      if (seenFqns.has(fqn)) {
+        return false;
+      }
+      seenFqns.add(fqn);
+
+      return true;
+    });
   }
 
   const ctx: HierarchyHydrationContext = {

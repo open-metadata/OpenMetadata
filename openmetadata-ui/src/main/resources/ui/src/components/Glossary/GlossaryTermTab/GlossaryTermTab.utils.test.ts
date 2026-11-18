@@ -245,8 +245,10 @@ describe('GlossaryTermTab.utils', () => {
         children: [dupChild1, dupChild2],
       });
 
+      // The root search hit for G.Parent.Dup is what sends this page through
+      // reconciliation; it is hidden while G.Parent is expanded.
       const result = reconcileGlossaryTermHierarchy(
-        [parentWithDups, cyclicNode, mutualA],
+        [parentWithDups, cyclicNode, mutualA, makeTerm('G.Parent.Dup')],
         ['G.Parent', 'G.Cyclic', 'G.MutualA', 'G.MutualB']
       );
 
@@ -278,6 +280,23 @@ describe('GlossaryTermTab.utils', () => {
       );
 
       expect(result).toHaveLength(2);
+    });
+
+    it('returns root terms untouched when no root sits under another root', () => {
+      const parent = makeTerm('G.Parent', {
+        childrenCount: 1,
+        children: [makeTerm('G.Parent.Child')],
+      });
+      const other = makeTerm('G.Other');
+
+      const result = reconcileGlossaryTermHierarchy(
+        [parent, other, makeTerm('G.Other')],
+        ['G.Parent']
+      );
+
+      expect(result).toHaveLength(2);
+      expect(result[0]).toBe(parent);
+      expect(result[1]).toBe(other);
     });
 
     it('returns an empty array when terms input is empty or non-array', () => {
