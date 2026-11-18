@@ -2643,6 +2643,96 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> params,
         @Bind("relatedLimit") int relatedLimit);
 
+    @SqlQuery(
+        """
+        WITH scoped_incidents AS (
+          SELECT DISTINCT <groupKey> AS groupKey, i.stateId
+          FROM test_case_incident i
+          INNER JOIN test_case tc ON tc.fqnHash = i.entityFQNHash
+          <dimensionJoin>
+          <cond> AND tc.deleted = FALSE AND <groupKey> IN (<groupKeys>)
+          AND i.createdAt <= :trendEnd
+        ), history AS (
+          SELECT scoped.groupKey, h.stateId, h.timestamp, h.testCaseResolutionStatusType,
+            LEAD(h.timestamp) OVER (
+              PARTITION BY scoped.groupKey, h.stateId ORDER BY h.timestamp, h.id
+            ) AS nextTimestamp
+          FROM scoped_incidents scoped
+          INNER JOIN test_case_resolution_status_time_series h ON h.stateId = scoped.stateId
+          WHERE h.timestamp <= :trendEnd
+        ), samples AS (<samples>)
+        SELECT h.groupKey, s.sample, COUNT(DISTINCT h.stateId) AS incidentCount
+        FROM history h INNER JOIN samples s ON h.timestamp <= s.sampledAt
+          AND (h.nextTimestamp IS NULL OR h.nextTimestamp > s.sampledAt)
+        WHERE h.testCaseResolutionStatusType IN (<openStatuses>)
+        GROUP BY h.groupKey, s.sample
+        """)
+    @RegisterRowMapper(IncidentGroupTrendCountMapper.class)
+    List<IncidentGroupTrendCount> listIncidentGroupTrendCounts(
+        @Define("groupKey") String groupKey,
+        @Define("dimensionJoin") String dimensionJoin,
+        @Define("cond") String condition,
+        @Define("samples") String samples,
+        @Define("openStatuses") String openStatuses,
+        @BindList("groupKeys") List<String> groupKeys,
+        @BindMap Map<String, ?> params);
+
+    default Map<String, List<Integer>> incidentGroupTrends(
+        IncidentGroupBy groupBy,
+        ListFilter filter,
+        List<String> groupKeys,
+        IncidentGroupTrend window) {
+      if (groupKeys.isEmpty()) {
+        return Map.of();
+      }
+      IncidentGroupDimension dimension = IncidentGroupDimension.from(groupBy);
+      ListFilter historyFilter = incidentTrendFilter(filter);
+      String condition = historyFilter.getCondition();
+      Map<String, Object> params = new HashMap<>(historyFilter.getQueryParams());
+      params.putAll(window.bindings());
+      String statuses =
+          OPEN_STATUSES.stream()
+              .map(status -> "'" + status.value() + "'")
+              .collect(Collectors.joining(","));
+      List<IncidentGroupTrendCount> rows =
+          listIncidentGroupTrendCounts(
+              dimension.groupKey(),
+              dimension.join(),
+              condition,
+              IncidentGroupTrend.samplesSql(),
+              statuses,
+              groupKeys,
+              params);
+      Map<String, List<IncidentGroupTrendCount>> byGroup =
+          rows.stream().collect(Collectors.groupingBy(IncidentGroupTrendCount::groupKey));
+      return groupKeys.stream()
+          .collect(
+              Collectors.toMap(
+                  key -> key,
+                  key -> IncidentGroupTrend.counts(byGroup.getOrDefault(key, List.of()))));
+    }
+
+    // Applying current status or creation-date filters to history would erase resolutions and
+    // incidents that were already open at the start of the window.
+    static ListFilter incidentTrendFilter(ListFilter filter) {
+      ListFilter history = new ListFilter(null);
+      filter
+          .getQueryParams()
+          .forEach(
+              (key, value) -> {
+                if (!List.of(
+                        "testCaseResolutionStatusType",
+                        "incidentDateField",
+                        "incidentStartTs",
+                        "incidentEndTs",
+                        "incidentGroupKey")
+                    .contains(key)) {
+                  history.addQueryParam(key, value);
+                }
+              });
+      return history;
+    }
+
     @SqlQuery("SELECT COUNT(DISTINCT <groupKey>) " + INCIDENT_GROUPS_FROM)
     int countIncidentGroups(
         @Define("openStatuses") String openStatuses,
@@ -2722,7 +2812,7 @@ public interface TimeSeriesDAOs {
               statusRank,
               String.join(", ", statusCountExprs),
               assigneesExpr(),
-              createdAtAggExpr(),
+              "NULL",
               tableFqnExpr(),
               dimension.groupKey(),
               dimension.groupType(),
@@ -2781,10 +2871,6 @@ public interface TimeSeriesDAOs {
     // DISTINCT, so the array may carry nulls and duplicates — the repository dedupes on parse.
     private static String assigneesExpr() {
       return jsonArrayAgg("i.assignee");
-    }
-
-    private static String createdAtAggExpr() {
-      return jsonArrayAgg("i.createdAt");
     }
 
     private static String jsonArrayAgg(String expression) {
@@ -3175,6 +3261,16 @@ public interface TimeSeriesDAOs {
       int tableCount,
       int testDefinitionCount,
       int totalGroups) {}
+
+  record IncidentGroupTrendCount(String groupKey, int sample, int incidentCount) {}
+
+  class IncidentGroupTrendCountMapper implements RowMapper<IncidentGroupTrendCount> {
+    @Override
+    public IncidentGroupTrendCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new IncidentGroupTrendCount(
+          rs.getString("groupKey"), rs.getInt("sample"), rs.getInt("incidentCount"));
+    }
+  }
 
   record IncidentGroupRelatedKey(String groupKey, String relatedKey) {}
 

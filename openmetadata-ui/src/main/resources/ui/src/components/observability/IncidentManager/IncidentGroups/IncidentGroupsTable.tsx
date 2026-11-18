@@ -197,7 +197,10 @@ const IncidentGroupsTable = ({
       { id: 'status', label: t('label.status') },
       { id: 'assignees', label: t('label.assignee-plural') },
       { id: 'lastSeen', label: t('label.last-seen') },
-      { id: 'trend', label: t('label.trend') },
+      {
+        id: 'trend',
+        label: `${t('label.open-incidents')} (${t('label.last-7-days')})`,
+      },
       { id: 'open', ariaLabel: t('label.action-plural') },
     ],
     [dimension.labelKey, groupBy, isSelectable, t]

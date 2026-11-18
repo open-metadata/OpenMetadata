@@ -983,6 +983,34 @@ public class IncidentGroupsIT {
   }
 
   @Test
+  void testOpenCountTrendIncludesResolvedHistoryAndExistingBaseline() throws Exception {
+    long now = System.currentTimeMillis();
+    long day = Duration.ofDays(1).toMillis();
+    Table table = createTable(schemaFqn, "incident_trend_" + now);
+    TestCase test =
+        createTestCase("trend_case_" + now, tableLink(table), tableDefinition, List.of());
+    String first = UUID.randomUUID().toString();
+    String second = UUID.randomUUID().toString();
+    insertStatusRecords(
+        test,
+        List.of(
+            seededRecord(first, now - 10 * day, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(first, now - 2 * day, TestCaseResolutionStatusTypes.Resolved, null),
+            seededRecord(second, now - day, TestCaseResolutionStatusTypes.New, null),
+            seededRecord(
+                second,
+                now - day + 1000,
+                TestCaseResolutionStatusTypes.Assigned,
+                userA.getName())));
+    Map<String, String> params = groupParams(GROUP_BY_TABLE);
+    params.put("testCaseFQN", test.getFullyQualifiedName());
+    TestCaseIncidentGroup group = findGroup(fetchGroups(params), table.getFullyQualifiedName());
+    assertEquals(List.of(1, 1, 1, 1, 1, 1, 0, 1, 1), group.getTrend());
+    assertEquals(IncidentTrendDirection.Steady, group.getTrendDirection());
+    assertEquals(1, group.getIncidentCount());
+  }
+
+  @Test
   void testGroupAggregates() throws Exception {
     List<TestCaseIncidentGroup> groups = fetchGroups(groupParams(GROUP_BY_TABLE));
 
@@ -999,10 +1027,7 @@ public class IncidentGroupsIT {
     assertEquals(List.of(userA.getName()), groupA.getAssignees());
     assertEquals(1, groupA.getAssigneeCount());
     assertTrue(groupA.getFirstSeen() <= groupA.getLastSeen());
-    assertEquals(
-        2,
-        groupA.getTrend().stream().mapToInt(Integer::intValue).sum(),
-        "trend buckets must add up to the incident count");
+    assertEquals(2, groupA.getTrend().getLast(), "the last sample is the current open count");
     assertNotNull(groupA.getTrendDirection());
 
     TestCaseIncidentGroup groupB = findGroup(groups, tableB.getFullyQualifiedName());
@@ -1015,10 +1040,10 @@ public class IncidentGroupsIT {
     assertEquals(Severity.Severity2, groupB.getSeverity(), "case 3's explicit severity");
     assertEquals(0, groupB.getAssigneeCount());
     assertEquals(
-        List.of(1, 0, 0, 0, 0, 0, 0, 0),
+        List.of(0, 0, 0, 0, 0, 0, 0, 0, 1),
         groupB.getTrend(),
-        "a single open incident lands in the first bucket");
-    assertEquals(IncidentTrendDirection.Steady, groupB.getTrendDirection());
+        "the incident remains open through the end of the history window");
+    assertEquals(IncidentTrendDirection.Rising, groupB.getTrendDirection());
   }
 
   @Test
@@ -1737,9 +1762,7 @@ public class IncidentGroupsIT {
         1, group.getAssigneeCount(), "only the tie-broken latest record's assignee may count");
     assertEquals(1, group.getAssignees().size());
     assertEquals(
-        1,
-        group.getTrend().stream().mapToInt(Integer::intValue).sum(),
-        "the tied incident must enter the trend exactly once");
+        1, group.getTrend().getLast(), "the tied incident must enter each sample exactly once");
   }
 
   @Test

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Tooltip,
+  TooltipTrigger,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
@@ -39,8 +44,6 @@ const IncidentTrendSparkline = ({
 }: IncidentTrendSparklineProps) => {
   const { t } = useTranslation();
 
-  // A group whose incidents all landed in the same instant has no trend to
-  // draw; the server omits the field rather than sending a flat line.
   if (!trend || isEmpty(trend)) {
     return null;
   }
@@ -50,36 +53,49 @@ const IncidentTrendSparkline = ({
     ? t(INCIDENT_TREND_DIRECTION_LABELS[trendDirection])
     : '';
 
+  const description = t('message.open-incident-trend', {
+    startCount: trend[0],
+    endCount: trend[trend.length - 1],
+  });
+
   return (
-    <Box className="tw:gap-0.5" data-testid="incident-trend" direction="col">
-      <svg
-        aria-hidden
-        data-testid="incident-trend-sparkline"
-        fill="none"
-        height={SPARKLINE_HEIGHT}
-        viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-        width={SPARKLINE_WIDTH}>
-        <polyline
-          data-testid="incident-trend-line"
-          points={getIncidentTrendPoints(trend)}
-          // An SVG stroke takes no class, so the tone arrives as its token.
-          stroke={INCIDENT_TREND_COLORS[tone]}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={1.5}
-        />
-      </svg>
-      {directionLabel && (
-        <Typography
-          as="span"
-          className={INCIDENT_TREND_TEXT_CLASSES[tone]}
-          data-testid="incident-trend-direction"
-          size="text-xs"
-          weight="semibold">
-          {directionLabel}
-        </Typography>
-      )}
-    </Box>
+    <Tooltip title={description}>
+      <TooltipTrigger>
+        <Box
+          className="tw:gap-0.5"
+          data-testid="incident-trend"
+          direction="col">
+          <svg
+            aria-label={description}
+            data-testid="incident-trend-sparkline"
+            fill="none"
+            height={SPARKLINE_HEIGHT}
+            role="img"
+            viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+            width={SPARKLINE_WIDTH}>
+            <polyline
+              data-testid="incident-trend-line"
+              points={getIncidentTrendPoints(trend)}
+              // An SVG stroke takes no class, so the tone arrives as its token.
+              stroke={INCIDENT_TREND_COLORS[tone]}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+            />
+          </svg>
+          {directionLabel && (
+            <Typography
+              as="span"
+              className={INCIDENT_TREND_TEXT_CLASSES[tone]}
+              data-testid="incident-trend-direction"
+              size="text-xs"
+              weight="semibold">
+              {directionLabel}
+            </Typography>
+          )}
+        </Box>
+      </TooltipTrigger>
+    </Tooltip>
   );
 };
 

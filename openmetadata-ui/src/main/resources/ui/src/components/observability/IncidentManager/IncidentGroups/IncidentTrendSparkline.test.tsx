@@ -24,6 +24,19 @@ import { getIncidentTrendPoints } from './IncidentGroups.utils';
 import IncidentTrendSparkline from './IncidentTrendSparkline';
 
 describe('IncidentTrendSparkline', () => {
+  it('should expose the open count history instead of hiding the graph from assistive technology', () => {
+    render(
+      <IncidentTrendSparkline
+        trend={[3, 3, 4, 4]}
+        trendDirection={IncidentTrendDirection.Rising}
+      />
+    );
+
+    expect(screen.getByRole('img')).toHaveAccessibleName(
+      'message.open-incident-trend'
+    );
+  });
+
   it('should draw the line and its direction label', () => {
     render(
       <IncidentTrendSparkline
