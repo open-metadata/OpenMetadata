@@ -14,8 +14,10 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.ontology.OntologyChangeSetValidator;
 
 class OntologyProposalSchemaTest {
   private static final String SCHEMA_BASE = "https://open-metadata.org/schema/";
@@ -64,12 +66,13 @@ class OntologyProposalSchemaTest {
         SchemaRegistry.withDefaultDialect(
                 SpecificationVersion.DRAFT_2020_12, builder -> builder.schemas(schemas))
             .getSchema(SchemaLocation.of(SCHEMA_BASE + description.rootSchema()));
+    final Map<String, String> from = reference("glossaryTerm");
     final Map<String, Object> relationship =
         Map.of(
             "id",
             id(),
             "fromTerm",
-            reference("glossaryTerm"),
+            from,
             "toTerm",
             reference("glossaryTerm"),
             "relationshipType",
@@ -92,6 +95,10 @@ class OntologyProposalSchemaTest {
             "ACTIVE",
             "relationship",
             relationship,
+            "targetId",
+            from.get("id"),
+            "baseVersion",
+            1.2,
             "sourceMemoryIds",
             List.of(id()),
             "rationale",
@@ -113,6 +120,13 @@ class OntologyProposalSchemaTest {
     assertThat(request.getOperations().getFirst().getRelationship().getProvenance())
         .isEqualTo(RelationProvenance.AI_SUGGESTED);
     assertThat(request.getOperations().getFirst().getSourceMemoryIds()).hasSize(1);
+    final OntologyChangeSet proposal =
+        new OntologyChangeSet().withOperations(request.getOperations());
+    OntologyChangeSetValidator.normalizeAndValidate(proposal);
+    assertThat(proposal.getUndoCursor()).isEqualTo(1);
+    proposal.getOperations().getFirst().setBaseVersion(null);
+    assertThatThrownBy(() -> OntologyChangeSetValidator.normalizeAndValidate(proposal))
+        .hasMessageContaining("baseVersion is required for an existing target");
   }
 
   @Test

@@ -12,7 +12,6 @@ import java.net.URI;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
@@ -108,12 +107,15 @@ class RelationshipTypeReadContractTest {
     }
   }
 
-  @Test
-  void permittedNamedReadKeepsGovernedDefinitionFields() throws Exception {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void permittedNamedReadKeepsGovernedDefinitionFields(final boolean includeVersion)
+      throws Exception {
     final RelationshipType definition =
         new RelationshipType()
             .withId(UUID.randomUUID())
             .withName(TYPE_NAME)
+            .withVersion(1.2)
             .withFullyQualifiedName(TYPE_NAME)
             .withRdfPredicate(URI.create("https://example.org/customerOf"))
             .withEntityStatus(EntityStatus.APPROVED)
@@ -130,12 +132,23 @@ class RelationshipTypeReadContractTest {
                   .execute(
                       authorizer,
                       contextFor("alice"),
-                      Map.of("entityType", Entity.RELATIONSHIP_TYPE, "fqn", TYPE_NAME)));
+                      Map.of(
+                          "entityType",
+                          Entity.RELATIONSHIP_TYPE,
+                          "fqn",
+                          TYPE_NAME,
+                          "includeVersion",
+                          includeVersion)));
       assertThat(result.path("rdfPredicate").asText())
           .isEqualTo(definition.getRdfPredicate().toString());
       assertThat(result.at("/cardinality/sourceMax").asInt()).isEqualTo(1);
       assertThat(result.path("crossGlossaryAllowed").asBoolean()).isFalse();
       assertThat(result.path("entityStatus").asText()).isEqualTo("Approved");
+      assertThat(result.has("version")).isEqualTo(includeVersion);
+      if (includeVersion) {
+        assertThat(result.path("version").asDouble()).isEqualTo(1.2);
+      }
+      assertThat(definition.getVersion()).isEqualTo(1.2);
     }
   }
 

@@ -151,7 +151,20 @@ class McpOntologyGovernanceIT extends McpTestBase {
 
   @Test
   void proposalRoundTripSubmitsWithoutApplyingItsOperation() throws Exception {
-    final JsonNode draft = call("create_ontology_change_set", proposal(glossary), editorToken);
+    final JsonNode current =
+        call(
+            "get_entity_details",
+            Map.of(
+                "entityType",
+                "glossaryTerm",
+                "fqn",
+                source.path("fullyQualifiedName").asText(),
+                "includeVersion",
+                true),
+            editorToken);
+    assertThat(current.path("version").asDouble()).isPositive();
+    final JsonNode draft =
+        call("create_ontology_change_set", proposal(glossary, current), editorToken);
     track("ontologyChangeSets", draft);
     assertThat(draft.path("state").asText()).isEqualTo("DRAFT");
     final String id = draft.path("id").asText();
@@ -234,6 +247,10 @@ class McpOntologyGovernanceIT extends McpTestBase {
 
   private static Map<String, Object> proposal(final JsonNode scope) {
     final JsonNode term = scope == restrictedGlossary ? restrictedTerm : source;
+    return proposal(scope, term);
+  }
+
+  private static Map<String, Object> proposal(final JsonNode scope, final JsonNode term) {
     return Map.of(
         "name",
         "proposal_" + UUID.randomUUID(),

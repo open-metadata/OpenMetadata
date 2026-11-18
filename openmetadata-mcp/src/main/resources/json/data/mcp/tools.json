@@ -346,6 +346,11 @@
             "minimum": 1,
             "maximum": 10,
             "default": 3
+          },
+          "includeVersion": {
+            "type": "boolean",
+            "default": false,
+            "description": "Include the current entity version in a metadata read, for example to use as baseVersion in an existing-target ontology proposal. Applies to metadata results, including batches."
           }
         },
         "required": []
@@ -1148,7 +1153,7 @@
     {
       "name": "create_ontology_change_set",
       "title": "Create an ontology proposal",
-      "description": "Create a DRAFT OntologyChangeSet with typed operations through the canonical scope-authorized creation API and normal limits. This only stores a proposal; it does not apply operations or publish an ontology release. Choose either glossaries (FQNs) or a native ontology FQN. Retain sourceMemoryIds, rationale, confidence and modelId where applicable. Then get_ontology_change_set, acquire an explicit ontology_change_set_lease and submit_ontology_change_set. The server stamps the caller and DRAFT state. No admin shortcut or RDF requirement.",
+      "description": "Create a DRAFT OntologyChangeSet with typed operations through the canonical scope-authorized creation API and normal limits. This only stores a proposal; it does not apply operations or publish an ontology release. Choose either glossaries (FQNs) or a native ontology FQN. Retain sourceMemoryIds, rationale, confidence and modelId where applicable. Then get_ontology_change_set, acquire an explicit ontology_change_set_lease and submit_ontology_change_set. The server stamps the caller and DRAFT state. No admin shortcut or RDF requirement. For an existing target, first call get_entity_details with includeVersion=true and use its current version as baseVersion; never guess a version.",
       "annotations": {
         "readOnlyHint": false,
         "destructiveHint": true,

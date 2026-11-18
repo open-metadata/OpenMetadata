@@ -28,6 +28,11 @@ and normal entity limits, and submission requires a current caller-owned edit le
   nor ownership/provider/source-pack changes. The canonical mapper stamps the caller, starts a
   `DRAFT`, and the normal resource enforces scope, create permissions and limits. Operations are
   retained for review; they are not applied by creation.
+- Existing-target operations retain the canonical optimistic concurrency requirement. A metadata
+  `get_entity_details(includeVersion=true)` read returns the authorized entity's current version
+  for `baseVersion`; default detail responses continue to omit it. The canonical operation
+  validator rejects an existing-target proposal without its version. No version is guessed or
+  silently refreshed during submission.
 - `describe_entity_type(entityType=ontologyChangeSet)` returns public canonical operation schemas
   without reading an entity or enabling generic creation. Its optional `schema` selector fetches
   a specific proposal or payload shape and the complete classpath reference closure. Loading is

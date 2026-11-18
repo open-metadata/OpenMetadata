@@ -43,12 +43,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
 public class GetEntityTool implements McpTool {
+  private static final String VERSION_KEY = "version";
+  private static final String INCLUDE_VERSION_PARAM = "includeVersion";
 
   // Fields to exclude from response to optimize LLM context usage
   // These fields are typically verbose and not useful for LLM understanding
   private static final List<String> EXCLUDE_FIELDS =
       List.of(
-          "version",
+          VERSION_KEY,
           "updatedAt",
           "updatedBy",
           "changeDescription",
@@ -288,6 +290,9 @@ public class GetEntityTool implements McpTool {
     // Clean response to optimize LLM context usage, then bound the columns array so a wide entity
     // stays under the dispatch-level size cap instead of being replaced by an empty stub.
     Map<String, Object> cleaned = cleanEntityResponse(entityData);
+    if (McpParams.getBoolean(params, INCLUDE_VERSION_PARAM, false)) {
+      cleaned.put(VERSION_KEY, entity.getVersion());
+    }
     resolveCertification(cleaned);
     Map<String, Object> windowed = applyColumnWindow(cleaned, columnOffset, columnLimit);
     if (entity instanceof Metric metric) {
