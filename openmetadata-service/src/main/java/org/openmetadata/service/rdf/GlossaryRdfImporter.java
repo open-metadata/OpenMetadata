@@ -70,6 +70,7 @@ import org.openmetadata.schema.type.RelationshipPaletteKey;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
 import org.openmetadata.schema.type.SemanticReference;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -632,12 +633,13 @@ public class GlossaryRdfImporter {
 
   private void registerRelationTypes(Model model, List<TermIntent> intents, boolean dryRun) {
     Map<String, RelationshipType> existing = existingRelationTypes();
-    Map<String, RelationshipType> toAdd = new LinkedHashMap<>();
+    Map<String, RelationshipType> collected = new LinkedHashMap<>();
     for (TermIntent intent : intents) {
       for (RelationIntent relation : intent.relations) {
-        collectRelationPair(model, relation, existing.keySet(), toAdd);
+        collectRelationPair(model, relation, existing.keySet(), collected);
       }
     }
+    Map<String, RelationshipType> toAdd = restoringSoftDeletedFirst(collected);
     Map<String, RelationshipType> updates = wireInversePartners(model, toAdd, existing);
     if (!toAdd.isEmpty()) {
       applyRelationTypes(toAdd, dryRun);
@@ -645,6 +647,29 @@ public class GlossaryRdfImporter {
     if (allowGlobalSchemaChanges && !dryRun) {
       persistRelationTypeUpdates(updates.values());
     }
+  }
+
+  /**
+   * A collected name held by a soft-deleted type restores that type, so it keeps the stored id that
+   * other types reference, and it is written before the types naming it because a reference to a
+   * type that is still deleted is rejected.
+   */
+  private Map<String, RelationshipType> restoringSoftDeletedFirst(
+      Map<String, RelationshipType> collected) {
+    Map<String, UUID> softDeleted = softDeletedRelationTypeIds();
+    Map<String, RelationshipType> ordered = new LinkedHashMap<>();
+    collected.values().stream()
+        .filter(type -> softDeleted.containsKey(type.getName()))
+        .forEach(type -> ordered.put(type.getName(), type.withId(softDeleted.get(type.getName()))));
+    ordered.putAll(collected);
+    return ordered;
+  }
+
+  private Map<String, UUID> softDeletedRelationTypeIds() {
+    return Entity.getCollectionDAO().relationshipTypeDAO().listIncludingDeleted().stream()
+        .map(json -> JsonUtils.readValue(json, RelationshipType.class))
+        .filter(type -> Boolean.TRUE.equals(type.getDeleted()))
+        .collect(Collectors.toMap(RelationshipType::getName, RelationshipType::getId));
   }
 
   private void collectRelationPair(

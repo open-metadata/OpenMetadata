@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Ontology Studio team
-- **Guard:** `RelationshipTypeDeleteGuardIT`, `RelationshipTypeReferencesTest`, `RelationshipTypeRdfWriterTest`, `LegacyRelationshipTypeSynchronizerTest`
+- **Guard:** `RelationshipTypeDeleteGuardIT`, `GlossaryRdfImportIT`, `RelationshipTypeReferencesTest`, `RelationshipTypeRdfWriterTest`, `LegacyRelationshipTypeSynchronizerTest`
 - **Related:** #38112, ADR:2026-11-17-recreating-a-deleted-ontology-name-restores-its-record
 
 ## Context
@@ -22,7 +22,8 @@ were protected from deletion.
    restore never brings back a reference to a missing type, so restore needs no check of its own.
 2. A create or update whose references name a soft-deleted type is rejected with 400. A reference
    by FQN to a type that does not exist yet stays allowed (the UI creates an inverse pair that
-   way); the ontology export omits such an axiom instead of failing.
+   way); the ontology export omits such an axiom instead of failing. An RDF import that names a
+   soft-deleted type restores it under its stored id before writing the types that reference it.
 3. The deprecated settings write removes several types at once: the whole removal is checked before
    the setting is saved, against the definitions that write saves, and references among the removed
    types do not block it. A listed type that is soft-deleted is brought back before the others.

@@ -26,6 +26,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -97,6 +98,32 @@ public final class RelationshipTypeTestSupport {
 
   public static Reply deleteType(UUID id, boolean hardDelete) {
     return send("DELETE", TYPES + "/" + id + "?hardDelete=" + hardDelete, null);
+  }
+
+  /**
+   * Hard-deletes the given types, tolerating ones already gone. The inverses they hold are cleared
+   * first because a type another type names as its inverse cannot be deleted, so neither half of an
+   * inverse pair could go first.
+   */
+  public static void hardDeleteAll(Collection<UUID> ids) {
+    ids.forEach(RelationshipTypeTestSupport::clearInverse);
+    for (UUID id : ids) {
+      Reply reply = deleteType(id, true);
+      assertTrue(reply.status() == 200 || reply.status() == 404, reply.message());
+    }
+  }
+
+  private static void clearInverse(UUID id) {
+    Reply type = getType(id);
+    JsonNode inverse = type.body().path("inverse");
+    boolean namesAnotherType =
+        type.status() == 200
+            && inverse.isObject()
+            && !id.toString().equals(inverse.path("id").asText());
+    if (namesAnotherType) {
+      Reply reply = send("PATCH", TYPES + "/" + id, "[{\"op\":\"remove\",\"path\":\"/inverse\"}]");
+      assertEquals(200, reply.status(), reply.message());
+    }
   }
 
   public static Reply restoreType(UUID id) {

@@ -42,6 +42,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
+import org.openmetadata.it.util.RelationshipTypeTestSupport;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -113,9 +114,7 @@ public class GlossaryRdfImportIT {
   void cleanup(TestNamespace ns) throws Exception {
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     customPropertyNames.forEach(this::deleteCustomProperty);
-    for (UUID id : relationshipTypeIds) {
-      deleteRelationshipType(id);
-    }
+    RelationshipTypeTestSupport.hardDeleteAll(relationshipTypeIds);
   }
 
   @ParameterizedTest
@@ -866,6 +865,30 @@ public class GlossaryRdfImportIT {
     assertEquals(before, getRelationshipType(inverse));
   }
 
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void importRestoresASoftDeletedInverseUnderItsStoredId(boolean createdViaRest, TestNamespace ns)
+      throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossaryRestore" + createdViaRest);
+    String forward = relationshipTypeName(glossary.getName());
+    String inverse = forward + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
+    UUID storedId = softDeletedPartner(glossary, inverse, createdViaRest);
+    relationshipTypeIds.add(storedId);
+
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            inverseCycleOntology(glossary.getName(), forward, inverse, "undeclared"));
+
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    JsonNode restored = getRelationshipType(inverse);
+    assertEquals(storedId.toString(), restored.path("id").asText());
+    assertFalse(restored.path("deleted").asBoolean());
+    assertInversePair(forward, inverse);
+    assertCyclePerspectives(glossary, forward, inverse);
+  }
+
   @Test
   void importPreservesSymmetricSelfInverseWhenNamedInverseIsDeclared(TestNamespace ns)
       throws Exception {
@@ -925,6 +948,35 @@ public class GlossaryRdfImportIT {
           term.getRelatedTerms().stream().noneMatch(edge -> inverse.equals(edge.getRelationType())),
           "named inverse must not appear on symmetric edges");
     }
+  }
+
+  private UUID softDeletedPartner(Glossary glossary, String name, boolean createdViaRest)
+      throws Exception {
+    UUID id;
+    if (createdViaRest) {
+      id = createExistingPartner(glossary, name, null).getId();
+    } else {
+      importRdfBody(
+          glossary.getName(),
+          inverseCycleOntology(glossary.getName(), name, "unused", "none")
+              .replace("hcp:Term", "hcp:Earlier"));
+      id = RelationshipTypeIds.stableId(name);
+      for (int index = 0; index < 3; index++) {
+        RelationshipTypeTestSupport.Reply deleted =
+            RelationshipTypeTestSupport.send(
+                "DELETE",
+                "/v1/glossaryTerms/name/"
+                    + glossary.getName()
+                    + ".Earlier"
+                    + index
+                    + "?hardDelete=true",
+                null);
+        assertEquals(200, deleted.status(), deleted.message());
+      }
+    }
+    RelationshipTypeTestSupport.Reply reply = RelationshipTypeTestSupport.deleteType(id, false);
+    assertEquals(200, reply.status(), reply.message());
+    return id;
   }
 
   private RelationshipType createExistingPartner(Glossary glossary, String name, String inverse) {
@@ -1026,20 +1078,6 @@ public class GlossaryRdfImportIT {
 
   private String relationshipTypeName(String glossaryName) {
     return "prescribes" + RelationshipTypeIds.stableId(glossaryName).toString().replace("-", "");
-  }
-
-  private void deleteRelationshipType(UUID id) throws Exception {
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(
-                URI.create(
-                    SdkClients.getServerUrl() + "/v1/relationshipTypes/" + id + "?hardDelete=true"))
-            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-            .timeout(Duration.ofSeconds(30))
-            .DELETE()
-            .build();
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertTrue(response.statusCode() == 200 || response.statusCode() == 404, response.body());
   }
 
   private HttpResponse<String> sendImportRdf(
