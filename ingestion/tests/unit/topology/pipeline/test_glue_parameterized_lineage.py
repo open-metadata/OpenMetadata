@@ -3141,3 +3141,88 @@ pair[0].write.format("snowflake").option("dbtable", "OUT_PAIR").save()
             (Resolved((SnowflakeRef(table="RAW_GLOB"),)), Resolved((SnowflakeRef(table="OUT_G"),))),
             ("unresolved", Resolved((SnowflakeRef(table="OUT_PAIR"),))),
         ]
+
+    def test_helper_return_aliasing_definition_defaults_loop_returns_and_numeric_comparisons(self):
+        # 1. Returned container keeps shared identity with caller variable (`alias = identity(frames)`)
+        returned_alias_script = """
+def identity(xs):
+    return xs
+
+frames = [spark.read.format("snowflake").option("dbtable", "RAW_A").load()]
+alias = identity(frames)
+alias[0] = spark.read.format("snowflake").option("dbtable", "RAW_B").load()
+frames[0].write.format("snowflake").option("dbtable", "OUT_ALIAS_RET").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(returned_alias_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_B"),)), Resolved((SnowflakeRef(table="OUT_ALIAS_RET"),)))
+        ]
+
+        # 2. Helper default arguments are captured at definition time, not re-evaluated on call
+        def_time_default_script = """
+name = "RAW_A"
+def load_with_default(tbl=name, *, kw_tbl=name):
+    df1 = spark.read.format("snowflake").option("dbtable", tbl).load()
+    df2 = spark.read.format("snowflake").option("dbtable", kw_tbl).load()
+    return df1.unionByName(df2)
+
+name = "RAW_B"
+load_with_default().write.format("snowflake").option("dbtable", "OUT_DEF_DEFAULT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(def_time_default_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_A"),)), Resolved((SnowflakeRef(table="OUT_DEF_DEFAULT"),)))
+        ]
+
+        # 3. Unconditional `return` inside constant `for` loop in helper preserves valid lineage
+        const_loop_return_script = """
+def load_first():
+    for tbl in ["RAW_FIRST", "RAW_SECOND"]:
+        return spark.read.format("snowflake").option("dbtable", tbl).load()
+
+load_first().write.format("snowflake").option("dbtable", "OUT_LOOP_RET").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(const_loop_return_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_FIRST"),)), Resolved((SnowflakeRef(table="OUT_LOOP_RET"),)))
+        ]
+
+        # 4. Conditional `return` inside dynamic `for`/`while` loop in helper joins into return_outcomes -> unresolved
+        dyn_loop_return_script = """
+def load_matching(names):
+    for n in names:
+        if is_valid(n):
+            return spark.read.format("snowflake").option("dbtable", n).load()
+    return spark.read.format("snowflake").option("dbtable", "RAW_DEFAULT").load()
+
+load_matching(dynamic_names()).write.format("snowflake").option("dbtable", "OUT_DYN_RET").save()
+"""
+        dyn_ret_groups = [
+            g
+            for g in parse_script_lineage_groups(dyn_loop_return_script)
+            if g.targets == Resolved((SnowflakeRef(table="OUT_DYN_RET"),))
+        ]
+        assert [(g.sources, g.targets) for g in dyn_ret_groups] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_DYN_RET"),)))
+        ]
+
+        # 5. Dynamic loop rebinding frame AFTER write in body detects loop-carried change -> unresolved
+        loop_carried_rebind_script = """
+df = spark.read.format("snowflake").option("dbtable", "RAW_SEED").load()
+while has_more():
+    df.write.format("snowflake").option("dbtable", "OUT_CARRIED").save()
+    df = spark.read.format("snowflake").option("dbtable", "RAW_STAGE").load()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(loop_carried_rebind_script)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_CARRIED"),)))
+        ]
+
+        # 6. Numeric/boolean Python equality (`1 == True`, `1 == 1.0`, `1 in (True, 2)`) while `1 != "1"`
+        numeric_cmp_script = """
+flag = 1
+if flag == True and flag == 1.0 and flag in (True, 2) and flag != "1" and flag not in ("1", "2"):
+    df = spark.read.format("snowflake").option("dbtable", "RAW_NUM_TRUE").load()
+else:
+    df = spark.read.format("snowflake").option("dbtable", "RAW_WRONG").load()
+df.write.format("snowflake").option("dbtable", "OUT_NUM_CMP").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(numeric_cmp_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_NUM_TRUE"),)), Resolved((SnowflakeRef(table="OUT_NUM_CMP"),)))
+        ]

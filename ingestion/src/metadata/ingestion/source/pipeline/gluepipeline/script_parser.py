@@ -627,35 +627,78 @@ def _join_view_maps(
     return merged, (left_opaque or right_opaque)
 
 
+def _join_fn_defaults(
+    left: dict[int, dict[str, tuple[_ProvVal, object]]],
+    right: dict[int, dict[str, tuple[_ProvVal, object]]],
+    pair_memo: dict[tuple[int, int], _ProvVal],
+) -> dict[int, dict[str, tuple[_ProvVal, object]]]:
+    merged: dict[int, dict[str, tuple[_ProvVal, object]]] = {}
+    for fn_id in set(left) | set(right):
+        if fn_id in left and fn_id in right:
+            l_defs, r_defs = left[fn_id], right[fn_id]
+            merged[fn_id] = {
+                p_name: (
+                    _join_prov(l_defs[p_name][0], r_defs[p_name][0], pair_memo),
+                    l_defs[p_name][1]
+                    if type(l_defs[p_name][1]) is type(r_defs[p_name][1]) and l_defs[p_name][1] == r_defs[p_name][1]
+                    else UNKNOWN,
+                )
+                if p_name in l_defs and p_name in r_defs
+                else (_FrameVal("unresolved"), UNKNOWN)
+                for p_name in set(l_defs) | set(r_defs)
+            }
+        else:
+            only_defs = left.get(fn_id) or right[fn_id]
+            merged[fn_id] = {p_name: (_FrameVal("unresolved"), UNKNOWN) for p_name in only_defs}
+    return merged
+
+
 @dataclass
 class _ExecState:
     scope_envs: dict[int, dict[str, _ProvVal]]
     loop_overrides: dict[ast.For, ScalarValue]
     scope_overrides: dict[tuple[ast.AST, str], object]
+    fn_defaults: dict[int, dict[str, tuple[_ProvVal, object]]] = field(default_factory=dict)
     temp_views: dict[str, Side[ScriptRef]] = field(default_factory=dict)
     temp_views_opaque: bool = False
     global_temp_views: dict[str, Side[ScriptRef]] = field(default_factory=dict)
     global_temp_views_opaque: bool = False
 
-    def clone(self) -> "_ExecState":
+    def clone_with_val(self, val: _ProvVal) -> tuple["_ExecState", _ProvVal]:
         memo: dict[int, _ProvVal] = {}
         cloned_scopes = {
-            scope_id: {name: _clone_prov(val, memo) for name, val in env.items()}
+            scope_id: {name: _clone_prov(pval, memo) for name, pval in env.items()}
             for scope_id, env in self.scope_envs.items()
         }
-        return _ExecState(
-            scope_envs=cloned_scopes,
-            loop_overrides=dict(self.loop_overrides),
-            scope_overrides=dict(self.scope_overrides),
-            temp_views=dict(self.temp_views),
-            temp_views_opaque=self.temp_views_opaque,
-            global_temp_views=dict(self.global_temp_views),
-            global_temp_views_opaque=self.global_temp_views_opaque,
+        cloned_defaults = {
+            fn_id: {p_name: (_clone_prov(pval, memo), rval) for p_name, (pval, rval) in dmap.items()}
+            for fn_id, dmap in self.fn_defaults.items()
+        }
+        cloned_val = _clone_prov(val, memo)
+        return (
+            _ExecState(
+                scope_envs=cloned_scopes,
+                loop_overrides=dict(self.loop_overrides),
+                scope_overrides=dict(self.scope_overrides),
+                fn_defaults=cloned_defaults,
+                temp_views=dict(self.temp_views),
+                temp_views_opaque=self.temp_views_opaque,
+                global_temp_views=dict(self.global_temp_views),
+                global_temp_views_opaque=self.global_temp_views_opaque,
+            ),
+            cloned_val,
         )
 
+    def clone(self) -> "_ExecState":
+        return self.clone_with_val(_NONE_VAL)[0]
 
-def _join_states(left: _ExecState, right: _ExecState) -> _ExecState:
-    pair_memo: dict[tuple[int, int], _ProvVal] = {}
+
+def _join_states(
+    left: _ExecState,
+    right: _ExecState,
+    pair_memo: dict[tuple[int, int], _ProvVal] | None = None,
+) -> _ExecState:
+    shared_memo: dict[tuple[int, int], _ProvVal] = {} if pair_memo is None else pair_memo
     joined_scopes: dict[int, dict[str, _ProvVal]] = {}
     for scope_id in set(left.scope_envs) | set(right.scope_envs):
         l_env = left.scope_envs.get(scope_id, {})
@@ -665,7 +708,7 @@ def _join_states(left: _ExecState, right: _ExecState) -> _ExecState:
             merged_env[name] = _join_prov(
                 l_env.get(name, _UNBOUND_VAL),
                 r_env.get(name, _UNBOUND_VAL),
-                pair_memo,
+                shared_memo,
             )
         joined_scopes[scope_id] = merged_env
 
@@ -675,6 +718,7 @@ def _join_states(left: _ExecState, right: _ExecState) -> _ExecState:
         rv = right.scope_overrides.get(key, UNKNOWN)
         joined_overrides[key] = lv if type(lv) is type(rv) and lv == rv else UNKNOWN
 
+    joined_defaults = _join_fn_defaults(left.fn_defaults, right.fn_defaults, shared_memo)
     temp_views, temp_opaque = _join_view_maps(
         left.temp_views, left.temp_views_opaque, right.temp_views, right.temp_views_opaque
     )
@@ -688,6 +732,7 @@ def _join_states(left: _ExecState, right: _ExecState) -> _ExecState:
         scope_envs=joined_scopes,
         loop_overrides=dict(left.loop_overrides),
         scope_overrides=joined_overrides,
+        fn_defaults=joined_defaults,
         temp_views=temp_views,
         temp_views_opaque=temp_opaque,
         global_temp_views=global_views,
@@ -819,6 +864,7 @@ class _ProvenanceAnalyzer:
         self._call_stack: list[ast.AST] = [parsed.tree]
         self._total_loop_steps = 0
         self._expr_depth = 0
+        self._suppress_io_depth = 0
 
     def analyze(self) -> list[LineageGroup[ScriptRef]]:
         state = _ExecState(scope_envs={id(self._parsed.tree): {}}, loop_overrides={}, scope_overrides={})
@@ -844,6 +890,8 @@ class _ProvenanceAnalyzer:
         )
 
     def _record_target_group(self, sources: Side[ScriptRef], targets: Side[ScriptRef]) -> None:
+        if self._suppress_io_depth > 0:
+            return
         idx = len(self._target_groups)
         self._target_groups.append(
             LineageGroup(
@@ -853,6 +901,11 @@ class _ProvenanceAnalyzer:
                 targets=targets,
             )
         )
+
+    def _record_source_event(self, side: Side[ScriptRef]) -> None:
+        if self._suppress_io_depth > 0:
+            return
+        self._source_events.append(side)
 
     def _exec_block(
         self,
@@ -914,6 +967,7 @@ class _ProvenanceAnalyzer:
                     self._bind_name(alias.asname or alias.name.split(".")[0], _OPAQUE_VAL, state, scope)
             return "normal"
         if isinstance(stmt, FUNCTIONS):
+            self._capture_function_defaults(stmt, state, scope)
             return "normal"
         return self._exec_control_stmt(
             stmt,
@@ -923,6 +977,27 @@ class _ProvenanceAnalyzer:
             continue_states=continue_states,
             return_outcomes=return_outcomes,
         )
+
+    def _capture_function_defaults(
+        self,
+        fn_def: ast.FunctionDef | ast.AsyncFunctionDef,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> None:
+        reader = self._reader_for(state)
+        positional = [*fn_def.args.posonlyargs, *fn_def.args.args]
+        default_start = len(positional) - len(fn_def.args.defaults)
+        captured: dict[str, tuple[_ProvVal, object]] = {}
+        for idx, default_expr in enumerate(fn_def.args.defaults):
+            p_name = positional[default_start + idx].arg
+            captured[p_name] = (self._eval_expr(default_expr, state, scope), reader.eval_for_override(default_expr))
+        for kw_param, kw_default in zip(fn_def.args.kwonlyargs, fn_def.args.kw_defaults, strict=True):
+            if kw_default is not None:
+                captured[kw_param.arg] = (
+                    self._eval_expr(kw_default, state, scope),
+                    reader.eval_for_override(kw_default),
+                )
+        state.fn_defaults[id(fn_def)] = captured
 
     def _exec_control_stmt(
         self,
@@ -944,11 +1019,25 @@ class _ProvenanceAnalyzer:
                 return_outcomes=return_outcomes,
             )
         if isinstance(stmt, ast.For):
-            self._exec_for(stmt, state, scope, return_outcomes=return_outcomes)
-            return "normal"
+            return self._exec_for(
+                stmt,
+                state,
+                scope,
+                outer_break_states=break_states,
+                outer_continue_states=continue_states,
+                return_outcomes=return_outcomes,
+            )
         if isinstance(stmt, (ast.AsyncFor, ast.While)):
-            self._exec_dynamic_loop_body(stmt.body, stmt.orelse, None, state, scope)
-            return "normal"
+            always_enters = isinstance(stmt, ast.While) and self._eval_condition(stmt.test, state, scope) is True
+            return self._exec_dynamic_loop_body(
+                stmt.body,
+                stmt.orelse,
+                None,
+                state,
+                scope,
+                always_enters=always_enters,
+                return_outcomes=return_outcomes,
+            )
         if isinstance(stmt, (ast.With, ast.AsyncWith)):
             for item in stmt.items:
                 ctx_val = self._eval_expr(item.context_expr, state, scope)
@@ -981,8 +1070,8 @@ class _ProvenanceAnalyzer:
             return "continue"
         if isinstance(stmt, ast.Return):
             ret_val = self._eval_expr(stmt.value, state, scope) if stmt.value is not None else _NONE_VAL
-            if return_outcomes is not None:
-                return_outcomes.append((state.clone(), ret_val))
+            if return_outcomes is not None and self._suppress_io_depth == 0:
+                return_outcomes.append(state.clone_with_val(ret_val))
             return "return"
         return "normal"
 
@@ -991,6 +1080,7 @@ class _ProvenanceAnalyzer:
         dest.scope_envs = src.scope_envs
         dest.loop_overrides = src.loop_overrides
         dest.scope_overrides = src.scope_overrides
+        dest.fn_defaults = src.fn_defaults
         dest.temp_views = src.temp_views
         dest.temp_views_opaque = src.temp_views_opaque
         dest.global_temp_views = src.global_temp_views
@@ -1163,20 +1253,37 @@ class _ProvenanceAnalyzer:
         state: _ExecState,
         scope: ast.AST,
         *,
+        outer_break_states: list[_ExecState] | None = None,
+        outer_continue_states: list[_ExecState] | None = None,
         return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
-    ) -> None:
+    ) -> _FlowStatus:
         items = self._resolve_for_items(stmt, state, scope)
         if items is None or self._total_loop_steps + len(items) > MAX_TOTAL_LOOP_STEPS:
-            self._exec_dynamic_loop_body(stmt.body, stmt.orelse, stmt.target, state, scope, loop_node=stmt)
-            return
+            return self._exec_dynamic_loop_body(
+                stmt.body,
+                stmt.orelse,
+                stmt.target,
+                state,
+                scope,
+                loop_node=stmt,
+                return_outcomes=return_outcomes,
+            )
         if not items:
             if stmt.orelse:
-                self._exec_block(stmt.orelse, state, scope, return_outcomes=return_outcomes)
-            return
+                return self._exec_block(
+                    stmt.orelse,
+                    state,
+                    scope,
+                    break_states=outer_break_states,
+                    continue_states=outer_continue_states,
+                    return_outcomes=return_outcomes,
+                )
+            return "normal"
 
         prev_loop_val = state.loop_overrides.get(stmt)
         break_states: list[_ExecState] = []
         broke_unconditionally = False
+        returned_unconditionally = False
 
         for item in items:
             self._total_loop_steps += 1
@@ -1191,8 +1298,11 @@ class _ProvenanceAnalyzer:
                 continue_states=continue_states,
                 return_outcomes=return_outcomes,
             )
-            if iter_status in ("break", "return"):
+            if iter_status == "break":
                 broke_unconditionally = True
+                break
+            if iter_status == "return":
+                returned_unconditionally = True
                 break
             if iter_status == "continue":
                 if continue_states:
@@ -1206,12 +1316,86 @@ class _ProvenanceAnalyzer:
         else:
             state.loop_overrides.pop(stmt, None)
 
+        return self._finalize_unrolled_for(
+            stmt,
+            state,
+            scope,
+            break_states=break_states,
+            broke_unconditionally=broke_unconditionally,
+            returned_unconditionally=returned_unconditionally,
+            outer_break_states=outer_break_states,
+            outer_continue_states=outer_continue_states,
+            return_outcomes=return_outcomes,
+        )
+
+    def _finalize_unrolled_for(
+        self,
+        stmt: ast.For,
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        break_states: list[_ExecState],
+        broke_unconditionally: bool,
+        returned_unconditionally: bool,
+        outer_break_states: list[_ExecState] | None,
+        outer_continue_states: list[_ExecState] | None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
+    ) -> _FlowStatus:
+        if returned_unconditionally:
+            if break_states:
+                self._overwrite_state_in_place(state, self._merge_state_list(break_states))
+                return "normal"
+            return "return"
+
         if not broke_unconditionally and stmt.orelse:
-            self._exec_block(stmt.orelse, state, scope, return_outcomes=return_outcomes)
+            orelse_status = self._exec_block(
+                stmt.orelse,
+                state,
+                scope,
+                break_states=outer_break_states,
+                continue_states=outer_continue_states,
+                return_outcomes=return_outcomes,
+            )
+            if orelse_status != "normal":
+                if break_states:
+                    self._overwrite_state_in_place(state, self._merge_state_list(break_states))
+                    return "normal"
+                return orelse_status
 
         exit_candidates = break_states if broke_unconditionally else ([state, *break_states] if break_states else [])
         if exit_candidates:
             self._overwrite_state_in_place(state, self._merge_state_list(exit_candidates))
+        return "normal"
+
+    def _stabilize_dynamic_loop_entry(
+        self,
+        body: Sequence[ast.stmt],
+        target: ast.AST | None,
+        entry: _ExecState,
+        scope: ast.AST,
+        loop_node: ast.For | None,
+    ) -> _ExecState:
+        stabilized = entry.clone()
+        if self._suppress_io_depth > 0:
+            return stabilized
+        self._suppress_io_depth += 1
+        try:
+            for _ in range(2):
+                probe = stabilized.clone()
+                if loop_node is not None:
+                    probe.loop_overrides.pop(loop_node, None)
+                if target is not None:
+                    self._assign_target(target, _OPAQUE_VAL, probe, scope, record_scalar_override=True)
+                p_breaks: list[_ExecState] = []
+                p_conts: list[_ExecState] = []
+                p_status = self._exec_block(body, probe, scope, break_states=p_breaks, continue_states=p_conts)
+                candidates: list[_ExecState] = [entry, *p_breaks, *p_conts]
+                if p_status == "normal":
+                    candidates.append(probe)
+                stabilized = self._merge_state_list(candidates)
+        finally:
+            self._suppress_io_depth -= 1
+        return stabilized
 
     def _exec_dynamic_loop_body(
         self,
@@ -1222,22 +1406,39 @@ class _ProvenanceAnalyzer:
         scope: ast.AST,
         *,
         loop_node: ast.For | None = None,
-    ) -> None:
-        before = state.clone()
-        iter_state = state.clone()
+        always_enters: bool = False,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None = None,
+    ) -> _FlowStatus:
+        entry = state.clone()
+        stabilized = self._stabilize_dynamic_loop_entry(body, target, entry, scope, loop_node)
+        iter_state = stabilized.clone()
         if loop_node is not None:
             iter_state.loop_overrides.pop(loop_node, None)
         if target is not None:
             self._assign_target(target, _OPAQUE_VAL, iter_state, scope, record_scalar_override=True)
         b_states: list[_ExecState] = []
         c_states: list[_ExecState] = []
-        self._exec_block(body, iter_state, scope, break_states=b_states, continue_states=c_states)
-        joined = self._merge_state_list([before, iter_state, *b_states, *c_states])
+        body_status = self._exec_block(
+            body,
+            iter_state,
+            scope,
+            break_states=b_states,
+            continue_states=c_states,
+            return_outcomes=return_outcomes,
+        )
+        if always_enters and body_status == "return" and not b_states:
+            return "return"
+        post_candidates: list[_ExecState] = [*b_states] if always_enters else [stabilized, *b_states, *c_states]
+        if body_status == "normal":
+            post_candidates.append(iter_state)
+        joined = self._merge_state_list(post_candidates) if post_candidates else stabilized
         if orelse:
             orelse_state = joined.clone()
-            self._exec_block(orelse, orelse_state, scope)
-            joined = _join_states(joined, orelse_state)
+            orelse_status = self._exec_block(orelse, orelse_state, scope, return_outcomes=return_outcomes)
+            if orelse_status == "normal":
+                joined = _join_states(joined, orelse_state)
         self._overwrite_state_in_place(state, joined)
+        return "normal"
 
     def _bind_name(
         self,
@@ -1512,7 +1713,7 @@ class _ProvenanceAnalyzer:
             lk = self._eval_dict_key(left_expr, state, scope)
             rk = self._eval_dict_key(right_expr, state, scope)
             if not isinstance(lk, UnknownValue) and not isinstance(rk, UnknownValue):
-                equal = type(lk) is type(rk) and lk == rk
+                equal = lk == rk
                 return equal if isinstance(op, ast.Eq) else not equal
         return None
 
@@ -1556,9 +1757,14 @@ class _ProvenanceAnalyzer:
             else:
                 present = False
             return present if isinstance(op, ast.In) else not present
+        if isinstance(container, (_ListVal, _TupleVal)) and not (isinstance(container, _ListVal) and container.opaque):
+            if any(isinstance(item, _ScalarVal) and item.value == key for item in container.items):
+                return isinstance(op, ast.In)
+            if all(isinstance(item, _ScalarVal) for item in container.items):
+                return isinstance(op, ast.NotIn)
         seq = self._reader_for(state).sequence(right_expr)
         if seq is not None:
-            present = any(type(item) is type(key) and item == key for item in seq)
+            present = any(item == key for item in seq)
             return present if isinstance(op, ast.In) else not present
         return None
 
@@ -1793,14 +1999,14 @@ class _ProvenanceAnalyzer:
             return _NONE_VAL
         if call_result.has_source_calls:
             src_side, _ = call_result.to_sides()
-            self._source_events.append(src_side)
+            self._record_source_event(src_side)
             return _FrameVal(src_side)
         return None
 
     def _eval_spark_table_read(self, table_arg: ast.expr, reader: ScriptReader, state: _ExecState) -> _FrameVal:
         table_ref = reader.string(table_arg)
         if not isinstance(table_ref, str) or not table_ref:
-            self._source_events.append("unresolved")
+            self._record_source_event("unresolved")
             return _FrameVal("unresolved")
         parts = [p.strip('"`') for p in table_ref.split(".")]
         if len(parts) == 1:
@@ -1808,17 +2014,17 @@ class _ProvenanceAnalyzer:
             if vkey in state.temp_views:
                 return _FrameVal(state.temp_views[vkey])
             if state.temp_views_opaque:
-                self._source_events.append("unresolved")
+                self._record_source_event("unresolved")
                 return _FrameVal("unresolved")
         elif len(parts) == 2 and parts[0].lower() == "global_temp":
             gkey = parts[1].lower()
             if gkey in state.global_temp_views:
                 return _FrameVal(state.global_temp_views[gkey])
             if state.global_temp_views_opaque:
-                self._source_events.append("unresolved")
+                self._record_source_event("unresolved")
                 return _FrameVal("unresolved")
         cat_side: Side[ScriptRef] = Resolved((_catalog_ref_from_table_name(table_ref),))
-        self._source_events.append(cat_side)
+        self._record_source_event(cat_side)
         return _FrameVal(cat_side)
 
     def _eval_special_attr_call(
@@ -2318,20 +2524,18 @@ class _ProvenanceAnalyzer:
         scope: ast.AST,
     ) -> tuple[dict[str, _ProvVal], dict[str, object]] | None:
         positional_params = [*fn_def.args.posonlyargs, *fn_def.args.args]
+        has_any_defaults = bool(fn_def.args.defaults) or any(d is not None for d in fn_def.args.kw_defaults)
+        captured = state.fn_defaults.get(id(fn_def))
+        if captured is None and has_any_defaults:
+            return None
+
         caller_reader = self._reader_for(state)
         bound_prov: dict[str, _ProvVal] = {}
         bound_reader_vals: dict[str, object] = {}
 
-        default_start = len(positional_params) - len(fn_def.args.defaults)
-        for idx, default_expr in enumerate(fn_def.args.defaults):
-            p_name = positional_params[default_start + idx].arg
-            bound_prov[p_name] = self._eval_expr(default_expr, state, scope)
-            bound_reader_vals[p_name] = caller_reader.eval_for_override(default_expr)
-
-        for kw_param, kw_default in zip(fn_def.args.kwonlyargs, fn_def.args.kw_defaults, strict=True):
-            if kw_default is not None:
-                bound_prov[kw_param.arg] = self._eval_expr(kw_default, state, scope)
-                bound_reader_vals[kw_param.arg] = caller_reader.eval_for_override(kw_default)
+        for p_name, (d_prov, d_reader_val) in (captured or {}).items():
+            bound_prov[p_name] = d_prov
+            bound_reader_vals[p_name] = d_reader_val
 
         for param, arg_expr in zip(positional_params, call.args, strict=False):
             bound_prov[param.arg] = self._eval_expr(arg_expr, state, scope)
@@ -2387,13 +2591,14 @@ class _ProvenanceAnalyzer:
             return_outcomes: list[tuple[_ExecState, _ProvVal]] = []
             end_status = self._exec_block(fn_def.body, state, fn_def, return_outcomes=return_outcomes)
             if end_status == "normal":
-                return_outcomes.append((state.clone(), _NONE_VAL))
+                return_outcomes.append(state.clone_with_val(_NONE_VAL))
             if not return_outcomes:
                 return _NONE_VAL
             merged_state, merged_ret = return_outcomes[0]
             for extra_state, extra_ret in return_outcomes[1:]:
-                merged_state = _join_states(merged_state, extra_state)
-                merged_ret = _join_prov(merged_ret, extra_ret)
+                pair_memo: dict[tuple[int, int], _ProvVal] = {}
+                merged_state = _join_states(merged_state, extra_state, pair_memo=pair_memo)
+                merged_ret = _join_prov(merged_ret, extra_ret, pair_memo=pair_memo)
             self._overwrite_state_in_place(state, merged_state)
             return merged_ret
         finally:
