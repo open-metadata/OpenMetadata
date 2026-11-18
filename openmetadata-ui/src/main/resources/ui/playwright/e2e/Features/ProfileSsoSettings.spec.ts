@@ -125,7 +125,7 @@ test.describe(
 
         await clientId.fill('changed-client-id');
         await page.getByTestId('cancel-sso-configuration').click();
-        await page.getByTestId('sso-unsaved-changes-discard').click();
+        await page.getByTestId('unsaved-changes-popover-confirm').click();
 
         await expect(clientId).toHaveValue('okta-client-id');
         expect(writes.puts).toHaveLength(0);
