@@ -24,7 +24,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Article,
-  DotsGrid,
   File06,
   ListCollapse,
   ListExpand,
@@ -731,9 +730,9 @@ const KnowledgePagesHierarchy = forwardRef<
             className="tw:min-w-0 tw:flex-1 tw:cursor-pointer"
             gap={2}>
             {canEditAll && (
-              <DotsGrid
-                aria-hidden="true"
-                className="tw:size-3.5 tw:shrink-0 tw:cursor-grab tw:text-fg-quaternary tw:opacity-0 tw:group-hover/tree-item:opacity-100"
+              <Tree.DragButton
+                aria-label={t('label.move')}
+                className="tw:opacity-0 tw:group-hover/tree-item:opacity-100 tw:focus-visible:opacity-100"
                 data-testid="drag-handle-icon"
               />
             )}

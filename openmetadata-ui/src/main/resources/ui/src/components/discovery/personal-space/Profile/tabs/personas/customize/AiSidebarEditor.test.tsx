@@ -132,6 +132,24 @@ describe('AiSidebarEditor', () => {
     );
   });
 
+  // Backstop for the shared Tree's `Tree.DragButton` slot-button fix: each
+  // draggable row must render a real, focusable drag handle (not an inert
+  // `aria-hidden` icon). See tree.test.tsx in `@openmetadata/ui-core-components`
+  // for the underlying keyboard-drag behavior.
+  it('renders a real focusable drag handle button with slot="drag" on each row', () => {
+    renderEditor();
+
+    const handles = screen.getAllByRole('button', { name: 'label.move' });
+
+    // One drag handle per draggable row (home, explore, glossary + More).
+    expect(handles.length).toBeGreaterThan(1);
+
+    handles.forEach((handle) => {
+      expect(handle).toHaveAttribute('slot', 'drag');
+      expect(handle).not.toHaveAttribute('aria-hidden');
+    });
+  });
+
   it('locks the visibility toggle of modules that cannot be hidden', () => {
     renderEditor();
 
