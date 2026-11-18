@@ -51,6 +51,8 @@ import org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfi
 import org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config;
 import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificatePath;
 import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaBasicAuth;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
@@ -310,7 +312,11 @@ public final class ClassConverterFactory {
               SapS4HanaConnection.class,
               new NestedConfigClassConverter(
                   SapS4HanaConnection.class,
-                  Map.of("sslConfig", List.of(ValidateSSLClientConfig.class)))),
+                  Map.of(
+                      "authType",
+                      List.of(SapS4HanaBasicAuth.class, SapS4HanaOAuthCredentials.class),
+                      "sslConfig",
+                      List.of(ValidateSSLClientConfig.class)))),
           Map.entry(
               SapSuccessFactorsConnection.class,
               new NestedConfigClassConverter(

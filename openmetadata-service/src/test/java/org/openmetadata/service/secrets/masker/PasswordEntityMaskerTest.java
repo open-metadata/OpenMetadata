@@ -24,8 +24,10 @@ import org.openmetadata.schema.services.connections.dashboard.DomoDashboardConne
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
 import org.openmetadata.schema.services.connections.dashboard.PowerBIConnection;
 import org.openmetadata.schema.services.connections.dashboard.QlikSenseConnection;
+import org.openmetadata.schema.services.connections.dashboard.SapS4HanaConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.qlikSense.QlikCertificateValues;
+import org.openmetadata.schema.services.connections.dashboard.sapS4Hana.SapS4HanaOAuthCredentials;
 import org.openmetadata.schema.services.connections.database.CassandraConnection;
 import org.openmetadata.schema.services.connections.database.MicrosoftFabricConnection;
 import org.openmetadata.schema.services.connections.database.MssqlConnection;
@@ -446,6 +448,32 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
         (ValidateSSLClientConfig) ((QlikCertificateValues) masked.getCertificates()).getSslConfig();
     assertEquals(getMaskedPassword(), ssl.getCaCertificate());
     assertEquals(getMaskedPassword(), ssl.getSslKey());
+  }
+
+  @Test
+  void testSapS4HanaOAuthClientSecretFromSerializedConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "SapS4Hana",
+            "hostPort",
+            "https://sap.example.com",
+            "authType",
+            Map.of(
+                "authType",
+                "oauth2",
+                "clientId",
+                "client",
+                "clientSecret",
+                NESTED_SECRET,
+                "tokenEndpoint",
+                "https://sap.example.com/token"));
+
+    SapS4HanaConnection masked =
+        (SapS4HanaConnection) mask(serialized, "SapS4Hana", ServiceType.DASHBOARD);
+
+    assertEquals(
+        getMaskedPassword(), ((SapS4HanaOAuthCredentials) masked.getAuthType()).getClientSecret());
   }
 
   @Test

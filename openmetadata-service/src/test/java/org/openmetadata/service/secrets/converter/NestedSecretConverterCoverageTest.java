@@ -41,7 +41,7 @@ class NestedSecretConverterCoverageTest {
    * no converter can be written until the branch is extracted into its own schema file. Shrink this
    * set; never grow it.
    */
-  private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of("SapS4HanaConnection.authType");
+  private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of();
 
   @Test
   void everySecretBearingOneOfPropertyHasAConverter() {
