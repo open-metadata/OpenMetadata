@@ -197,6 +197,8 @@ describe('ProfilePage', () => {
     };
   });
 
+  afterEach(() => usePersonalSpaceStore.setState({ exitGuard: null }));
+
   it('renders the built-in and contributed nav items with the default profile content', async () => {
     await act(async () => {
       render(<ProfilePage />);
@@ -357,8 +359,6 @@ describe('ProfilePage', () => {
 
     expect(exitGuard).toHaveBeenCalledTimes(1);
     expect(onBreadcrumbAction).toHaveBeenCalledTimes(1);
-
-    usePersonalSpaceStore.setState({ exitGuard: null });
   });
 
   it('passes the username and logged-in flag to contributed tabs', async () => {
