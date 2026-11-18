@@ -1,7 +1,7 @@
 # The product tour is a Storylane demo in its own modal, opened full screen
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-18 (OpenMetadata's own demo replaces the placeholder; a distribution may show a demo per app mode)
 - **Deciders:** UI team, product
 - **Guard:** `openmetadata-ui/src/main/resources/ui/src/components/ProductTour/ProductTourModal.test.tsx`,
   `openmetadata-ui/src/main/resources/ui/src/components/ProductTour/ProductTour.test.tsx`,
@@ -29,11 +29,10 @@ tour: a designer updates it without a release, and it shows populated pages on a
   than asking the browser for full screen, so it never depends on the opening click's permission. A
   header button switches it to a popup the size of the Learning Center player and back.
 - The app shell mounts only `ProductTour`, which loads `ProductTourModal` when the tour opens.
-- `ProductTourClassBase.getTourUrl()` returns the demo's URL, one for both app modes. A distribution
-  overrides it to show its own demo. The URL is a Storylane demo link, which keeps pointing at the
-  latest published version of the demo, so updating the demo's content needs no code change.
-- Until an OpenMetadata demo is published, OpenMetadata's URL is a placeholder: Collate's demo. When
-  it is, replacing `PRODUCT_TOUR_URL` is the whole change.
+- `ProductTourClassBase.getTourUrl()` returns the demo's URL, OpenMetadata's own demo. A
+  distribution overrides it to show its own demo, and may pick one per app mode: the modal reads the
+  URL each time it opens. The URL is a Storylane demo link, which keeps pointing at the latest
+  published version of the demo, so updating the demo's content needs no code change.
 - Tests that open the tour answer the Storylane request themselves rather than reach the network.
 
 ## Consequences
@@ -44,3 +43,10 @@ tour: a designer updates it without a release, and it shows populated pages on a
   whose Content-Security-Policy does not allow that origin in frames, shows an empty player. Revisit
   if such deployments need a tour: they would need an offline fallback.
 - The demo shows the hosted product, not the user's own data or permissions.
+
+## Amendment
+
+v2 (2026-11-18): OpenMetadata's demo is published, so `PRODUCT_TOUR_URL` points at it instead of
+the placeholder Collate demo. Collate publishes one demo for Classic mode and one for AI mode, and
+shows the one for the mode the user is in; `getTourUrl()` already runs each time the tour opens, so
+that needed no change to the class base or the modal.

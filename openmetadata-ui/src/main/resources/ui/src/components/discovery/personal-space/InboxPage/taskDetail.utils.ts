@@ -40,7 +40,9 @@ import { TierUpdatePayload } from '../../../../generated/type/tierUpdatePayload'
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getFeedChangeFieldLabel } from '../../../../utils/FeedUtilsPure';
 import Fqn from '../../../../utils/Fqn';
+import { isTagsTaskType } from '../../../../utils/TaskActionUtils';
 import { parseTaskFieldPath } from '../../../../utils/TaskFieldPathUtils';
+import { getNormalizedTaskPayload } from '../../../../utils/TaskPayloadUtils';
 import {
   getMetadataCompletionInstruction,
   getMetadataCompletionPayload,
@@ -553,6 +555,37 @@ const describeDescriptionUpdate = (
   };
 };
 
+// A tag suggestion holds its tags as a JSON string; show them as a tags change.
+const getSuggestionBody = (
+  task: Task,
+  payload: Partial<SuggestionPayload>,
+  t: Translate
+): Partial<TaskDetailDescriptor> => {
+  if (isTagsTaskType(task)) {
+    // Approving adds the suggested tags to the current ones; list only what it adds.
+    const { currentTags, suggestedTags } = getNormalizedTaskPayload(task);
+    const current = new Set(tagNames(currentTags));
+    const after = tagNames(suggestedTags).filter((fqn) => !current.has(fqn));
+
+    return after.length
+      ? {
+          change: {
+            labelKey: 'label.tag-plural',
+            before: [],
+            after,
+            isText: false,
+          },
+        }
+      : {};
+  }
+
+  return payload.suggestedValue
+    ? {
+        callout: { label: t('label.suggestion'), text: payload.suggestedValue },
+      }
+    : {};
+};
+
 const describeSuggestion = (
   task: Task,
   t: Translate
@@ -576,9 +609,7 @@ const describeSuggestion = (
         getSourceLabel(t, payload.source)
       ),
     ],
-    callout: payload.suggestedValue
-      ? { label: t('label.suggestion'), text: payload.suggestedValue }
-      : undefined,
+    ...getSuggestionBody(task, payload, t),
   };
 };
 

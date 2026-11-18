@@ -1,6 +1,6 @@
 # Incident status cards show the latest day's events, and Open counts New, Ack and Assigned
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-16-incident-cards-describe-their-counts-as-daily-activity
 - **Revisions:** v1 2026-11-16 (initial)
 - **Deciders:** Observability, UI team
 - **Guard:** reviewer

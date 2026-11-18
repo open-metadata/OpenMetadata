@@ -52,9 +52,8 @@ interface Column {
   [field: string]: unknown;
 }
 
-export const MAX_TEXT_LENGTH = 120;
-
-export const COLUMNS_FIELD = 'columns';
+const MAX_TEXT_LENGTH = 120;
+const COLUMNS_FIELD = 'columns';
 const TAGS_FIELD = 'tags';
 const GLOSSARY_SOURCE = 'Glossary';
 // Column attributes a reviewer reads; tags are compared by FQN separately.
@@ -65,17 +64,16 @@ const COLUMN_FIELDS = [
   'constraint',
 ];
 
-const truncate = (text: string, limit: number): string =>
-  text.length > limit ? `${text.slice(0, limit)}…` : text;
+const truncate = (text: string): string =>
+  text.length > MAX_TEXT_LENGTH ? `${text.slice(0, MAX_TEXT_LENGTH)}…` : text;
 
-const plainText = (text: string, limit: number): string =>
+const plainText = (text: string): string =>
   truncate(
     text
       .replace(/<[^<>]*>/g, ' ')
       .replace(/&nbsp;/g, ' ')
       .replace(/\s+/g, ' ')
-      .trim(),
-    limit
+      .trim()
   );
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -86,12 +84,9 @@ const stringOf = (value: unknown): string | undefined =>
 
 // Tags and glossary terms read by their FQN and open their page; an entity reference reads by its
 // fully qualified name and opens the entity when its type has a details page.
-export const toValue = (
-  value: unknown,
-  limit = MAX_TEXT_LENGTH
-): ChangeValue => {
+export const toValue = (value: unknown): ChangeValue => {
   if (!isRecord(value)) {
-    return { text: plainText(String(value), limit) };
+    return { text: plainText(String(value)) };
   }
   const tagFqn = stringOf(value.tagFQN);
   if (tagFqn) {
@@ -114,17 +109,15 @@ export const toValue = (
     };
   }
 
-  return { text: truncate(JSON.stringify(value), limit) };
+  return { text: truncate(JSON.stringify(value)) };
 };
 
-const toValues = (value: unknown, limit: number): ChangeValue[] => {
+const toValues = (value: unknown): ChangeValue[] => {
   if (value === null || value === undefined || value === '') {
     return [];
   }
 
-  return Array.isArray(value)
-    ? value.map((item) => toValue(item, limit))
-    : [toValue(value, limit)];
+  return Array.isArray(value) ? value.map(toValue) : [toValue(value)];
 };
 
 // Op values are stored as JSON text.
@@ -154,11 +147,10 @@ const listEntries = (
 const setEntries = (
   field: string,
   before: unknown,
-  after: unknown,
-  limit: number
+  after: unknown
 ): ChangeEntry[] => {
-  const previous = toValues(before, limit);
-  const values = toValues(after, limit);
+  const previous = toValues(before);
+  const values = toValues(after);
   let entries: ChangeEntry[];
   if (Array.isArray(before) || Array.isArray(after)) {
     entries = listEntries(field, previous, values);
@@ -173,19 +165,11 @@ const setEntries = (
   return entries;
 };
 
-const columnChanges = (
-  before: Column,
-  after: Column,
-  limit: number
-): ChangeEntry[] => [
+const columnChanges = (before: Column, after: Column): ChangeEntry[] => [
   ...COLUMN_FIELDS.filter(
     (field) => !isEqual(before[field], after[field])
-  ).flatMap((field) => setEntries(field, before[field], after[field], limit)),
-  ...listEntries(
-    TAGS_FIELD,
-    toValues(before.tags, limit),
-    toValues(after.tags, limit)
-  ),
+  ).flatMap((field) => setEntries(field, before[field], after[field])),
+  ...listEntries(TAGS_FIELD, toValues(before.tags), toValues(after.tags)),
 ];
 
 const byName = (columns: Column[] = []) =>
@@ -193,7 +177,6 @@ const byName = (columns: Column[] = []) =>
 
 // Columns are matched by name; nested columns are named by their path, e.g. `address.city`.
 const columnSections = (
-  limit: number,
   before: Column[] = [],
   after: Column[] = [],
   path = ''
@@ -220,32 +203,27 @@ const columnSections = (
     .filter((column) => previous.has(column.name))
     .flatMap((column) => {
       const old = previous.get(column.name) as Column;
-      const entries = columnChanges(old, column, limit);
+      const entries = columnChanges(old, column);
       const own: ChangeSection[] = entries.length
         ? [{ column: named(column.name), entries }]
         : [];
 
       return [
         ...own,
-        ...columnSections(
-          limit,
-          old.children,
-          column.children,
-          named(column.name)
-        ),
+        ...columnSections(old.children, column.children, named(column.name)),
       ];
     });
 
   return [...(membership.length ? [{ entries: membership }] : []), ...changed];
 };
 
-const opEntries = (op: MutationOp, limit: number): ChangeEntry[] => {
-  const value = toValues(parse(op.value), limit);
+const opEntries = (op: MutationOp): ChangeEntry[] => {
+  const value = toValues(parse(op.value));
   const kinds: Record<MutationOpType, () => ChangeEntry[]> = {
     [MutationOpType.Add]: () => [entry(op.field, ChangeKind.Added, value)],
     [MutationOpType.Remove]: () => [entry(op.field, ChangeKind.Removed, value)],
     [MutationOpType.Set]: () =>
-      setEntries(op.field, parse(op.baseValue), parse(op.value), limit),
+      setEntries(op.field, parse(op.baseValue), parse(op.value)),
   };
 
   return kinds[op.op]();
@@ -270,24 +248,19 @@ const mergeByFieldAndKind = (entries: ChangeEntry[]): ChangeEntry[] =>
 /**
  * Turns a change request's ops into what a reviewer reads: the asset's own field changes first,
  * then one section per changed column. A column list replaced in one op is compared column by
- * column, so only the columns that actually changed appear. Text values are cut to `limit`
- * characters.
+ * column, so only the columns that actually changed appear.
  */
 export const buildChangeSections = (
-  ops: MutationOp[] = [],
-  limit = MAX_TEXT_LENGTH
+  ops: MutationOp[] = []
 ): ChangeSection[] => {
   const columnOps = ops.filter(
     (op) => op.field === COLUMNS_FIELD && op.op === MutationOpType.Set
   );
   const assetEntries = mergeByFieldAndKind(
-    ops
-      .filter((op) => !columnOps.includes(op))
-      .flatMap((op) => opEntries(op, limit))
+    ops.filter((op) => !columnOps.includes(op)).flatMap(opEntries)
   );
   const columns = columnOps.flatMap((op) =>
     columnSections(
-      limit,
       parse(op.baseValue) as Column[] | undefined,
       parse(op.value) as Column[] | undefined
     )

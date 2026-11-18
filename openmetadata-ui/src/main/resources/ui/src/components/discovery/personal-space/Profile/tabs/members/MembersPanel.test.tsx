@@ -17,7 +17,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { BrowserRouter } from 'react-router-dom';
 import type { MembersView } from './Members.types';
 import MembersPanel from './MembersPanel';
 
@@ -154,16 +154,15 @@ jest.mock(
   })
 );
 
-// useSettingsHash reads the hash from `window.location` (seeded on mount, then
-// driven by popstate) — BrowserRouter mirrors window in production, but
-// MemoryRouter does not, so set window.location.hash to simulate the deep link.
+// useSettingsHash reads the hash from `window.location`, which only BrowserRouter
+// keeps in sync with pushed views; set window.location.hash to simulate the deep link.
 const renderAt = (hash: string) => {
   globalThis.location.hash = hash;
 
   return render(
-    <MemoryRouter initialEntries={[`/settings${hash}`]}>
+    <BrowserRouter>
       <MembersPanel />
-    </MemoryRouter>
+    </BrowserRouter>
   );
 };
 
@@ -175,9 +174,9 @@ describe('MembersPanel', () => {
 
   it('renders landing view by default', () => {
     render(
-      <MemoryRouter>
+      <BrowserRouter>
         <MembersPanel />
-      </MemoryRouter>
+      </BrowserRouter>
     );
 
     expect(screen.getByTestId('members-landing')).toBeInTheDocument();
@@ -189,9 +188,9 @@ describe('MembersPanel', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={onHeaderChange} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 
@@ -215,9 +214,9 @@ describe('MembersPanel legacy user links', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={jest.fn()} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 
@@ -312,9 +311,9 @@ describe('MembersPanel hash navigation', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={onHeaderChange} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 
@@ -384,9 +383,9 @@ describe('MembersPanel team tab sub-page header', () => {
 
     await act(async () => {
       render(
-        <MemoryRouter>
+        <BrowserRouter>
           <MembersPanel onHeaderChange={onHeaderChange} />
-        </MemoryRouter>
+        </BrowserRouter>
       );
     });
 

@@ -290,7 +290,7 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
             before != null
                 ? taskRepository.listBefore(uriInfo, taskFields, filter, limitParam, before)
                 : taskRepository.listAfter(uriInfo, taskFields, filter, limitParam, after));
-    ChangeRequestVisibility.redactTasks(authorizer, securityContext, viewable.getData());
+    ChangeRequestVisibility.withoutUnreadableValues(authorizer, securityContext, viewable.getData());
     return viewable;
   }
 

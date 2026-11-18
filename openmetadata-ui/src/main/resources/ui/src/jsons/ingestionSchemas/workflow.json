@@ -2445,10 +2445,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -2477,10 +2477,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -2542,10 +2542,10 @@
                                       "description": "Project ID",
                                       "oneOf": [
                                         {
-                                          "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                          "$ref": "#/definitions/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                         },
                                         {
-                                          "$ref": "#/definitions/sourceConfig/properties/config/oneOf/10/properties/storageMetadataConfigSource/oneOf/5/properties/securityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                          "$ref": "#/definitions/sourceConfig/properties/config/oneOf/17/properties/dbtConfigSource/oneOf/4/properties/dbtSecurityConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                         }
                                       ]
                                     },
@@ -5113,7 +5113,7 @@
                                   },
                                   "description": {
                                     "description": "Description for the tag label.",
-                                    "$ref": "#/definitions/sourceConfig/properties/config/oneOf/20/properties/service/properties/description"
+                                    "$ref": "#/definitions/sourceConfig/properties/config/oneOf/20/definitions/operation/properties/parameters/oneOf/1/properties/addedOwners/items/properties/description"
                                   },
                                   "style": {
                                     "description": "UI Style is used to associate a color code and/or icon to entity to customize the look of that entity in UI.",
@@ -5176,7 +5176,7 @@
                                   },
                                   "href": {
                                     "description": "Link to the tag resource.",
-                                    "$ref": "#/definitions/sourceConfig/properties/config/oneOf/20/properties/service/properties/href"
+                                    "$ref": "#/definitions/sourceConfig/properties/config/oneOf/20/definitions/operation/properties/parameters/oneOf/1/properties/addedOwners/items/properties/href"
                                   },
                                   "reason": {
                                     "type": "string",
@@ -6735,6 +6735,42 @@
                               "required": [
                                 "personalAccessTokenName",
                                 "personalAccessTokenSecret"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "title": "TableauConnectedAppAuth",
+                              "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Client ID of the Tableau connected app.",
+                                  "type": "string"
+                                },
+                                "secretId": {
+                                  "title": "Secret ID",
+                                  "description": "ID of the connected app secret.",
+                                  "type": "string"
+                                },
+                                "secretValue": {
+                                  "title": "Secret Value",
+                                  "description": "Value of the connected app secret.",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "secretId",
+                                "secretValue",
+                                "username"
                               ],
                               "additionalProperties": false
                             }
@@ -19633,11 +19669,16 @@
                         },
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
-                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                          "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
+                          "description": "Supports Lineage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "supportsUsageExtraction": {
                           "title": "Supports Operational data Extraction",
-                          "$ref": "#/definitions/source/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                          "description": "Supports Usage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "additionalProperties": false,
@@ -19748,6 +19789,9 @@
                             },
                             {
                               "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/1"
+                            },
+                            {
+                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/2"
                             }
                           ]
                         },

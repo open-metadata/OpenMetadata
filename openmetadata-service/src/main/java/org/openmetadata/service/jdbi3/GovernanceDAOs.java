@@ -379,10 +379,6 @@ public interface GovernanceDAOs {
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findById(@BindUUID("id") UUID id);
 
-    @SqlQuery("SELECT * FROM change_request WHERE id IN (<ids>)")
-    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
-    List<ChangeRequest> findByIds(@BindList("ids") List<String> ids);
-
     @SqlQuery("SELECT * FROM change_request WHERE id = :id FOR UPDATE")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findByIdForUpdate(@BindUUID("id") UUID id);
@@ -394,6 +390,14 @@ public interface GovernanceDAOs {
     @SqlQuery("SELECT * FROM change_request WHERE taskId = :taskId")
     @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
     ChangeRequest findByTaskId(@BindUUID("taskId") UUID taskId);
+
+    @SqlQuery("SELECT * FROM change_request WHERE taskId IN (<taskIds>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByTaskIds(@BindList("taskIds") List<String> taskIds);
+
+    @SqlQuery("SELECT * FROM change_request WHERE id IN (<ids>)")
+    @RegisterRowMapper(ChangeRequestMappers.ChangeRequestMapper.class)
+    List<ChangeRequest> listByIds(@BindList("ids") List<String> ids);
 
     @SqlQuery("SELECT COUNT(*) FROM change_request WHERE status = :status")
     int countByStatus(@Bind("status") String status);

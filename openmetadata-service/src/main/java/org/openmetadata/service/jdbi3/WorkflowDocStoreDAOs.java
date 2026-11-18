@@ -742,6 +742,32 @@ public interface WorkflowDocStoreDAOs {
       return "workflow_instance_time_series";
     }
 
+    /** The change request each of these runs reviews, for the runs that record one. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, CONCAT('$.variables.', :variable))) AS "
+                + "changeRequestId FROM workflow_instance_time_series WHERE id IN (<ids>) "
+                + "AND JSON_EXTRACT(json, CONCAT('$.variables.', :variable)) IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json -> 'variables' ->> :variable AS changeRequestId "
+                + "FROM workflow_instance_time_series WHERE id IN (<ids>) "
+                + "AND json -> 'variables' ->> :variable IS NOT NULL",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RunRequestMapper.class)
+    List<RunRequest> listRunRequests(
+        @BindList("ids") List<String> ids, @Bind("variable") String variable);
+
+    record RunRequest(String runId, String changeRequestId) {}
+
+    class RunRequestMapper implements RowMapper<RunRequest> {
+      @Override
+      public RunRequest map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new RunRequest(rs.getString("id"), rs.getString("changeRequestId"));
+      }
+    }
+
     /**
      * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
      * filters by) for an entire moved subtree in one set-based statement: the moved term itself

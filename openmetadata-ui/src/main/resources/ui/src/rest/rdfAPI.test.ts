@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 
+import { isEqual } from 'lodash';
 import { ProjectionState } from '../generated/api/rdf/rdfStatus';
 import APIClient from './axiosClient';
 import {
   fetchRdfConfig,
+  getSparqlQueryTemplates,
   replaceSavedSparqlQueries,
   runGlossarySparqlQuery,
   runSparqlQuery,
@@ -101,5 +103,24 @@ describe('rdfAPI saved queries', () => {
       queries: [scoped],
     });
     expect(stored[0].ontologyId).toBe('ontology-id');
+  });
+
+  it('returns an unscoped template equal to what the server stored', async () => {
+    const template = {
+      id: 'template',
+      name: 'Template',
+      query: QUERY,
+      format: 'json',
+      inference: 'none',
+      savedAt: 0,
+    };
+    mockedApiClient.get.mockResolvedValue({
+      data: { queryTemplates: [template] },
+    });
+
+    const [stored] = await getSparqlQueryTemplates();
+
+    expect(stored).not.toHaveProperty('ontologyId');
+    expect(isEqual(stored, template)).toBe(true);
   });
 });

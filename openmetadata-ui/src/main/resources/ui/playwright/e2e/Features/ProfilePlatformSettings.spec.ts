@@ -487,6 +487,73 @@ test.describe(
       );
     });
 
+    test('lineage: asks before leaving unsaved edits, and only Discard drops them', async ({
+      page,
+    }) => {
+      const settings = await stubSettingRoundTrip(page, 'lineageSettings', {
+        initial: {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          lineageLayer: 'EntityLineage',
+          pipelineViewMode: 'Node',
+        },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'lineage');
+      await header(page).getByTestId('edit-button').click();
+      await fillField(page, 'field-upstream', '4');
+
+      // Switching sidebar item is held until the user decides.
+      await page.getByTestId('profile-nav-bots').click();
+      const prompt = page.getByTestId('unsaved-changes-popover');
+      await expect(prompt).toBeVisible();
+      await prompt.getByTestId('unsaved-changes-popover-cancel').click();
+      await expect(prompt).toBeHidden();
+      await expect(
+        page.getByTestId('field-upstream').locator('input')
+      ).toHaveValue('4');
+
+      // Esc is held the same way; Discard then closes without saving.
+      await page.keyboard.press('Escape');
+      await expect(prompt).toBeVisible();
+      await prompt.getByTestId('unsaved-changes-popover-confirm').click();
+      await expect(page.getByTestId('ai-profile-page')).toBeHidden();
+      expect(settings.puts).toHaveLength(0);
+    });
+
+    test('browser Back walks the opened views and never reopens a saved form', async ({
+      page,
+    }) => {
+      await stubSettingRoundTrip(page, 'lineageSettings', {
+        initial: {
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+          lineageLayer: 'EntityLineage',
+          pipelineViewMode: 'Node',
+        },
+      });
+      await openPlatformSettings(page);
+      await openCard(page, 'lineage');
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('2');
+
+      await page.goBack();
+      await expect(page.getByTestId('platform-settings-landing')).toBeVisible();
+
+      await page.goForward();
+      await header(page).getByTestId('edit-button').click();
+      await fillField(page, 'field-upstream', '3');
+      await saveSettings(page);
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('3');
+
+      // Save replaced the editor's entry, so Back stays on the page view.
+      await page.goBack();
+      await expect(page.getByTestId('upstream-depth-value')).toHaveText('3');
+      await expect(page.getByTestId('field-upstream')).toBeHidden();
+
+      await page.goBack();
+      await expect(page.getByTestId('platform-settings-landing')).toBeVisible();
+    });
+
     test('default app mode: saves the selected mode', async ({ page }) => {
       const settings = await stubSettingRoundTrip(page, 'appConfiguration', {
         initial: { defaultAppMode: null },
