@@ -131,7 +131,7 @@ test.afterAll('Cleanup', async ({ browser }) => {
 
 test.describe('Curated Assets Widget', () => {
   test.beforeAll(async ({ page }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     await setUserDefaultPersona(page, persona.responseData.displayName);
     await redirectToHomePage(page);

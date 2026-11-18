@@ -109,7 +109,7 @@ test.describe(
     test.beforeAll(
       'Setup domain, tables, incidents and users',
       async ({ browser }) => {
-        // test.slow() does not extend a hook's timeout, so set an explicit budget for creating the
+        // test.setTimeout(test.info().timeout * 3) does not extend a hook's timeout, so set an explicit budget for creating the
         // entities and waiting for both incidents to be indexed.
         test.setTimeout(3 * 60 * 1000);
 

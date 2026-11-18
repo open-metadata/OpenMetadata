@@ -48,7 +48,7 @@ const table1 = new TableClass();
 
 test.describe('Table pagination sorting search scenarios ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
-    test.slow(true);
+    test.setTimeout(test.info().timeout * 3);
 
     const { afterAction, apiContext } = await performAdminLogin(browser);
     await table1.create(apiContext);

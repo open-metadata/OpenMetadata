@@ -12,7 +12,8 @@
  */
 
 const BLANKET_HOOK_NAMES = new Set(['beforeEach']);
-const OWN_SLOT_HOOK_NAMES = new Set(['beforeAll', 'afterAll', 'afterEach']);
+const OWN_SLOT_HOOK_NAMES = new Set(['afterAll', 'afterEach']);
+const BEFORE_ALL_HOOK_NAME = 'beforeAll';
 const PER_TEST_MODIFIER_NAMES = new Set([
   'only',
   'fixme',
@@ -57,6 +58,14 @@ const isSlowMethodCall = (node) => {
 
   return info?.path.length === 1 && info.path[0] === 'slow';
 };
+
+// `slow()` and `slow(true)` always apply; a condition or description needs a
+// human to decide what the hook should do, so those get no autofix.
+const isUnconditionalSlow = (node) =>
+  node.arguments.length === 0 ||
+  (node.arguments.length === 1 &&
+    node.arguments[0].type === 'Literal' &&
+    node.arguments[0].value === true);
 
 // A variable bound directly to the `describe` function itself — e.g.
 // `const describeInParallel = test.describe;` (seen in TagsSuggestion.spec.ts)
@@ -113,11 +122,19 @@ const collectTestObjectSignal = (node, signals) => {
  * `test.only/fixme/fail/skip/step(...)` variant — the callback runs once
  * per test, so `slow()` inside it affects only that test.
  *
- * Also legal, but for a different reason — `beforeAll`, `afterAll`, and
- * `afterEach` each run on their own timeout slot (verified against
- * playwright@1.65.0's worker/workerProcessEntry.js: `_runEachHooksForSuites` for
- * these passes its own slot), so `slow()` there extends only the hook's own
- * budget, never a test's.
+ * Also legal, but for a different reason — `afterAll` and `afterEach` each
+ * run on their own timeout slot (verified against playwright@1.65.0's
+ * worker/workerProcessEntry.js: `_runEachHooksForSuites` for these passes its
+ * own slot), so `slow()` there extends only the hook's own budget, never a
+ * test's.
+ *
+ * `beforeAll` also runs on its own slot, but since 1.65 `slow()` takes effect
+ * once per test (`TimeoutManager.slow()` returns early once `_slow` is set),
+ * and a `beforeAll` runs inside the first test of each worker. Its `slow()`
+ * therefore uses up that test's one `slow()`, and the test body's own
+ * `test.slow()` no longer triples the test. Flagged separately with a fix to
+ * `test.setTimeout(test.info().timeout * 3)`, which extends the hook's slot
+ * without marking the test slow.
  *
  * Blanket: file scope (no enclosing function at all), any `describe*`
  * callback, `beforeEach` — which, unlike the other hooks, runs on the
@@ -163,6 +180,10 @@ const classifyEnclosingCall = (node, testObjectIdentifiers) => {
       return 'blanket';
     }
 
+    if (info.path.length === 1 && method === BEFORE_ALL_HOOK_NAME) {
+      return 'beforeAll';
+    }
+
     if (info.path.length === 1 && OWN_SLOT_HOOK_NAMES.has(method)) {
       return 'legal';
     }
@@ -183,10 +204,13 @@ const rule = {
     docs: {
       description: 'Disallow test.slow() at file or describe scope',
     },
+    fixable: 'code',
     schema: [],
     messages: {
       blanketSlow:
         'test.slow() at file or describe scope triples the timeout for every test in scope and hides real performance regressions. Move it inside the single test that genuinely needs it.',
+      slowInBeforeAll:
+        "test.slow() in beforeAll uses up the first test's only slow() (Playwright 1.65+), so that test keeps the default timeout. Use test.setTimeout(test.info().timeout * 3) to extend the hook instead.",
     },
   },
 
@@ -232,10 +256,24 @@ const rule = {
             continue;
           }
 
-          if (
-            classifyEnclosingCall(node, testObjectIdentifiers) === 'blanket'
-          ) {
+          const scope = classifyEnclosingCall(node, testObjectIdentifiers);
+
+          if (scope === 'blanket') {
             context.report({ node, messageId: 'blanketSlow' });
+          }
+
+          if (scope === 'beforeAll') {
+            context.report({
+              node,
+              messageId: 'slowInBeforeAll',
+              fix: isUnconditionalSlow(node)
+                ? (fixer) =>
+                    fixer.replaceText(
+                      node,
+                      `${info.root}.setTimeout(${info.root}.info().timeout * 3)`
+                    )
+                : null,
+            });
           }
         }
       },

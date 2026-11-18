@@ -29,9 +29,9 @@ ruleTester.run('no-blanket-test-slow', rule, {
     `test('a slow one', async ({ page }) => { test.slow(); await page.goto('/'); });`,
     // A conditional nested inside a test body — still per-test scope.
     `test('x', async ({ page }) => { if (isCI) { test.slow(); } });`,
-    // beforeAll runs on its own timeout slot, not any test's.
-    `test.beforeAll(async () => { test.slow(); });`,
-    // afterEach also runs on its own timeout slot, not any test's.
+    // The fix for a slow beforeAll: extend the hook's own slot.
+    `test.beforeAll(async () => { test.setTimeout(test.info().timeout * 3); });`,
+    // afterEach runs on its own timeout slot, not any test's.
     `test.afterEach(async () => { test.slow(); });`,
     // test.step's callback runs once per test, same as the test body itself.
     `test('a', async () => { await test.step('step1', async () => { test.slow(); }); });`,
@@ -67,6 +67,26 @@ ruleTester.run('no-blanket-test-slow', rule, {
       // mistaken for a legal per-test scope.
       code: `const describeInParallel = test.describe; describeInParallel('suite', () => { test.slow(); test('a', async () => {}); });`,
       errors: [{ messageId: 'blanketSlow' }],
+    },
+    {
+      // Since Playwright 1.65 slow() takes effect once per test, and beforeAll
+      // runs inside the first test of each worker, so this would cancel that
+      // test's own test.slow().
+      code: `test.beforeAll(async () => { test.slow(); });`,
+      output: `test.beforeAll(async () => { test.setTimeout(test.info().timeout * 3); });`,
+      errors: [{ messageId: 'slowInBeforeAll' }],
+    },
+    {
+      // Same on an aliased test object, and for slow(true).
+      code: `const base = test.extend({}); base.beforeAll(async () => { base.slow(true); }); base('a', async () => {});`,
+      output: `const base = test.extend({}); base.beforeAll(async () => { base.setTimeout(base.info().timeout * 3); }); base('a', async () => {});`,
+      errors: [{ messageId: 'slowInBeforeAll' }],
+    },
+    {
+      // A condition needs a human decision, so it is reported without a fix.
+      code: `test.beforeAll(async () => { test.slow(isCI, 'seeds a lot'); });`,
+      output: null,
+      errors: [{ messageId: 'slowInBeforeAll' }],
     },
   ],
 });
