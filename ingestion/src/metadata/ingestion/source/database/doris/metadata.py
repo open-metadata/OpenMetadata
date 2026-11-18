@@ -322,6 +322,7 @@ class DorisSource(CommonDbSourceService):
                 # Ingest the schema's tables without partition details rather than fail each of them
                 logger.debug(traceback.format_exc())
                 logger.warning("Could not read the partitions of schema [%s]: %s", schema_name, exc)
+                self._rollback_failed_statement()
                 partitions = {}
             self.partitions_cache.put(schema_name, partitions)
             return partitions
@@ -341,7 +342,18 @@ class DorisSource(CommonDbSourceService):
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the partitions of [%s.%s]: %s", schema_name, table_name, exc)
+            self._rollback_failed_statement()
             return False, None
+
+    def _rollback_failed_statement(self) -> None:
+        """
+        A lost connection leaves this thread's connection unusable until it is rolled back: the
+        next table's statements would raise PendingRollbackError and the table would be dropped
+        """
+        try:
+            self.connection.rollback()
+        except Exception as exc:
+            logger.debug("Could not roll back the connection: %s", exc)
 
     def _get_partition_details(self, table_name: str, schema_name: str) -> tuple[bool, TablePartition | None]:
         """

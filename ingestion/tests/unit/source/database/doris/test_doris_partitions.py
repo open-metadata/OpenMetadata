@@ -16,7 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.dialects.mysql.base import MySQLDialect
-from sqlalchemy.exc import OperationalError
+from sqlalchemy.exc import OperationalError, PendingRollbackError
 
 from metadata.generated.schema.entity.data.table import PartitionIntervalTypes
 from metadata.ingestion.source.database.doris.metadata import DorisSource
@@ -422,3 +422,43 @@ class TestPartitionDetails:
         doris_source.engine.connect.return_value.execute.side_effect = execute
 
         assert doris_source.get_table_partition_details("t_range_int", "om_verify", inspector=None) == (False, None)
+
+
+class _DisconnectingConnection:
+    """
+    A connection that loses the server on one statement and, as SQLAlchemy does, refuses every
+    later statement until it is rolled back
+    """
+
+    def __init__(self, failing_statement):
+        self.failing_statement = failing_statement
+        self.needs_rollback = False
+
+    def execute(self, statement, *args):
+        if self.needs_rollback:
+            raise PendingRollbackError("Can't reconnect until invalid transaction is rolled back")
+        if str(statement).strip().startswith(self.failing_statement):
+            self.needs_rollback = True
+            raise OperationalError(str(statement), {}, Exception("Lost connection to MySQL server during query"))
+        return _execute(statement, *args)
+
+    def rollback(self):
+        self.needs_rollback = False
+
+
+@pytest.mark.parametrize(
+    ("failing_statement", "failing_table"),
+    [
+        pytest.param("SELECT", "t_auto", id="schema-partitions"),
+        pytest.param("SHOW CREATE TABLE", "t_auto", id="table-ddl"),
+    ],
+)
+def test_lost_connection_does_not_fail_the_next_tables(failing_statement, failing_table):
+    """After a lost connection, the next table's statements still run on the thread's connection"""
+    doris_source = _doris_source()
+    connection = _DisconnectingConnection(failing_statement)
+    doris_source.engine.connect.return_value = connection
+
+    assert doris_source.get_table_partition_details(failing_table, "om_verify", inspector=None) == (False, None)
+    columns, _ = doris_source._get_columns("t_range_int", "om_verify")
+    assert [column["name"] for column in columns] == ["id", "v"]
