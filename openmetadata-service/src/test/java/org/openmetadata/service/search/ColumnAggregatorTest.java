@@ -332,6 +332,21 @@ class ColumnAggregatorTest {
   }
 
   @Test
+  void nextBrowsePage_mergesInEngineKeyOrder() {
+    String fullwidthA = "Ａ";
+    String emoji = "😀";
+    Map<String, List<String>> keysByField =
+        Map.of(
+            "tasks.name.keyword", List.of(fullwidthA, emoji),
+            "mlFeatures.name.keyword", List.of(emoji));
+
+    ColumnAggregator.BrowsePage page = ColumnAggregator.nextBrowsePage(keysByField, Map.of(), 1);
+
+    assertEquals(List.of(fullwidthA), page.names());
+    assertEquals(Map.of("tasks.name.keyword", fullwidthA), page.afterKeys());
+  }
+
+  @Test
   void decodeBrowseCursor_nullPayloadStartsAtPageOne() {
     assertEquals(Map.of(), ColumnAggregator.decodeBrowseCursor(base64("null")));
     assertEquals(

@@ -18,6 +18,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -78,6 +79,10 @@ public interface ColumnAggregator {
   TypeReference<Map<String, Object>> CURSOR_TYPE = new TypeReference<>() {};
 
   TypeReference<Map<String, String>> BROWSE_CURSOR_TYPE = new TypeReference<>() {};
+
+  /** Composite buckets order keyword terms by UTF-8 bytes, which String order does not match. */
+  Comparator<String> KEYWORD_ORDER =
+      Comparator.comparing(name -> name.getBytes(StandardCharsets.UTF_8), Arrays::compareUnsigned);
 
   ColumnGridResponse aggregateColumns(ColumnAggregationRequest request) throws IOException;
 
@@ -171,7 +176,7 @@ public interface ColumnAggregator {
         keysByField.values().stream()
             .flatMap(List::stream)
             .distinct()
-            .sorted()
+            .sorted(KEYWORD_ORDER)
             .limit(size)
             .toList();
     Map<String, String> nextAfterKeys = new HashMap<>(afterKeys);
@@ -181,7 +186,7 @@ public interface ColumnAggregator {
       keysByField.forEach(
           (field, keys) ->
               keys.stream()
-                  .filter(key -> key.compareTo(lastName) <= 0)
+                  .filter(key -> KEYWORD_ORDER.compare(key, lastName) <= 0)
                   .reduce((previous, next) -> next)
                   .ifPresent(key -> nextAfterKeys.put(field, key)));
       hasMore = keysByField.values().stream().anyMatch(keys -> mayHaveMore(keys, lastName, size));
@@ -190,7 +195,8 @@ public interface ColumnAggregator {
   }
 
   private static boolean mayHaveMore(List<String> keys, String lastName, int size) {
-    return keys.size() >= size || (!keys.isEmpty() && keys.getLast().compareTo(lastName) > 0);
+    return keys.size() >= size
+        || (!keys.isEmpty() && KEYWORD_ORDER.compare(keys.getLast(), lastName) > 0);
   }
 
   /** Saturating long → int cast for response totals. Caps at Integer.MAX_VALUE. */
