@@ -249,6 +249,12 @@ const cutTextNode = (node: Text, remaining: number): Node => {
     return ellipsis;
   }
 
+  if (node.data.length === remaining) {
+    node.data = `${node.data}...`;
+
+    return node;
+  }
+
   const slicedText = node.data.slice(0, remaining);
   const lastSpaceIndex = slicedText.lastIndexOf(' ');
   node.data = `${
@@ -269,7 +275,7 @@ export const getTrimmedHtmlContent = (html: string, limit: number) => {
   let remaining = limit;
   let node = walker.nextNode() as Text | null;
 
-  while (node && node.data.length <= remaining) {
+  while (node && node.data.length < remaining) {
     remaining -= node.data.length;
     node = walker.nextNode() as Text | null;
   }

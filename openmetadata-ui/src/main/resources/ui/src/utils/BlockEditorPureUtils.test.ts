@@ -630,6 +630,13 @@ describe('getTrimmedHtmlContent', () => {
     expect(doc.body.textContent).toBe('See #sample_data.ecommerce...');
   });
 
+  it('should put the ellipsis on a text node that exactly fills the limit', () => {
+    const html =
+      '<p>Hello<a href="https://example.com">Docs</a> tail</p><p>Next</p>';
+
+    expect(getTrimmedHtmlContent(html, 5)).toBe('<p>Hello...</p>');
+  });
+
   it('should drop every block after the cut', () => {
     const html = '<p>First paragraph text</p><ul><li>item one</li></ul>';
 
