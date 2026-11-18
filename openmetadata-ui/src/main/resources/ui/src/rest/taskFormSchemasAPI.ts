@@ -25,6 +25,7 @@
  */
 
 import { PagingResponse } from 'Models';
+import { TaskType } from '../generated/api/tasks/createTask';
 import { Include } from '../generated/type/include';
 import APIClient from './axiosClient';
 
@@ -139,7 +140,7 @@ export const resolveTaskFormSchema = async (
   // same signal the backend uses (`payload.suggestionType`), fetching the
   // matching schema by its FQN; fall back to the ambiguous list query for
   // every other path so non-Suggestion types keep their unique-binding flow.
-  if (taskType === 'Suggestion') {
+  if (taskType === TaskType.Suggestion) {
     const suggestionSchemaName = getSuggestionSchemaName(payload);
 
     if (suggestionSchemaName) {

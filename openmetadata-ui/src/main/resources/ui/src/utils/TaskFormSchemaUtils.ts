@@ -125,7 +125,10 @@ export const getResolvedTaskFormSchema = async (
       // it is the most precise signal (covers future non-Suggestion variants
       // that may share a binding too) and avoids the ambiguous list query.
       if (resolution?.taskFormSchemaId) {
-        const byId = await getTaskFormSchemaById(resolution.taskFormSchemaId);
+        // A deleted or replaced schema must not skip the name/type fallback below.
+        const byId = await getTaskFormSchemaById(
+          resolution.taskFormSchemaId
+        ).catch(() => undefined);
 
         if (byId) {
           return byId;
@@ -133,11 +136,7 @@ export const getResolvedTaskFormSchema = async (
       }
 
       // Fall back to the (now payload-aware for Suggestion) list resolver, then
-      // the built-in defaults if the server has no configured schema. This is
-      // intentionally sequential: the list lookup only runs when fetch-by-id
-      // returned nothing (a fallback chain), so Promise.all would always make
-      // both calls even when the first succeeded.
-      // eslint-disable-next-line openmetadata-imports/review-sequential-api-calls -- fallback chain
+      // the built-in defaults if the server has no configured schema.
       const resolvedSchema = await resolveTaskFormSchema(
         taskType,
         taskCategory,

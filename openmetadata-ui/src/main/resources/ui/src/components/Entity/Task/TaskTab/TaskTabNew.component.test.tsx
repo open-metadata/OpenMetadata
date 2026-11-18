@@ -1117,6 +1117,47 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByText('Needs final verification')).toBeInTheDocument();
   });
 
+  it('keeps the current task form when an older schema response lands last', async () => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    const schemaWithTitle = (title: string) => ({
+      name: title,
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: {
+        type: 'object',
+        properties: { reviewNotes: { type: 'string', title } },
+      },
+      uiSchema: {},
+    });
+    const pending: Array<(schema: unknown) => void> = [];
+    getResolvedTaskFormSchema.mockImplementation(
+      () => new Promise((resolve) => pending.push(resolve))
+    );
+    const nextTask = {
+      ...MOCK_CUSTOM_TASK,
+      id: 'custom-task-next',
+      payload: { ...MOCK_CUSTOM_TASK.payload },
+    };
+
+    const { rerender } = render(
+      <TaskTabNew {...mockProps} task={MOCK_CUSTOM_TASK} />,
+      { wrapper: MemoryRouter }
+    );
+    rerender(<TaskTabNew {...mockProps} task={nextTask} />);
+
+    await act(async () => {
+      pending[1](schemaWithTitle('Current Task Notes'));
+    });
+    await act(async () => {
+      pending[0](schemaWithTitle('Previous Task Notes'));
+    });
+
+    expect(await screen.findByText('Current Task Notes')).toBeInTheDocument();
+    expect(screen.queryByText('Previous Task Notes')).not.toBeInTheDocument();
+  });
+
   it('submits schema-driven payload when resolving a custom task', async () => {
     const { useAuth } = require('../../../../hooks/authHooks');
     const {

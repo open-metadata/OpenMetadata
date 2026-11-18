@@ -981,6 +981,27 @@ describe('Suggestion form schema resolution', () => {
       expect(callsTo(isByIdUrl)).toHaveLength(1);
     });
 
+    it('continues to the name lookup when the stamped id fetch rejects', async () => {
+      (APIClient.get as jest.Mock).mockImplementation((url: string) =>
+        isByNameUrl(url)
+          ? Promise.resolve(axiosResponse(tagSuggestionSchema))
+          : Promise.reject(new Error(`Unexpected url: ${url}`))
+      );
+
+      const schema = await getResolvedTaskFormSchema(
+        TaskEntityType.Suggestion,
+        TaskCategory.MetadataUpdate,
+        {
+          taskFormSchemaId: 'gone-id',
+          payload: { suggestionType: 'Tag' },
+        }
+      );
+
+      expect(schema?.name).toBe('TagSuggestion');
+      expect(callsTo(isByIdUrl)).toHaveLength(1);
+      expect(callsTo(isByNameUrl)).toHaveLength(1);
+    });
+
     it('uses the list query for non-Suggestion tasks (no payload branching)', async () => {
       stubByUrl([
         { match: isListUrl, data: { data: [descriptionUpdateSchema] } },
