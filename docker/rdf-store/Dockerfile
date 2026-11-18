@@ -38,7 +38,9 @@ ENV FUSEKI_BASE=/fuseki-data/fuseki-base
 # gettext-base provides `envsubst`, used by the entrypoint to inject
 # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD into shiro.ini at
 # container start.
+# The compose health checks call curl or wget.
 RUN apt-get update && apt-get install -y \
+    curl \
     wget \
     gettext-base \
     && rm -rf /var/lib/apt/lists/*
