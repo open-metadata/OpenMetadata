@@ -12,6 +12,7 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -197,8 +198,7 @@ public class GenericBackgroundWorker implements Managed {
     try {
       processJob(job);
     } catch (Exception e) {
-      LOG.error("Background Job {} failed with unexpected error", job.getId(), e);
-      jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
+      failUnlessLeftForRecovery(job, e, () -> markJobAsFailedUnexpectedly(job, e));
     } finally {
       inFlightJobIds.remove(job.getId());
       if (isMemoryJob(job)) {
@@ -212,7 +212,7 @@ public class GenericBackgroundWorker implements Managed {
     // Collate can load an older generated JobType enum while running this worker.
     return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
         || (job.getJobType() != null
-            && JobDAO.ONTOLOGY_MEMORY_DERIVATION_JOB_TYPE.equals(job.getJobType().name()));
+            && JobDAO.MEMORY_GLOSSARY_DERIVATION_JOB_TYPE.equals(job.getJobType().name()));
   }
 
   private void processJob(BackgroundJob job) {
@@ -231,9 +231,37 @@ public class GenericBackgroundWorker implements Managed {
         sendJobStatusUpdate(job);
       }
     } catch (BackgroundJobException e) {
-      markJobAsFailed(job, e);
-      sendJobStatusUpdate(job);
+      failUnlessLeftForRecovery(job, e, () -> markJobAsFailedAndNotify(job, e));
     }
+  }
+
+  private void failUnlessLeftForRecovery(BackgroundJob job, Exception failure, Runnable fail) {
+    if (isLeftForRecovery(job, failure)) {
+      LOG.info(
+          "Background Job {} ended during a server stop and is left RUNNING for recovery: {}",
+          job.getId(),
+          ExceptionUtils.getRootCauseMessage(failure));
+    } else {
+      fail.run();
+    }
+  }
+
+  // A stop leaves a memory extraction job RUNNING, as a crash would, for the stale-job reaper to
+  // requeue. Other types are still marked FAILED, which Collate's admin-ops jobs depend on.
+  // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+  static boolean isLeftForRecovery(BackgroundJob job, Throwable failure) {
+    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
+        && Interruptions.isStopInterruption(failure);
+  }
+
+  private void markJobAsFailedAndNotify(BackgroundJob job, BackgroundJobException e) {
+    markJobAsFailed(job, e);
+    sendJobStatusUpdate(job);
+  }
+
+  private void markJobAsFailedUnexpectedly(BackgroundJob job, Exception e) {
+    LOG.error("Background Job {} failed with unexpected error", job.getId(), e);
+    jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
   }
 
   private void markJobAsCompleted(BackgroundJob job) {

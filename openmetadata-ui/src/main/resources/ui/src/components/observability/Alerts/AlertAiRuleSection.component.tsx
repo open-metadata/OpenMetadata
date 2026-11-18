@@ -15,6 +15,7 @@ import {
   Autocomplete,
   Box,
   Button,
+  ButtonUtility,
   Input,
   Select,
   SelectItemType,
@@ -35,8 +36,8 @@ import {
   AiArgumentAutocompleteProps,
   AiArgumentMultiSelectProps,
   AiArgumentTextInputProps,
+  AlertAiRuleSectionProps,
   RuleArgumentFieldProps,
-  RuleSectionProps,
 } from './AlertAiFormFields.interface';
 import {
   getArgumentPath,
@@ -55,7 +56,10 @@ import {
   getValidationPath,
   updateAlertAiValue,
 } from './AlertAiFormFieldsPureUtils';
-import { searchAlertAiArgumentOptions } from './AlertAiFormFieldsSearchUtils';
+import {
+  resolveAlertAiArgumentLabels,
+  searchAlertAiArgumentOptions,
+} from './AlertAiFormFieldsSearchUtils';
 import {
   getSelectArgumentConfig,
   renderSelectItem,
@@ -230,7 +234,6 @@ const AiArgumentAutocomplete = ({
   argument,
   testId,
   sourceSearch,
-  containerEntities,
   field,
   isLabelHidden,
   isViewOnly,
@@ -239,7 +242,6 @@ const AiArgumentAutocomplete = ({
   name,
   onChange,
   placeholder,
-  selectedSource,
   validationErrors,
   value,
 }: AiArgumentAutocompleteProps) => {
@@ -250,11 +252,6 @@ const AiArgumentAutocomplete = ({
       getValidationPath('input', field, name, 'arguments', index, 'input')
     ];
   const selectedValues = useMemo(() => getListValue(inputValue), [inputValue]);
-  const containerEntitiesKey = containerEntities?.join('|') ?? '';
-  const stableContainerEntities = useMemo(
-    () => (containerEntitiesKey ? containerEntitiesKey.split('|') : []),
-    [containerEntitiesKey]
-  );
   const [items, setItems] = useState<SelectItemType[]>(() =>
     getSelectedValueItems(selectedValues)
   );
@@ -279,16 +276,47 @@ const AiArgumentAutocomplete = ({
   useEffect(() => {
     searchAlertAiArgumentOptions({
       argument,
-      containerEntities: stableContainerEntities,
       searchText: '',
-      selectedSource,
       sourceSearch,
     }).then((nextItems) => {
       setItems((currentItems) =>
         mergeSelectItems([...nextItems, ...currentItems])
       );
     });
-  }, [argument, selectedSource, sourceSearch, stableContainerEntities]);
+  }, [argument, sourceSearch]);
+
+  // Saved values can arrive after mount and lie outside the first page, so resolve any selected
+  // value still shown by its raw FQN. Tracking only the current selection keeps this bounded and
+  // stops a value the search cannot find from being looked up again.
+  const resolveAttemptsRef = useRef({ argument, values: new Set<string>() });
+
+  useEffect(() => {
+    const previous = resolveAttemptsRef.current;
+    const attempted = new Set(
+      previous.argument === argument
+        ? selectedValues.filter((selectedValue) =>
+            previous.values.has(selectedValue)
+          )
+        : []
+    );
+    const unresolved = selectedValues.filter(
+      (selectedValue) =>
+        !attempted.has(selectedValue) &&
+        !items.some(
+          (item) => item.id === selectedValue && item.label !== selectedValue
+        )
+    );
+    unresolved.forEach((selectedValue) => attempted.add(selectedValue));
+    resolveAttemptsRef.current = { argument, values: attempted };
+    if (unresolved.length === 0) {
+      return;
+    }
+    resolveAlertAiArgumentLabels(argument, unresolved).then((resolvedItems) =>
+      setItems((currentItems) =>
+        mergeSelectItems([...resolvedItems, ...currentItems])
+      )
+    );
+  }, [argument, items, selectedValues]);
 
   const selectedItems = useMemo(
     () =>
@@ -318,21 +346,11 @@ const AiArgumentAutocomplete = ({
 
   // Read through a ref so a new source search (the server re-answers capabilities whenever the
   // filters change) does not recreate, and so cancel, a search the user is still typing.
-  const searchParamsRef = useRef({
-    argument,
-    containerEntities: stableContainerEntities,
-    selectedSource,
-    sourceSearch,
-  });
+  const searchParamsRef = useRef({ argument, sourceSearch });
 
   useEffect(() => {
-    searchParamsRef.current = {
-      argument,
-      containerEntities: stableContainerEntities,
-      selectedSource,
-      sourceSearch,
-    };
-  }, [argument, selectedSource, sourceSearch, stableContainerEntities]);
+    searchParamsRef.current = { argument, sourceSearch };
+  }, [argument, sourceSearch]);
 
   const debouncedSearch = useMemo(
     () =>
@@ -368,23 +386,14 @@ const AiArgumentAutocomplete = ({
         setResetKey((k) => k + 1);
         searchAlertAiArgumentOptions({
           argument,
-          containerEntities: stableContainerEntities,
           searchText: '',
-          selectedSource,
           sourceSearch,
         }).then((nextItems) => {
           setItems(mergeSelectItems([...nextItems]));
         });
       }
     },
-    [
-      argument,
-      hasNoResults,
-      selectedSource,
-      sourceSearch,
-      selectedValues.length,
-      stableContainerEntities,
-    ]
+    [argument, hasNoResults, sourceSearch, selectedValues.length]
   );
 
   return (
@@ -444,18 +453,16 @@ export const RuleArgumentField = ({
   argument,
   testId,
   sourceSearch,
-  containerEntities,
   field,
   isLabelHidden,
   isViewOnly,
   index,
   name,
   onChange,
-  selectedSource,
   supportedEventTypes,
   validationErrors,
   value,
-}: RuleArgumentFieldProps & { selectedSource?: string }) => {
+}: RuleArgumentFieldProps) => {
   const { t } = useTranslation();
   const selectConfig = getSelectArgumentConfig(
     argument,
@@ -473,7 +480,6 @@ export const RuleArgumentField = ({
         isLabelHidden={isLabelHidden}
         isViewOnly={isViewOnly}
         name={name}
-        sourceSearch={sourceSearch}
         testId={testId}
         validationErrors={validationErrors}
         value={value}
@@ -487,13 +493,11 @@ export const RuleArgumentField = ({
     return (
       <AiArgumentAutocomplete
         argument={argument}
-        containerEntities={containerEntities}
         field={field}
         index={index}
         isLabelHidden={isLabelHidden}
         isViewOnly={isViewOnly}
         name={name}
-        selectedSource={selectedSource}
         sourceSearch={sourceSearch}
         testId={testId}
         validationErrors={validationErrors}
@@ -522,17 +526,17 @@ export const RuleArgumentField = ({
 };
 
 const AlertAiRuleSection = ({
-  containerEntities,
   field,
   isViewOnly,
   onChange,
-  selectedSource,
+  selectedSources,
+  sourceSearch,
   supportedEventTypes,
   supportedRules,
   title,
   validationErrors,
   value,
-}: RuleSectionProps) => {
+}: AlertAiRuleSectionProps) => {
   const { t } = useTranslation();
   const selectedRules = value.input?.[field] ?? [];
   const ruleCopy = getRuleCopy(field, t);
@@ -543,10 +547,9 @@ const AlertAiRuleSection = ({
   );
 
   const { canAddRule, isAddDisabled, showAddButton } = getRuleSectionFlags({
-    field,
     isViewOnly,
     selectedRules,
-    selectedSource,
+    selectedSources,
     supportedRules,
   });
 
@@ -650,11 +653,10 @@ const AlertAiRuleSection = ({
                         <RuleArgumentField
                           isViewOnly
                           argument={argument}
-                          containerEntities={containerEntities}
                           field={field}
                           index={index}
                           name={ruleIndex}
-                          selectedSource={selectedSource}
+                          sourceSearch={sourceSearch}
                           supportedEventTypes={supportedEventTypes}
                           validationErrors={validationErrors}
                           value={value}
@@ -706,13 +708,14 @@ const AlertAiRuleSection = ({
                     </Select>
                   </div>
                   {!isViewOnly && (
-                    <Button
-                      className={ALERT_AI_FORM_CLASS_NAMES.removeButton}
-                      color="secondary"
+                    <ButtonUtility
+                      className="tw:shrink-0"
+                      color="tertiary-destructive"
                       data-testid={`remove-${field}-${ruleIndex}`}
-                      iconLeading={Trash01}
-                      size="sm"
-                      onPress={() => removeRule(ruleIndex)}
+                      icon={Trash01}
+                      size="lg"
+                      tooltip={t('label.remove')}
+                      onClick={() => removeRule(ruleIndex)}
                     />
                   )}
                 </Box>
@@ -741,12 +744,11 @@ const AlertAiRuleSection = ({
                           key={argument}>
                           <RuleArgumentField
                             argument={argument}
-                            containerEntities={containerEntities}
                             field={field}
                             index={index}
                             isViewOnly={isViewOnly}
                             name={ruleIndex}
-                            selectedSource={selectedSource}
+                            sourceSearch={sourceSearch}
                             supportedEventTypes={supportedEventTypes}
                             validationErrors={validationErrors}
                             value={value}

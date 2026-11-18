@@ -251,6 +251,13 @@ test.describe(
           ).toHaveCount(1);
         });
 
+        // The multi-select tree stays open after a pick, and when it opens
+        // below the input it covers the Cancel/Save row. Dismiss it first.
+        await page.keyboard.press('Escape');
+
+        await expect(dropdown).toBeHidden();
+        await expect(popover).toBeVisible();
+
         // Close without saving so the admin's team memberships stay untouched
         await page.getByTestId('teams-edit-close-btn').click();
 

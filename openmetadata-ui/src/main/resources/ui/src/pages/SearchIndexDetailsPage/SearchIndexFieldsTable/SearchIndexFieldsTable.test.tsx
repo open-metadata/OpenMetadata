@@ -42,12 +42,6 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () =>
-    jest.fn().mockImplementation(() => <div>testFilterTablePlaceHolder</div>)
-);
-
-jest.mock(
   '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
     ...jest.requireActual(
@@ -147,6 +141,11 @@ jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest
     .fn()
     .mockImplementation((_entityType, fqn) => `/searchIndex/${fqn}`),
+  getEntityDetailsUrl: jest
+    .fn()
+    .mockImplementation(
+      (_entityType, fqn) => `http://localhost/searchIndex/${fqn}`
+    ),
 }));
 
 describe('SearchIndexFieldsTable component', () => {

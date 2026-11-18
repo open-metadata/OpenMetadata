@@ -320,7 +320,9 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
             className="new-form-style"
             data-testid="rule-description"
             initialValue={form.getValues('description') ?? ''}
-            onTextChange={(value) => form.setValue('description', value)}
+            onTextChange={(value) =>
+              form.setValue('description', value, { shouldDirty: true })
+            }
           />
         </Box>
 
@@ -341,6 +343,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
               <Autocomplete
                 data-testid="resources"
                 items={resourceItems}
+                maxVisibleItems={5}
                 placeholder={t('label.select-field', {
                   field: t('label.resource-plural'),
                 })}
@@ -389,6 +392,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
               <Autocomplete
                 data-testid="operations"
                 items={operationItems}
+                maxVisibleItems={5}
                 placeholder={t('label.select-field', {
                   field: t('label.operation-plural'),
                 })}
@@ -466,7 +470,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
             items={conditionOptions}
             placeholder={t('label.condition')}
             onInputChange={(value) => {
-              form.setValue('condition', value);
+              form.setValue('condition', value, { shouldDirty: true });
               if (!value) {
                 setValidationError('');
                 setIsValidCondition(false);
@@ -478,7 +482,7 @@ const AccessControlRuleForm: FC<AccessControlRuleFormProps> = ({
             onSelectionChange={(key) => {
               if (key) {
                 const val = String(key);
-                form.setValue('condition', val);
+                form.setValue('condition', val, { shouldDirty: true });
                 currentConditionRef.current = val;
                 debouncedConditionValidation(val);
               }

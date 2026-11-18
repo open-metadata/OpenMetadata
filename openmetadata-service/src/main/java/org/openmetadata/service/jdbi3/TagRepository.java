@@ -21,10 +21,14 @@ import static org.openmetadata.service.Entity.CLASSIFICATION;
 import static org.openmetadata.service.Entity.FIELD_CERTIFICATION;
 import static org.openmetadata.service.Entity.FIELD_NAME;
 import static org.openmetadata.service.Entity.TAG;
+import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
+import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -41,6 +45,7 @@ import org.openmetadata.schema.BulkAssetsRequestInterface;
 import org.openmetadata.schema.api.AddTagToAssetsRequest;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
+import org.openmetadata.schema.type.ClassificationLanguage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.Recognizer;
@@ -73,6 +78,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+  private static final String PREDEFINED_RECOGNIZER_TYPE = "predefined";
+  private static final String SUPPORTED_LANGUAGE = "supportedLanguage";
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TagRepository() {
@@ -104,6 +111,11 @@ public class TagRepository extends EntityRepository<Tag> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_CERTIFICATION, PropagationDescriptor.PropagationType.SIMPLE_VALUE, null));
+    // Tag labels on assets carry a copy of the tag's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     return descriptors;
   }
 
@@ -147,7 +159,8 @@ public class TagRepository extends EntityRepository<Tag> {
     return getTagAssets(tag.getId(), limit, offset, caller);
   }
 
-  public Map<String, Integer> getAllTagsWithAssetsCount() {
+  /** Each tag's asset count, leaving out assets {@code caller}'s search access policies deny. */
+  public Map<String, Integer> getAllTagsWithAssetsCount(SubjectContext caller) {
     if (inheritedFieldEntitySearch == null) {
       LOG.warn("Search unavailable for tag asset counts");
       return new HashMap<>();
@@ -157,7 +170,8 @@ public class TagRepository extends EntityRepository<Tag> {
     Map<String, Integer> tagAssetCounts = new LinkedHashMap<>();
 
     for (Tag tag : allTags) {
-      InheritedFieldQuery query = InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0);
+      InheritedFieldQuery query =
+          InheritedFieldQuery.forTag(tag.getFullyQualifiedName(), 0, 0).forCaller(caller);
 
       Integer count =
           inheritedFieldEntitySearch.getCountForField(
@@ -185,12 +199,25 @@ public class TagRepository extends EntityRepository<Tag> {
     EntityReference classification =
         Entity.getEntityReference(entity.getClassification(), NON_DELETED);
     entity.setClassification(classification);
+    // The FQN follows the parent, so a parent from another classification would place the tag
+    // there while the request was authorized against the classification it names.
+    if (parentTerm != null
+        && !FullyQualifiedName.isParent(
+            parentTerm.getFullyQualifiedName(), classification.getFullyQualifiedName())) {
+      throw new IllegalArgumentException(
+          "A tag's parent must belong to the tag's classification "
+              + classification.getFullyQualifiedName());
+    }
 
     // Validate recognizers
     if (entity.getRecognizers() != null) {
       for (org.openmetadata.schema.type.Recognizer recognizer : entity.getRecognizers()) {
         prepareRecognizer(recognizer);
         validateRecognizer(recognizer);
+        // Updates check only new or edited recognizers, in TagUpdater
+        if (!update) {
+          validateSupportedLanguage(recognizer);
+        }
       }
     }
   }
@@ -215,6 +242,28 @@ public class TagRepository extends EntityRepository<Tag> {
 
     if (recognizer.getId() == null) {
       throw new IllegalArgumentException("Can't create recognizer without an ID");
+    }
+  }
+
+  /**
+   * The ingestion client's Tag model requires a valid supportedLanguage on every recognizer type
+   * but predefined, where it may be omitted; a tag it cannot parse is skipped by
+   * auto-classification while the run passes.
+   */
+  static void validateSupportedLanguage(Recognizer recognizer) {
+    JsonNode config = JsonUtils.valueToTree(recognizer.getRecognizerConfig());
+    JsonNode language = config.path(SUPPORTED_LANGUAGE);
+    boolean languageOmitted =
+        PREDEFINED_RECOGNIZER_TYPE.equals(config.path("type").asText())
+            && (language.isMissingNode() || language.isNull());
+    boolean languageValid =
+        Arrays.stream(ClassificationLanguage.values())
+            .anyMatch(l -> l.value().equals(language.asText()));
+    if (!languageOmitted && !languageValid) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Recognizer '%s' must set recognizerConfig.%s to a supported language",
+              recognizer.getName(), SUPPORTED_LANGUAGE));
     }
   }
 
@@ -478,6 +527,11 @@ public class TagRepository extends EntityRepository<Tag> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(TAG);
+  }
+
+  @Override
   public void setFullyQualifiedName(Tag tag) {
     if (tag.getParent() == null) {
       tag.setFullyQualifiedName(
@@ -614,18 +668,16 @@ public class TagRepository extends EntityRepository<Tag> {
         classificationRefs.stream()
             .collect(Collectors.toMap(ref -> ref.getId().toString(), ref -> ref));
 
-    // Map tags to their classifications
+    // A restore brings back a classification's tags before the classification itself, so a tag
+    // can still point at a deleted one here; toMap rejects the null that lookup returns.
     return records.stream()
+        .filter(r -> idToRefMap.containsKey(r.getFromId()))
         .collect(
             Collectors.toMap(
                 r -> UUID.fromString(r.getToId()),
                 r -> idToRefMap.get(r.getFromId()),
                 (existing, replacement) -> existing // In case of duplicates, keep first
-                ))
-        .entrySet()
-        .stream()
-        .filter(e -> e.getValue() != null)
-        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                ));
   }
 
   private Map<UUID, EntityReference> batchFetchParents(List<Tag> tags) {
@@ -671,51 +723,10 @@ public class TagRepository extends EntityRepository<Tag> {
     if (tags == null || tags.isEmpty()) {
       return Map.of();
     }
-
-    // Build and execute a single query for all tags
-    var tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
-
-    // Build UNION query that gets counts for all tags in one go
-    var queryBuilder = new StringBuilder();
-    tagFQNs.forEach(
-        tagFQN -> {
-          if (!queryBuilder.isEmpty()) {
-            queryBuilder.append(" UNION ALL ");
-          }
-          var escapedFQN = tagFQN.replace("'", "''");
-          queryBuilder.append(
-              """
-          SELECT '%s' as tagFQN,
-          COUNT(DISTINCT targetFQNHash) as count
-          FROM tag_usage
-          WHERE source = %d
-          AND (tagFQNHash = MD5('%s') OR tagFQNHash LIKE CONCAT(MD5('%s'), '.%%'))
-          """
-                  .formatted(
-                      escapedFQN, TagSource.CLASSIFICATION.ordinal(), escapedFQN, escapedFQN));
-        });
-
-    try {
-      var results =
-          Entity.getJdbi()
-              .withHandle(handle -> handle.createQuery(queryBuilder.toString()).mapToMap().list());
-
-      return results.stream()
-          .filter(row -> row.get("tagFQN") != null)
-          .collect(
-              Collectors.toMap(
-                  row -> (String) row.get("tagFQN"),
-                  row -> {
-                    var count = (Number) row.get("count");
-                    return count != null ? count.intValue() : 0;
-                  }));
-    } catch (Exception e) {
-      LOG.error("Error batch fetching usage counts", e);
-      // Fall back to individual queries
-      return daoCollection
-          .tagUsageDAO()
-          .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
-    }
+    List<String> tagFQNs = tags.stream().map(Tag::getFullyQualifiedName).toList();
+    return daoCollection
+        .tagUsageDAO()
+        .getTagCountsBulk(TagSource.CLASSIFICATION.ordinal(), tagFQNs);
   }
 
   @Override
@@ -767,6 +778,7 @@ public class TagRepository extends EntityRepository<Tag> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       restrictSystemProviderChange(updated::setProvider);
       preserveRecognizerConfigOnPut();
+      validateChangedRecognizers();
       compareAndUpdate("mutuallyExclusive", this::run);
       compareAndUpdate(
           "disabled",
@@ -804,6 +816,19 @@ public class TagRepository extends EntityRepository<Tag> {
       updated.setAutoClassificationPriority(original.getAutoClassificationPriority());
     }
 
+    // Holding only new or edited recognizer configs to the language rule keeps a tag stored before
+    // it editable, including by recognizer feedback that patches the whole tag. Configs are
+    // matched by value because a PUT may resend recognizers without their ids.
+    private void validateChangedRecognizers() {
+      Set<JsonNode> stored =
+          listOrEmpty(original.getRecognizers()).stream()
+              .map(r -> JsonUtils.valueToTree(r.getRecognizerConfig()))
+              .collect(Collectors.toSet());
+      listOrEmpty(updated.getRecognizers()).stream()
+          .filter(r -> !stored.contains(JsonUtils.valueToTree(r.getRecognizerConfig())))
+          .forEach(TagRepository::validateSupportedLanguage);
+    }
+
     /**
      * Handle name and parent changes together using getOriginalFqn() for correct FQN tracking.
      */
@@ -832,7 +857,9 @@ public class TagRepository extends EntityRepository<Tag> {
       if (fqnChanged && !renameProcessed) {
         renameProcessed = true;
 
-        if (nameChanged && ProviderType.SYSTEM.equals(original.getProvider())) {
+        // System tags are matched by FQN (PII masking reads PII.Sensitive), so moving one under
+        // another parent or classification renames it as much as a new name does.
+        if (ProviderType.SYSTEM.equals(original.getProvider())) {
           throw new IllegalArgumentException(
               CatalogExceptionMessage.systemEntityRenameNotAllowed(original.getName(), entityType));
         }
@@ -864,6 +891,19 @@ public class TagRepository extends EntityRepository<Tag> {
                     condition, oldFqn, newFqn, PolicyConditionUpdater.TAG_FUNCTIONS));
 
         EntityRepository.finishInvalidateCacheForRenameCascade(Entity.TAG, renamedTags);
+        // A move changes the FQN without recording a name change, so the propagation pass that
+        // reacts to "name" never sees it; rewrite the tagged assets here for renames and moves.
+        searchRepository.deferIfFlushScopeActive(
+            () ->
+                searchRepository
+                    .getSearchClient()
+                    .updateClassificationTagByFqnPrefix(
+                        GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+            "updateClassificationTagByFqnPrefix",
+            null,
+            newFqn,
+            Entity.TAG);
+        reindexRenamedDescendants(Entity.TAG, renamedTags, newFqn);
       }
 
       if (classificationChanged) {

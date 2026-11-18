@@ -3600,6 +3600,42 @@
                             "personalAccessTokenSecret"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -5026,9 +5062,15 @@
                     "hostPort": {
                       "expose": true,
                       "title": "Host and Port",
-                      "description": "Host and Port of the MicroStrategy instance.",
+                      "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                       "type": "string",
                       "format": "uri"
+                    },
+                    "libraryPath": {
+                      "title": "Library Path",
+                      "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                      "type": "string",
+                      "default": "MicroStrategyLibrary"
                     },
                     "projectName": {
                       "title": "Project Name",
@@ -5037,9 +5079,74 @@
                     },
                     "loginMode": {
                       "title": "Login Mode",
-                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                       "type": "string",
                       "default": "1"
+                    },
+                    "verifySSL": {
+                      "default": "no-ssl",
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -5142,9 +5249,7 @@
                   },
                   "additionalProperties": false,
                   "required": [
-                    "hostPort",
-                    "username",
-                    "password"
+                    "hostPort"
                   ]
                 },
                 {
@@ -5361,6 +5466,12 @@
                       "description": "Sigma API version.",
                       "type": "string",
                       "default": "v2"
+                    },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -6011,6 +6122,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -7792,7 +7995,7 @@
                     },
                     "workgroup": {
                       "title": "Athena Workgroup",
-                      "description": "Athena workgroup.",
+                      "description": "Athena workgroup that runs the ingestion queries and whose query history usage and lineage read. When empty, queries run in the default workgroup and query history is read from every enabled workgroup.",
                       "type": "string"
                     },
                     "catalogId": {
@@ -7937,8 +8140,7 @@
                   "additionalProperties": false,
                   "required": [
                     "s3StagingDir",
-                    "awsConfig",
-                    "workgroup"
+                    "awsConfig"
                   ]
                 },
                 {
@@ -8070,6 +8272,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -8116,6 +8327,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -8298,6 +8517,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -9310,6 +9536,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                          "^NULLID$",
+                          "^SQLJ$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -9508,6 +9742,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^INFORMATION_SCHEMA$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -11483,6 +11724,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^sys$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -11698,6 +11946,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_impala_builtins$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -11883,6 +12137,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -14987,6 +15248,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -15033,6 +15300,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -16069,6 +16342,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -16253,6 +16533,14 @@
                       "description": "Full name of the schema where the account usage data is stored.",
                       "type": "string",
                       "default": "SNOWFLAKE.ACCOUNT_USAGE"
+                    },
+                    "systemMetricsBatchSize": {
+                      "title": "System Metrics Batch Size",
+                      "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                      "type": "integer",
+                      "default": 50,
+                      "minimum": 1,
+                      "maximum": 500
                     },
                     "privateKey": {
                       "title": "Private Key",
@@ -16745,6 +17033,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -16791,6 +17085,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18312,6 +18612,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^_SYS_(?!BIC$).*"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18500,6 +18807,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^admin$",
+                          "^local$",
+                          "^config$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18830,6 +19145,18 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^system_auth$",
+                          "^system_schema$",
+                          "^system_distributed$",
+                          "^system_traces$",
+                          "^system_views$",
+                          "^system_virtual_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -18971,6 +19298,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -19301,6 +19634,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^gp_toolkit$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -19347,6 +19687,13 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^template1$",
+                          "^template0$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -19559,6 +19906,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$",
+                          "^__internal_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -20522,8 +20877,9 @@
                     },
                     "logdata": {
                       "title": "Extra data for the chosen logon authentication method (LOGDATA)",
-                      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
-                      "type": "string"
+                      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism. The entire value is protected as a secret, including non-secret names. Secret references must resolve to the entire LOGDATA value.",
+                      "type": "string",
+                      "format": "password"
                     },
                     "hostPort": {
                       "title": "Host and Port",
@@ -20569,6 +20925,39 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^DBC$",
+                          "^SYS_CALENDAR$",
+                          "^SYSLIB$",
+                          "^SYSUDTLIB$",
+                          "^SYSADMIN$",
+                          "^SYSSPATIAL$",
+                          "^SYSTEMFE$",
+                          "^SYSBAR$",
+                          "^SYSJDBC$",
+                          "^SYSXML$",
+                          "^SYSUIF$",
+                          "^TD_SYS.*",
+                          "^TD_SERVER_DB$",
+                          "^TDSTATS$",
+                          "^TDQCD$",
+                          "^TDWM$",
+                          "^TDMAPS$",
+                          "^DBCMNGR$",
+                          "^LOCKLOGSHREDDER$",
+                          "^CRASHDUMPS$",
+                          "^EXTERNAL_AP$",
+                          "^SQLJ$",
+                          "^TDPUSER$",
+                          "^EXTUSER$",
+                          "^PUBLIC$",
+                          "^ALL$",
+                          "^DEFAULT$",
+                          "^CONSOLE$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21061,6 +21450,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21107,6 +21505,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21289,6 +21695,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^EXA_STATISTICS$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21558,6 +21971,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^crdb_internal$",
+                          "^pg_extension$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -21604,6 +22025,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -22291,7 +22718,8 @@
                           "^db_.*",
                           "^guest$",
                           "^information_schema$",
-                          "^sys$"
+                          "^sys$",
+                          "^_rsc$"
                         ]
                       },
                       "type": "object",
@@ -22384,6 +22812,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
                     },
@@ -23148,9 +23582,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -23170,7 +23603,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -23569,14 +24003,94 @@
                       "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryTopicSuffixName": {
                       "title": "Schema Registry Topic Suffix Name",
@@ -23829,14 +24343,94 @@
                       "description": "Confluent Redpanda Consumer Config",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Redpanda Schema Registry Config.",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "topicFilterPattern": {
                       "description": "Regex to only fetch topics that matches the pattern.",
@@ -25024,7 +25618,8 @@
                         "EN",
                         "JP",
                         "ZH",
-                        "RU"
+                        "RU",
+                        "KO"
                       ],
                       "default": "EN"
                     },
@@ -25254,10 +25849,10 @@
                       ]
                     },
                     "securityConfig": {
-                      "mask": true,
                       "description": "OpenMetadata Client security configuration.",
                       "title": "openMetadataJWTClientConfig",
                       "type": "object",
+                      "mask": true,
                       "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
                       "properties": {
                         "jwtToken": {
@@ -30507,7 +31102,7 @@
                       ]
                     },
                     "packageConnection": {
-                      "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+                      "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
                       "description": "Underlying storage connection",
                       "oneOf": [
                         {
@@ -30682,6 +31277,138 @@
                           "additionalProperties": false,
                           "required": [
                             "awsConfig"
+                          ]
+                        },
+                        {
+                          "title": "ADLS Connection",
+                          "description": "ADLS Connection.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.storage.ADLSConnection",
+                          "definitions": {
+                            "azureType": {
+                              "description": "ADLS service type",
+                              "type": "string",
+                              "enum": [
+                                "ADLS"
+                              ],
+                              "default": "ADLS"
+                            }
+                          },
+                          "properties": {
+                            "type": {
+                              "title": "Service Type",
+                              "description": "Service Type",
+                              "default": "ADLS",
+                              "type": "string",
+                              "enum": [
+                                "ADLS"
+                              ]
+                            },
+                            "credentials": {
+                              "title": "Azure Credentials",
+                              "description": "Azure Credentials",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Your Service Principal App ID (Client ID)",
+                                  "type": "string"
+                                },
+                                "clientSecret": {
+                                  "title": "Client Secret",
+                                  "description": "Your Service Principal Password (Client Secret)",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "tenantId": {
+                                  "title": "Tenant ID",
+                                  "description": "Tenant ID of your Azure Subscription",
+                                  "type": "string"
+                                },
+                                "accountName": {
+                                  "title": "Storage Account Name",
+                                  "description": "Account Name of your storage account",
+                                  "type": "string"
+                                },
+                                "vaultName": {
+                                  "title": "Key Vault Name",
+                                  "description": "Key Vault Name",
+                                  "type": "string"
+                                },
+                                "scopes": {
+                                  "title": "Scopes",
+                                  "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "connectionOptions": {
+                              "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+                              "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "title": "Connection Options"
+                            },
+                            "connectionArguments": {
+                              "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+                              "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+                              "type": "object",
+                              "additionalProperties": {
+                                ".{1,}": {
+                                  "type": "string"
+                                }
+                              },
+                              "title": "Connection Arguments"
+                            },
+                            "containerName": {
+                              "title": "Container Name",
+                              "description": "Container Name of the data source.",
+                              "type": "string",
+                              "default": ""
+                            },
+                            "containerFilterPattern": {
+                              "description": "Regex to only fetch containers that matches the pattern.",
+                              "title": "Default Storage container Filter Pattern",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                              "properties": {
+                                "includes": {
+                                  "description": "List of strings/regex patterns to match and include only database entities that match.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "excludes": {
+                                  "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "supportsMetadataExtraction": {
+                              "description": "Supports Metadata Extraction.",
+                              "type": "boolean",
+                              "default": true,
+                              "title": "Supports Metadata Extraction"
+                            },
+                            "supportsProfiler": {
+                              "title": "Supports Profiler",
+                              "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "credentials"
                           ]
                         },
                         {
@@ -31134,6 +31861,11 @@
                       "description": "Fivetran API Limit For Pagination.",
                       "type": "integer",
                       "default": 1000
+                    },
+                    "logSchema": {
+                      "title": "Fivetran Platform Connector Schema",
+                      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                      "type": "string"
                     },
                     "pipelineFilterPattern": {
                       "description": "Regex exclude pipelines.",
@@ -33699,9 +34431,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -33735,22 +34466,24 @@
                       "title": "Supports Metadata Extraction"
                     },
                     "supportsLineageExtraction": {
+                      "title": "Supports Lineage Extraction",
+                      "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Lineage Extraction"
+                      "default": false
                     },
                     "supportsUsageExtraction": {
+                      "title": "Supports Operational data Extraction",
                       "description": "Supports Usage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Operational data Extraction"
+                      "default": false
                     }
                   },
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -33920,6 +34653,42 @@
                           "required": [
                             "personalAccessTokenName",
                             "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
                           ],
                           "additionalProperties": false
                         }
@@ -34100,8 +34869,9 @@
                     },
                     "registryUri": {
                       "title": "Registry URI",
-                      "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments",
-                      "type": "string"
+                      "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected as a secret, including URIs without credentials. Secret references must resolve to the entire URI.",
+                      "type": "string",
+                      "format": "password"
                     },
                     "mlModelFilterPattern": {
                       "description": "Regex to only fetch MlModels with names matching the pattern.",
@@ -41297,6 +42067,42 @@
                             "personalAccessTokenSecret"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -42723,9 +43529,15 @@
                     "hostPort": {
                       "expose": true,
                       "title": "Host and Port",
-                      "description": "Host and Port of the MicroStrategy instance.",
+                      "description": "Host and Port of the MicroStrategy instance, without the Library path, such as `https://host:port`.",
                       "type": "string",
                       "format": "uri"
+                    },
+                    "libraryPath": {
+                      "title": "Library Path",
+                      "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
+                      "type": "string",
+                      "default": "MicroStrategyLibrary"
                     },
                     "projectName": {
                       "title": "Project Name",
@@ -42734,9 +43546,74 @@
                     },
                     "loginMode": {
                       "title": "Login Mode",
-                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
+                      "description": "Login Mode for Microstrategy's REST API connection. You can authenticate with one of the following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to authenticate through loginMode `8`.",
                       "type": "string",
                       "default": "1"
+                    },
+                    "verifySSL": {
+                      "default": "no-ssl",
+                      "title": "Verify SSL",
+                      "description": "Client SSL verification. Make sure to configure the SSLConfig if enabled.",
+                      "javaType": "org.openmetadata.schema.security.ssl.VerifySSL",
+                      "type": "string",
+                      "enum": [
+                        "no-ssl",
+                        "ignore",
+                        "validate"
+                      ]
+                    },
+                    "sslConfig": {
+                      "title": "SSL Config",
+                      "description": "Client SSL configuration",
+                      "javaType": "org.openmetadata.schema.security.ssl.SSLConfig",
+                      "mask": true,
+                      "oneOf": [
+                        {
+                          "title": "Validate SSL Client Config",
+                          "description": "OpenMetadata Client configured to validate SSL certificates.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.ssl.ValidateSSLClientConfig",
+                          "additionalProperties": false,
+                          "properties": {
+                            "caCertificate": {
+                              "title": "CA Certificate",
+                              "description": "The CA certificate used for SSL validation.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslCertificate": {
+                              "title": "SSL Certificate",
+                              "description": "The SSL certificate used for client authentication.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            },
+                            "sslKey": {
+                              "title": "SSL Key",
+                              "description": "The private key associated with the SSL certificate.",
+                              "type": "string",
+                              "format": "password",
+                              "accept": [
+                                ".pem",
+                                ".crt",
+                                ".cer"
+                              ],
+                              "uiFieldType": "fileOrInput"
+                            }
+                          }
+                        }
+                      ]
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -42839,9 +43716,7 @@
                   },
                   "additionalProperties": false,
                   "required": [
-                    "hostPort",
-                    "username",
-                    "password"
+                    "hostPort"
                   ]
                 },
                 {
@@ -43058,6 +43933,12 @@
                       "description": "Sigma API version.",
                       "type": "string",
                       "default": "v2"
+                    },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
@@ -43708,6 +44589,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -45489,7 +46462,7 @@
                     },
                     "workgroup": {
                       "title": "Athena Workgroup",
-                      "description": "Athena workgroup.",
+                      "description": "Athena workgroup that runs the ingestion queries and whose query history usage and lineage read. When empty, queries run in the default workgroup and query history is read from every enabled workgroup.",
                       "type": "string"
                     },
                     "catalogId": {
@@ -45634,8 +46607,7 @@
                   "additionalProperties": false,
                   "required": [
                     "s3StagingDir",
-                    "awsConfig",
-                    "workgroup"
+                    "awsConfig"
                   ]
                 },
                 {
@@ -45767,6 +46739,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -45813,6 +46794,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -45995,6 +46984,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -47007,6 +48003,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS(CAT|FUN|IBM|IBMADM|IBMINTERNAL|IBMTS|PROC|PUBLIC|STAT|TOOLS)$",
+                          "^NULLID$",
+                          "^SQLJ$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -47205,6 +48209,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^INFORMATION_SCHEMA$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -49180,6 +50191,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^sys$",
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -49395,6 +50413,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_impala_builtins$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -49580,6 +50604,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -52684,6 +53715,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -52730,6 +53767,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -53766,6 +54809,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -53950,6 +55000,14 @@
                       "description": "Full name of the schema where the account usage data is stored.",
                       "type": "string",
                       "default": "SNOWFLAKE.ACCOUNT_USAGE"
+                    },
+                    "systemMetricsBatchSize": {
+                      "title": "System Metrics Batch Size",
+                      "description": "Number of tables whose DML history is read from QUERY_HISTORY with a single query when the profiler computes system metrics. Higher values issue fewer scans but hold more history in memory at once.",
+                      "type": "integer",
+                      "default": 50,
+                      "minimum": 1,
+                      "maximum": 500
                     },
                     "privateKey": {
                       "title": "Private Key",
@@ -54442,6 +55500,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -54488,6 +55552,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56009,6 +57079,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^_SYS_(?!BIC$).*"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56197,6 +57274,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^admin$",
+                          "^local$",
+                          "^config$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56527,6 +57612,18 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$",
+                          "^system_auth$",
+                          "^system_schema$",
+                          "^system_distributed$",
+                          "^system_traces$",
+                          "^system_views$",
+                          "^system_virtual_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56668,6 +57765,12 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^_system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -56998,6 +58101,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^gp_toolkit$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -57044,6 +58154,13 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^template1$",
+                          "^template0$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -57256,6 +58373,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^performance_schema$",
+                          "^__internal_schema$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58219,8 +59344,9 @@
                     },
                     "logdata": {
                       "title": "Extra data for the chosen logon authentication method (LOGDATA)",
-                      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
-                      "type": "string"
+                      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism. The entire value is protected as a secret, including non-secret names. Secret references must resolve to the entire LOGDATA value.",
+                      "type": "string",
+                      "format": "password"
                     },
                     "hostPort": {
                       "title": "Host and Port",
@@ -58266,6 +59392,39 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^DBC$",
+                          "^SYS_CALENDAR$",
+                          "^SYSLIB$",
+                          "^SYSUDTLIB$",
+                          "^SYSADMIN$",
+                          "^SYSSPATIAL$",
+                          "^SYSTEMFE$",
+                          "^SYSBAR$",
+                          "^SYSJDBC$",
+                          "^SYSXML$",
+                          "^SYSUIF$",
+                          "^TD_SYS.*",
+                          "^TD_SERVER_DB$",
+                          "^TDSTATS$",
+                          "^TDQCD$",
+                          "^TDWM$",
+                          "^TDMAPS$",
+                          "^DBCMNGR$",
+                          "^LOCKLOGSHREDDER$",
+                          "^CRASHDUMPS$",
+                          "^EXTERNAL_AP$",
+                          "^SQLJ$",
+                          "^TDPUSER$",
+                          "^EXTUSER$",
+                          "^PUBLIC$",
+                          "^ALL$",
+                          "^DEFAULT$",
+                          "^CONSOLE$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58758,6 +59917,15 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^db_(owner|accessadmin|securityadmin|ddladmin|backupoperator|datareader|datawriter|denydatareader|denydatawriter)$",
+                          "^guest$",
+                          "^information_schema$",
+                          "^sys$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58804,6 +59972,14 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^msdb$",
+                          "^model$",
+                          "^tempdb$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -58986,6 +60162,13 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^SYS$",
+                          "^EXA_STATISTICS$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -59255,6 +60438,14 @@
                     "schemaFilterPattern": {
                       "title": "Default Schema Filter Pattern",
                       "description": "Regex to only include/exclude schemas that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^information_schema$",
+                          "^crdb_internal$",
+                          "^pg_extension$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -59301,6 +60492,12 @@
                     "databaseFilterPattern": {
                       "title": "Default Database Filter Pattern",
                       "description": "Regex to only include/exclude databases that matches the pattern.",
+                      "default": {
+                        "includes": [],
+                        "excludes": [
+                          "^system$"
+                        ]
+                      },
                       "type": "object",
                       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
                       "properties": {
@@ -59988,7 +61185,8 @@
                           "^db_.*",
                           "^guest$",
                           "^information_schema$",
-                          "^sys$"
+                          "^sys$",
+                          "^_rsc$"
                         ]
                       },
                       "type": "object",
@@ -60081,6 +61279,12 @@
                     "supportsProfiler": {
                       "title": "Supports Profiler",
                       "description": "Supports Profiler",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "supportsQueryComment": {
+                      "title": "Supports Query Comment",
+                      "description": "For Database Services using SQLAlchemy, True to enable running a comment for all queries run from OpenMetadata.",
                       "type": "boolean",
                       "default": true
                     },
@@ -60845,9 +62049,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -60867,7 +62070,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -61266,14 +62470,94 @@
                       "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryTopicSuffixName": {
                       "title": "Schema Registry Topic Suffix Name",
@@ -61526,14 +62810,94 @@
                       "description": "Confluent Redpanda Consumer Config",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "sasl.password": {
+                          "title": "sasl.password",
+                          "description": "SASL password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.client.secret": {
+                          "title": "sasl.oauthbearer.client.secret",
+                          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.config": {
+                          "title": "sasl.oauthbearer.config",
+                          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.passphrase": {
+                          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+                          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "sasl.oauthbearer.assertion.private.key.pem": {
+                          "title": "sasl.oauthbearer.assertion.private.key.pem",
+                          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.password": {
+                          "title": "ssl.key.password",
+                          "description": "Passphrase of the client's private key.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.key.pem": {
+                          "title": "ssl.key.pem",
+                          "description": "Client's private key as a PEM string.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.keystore.password": {
+                          "title": "ssl.keystore.password",
+                          "description": "Password of the client keystore (PKCS#12).",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "ssl.truststore.password": {
+                          "title": "ssl.truststore.password",
+                          "description": "Password of the truststore.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "schemaRegistryConfig": {
                       "title": "Schema Registry Config",
                       "description": "Confluent Redpanda Schema Registry Config.",
                       "type": "object",
                       "default": {},
-                      "additionalProperties": true
+                      "properties": {
+                        "basic.auth.user.info": {
+                          "title": "basic.auth.user.info",
+                          "description": "Schema Registry credentials in the form of username:password.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.token": {
+                          "title": "bearer.auth.token",
+                          "description": "Static bearer token for the Schema Registry.",
+                          "type": "string",
+                          "format": "password"
+                        },
+                        "bearer.auth.client.secret": {
+                          "title": "bearer.auth.client.secret",
+                          "description": "Client secret for the Schema Registry OAuth token request.",
+                          "type": "string",
+                          "format": "password"
+                        }
+                      },
+                      "additionalProperties": {
+                        "format": "password"
+                      }
                     },
                     "topicFilterPattern": {
                       "description": "Regex to only fetch topics that matches the pattern.",
@@ -62721,7 +64085,8 @@
                         "EN",
                         "JP",
                         "ZH",
-                        "RU"
+                        "RU",
+                        "KO"
                       ],
                       "default": "EN"
                     },
@@ -62951,10 +64316,10 @@
                       ]
                     },
                     "securityConfig": {
-                      "mask": true,
                       "description": "OpenMetadata Client security configuration.",
                       "title": "openMetadataJWTClientConfig",
                       "type": "object",
+                      "mask": true,
                       "javaType": "org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig",
                       "properties": {
                         "jwtToken": {
@@ -68204,7 +69569,7 @@
                       ]
                     },
                     "packageConnection": {
-                      "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+                      "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
                       "description": "Underlying storage connection",
                       "oneOf": [
                         {
@@ -68379,6 +69744,138 @@
                           "additionalProperties": false,
                           "required": [
                             "awsConfig"
+                          ]
+                        },
+                        {
+                          "title": "ADLS Connection",
+                          "description": "ADLS Connection.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.storage.ADLSConnection",
+                          "definitions": {
+                            "azureType": {
+                              "description": "ADLS service type",
+                              "type": "string",
+                              "enum": [
+                                "ADLS"
+                              ],
+                              "default": "ADLS"
+                            }
+                          },
+                          "properties": {
+                            "type": {
+                              "title": "Service Type",
+                              "description": "Service Type",
+                              "default": "ADLS",
+                              "type": "string",
+                              "enum": [
+                                "ADLS"
+                              ]
+                            },
+                            "credentials": {
+                              "title": "Azure Credentials",
+                              "description": "Azure Credentials",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.AzureCredentials",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Your Service Principal App ID (Client ID)",
+                                  "type": "string"
+                                },
+                                "clientSecret": {
+                                  "title": "Client Secret",
+                                  "description": "Your Service Principal Password (Client Secret)",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "tenantId": {
+                                  "title": "Tenant ID",
+                                  "description": "Tenant ID of your Azure Subscription",
+                                  "type": "string"
+                                },
+                                "accountName": {
+                                  "title": "Storage Account Name",
+                                  "description": "Account Name of your storage account",
+                                  "type": "string"
+                                },
+                                "vaultName": {
+                                  "title": "Key Vault Name",
+                                  "description": "Key Vault Name",
+                                  "type": "string"
+                                },
+                                "scopes": {
+                                  "title": "Scopes",
+                                  "description": "Scopes to get access token, for e.g. api://6dfX33ab-XXXX-49df-XXXX-3459eX817d3e/.default",
+                                  "type": "string"
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "connectionOptions": {
+                              "javaType": "org.openmetadata.schema.services.connections.database.ConnectionOptions",
+                              "description": "Additional connection options to build the URL that can be sent to service during the connection.",
+                              "type": "object",
+                              "additionalProperties": {
+                                "type": "string"
+                              },
+                              "title": "Connection Options"
+                            },
+                            "connectionArguments": {
+                              "javaType": "org.openmetadata.schema.services.connections.database.ConnectionArguments",
+                              "description": "Additional connection arguments such as security or protocol configs that can be sent to service during connection.",
+                              "type": "object",
+                              "additionalProperties": {
+                                ".{1,}": {
+                                  "type": "string"
+                                }
+                              },
+                              "title": "Connection Arguments"
+                            },
+                            "containerName": {
+                              "title": "Container Name",
+                              "description": "Container Name of the data source.",
+                              "type": "string",
+                              "default": ""
+                            },
+                            "containerFilterPattern": {
+                              "description": "Regex to only fetch containers that matches the pattern.",
+                              "title": "Default Storage container Filter Pattern",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                              "properties": {
+                                "includes": {
+                                  "description": "List of strings/regex patterns to match and include only database entities that match.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                "excludes": {
+                                  "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                }
+                              },
+                              "additionalProperties": false
+                            },
+                            "supportsMetadataExtraction": {
+                              "description": "Supports Metadata Extraction.",
+                              "type": "boolean",
+                              "default": true,
+                              "title": "Supports Metadata Extraction"
+                            },
+                            "supportsProfiler": {
+                              "title": "Supports Profiler",
+                              "description": "Supports Profiler",
+                              "type": "boolean",
+                              "default": true
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "credentials"
                           ]
                         },
                         {
@@ -68831,6 +70328,11 @@
                       "description": "Fivetran API Limit For Pagination.",
                       "type": "integer",
                       "default": 1000
+                    },
+                    "logSchema": {
+                      "title": "Fivetran Platform Connector Schema",
+                      "description": "Destination schema holding the Fivetran Platform Connector log table, used to extract per-phase run status. Leave empty to read the schema name from the Fivetran API.",
+                      "type": "string"
                     },
                     "pipelineFilterPattern": {
                       "description": "Regex exclude pipelines.",
@@ -71396,9 +72898,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -71432,22 +72933,24 @@
                       "title": "Supports Metadata Extraction"
                     },
                     "supportsLineageExtraction": {
+                      "title": "Supports Lineage Extraction",
+                      "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Lineage Extraction"
+                      "default": false
                     },
                     "supportsUsageExtraction": {
+                      "title": "Supports Operational data Extraction",
                       "description": "Supports Usage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Operational data Extraction"
+                      "default": false
                     }
                   },
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -71617,6 +73120,42 @@
                           "required": [
                             "personalAccessTokenName",
                             "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
                           ],
                           "additionalProperties": false
                         }
@@ -71797,8 +73336,9 @@
                     },
                     "registryUri": {
                       "title": "Registry URI",
-                      "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments",
-                      "type": "string"
+                      "description": "Mlflow Model registry backend. E.g., mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected as a secret, including URIs without credentials. Secret references must resolve to the entire URI.",
+                      "type": "string",
+                      "format": "password"
                     },
                     "mlModelFilterPattern": {
                       "description": "Regex to only fetch MlModels with names matching the pattern.",

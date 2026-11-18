@@ -17,6 +17,7 @@ import org.flowable.bpmn.model.BoundaryEvent;
 import org.flowable.bpmn.model.BpmnModel;
 import org.flowable.bpmn.model.Process;
 import org.flowable.bpmn.model.SequenceFlow;
+import org.flowable.bpmn.model.TerminateEventDefinition;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
@@ -89,6 +90,10 @@ public class MainWorkflow {
 
   private void configureRuntimeExceptionFlow(Process process) {
     EndEvent errorEndEvent = new EndEvent(ERROR_END_EVENT_ID);
+    // Ends the run's other branches, which would otherwise wait at a parallel join forever. Not
+    // terminateAll: that would also end the trigger and the batch's other runs.
+    // ADR:2026-10-22-a-workflow-run-never-ends-with-a-branch-waiting-at-a-join
+    errorEndEvent.getEndEvent().addEventDefinition(new TerminateEventDefinition());
     process.addFlowElement(errorEndEvent.getEndEvent());
     for (BoundaryEvent event : runtimeExceptionBoundaryEvents) {
       process.addFlowElement(new SequenceFlow(event.getId(), errorEndEvent.getEndEvent().getId()));

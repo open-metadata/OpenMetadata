@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-@quick-filters-container-height: 86px;
 
 .explore-page {
   margin-bottom: var(--om-space-20);
@@ -34,17 +33,6 @@
     background: var(--om-color-bg-secondary);
   }
 
-  .content-height-with-resizable-panel {
-    // 86px quick-filters bar (@quick-filters-container-height) + 8px gap
-    --content-panel-offset: 94px;
-    overflow-y: auto;
-
-    &.filter-applied {
-      // + 40px applied-filters row
-      --content-panel-offset: 134px;
-    }
-  }
-
   .explore-page-right-panel {
     flex: 0 0 clamp(360px, 26vw, 440px);
     max-width: 440px;
@@ -58,13 +46,39 @@
   }
 }
 
+// Classic full-height page (PageLayoutV1 `fullHeight`): the results panel takes
+// whatever height the filters card leaves, instead of a viewport calc with a
+// hard-coded filters height that drifted and pushed the page past the viewport.
+// The panel keeps a usable minimum; when many filter chips or a short window
+// leave less than that, the page scrolls inside itself so results stay
+// reachable, while the shell (navbar, sidebar) still never scrolls.
+.page-layout-v1-full-height .explore-page {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 0;
+  padding-bottom: calc(var(--tw-spacing) * 5);
+  overflow-y: auto;
+
+  > * {
+    flex-shrink: 0;
+  }
+
+  > .content-height-with-resizable-panel {
+    flex: 1 0 calc(var(--tw-spacing) * 80);
+    height: auto;
+    min-height: calc(var(--tw-spacing) * 80);
+  }
+}
+
 // AI shell padding standard: 16px between Explore's stacked blocks.
 .assistant-content .explore-page {
   > .m-b-box {
-    margin-bottom: 16px;
+    margin-bottom: calc(var(--tw-spacing) * 4);
   }
 
   .explore-results-row {
-    column-gap: 16px;
+    column-gap: calc(var(--tw-spacing) * 4);
   }
 }

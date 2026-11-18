@@ -62,6 +62,11 @@ import {
   getWorkflowInstancesForApplication,
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../test/unit/enUsTranslation';
+import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
 import {
   getCountLabel,
@@ -93,6 +98,22 @@ const mockServiceDetails = {
     },
   },
 };
+
+const mockShowModal = jest.fn();
+
+// A real context read stands in for the provider, so a call that moves back
+// inside a memo (or a menu helper it runs) trips React's hook-order checks.
+jest.mock(
+  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
+  () => {
+    const { createContext, useContext } = jest.requireActual('react');
+    const context = createContext({
+      showModal: (data: unknown) => mockShowModal(data),
+    });
+
+    return { useEntityExportModalProvider: () => useContext(context) };
+  }
+);
 
 // Mock all the API calls
 jest.mock('../../rest/serviceAPI', () => ({
@@ -363,8 +384,24 @@ jest.mock(
       onStyleUpdate,
       disableRunAgentsButton,
       disableRunAgentsButtonMessage,
+      extraDropdownContent,
     }: DataAssetsHeaderProps) => (
       <div data-testid="data-assets-header">
+        {extraDropdownContent?.map((item) => {
+          const { key, onClick } = item as {
+            key: string;
+            onClick: () => void;
+          };
+
+          return (
+            <button
+              data-testid={`extra-option-${key}`}
+              key={key}
+              onClick={onClick}>
+              {key}
+            </button>
+          );
+        })}
         <button data-testid="follow-button" onClick={onFollowClick}>
           Follow
         </button>
@@ -486,14 +523,6 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
         </div>
       )
     )
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest
-    .fn()
-    .mockImplementation(() => (
-      <div data-testid="error-placeholder">ErrorPlaceholder</div>
-    ))
 );
 
 jest.mock('../../components/common/Loader/Loader', () => ({
@@ -747,6 +776,50 @@ describe('ServiceDetailsPage', () => {
       expect(screen.getByTestId('tabs')).toBeInTheDocument();
     });
 
+    it('should build the manage menu without hooks and export through showModal', async () => {
+      const consoleErrorSpy = jest.spyOn(console, 'error');
+      (
+        entityUtilClassBase.getManageExtraOptions as jest.Mock
+      ).mockImplementation((...args) =>
+        jest
+          .requireActual('../../utils/EntityUtilClassBase')
+          .default.getManageExtraOptions(...args)
+      );
+
+      const { rerender } = render(<ServiceDetailsPage />);
+      await screen.findByTestId('extra-option-export-button');
+
+      (useRequiredParams as jest.Mock).mockReturnValue({
+        serviceCategory: ServiceCategory.DATABASE_SERVICES,
+        tab: EntityTabs.CONNECTION,
+      });
+      rerender(<ServiceDetailsPage />);
+
+      expect(
+        (entityUtilClassBase.getManageExtraOptions as jest.Mock).mock.calls
+          .at(-1)
+          ?.at(-1)
+      ).toBe(EntityTabs.CONNECTION);
+
+      fireEvent.click(screen.getByTestId('extra-option-export-button'));
+
+      expect(mockShowModal).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'test-service' })
+      );
+      expect(
+        consoleErrorSpy.mock.calls.filter(([message]) =>
+          /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/.test(
+            String(message)
+          )
+        )
+      ).toEqual([]);
+
+      consoleErrorSpy.mockRestore();
+      (entityUtilClassBase.getManageExtraOptions as jest.Mock).mockReturnValue(
+        []
+      );
+    });
+
     it('should render error placeholder when service is not found', async () => {
       (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
         Promise.reject(new Error('Not found'))
@@ -755,11 +828,11 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
-    it('should navigate to forbidden page when access is denied', async () => {
+    it('should render the permission placeholder when access is denied', async () => {
       const mockNavigate = jest.fn();
       (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
@@ -772,10 +845,59 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(mockNavigate).toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
-          replace: true,
-        });
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
+
+      expect(
+        screen.queryByTestId('no-data-placeholder')
+      ).not.toBeInTheDocument();
+      expect(mockNavigate).not.toHaveBeenCalledWith(ROUTES.FORBIDDEN, {
+        replace: true,
+      });
+    });
+  });
+
+  describe('Permission message', () => {
+    it('names the requested service, not the one viewed before', async () => {
+      const error = new Error('Forbidden') as AxiosError;
+      error.response = { status: ClientErrors.FORBIDDEN } as AxiosResponse;
+      const page = () => (
+        <MemoryRouter>
+          <ServiceDetailsPage />
+        </MemoryRouter>
+      );
+      useEnUsTranslations();
+      try {
+        const view = render(page());
+        await act(async () => undefined);
+
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'other-service',
+        }));
+        (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+          Promise.reject(error)
+        );
+        await act(async () => {
+          view.rerender(page());
+        });
+
+        const placeholder = await screen.findByTestId(
+          'permission-error-placeholder'
+        );
+
+        expect(placeholder).toHaveTextContent('other-service');
+        expect(placeholder).not.toHaveTextContent('Test Service');
+      } finally {
+        useKeyEchoTranslations();
+        (useFqn as jest.Mock).mockImplementation(() => ({
+          fqn: 'test-service',
+        }));
+        (getServiceByFQN as jest.Mock)
+          .mockReset()
+          .mockImplementation(() => Promise.resolve(mockServiceDetails));
+      }
     });
   });
 
@@ -1355,6 +1477,8 @@ describe('ServiceDetailsPage', () => {
       await waitFor(() => {
         expect(screen.getByTestId('data-model-table')).toBeInTheDocument();
       });
+
+      expect(screen.getByText('label.data-model-plural')).toBeInTheDocument();
     });
 
     it('should render agents tab for metadata services', async () => {
@@ -1408,7 +1532,7 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
 
@@ -1651,7 +1775,7 @@ describe('ServiceDetailsPage', () => {
 
       // The component should show error placeholder when service fetch fails
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(screen.getByTestId('no-data-placeholder')).toBeInTheDocument();
       });
     });
   });
@@ -1677,7 +1801,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       // Should not fetch permissions for OpenMetadata service
@@ -1865,7 +1991,9 @@ describe('ServiceDetailsPage', () => {
       await renderComponent();
 
       await waitFor(() => {
-        expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+        expect(
+          screen.getByTestId('permission-error-placeholder')
+        ).toBeInTheDocument();
       });
 
       expect(screen.queryByTestId('service-page')).not.toBeInTheDocument();

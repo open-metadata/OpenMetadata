@@ -4,6 +4,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.SecurityUtil.findTeamsFromClaims;
 import static org.openmetadata.service.security.SecurityUtil.getClaimAsList;
+import static org.openmetadata.service.security.SecurityUtil.isEmailRegistrationDomainAllowed;
 import static org.openmetadata.service.security.SecurityUtil.trustedRedirects;
 import static org.openmetadata.service.security.SecurityUtil.writeJsonResponse;
 import static org.openmetadata.service.security.jwt.JWTTokenGenerator.ROLES_CLAIM;
@@ -37,7 +38,6 @@ import com.nimbusds.oauth2.sdk.id.State;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallenge;
 import com.nimbusds.oauth2.sdk.pkce.CodeChallengeMethod;
 import com.nimbusds.oauth2.sdk.pkce.CodeVerifier;
-import com.nimbusds.oauth2.sdk.token.AccessToken;
 import com.nimbusds.openid.connect.sdk.AuthenticationErrorResponse;
 import com.nimbusds.openid.connect.sdk.AuthenticationRequest;
 import com.nimbusds.openid.connect.sdk.AuthenticationResponse;
@@ -125,6 +125,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           ClientAuthenticationMethod.PRIVATE_KEY_JWT,
           ClientAuthenticationMethod.NONE);
 
+  private static final Set<OidcClientConfig.ClientAuthenticationMethod>
+      USABLE_CLIENT_AUTHENTICATION =
+          Set.of(
+              OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+              OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST);
+
   // OIDC spec error codes meaning "silent auth not possible; interactive login required"
   private static final Set<String> SILENT_AUTH_ERRORS =
       Set.of(
@@ -150,6 +156,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
   private static final String LOGOUT_PATH = "/logout";
 
   static final String SESSION_REVOKED_DURING_REFRESH = "Session revoked during refresh";
+  static final String AUTHORIZATION_CODE_REQUIRED = "Authorization code is required";
 
   /** The browser renews a minute before its token expires; a shorter-lived one would loop. */
   private static final long BROWSER_RENEWAL_MARGIN_MILLIS = TimeUnit.SECONDS.toMillis(60);
@@ -566,6 +573,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   // Callback
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
+    UserSession pendingSession = null;
     try {
       Optional<UserSession> maybePendingSession = sessionService.getPendingSession(req, resp);
       if (maybePendingSession.isEmpty()) {
@@ -576,7 +584,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
         return;
       }
-      UserSession pendingSession = maybePendingSession.get();
+      pendingSession = maybePendingSession.get();
 
       LOG.debug(
           "Performing Auth Callback For User Session: {} ",
@@ -596,9 +604,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
           return;
         }
-        LOG.error(
-            "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
-        throw new TechnicalException("Bad authentication response");
+        throw SignInFailure.PROVIDER_REFUSED.because(
+            "Identity provider refused the sign-in: "
+                + authenticationErrorResponse.getErrorObject(),
+            null);
       }
 
       String redirectUri = requireRedirectUriOrDefault(pendingSession.getRedirectUri());
@@ -610,21 +619,15 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Optional state validation
       validateStateIfRequired(pendingSession, resp, successResponse);
 
-      // Build Credentials
       OidcCredentials credentials = buildCredentials(successResponse);
-
-      // The identity below must come from the ID token the back-channel exchange returns, and that
-      // exchange only runs when the callback carries an authorization code. Reject a callback that
-      // brings only a front-channel token: it never passed through the provider's token endpoint.
       requireAuthorizationCode(pendingSession, credentials);
-
-      // Validations
-      validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
+      redeemAuthorizationCode(pendingSession, credentials, computedCallbackUrl);
 
       // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
       JWT idToken = credentials.toIdToken();
       if (idToken == null) {
-        throw new TechnicalException("ID token not returned by OIDC provider");
+        throw SignInFailure.TOKEN_EXCHANGE_FAILED.because(
+            "ID token not returned by OIDC provider", null);
       }
       JWTClaimsSet idTokenClaims = idToken.getJWTClaimsSet();
       Date expirationTime = idTokenClaims.getExpirationTime();
@@ -638,21 +641,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       validateNonceIfRequired(pendingSession, idTokenClaims);
 
       // The MCP callback completes its own OAuth exchange off the provider-issued id_token, which
-      // is only available here. Hand the validated credentials over on the session for it to pick
-      // up. Scoped to the MCP flow so a normal web login never parks provider tokens in a session.
+      // is only available here. Hand the validated credentials over on this request, so the MCP
+      // callback only ever reads tokens this callback validated; a session would outlive it.
       if (isMcpRedirectUri(pendingSession.getRedirectUri())) {
-        req.getSession().setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
-        LOG.debug("Stored OIDC credentials on session for MCP callback handoff");
+        req.setAttribute(OIDC_CREDENTIAL_PROFILE, credentials);
+        LOG.debug("Stored OIDC credentials on the request for MCP callback handoff");
       }
 
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(idTokenClaims.getClaims());
 
-      OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
-      User user =
-          identity.emailFirstFlow()
-              ? getOrCreateEmailFirstOidcUser(identity, claims)
-              : getOrCreateOidcUser(identity, claims);
+      User user = provisionedUser(claims);
       syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -680,6 +679,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // The browser presents the provider's own ID token: its claims are the ones the principal
       // configuration names, and its expiry is the provider's.
       sendRedirectWithToken(resp, redirectUri, user, credentials.getIdToken());
+    } catch (SignInFailedException failure) {
+      endFailedSignIn(resp, pendingSession, failure);
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -689,6 +690,82 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
     } catch (Exception e) {
       getErrorMessage(resp, e);
+    }
+  }
+
+  /**
+   * A browser sign-in that fails for a reason the person can act on ends on the sign-in page, which
+   * tells them why from a fixed code; a raw error page is a dead end they cannot recover from. An MCP
+   * client's sign-in keeps the error status its callback reads
+   * (ADR:2026-11-12-a-failed-sso-sign-in-returns-to-the-sign-in-page).
+   */
+  private void endFailedSignIn(
+      HttpServletResponse resp, UserSession pendingSession, SignInFailedException failure) {
+    boolean isMcpSignIn =
+        pendingSession != null && isMcpRedirectUri(pendingSession.getRedirectUri());
+    if (isMcpSignIn) {
+      getErrorMessage(resp, failure);
+    } else {
+      returnToSignInPage(resp, failure);
+    }
+  }
+
+  private void returnToSignInPage(HttpServletResponse resp, SignInFailedException failure) {
+    logFailedSignIn(failure);
+    try {
+      resp.sendRedirect(signInPageExplaining(failure.failure()));
+    } catch (IOException e) {
+      LOG.error("[Auth Callback] Could not send the browser back to the sign-in page", e);
+    }
+  }
+
+  String signInPageExplaining(SignInFailure failure) {
+    return deploymentUrl(SIGNIN_PATH) + "?" + SignInFailure.QUERY_PARAMETER + "=" + failure.code();
+  }
+
+  private static void logFailedSignIn(SignInFailedException failure) {
+    String code = failure.failure().code();
+    if (failure.failure() == SignInFailure.TOKEN_EXCHANGE_FAILED) {
+      // Usually the client configuration (a wrong secret) or an outage: an administrator's to fix.
+      LOG.error(
+          "[Auth Callback] Sign-in failed ({}): {}",
+          code,
+          failure.getMessage(),
+          failure.getCause());
+    } else {
+      LOG.warn("[Auth Callback] Sign-in failed ({}): {}", code, failure.getMessage());
+    }
+  }
+
+  /**
+   * Redeems the callback's code at the provider's token endpoint. Each way that fails (a wrong
+   * client secret, an error answer, a response that is not one, a timeout) is the provider's or its
+   * configuration's, so the person signing in is told only that much and the log keeps the detail.
+   */
+  private void redeemAuthorizationCode(
+      UserSession session, OidcCredentials credentials, String callbackUrl)
+      throws URISyntaxException {
+    try {
+      validateAndSendTokenRequest(session, credentials, callbackUrl);
+    } catch (IOException | com.nimbusds.oauth2.sdk.ParseException | TechnicalException e) {
+      throw SignInFailure.TOKEN_EXCHANGE_FAILED.because(
+          "Token request failed: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * The account the provider vouched for. A refusal here applies this deployment's rules about who
+   * may sign in (self-signup, allowed domains, verified addresses), which the person is told.
+   */
+  private User provisionedUser(Map<String, Object> claims) {
+    try {
+      OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
+      return identity.emailFirstFlow()
+          ? getOrCreateEmailFirstOidcUser(identity, claims)
+          : getOrCreateOidcUser(identity, claims);
+    } catch (AuthenticationException
+        | org.openmetadata.service.security.AuthenticationException refused) {
+      throw SignInFailure.ACCOUNT_NOT_ALLOWED.because(refused.getMessage(), refused);
     }
   }
 
@@ -919,52 +996,36 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return new HashMap<>(authParams);
   }
 
+  /**
+   * A callback carries an authorization code for every configured response type: the client asks to
+   * be redirected back in query mode, where providers return one.
+   * ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
   private void requireAuthorizationCode(UserSession session, OidcCredentials credentials) {
-    if (expectsAuthorizationCode() && credentials.getCode() == null) {
+    if (credentials.getCode() == null) {
       LOG.warn(
           "Rejecting OIDC callback without an authorization code for session {}",
           SessionService.truncateId(session.getId()));
-      throw new IllegalArgumentException("Authorization code is required");
+      throw new IllegalArgumentException(AUTHORIZATION_CODE_REQUIRED);
     }
-  }
-
-  private boolean expectsAuthorizationCode() {
-    // The default and documented confidential mode is the authorization-code flow. Per OIDC, any
-    // response_type that includes "code" (plain or hybrid) returns an authorization code, so the
-    // callback must carry one. A response_type configured for pure implicit delivery is not a code
-    // flow and keeps its existing handling.
-    String responseType = client.getConfiguration().getResponseType();
-    if (nullOrEmpty(responseType)) {
-      return true;
-    }
-    for (String part : responseType.trim().split("\\s+")) {
-      if ("code".equalsIgnoreCase(part)) {
-        return true;
-      }
-    }
-    return false;
   }
 
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
-      throws URISyntaxException {
-    if (oidcCredentials.getCode() != null) {
-      LOG.debug(
-          "Initiating Token Request - Session: {}, redirect_uri: {}",
-          session.getId(),
-          computedCallbackUrl);
-      CodeVerifier verifier =
-          nullOrEmpty(session.getPkceVerifier())
-              ? null
-              : new CodeVerifier(session.getPkceVerifier());
-      TokenRequest request =
-          createTokenRequest(
-              client.getConfiguration(),
-              clientAuthentication,
-              new AuthorizationCodeGrant(
-                  oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
-      executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
-    }
+      throws URISyntaxException, IOException, com.nimbusds.oauth2.sdk.ParseException {
+    LOG.debug(
+        "Initiating Token Request - Session: {}, redirect_uri: {}",
+        session.getId(),
+        computedCallbackUrl);
+    CodeVerifier verifier =
+        nullOrEmpty(session.getPkceVerifier()) ? null : new CodeVerifier(session.getPkceVerifier());
+    TokenRequest request =
+        createTokenRequest(
+            client.getConfiguration(),
+            clientAuthentication,
+            new AuthorizationCodeGrant(
+                oidcCredentials.toAuthorizationCode(), new URI(computedCallbackUrl), verifier));
+    executeAuthorizationCodeTokenRequest(session, request, oidcCredentials);
   }
 
   private void validateStateIfRequired(
@@ -1008,27 +1069,17 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return configuration.getOpMetadataResolver().load();
   }
 
+  /**
+   * Keeps only the authorization code from the callback redirect; the ID token is the one the token
+   * endpoint returns for that code. ADR:2026-10-30-confidential-oidc-callback-takes-only-the-code
+   */
   static OidcCredentials buildCredentials(AuthenticationSuccessResponse successResponse) {
     OidcCredentials credentials = new OidcCredentials();
-    // get authorization code
     AuthorizationCode code = successResponse.getAuthorizationCode();
     if (code != null) {
       // pac4j 6 stores the code as a String; toAuthorizationCode() reconstructs the nimbus type.
       credentials.setCode(code.getValue());
     }
-    // get ID token
-    JWT idToken = successResponse.getIDToken();
-    if (idToken != null) {
-      // pac4j 6 stores the id token as a serialized String; toIdToken() re-parses it to a JWT.
-      credentials.setIdToken(idToken.serialize());
-    }
-    // get access token
-    AccessToken accessToken = successResponse.getAccessToken();
-    if (accessToken != null) {
-      // pac4j 6 setAccessToken takes a Map; setAccessTokenObject keeps the nimbus AccessToken.
-      credentials.setAccessTokenObject(accessToken);
-    }
-
     return credentials;
   }
 
@@ -1142,6 +1193,25 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return clientAuthenticationMechanism;
   }
 
+  /**
+   * Why this server cannot authenticate with the client authentication method {@code clientConfig}
+   * names, if it cannot. It never signs a client assertion, so client_secret_jwt and private_key_jwt
+   * would build a client that cannot redeem any code.
+   */
+  public static Optional<String> unusableClientAuthentication(OidcClientConfig clientConfig) {
+    OidcClientConfig.ClientAuthenticationMethod method =
+        clientConfig == null ? null : clientConfig.getClientAuthenticationMethod();
+    boolean isUsable = method == null || USABLE_CLIENT_AUTHENTICATION.contains(method);
+    return isUsable
+        ? Optional.empty()
+        : Optional.of(
+            String.format(
+                "Client authentication method '%s' is not supported; use %s or %s",
+                method.value(),
+                OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_BASIC.value(),
+                OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST.value()));
+  }
+
   private static ClientAuthenticationMethod getPreferredAuthenticationMethod(
       OidcConfiguration config) {
     ClientAuthenticationMethod configurationMethod = config.getClientAuthenticationMethod();
@@ -1185,8 +1255,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         response, validatedRedirectUri, accessToken, user.getEmail(), user.getName());
   }
 
-  private OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(
-      Map<String, Object> claims) {
+  /** Public so the MCP callback resolves the same identity as the web login it wraps. */
+  public OidcIdentityResolver.ResolvedOidcIdentity resolveOidcIdentity(Map<String, Object> claims) {
     return new OidcIdentityResolver(
             authenticationConfiguration,
             authorizerConfiguration,
@@ -1276,11 +1346,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       String domain = email.split("@")[1];
 
       // Validate email domain against allowed registration domains
-      Set<String> allowedDomains = authorizerConfiguration.getAllowedEmailRegistrationDomains();
-      if (allowedDomains != null
-          && !allowedDomains.isEmpty()
-          && !allowedDomains.contains("all")
-          && allowedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      if (!isEmailRegistrationDomainAllowed(
+          email, authorizerConfiguration.getAllowedEmailRegistrationDomains())) {
         LOG.warn(
             "SECURITY: Blocked OAuth signup for disallowed domain: {} (user: {})", domain, email);
         throw new AuthenticationException("Email domain not allowed for self-signup: " + domain);
@@ -1311,7 +1378,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // Assign teams from claims if provided
       UserUtil.assignTeamsFromClaim(newUser, teamsFromClaim);
 
-      return UserUtil.addOrUpdateUser(newUser);
+      return UserUtil.createOrAdoptConcurrentlyCreatedUser(
+          () -> UserUtil.addOrUpdateUser(newUser),
+          () -> Entity.getUserRepository().getUserByNameForAuthUpdate(userName),
+          email);
     }
     throw new AuthenticationException("User not found and self-signup is disabled");
   }
@@ -1334,9 +1404,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         authorizerConfiguration);
   }
 
-  @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
-      UserSession session, TokenRequest request, OidcCredentials credentials) {
+      UserSession session, TokenRequest request, OidcCredentials credentials)
+      throws IOException, com.nimbusds.oauth2.sdk.ParseException {
     HTTPResponse httpResponse = executeTokenHttpRequest(client.getConfiguration(), request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
@@ -1612,6 +1682,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
       validatePrincipalClaimsMapping(
           SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping()));
+      Optional<String> unusableMethod =
+          unusableClientAuthentication(authConfig.getOidcConfiguration());
+      if (unusableMethod.isPresent()) {
+        throw new IllegalArgumentException(unusableMethod.get());
+      }
 
       OidcClient validationClient = buildOidcClient(authConfig.getOidcConfiguration());
       validationClient.setCallbackUrl(authConfig.getOidcConfiguration().getCallbackUrl());
@@ -1633,6 +1708,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (providerMetadata.getTokenEndpointURI() == null) {
         throw new IllegalArgumentException("Token endpoint not found in provider metadata");
       }
+      // What the login handler builds from the same configuration, so a method the provider does
+      // not offer is refused here instead of leaving the server unable to sign anyone in.
+      getClientAuthentication(validationClient.getConfiguration());
 
     } catch (Exception e) {
       throw new IllegalArgumentException(

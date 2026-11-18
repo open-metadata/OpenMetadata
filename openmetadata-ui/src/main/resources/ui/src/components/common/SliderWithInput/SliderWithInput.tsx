@@ -13,10 +13,9 @@
 
 import {
   Box,
-  Button,
+  ButtonUtility,
   NumberInput,
   Slider,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
 import { isNumber } from 'lodash';
@@ -32,10 +31,12 @@ const SliderWithInput = ({
 
   return (
     <Box
-      className={`layout-row ${className} tw:[--layout-gutter:var(--om-space-20)] tw:-mx-2.5`}
+      align="center"
+      className={className}
       data-testid="percentage-input"
+      gap={5}
       wrap="wrap">
-      <Box className="layout-column tw:block tw:flex-auto">
+      <Box className="tw:block tw:min-w-0 tw:flex-auto">
         <Slider
           showRange
           aria-label={t('label.profile-sample')}
@@ -47,7 +48,7 @@ const SliderWithInput = ({
           onChange={(next) => onChange(isNumber(next) ? next : next[0])}
         />
       </Box>
-      <Box className="layout-column tw:block tw:w-44">
+      <Box className="tw:block tw:w-44">
         <Box align="center" gap={2}>
           <NumberInput
             aria-label={t('label.profile-sample')}
@@ -59,16 +60,13 @@ const SliderWithInput = ({
             value={value ?? Number.NaN}
             onChange={(next) => onChange(Number.isNaN(next) ? null : next)}
           />
-          <Tooltip arrow title={t('label.clear')}>
-            <Button
-              aria-label={t('label.clear')}
-              color="tertiary"
-              data-testid="clear-slider-input"
-              iconLeading={XClose}
-              size="xs"
-              onPress={() => onChange(null)}
-            />
-          </Tooltip>
+          <ButtonUtility
+            data-testid="clear-slider-input"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.clear')}
+            onClick={() => onChange(null)}
+          />
         </Box>
       </Box>
     </Box>

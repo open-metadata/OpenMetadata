@@ -39,7 +39,9 @@ import com.zaxxer.hikari.HikariDataSource;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.sql.DataSource;
 import org.flowable.common.engine.api.FlowableWrongDbException;
@@ -799,10 +801,16 @@ class WorkflowHandlerSchemaUpdateTest {
               RepositoryService.class,
               ManagementService.class,
               String.class,
-              boolean.class);
+              boolean.class,
+              Map.class);
       cleanupMethod.setAccessible(true);
       cleanupMethod.invoke(
-          WorkflowHandler.getInstance(), repositoryService, managementService, "approval", false);
+          WorkflowHandler.getInstance(),
+          repositoryService,
+          managementService,
+          "approval",
+          false,
+          new HashMap<String, Integer>());
 
       assertEquals(List.of(0, 1), requestedOffsets);
     }

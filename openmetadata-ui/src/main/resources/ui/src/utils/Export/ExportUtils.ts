@@ -140,6 +140,18 @@ export const downloadFile = (
   document.body.removeChild(link);
 };
 
+const UTF8_BOM = '\uFEFF';
+
+/**
+ * Excel reads a CSV as UTF-8 only when it starts with a byte order mark; without
+ * one it falls back to the system code page and garbles Chinese, Cyrillic and
+ * other non-Latin text. Re-imports are unaffected: FileReader drops it.
+ * Every CSV download goes through this helper, and the BOM is not optional
+ * (ADR:2026-10-19-ui-csv-downloads-start-with-a-utf8-bom).
+ */
+export const downloadCsv = (content: string, fileName: string): void =>
+  downloadFile(UTF8_BOM + content, fileName, 'text/csv;charset=utf-8');
+
 export const downloadBlob = (
   blob: Blob,
   fileName: string,
@@ -160,7 +172,8 @@ const capturePNGImageFromElement = async (exportData: ExportData) => {
   const {
     name,
     documentSelector = '',
-    viewport,
+    viewport: presetViewport,
+    getViewport,
     renderEdgesOverlay,
   } = exportData;
 
@@ -181,6 +194,7 @@ const capturePNGImageFromElement = async (exportData: ExportData) => {
 
   const imageWidth = Math.max(minWidth, exportElement.scrollWidth);
   const imageHeight = Math.max(minHeight, exportElement.scrollHeight);
+  const viewport = getViewport?.(imageWidth, imageHeight) ?? presetViewport;
   const fullLogicalWidth = imageWidth + padding * 2;
   const fullLogicalHeight = imageHeight + padding * 2;
 
@@ -248,7 +262,8 @@ const capturePNGImageFromElement = async (exportData: ExportData) => {
         imageWidth,
         imageHeight,
         padding,
-        pixelRatio
+        pixelRatio,
+        viewport
       );
 
       // Layer order: white background → edges (if available) → nodes.

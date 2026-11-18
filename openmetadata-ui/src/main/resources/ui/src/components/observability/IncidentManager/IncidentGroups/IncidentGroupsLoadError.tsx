@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { AlertCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import { IncidentGroupsLoadErrorProps } from './IncidentGroups.types';
 
 /** A read of the incident groups or of a group's incidents failed: says so in place, with a retry. */
@@ -24,11 +25,11 @@ const IncidentGroupsLoadError = ({
 
   return (
     <Box className="tw:relative tw:min-h-80 tw:w-full" data-testid={testId}>
-      <EmptyPlaceholder
+      <SomethingWentWrongPlaceholder
         actions={[
           {
             key: 'retry',
-            color: 'secondary',
+            color: 'primary',
             label: t('label.retry'),
             onPress: onRetry,
           },
@@ -37,7 +38,6 @@ const IncidentGroupsLoadError = ({
         title={t('server.entity-fetch-error', {
           entity: t('label.incident-plural'),
         })}
-        variant="blank"
       />
     </Box>
   );

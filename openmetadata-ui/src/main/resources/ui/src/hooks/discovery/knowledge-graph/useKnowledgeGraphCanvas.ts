@@ -98,6 +98,7 @@ interface CanvasOptions {
 
 interface UseKnowledgeGraphCanvasResult {
   containerRef: (node: HTMLDivElement | null) => void;
+  container: HTMLDivElement | null;
   ready: boolean;
   status: CanvasStatus;
   error: unknown;
@@ -221,7 +222,12 @@ export const useKnowledgeGraphCanvas = (
         onHoverStart: (id: string) => {
           setHover({ kind: 'node', id });
           const graph = graphRef.current;
-          if (graph && drawn.current && !graph.destroyed) {
+          // Only keyboard focus pans the card into view. A pointer press also
+          // focuses the card, and panning then slides it out from under the
+          // cursor before the click lands, so the inspector never opens.
+          const keyboardFocus =
+            document.activeElement?.matches(':focus-visible') ?? false;
+          if (keyboardFocus && graph && drawn.current && !graph.destroyed) {
             void graph.focusElement(id, false).catch(setErrorState);
           }
         },
@@ -567,6 +573,7 @@ export const useKnowledgeGraphCanvas = (
 
   return {
     containerRef,
+    container: containerNode,
     ready: status === 'ready',
     status,
     error,

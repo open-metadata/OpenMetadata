@@ -13,6 +13,7 @@
 import { AxiosHeaders, AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
+import { SORT_ORDER } from '../enums/common.enum';
 import {
   CreateTask,
   TaskCategory,
@@ -84,6 +85,8 @@ interface TaskScopedListParams {
   startTs?: number;
   endTs?: number;
   include?: Include;
+  /** Creation-time order; the server defaults to newest first. */
+  sortOrder?: SORT_ORDER;
 }
 
 export interface ListTasksParams {
@@ -98,16 +101,21 @@ export interface ListTasksParams {
   createdBy?: string;
   createdById?: string;
   aboutEntity?: string;
+  aboutEntityIds?: string;
   aboutService?: string;
   approver?: string;
   approverId?: string;
   mentionedUser?: string;
+  /** Free-text search across the task name, request reason and about-entity. */
+  q?: string;
   limit?: number;
   before?: string;
   after?: string;
   startTs?: number;
   endTs?: number;
   include?: Include;
+  /** Creation-time order; the server defaults to newest first. */
+  sortOrder?: SORT_ORDER;
 }
 
 export interface ListDataAccessRequestsParams {
@@ -224,6 +232,21 @@ export const getTaskByTaskId = async (
 ): Promise<AxiosResponse<Task>> => {
   return APIClient.get<Task>(`${BASE_URL}/name/${taskId}`, { params });
 };
+
+const READABLE_TASK_ID_PREFIX = 'TASK-';
+
+/**
+ * A task by its UUID or by its readable `TASK-…` id. Links may carry either,
+ * but `/tasks/{id}` only takes the UUID; the readable id goes through
+ * `/tasks/name/{taskId}`.
+ */
+export const getTask = (
+  id: string,
+  params?: { fields?: string; include?: Include }
+): Promise<AxiosResponse<Task>> =>
+  id.startsWith(READABLE_TASK_ID_PREFIX)
+    ? getTaskByTaskId(id, params)
+    : getTaskById(id, params);
 
 /**
  * Get all versions of a task.

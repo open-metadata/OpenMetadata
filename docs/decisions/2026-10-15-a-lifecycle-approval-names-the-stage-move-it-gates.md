@@ -1,6 +1,7 @@
 # A lifecycle approval names the stage move it gates
 
-- **Status:** Accepted
+- **Status:** Accepted; Decision 3 superseded by
+  ADR:2026-10-22-an-approval-preview-omits-the-workflows-own-status-move
 - **Revisions:** v1 2026-10-15 (initial)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `CreateTaskLifecycleMoveTest`, `LifecycleApprovalCard.test.tsx`

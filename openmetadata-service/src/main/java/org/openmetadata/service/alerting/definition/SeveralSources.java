@@ -11,9 +11,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
 import org.openmetadata.schema.entity.events.AlertSourceKind;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.FilteringRules;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
@@ -87,9 +88,8 @@ public final class SeveralSources {
               "Filter '%s' is not supported by: %s. A filter applies to every event, so every source of the alert must support it.",
               chosen.getName(), String.join(", ", without)));
     }
-    EventFilterRule definition =
-        definitionOf(chosen, catalog.getFirst().getSupportedFilters()).orElseThrow();
-    return AlertConditions.ruleOf(definition, chosen);
+    // Stored with its own name: each source may call it after its own assets.
+    return AlertConditions.ruleOf(EventsSubscriptionRegistry.definition(chosen.getName()), chosen);
   }
 
   private static EventFilterRule triggersGroupedBySource(
@@ -112,7 +112,7 @@ public final class SeveralSources {
             .collect(Collectors.joining(" || "));
     return new EventFilterRule()
         .withName(GROUPED_TRIGGERS)
-        .withEffect(ArgumentsInput.Effect.INCLUDE)
+        .withEffect(Effect.INCLUDE)
         .withCondition(grouped);
   }
 
@@ -136,7 +136,7 @@ public final class SeveralSources {
 
   // An excluded trigger is negated inside its own group.
   private static String wrapped(EventFilterRule rule) {
-    boolean excluded = rule.getEffect() == ArgumentsInput.Effect.EXCLUDE;
+    boolean excluded = rule.getEffect() == Effect.EXCLUDE;
     return (excluded ? "(!" : "(") + rule.getCondition() + ")";
   }
 

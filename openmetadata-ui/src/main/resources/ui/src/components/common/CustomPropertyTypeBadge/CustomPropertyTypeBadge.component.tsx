@@ -31,6 +31,7 @@ const CustomPropertyTypeBadge = ({
       color="gray"
       data-testid="custom-property-type-badge"
       size="xs"
+      tooltip={displayName}
       type="color">
       {displayName}
     </Badge>

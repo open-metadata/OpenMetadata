@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Tabs, useTabItemState } from './tabs';
 
 const SelectionLabel = ({ name }: { name: string }) => {
@@ -51,11 +51,27 @@ describe('Tabs.List card variant', () => {
     renderTabs('card', true);
 
     const tabList = screen.getByRole('tablist');
-    const card = tabList.parentElement;
+    const card = tabList.parentElement?.parentElement;
 
     expect(card).toHaveClass('tw:bg-surface', 'tw:border-subtle');
     expect(card).toContainElement(screen.getByTestId('action'));
     expect(tabList.className).not.toContain('tw:before:bg-border-secondary');
+  });
+
+  it('lets fullWidth card tabs grow to the card width', () => {
+    render(
+      <Tabs>
+        <Tabs.List
+          fullWidth
+          aria-label="Sections"
+          type="underline"
+          variant="card">
+          <Tabs.Item id="one">One</Tabs.Item>
+        </Tabs.List>
+      </Tabs>
+    );
+
+    expect(screen.getByRole('tablist').parentElement).toHaveClass('tw:flex-1');
   });
 
   it.each(['default', 'card'] as const)(
@@ -115,5 +131,96 @@ describe('useTabItemState', () => {
     render(<Probe />);
 
     expect(screen.getByTestId('probe')).toHaveTextContent('null');
+  });
+
+  describe('card overflow shadow', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      vi.restoreAllMocks();
+    });
+
+    const mockScrollBox = (scrollWidth: number, clientWidth: number) => {
+      vi.stubGlobal(
+        'ResizeObserver',
+        class {
+          observe() {}
+          disconnect() {}
+        }
+      );
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        scrollWidth
+      );
+      vi.spyOn(HTMLElement.prototype, 'clientWidth', 'get').mockReturnValue(
+        clientWidth
+      );
+    };
+
+    const queryShadow = (edge: 'start' | 'end') =>
+      screen.queryByTestId(`tab-list-shadow-${edge}`);
+
+    it('shadows only the end edge while tabs overflow it', () => {
+      mockScrollBox(1000, 600);
+      renderTabs('card');
+
+      expect(queryShadow('end')).toBeInTheDocument();
+      expect(queryShadow('start')).not.toBeInTheDocument();
+    });
+
+    it('shadows both edges once scrolled into the middle', () => {
+      mockScrollBox(1000, 600);
+      renderTabs('card');
+      const tabList = screen.getByRole('tablist');
+
+      tabList.scrollLeft = 200;
+      fireEvent.scroll(tabList);
+
+      expect(queryShadow('start')).toBeInTheDocument();
+      expect(queryShadow('end')).toBeInTheDocument();
+    });
+
+    it('drops the end shadow once scrolled to the end', () => {
+      mockScrollBox(1000, 600);
+      renderTabs('card');
+      const tabList = screen.getByRole('tablist');
+
+      tabList.scrollLeft = 400;
+      fireEvent.scroll(tabList);
+
+      expect(queryShadow('start')).toBeInTheDocument();
+      expect(queryShadow('end')).not.toBeInTheDocument();
+    });
+
+    it('renders no shadow when every tab fits', () => {
+      mockScrollBox(600, 600);
+      renderTabs('card');
+
+      expect(queryShadow('start')).not.toBeInTheDocument();
+      expect(queryShadow('end')).not.toBeInTheDocument();
+    });
+
+    it('shadows the end edge once tabs added after mount overflow the list', async () => {
+      mockScrollBox(600, 600);
+      const renderList = (ids: string[]) => (
+        <Tabs defaultSelectedKey="one">
+          <Tabs.List aria-label="Sections" type="underline" variant="card">
+            {ids.map((id) => (
+              <Tabs.Item id={id} key={id}>
+                {id}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
+      );
+      const { rerender } = render(renderList(['one', 'two']));
+
+      expect(queryShadow('end')).not.toBeInTheDocument();
+
+      vi.spyOn(HTMLElement.prototype, 'scrollWidth', 'get').mockReturnValue(
+        1000
+      );
+      rerender(renderList(['one', 'two', 'three', 'four']));
+
+      await waitFor(() => expect(queryShadow('end')).toBeInTheDocument());
+    });
   });
 });

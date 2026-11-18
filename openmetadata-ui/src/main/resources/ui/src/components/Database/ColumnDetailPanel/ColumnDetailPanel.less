@@ -14,14 +14,6 @@
 .overview-tab-content {
   height: auto;
 }
-.navigation-container {
-  background-color: @grey-50 !important;
-
-  // Dark: @grey-50 resolves to bg-secondary, a darker band than the drawer's overlay surface.
-  .dark-mode & {
-    background-color: transparent !important;
-  }
-}
 .pagination-header-text {
   color: @grey-700 !important;
   font-weight: var(--om-font-weight-medium) !important;
@@ -50,16 +42,7 @@
       display: flex;
       flex-direction: column;
       height: auto;
-      padding: var(--om-space-16) var(--om-space-12);
-      padding-top: var(--om-space-8);
-      border-radius: var(--om-radius-md);
       overflow: hidden;
-
-      background-color: @grey-9;
-
-      .dark-mode & {
-        background-color: transparent;
-      }
 
       .entity-title-link {
         font-size: var(--om-font-size-md);
@@ -92,15 +75,11 @@
     }
   }
 
+  // The slideout already pads and paints the panel; the antd drawer this
+  // replaced had neither, so the grey bands and inset boxes are gone.
   .column-detail-panel-container {
-    background-color: @grey-50;
-
-    // Dark: let the drawer's overlay surface show instead of a darker bg-secondary strip.
-    .dark-mode & {
-      background-color: transparent;
-    }
-
-    height: calc(100vh - 170px);
+    flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
 
@@ -111,14 +90,7 @@
     .summary-panel-container {
       flex: 1;
       height: 100%;
-      background: @grey-50;
       overflow: hidden;
-
-      .dark-mode & {
-        background: transparent;
-      }
-      border-radius: 0;
-      margin-left: var(--om-space-8);
 
       .content-area {
         height: 100%;

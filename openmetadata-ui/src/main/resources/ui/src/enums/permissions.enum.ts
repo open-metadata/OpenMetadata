@@ -84,4 +84,5 @@ export enum ResourceEntity {
   ONTOLOGY_PROPERTY = 'ontologyProperty',
   ONTOLOGY_AXIOM = 'ontologyAxiom',
   ONTOLOGY_RELEASE = 'ontologyRelease',
+  RELATIONSHIP_TYPE = 'relationshipType',
 }

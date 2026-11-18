@@ -28,6 +28,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.schema.entity.data.Metric;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
@@ -47,10 +49,19 @@ class SemanticSearchToolTest {
   private CatalogSecurityContext securityContext;
   private SearchRepository searchRepository;
   private OpenSearchVectorService vectorService;
+  private final List<Metric> knownMetrics = new ArrayList<>();
+  private final List<String> requestedMetricNames = new ArrayList<>();
 
   @BeforeEach
   void setUp() {
-    semanticSearchTool = new SemanticSearchTool(ignored -> Optional.empty(), ALL_VIEWABLE);
+    semanticSearchTool =
+        new SemanticSearchTool(
+            ignored -> Optional.empty(),
+            ALL_VIEWABLE,
+            names -> {
+              requestedMetricNames.addAll(names);
+              return knownMetrics;
+            });
     authorizer = mock(Authorizer.class);
     securityContext = mock(CatalogSecurityContext.class);
     searchRepository = mock(SearchRepository.class);
@@ -76,6 +87,7 @@ class SemanticSearchToolTest {
     assertEquals(0, result.get("returnedCount"));
     assertNotNull(result.get("error"));
     assertTrue(result.get("error").toString().contains("'query' parameter is required"));
+    assertEquals(400, result.get("statusCode"));
   }
 
   @Test
@@ -429,6 +441,48 @@ class SemanticSearchToolTest {
     Map<String, Object> cleaned = (Map<String, Object>) ((List<?>) result.get("results")).get(0);
     assertEquals("basis points", cleaned.get("unitOfMeasurement"));
     assertFalse(cleaned.containsKey("customUnitOfMeasurement"));
+  }
+
+  @Test
+  void testMetricHitsShowWhereTheySitInTheHierarchy() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+    knownMetrics.add(new Metric().withFullyQualifiedName("Revenue").withChildrenCount(2));
+    knownMetrics.add(
+        new Metric()
+            .withFullyQualifiedName("RevenueEU")
+            .withParent(
+                new EntityReference()
+                    .withType(Entity.METRIC)
+                    .withName("Revenue")
+                    .withFullyQualifiedName("Revenue"))
+            .withChildrenCount(0)
+            .withMetricGroup(
+                new EntityReference().withType("metricGroup").withFullyQualifiedName("Finance")));
+    when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+        .thenReturn(
+            new VectorSearchResponse(
+                10L,
+                List.of(
+                    createHit("metric", "Revenue", "Revenue", 0.9),
+                    createHit("metric", "RevenueEU", "RevenueEU", 0.8),
+                    createHit("table", "db.schema.revenue", "revenue", 0.7))));
+
+    Map<String, Object> params = new HashMap<>();
+    params.put("query", "revenue");
+    Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+    Map<String, Map<String, Object>> byName = new HashMap<>();
+    for (Object hit : (List<?>) result.get("results")) {
+      @SuppressWarnings("unchecked")
+      Map<String, Object> cleaned = (Map<String, Object>) hit;
+      byName.put((String) cleaned.get("fullyQualifiedName"), cleaned);
+    }
+    assertEquals(2, byName.get("Revenue").get("childrenCount"));
+    assertFalse(byName.get("Revenue").containsKey("parent"));
+    assertEquals("Revenue", byName.get("RevenueEU").get("parent"));
+    assertEquals("Finance", byName.get("RevenueEU").get("metricGroup"));
+    assertFalse(byName.get("db.schema.revenue").containsKey("childrenCount"));
+    assertEquals(List.of("Revenue", "RevenueEU"), requestedMetricNames);
   }
 
   @Test

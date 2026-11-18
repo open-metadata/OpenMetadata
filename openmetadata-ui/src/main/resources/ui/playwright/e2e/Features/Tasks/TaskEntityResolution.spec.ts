@@ -579,7 +579,7 @@ test.describe('Task Resolution - Column Level Description', () => {
           category: 'MetadataUpdate',
           assignees: [ownerUser.responseData.name],
           payload: {
-            fieldPath: `columns::${columnName}::description`,
+            fieldPath: `columns.${columnName}.description`,
             newDescription: newColumnDescription,
           },
         },

@@ -14,7 +14,10 @@
 import { LayersThree01 } from '@openmetadata/ui-core-components/icons';
 import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 
-export const TOTAL_DATA_ASSETS_TONE = {
+export const TOTAL_DATA_ASSETS_TONE: {
+  icon: typeof LayersThree01;
+  tile: string;
+} = {
   icon: LayersThree01,
   tile: TOPIC_BLUE_TILE_CLASSES,
 };

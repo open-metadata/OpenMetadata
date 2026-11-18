@@ -49,7 +49,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { canCreateAnyServiceCategory } from '../../../utils/ServicePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import '../global-setting-page.style.less';
 
 const GlobalSettingCategoryPage = () => {
   const { t } = useTranslation();

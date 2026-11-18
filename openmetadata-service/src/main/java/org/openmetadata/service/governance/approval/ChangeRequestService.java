@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalOutcomeRecorder;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GovernanceDAOs.ChangeRequestDAO;
@@ -237,9 +238,7 @@ public final class ChangeRequestService {
           repository.executeInTransaction(
               () -> {
                 ChangeRequest locked = lockForUpdate(repository, snapshot);
-                boolean current =
-                    isOpen(locked)
-                        && Objects.equals(locked.getActiveRevisionNumber(), revisionNumber);
+                boolean current = reviewsActiveRevision(locked, revisionNumber);
                 if (current) {
                   dao()
                       .changeRequestDAO()
@@ -249,6 +248,16 @@ public final class ChangeRequestService {
               });
     }
     return reviewable;
+  }
+
+  /** Whether {@code revisionNumber} is still the active revision of an open request. */
+  public static boolean isActiveRevision(UUID changeRequestId, int revisionNumber) {
+    ChangeRequest request = dao().changeRequestDAO().findById(changeRequestId);
+    return request != null && reviewsActiveRevision(request, revisionNumber);
+  }
+
+  static boolean reviewsActiveRevision(ChangeRequest request, int revisionNumber) {
+    return isOpen(request) && Objects.equals(request.getActiveRevisionNumber(), revisionNumber);
   }
 
   /**
@@ -344,6 +353,8 @@ public final class ChangeRequestService {
     PostCommitActionQueue.runOrDefer(
         () -> {
           if (published) {
+            // Recorded before the task closes: closing it ends the run and its waiting task.
+            ApprovalOutcomeRecorder.recordOverride(taskId, admin);
             ChangeRequestTasks.closeTask(
                 taskId,
                 "Published by %s without review: %s".formatted(admin, override.getReason()));
@@ -834,8 +845,7 @@ public final class ChangeRequestService {
       EntityRepository<?> repository, UUID entityId, List<MutationOp> ops) {
     List<MutationOp> restated = ops;
     if (MutationPlanner.hasFieldChange(ops)) {
-      JsonNode current =
-          JsonUtils.valueToTree(ChangeApplyService.readCurrent(repository, entityId, ops));
+      JsonNode current = ChangeApplyService.currentTree(repository, entityId, ops);
       restated = MutationPlanner.rebase(current, ops);
     }
     return restated;

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Button, ButtonUtility } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   Check,
@@ -46,6 +46,7 @@ import {
   getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
+import { downloadCsv } from '../../../../utils/Export/ExportUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
 import {
@@ -233,15 +234,7 @@ export const CsvJobsTray = () => {
       try {
         setDownloadingJobId(job.jobId);
         const csvData = await getCsvAsyncJobResult(job.jobId);
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `${job.entityType}-${job.jobId}.csv`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+        downloadCsv(csvData, `${job.entityType}-${job.jobId}.csv`);
         setDownloadedJobIds((current) => {
           const next = new Set(current);
           next.add(job.jobId);
@@ -442,12 +435,12 @@ export const CsvJobsTray = () => {
     }
 
     return (
-      <Button
+      <ButtonUtility
         className="csv-jobs-tray-dismiss"
-        color="link-gray"
-        iconLeading={XClose}
-        size="xs"
-        onPress={() => handleDismiss(job.jobId)}
+        icon={XClose}
+        size="sm"
+        tooltip={t('label.dismiss')}
+        onClick={() => handleDismiss(job.jobId)}
       />
     );
   };
@@ -481,11 +474,13 @@ export const CsvJobsTray = () => {
                 {t('label.clear-completed')}
               </Button>
             )}
-            <Button
-              className="csv-jobs-tray-close tw:-mr-1.5"
-              color="link-gray"
-              iconLeading={Minus}
-              onPress={() => setOpen(false)}
+            <ButtonUtility
+              className="tw:-mr-1.5"
+              data-testid="csv-jobs-tray-close"
+              icon={Minus}
+              size="lg"
+              tooltip={t('label.collapse')}
+              onClick={() => setOpen(false)}
             />
           </div>
           <div className="csv-jobs-tray-list">

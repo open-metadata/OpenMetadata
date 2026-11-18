@@ -18,6 +18,7 @@ import {
   formatClientContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -45,29 +46,28 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
-  const clampStyle: Record<string, string | number> | undefined =
-    useMemo(() => {
-      if (readMore) {
-        return undefined;
-      }
+  const clampStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (readMore) {
+      return undefined;
+    }
 
-      // clampByLines clamps to an exact number of text lines (clean cut-off,
-      // no partial last line), instead of the height-based approximation.
-      if (clampByLines) {
-        return {
-          display: '-webkit-box',
-          WebkitBoxOrient: 'vertical',
-          WebkitLineClamp: Number(maxLineLength),
-          overflow: 'hidden',
-        };
-      }
-
+    // clampByLines clamps to an exact number of text lines (clean cut-off,
+    // no partial last line), instead of the height-based approximation.
+    if (clampByLines) {
       return {
+        display: '-webkit-box',
+        WebkitBoxOrient: 'vertical',
+        WebkitLineClamp: Number(maxLineLength),
         overflow: 'hidden',
-        maxHeight: `${Number(maxLineLength) * 2}em`,
-        transition: 'max-height 0.3s ease',
       };
-    }, [readMore, maxLineLength, clampByLines]);
+    }
+
+    return {
+      overflow: 'hidden',
+      maxHeight: `${Number(maxLineLength) * 2}em`,
+      transition: 'max-height 0.3s ease',
+    };
+  }, [readMore, maxLineLength, clampByLines]);
 
   const handleReadMoreToggle = () => setReadMore((prev) => !prev);
 
@@ -142,10 +142,10 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
-        'text-right': i18n.dir() === 'rtl',
+        'text-right': getLanguageDirection(i18n) === 'rtl',
       })}
       data-testid="viewer-container"
-      dir={i18n.dir()}>
+      dir={getLanguageDirection(i18n)}>
       <div
         className={classNames('markdown-parser', textVariant, {
           'is-clamped':

@@ -87,16 +87,22 @@ export const pickDateInCorePicker = async (
   const targetMonth = year * 12 + (month - 1);
   const MAX_MONTH_STEPS = 240;
   for (let step = 0; step < MAX_MONTH_STEPS; step++) {
-    const shown = new Date(`1 ${await heading.textContent()}`);
+    const shownText = (await heading.textContent()) ?? '';
+    const shown = new Date(`1 ${shownText}`);
     const shownMonth = shown.getFullYear() * 12 + shown.getMonth();
     if (shownMonth === targetMonth) {
       break;
     }
+    // react-aria renders a second, visually hidden "Next" button after the
+    // grid for touch screen readers, so the accessible name matches twice.
+    // The header chevrons are the ones carrying the `previous`/`next` slot,
+    // which also keeps this independent of react-aria's localized labels.
     await calendar
-      .getByRole('button', {
-        name: shownMonth > targetMonth ? 'Previous' : 'Next',
-      })
+      .locator(
+        `button[slot="${shownMonth > targetMonth ? 'previous' : 'next'}"]`
+      )
       .click();
+    await expect(heading).not.toHaveText(shownText);
   }
 
   await calendar

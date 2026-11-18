@@ -59,7 +59,7 @@ You can find further information on the Snowflake connector in the <a href="http
 
 
 ### Profiler & Data Quality
-Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/connectors/ingestion/workflows/data-quality" target="_blank">here</a>.
+Executing the profiler Workflow or data quality tests, will require the user to have `SELECT` permission on the tables/schemas where the profiler/tests will be executed. The user should also be allowed to view information in `tables` for all objects in the database. More information on the profiler workflow setup can be found <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/profiler/profiler-workflow" target="_blank">here</a> and data quality tests <a href="https://docs.open-metadata.org/how-to-guides/data-quality-observability/quality" target="_blank">here</a>.
 
 ## Connection Details
 
@@ -169,6 +169,14 @@ $$section
 
 This value is used to calculate the Total Cost shown in the "Most Expensive Queries" section under Insights, by multiplying:
 `Credits Consumed by the Query × Cost of Credit`
+$$
+
+$$section
+### System Metrics Batch Size $(id="systemMetricsBatchSize")
+
+Number of tables whose DML history is read from `QUERY_HISTORY` with a single query when the profiler computes system metrics (inserts, updates and deletes). For example, profiling 1,000 tables with the default of `50` issues 20 scans instead of 1,000.
+
+Higher values reduce scans while the batch history fits the shared cache budget for the ingestion process. If a batch exceeds the budget, its tables are scanned individually without dropping metrics or writing history to disk. The ingestion environment variable `OM_SNOWFLAKE_SYSTEM_METRICS_CACHE_MAX_BYTES` controls this budget (default 33,554,432 bytes, or 32 MiB; `0` disables batch caching). The budget covers cached batch history; an individual table's history and final metrics can still require additional memory.
 $$
 
 $$section

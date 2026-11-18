@@ -23,6 +23,7 @@ from metadata.data_quality.validations.mixins.pandas_validator_mixin import (
 from metadata.data_quality.validations.table.base.tableRowInsertedCountToBeBetween import (
     BaseTableRowInsertedCountToBeBetweenValidator,
 )
+from metadata.utils.helpers import is_safe_pandas_query
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -83,4 +84,9 @@ class TableRowInsertedCountToBeBetweenValidator(BaseTableRowInsertedCountToBeBet
             range_interval (int): range interval
         """
         threshold_date = self._get_threshold_date(range_type, range_interval)
-        return sum(len(runner.query(f"{column_name} >= {threshold_date}")) for runner in self.runner)
+        expression = f"{column_name} >= {threshold_date}"
+        # column_name is user-authored on datalake tables and is interpolated here,
+        # so the composed expression is validated before it reaches DataFrame.query
+        if not is_safe_pandas_query(expression):
+            raise RuntimeError(f"Unsafe pandas query expression\n\n{expression}")
+        return sum(len(runner.query(expression)) for runner in self.runner)

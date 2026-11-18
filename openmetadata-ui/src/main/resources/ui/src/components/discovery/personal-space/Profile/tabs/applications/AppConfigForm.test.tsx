@@ -33,7 +33,7 @@ jest.mock(
   () => jest.fn(({ markdown }: { markdown: string }) => <p>{markdown}</p>)
 );
 
-jest.mock('../platform-settings/useFormFieldDocs', () => ({
+jest.mock('../../../../../../hooks/useFormFieldDocs', () => ({
   useFormFieldDocs: jest.fn(() => ({ active: 'Turn the workflow on.' })),
 }));
 
@@ -96,6 +96,33 @@ describe('AppConfigForm', () => {
   it('calls onCancel from the footer', () => {
     renderForm();
 
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('asks before Cancel drops an edit, and not once the edit is saved', async () => {
+    const { rerender } = renderForm();
+    fireEvent.click(screen.getByRole('switch'));
+    fireEvent.click(screen.getByTestId('cancel-button'));
+
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(
+      await screen.findByTestId('unsaved-changes-popover')
+    ).toBeInTheDocument();
+
+    // The host refreshes the app after a save, which moves the baseline.
+    rerender(
+      <AppConfigForm
+        appData={{ ...appData, appConfiguration: { active: true } } as App}
+        isSaving={false}
+        jsonSchema={schema}
+        showHint={false}
+        submitLabel="label.save"
+        onCancel={onCancel}
+        onSave={onSave}
+      />
+    );
     fireEvent.click(screen.getByTestId('cancel-button'));
 
     expect(onCancel).toHaveBeenCalled();

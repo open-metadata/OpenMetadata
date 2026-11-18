@@ -12,18 +12,15 @@
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useProductTourStore } from '../../../hooks/useProductTourStore';
+import brandClassBase from '../../../utils/BrandData/BrandClassBase';
 import WelcomeScreen from './WelcomeScreen.component';
 
-const mockNavigate = jest.fn();
 const mockOnClose = jest.fn();
 const mockAddService = jest.fn();
 const mockUseAddServiceAction = jest.fn();
 const mockUseIsAiMode = jest.fn();
-
-jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
-  useNavigate: () => mockNavigate,
-}));
 
 jest.mock('../../../hooks/useAppMode', () => ({
   useIsAiMode: () => mockUseIsAiMode(),
@@ -48,6 +45,53 @@ describe('WelcomeScreen', () => {
       addService: mockAddService,
       canAddService: true,
     });
+  });
+
+  it('should pin the mock colours on the welcome screen', () => {
+    renderScreen();
+
+    const root = screen.getByTestId('welcome-screen');
+
+    expect(
+      root.style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('var(--tw-color-purple-600)');
+    expect(root.style.getPropertyValue('--tw-color-brand-500')).toBe('');
+  });
+
+  it('should ignore a custom theme colour', () => {
+    useApplicationStore.setState({
+      applicationConfig: { customTheme: { primaryColor: '#E11D48' } },
+    } as never);
+
+    renderScreen();
+
+    expect(
+      screen
+        .getByTestId('welcome-screen')
+        .style.getPropertyValue('--tw-background-color-brand-solid')
+    ).toBe('var(--tw-color-purple-600)');
+
+    useApplicationStore.setState({ applicationConfig: undefined } as never);
+  });
+
+  it('should keep the theme colours when the brand has no welcome theme', () => {
+    const getWelcomeTheme = jest
+      .spyOn(brandClassBase, 'getWelcomeTheme')
+      .mockReturnValue(undefined as never);
+
+    renderScreen();
+
+    expect(screen.getByTestId('welcome-screen')).not.toHaveAttribute('style');
+
+    getWelcomeTheme.mockRestore();
+  });
+
+  it('should render the heading without a highlighted word', () => {
+    renderScreen();
+
+    const heading = screen.getByRole('heading', { level: 1 });
+
+    expect(heading.querySelector('.tw\\:text-utility-brand-600')).toBeNull();
   });
 
   it('should render the illustration and message', () => {
@@ -97,12 +141,14 @@ describe('WelcomeScreen', () => {
     expect(screen.getByTestId('welcome-screen-tour-btn')).toBeInTheDocument();
   });
 
-  it('should close the welcome screen and start the tour', () => {
+  it('should close the welcome screen and open the product tour', () => {
     renderScreen();
 
     fireEvent.click(screen.getByTestId('welcome-screen-tour-btn'));
 
     expect(mockOnClose).toHaveBeenCalled();
-    expect(mockNavigate).toHaveBeenCalledWith('/tour');
+    expect(useProductTourStore.getState().isOpen).toBe(true);
+
+    useProductTourStore.getState().close();
   });
 });

@@ -50,6 +50,7 @@ from metadata.ingestion.source.storage.storage_service import (
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
 
+from ....utils.classification import snapshot_classification, snapshot_tag  # noqa: TID252
 from ...containers import S3ContainerConfigs, get_s3_container  # noqa: TID252
 
 
@@ -435,45 +436,6 @@ def pii_spacy_recognizer() -> Recognizer:
 PII_CLASSIFICATION_FQN = "PII"
 PII_SENSITIVE_FQN = "PII.Sensitive"
 PII_NON_SENSITIVE_FQN = "PII.NonSensitive"
-
-
-def snapshot_classification(metadata: OpenMetadata, fqn: str) -> CreateClassificationRequest:
-    """Capture a classification's current definition as a request that restores it verbatim."""
-    classification = metadata.get_by_name(entity=Classification, fqn=fqn, fields=["autoClassificationConfig"])
-    # The entity and the request generate distinct AutoClassificationConfig classes, so the instance
-    # has to be round-tripped through JSON rather than handed over directly.
-    auto_classification_config = (
-        classification.autoClassificationConfig.model_dump(mode="json")
-        if classification.autoClassificationConfig
-        else None
-    )
-
-    return CreateClassificationRequest(
-        name=classification.name,
-        displayName=classification.displayName,
-        description=classification.description,
-        provider=classification.provider,
-        mutuallyExclusive=classification.mutuallyExclusive,
-        autoClassificationConfig=auto_classification_config,
-    )
-
-
-def snapshot_tag(metadata: OpenMetadata, fqn: str) -> CreateTagRequest:
-    """Capture a tag's current definition as a request that restores it verbatim."""
-    tag = metadata.get_by_name(entity=Tag, fqn=fqn, fields=["recognizers"])
-
-    return CreateTagRequest(
-        name=tag.name,
-        displayName=tag.displayName,
-        description=tag.description,
-        classification=fqn.rsplit(".", 1)[0],
-        style=tag.style,
-        provider=tag.provider,
-        mutuallyExclusive=tag.mutuallyExclusive,
-        recognizers=tag.recognizers,
-        autoClassificationEnabled=tag.autoClassificationEnabled,
-        autoClassificationPriority=tag.autoClassificationPriority,
-    )
 
 
 # The PII classification is global server state shared by every auto-classification suite in the

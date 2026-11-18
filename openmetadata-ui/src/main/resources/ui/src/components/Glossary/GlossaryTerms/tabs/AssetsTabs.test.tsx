@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
@@ -96,20 +96,6 @@ jest.mock('../../../common/NextPrevious/NextPrevious', () => ({
     .mockImplementation(() => <div>NextPrevious.component</div>),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolder.component</div>),
-}));
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(() => <div>ErrorPlaceHolderNew.component</div>),
-}));
-
 jest.mock('../../../Explore/ExploreQuickFilters', () => ({
   __esModule: true,
   default: jest
@@ -163,9 +149,9 @@ jest.mock('../../../../utils/SearchPureUtils', () => ({
 
 jest.mock('../../../../utils/StringUtils', () => ({
   ...jest.requireActual('../../../../utils/StringUtils'),
-  getEncodedFqn: (...args: unknown[]) => mockGetEncodedFqn(...args),
-  escapeESReservedCharacters: (...args: unknown[]) =>
-    mockEscapeESReservedCharacters(...args),
+  getEncodedFqn: (fqn: string) => mockGetEncodedFqn(fqn),
+  escapeESReservedCharacters: (fqn: string) =>
+    mockEscapeESReservedCharacters(fqn),
 }));
 
 jest.mock('../../../../utils/TagsPureUtils', () => ({
@@ -556,6 +542,86 @@ describe('AssetsTabs queryParam logic', () => {
           'tags.tagFQN': '',
         });
       });
+    });
+  });
+
+  describe('Overlapping searches', () => {
+    it('keeps the latest results when an earlier search resolves after it', async () => {
+      let resolveStaleSearch: (value: unknown) => void = (_value) => undefined;
+      (searchQuery as jest.Mock)
+        .mockReturnValueOnce(
+          new Promise((resolve) => {
+            resolveStaleSearch = resolve;
+          })
+        )
+        .mockResolvedValueOnce({
+          hits: {
+            hits: [
+              {
+                _id: 'table-id',
+                _index: 'table_search_index',
+                _source: {
+                  id: 'table-id',
+                  name: 'orders',
+                  fullyQualifiedName: 'svc.db.schema.orders',
+                  entityType: 'table',
+                },
+              },
+            ],
+            total: { value: 1 },
+          },
+          aggregations: {},
+        });
+      const metricAssets = (ids: string[]) => (
+        <MemoryRouter>
+          <AssetsTabs
+            {...defaultProps}
+            assetCount={ids.length}
+            entityFqn="metric.fqn"
+            queryFilter={{
+              query: { bool: { must: [{ ids: { values: ids } }] } },
+            }}
+            type={AssetsOfEntity.METRIC}
+          />
+        </MemoryRouter>
+      );
+
+      const { rerender } = render(metricAssets([]));
+      await waitFor(() => expect(searchQuery).toHaveBeenCalledTimes(1));
+
+      rerender(metricAssets(['table-id']));
+
+      expect(
+        await screen.findByText('ExploreSearchCard.component')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        resolveStaleSearch(mockSearchResponse);
+      });
+
+      expect(
+        screen.getByText('ExploreSearchCard.component')
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe('Empty state', () => {
+    it('shows the caller message as the description instead of the generic text', async () => {
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="test.domain"
+          noDataPlaceholder={{ message: 'No assets in this domain' }}
+          type={AssetsOfEntity.DOMAIN}
+        />
+      );
+
+      expect(
+        await screen.findByText('No assets in this domain')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText('message.no-data-available')
+      ).not.toBeInTheDocument();
     });
   });
 });

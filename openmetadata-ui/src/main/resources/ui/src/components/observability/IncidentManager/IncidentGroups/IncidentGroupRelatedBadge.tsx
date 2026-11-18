@@ -42,7 +42,13 @@ const IncidentGroupRelatedBadge = ({ group }: IncidentGroupCellProps) => {
 
   return (
     <span data-testid="group-related">
-      <Badge color="gray" size="sm" type="modern">
+      <Badge
+        color="gray"
+        size="sm"
+        tooltip={
+          onlyTestDefinition ? getEntityName(onlyTestDefinition) : countLabel
+        }
+        type="modern">
         {onlyTestDefinition ? getEntityName(onlyTestDefinition) : countLabel}
       </Badge>
     </span>

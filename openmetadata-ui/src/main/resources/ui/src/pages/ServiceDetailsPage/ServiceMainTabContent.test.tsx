@@ -73,10 +73,6 @@ jest.mock('../../rest/searchAPI', () => ({
   searchQuery: jest.fn(),
 }));
 
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
-);
-
 jest.mock('../../components/common/ResizablePanels/ResizablePanels', () =>
   jest
     .fn()

@@ -8,9 +8,10 @@ import java.util.SortedSet;
 import java.util.TreeSet;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.FilteringRules;
 
@@ -85,11 +86,10 @@ public final class AlertDefinition {
   }
 
   // prefixCondition only says how this selection is joined to the one before it.
-  private record Selection(String name, ArgumentsInput.Effect effect, List<Value> arguments) {
+  private record Selection(String name, Effect effect, List<Value> arguments) {
 
     static Selection of(ArgumentsInput chosen) {
-      ArgumentsInput.Effect effect =
-          chosen.getEffect() == null ? ArgumentsInput.Effect.INCLUDE : chosen.getEffect();
+      Effect effect = chosen.getEffect() == null ? Effect.INCLUDE : chosen.getEffect();
       List<Value> arguments =
           listOrEmpty(chosen.getArguments()).stream()
               .map(Value::of)

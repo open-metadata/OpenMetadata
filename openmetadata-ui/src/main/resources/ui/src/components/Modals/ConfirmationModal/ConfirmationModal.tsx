@@ -30,6 +30,7 @@ import { ConfirmationModalProps } from './ConfirmationModal.interface';
  */
 const ConfirmationModal = ({
   isLoading,
+  isDestructive = false,
   cancelText,
   confirmText,
   header,
@@ -112,7 +113,7 @@ const ConfirmationModal = ({
             <Button
               className={confirmButtonCss}
               color={
-                confirmText === t('label.delete')
+                isDestructive || confirmText === t('label.delete')
                   ? 'primary-destructive'
                   : 'primary'
               }

@@ -62,7 +62,7 @@ import org.openmetadata.service.util.RestUtil.PatchResponse;
 class EntityPatchBatchTest {
 
   private static final String EDITED = "edited";
-  private static final ChangeActor ACTOR = new ChangeActor("steward", null);
+  private static final ChangeActor ACTOR = ChangeActor.user("steward", null);
 
   private DatabaseSchemaRepository repository;
   private Authorizer authorizer;
@@ -178,7 +178,7 @@ class EntityPatchBatchTest {
     verify(authorizer, times(2))
         .authorize(any(SecurityContext.class), any(OperationContext.class), any());
     verify(repository, times(2))
-        .previewPatch(any(DatabaseSchema.class), any(JsonPatch.class), eq(ACTOR.userName()));
+        .previewPatch(any(DatabaseSchema.class), any(JsonPatch.class), eq(ACTOR));
     verify(repository, never()).patch(any(DatabaseSchema.class), any(JsonPatch.class), any());
     verify(repository).insertChangeEventsBatch(List.of());
   }
@@ -209,8 +209,7 @@ class EntityPatchBatchTest {
   void aDryRunReportsTheEntitiesAWorkflowWouldHoldWithoutSubmittingThem() {
     List<DatabaseSchema> schemas = schemas(2);
     UUID gated = schemas.get(0).getId();
-    when(repository.previewPatch(
-            argThat(schema -> gated.equals(schema.getId())), any(), eq(ACTOR.userName())))
+    when(repository.previewPatch(argThat(schema -> gated.equals(schema.getId())), any(), eq(ACTOR)))
         .thenReturn(Optional.of(staged(gated)));
 
     PatchBatchResult result = batch(true).apply(describe(schemas, EDITED));

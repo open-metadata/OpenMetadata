@@ -44,6 +44,43 @@ describe('Test EntityLink', () => {
     expect(EntityLink.getEntityType(entityLink)).toStrictEqual('table');
   });
 
+  it('Should parse a governanceAutomation entityLink', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const automationLink = '<#E::governanceAutomation::tier_automation>';
+
+    expect(EntityLink.getEntityType(automationLink)).toStrictEqual(
+      'governanceAutomation'
+    );
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
+  it('Should parse an owners field entityLink', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const ownersLink = '<#E::table::svc.db.schema.orders::owners>';
+
+    expect(EntityLink.getEntityField(ownersLink)).toStrictEqual('owners');
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
+  it('Should parse an announcement entityLink', () => {
+    const consoleError = jest.spyOn(console, 'error').mockImplementation();
+    const announcementLink = '<#E::announcement::maintenance_window>';
+
+    expect(EntityLink.getEntityType(announcementLink)).toStrictEqual(
+      'announcement'
+    );
+    expect(EntityLink.getEntityFqn(announcementLink)).toStrictEqual(
+      'maintenance_window'
+    );
+    expect(consoleError).not.toHaveBeenCalled();
+
+    consoleError.mockRestore();
+  });
+
   it('Should return the entityFqn from entityLink', () => {
     expect(EntityLink.getEntityFqn(entityLink)).toStrictEqual(
       'sample_data.ecommerce_db.shopify.dim_address'

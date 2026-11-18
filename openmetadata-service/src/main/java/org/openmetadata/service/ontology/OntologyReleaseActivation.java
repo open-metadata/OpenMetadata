@@ -15,6 +15,7 @@ import org.openmetadata.schema.type.OntologyReleaseEvent;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.OntologyReleaseRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.rdf.OntologyActiveGraph;
 import org.openmetadata.service.util.FreshReadScope;
@@ -22,6 +23,7 @@ import org.openmetadata.service.util.FreshReadScope;
 /** Commits the active pointer, audit evidence and projection outbox as one module transaction. */
 public final class OntologyReleaseActivation {
   private final OntologyRepository ontologies;
+  private final OntologyReleaseRepository releases;
   private final CollectionDAO dao;
   private final Clock clock;
   private final Consumer<UUID> enqueue;
@@ -29,8 +31,12 @@ public final class OntologyReleaseActivation {
   public record Access(String user, Consumer<List<? extends OntologyDefinition>> authorize) {}
 
   public OntologyReleaseActivation(
-      final OntologyRepository ontologies, final Clock clock, final Consumer<UUID> enqueue) {
+      final OntologyRepository ontologies,
+      final OntologyReleaseRepository releases,
+      final Clock clock,
+      final Consumer<UUID> enqueue) {
     this.ontologies = ontologies;
+    this.releases = releases;
     this.dao = ontologies.getDaoCollection();
     this.clock = clock;
     this.enqueue = enqueue;
@@ -39,7 +45,11 @@ public final class OntologyReleaseActivation {
   public OntologyState activate(
       final UUID ontologyId, final ActivateOntologyRelease request, final Access access) {
     final var release = dao.ontologyReleaseDAO().findEntityById(request.getReleaseId());
-    requireApprovedOwner(ontologyId, release);
+    if (release.getEntityStatus() == EntityStatus.DRAFT) {
+      requireOwnedSealed(ontologyId, release);
+    } else {
+      requireApprovedOwner(ontologyId, release);
+    }
     final var members = new OntologyReleaseReader(dao).read(release, access.authorize());
     OntologyStructureValidator.requireValid(release, members);
     OntologyActiveGraph.requireProjectable(release, members);
@@ -58,13 +68,49 @@ public final class OntologyReleaseActivation {
     final var roots = dao.ontologyEntityDAO();
     roots.jsonToEntity(roots.findJsonByIdForUpdate(ontologyId, Include.NON_DELETED), ontologyId);
     requireExpectedRevision(previous, request);
-    final var releases = dao.ontologyReleaseDAO();
-    final var release =
-        releases.jsonToEntity(
-            releases.findJsonByIdForUpdate(request.getReleaseId(), Include.NON_DELETED),
+    final var releaseDao = dao.ontologyReleaseDAO();
+    var release =
+        releaseDao.jsonToEntity(
+            releaseDao.findJsonByIdForUpdate(request.getReleaseId(), Include.NON_DELETED),
             request.getReleaseId());
+    if (release.getId().equals(previous.getActiveReleaseId())) {
+      return previous;
+    }
+    OntologyReleasePublication.requireUnpublishedVersion(dao, ontologyId, release);
+    if (release.getEntityStatus() == EntityStatus.DRAFT) {
+      release = publishWithoutReview(ontologyId, release, access.user());
+    }
     requireApprovedOwner(ontologyId, release);
     return commit(previous, release, access.user());
+  }
+
+  /**
+   * An ontology without reviewers has nobody to ask, so an author with edit rights approves its
+   * Draft by publishing it. Reviewers are read under the state lock that reviewer changes also
+   * take, so a reviewer added after capture sends the Draft to review instead.
+   */
+  private OntologyRelease publishWithoutReview(
+      final UUID ontologyId, final OntologyRelease draft, final String user) {
+    requireOwnedSealed(ontologyId, draft);
+    if (draft.getReviewTask() != null) {
+      throw new BadRequestException(
+          "Activation requires an approved, sealed release of this ontology");
+    }
+    if (ontologies.hasReviewers(ontologyId)) {
+      throw new ClientErrorException(
+          "Reviewers are configured. Request a review.", Response.Status.CONFLICT);
+    }
+    ontologies
+        .findOpenReview(ontologyId)
+        .ifPresent(
+            open -> {
+              throw new ClientErrorException(
+                  "Ontology release "
+                      + open.getName()
+                      + " already has an open review; close it before publishing",
+                  Response.Status.CONFLICT);
+            });
+    return releases.approveWithoutReview(draft, user, clock.millis());
   }
 
   private OntologyState commit(
@@ -99,6 +145,13 @@ public final class OntologyReleaseActivation {
         || request.getExpectedActivationRevision().longValue() != state.getActivationRevision()) {
       throw new ClientErrorException(
           "Ontology activation changed; reload its state", Response.Status.CONFLICT);
+    }
+  }
+
+  private static void requireOwnedSealed(final UUID ontologyId, final OntologyRelease release) {
+    if (!ontologyId.equals(release.getOntology().getId()) || release.getSealedAt() == null) {
+      throw new BadRequestException(
+          "Activation requires an approved, sealed release of this ontology");
     }
   }
 

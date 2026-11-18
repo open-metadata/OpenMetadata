@@ -20,6 +20,7 @@ import {
 import userEvent from '@testing-library/user-event';
 import { ScheduleType } from '../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
+import { getMarketPlaceAppDetailsPath } from '../../utils/RouterUtils';
 import AppInstall from './AppInstall.component';
 
 const mockNavigate = jest.fn();
@@ -93,10 +94,6 @@ jest.mock(
         <button onClick={onCancel}>Cancel AppInstallVerifyCard</button>
       </>
     ))
-);
-
-jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
 jest.mock('../../components/common/FormBuilderV1/FormBuilderV1', () =>
@@ -284,6 +281,25 @@ describe('AppInstall component', () => {
     expect(mockInstallApplication).toHaveBeenCalled();
   });
 
+  it('redirects a disabled (paid or unavailable) app back to its details page', async () => {
+    (getMarketPlaceAppDetailsPath as jest.Mock).mockReturnValueOnce(
+      '/marketplace/apps/test-fqn'
+    );
+    mockGetMarketPlaceApplicationByFqn.mockResolvedValueOnce({
+      ...MARKETPLACE_DATA,
+      enabled: false,
+    });
+
+    await act(async () => {
+      render(<AppInstall />);
+    });
+
+    expect(mockNavigate).toHaveBeenCalledWith('/marketplace/apps/test-fqn', {
+      replace: true,
+    });
+    expect(screen.queryByText('AppInstallVerifyCard')).not.toBeInTheDocument();
+  });
+
   it('errors check in fetching application data', async () => {
     mockGetMarketPlaceApplicationByFqn.mockRejectedValueOnce(ERROR);
 
@@ -294,7 +310,11 @@ describe('AppInstall component', () => {
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       'server.no-application-schema-found'
     );
-    expect(screen.getByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 
   it('error check in installing application', async () => {

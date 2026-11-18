@@ -106,10 +106,6 @@ const COLUMN_PROFILER = {
   median: 7344.0,
 };
 
-jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-});
-
 describe('DataDistributionHistogram component test', () => {
   it('Component should render', async () => {
     const { container } = render(
@@ -179,7 +175,7 @@ describe('DataDistributionHistogram component test', () => {
         key: 'frequency',
         name: 'label.frequency',
         status: 'info',
-        seriesOption: { barWidth: 22 },
+        seriesOption: { barMaxWidth: 22 },
       },
     ]);
     expect(calls[0].data[0]).toEqual({
@@ -226,6 +222,69 @@ describe('DataDistributionHistogram component test', () => {
       />
     );
 
-    expect(await screen.findByText('ErrorPlaceHolder')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeInTheDocument();
   });
 });
+
+it.each([false, true])(
+  'keeps snapshot sources separate (sharded: %s)',
+  (isSharded) => {
+    const firstDayData = {
+      ...MOCK_HISTOGRAM_DATA[0],
+      executionSource: {
+        databaseName: 'demo_db',
+        schemaName: 'demo_schema',
+        tableName: 'events_20260101',
+      },
+    };
+    const currentDayData = {
+      ...MOCK_HISTOGRAM_DATA[0],
+      executionSource: {
+        databaseName: 'demo_db',
+        schemaName: 'demo_schema',
+        tableName: 'events_20260102',
+      },
+    };
+    const { rerender } = render(
+      <DataDistributionHistogram
+        data={{ firstDayData, currentDayData }}
+        isSharded={isSharded}
+      />
+    );
+
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260101')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+
+    rerender(
+      <DataDistributionHistogram
+        data={{ firstDayData: MOCK_HISTOGRAM_DATA[0], currentDayData }}
+        isSharded={isSharded}
+      />
+    );
+
+    expect(
+      screen.queryByText('demo_db.demo_schema.events_20260101')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260102')
+    ).toBeInTheDocument();
+
+    if (isSharded) {
+      expect(
+        screen.getByText('message.execution-source-unavailable')
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
+    }
+  }
+);

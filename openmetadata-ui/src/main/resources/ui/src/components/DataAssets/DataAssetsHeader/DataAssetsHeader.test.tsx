@@ -20,10 +20,6 @@ import {
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
@@ -36,6 +32,7 @@ import { DatabaseServiceType } from '../../../generated/entity/services/database
 import { LabelType, State, TagSource } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { useCustomPages } from '../../../hooks/useCustomPages';
+import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { MOCK_DATA_CONTRACT } from '../../../mocks/DataContract.mock';
 import { MOCK_TIER_DATA } from '../../../mocks/TableData.mock';
 import { getActiveAnnouncements } from '../../../rest/announcementsAPI';
@@ -45,12 +42,35 @@ import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
+import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import type { IconColorModalProps } from '../../Modals/IconColorModal';
 import { DataAssetsHeader } from './DataAssetsHeader.component';
 import { DataAssetsHeaderProps } from './DataAssetsHeader.interface';
+
+// Chip styles are looked up through React Query; these tests do not cover
+// chip styling and render without a QueryClientProvider.
+jest.mock('../../../hooks/governance/domain/useDomainStyles', () => ({
+  useDomainStyles: jest.fn().mockReturnValue(new Map()),
+}));
+
+jest.mock('../../../hooks/useEntityPermissions/useEntityPermissions', () => ({
+  useEntityPermissions: jest.fn(),
+}));
+
+beforeEach(() => {
+  (useEntityPermissions as jest.Mock).mockReturnValue({
+    ...getDerivedPermissionFlags({
+      ...DEFAULT_ENTITY_PERMISSION,
+      Trigger: true,
+    }),
+    isLoading: false,
+    error: null,
+    refresh: jest.fn(),
+  });
+});
 
 const mockProps = {
   dataAsset: {
@@ -435,6 +455,34 @@ describe('DataAssetsHeader component', () => {
     expect(screen.queryByText('name')).not.toBeInTheDocument();
   });
 
+  it('shows "Deleted" instead of the lifecycle status on a soft-deleted metric', () => {
+    const metric = {
+      id: 'metric-id',
+      name: 'revenue',
+      fullyQualifiedName: 'revenue',
+      entityStatus: 'Approved',
+    };
+    const { rerender } = render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={metric as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.getByText('Approved')).toBeInTheDocument();
+
+    rerender(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{ ...metric, deleted: true } as unknown as Container}
+        entityType={EntityType.METRIC}
+      />
+    );
+
+    expect(screen.queryByText('Approved')).not.toBeInTheDocument();
+  });
+
   it('should call getContainerAncestors API on Page load for container assets', () => {
     const mockGetContainerAncestors = getContainerAncestors as jest.Mock;
     render(<DataAssetsHeader {...mockProps} />);
@@ -623,12 +671,16 @@ describe('DataAssetsHeader component', () => {
       entity: {
         id: 'current-entity',
         type: EntityType.TABLE,
+        columns: [],
+        entityType: EntityType.TABLE,
         fullyQualifiedName: 'fullyQualifiedName',
       },
       nodes: [
         {
           id: 'upstream-entity',
           type: EntityType.TABLE,
+          columns: [],
+          entityType: EntityType.TABLE,
           fullyQualifiedName: 'upstreamFullyQualifiedName',
         },
       ],
@@ -998,6 +1050,59 @@ describe('DataAssetsHeader component', () => {
     ).not.toBeInTheDocument();
   });
 
+  it.each([
+    {
+      serviceTrigger: false,
+      appTrigger: true,
+      serviceEdit: true,
+      visible: false,
+    },
+    {
+      serviceTrigger: true,
+      appTrigger: false,
+      serviceEdit: false,
+      visible: false,
+    },
+    {
+      serviceTrigger: true,
+      appTrigger: true,
+      serviceEdit: false,
+      visible: true,
+    },
+  ])(
+    'shows AutoPilot for serviceTrigger=$serviceTrigger and appTrigger=$appTrigger',
+    ({ serviceTrigger, appTrigger, serviceEdit, visible }) => {
+      (useEntityPermissions as jest.Mock).mockReturnValue({
+        ...getDerivedPermissionFlags({
+          ...DEFAULT_ENTITY_PERMISSION,
+          Trigger: appTrigger,
+        }),
+        isLoading: false,
+        error: null,
+        refresh: jest.fn(),
+      });
+      render(
+        <DataAssetsHeader
+          {...mockProps}
+          dataAsset={{
+            ...mockProps.dataAsset,
+            serviceType: DatabaseServiceType.BigQuery,
+          }}
+          entityType={EntityType.DATABASE_SERVICE}
+          permissions={{
+            ...DEFAULT_ENTITY_PERMISSION,
+            EditAll: serviceEdit,
+            Trigger: serviceTrigger,
+          }}
+        />
+      );
+
+      expect(
+        Boolean(screen.queryByTestId('trigger-auto-pilot-application-button'))
+      ).toBe(visible);
+    }
+  );
+
   it('should trigger the AutoPilot application when the button is clicked', () => {
     render(
       <DataAssetsHeader
@@ -1237,25 +1342,6 @@ describe('DataAssetsHeader component', () => {
       getDataContractStatusIcon as jest.Mock;
     const mockUseCustomPages = useCustomPages as jest.Mock;
     const mockGetEntityDetailsPath = getEntityDetailsPath as jest.Mock;
-
-    it('should not fetch a data contract for the tour mock entity', async () => {
-      (getContractByEntityId as jest.Mock).mockClear();
-
-      await act(async () => {
-        render(
-          <TourContext.Provider
-            value={
-              {
-                isTourPage: true,
-              } as Partial<TourProviderContextProps> as TourProviderContextProps
-            }>
-            <DataAssetsHeader {...mockProps} />
-          </TourContext.Provider>
-        );
-      });
-
-      expect(getContractByEntityId).not.toHaveBeenCalled();
-    });
 
     it('should render data contract button when contract tab is visible and status is in allowed list', async () => {
       mockUseCustomPages.mockReturnValue({

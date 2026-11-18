@@ -30,7 +30,6 @@ import {
   Button,
   Card,
   Checkbox,
-  EmptyPlaceholder,
   Input,
   Select,
   TextArea,
@@ -39,6 +38,7 @@ import {
 import { List, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { Key, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import {
   buildDesignerSchema,
@@ -359,9 +359,9 @@ const TaskFormBuilderSection = ({
             })
           ) : (
             <Box className="tw:relative tw:min-h-40">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 data-testid={`${testIdPrefix}-empty`}
-                icon={<List className="tw:text-secondary" />}
+                icon={<List />}
                 title={t('message.no-fields-configured')}
               />
             </Box>

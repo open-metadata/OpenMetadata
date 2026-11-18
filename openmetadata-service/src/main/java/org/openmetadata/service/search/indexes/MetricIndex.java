@@ -13,6 +13,7 @@ import org.openmetadata.service.Entity;
 
 public class MetricIndex implements TaggableIndex, LineageIndex {
   private static final String FIELD_CHILDREN_COUNT = "childrenCount";
+  private static final String FIELD_RELATED_METRICS = "relatedMetrics";
   private static final Set<String> EXCLUDED_FIELDS = Set.of(Entity.FIELD_CHILDREN);
 
   final Metric metric;
@@ -36,7 +37,9 @@ public class MetricIndex implements TaggableIndex, LineageIndex {
    * the live single-entity update path have to request them explicitly or they never reach the
    * document. {@code children} is deliberately absent: the list view loads a metric's children on
    * demand through {@code GET /v1/metrics?parent={fqn}}, so indexing an unbounded child list would
-   * cost document size for nothing.
+   * cost document size for nothing. {@code relatedMetrics} is in the metric's embedding text, which a
+   * reindex reuses only while its fingerprint matches the one the live write path built.
+   * ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
    */
   @Override
   public Set<String> getRequiredReindexFields() {
@@ -44,7 +47,13 @@ public class MetricIndex implements TaggableIndex, LineageIndex {
     fields.add(Entity.FIELD_PARENT);
     fields.add(FIELD_CHILDREN_COUNT);
     fields.add("metricGroup");
+    fields.add(FIELD_RELATED_METRICS);
     return Collections.unmodifiableSet(fields);
+  }
+
+  @Override
+  public Set<String> getFieldsLoadedOnWrite() {
+    return Set.of(FIELD_CHILDREN_COUNT);
   }
 
   @Override

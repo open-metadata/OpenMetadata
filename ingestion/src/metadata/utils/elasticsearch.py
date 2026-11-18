@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.data.glossary import Glossary
 from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.mlmodel import MlModel
+from metadata.generated.schema.entity.data.page import Page
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.query import Query
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
@@ -44,6 +45,7 @@ from metadata.generated.schema.entity.data.storedProcedure import StoredProcedur
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.data.worksheet import Worksheet
+from metadata.generated.schema.entity.domains.dataProduct import DataProduct
 from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
 from metadata.generated.schema.entity.teams.team import Team
@@ -84,6 +86,8 @@ ES_INDEX_MAP = {
     DataContract.__name__: "data_contract_search_index",
     ReportData.__name__: "entity_report_data_index",
     Metric.__name__: "metric_search_index",
+    DataProduct.__name__: "data_product_search_index",
+    Page.__name__: "knowledge_page_search_index",
     "web_analytic_user_activity_report": "web_analytic_user_activity_report_data_index",
     "web_analytic_entity_view_report": "web_analytic_entity_view_report_data_index",
 }

@@ -198,6 +198,34 @@ describe('useAssetSelectionState', () => {
     });
   });
 
+  it.each([
+    AssetsOfEntity.DATA_PRODUCT_INPUT_PORT,
+    AssetsOfEntity.DATA_PRODUCT_OUTPUT_PORT,
+  ])('leaves columns out of the %s picker', async (type) => {
+    renderAssetSelectionState({ type });
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalled();
+    });
+    const { queryFilter } = (searchQuery as jest.Mock).mock.calls[0][0];
+
+    expect(queryFilter.query.bool.must_not).toEqual(
+      expect.arrayContaining([{ term: { entityType: 'tableColumn' } }])
+    );
+  });
+
+  it('keeps columns in the glossary picker', async () => {
+    renderAssetSelectionState({ type: AssetsOfEntity.GLOSSARY });
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenCalled();
+    });
+
+    expect(
+      JSON.stringify((searchQuery as jest.Mock).mock.calls[0][0])
+    ).not.toContain('tableColumn');
+  });
+
   it('should use ALL search index for domain type', async () => {
     renderAssetSelectionState({ type: AssetsOfEntity.DOMAIN });
 
@@ -680,6 +708,48 @@ describe('useAssetSelectionState', () => {
           'server.add-entity-error'
         );
       });
+    });
+
+    it('shows each rejected row inline instead of a toast when the whole bulk add is rejected', async () => {
+      (searchQuery as jest.Mock).mockResolvedValue(
+        buildSearchResponse([buildHit('1')], 1)
+      );
+      (addAssetsToGlossaryTerm as jest.Mock).mockRejectedValue({
+        response: {
+          status: 400,
+          data: {
+            status: 'failure',
+            failedRequest: [
+              {
+                request: { id: '1' },
+                message:
+                  "Asset 'db.customers' is already an input port of this data product; an asset cannot be both an input and an output port",
+              },
+            ],
+          },
+        },
+      });
+
+      const { result } = renderAssetSelectionState({
+        type: AssetsOfEntity.GLOSSARY,
+        variant: 'drawer',
+      });
+
+      await selectOneItem(result);
+
+      await act(async () => {
+        result.current.onSaveAction();
+      });
+
+      await waitFor(() => {
+        expect(result.current.getErrorStatusAndMessage('1')).toEqual({
+          isError: true,
+          errorMessage:
+            "Asset 'db.customers' is already an input port of this data product; an asset cannot be both an input and an output port",
+        });
+      });
+
+      expect(showErrorToast).not.toHaveBeenCalled();
     });
 
     it('should show a raw error toast when save throws in modal variant', async () => {

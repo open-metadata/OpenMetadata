@@ -13,6 +13,7 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { AlertCapabilities } from '../../../generated/events/api/alertCapabilities';
+import { UseAlertCapabilitiesReturn } from '../../../hooks/useAlertCapabilities';
 import AlertSourcePicker from './AlertSourcePicker';
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -48,7 +49,30 @@ const TABLE_AND_TOPIC = {
   ],
 } as unknown as AlertCapabilities;
 
-const NAMES = ['table', 'topic', 'dashboard', 'conversation'];
+// Every source, listed by the server with nothing chosen yet.
+const LISTED = {
+  alertType: 'Notification',
+  filters: [],
+  triggers: [],
+  sources: [
+    { name: 'table', kind: 'entity' },
+    { name: 'topic', kind: 'entity' },
+    { name: 'dashboard', kind: 'entity' },
+    { name: 'conversation', kind: 'activity' },
+  ],
+} as unknown as AlertCapabilities;
+
+const capabilitiesOf = (
+  selection?: AlertCapabilities,
+  rest: Partial<UseAlertCapabilitiesReturn> = {}
+): UseAlertCapabilitiesReturn => ({
+  selection,
+  knownSources: [],
+  loading: false,
+  settled: true,
+  retry: jest.fn(),
+  ...rest,
+});
 
 // Timers are fake in every test, so the user moves only as fast as they advance.
 const user = () => userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
@@ -62,8 +86,7 @@ describe('AlertSourcePicker', () => {
   it('shows a source that cannot join as disabled, with the reason', async () => {
     render(
       <AlertSourcePicker
-        selection={TABLE_AND_TOPIC}
-        sources={NAMES}
+        capabilities={capabilitiesOf(TABLE_AND_TOPIC)}
         value={['table', 'topic']}
       />
     );
@@ -81,21 +104,10 @@ describe('AlertSourcePicker', () => {
     );
   });
 
-  it('offers every source until the server has answered about the selection', async () => {
-    render(<AlertSourcePicker sources={NAMES} value={['table']} />);
-    await open();
-
-    expect(await optionOf('conversation')).not.toHaveAttribute(
-      'aria-disabled',
-      'true'
-    );
-  });
-
   it('warns beside a selected source that can never match', () => {
     render(
       <AlertSourcePicker
-        selection={TABLE_AND_TOPIC}
-        sources={NAMES}
+        capabilities={capabilitiesOf(TABLE_AND_TOPIC)}
         value={['table', 'topic']}
       />
     );
@@ -107,16 +119,27 @@ describe('AlertSourcePicker', () => {
   });
 
   it('names a selected source the way the list does, not by its raw name', () => {
-    render(<AlertSourcePicker sources={NAMES} value={['table']} />);
+    render(
+      <AlertSourcePicker
+        capabilities={capabilitiesOf(LISTED)}
+        value={['table']}
+      />
+    );
 
     expect(screen.getByTestId('source-select')).toHaveTextContent(
       'Label of table'
     );
   });
 
-  // The view of a saved alert passes no list of sources.
+  // A saved alert can watch a source the catalog has since retired.
   it('shows a saved source the list does not offer', () => {
-    render(<AlertSourcePicker isDisabled sources={[]} value={['location']} />);
+    render(
+      <AlertSourcePicker
+        isDisabled
+        capabilities={capabilitiesOf()}
+        value={['location']}
+      />
+    );
 
     expect(screen.getByTestId('source-select')).toHaveTextContent(
       'Label of location'
@@ -127,7 +150,7 @@ describe('AlertSourcePicker', () => {
     const onChange = jest.fn();
     render(
       <AlertSourcePicker
-        sources={NAMES}
+        capabilities={capabilitiesOf(LISTED)}
         value={['table']}
         onChange={onChange}
       />
@@ -142,7 +165,7 @@ describe('AlertSourcePicker', () => {
     const onChange = jest.fn();
     render(
       <AlertSourcePicker
-        sources={NAMES}
+        capabilities={capabilitiesOf(LISTED)}
         value={['table', 'topic']}
         onChange={onChange}
       />
@@ -155,11 +178,100 @@ describe('AlertSourcePicker', () => {
     expect(onChange).toHaveBeenCalledWith(['topic'], ['table', 'topic']);
   });
 
+  it('invites the first source, then another, so it reads as a picker of several', () => {
+    const { rerender } = render(
+      <AlertSourcePicker capabilities={capabilitiesOf(LISTED)} value={[]} />
+    );
+
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'placeholder',
+      'label.select-field'
+    );
+
+    rerender(
+      <AlertSourcePicker
+        capabilities={capabilitiesOf(LISTED)}
+        value={['table']}
+      />
+    );
+
+    expect(screen.getByRole('combobox')).toHaveAttribute(
+      'placeholder',
+      'label.add-another'
+    );
+  });
+
+  it('invites nothing in the view of a saved alert', () => {
+    render(
+      <AlertSourcePicker
+        isDisabled
+        capabilities={capabilitiesOf(LISTED)}
+        value={['table']}
+      />
+    );
+
+    expect(screen.getByRole('combobox')).toHaveAttribute('placeholder', '');
+  });
+
+  it('shows the form error under the picker', () => {
+    render(
+      <AlertSourcePicker
+        isInvalid
+        isRequired
+        capabilities={capabilitiesOf(LISTED)}
+        hint="Source is required"
+        value={[]}
+      />
+    );
+
+    expect(screen.getByText('Source is required')).toBeInTheDocument();
+  });
+
+  it('says when the server could not answer, and asks again on Retry', async () => {
+    const retry = jest.fn();
+    render(
+      <AlertSourcePicker
+        capabilities={capabilitiesOf(undefined, { retry })}
+        value={[]}
+      />
+    );
+
+    expect(screen.getByTestId('source-select-error')).toBeInTheDocument();
+
+    await user().click(screen.getByTestId('source-select-retry'));
+
+    expect(retry).toHaveBeenCalled();
+  });
+
+  it('says nothing about a failure while it is still asking', () => {
+    render(
+      <AlertSourcePicker
+        capabilities={capabilitiesOf(undefined, { loading: true })}
+        value={[]}
+      />
+    );
+
+    expect(screen.queryByTestId('source-select-error')).not.toBeInTheDocument();
+  });
+
+  it('keeps offering the sources it last listed after a failure', async () => {
+    render(
+      <AlertSourcePicker
+        capabilities={capabilitiesOf(undefined, {
+          knownSources: LISTED.sources,
+        })}
+        value={[]}
+      />
+    );
+    await open();
+
+    expect(await screen.findByTestId('dashboard-option')).toBeInTheDocument();
+  });
+
   it('groups the sources by kind, each under its header', async () => {
     render(
       <AlertSourcePicker
-        selection={TABLE_AND_TOPIC}
-        sources={NAMES}
+        capabilities={capabilitiesOf(TABLE_AND_TOPIC)}
         value={['table']}
       />
     );
@@ -182,22 +294,10 @@ describe('AlertSourcePicker', () => {
     );
   });
 
-  it('shows no headers until the server has said the kinds', async () => {
-    render(<AlertSourcePicker sources={NAMES} value={['table']} />);
-    await open();
-
-    await screen.findByTestId('topic-option');
-
-    expect(
-      screen.queryByTestId('header-entity-option')
-    ).not.toBeInTheDocument();
-  });
-
   it('keeps a header only while one of its sources matches the search', async () => {
     render(
       <AlertSourcePicker
-        selection={TABLE_AND_TOPIC}
-        sources={NAMES}
+        capabilities={capabilitiesOf(TABLE_AND_TOPIC)}
         value={['table']}
       />
     );
@@ -214,8 +314,7 @@ describe('AlertSourcePicker', () => {
   it('drops a header once every source under it is chosen', async () => {
     render(
       <AlertSourcePicker
-        selection={TABLE_AND_TOPIC}
-        sources={NAMES}
+        capabilities={capabilitiesOf(TABLE_AND_TOPIC)}
         value={['table', 'topic', 'dashboard']}
       />
     );

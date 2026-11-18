@@ -55,13 +55,6 @@ jest.mock('../../../utils/EntitySearchUtils', () => ({
   highlightSearchText: jest.fn((text) => text),
 }));
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => {
-    return jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>);
-  }
-);
-
 const onSave = jest.fn();
 const onCancel = jest.fn();
 

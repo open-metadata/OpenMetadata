@@ -28,7 +28,7 @@ function IngestionStatusCount({
   );
 
   return (
-    <Box align="center" gap={1} justify="evenly" wrap="nowrap">
+    <Box align="center" gap={2} wrap="nowrap">
       {records.map((record) => (
         <div
           className={classNames(
@@ -38,7 +38,7 @@ function IngestionStatusCount({
           data-testid={`${record.type}-count`}
           key={`${record.label}-${runId}`}>
           <span className="tw:text-sm tw:font-bold">{record.value}</span>
-          <span className="tw:text-[length:var(--om-font-size-8)]">
+          <span className="tw:text-xs tw:font-medium tw:leading-4">
             {record.label}
           </span>
         </div>

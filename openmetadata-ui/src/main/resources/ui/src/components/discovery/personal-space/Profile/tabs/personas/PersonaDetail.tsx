@@ -22,7 +22,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   CheckCircle,
-  Copy01,
   Edit01 as Edit,
   Trash01 as Delete,
 } from '@openmetadata/ui-core-components/icons';
@@ -42,19 +41,18 @@ import { EntityType } from '../../../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../../../enums/permissions.enum';
 import { Persona } from '../../../../../../generated/entity/teams/persona';
 import { EntityReference } from '../../../../../../generated/entity/type';
-import { useClipboard } from '../../../../../../hooks/useClipBoard';
 import { useEntityPermissions } from '../../../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
   getPersonaByName,
   updatePersona,
 } from '../../../../../../rest/PersonaAPI';
-import { hardDeleteEntity } from '../../../../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteModal from '../../../../../common/DeleteModal/DeleteModal';
+import CopyButton from '../../../../../common/CopyButton/CopyButton';
+import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
@@ -62,6 +60,7 @@ import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/Rich
 import SubCategoryGrid from './customize/SubCategoryGrid';
 import PersonaCustomizeGrid from './PersonaCustomizeGrid';
 import type { PersonaDetailTab } from './Personas.types';
+import { viewToSubPath } from './Personas.utils';
 import PersonaUsersTab from './PersonaUsersTab';
 
 interface PersonaDetailProps {
@@ -103,9 +102,9 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   const [renameValue, setRenameValue] = useState('');
   const [isSavingRename, setIsSavingRename] = useState(false);
 
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [isTogglingDefault, setIsTogglingDefault] = useState(false);
+
+  const fetchRequestIdRef = useRef(0);
 
   // Personas are not soft-deletable here (ManageButton legacy passed deleted=false),
   // so the permission lookup is deliberately ungated.
@@ -116,26 +115,50 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
   } = useEntityPermissions(ResourceEntity.PERSONA, fqn);
 
   // Deep link that reopens this persona in the personal-space modal.
-  const { onCopyToClipBoard, hasCopied } = useClipboard(
-    `${globalThis.location.origin}${globalThis.location.pathname}#personas/${fqn}`
-  );
+  const personaLink = `${globalThis.location.origin}${
+    globalThis.location.pathname
+  }#personas/${viewToSubPath({ type: 'detail', fqn, name: fqn })}`;
 
   const fetchPersona = useCallback(async () => {
+    const requestId = ++fetchRequestIdRef.current;
     setIsLoading(true);
     try {
       const data = await getPersonaByName(fqn);
+      // Drop the response when a later fqn change has superseded this request,
+      // so persona A's data can never land after the prop has moved to persona B.
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       setPersona(data);
       onRename(getEntityName(data));
     } catch (error) {
+      if (fetchRequestIdRef.current !== requestId) {
+        return;
+      }
       showErrorToast(error as AxiosError);
+      // Clear the previously loaded persona so its body/actions cannot keep
+      // rendering under the new fqn's header when the refetch fails.
+      setPersona(undefined);
     } finally {
-      setIsLoading(false);
+      if (fetchRequestIdRef.current === requestId) {
+        setIsLoading(false);
+      }
     }
   }, [fqn, onRename]);
 
   useEffect(() => {
     void fetchPersona();
   }, [fetchPersona]);
+
+  // Discard persona-specific editing state when the persona changes. The
+  // parent re-mounts this component per fqn (key={fqn}); this guard also makes
+  // a no-key re-render safe, so an open rename/edit session for persona A can
+  // never be submitted against persona B after an fqn-only prop change.
+  useEffect(() => {
+    setIsEditingDesc(false);
+    setIsRenameOpen(false);
+    setRenameValue('');
+  }, [fqn]);
 
   const patchPersona = useCallback(
     async (data: Partial<Persona>) => {
@@ -202,27 +225,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     }
   }, [persona, patchPersona, t]);
 
-  const handleDelete = useCallback(async () => {
-    if (!persona) {
-      return;
-    }
-    setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      getEntityName(persona),
-      persona.id ?? '',
-      EntityType.PERSONA
-    );
-    setIsDeleting(false);
-    setIsDeleteOpen(false);
-    if (isSuccess) {
-      onDeleted();
-    }
-  }, [persona, onDeleted]);
-
   const handleUpdateUsers = useCallback(
-    (users: EntityReference[]) => {
-      void patchPersona({ users });
-    },
+    (users: EntityReference[]) => patchPersona({ users }),
     [patchPersona]
   );
 
@@ -247,7 +251,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="tertiary"
           isDisabled={isSavingRename}
-          size="sm"
+          size="xs"
           onPress={() => {
             setIsRenameOpen(false);
             setRenameValue('');
@@ -258,7 +262,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
           color="primary"
           isDisabled={!renameValue.trim()}
           isLoading={isSavingRename}
-          size="sm"
+          size="xs"
           onPress={handleSaveRename}>
           {t('label.save')}
         </Button>
@@ -273,25 +277,17 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
 
     return (
       <Box align="center" direction="row" gap={1}>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="copy-persona-link"
-          icon={Copy01}
-          size="xs"
-          tooltip={String(
-            hasCopied
-              ? t('message.link-copy-to-clipboard')
-              : t('label.copy-item', { item: t('label.url-uppercase') })
-          )}
+        <CopyButton
+          size="sm"
+          testId="copy-persona-link"
+          tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
           tooltipPlacement="right"
-          onPress={() => onCopyToClipBoard()}
+          value={personaLink}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="rename-persona-btn"
           icon={Edit}
           isDisabled={!canEditDescription}
-          size="xs"
           tooltip={String(
             canEditDescription ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}
@@ -303,14 +299,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         />
       </Box>
     );
-  }, [
-    isRenameOpen,
-    persona,
-    canEditDescription,
-    hasCopied,
-    onCopyToClipBoard,
-    t,
-  ]);
+  }, [isRenameOpen, persona, canEditDescription, personaLink, t]);
 
   const actionsNode = useMemo<React.ReactNode>(() => {
     if (isRenameOpen || !persona) {
@@ -324,27 +313,33 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
         <Button
           color="secondary"
           data-testid="set-default-persona-btn"
-          iconLeading={<CheckCircle />}
+          iconLeading={CheckCircle}
           isDisabled={!canEditAll}
           isLoading={isTogglingDefault}
-          size="sm"
+          size="xs"
           onPress={handleToggleDefault}>
           {persona.default
             ? t('label.remove-default')
             : t('label.set-as-default')}
         </Button>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="delete-persona-btn"
-          icon={Delete}
-          isDisabled={!canDeletePersona}
-          size="sm"
-          tooltip={String(
-            canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
-          )}
-          tooltipPlacement="left"
-          onPress={() => setIsDeleteOpen(true)}
-        />
+        <DeleteEntityPopover
+          afterDeleteAction={onDeleted}
+          allowSoftDelete={false}
+          data-testid="delete-persona-popover"
+          entityId={persona.id}
+          entityName={getEntityName(persona)}
+          entityType={EntityType.PERSONA}>
+          <ButtonUtility
+            data-testid="delete-persona-btn"
+            icon={Delete}
+            isDisabled={!canDeletePersona}
+            size="lg"
+            tooltip={String(
+              canDeletePersona ? t('label.delete') : t(NO_PERMISSION_FOR_ACTION)
+            )}
+            tooltipPlacement="left"
+          />
+        </DeleteEntityPopover>
       </Box>
     );
   }, [
@@ -353,6 +348,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
     canEditAll,
     hasDeletePermission,
     isTogglingDefault,
+    onDeleted,
     handleToggleDefault,
     t,
   ]);
@@ -375,6 +371,7 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       return (
         <PersonaUsersTab
           canEdit={canEditAll}
+          personaName={persona ? getEntityName(persona) : ''}
           users={persona?.users ?? []}
           onUsersChange={handleUpdateUsers}
         />
@@ -432,10 +429,8 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
             </Typography>
             {canEditDescription && !isEditingDesc && (
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-persona-description-btn"
                 icon={Edit}
-                size="xs"
                 tooltip={String(
                   t('label.edit-entity', { entity: t('label.description') })
                 )}
@@ -486,17 +481,6 @@ const PersonaDetail: FC<PersonaDetailProps> = ({
       </Tabs>
 
       <Box className="tw:flex-1 tw:min-h-0 tw:p-1">{tabContent}</Box>
-
-      <DeleteModal
-        entityTitle={getEntityName(persona)}
-        isDeleting={isDeleting}
-        message={t('message.permanently-delete-common-message', {
-          entity: getEntityName(persona).toLowerCase(),
-        })}
-        open={isDeleteOpen}
-        onCancel={() => setIsDeleteOpen(false)}
-        onDelete={handleDelete}
-      />
     </Box>
   );
 };

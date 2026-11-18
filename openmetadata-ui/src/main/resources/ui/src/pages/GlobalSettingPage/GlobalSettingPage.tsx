@@ -18,14 +18,13 @@ import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SettingItemCard from '../../components/Settings/SettingItemCard/SettingItemCard.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { useAuth } from '../../hooks/authHooks';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import globalSettingsClassBase from '../../utils/GlobalSettingsClassBase';
@@ -34,7 +33,6 @@ import {
   SettingMenuItem,
 } from '../../utils/GlobalSettingsUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
-import './global-setting-page.style.less';
 
 const GlobalSettingPage = () => {
   const navigate = useNavigate();
@@ -82,11 +80,12 @@ const GlobalSettingPage = () => {
 
   if (isEmpty(settingItems)) {
     return (
-      <ErrorPlaceHolder
-        className="border-none h-min-80"
-        permissionValue={t('label.setting-plural')}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.setting-plural')}
+        />
+      </div>
     );
   }
 

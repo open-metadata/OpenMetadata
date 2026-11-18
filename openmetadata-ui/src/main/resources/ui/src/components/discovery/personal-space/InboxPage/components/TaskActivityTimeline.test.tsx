@@ -73,8 +73,13 @@ jest.mock(
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     // Echo the interpolated user so a test can tell the events apart.
-    t: (key: string, options?: { user?: string; assignee?: string }) =>
-      [key, options?.user, options?.assignee].filter(Boolean).join(':'),
+    t: (
+      key: string,
+      options?: { user?: string; assignee?: string; count?: number }
+    ) =>
+      [key, options?.user, options?.assignee, options?.count]
+        .filter(Boolean)
+        .join(':'),
   }),
 }));
 
@@ -108,6 +113,21 @@ describe('TaskActivityTimeline', () => {
       screen.getByText('message.task-event-created:Olivia Rhye')
     ).toBeInTheDocument();
     expect(screen.getByTestId('task-comment-card')).toHaveTextContent('hi');
+  });
+
+  it('counts the other holders when there are several', () => {
+    renderTimeline({
+      ...task,
+      assignees: [
+        { id: 'a1', name: 'assignee.one', displayName: 'Assignee One' },
+        { id: 'a2', name: 'assignee.two' },
+        { id: 'a3', name: 'assignee.three' },
+      ],
+    } as Task);
+
+    expect(
+      screen.getByText('message.task-event-assigned-others:Assignee One:2')
+    ).toBeInTheDocument();
   });
 
   // The task records who holds it but never when they were given it: the event

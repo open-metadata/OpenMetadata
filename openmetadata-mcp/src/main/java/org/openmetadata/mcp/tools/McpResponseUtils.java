@@ -6,12 +6,30 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
+import java.util.function.Consumer;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.entity.automations.Workflow;
+import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.DestinationSecrets;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
+import org.openmetadata.service.jdbi3.ServiceEntityRepository;
+import org.openmetadata.service.secrets.masker.EntityMasker;
+import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.secrets.masker.WorkflowDefinitionMasker;
 
 public final class McpResponseUtils {
@@ -32,21 +50,78 @@ public final class McpResponseUtils {
   private static final String UPDATED = "updated";
   private static final String OPERATION_KEY = "_operation";
   private static final String DELETED_KEY = "deleted";
+  private static final String PENDING_APPROVAL = "pendingApproval";
+  private static final String CHANGE_REQUEST_ID_KEY = "changeRequestId";
 
   private McpResponseUtils() {}
 
   /**
    * Returns {@code entity} with the secrets the REST resource masks replaced by the mask, so an MCP
-   * response or change event never carries a credential the REST API would hide. Workflow
-   * definitions hold sink credentials in a free-form {@code sinkConfig} that the generic entity read
-   * returns in clear; every other entity type is returned as is.
+   * response or change event does not carry them: a workflow definition's sink credentials, a
+   * service's connection config, an ingestion pipeline's source config, an automations workflow's
+   * request, an alert's webhook credentials, and a user's authentication mechanism. That last one
+   * is dropped rather than masked: the masker does not type every authentication mechanism, and no
+   * agent task needs any user's credentials. A metric group's member list is dropped too, as REST
+   * drops it: members are listed only through {@code /v1/metricGroups/{id}/metrics}, which leaves
+   * out the metrics the caller cannot view. Every other entity type is returned as is.
+   *
+   * <p>The mask applies to every caller, bots included: REST hands a bot the decrypted value, and no
+   * agent task needs it. REST decrypts before masking; masking the stored value gives the same
+   * result, since encryption and the masker walk the same {@code @PasswordField} getters. Each mask
+   * runs on a copy, so the entity the repository returned keeps its values.
+   * ADR:2026-10-20-mcp-responses-mask-stored-credentials
    */
   public static EntityInterface<?> maskSecrets(EntityInterface<?> entity) {
     // MCP tools read and write entities by a runtime entityType string, so the concrete type is
     // only known from the instance.
-    return entity instanceof WorkflowDefinition definition
-        ? WorkflowDefinitionMasker.mask(definition)
-        : entity;
+    EntityMasker masker = EntityMaskerFactory.getEntityMasker();
+    return switch (entity) {
+      case McpServer server -> maskedCopy(server, McpServerMasker::mask);
+      case WorkflowDefinition definition -> WorkflowDefinitionMasker.mask(definition);
+      case IngestionPipeline pipeline -> maskedCopy(pipeline, masker::maskIngestionPipeline);
+      case User user -> maskedCopy(
+          user, copy -> ProfileWebhookSecrets.mask(copy.withAuthenticationMechanism(null)));
+      case Team team -> maskedCopy(team, ProfileWebhookSecrets::mask);
+      case MetricGroup group -> maskedCopy(group, copy -> copy.setMetrics(null));
+      case Workflow workflow -> masker.maskWorkflow(JsonUtils.deepCopy(workflow, Workflow.class));
+      case EventSubscription subscription -> maskWebhookSecrets(subscription);
+      case ServiceEntityInterface service -> maskConnection(service, masker);
+      default -> entity;
+    };
+  }
+
+  private static EntityInterface<?> maskConnection(
+      ServiceEntityInterface service, EntityMasker masker) {
+    EntityInterface<?> masked = service;
+    // TestSuite implements ServiceEntityInterface with a placeholder connection and has no service
+    // repository; it holds nothing to mask.
+    if (service.getConnection() != null
+        && Entity.getEntityRepository(Entity.getEntityTypeFromObject(service))
+            instanceof ServiceEntityRepository<?, ?> repository) {
+      ServiceType serviceType = repository.getServiceType();
+      masked =
+          maskedCopy(
+              service,
+              copy ->
+                  copy.getConnection()
+                      .setConfig(
+                          masker.maskServiceConnectionConfig(
+                              copy.getConnection().getConfig(),
+                              copy.getServiceType().value(),
+                              serviceType)));
+    }
+    return masked;
+  }
+
+  private static EventSubscription maskWebhookSecrets(EventSubscription subscription) {
+    return DestinationSecrets.mask(subscription);
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T extends EntityInterface<?>> T maskedCopy(T entity, Consumer<T> mask) {
+    T copy = (T) JsonUtils.deepCopy(entity, entity.getClass());
+    mask.accept(copy);
+    return copy;
   }
 
   public static Map<String, Object> compact(EntityInterface<?> entity, EventType changeType) {
@@ -74,6 +149,21 @@ public final class McpResponseUtils {
     List<String> changed = changedFields(entity.getChangeDescription());
     if (!changed.isEmpty()) {
       doc.put(CHANGED_KEY, changed);
+    }
+    return doc;
+  }
+
+  /**
+   * Relabels {@code doc} when an approval workflow held the write as {@code changeRequestId}, the
+   * id REST sends in {@code X-OpenMetadata-Pending-Change}. The entity in it is the published one,
+   * so "updated" and its last change's field list would report a write that has not happened.
+   * ADR:2026-11-13-an-mcp-write-an-approval-workflow-holds-answers-pending-approval
+   */
+  public static Map<String, Object> markHeld(Map<String, Object> doc, UUID changeRequestId) {
+    if (changeRequestId != null) {
+      doc.put(OPERATION_KEY, PENDING_APPROVAL);
+      doc.put(CHANGE_REQUEST_ID_KEY, changeRequestId.toString());
+      doc.remove(CHANGED_KEY);
     }
     return doc;
   }

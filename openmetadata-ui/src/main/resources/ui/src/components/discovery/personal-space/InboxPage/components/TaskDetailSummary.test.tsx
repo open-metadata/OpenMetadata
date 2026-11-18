@@ -21,7 +21,8 @@ jest.mock(
   '../../../../../components/common/ProfilePicture/ProfilePicture',
   () => ({
     __esModule: true,
-    default: () => <span />,
+    default: ({ isAgent }: { isAgent?: boolean }) =>
+      isAgent ? <span data-testid="agent-avatar" /> : <span />,
   })
 );
 
@@ -82,6 +83,24 @@ describe('TaskDetailSummary', () => {
 
     expect(screen.getByText('harsh (label.you)')).toBeInTheDocument();
     expect(screen.queryByTestId('avatar-group')).not.toBeInTheDocument();
+  });
+
+  it('names an AI agent with its avatar, as it does a person', () => {
+    render(
+      <TaskDetailSummary
+        rows={[
+          {
+            key: 'createdBy',
+            icon: 'owner',
+            label: 'Created by',
+            value: { kind: 'agent', name: 'Glossary Agent' },
+          },
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('agent-avatar')).toBeInTheDocument();
+    expect(screen.getByText('Glossary Agent')).toBeInTheDocument();
   });
 
   // Several people stack as owners do; the overflow reads "5 Assignees", not

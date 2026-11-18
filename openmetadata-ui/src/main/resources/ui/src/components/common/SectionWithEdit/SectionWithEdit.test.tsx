@@ -83,6 +83,15 @@ describe('SectionWithEdit', () => {
     expect(screen.queryByTestId('edit-button')).toBeNull();
   });
 
+  it('colours the content with the theme-aware tertiary text token', () => {
+    render(<SectionWithEdit title="Title">Content</SectionWithEdit>);
+
+    const content = screen.getByTestId('section-content');
+
+    expect(content).toHaveClass('tw:text-tertiary');
+    expect(content.className).not.toMatch(/om-legacy-color/);
+  });
+
   it('applies custom class names to wrapper, header and content', () => {
     const { container } = render(
       <SectionWithEdit

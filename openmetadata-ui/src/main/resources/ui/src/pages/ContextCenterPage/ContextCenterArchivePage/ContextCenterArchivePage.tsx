@@ -22,13 +22,13 @@ import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveVi
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
-import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { Include } from '../../../generated/type/include';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
 import {
   deleteDriveFile,
@@ -52,10 +52,11 @@ type FilterKey = 'all' | 'mine' | 'article' | 'document';
 
 const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
-  const { paging, pageSize, handlePagingChange } = usePaging(ARCHIVE_PAGE_SIZE);
+  const { paging, pageSize, handlePagingChange } = usePaging();
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -251,7 +252,9 @@ const ContextCenterArchivePage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-archive-page">
       <DocumentTitle title={t('label.archive')} />
       <PageLayout

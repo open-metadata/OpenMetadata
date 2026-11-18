@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown } from '@openmetadata/ui-core-components';
+import { ButtonUtility, Dropdown } from '@openmetadata/ui-core-components';
 import {
   AreaChart,
   type ChartTooltipRenderProps,
@@ -39,7 +39,8 @@ import {
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
 import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { ProfileExecutionSource } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
 import { useTableProfiler } from '../TableProfilerProvider';
@@ -60,22 +61,34 @@ const Y_AXIS: ChartYAxisProps = {
   formatter: (value) => String(axisTickFormatter(Number(value))),
 };
 
-const TOOLTIP: ChartTooltipRenderProps<MetricRow> = {
-  render: (items, row) => (
-    <DQTooltipContent
-      header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
-      rows={chartTooltipRows(items)}
-      valueFormatter={(value) => tooltipFormatter(value)}
-    />
-  ),
-};
-
 const CustomMetricGraphs = ({
   customMetricsGraphData,
   isLoading,
   customMetrics,
+  profiles,
+  isSharded,
 }: CustomMetricGraphsProps) => {
   const { t } = useTranslation();
+  const tooltip = useMemo<ChartTooltipRenderProps<MetricRow>>(
+    () => ({
+      render: (items, row) => (
+        <DQTooltipContent
+          footer={
+            <ProfileExecutionSource
+              isSharded={isSharded}
+              profiles={profiles}
+              timestamp={Number(row?.timestamp)}
+            />
+          }
+          header={formatDateTimeLong(Number(row?.timestamp ?? 0))}
+          rows={chartTooltipRows(items)}
+          valueFormatter={(value) => tooltipFormatter(value)}
+        />
+      ),
+    }),
+    [profiles, isSharded]
+  );
+
   const {
     permissions,
     customMetric: tableDetails,
@@ -198,11 +211,11 @@ const CustomMetricGraphs = ({
                       onOpenChange={(isOpen) =>
                         setOpenMenuKey(isOpen ? key : null)
                       }>
-                      <Button
-                        color="secondary"
+                      <ButtonUtility
                         data-testid={`${key}-custom-metrics-menu`}
-                        iconLeading={DotsVertical}
-                        size="sm"
+                        icon={DotsVertical}
+                        size="lg"
+                        tooltip={t('label.more-action')}
                       />
                       <Dropdown.Popover className="tw:w-max">
                         <Dropdown.Menu items={items}>
@@ -223,7 +236,9 @@ const CustomMetricGraphs = ({
               <div>
                 {isEmpty(metric) ? (
                   <div className="tw:flex tw:h-full tw:w-full tw:items-center tw:justify-center">
-                    <ErrorPlaceHolder className="mt-0-important" />
+                    <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                      <NoDataPlaceholder data-testid="no-data-placeholder" />
+                    </div>
                   </div>
                 ) : (
                   <div className="tw:w-full" id={`${key}-graph`}>
@@ -232,7 +247,7 @@ const CustomMetricGraphs = ({
                       data={metric}
                       height={CHART_HEIGHT}
                       series={seriesByMetric[key]}
-                      tooltip={TOOLTIP}
+                      tooltip={tooltip}
                       xKey="formattedTimestamp"
                       yAxis={Y_AXIS}
                     />

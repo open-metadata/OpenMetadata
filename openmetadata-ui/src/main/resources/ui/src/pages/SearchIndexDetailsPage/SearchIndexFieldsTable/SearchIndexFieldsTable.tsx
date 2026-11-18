@@ -30,9 +30,9 @@ import {
 } from '../../../components/common/Table/Table.interface';
 
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../../components/common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../../components/common/CopyButton/CopyButton';
+import NoSearchResultsPlaceholder from '../../../components/common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { EntityAttachmentProvider } from '../../../components/common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import FilterTablePlaceHolder from '../../../components/common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import Table from '../../../components/common/Table/TableV2';
 import ToggleExpandButton from '../../../components/common/ToggleExpandButton/ToggleExpandButton';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
@@ -68,6 +68,7 @@ import {
 } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -318,9 +319,15 @@ const SearchIndexFieldsTable = ({
                 highlightSearchText(getEntityName(record), searchText)
               )}
             </span>
-            <CopyLinkButton
-              entityType={EntityType.SEARCH_INDEX}
-              fieldFqn={record.fullyQualifiedName || ''}
+            <CopyButton
+              className="hover-cell-icon"
+              isDisabled={!record.fullyQualifiedName}
+              size="xs"
+              testId="copy-field-link-button"
+              value={getEntityDetailsUrl(
+                EntityType.SEARCH_INDEX,
+                record.fullyQualifiedName ?? ''
+              )}
             />
           </div>
         ),
@@ -465,7 +472,11 @@ const SearchIndexFieldsTable = ({
           />
         }
         locale={{
-          emptyText: <FilterTablePlaceHolder />,
+          emptyText: (
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoSearchResultsPlaceholder data-testid="search-error-placeholder" />
+            </div>
+          ),
         }}
         pagination={false}
         rowClassName={getRowClassName}

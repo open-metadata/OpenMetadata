@@ -39,6 +39,7 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../../utils/RouterUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import {
   pruneEmptyChildren,
@@ -51,9 +52,9 @@ import {
   prepareConstraintIcon,
 } from '../../../../utils/TableUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../../common/CopyButton/CopyButton';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ColumnsType } from '../../../common/Table/Table.interface';
 import Table from '../../../common/Table/TableV2';
 import { useGenericContext } from '../../../Customization/GenericProvider/GenericContext';
@@ -198,9 +199,15 @@ function WorksheetColumnsTable() {
                   {name}
                 </Typography>
                 {record.fullyQualifiedName && (
-                  <CopyLinkButton
-                    entityType={EntityType.WORKSHEET}
-                    fieldFqn={record.fullyQualifiedName}
+                  <CopyButton
+                    className="hover-cell-icon"
+                    isDisabled={!record.fullyQualifiedName}
+                    size="xs"
+                    testId="copy-field-link-button"
+                    value={getEntityDetailsUrl(
+                      EntityType.WORKSHEET,
+                      record.fullyQualifiedName ?? ''
+                    )}
                   />
                 )}
               </div>
@@ -319,7 +326,11 @@ function WorksheetColumnsTable() {
   );
 
   if (isEmpty(schema)) {
-    return <ErrorPlaceHolder className="border-default border-radius-sm" />;
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" />
+      </div>
+    );
   }
 
   return (

@@ -2,6 +2,7 @@ package org.openmetadata.service.security.auth.validator;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mockStatic;
@@ -213,6 +214,75 @@ public class Auth0ValidatorTest {
       assertTrue(
           result.getError().contains("Access denied"),
           "Error message should indicate access denied");
+    }
+  }
+
+  @Test
+  void validateClientCredentials_noManagementApiGrant_acceptsTheCredentials() {
+    // Auth0 answers this only after authenticating the client, so the secret is right; a sign-in
+    // app needs no Management API grant.
+    FieldError result =
+        validateConfidentialClientAgainstTokenResponse(
+            403,
+            "{\"error\": \"access_denied\", \"error_description\": \"Client \\\"test-client-id\\\""
+                + " is not authorized to access resource server"
+                + " \\\"https://dev-example.auth0.com/api/v2/\\\". You need to create a client-grant"
+                + " associated to this API.\"}");
+
+    assertNull(result, "A correct confidential client must pass without a Management API grant");
+  }
+
+  @Test
+  void validateClientCredentials_otherAccessDenied_stillFails() {
+    // Only the missing-grant reply proves the credentials; any other access_denied keeps failing.
+    FieldError result =
+        validateConfidentialClientAgainstTokenResponse(
+            401, "{\"error\": \"access_denied\", \"error_description\": \"Unauthorized\"}");
+
+    assertNotNull(result);
+    assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI, result.getField());
+  }
+
+  @Test
+  void validateClientCredentials_invalidClient_failsOnTheSecret() {
+    FieldError result =
+        validateConfidentialClientAgainstTokenResponse(
+            401,
+            "{\"error\": \"invalid_client\", \"error_description\": \"Invalid client secret\"}");
+
+    assertNotNull(result);
+    assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_CLIENT_SECRET, result.getField());
+  }
+
+  private FieldError validateConfidentialClientAgainstTokenResponse(int status, String body) {
+    String auth0Domain = "https://dev-example.auth0.com";
+    String discovery =
+        "{"
+            + "\"issuer\": \"https://dev-example.auth0.com/\","
+            + "\"authorization_endpoint\": \"https://dev-example.auth0.com/authorize\","
+            + "\"token_endpoint\": \"https://dev-example.auth0.com/oauth/token\","
+            + "\"userinfo_endpoint\": \"https://dev-example.auth0.com/userinfo\","
+            + "\"jwks_uri\": \"https://dev-example.auth0.com/.well-known/jwks.json\","
+            + "\"scopes_supported\": [\"openid\", \"email\", \"profile\"],"
+            + "\"response_types_supported\": [\"code\"],"
+            + "\"token_endpoint_auth_methods_supported\": [\"client_secret_basic\"],"
+            + "\"id_token_signing_alg_values_supported\": [\"RS256\"]"
+            + "}";
+    authConfig.setClientType(ClientType.CONFIDENTIAL);
+    oidcConfig.setDiscoveryUri(auth0Domain + "/.well-known/openid-configuration");
+    oidcConfig.setId("test-client-id");
+    oidcConfig.setSecret("test-client-secret");
+    oidcConfig.setCallbackUrl("http://localhost:8585/callback");
+    oidcConfig.setScope("openid email profile");
+
+    try (MockedStatic<ValidationHttpUtil> mockedHttp = mockStatic(ValidationHttpUtil.class)) {
+      mockedHttp
+          .when(() -> ValidationHttpUtil.safeGet(anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, discovery));
+      mockedHttp
+          .when(() -> ValidationHttpUtil.postForm(anyString(), anyString()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(status, body));
+      return validator.validateAuth0Configuration(authConfig, oidcConfig);
     }
   }
 }

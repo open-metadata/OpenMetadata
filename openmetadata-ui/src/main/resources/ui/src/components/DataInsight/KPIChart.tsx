@@ -12,7 +12,6 @@
  */
 
 import {
-  Box,
   Button,
   Card,
   Grid,
@@ -35,7 +34,6 @@ import {
   DI_STRUCTURE,
   GRAPH_HEIGHT,
 } from '../../constants/DataInsight.constants';
-import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../enums/common.enum';
 import {
   Kpi,
   KpiResult,
@@ -52,7 +50,8 @@ import { getDataInsightTooltip } from '../../utils/DataInsightChartUtils';
 import { formatDate } from '../../utils/date-time/DateTimeUtils';
 import { buildKpiChartRows, KpiChartRow } from '../../utils/KPI/KPIUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
-import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../common/EmptyPlaceholder/PermissionPlaceholder';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
@@ -285,51 +284,37 @@ const KPIChart: FC<Props> = ({
                     {viewKPIPermission ? (
                       <EmptyGraphPlaceholder />
                     ) : (
-                      <ErrorPlaceHolder
-                        className="border-none"
-                        permissionValue={t('label.view-entity', {
-                          entity: t('label.kpi-uppercase'),
-                        })}
-                        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-                      />
+                      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+                        <PermissionPlaceholder
+                          data-testid="permission-error-placeholder"
+                          permissionValue={t('label.view-entity', {
+                            entity: t('label.kpi-uppercase'),
+                          })}
+                        />
+                      </div>
                     )}
                   </Grid.Item>
                 )}
               </Grid>
             ) : (
-              <Box
-                inline
-                align="center"
-                className="layout-space w-full justify-center"
-                direction="col"
-                gap={2}
-                itemClassName="layout-space-item">
-                <ErrorPlaceHolder
-                  button={
-                    <Button
-                      color="secondary-brand"
-                      iconLeading={Plus}
-                      onClick={handleAddKpi}>
-                      {t('label.add-entity', {
-                        entity: t('label.kpi-uppercase'),
-                      })}
-                    </Button>
-                  }
-                  className="m-0 border-none"
-                  permission={createKPIPermission}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.kpi-uppercase'),
+              <div className="tw:relative tw:h-full tw:w-full tw:min-h-60">
+                <NoDataPlaceholder
+                  data-testid="no-data-placeholder"
+                  {...(createKPIPermission && {
+                    description: t('message.no-kpi-available-add-new-one'),
+                    footer: (
+                      <Button
+                        color="primary"
+                        iconLeading={Plus}
+                        onClick={handleAddKpi}>
+                        {t('label.add-entity', {
+                          entity: t('label.kpi-uppercase'),
+                        })}
+                      </Button>
+                    ),
                   })}
-                  size={SIZE.MEDIUM}
-                  type={
-                    createKPIPermission
-                      ? ERROR_PLACEHOLDER_TYPE.ASSIGN
-                      : ERROR_PLACEHOLDER_TYPE.NO_DATA
-                  }>
-                  {createKPIPermission &&
-                    t('message.no-kpi-available-add-new-one')}
-                </ErrorPlaceHolder>
-              </Box>
+                />
+              </div>
             )}
           </>
         )}

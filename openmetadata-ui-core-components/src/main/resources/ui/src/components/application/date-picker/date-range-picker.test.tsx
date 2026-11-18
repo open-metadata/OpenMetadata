@@ -41,6 +41,12 @@ describe('DateRangePicker trigger', () => {
     expect(trigger).toHaveClass('tw:w-full', 'tw:justify-start');
     expect(trigger).not.toHaveClass('tw:justify-center');
   });
+
+  it('shows the placeholder while no range is set', () => {
+    render(<DateRangePicker placeholder="Last Run: All time" />);
+
+    expect(screen.getByRole('button')).toHaveTextContent('Last Run: All time');
+  });
 });
 
 describe('DateRangePicker apply', () => {
@@ -123,5 +129,12 @@ describe('DateRangePicker dismiss', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Apply' }));
 
     expect(onApply).toHaveBeenCalledWith(undefined);
+  });
+
+  it('draws the dialog with a shadow only, no outline', () => {
+    render(<DateRangePicker />);
+    fireEvent.click(screen.getByRole('button'));
+
+    expect(screen.getByRole('dialog').className).not.toMatch(/outline/);
   });
 });

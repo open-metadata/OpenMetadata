@@ -12,6 +12,7 @@
  */
 
 import { useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   GraphData,
   KnowledgeGraphFilters,
@@ -26,14 +27,14 @@ import {
   resolveFocusNodeId,
   transformToG6Format,
 } from '../../../utils/discovery/knowledge-graph/knowledge-graph.utils';
+import { conceptEntityType } from '../../../utils/discovery/knowledge-graph/knowledgeGraphOntology.utils';
 import {
   annotateGraphCoverage,
   buildGraphPresentation,
   getGraphDistances,
   getMappingCoverage,
-  relabelGraphNodes,
+  localizeGraphLabels,
   restrictToEntityLevel,
-  sentenceCaseGraphLabels,
 } from '../../../utils/discovery/knowledge-graph/knowledgeGraphPresentation.utils';
 import { useKnowledgeGraphColumns } from './useKnowledgeGraphColumns';
 import { useKnowledgeGraphData } from './useKnowledgeGraphData';
@@ -50,6 +51,11 @@ interface ExplorerOptions {
   focusedNodeId?: string;
 }
 
+// One shared instance: a fresh `{ nodes: [], edges: [] }` per render changes
+// every downstream memo's input, and the canvas state updates that follow
+// re-render forever (the "Extended connections" page freeze).
+const EMPTY_ONTOLOGY_GRAPH: GraphData = { nodes: [], edges: [] };
+
 const getExplorerResult = (
   assets: ReturnType<typeof useKnowledgeGraphData>,
   ontology: ReturnType<typeof useKnowledgeGraphOntology>,
@@ -59,7 +65,7 @@ const getExplorerResult = (
     return assets;
   }
   const empty: GraphData | null =
-    !assets.loading && !ontology.concept ? { nodes: [], edges: [] } : null;
+    !assets.loading && !ontology.concept ? EMPTY_ONTOLOGY_GRAPH : null;
 
   return {
     ...ontology,
@@ -81,6 +87,7 @@ export const useKnowledgeGraphExplorer = ({
   expanded,
   focusedNodeId,
 }: ExplorerOptions) => {
+  const { t } = useTranslation();
   const query = useMemo(
     () => ({
       entityId: entityId,
@@ -102,19 +109,20 @@ export const useKnowledgeGraphExplorer = ({
   const result = getExplorerResult(assetResult, ontology, mode);
   const rootEntityId =
     mode === 'ontology' ? ontology.concept?.id ?? '' : entityId;
-  const rootEntityType = mode === 'ontology' ? 'glossaryTerm' : entityType;
+  const rootEntityType =
+    mode === 'ontology' ? conceptEntityType(ontology.concept) : entityType;
   const rootId = resolveFocusNodeId(
     result.unfiltered?.nodes ?? [],
     rootEntityId
   );
   const entityLevel = selectedLevel === 1;
   const labelledUnfiltered = useMemo(
-    () => sentenceCaseGraphLabels(result.unfiltered),
-    [result.unfiltered]
+    () => localizeGraphLabels(result.unfiltered, t),
+    [result.unfiltered, t]
   );
   const labelledData = useMemo(
-    () => sentenceCaseGraphLabels(result.data),
-    [result.data]
+    () => localizeGraphLabels(result.data, t),
+    [result.data, t]
   );
   const rawData = useMemo(
     () =>
@@ -149,16 +157,12 @@ export const useKnowledgeGraphExplorer = ({
 
     return getMappingCoverage(rawData, inspectedIds);
   }, [rawData, rootId, result.appliedQuery?.depth]);
-  const displayData = useMemo(
-    () => relabelGraphNodes(scopedData),
-    [scopedData]
-  );
   const presented = useMemo(() => {
-    if (!displayData || !rawData) {
+    if (!scopedData || !rawData) {
       return null;
     }
     const graph = buildGraphPresentation(
-      displayData,
+      scopedData,
       rawData,
       rootId,
       presentation,
@@ -171,7 +175,7 @@ export const useKnowledgeGraphExplorer = ({
       unfiltered: annotateGraphCoverage(graph.unfiltered, coverage, rootId),
     };
   }, [
-    displayData,
+    scopedData,
     rawData,
     rootId,
     presentation,
@@ -180,12 +184,12 @@ export const useKnowledgeGraphExplorer = ({
     coverage,
   ]);
   const scene = useMemo(() => {
-    const original = transformToG6Format(displayData);
+    const original = transformToG6Format(scopedData);
     const grouped = transformToG6Format(presented?.data ?? null);
 
     return {
       nodes: [
-        ...(displayData?.nodes ?? []),
+        ...(scopedData?.nodes ?? []),
         ...(presented?.data.nodes.filter(
           (node) => node.presentation?.members
         ) ?? []),
@@ -196,30 +200,30 @@ export const useKnowledgeGraphExplorer = ({
         ).values(),
       ],
     };
-  }, [displayData, presented?.data]);
+  }, [scopedData, presented?.data]);
   const counts = useMemo(
-    () => countRelationCategories(displayData),
-    [displayData]
+    () => countRelationCategories(scopedData),
+    [scopedData]
   );
   const detailCounts = useMemo(
     () => ({
       columns:
         mode === 'ontology'
-          ? displayData?.nodes.filter((node) => node.type === 'property')
+          ? scopedData?.nodes.filter((node) => node.type === 'property')
               .length ?? 0
           : columns.total,
-      relationships: displayData?.edges.length ?? 0,
+      relationships: scopedData?.edges.length ?? 0,
       coverage: [...coverage.values()].filter((value) => value === 'unmapped')
         .length,
     }),
-    [mode, columns.total, displayData, coverage]
+    [mode, columns.total, scopedData, coverage]
   );
 
   return {
     result,
     rootEntityId,
     rootEntityType,
-    displayData,
+    displayData: scopedData,
     allData: rawData,
     presented: presented ?? { data: null, unfiltered: null },
     columns,

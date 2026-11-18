@@ -23,8 +23,10 @@ import { useNavigate } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import FilterSelectDropdown from '../../../components/common/FilterSelectDropdown/FilterSelectDropdown';
+import { useDataInsightProvider } from '../../../components/DataInsight/DataInsightProvider/DataInsightProvider';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
+import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { ROUTES } from '../../../constants/constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
@@ -37,7 +39,6 @@ import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import dataInsightClassBase from '../DataInsightClassBase';
-import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
 const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   const {
@@ -52,6 +53,7 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
+  const { showModal } = useEntityExportModalProvider();
 
   const { showDataInsightSummary, showKpiChart } =
     getOptionalDataInsightTabFlag(tab);
@@ -67,8 +69,8 @@ const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   );
 
   const extraDropdownContent = useMemo(
-    () => dataInsightClassBase.getManageExtraOptions(),
-    []
+    () => dataInsightClassBase.getManageExtraOptions(showModal),
+    [showModal]
   );
 
   const handleAddKPI = () => {

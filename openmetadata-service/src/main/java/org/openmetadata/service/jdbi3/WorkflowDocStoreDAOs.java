@@ -16,12 +16,19 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
+import org.jdbi.v3.sqlobject.customizer.BindMethods;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
@@ -735,6 +742,32 @@ public interface WorkflowDocStoreDAOs {
       return "workflow_instance_time_series";
     }
 
+    /** The change request each of these runs reviews, for the runs that record one. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, JSON_UNQUOTE(JSON_EXTRACT(json, CONCAT('$.variables.', :variable))) AS "
+                + "changeRequestId FROM workflow_instance_time_series WHERE id IN (<ids>) "
+                + "AND JSON_EXTRACT(json, CONCAT('$.variables.', :variable)) IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, json -> 'variables' ->> :variable AS changeRequestId "
+                + "FROM workflow_instance_time_series WHERE id IN (<ids>) "
+                + "AND json -> 'variables' ->> :variable IS NOT NULL",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(RunRequestMapper.class)
+    List<RunRequest> listRunRequests(
+        @BindList("ids") List<String> ids, @Bind("variable") String variable);
+
+    record RunRequest(String runId, String changeRequestId) {}
+
+    class RunRequestMapper implements RowMapper<RunRequest> {
+      @Override
+      public RunRequest map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new RunRequest(rs.getString("id"), rs.getString("changeRequestId"));
+      }
+    }
+
     /**
      * Repoint the workflow-instance {@code relatedEntity} (the {@code entityLink} the history card
      * filters by) for an entire moved subtree in one set-based statement: the moved term itself
@@ -866,6 +899,137 @@ public interface WorkflowDocStoreDAOs {
         @Bind("status") String status,
         @Bind("endedAt") long endedAt,
         @Bind("exception") String exception);
+
+    /**
+     * Records how a run ended from outside it (superseded or cancelled) by setting only {@code
+     * status}, {@code endedAt} and {@code variables.terminationReason}, so an approval step or stop
+     * request written concurrently is kept. A missing or non-object {@code variables} becomes an
+     * object first.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.status', :status, '$.endedAt', :endedAt, "
+                + "'$.variables', JSON_SET("
+                + "IF(JSON_TYPE(JSON_EXTRACT(json, '$.variables')) = 'OBJECT', "
+                + "JSON_EXTRACT(json, '$.variables'), JSON_OBJECT()), "
+                + "'$.terminationReason', :reason)) "
+                + "WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json || jsonb_build_object('status', CAST(:status AS text), "
+                + "'endedAt', CAST(:endedAt AS bigint)), '{variables}', "
+                + "(CASE WHEN jsonb_typeof(json -> 'variables') = 'object' "
+                + "THEN json -> 'variables' ELSE CAST('{}' AS jsonb) END) "
+                + "|| jsonb_build_object('terminationReason', CAST(:reason AS text))) "
+                + "WHERE id = :id",
+        connectionType = POSTGRES)
+    int recordEndFromOutside(
+        @Bind("id") String id,
+        @Bind("status") String status,
+        @Bind("endedAt") long endedAt,
+        @Bind("reason") String reason);
+
+    /**
+     * Appends one decided approval step to the instance's {@code variables.approvals}, leaving the
+     * rest of the document as it is in the database, so a concurrent status or stop-request write
+     * is never overwritten. A missing or non-object {@code variables}, or a missing or non-array
+     * {@code approvals}, is created first. Kept under {@code variables}, which every server version
+     * reads as a free-form map, so a run stays readable by the previous version during a rolling
+     * upgrade.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = JSON_SET(json, '$.variables', JSON_SET("
+                + "IF(JSON_TYPE(JSON_EXTRACT(json, '$.variables')) = 'OBJECT', "
+                + "JSON_EXTRACT(json, '$.variables'), JSON_OBJECT()), "
+                + "'$.approvals', JSON_ARRAY_APPEND("
+                + "IF(JSON_TYPE(JSON_EXTRACT(json, '$.variables.approvals')) = 'ARRAY', "
+                + "JSON_EXTRACT(json, '$.variables.approvals'), JSON_ARRAY()), "
+                + "'$', CAST(:approval AS JSON)))) "
+                + "WHERE id = :id",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE workflow_instance_time_series "
+                + "SET json = jsonb_set(json, '{variables}', "
+                + "(CASE WHEN jsonb_typeof(json -> 'variables') = 'object' "
+                + "THEN json -> 'variables' ELSE CAST('{}' AS jsonb) END) "
+                + "|| jsonb_build_object('approvals', "
+                + "(CASE WHEN jsonb_typeof(json #> '{variables,approvals}') = 'array' "
+                + "THEN json #> '{variables,approvals}' ELSE CAST('[]' AS jsonb) END) "
+                + "|| jsonb_build_array(CAST(:approval AS jsonb)))) "
+                + "WHERE id = :id",
+        connectionType = POSTGRES)
+    int appendApproval(@Bind("id") String id, @BindJson("approval") String approval);
+
+    record ExpiredRun(String id, long timestamp) {}
+
+    /** A keyset cursor over expired runs: the page after {@code (afterTs, afterId)}. */
+    record ExpiredRunPage(long cutoffTs, long afterTs, String afterId, int limit) {
+      public static ExpiredRunPage first(long cutoffTs, int limit) {
+        return new ExpiredRunPage(cutoffTs, 0, "", limit);
+      }
+
+      public ExpiredRunPage after(ExpiredRun run) {
+        return new ExpiredRunPage(cutoffTs, run.timestamp(), run.id(), limit);
+      }
+    }
+
+    class ExpiredRunMapper implements RowMapper<ExpiredRun> {
+      @Override
+      public ExpiredRun map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new ExpiredRun(rs.getString("id"), rs.getLong("timestamp"));
+      }
+    }
+
+    /**
+     * One keyset page, oldest first, of the runs Data Retention may delete: started before {@code
+     * cutoffTs}, past the {@code (afterTs, afterId)} cursor, ended, with no live Flowable process,
+     * and followed by a newer run of the same workflow for the same entity, so every entity keeps
+     * its latest run of each workflow. The status alone does not prove a run has stopped: a
+     * superseded or cancelled run is marked before its process is deleted, and that delete may
+     * fail, while an EXCEPTION run may still be retried. Flowable keys every process a run starts
+     * by the run id, so no ACT_RU_EXECUTION row with that business key (ACT_IDX_EXEC_BUSKEY) means
+     * nothing can still write to the run. The newer-run probe matches the key of
+     * idx_wf_instance_entity_link (2.0.7 migration), so it is an index lookup rather than a scan. {@code timestamp >= :afterTs} repeats the cursor as a
+     * plain range: PostgreSQL cannot start an index scan from the OR alone, and without it every
+     * page would walk the timestamp index from the oldest run, past everything already deleted.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT i.id, i.timestamp FROM workflow_instance_time_series i "
+                + "WHERE i.timestamp < :cutoffTs AND i.timestamp >= :afterTs "
+                + "AND (i.timestamp > :afterTs OR (i.timestamp = :afterTs AND i.id > :afterId)) "
+                + "AND i.status IN (<endedStatuses>) "
+                + "AND NOT EXISTS (SELECT 1 FROM ACT_RU_EXECUTION e WHERE e.BUSINESS_KEY_ = i.id) "
+                + "AND EXISTS (SELECT 1 FROM workflow_instance_time_series n "
+                + "WHERE n.workflowDefinitionId = i.workflowDefinitionId "
+                + "AND n.entityLinkHash = i.entityLinkHash AND n.timestamp > i.timestamp) "
+                + "ORDER BY i.timestamp, i.id LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT i.id, i.timestamp FROM workflow_instance_time_series i "
+                + "WHERE i.timestamp < :cutoffTs AND i.timestamp >= :afterTs "
+                + "AND (i.timestamp > :afterTs OR (i.timestamp = :afterTs AND i.id > :afterId)) "
+                + "AND i.status IN (<endedStatuses>) "
+                + "AND NOT EXISTS (SELECT 1 FROM ACT_RU_EXECUTION e WHERE e.BUSINESS_KEY_ = i.id) "
+                + "AND EXISTS (SELECT 1 FROM workflow_instance_time_series n "
+                + "WHERE n.workflowDefinitionId = i.workflowDefinitionId "
+                + "AND md5(COALESCE(n.entityLink, '')) = md5(COALESCE(i.entityLink, '')) "
+                + "AND n.timestamp > i.timestamp) "
+                + "ORDER BY i.timestamp, i.id LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExpiredRunMapper.class)
+    List<ExpiredRun> listExpiredRuns(
+        @BindMethods ExpiredRunPage page, @BindList("endedStatuses") List<String> endedStatuses);
+
+    @SqlUpdate("DELETE FROM workflow_instance_time_series WHERE id IN (<ids>)")
+    int deleteByIds(@BindList("ids") List<String> ids);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -894,6 +1058,10 @@ public interface WorkflowDocStoreDAOs {
                 + "ORDER BY timestamp ASC LIMIT 1")
     String findWorkflowInstanceIdByExecutionId(
         @Bind("workflowInstanceExecutionId") String workflowInstanceExecutionId);
+
+    @SqlUpdate(
+        "DELETE FROM workflow_instance_state_time_series WHERE workflowInstanceId IN (<ids>)")
+    int deleteByWorkflowInstanceIds(@BindList("ids") List<String> ids);
   }
 
   interface RecognizerFeedbackDAO {

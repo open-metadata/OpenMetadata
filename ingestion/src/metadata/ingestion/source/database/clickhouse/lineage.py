@@ -14,6 +14,7 @@ Clickhouse lineage module
 
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
     get_mv_target_lineage,
+    get_view_lineage_parser,
 )
 from metadata.ingestion.source.database.clickhouse.queries import (
     CLICKHOUSE_SQL_STATEMENT,
@@ -22,7 +23,7 @@ from metadata.ingestion.source.database.clickhouse.query_parser import (
     ClickhouseQueryParserSource,
 )
 from metadata.ingestion.source.database.lineage_source import LineageSource
-from metadata.utils.db_utils import ViewLineageExtension
+from metadata.utils.db_utils import ViewLineageExtension, ViewLineageParserFactory
 
 
 class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
@@ -49,3 +50,7 @@ class ClickhouseLineageSource(ClickhouseQueryParserSource, LineageSource):
         Materialized views created with a `TO` clause write into their target table
         """
         return get_mv_target_lineage
+
+    def get_view_lineage_parser_factory(self) -> ViewLineageParserFactory | None:
+        """Keep explicit materialized-view outputs outside the input lineage graph."""
+        return get_view_lineage_parser

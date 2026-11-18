@@ -17,7 +17,6 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   Grid,
   Skeleton,
   Tooltip,
@@ -47,6 +46,7 @@ import { getMarketPlaceApplicationByFqn } from '../../../../../../rest/applicati
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import type { ApplicationsViewProps } from './Applications.types';
@@ -113,7 +113,7 @@ const MarketplaceAppBody: FC<{
   return (
     <Box className="tw:px-8 tw:pb-8" direction="col" gap={8}>
       {appData.enabled === false && (
-        <Card data-testid="install-blocked-alert" size="sm">
+        <Card data-testid="install-blocked-alert" size="sm" variant="muted">
           <Card.Content>
             <Typography className="tw:text-secondary" size="text-sm">
               {blockedReasonNode}
@@ -128,7 +128,7 @@ const MarketplaceAppBody: FC<{
       )}
 
       <Section testId="app-overview" title={t('label.overview')}>
-        <Card size="md">
+        <Card size="md" variant="muted">
           <Card.Content>
             <RichTextEditorPreviewerV1
               enableSeeMoreVariant={false}
@@ -139,7 +139,7 @@ const MarketplaceAppBody: FC<{
       </Section>
 
       <Section testId="app-details" title={t('label.detail-plural')}>
-        <Card size="md">
+        <Card size="md" variant="muted">
           <DetailRow
             description={t('message.marketplace-verify-msg')}
             label={t('label.publisher')}
@@ -159,7 +159,7 @@ const MarketplaceAppBody: FC<{
 
       {resources.length > 0 && (
         <Section testId="app-resources" title={t('label.resource-plural')}>
-          <Card size="md">
+          <Card size="md" variant="muted">
             <Grid gap="0">
               {resources.map((resource) => (
                 <Grid.Item
@@ -313,7 +313,7 @@ const MarketplaceAppDetail: FC<MarketplaceAppDetailProps> = ({
   if (!appData) {
     return (
       <Box className="tw:relative tw:flex-1 tw:min-h-90 tw:mx-8">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           data-testid="app-not-found"
           description={fqn}
           icon={GridView}

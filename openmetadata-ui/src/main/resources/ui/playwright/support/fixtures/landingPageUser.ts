@@ -21,6 +21,7 @@ import {
   disableEtagConditionalReads,
   getWorkerAdminAPIContext,
 } from '../../utils/common';
+import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { PersonaClass } from '../persona/PersonaClass';
 import { UserClass } from '../user/UserClass';
 import { test as base } from './base';
@@ -149,9 +150,9 @@ export const test = base.extend<
 
         try {
           await account.user.signIn(loginPage);
-          storageState = await loginPage
-            .context()
-            .storageState({ indexedDB: true });
+          storageState = await captureRecoverableStorageState(
+            loginPage.context()
+          );
         } finally {
           await loginPage.close();
         }

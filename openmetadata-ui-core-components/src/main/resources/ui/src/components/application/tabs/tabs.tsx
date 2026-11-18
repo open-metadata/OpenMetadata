@@ -4,7 +4,14 @@ import { Card } from '@/components/base/card/card';
 import { cx } from '@/utils/cx';
 import { borderAfter } from '@/utils/tailwindClasses';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
-import { createContext, useContext, useMemo } from 'react';
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import type {
   TabListProps as AriaTabListProps,
   TabProps as AriaTabProps,
@@ -20,6 +27,56 @@ import {
 } from 'react-aria-components';
 
 type Orientation = 'horizontal' | 'vertical';
+
+/**
+ * Tracks which ends of a horizontally scrolling element hide content. The card
+ * tab list scrolls with its scrollbar hidden, so an edge shadow is the only sign
+ * that more tabs sit past it.
+ */
+const useOverflowEdges = (enabled: boolean) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ start: false, end: false });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!enabled || !el || typeof ResizeObserver === 'undefined') {
+      return;
+    }
+    const update = () => {
+      const start = el.scrollLeft > 1;
+      const end = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setEdges((prev) =>
+        prev.start === start && prev.end === end ? prev : { start, end }
+      );
+    };
+    // Observing the tabs too catches a count badge widening a tab.
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    Array.from(el.children).forEach((child) => observer.observe(child));
+    // Tabs added after mount can overflow the list without resizing it.
+    const childObserver = new MutationObserver((records) => {
+      records.forEach((record) =>
+        record.addedNodes.forEach((node) => {
+          if (node instanceof Element) {
+            observer.observe(node);
+          }
+        })
+      );
+      update();
+    });
+    childObserver.observe(el, { childList: true });
+    el.addEventListener('scroll', update, { passive: true });
+    update();
+
+    return () => {
+      observer.disconnect();
+      childObserver.disconnect();
+      el.removeEventListener('scroll', update);
+    };
+  }, [enabled]);
+
+  return { ref, edges };
+};
 
 /** `card` wraps a horizontal tab list in a Card, with an `actions` slot on the right. */
 type TabListVariant = 'default' | 'card';
@@ -280,6 +337,7 @@ export const TabList = <K extends Orientation>({
   );
 
   const isCard = variant === 'card';
+  const overflow = useOverflowEdges(isCard && orientation === 'horizontal');
 
   const tabList = (
     <AriaTabList
@@ -306,7 +364,8 @@ export const TabList = <K extends Orientation>({
 
           typeof className === 'function' ? className(state) : className
         )
-      }>
+      }
+      ref={overflow.ref}>
       {children ?? ((item) => <Tab {...item}>{item.children}</Tab>)}
     </AriaTabList>
   );
@@ -321,7 +380,31 @@ export const TabList = <K extends Orientation>({
   if (isCard) {
     content = (
       <Card className="tw:flex tw:min-h-12 tw:items-center tw:justify-between tw:gap-4 tw:px-5">
-        {tabList}
+        <div
+          className={cx(
+            'tw:relative tw:flex tw:min-w-0 tw:items-center tw:self-stretch',
+            fullWidth && 'tw:flex-1'
+          )}>
+          {tabList}
+          {/* Shadows reach past the card's px-5 to sit flush with its edge, or end before the actions. */}
+          {overflow.edges.start && (
+            <div
+              aria-hidden="true"
+              className="tw:pointer-events-none tw:absolute tw:inset-y-0 tw:-left-5 tw:w-7 tw:bg-linear-to-r tw:from-black/10 tw:to-transparent tw:dark:from-black/40"
+              data-testid="tab-list-shadow-start"
+            />
+          )}
+          {overflow.edges.end && (
+            <div
+              aria-hidden="true"
+              className={cx(
+                'tw:pointer-events-none tw:absolute tw:inset-y-0 tw:w-7 tw:bg-linear-to-l tw:from-black/10 tw:to-transparent tw:dark:from-black/40',
+                actionsSlot ? 'tw:right-0' : 'tw:-right-5'
+              )}
+              data-testid="tab-list-shadow-end"
+            />
+          )}
+        </div>
         {actionsSlot}
       </Card>
     );

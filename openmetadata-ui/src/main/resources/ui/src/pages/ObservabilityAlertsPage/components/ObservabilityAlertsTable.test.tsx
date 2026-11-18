@@ -11,11 +11,15 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { AxiosError } from 'axios';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
-import { AlertTableColumn } from '../ObservabilityAlertsPage.constants';
+import {
+  AlertTableColumn,
+  ALERT_TABLE_COLUMN_IDS,
+} from '../ObservabilityAlertsPage.constants';
 import { ObservabilityAlertsTableProps } from '../ObservabilityAlertsPage.interface';
 import ObservabilityAlertsTable from './ObservabilityAlertsTable';
 
@@ -40,8 +44,18 @@ jest.mock('@openmetadata/ui-core-components', () => {
     </thead>
   );
 
-  MockTable.Head = ({ label, id }: { label?: string; id?: string }) => (
-    <th id={id}>{label}</th>
+  MockTable.Head = ({
+    label,
+    id,
+    isRowHeader,
+  }: {
+    label?: string;
+    id?: string;
+    isRowHeader?: boolean;
+  }) => (
+    <th data-row-header={isRowHeader ? 'true' : undefined} id={id}>
+      {label}
+    </th>
   );
 
   MockTable.Body = ({
@@ -216,6 +230,15 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.getByTestId('alert-actions')).toBeInTheDocument();
   });
 
+  it('marks only the name column as the row header', () => {
+    const { container } = renderTable();
+
+    const rowHeaders = container.querySelectorAll('th[data-row-header="true"]');
+
+    expect(rowHeaders).toHaveLength(1);
+    expect(rowHeaders[0]).toHaveAttribute('id', ALERT_TABLE_COLUMN_IDS.NAME);
+  });
+
   it('should not render rows while loading', () => {
     renderTable({ loading: true, alerts: [] });
 
@@ -299,9 +322,46 @@ describe('ObservabilityAlertsTable component', () => {
     // The create onboarding is replaced, not shown.
     expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText('label.try-again'));
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
 
     expect(onRetryPermission).toHaveBeenCalledTimes(1);
+  });
+
+  it('should render an error + retry state instead of the onboarding when the alerts list failed to load', () => {
+    const onRetry = jest.fn();
+    renderTable({
+      alerts: [],
+      alertsError: { response: { status: 500 } } as AxiosError,
+      loading: false,
+      loadingCount: 0,
+      onRetry,
+    });
+
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.observability-alert-empty-heading')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  it('should render an access-denied state when the alerts list is forbidden', () => {
+    renderTable({
+      alerts: [],
+      alertsError: { response: { status: 403 } } as AxiosError,
+      loading: false,
+      loadingCount: 0,
+      onRetry: jest.fn(),
+    });
+
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'label.reload' })
+    ).not.toBeInTheDocument();
   });
 
   it('should render pagination when showPagination is true', () => {

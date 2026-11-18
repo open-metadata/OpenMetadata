@@ -65,9 +65,14 @@ const MyDataPage = () => {
           <HomeLandingPage />
         </div>
       </div>
-      <LimitWrapper resource="dataAssets">
-        <br />
-      </LimitWrapper>
+      {/* Mounted only for its data-asset limit fetch (it drives the limit
+        banner). Kept out of layout: any box after the full-height panel pushed
+        the classic shell past the viewport. */}
+      <div className="tw:hidden">
+        <LimitWrapper resource="dataAssets">
+          <span />
+        </LimitWrapper>
+      </div>
     </>
   );
 };

@@ -39,6 +39,8 @@ export interface ModifiedEventSubscription
   notificationTemplate?: string | EventSubscription['notificationTemplate'];
   timeout: number;
   readTimeout: number;
+  /** Its rules were stored without form selections, so the form shows them read-only. */
+  hasRulesWithoutSelections?: boolean;
 }
 
 export interface ModifiedCreateEventSubscription
@@ -57,7 +59,6 @@ export interface ModifiedCreateEventSubscription
 
 export interface AddAlertPageLoadingState {
   alerts: boolean;
-  functions: boolean;
   templates: boolean;
 }
 
@@ -73,3 +74,17 @@ export interface HandleAlertSaveProps {
   fqn?: string;
   currentUser?: User;
 }
+
+export type AlertAiFormValue =
+  | ModifiedCreateEventSubscription
+  | ModifiedEventSubscription;
+
+export type RuleSectionField = 'actions' | 'filters';
+
+export type AlertAiFormChangeHandler = (
+  valueOrUpdater:
+    | ModifiedCreateEventSubscription
+    | ((
+        prev: ModifiedCreateEventSubscription
+      ) => ModifiedCreateEventSubscription)
+) => void;

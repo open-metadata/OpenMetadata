@@ -11,18 +11,23 @@
  *  limitations under the License.
  */
 
-import { Badge, Typography } from '@openmetadata/ui-core-components';
+import {
+  Badge,
+  FeaturedIcon,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
+import { getServiceLogoThemeClass } from '../../../../../utils/ServiceIconUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   getFailingServiceReason,
   getPipelineTypeLabel,
 } from '../../PlatformHealthWidget/PlatformHealthWidget.utils';
 import { FailingService } from '../../PlatformHealthWidget/useIngestionPipelineStats';
-import { TOPIC_ROW_CLASSES } from './topicRowStyles';
+import { TOPIC_ROW_CLASSES, TOPIC_ROW_DIVIDER_CLASSES } from './topicRowStyles';
 
 export interface FailingServiceRowProps {
   service: FailingService;
@@ -37,23 +42,35 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
   const { t } = useTranslation();
 
   return (
-    <li>
+    <li className={classNames(TOPIC_ROW_CLASSES, TOPIC_ROW_DIVIDER_CLASSES)}>
+      {/* The row's bleed and rule sit on the `li` so the hover tint and the
+        divider share one width; the button's `::after` stretches its hit area
+        over the row's padding. */}
       <button
-        className={classNames(
-          'tw:flex tw:w-[calc(100%+1rem)] tw:cursor-pointer tw:items-center tw:gap-3 tw:py-3 tw:text-left',
-          TOPIC_ROW_CLASSES
-        )}
+        className="tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:gap-3 tw:py-3 tw:text-left tw:after:absolute tw:after:inset-0 tw:after:rounded-lg"
         data-testid={`failing-service-${service.id}`}
         type="button"
         onClick={() => onOpen(service)}>
-        <img
-          alt=""
-          className="tw:size-8 tw:shrink-0 tw:rounded-md tw:object-contain"
-          height={32}
-          src={serviceUtilClassBase.getServiceLogo(service.serviceType)}
-          width={32}
+        {/* The connector logo sits on the same tile as the Connections cards. */}
+        <FeaturedIcon
+          className="tw:shrink-0"
+          color="gray"
+          icon={
+            <img
+              alt=""
+              className={classNames(
+                'tw:size-5 tw:object-contain',
+                getServiceLogoThemeClass(service.serviceType)
+              )}
+              height={20}
+              src={serviceUtilClassBase.getServiceLogo(service.serviceType)}
+              width={20}
+            />
+          }
+          size="sm"
+          theme="modern"
         />
-        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-0.5">
           {/* `!` on the colours: Typography renders `.prose`, whose unlayered
           `color` rule is emitted after the Tailwind utilities and would
           otherwise silently win. */}
@@ -61,7 +78,7 @@ const FailingServiceRow: React.FC<FailingServiceRowProps> = ({
             className="tw:min-w-0 tw:text-text-primary!"
             ellipsis={{ rows: 1 }}
             size="text-xs"
-            weight="medium">
+            weight="semibold">
             {service.displayName}
           </Typography>
           <Typography

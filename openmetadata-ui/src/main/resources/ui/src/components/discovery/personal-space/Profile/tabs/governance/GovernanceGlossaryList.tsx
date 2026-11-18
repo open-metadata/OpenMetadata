@@ -13,30 +13,25 @@
 
 /* eslint-disable openmetadata-imports/no-lower-layer-page-imports -- shared settings widget reused here */
 import {
-  Button,
-  Dialog,
-  Modal,
-  ModalOverlay,
+  ConfirmPopover,
   PaginationCardWithControls,
-  Typography,
 } from '@openmetadata/ui-core-components';
 import { GlossaryTerm as GlossaryTermIcon } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import CreatePlaceholder from '../../../../../../components/common/EmptyPlaceholder/CreatePlaceholder';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { RelationshipType } from '../../../../../../generated/entity/data/relationshipType';
+import { usePageSizeState } from '../../../../../../hooks/paging/usePageSizeState';
+import { useAnchoredConfirm } from '../../../../../../hooks/popover/useAnchoredConfirm';
 import RelationshipTypeTable from '../../../../../../pages/GlossaryTermRelationSettings/RelationshipTypeTable';
 import { getRelationTypeUsageCounts } from '../../../../../../rest/glossaryAPI';
 import {
   deleteRelationshipType,
   listRelationshipTypes,
 } from '../../../../../../rest/ontologyAPI';
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -44,8 +39,6 @@ import {
 import { GovernanceView } from './Governance.types';
 
 const FETCH_PAGE_SIZE = 1000;
-const PAGE_SIZE_OPTIONS = [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE];
-
 const fetchAll = async (): Promise<RelationshipType[]> => {
   const result: RelationshipType[] = [];
   let after: string | undefined;
@@ -73,12 +66,15 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
 }) => {
   const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [items, setItems] = useState<RelationshipType[]>([]);
   const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
-  const [deleteTarget, setDeleteTarget] = useState<RelationshipType>();
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize, setPageSize] = usePageSizeState();
+  const {
+    target: deleteTarget,
+    open: openDeleteConfirm,
+    popoverProps,
+  } = useAnchoredConfirm<RelationshipType>();
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -113,31 +109,29 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
 
   const totalPages = Math.max(Math.ceil(items.length / pageSize), 1);
 
-  const confirmDelete = useCallback(async () => {
-    if (!deleteTarget) {
-      return;
-    }
-    setIsSaving(true);
+  /** Resolves `false` when the delete failed, keeping the confirmation open. */
+  const handleDelete = async (relationshipType: RelationshipType) => {
     try {
-      await deleteRelationshipType(deleteTarget.id);
-      const updated = items.filter((item) => item.id !== deleteTarget.id);
+      await deleteRelationshipType(relationshipType.id, true);
+      const updated = items.filter((item) => item.id !== relationshipType.id);
       setItems(updated);
       setCurrentPage((p) =>
         Math.min(p, Math.max(Math.ceil(updated.length / pageSize), 1))
       );
-      setDeleteTarget(undefined);
       showSuccessToast(
         t('server.entity-deleted-success', { entity: t('label.relation-type') })
       );
+
+      return true;
     } catch (error) {
       showErrorToast(
         error as AxiosError,
         t('server.delete-entity-error', { entity: t('label.relation-type') })
       );
-    } finally {
-      setIsSaving(false);
+
+      return false;
     }
-  }, [deleteTarget, items, pageSize, t]);
+  };
 
   const renderContent = () => {
     if (isLoading) {
@@ -167,16 +161,30 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
           isAdminUser
           relationshipTypes={visibleItems}
           usageCounts={usageCounts}
-          onDelete={setDeleteTarget}
+          variant="muted"
+          onDelete={openDeleteConfirm}
           onEdit={(item) =>
             onNavigate({ type: 'glossary-edit', name: item.name })
           }
         />
-        {items.length > PAGE_SIZE_BASE ? (
+        {deleteTarget && (
+          <ConfirmPopover
+            {...popoverProps}
+            data-testid="delete-relation-type-popover"
+            description={t('message.delete-entity-permanently', {
+              entityType: t('label.relation-type'),
+            })}
+            title={t('label.delete-entity', {
+              entity: deleteTarget.displayName || deleteTarget.name,
+            })}
+            onConfirm={() => handleDelete(deleteTarget)}
+          />
+        )}
+        {shouldShowPager(items) ? (
           <PaginationCardWithControls
             page={currentPage}
             pageSize={pageSize}
-            pageSizeOptions={PAGE_SIZE_OPTIONS}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={totalPages}
             onPageChange={setCurrentPage}
             onPageSizeChange={(next) => {
@@ -192,48 +200,6 @@ const GovernanceGlossaryList: FC<GovernanceGlossaryListProps> = ({
   return (
     <div className="tw:flex tw:flex-col tw:gap-4 tw:p-8 tw:pt-0">
       {renderContent()}
-
-      <ModalOverlay
-        isDismissable
-        isOpen={Boolean(deleteTarget)}
-        onOpenChange={(open) => !open && setDeleteTarget(undefined)}>
-        <Modal>
-          <Dialog
-            showCloseButton
-            data-testid="delete-relation-type-confirmation"
-            title={t('label.delete-entity', {
-              entity: t('label.relation-type'),
-            })}
-            width={480}
-            onClose={() => setDeleteTarget(undefined)}>
-            <Dialog.Content>
-              <Typography className="tw:text-tertiary" size="text-sm">
-                {t('message.delete-entity-message', {
-                  entity: deleteTarget?.displayName,
-                })}
-              </Typography>
-            </Dialog.Content>
-            <Dialog.Footer>
-              <div className="tw:col-span-2 tw:flex tw:justify-end tw:gap-3">
-                <Button
-                  color="tertiary"
-                  size="sm"
-                  onPress={() => setDeleteTarget(undefined)}>
-                  {t('label.cancel')}
-                </Button>
-                <Button
-                  color="primary-destructive"
-                  data-testid="confirm-delete-btn"
-                  isLoading={isSaving}
-                  size="sm"
-                  onPress={confirmDelete}>
-                  {t('label.delete')}
-                </Button>
-              </div>
-            </Dialog.Footer>
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
     </div>
   );
 };

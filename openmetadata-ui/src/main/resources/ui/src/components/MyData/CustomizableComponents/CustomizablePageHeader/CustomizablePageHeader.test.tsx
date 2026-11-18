@@ -18,8 +18,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useTranslation } from 'react-i18next';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { PageType } from '../../../../generated/system/ui/page';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useCustomizeStore } from '../../../../pages/CustomizablePage/CustomizeStore';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import { CustomizablePageHeader } from './CustomizablePageHeader';
@@ -35,6 +36,15 @@ jest.mock('../../../../utils/useRequiredParams', () => ({
 
 jest.mock('../../../../pages/CustomizablePage/CustomizeStore');
 
+// Header behaviour only; the AI-mode link mapping is covered by SettingsModalLinkUtils' tests.
+jest.mock('../../../../utils/SettingsModalLinkUtils', () => ({
+  getSettingsLink: jest.fn((path: string) => path),
+}));
+
+jest.mock('../../../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
+
 describe('CustomizablePageHeader', () => {
   const mockProps = {
     onSave: jest.fn().mockResolvedValue(undefined),
@@ -47,6 +57,7 @@ describe('CustomizablePageHeader', () => {
       currentPageType: PageType.LandingPage,
     });
     (useRequiredParams as jest.Mock).mockReturnValue({});
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -64,6 +75,30 @@ describe('CustomizablePageHeader', () => {
     expect(screen.getByText('label.customize-entity')).toBeInTheDocument();
   });
 
+  // Matches the other pages: the gradient PageHeader in AI mode, a plain card
+  // in Classic.
+  it.each([
+    [true, true],
+    [false, false],
+  ])(
+    'should render the gradient header only in AI mode (AI mode: %s)',
+    (isAiMode, hasGradient) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+
+      render(
+        <MemoryRouter>
+          <CustomizablePageHeader {...mockProps} />
+        </MemoryRouter>
+      );
+
+      const header = screen.getByTestId('customize-landing-page-header');
+
+      expect(header.className.includes('linear-gradient')).toBe(hasGradient);
+      expect(screen.getByTestId('customize-page-title')).toBeInTheDocument();
+      expect(screen.getByTestId('save-button')).toBeInTheDocument();
+    }
+  );
+
   it('should render all buttons in the header', () => {
     render(
       <MemoryRouter>
@@ -75,6 +110,30 @@ describe('CustomizablePageHeader', () => {
     expect(screen.getByTestId('reset-button')).toBeInTheDocument();
     expect(screen.getByTestId('save-button')).toBeInTheDocument();
   });
+
+  it.each([
+    [true, '/'],
+    [false, '/settings/persona/test-persona'],
+  ])(
+    'closes the standalone customize route (AI mode: %s) to %s',
+    (isAiMode, expectedPath) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(isAiMode);
+      const LocationProbe = () => (
+        <span data-testid="location">{useLocation().pathname}</span>
+      );
+      render(
+        <MemoryRouter
+          initialEntries={['/customize-page/test-persona/LandingPage']}>
+          <CustomizablePageHeader {...mockProps} />
+          <LocationProbe />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('cancel-button'));
+
+      expect(screen.getByTestId('location')).toHaveTextContent(expectedPath);
+    }
+  );
 
   it('should handle save button click', async () => {
     render(

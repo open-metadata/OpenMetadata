@@ -13,7 +13,7 @@ import org.openmetadata.schema.api.events.AlertCapabilitiesRequest;
 import org.openmetadata.schema.api.events.AlertConditionCapability;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.AlertSourceCapability;
-import org.openmetadata.schema.api.events.CreateEventSubscription.AlertType;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventFilterRule;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
@@ -118,11 +118,19 @@ public final class SourceCapabilities {
             chosen.stream().allMatch(source -> has(source.getSupportedFilters(), filter.getName()));
         if (everywhere) {
           filters.add(
-              new AlertConditionCapability().withCondition(filter).withSources(everySource));
+              new AlertConditionCapability()
+                  .withCondition(labelledForAll(filter, chosen))
+                  .withSources(everySource));
         }
       }
     }
     return filters;
+  }
+
+  // A source may call a filter after its own assets, so one that several share has its own name.
+  private static EventFilterRule labelledForAll(
+      EventFilterRule filter, List<FilterResourceDescriptor> chosen) {
+    return chosen.size() == 1 ? filter : EventsSubscriptionRegistry.definition(filter.getName());
   }
 
   // A trigger only ever meets events of the sources that support it, and says which those are.

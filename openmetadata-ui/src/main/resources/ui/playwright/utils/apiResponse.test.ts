@@ -13,7 +13,84 @@
 import { expect, test } from '@playwright/test';
 import { createServer } from 'http';
 import { AddressInfo } from 'net';
-import { createOrFetch, deleteFixtureEntity, settleAll } from './apiResponse';
+import { DataProduct } from '../support/domain/DataProduct';
+import {
+  createOrFetch,
+  deleteFixtureEntity,
+  requireEntityIdentity,
+  settleAll,
+} from './apiResponse';
+
+test('fixture responses retain their fields after validating their identity', () => {
+  const entity = {
+    id: 'table-id',
+    fullyQualifiedName: 'service.db.schema.table',
+    columns: [],
+  };
+
+  expect(requireEntityIdentity(entity, 'Table.create')).toEqual(entity);
+});
+
+for (const entity of [
+  {},
+  { id: 'table-id' },
+  { fullyQualifiedName: 'table' },
+  { id: '', fullyQualifiedName: 'table' },
+  { id: 'table-id', fullyQualifiedName: '' },
+  { id: 1, fullyQualifiedName: 'table' },
+]) {
+  test(`fixture responses reject an incomplete identity ${JSON.stringify(
+    entity
+  )}`, () => {
+    expect(() => requireEntityIdentity(entity, 'Table.create')).toThrow(
+      'Table.create: entity response is missing id or fullyQualifiedName'
+    );
+  });
+}
+
+test('adding data product assets preserves its entity response', async ({
+  playwright,
+}) => {
+  const entity = {
+    id: 'product-id',
+    name: 'product',
+    fullyQualifiedName: 'product',
+  };
+  const bulkResult = { numberOfRowsPassed: 1, numberOfRowsFailed: 0 };
+  const server = createServer((request, response) => {
+    response.writeHead(request.url?.endsWith('/assets/add') ? 200 : 201, {
+      'Content-Type': 'application/json',
+    });
+    response.end(
+      JSON.stringify(request.url?.endsWith('/assets/add') ? bulkResult : entity)
+    );
+  });
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Fixture server did not bind a TCP port');
+  }
+  const apiContext = await playwright.request.newContext({
+    baseURL: `http://127.0.0.1:${address.port}`,
+  });
+
+  try {
+    const dataProduct = new DataProduct([], 'product');
+    await dataProduct.create(apiContext);
+
+    expect(
+      await dataProduct.addAssets(apiContext, [
+        { id: 'asset-id', type: 'table' },
+      ])
+    ).toEqual(bulkResult);
+    expect(dataProduct.responseData).toEqual(entity);
+  } finally {
+    await apiContext.dispose();
+    await new Promise<void>((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve()))
+    );
+  }
+});
 
 test('fixture setup waits for every operation and reports every failure', async () => {
   let finish!: () => void;

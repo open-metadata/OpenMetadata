@@ -184,7 +184,7 @@ const ProfilerSettings: FC<ProfilerSettingsProps> = ({
           </Dialog.Content>
           <Dialog.Footer>
             <Button
-              color="link-color"
+              color="secondary"
               size="md"
               onPress={() => onVisibilityChange(false)}>
               {t('label.cancel')}

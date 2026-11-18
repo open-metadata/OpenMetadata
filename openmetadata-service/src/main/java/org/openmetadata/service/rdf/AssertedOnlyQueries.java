@@ -22,6 +22,7 @@ import java.util.function.Supplier;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.Syntax;
+import org.openmetadata.service.rdf.storage.ChunkedGraphReplace;
 
 /**
  * Restricts read queries to asserted data. Materialized inference is stored in named graphs under
@@ -84,7 +85,7 @@ final class AssertedOnlyQueries {
       return;
     }
     final String prefix = inferredGraphPrefix.get();
-    if (graphs.stream().anyMatch(graph -> !graph.startsWith(prefix) && !known.contains(graph))) {
+    if (graphs.stream().anyMatch(graph -> isAsserted(graph, prefix) && !known.contains(graph))) {
       assertedGraphs.invalidate(GRAPH_LIST_KEY);
     }
   }
@@ -103,6 +104,12 @@ final class AssertedOnlyQueries {
 
   private List<String> listAssertedGraphs() {
     final String prefix = inferredGraphPrefix.get();
-    return graphLister.get().stream().filter(graph -> !graph.startsWith(prefix)).sorted().toList();
+    return graphLister.get().stream().filter(graph -> isAsserted(graph, prefix)).sorted().toList();
+  }
+
+  /** A staging graph holds part of a graph replacement that has not been moved into place yet. */
+  private static boolean isAsserted(final String graph, final String inferredPrefix) {
+    return !graph.startsWith(inferredPrefix)
+        && !graph.startsWith(ChunkedGraphReplace.STAGING_PREFIX);
   }
 }

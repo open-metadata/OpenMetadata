@@ -941,13 +941,13 @@ public interface EntityDataDAOs {
             + "AND fqnHash LIKE :parentHash "
             + "AND (LOWER(name) LIKE LOWER(:searchTerm) "
             + "OR LOWER(COALESCE(displayName, '')) LIKE LOWER(:searchTerm)) "
-            + "<statusCondition> "
+            + "<filterConditions> "
             + "ORDER BY name "
             + "LIMIT :limit OFFSET :offset")
     List<String> searchGlossaryTerms(
         @Bind("parentHash") String parentHash,
         @Bind("searchTerm") String searchTerm,
-        @Define("statusCondition") String statusCondition,
+        @Define("filterConditions") String filterConditions,
         @Bind("limit") int limit,
         @Bind("offset") int offset);
   }
@@ -966,6 +966,30 @@ public interface EntityDataDAOs {
     @Override
     default String getNameHashColumn() {
       return "fqnHash";
+    }
+
+    /** Name and FQN of every deployed pipeline but one, soft-deleted ones included. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, JSON_UNQUOTE(JSON_EXTRACT(json, '$.fullyQualifiedName')) AS fqn "
+                + "FROM ingestion_pipeline_entity "
+                + "WHERE JSON_EXTRACT(json, '$.deployed') = true AND id != :excludeId",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT name, json->>'fullyQualifiedName' AS fqn FROM ingestion_pipeline_entity "
+                + "WHERE json->>'deployed' = 'true' AND id != :excludeId",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(DeployedPipelineMapper.class)
+    List<EntityReference> listOtherDeployed(@Bind("excludeId") String excludeId);
+
+    class DeployedPipelineMapper implements RowMapper<EntityReference> {
+      @Override
+      public EntityReference map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new EntityReference()
+            .withName(rs.getString("name"))
+            .withFullyQualifiedName(rs.getString("fqn"));
+      }
     }
 
     /**

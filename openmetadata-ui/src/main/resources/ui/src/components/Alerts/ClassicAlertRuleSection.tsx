@@ -14,12 +14,14 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Select,
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
+import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { Effect } from '../../generated/events/eventSubscription';
 import { useAlertSelectionContext } from '../../hooks/useAlertSelection';
@@ -27,6 +29,7 @@ import FormCardSection from '../common/FormCardSection/FormCardSection';
 import { RuleSectionProps } from '../observability/Alerts/AlertAiFormFields.interface';
 import {
   getRuleCopy,
+  getRuleItems,
   getRulesWithAddedRule,
   getRulesWithEffect,
   getRulesWithName,
@@ -36,7 +39,6 @@ import {
   updateAlertAiValue,
 } from '../observability/Alerts/AlertAiFormFieldsPureUtils';
 import { RuleArgumentField } from '../observability/Alerts/AlertAiRuleSection.component';
-import { getClassicRuleItems } from './ClassicAlertRuleSection.utils';
 import FQNListSelect from './FQNListSelect/FQNListSelect.component';
 import { useAlertRuleKeys } from './useAlertRuleKeys';
 
@@ -72,7 +74,7 @@ export const ClassicAlertRuleSection = ({
     field === 'filters' ? support.supportedFilters : support.supportedTriggers;
   const rules = value.input?.[field] ?? [];
   const copy = getRuleCopy(field, t);
-  const items = getClassicRuleItems(supportedRules, rules);
+  const items = getRuleItems(supportedRules, rules);
   const { keys, removeKey } = useAlertRuleKeys(rules.length);
   const prefix = field === 'filters' ? 'filter' : 'trigger';
   const changeRules = (nextRules: typeof rules) =>
@@ -217,13 +219,13 @@ export const ClassicAlertRuleSection = ({
                   </Box>
                 </Box>
                 {!isViewOnly && (
-                  <Button
+                  <ButtonUtility
                     aria-label={t('label.remove-entity', {
                       entity: copy.label,
                     })}
                     data-testid={'remove-' + prefix + '-' + ruleIndex}
-                    iconLeading={XClose}
-                    size="sm"
+                    icon={XClose}
+                    size="lg"
                     onPress={() => {
                       removeKey(ruleIndex);
                       changeRules(getRulesWithoutIndex(rules, ruleIndex));
@@ -239,7 +241,7 @@ export const ClassicAlertRuleSection = ({
             <Button
               color="primary"
               data-testid={field === 'filters' ? 'add-filters' : 'add-trigger'}
-              isDisabled={sources.length === 0}
+              isDisabled={sources.length === 0 || isUndefined(supportedRules)}
               size="sm"
               onPress={() => changeRules(getRulesWithAddedRule(rules))}>
               {t('label.add-entity', { entity: copy.label })}

@@ -1019,10 +1019,11 @@ class VectorSearchQueryBuilderTest {
   }
 
   @Test
-  void testNativeESQueryClampsNumCandidatesOnIntOverflow() throws Exception {
+  void testNativeESQueryClampsNumCandidatesToEngineMax() throws Exception {
     float[] vector = {0.1f, 0.2f};
 
-    // k * multiplier > Integer.MAX_VALUE → must clamp, never emit a negative value.
+    // k * multiplier > Integer.MAX_VALUE → must clamp to the engine max, never emit a
+    // negative or oversized value.
     String query =
         VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 1_000_000, Map.of(), 100_000);
 
@@ -1031,7 +1032,65 @@ class VectorSearchQueryBuilderTest {
 
     assertTrue(numCandidates > 0, "num_candidates must be positive even on overflow");
     assertEquals(
-        Integer.MAX_VALUE, numCandidates, "num_candidates must clamp to Integer.MAX_VALUE");
+        VectorSearchQueryBuilder.ES_MAX_KNN_NUM_CANDIDATES,
+        numCandidates,
+        "num_candidates must clamp to Elasticsearch's engine maximum of 10,000");
+  }
+
+  @Test
+  void testNativeESQueryNumCandidatesClampedAtAdvertisedMaxK() throws Exception {
+    float[] vector = {0.1f};
+
+    // The REST resource and MCP tool both advertise MAX_K = 10,000. With the default
+    // multiplier of 2, k=10,000 would produce num_candidates=20,000 which Elasticsearch
+    // rejects with a 400. The clamp must bring it down to 10,000.
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 10_000, Map.of());
+
+    JsonNode root = MAPPER.readTree(query);
+    assertEquals(
+        VectorSearchQueryBuilder.ES_MAX_KNN_NUM_CANDIDATES,
+        root.get("knn").get("num_candidates").asInt(),
+        "k=10,000 with default multiplier 2 must clamp num_candidates to 10,000, not 20,000");
+    assertEquals(10_000, root.get("knn").get("k").asInt(), "k itself must not be clamped");
+  }
+
+  @Test
+  void testNativeESQueryNumCandidatesClampedWithHighMultiplier() throws Exception {
+    float[] vector = {0.1f};
+
+    // A high multiplier must also be clamped: k=100, multiplier=200 → 20,000 → 10,000.
+    String query = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, Map.of(), 200);
+
+    JsonNode root = MAPPER.readTree(query);
+    assertEquals(
+        VectorSearchQueryBuilder.ES_MAX_KNN_NUM_CANDIDATES,
+        root.get("knn").get("num_candidates").asInt(),
+        "k=100 with multiplier 200 produces 20,000 which must clamp to 10,000");
+  }
+
+  @Test
+  void testNativeESQueryNumCandidatesNeverExceedsEngineMaxForAnyAdmittedK() throws Exception {
+    float[] vector = {0.1f};
+
+    // Exhaustively verify that no admitted k (1..10,000) with any reasonable multiplier
+    // can produce num_candidates above the engine cap.
+    int[] multipliers = {1, 2, 3, 5, 10, 50, 100};
+    for (int k = 1; k <= 10_000; k += 73) {
+      for (int multiplier : multipliers) {
+        String query =
+            VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, k, Map.of(), multiplier);
+        int numCandidates = MAPPER.readTree(query).get("knn").get("num_candidates").asInt();
+        assertTrue(
+            numCandidates <= VectorSearchQueryBuilder.ES_MAX_KNN_NUM_CANDIDATES,
+            "num_candidates="
+                + numCandidates
+                + " exceeds engine max for k="
+                + k
+                + " multiplier="
+                + multiplier);
+        assertTrue(numCandidates >= 100, "num_candidates must be at least 100");
+      }
+    }
   }
 
   @Test
