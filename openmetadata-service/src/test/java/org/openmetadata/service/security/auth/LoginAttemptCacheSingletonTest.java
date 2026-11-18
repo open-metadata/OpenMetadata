@@ -95,6 +95,8 @@ class LoginAttemptCacheSingletonTest {
   void updateLoginConfigurationReplacesTheSingleton() {
     LoginConfiguration first =
         new LoginConfiguration().withMaxLoginFailAttempts(3).withAccessBlockTime(600);
+    LoginConfiguration second =
+        new LoginConfiguration().withMaxLoginFailAttempts(5).withAccessBlockTime(600);
 
     try (MockedStatic<SettingsCache> settingsCache =
         org.mockito.Mockito.mockStatic(SettingsCache.class)) {
@@ -103,15 +105,29 @@ class LoginAttemptCacheSingletonTest {
               () ->
                   SettingsCache.getSetting(
                       SettingsType.LOGIN_CONFIGURATION, LoginConfiguration.class))
-          .thenReturn(first);
+          .thenReturn(first, second);
 
       LoginAttemptCache original = LoginAttemptCache.getInstance();
       assertNotNull(original);
+      // The first cache trips the lockout at 3 failures.
+      original.recordFailedLogin("attacker");
+      original.recordFailedLogin("attacker");
+      original.recordFailedLogin("attacker");
+      assertTrue(original.isLoginBlocked("attacker"), "first config trips at 3 failures");
 
       LoginAttemptCache.updateLoginConfiguration();
       LoginAttemptCache after = LoginAttemptCache.getInstance();
 
       assertNotSame(original, after, "updateLoginConfiguration must swap the singleton");
+      // The replacement cache reads the second configuration: 3 failures are no longer
+      // enough, and the lockout trips only at 5.
+      after.recordFailedLogin("attacker");
+      after.recordFailedLogin("attacker");
+      after.recordFailedLogin("attacker");
+      assertFalse(after.isLoginBlocked("attacker"), "second config does not trip at 3");
+      after.recordFailedLogin("attacker");
+      after.recordFailedLogin("attacker");
+      assertTrue(after.isLoginBlocked("attacker"), "second config trips at 5 failures");
     }
   }
 
