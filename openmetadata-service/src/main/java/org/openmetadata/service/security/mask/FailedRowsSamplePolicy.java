@@ -2,6 +2,7 @@ package org.openmetadata.service.security.mask;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -48,7 +49,7 @@ public final class FailedRowsSamplePolicy {
       int formatVersion,
       TableData data,
       UUID tableId,
-      long observedSequence,
+      @JsonProperty(value = "observedSequence", required = true) long observedSequence,
       List<Binding> bindings) {
     public SampleRecord {
       if (data == null
@@ -68,11 +69,11 @@ public final class FailedRowsSamplePolicy {
     }
   }
 
-  public record RemovalFact(List<String> path, boolean sensitive) {
+  public record RemovalFact(List<String> path, Boolean sensitive) {
     public RemovalFact {
       path = List.copyOf(path);
-      if (path.isEmpty()) {
-        throw new IllegalArgumentException("Empty failed-row removal path");
+      if (path.isEmpty() || sensitive == null) {
+        throw new IllegalArgumentException("Invalid failed-row removal fact");
       }
     }
   }
@@ -209,6 +210,10 @@ public final class FailedRowsSamplePolicy {
   }
 
   public static TableData mask(SampleRecord sample, Table table, RemovalRecord record) {
+    if (sample.formatVersion() == 0 && record.coverageThrough() > 0) {
+      throw new IllegalStateException(
+          "Legacy failed-row sample requires replacement because removal evidence is incomplete");
+    }
     TableData masked = JsonUtils.deepCopy(sample.data(), TableData.class);
     List<ColumnState> columns = columns(table);
     List<Boolean> positions = new ArrayList<>();

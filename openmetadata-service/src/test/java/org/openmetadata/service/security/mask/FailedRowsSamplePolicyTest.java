@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -217,6 +218,28 @@ class FailedRowsSamplePolicyTest {
     assertEquals(
         List.of(PIIMasker.MASKED_VALUE, "value-extra"),
         FailedRowsSamplePolicy.mask(sample, table(), record).getRows().getFirst());
+  }
+
+  @Test
+  void incompleteLegacyEvidenceCannotExposePreviouslyProtectedValues() {
+    var legacy = FailedRowsSamplePolicy.decode(JsonUtils.pojoToJson(data("ssn", "extra")));
+    var record = new FailedRowsSamplePolicy.RemovalRecord(1, 1, 1, List.of());
+    assertThrows(
+        IllegalStateException.class, () -> FailedRowsSamplePolicy.mask(legacy, table(), record));
+  }
+
+  @Test
+  void missingSensitivityAndMissingSampleSequenceAreRejected() {
+    assertThrows(
+        RuntimeException.class,
+        () ->
+            JsonUtils.readValue("{\"path\":[\"ssn\"]}", FailedRowsSamplePolicy.RemovalFact.class));
+    var sample =
+        FailedRowsSamplePolicy.bind(
+            data("ssn"), table(column("ssn", false)), FailedRowsSamplePolicy.emptyRecord());
+    var node = JsonUtils.valueToTree(sample);
+    ((ObjectNode) node).remove("observedSequence");
+    assertThrows(RuntimeException.class, () -> FailedRowsSamplePolicy.decode(node.toString()));
   }
 
   private Table table(Column... columns) {

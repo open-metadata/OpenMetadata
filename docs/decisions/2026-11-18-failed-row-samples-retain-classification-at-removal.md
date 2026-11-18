@@ -35,7 +35,9 @@ An oversized batch advances that watermark without retaining partial facts. Inco
 masks identified source positions conservatively; it does not newly mask additional outputs.
 
 The new reader accepts legacy raw TableData and applies current policy plus matching retained
-sensitive removal evidence. Malformed or unsupported envelopes fail closed. Upgrade backend nodes
+sensitive removal evidence. Once removal coverage has been pruned, restricted legacy reads require
+sample replacement because no binding distinguishes a harmless additional output from a previously
+protected source. Authorized originals remain available. Malformed or unsupported envelopes fail closed. Upgrade backend nodes
 together: old server binaries cannot read the new private envelope. Public APIs and producers retain
 the TableData contract; deployment must not serve newly written samples through older binaries.
 

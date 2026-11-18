@@ -7,6 +7,7 @@ import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
@@ -28,7 +29,7 @@ final class FailedRowsSampleStore {
     }
     Table table = JsonUtils.readValue(json, Table.class);
     populateEntityFieldTags(TABLE, table.getColumns(), table.getFullyQualifiedName(), true);
-    table.setTags(dao.tagUsageDAO().getTags(table.getFullyQualifiedName()));
+    table.setTags(Entity.getEntityRepository(TABLE).getTags(table.getFullyQualifiedName()));
     return table;
   }
 

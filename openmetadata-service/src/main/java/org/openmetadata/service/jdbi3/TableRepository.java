@@ -69,7 +69,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -177,8 +176,12 @@ public class TableRepository extends EntityRepository<Table> {
   private final TableMetadataLoader metadataLoader;
 
   @Override
-  protected <R> R executeEntityWrite(List<Table> entities, Supplier<R> work) {
-    return executeInTransaction(work);
+  protected void flushInOneTransaction(Runnable work) {
+    executeInTransaction(
+        () -> {
+          super.flushInOneTransaction(work);
+          return null;
+        });
   }
 
   @Override

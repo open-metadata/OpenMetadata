@@ -24,6 +24,7 @@ import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,6 +36,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
@@ -48,6 +51,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -55,6 +59,7 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
@@ -91,10 +96,12 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -109,7 +116,11 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository.Operation;
+import org.openmetadata.service.jdbi3.TableRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
+import org.openmetadata.service.security.mask.FailedRowsSamplePolicy;
 import org.openmetadata.service.security.mask.PIIMasker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -4601,6 +4612,468 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         new TagLabel()
             .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
             .withSource(TagLabel.TagSource.CLASSIFICATION));
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false,put", "true,patch", "false,bulk"})
+  void test_failedRowsRemovalPreservesAdditionalOutputs(
+      boolean tableSensitive, String route, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    if (tableSensitive) {
+      table.setTags(failedRowsSensitiveTags());
+    } else {
+      table.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    }
+    admin.tables().update(table.getId().toString(), table);
+    TableData data =
+        new TableData()
+            .withColumns(List.of("id", "name", "extra_column", "diffType"))
+            .withRows(List.of(List.of("1", "private-value", "extra-value", "CHANGED")));
+    FailedSampleFixture fixture = failedSampleFixture(ns, table, data);
+    Table current = admin.tables().get(table.getId().toString(), "columns,tags");
+    current.setColumns(new ArrayList<>(List.of(current.getColumns().getFirst())));
+    current.setTags(List.of());
+    switch (route) {
+      case "patch" -> admin
+          .tables()
+          .patch(
+              current.getId(),
+              JsonUtils.readTree(
+                  "[{\"op\":\"remove\",\"path\":\"/columns/1\"},{\"op\":\"replace\",\"path\":\"/tags\",\"value\":[]}]"));
+      case "bulk" -> {
+        var result =
+            admin
+                .tables()
+                .bulkCreateOrUpdate(
+                    List.of(
+                        new CreateTable()
+                            .withName(current.getName())
+                            .withDatabaseSchema(current.getDatabaseSchema().getFullyQualifiedName())
+                            .withColumns(current.getColumns())));
+        assertEquals(0, result.getNumberOfRowsFailed());
+      }
+      default -> admin.tables().update(current.getId().toString(), current);
+    }
+    TableData restricted =
+        fixture.reader().testCases().getFailedRowsSample(fixture.testCase().getId().toString());
+    assertEquals(
+        List.of("1", PIIMasker.MASKED_VALUE, "extra-value", "CHANGED"),
+        restricted.getRows().getFirst());
+    assertEquals(
+        List.of("id", "name [MASKED]", "extra_column", "diffType"), restricted.getColumns());
+    assertEquals(
+        data, admin.testCases().getFailedRowsSample(fixture.testCase().getId().toString()));
+    assertEquals(1, removalRecord(table).sequence());
+  }
+
+  @ParameterizedTest
+  @CsvSource({"true", "false"})
+  void test_failedRowsNestedRemovalOnlyRetainsRemovedSensitivity(
+      boolean removeSensitive, TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    Column parent =
+        new Column()
+            .withName("contact")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(
+                    new Column()
+                        .withName("private")
+                        .withDataType(ColumnDataType.STRING)
+                        .withTags(failedRowsSensitiveTags()),
+                    new Column().withName("ordinary").withDataType(ColumnDataType.STRING)));
+    table.setColumns(List.of(parent));
+    admin.tables().update(table.getId().toString(), table);
+    TableData data =
+        new TableData()
+            .withColumns(List.of("contact", "diffType"))
+            .withRows(
+                List.of(List.of(Map.of("private", "synthetic", "ordinary", "plain"), "CHANGED")));
+    table = admin.tables().get(table.getId().toString(), "columns,tags");
+    table.getColumns().getFirst().getChildren().getFirst().setTags(failedRowsSensitiveTags());
+    admin.tables().update(table.getId().toString(), table);
+    Table tagged = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertTrue(
+        tagged.getColumns().getFirst().getChildren().getFirst().getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+    FailedSampleFixture fixture = failedSampleFixture(ns, table, data);
+    assertEquals(
+        PIIMasker.MASKED_VALUE,
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst()
+            .getFirst());
+    Table current = admin.tables().get(table.getId().toString(), "columns,tags");
+    List<Column> children = new ArrayList<>(current.getColumns().getFirst().getChildren());
+    children.remove(removeSensitive ? 0 : 1);
+    current.getColumns().getFirst().setChildren(children);
+    admin.tables().update(current.getId().toString(), current);
+    if (!removeSensitive) {
+      current = admin.tables().get(table.getId().toString(), "columns,tags");
+      current.getColumns().getFirst().getChildren().getFirst().setTags(List.of());
+      admin.tables().update(current.getId().toString(), current);
+    }
+    TableData restricted =
+        fixture.reader().testCases().getFailedRowsSample(fixture.testCase().getId().toString());
+    assertEquals(
+        removeSensitive ? PIIMasker.MASKED_VALUE : data.getRows().getFirst().getFirst(),
+        restricted.getRows().getFirst().getFirst());
+    assertEquals("CHANGED", restricted.getRows().getFirst().get(1));
+    assertEquals(
+        data, admin.testCases().getFailedRowsSample(fixture.testCase().getId().toString()));
+  }
+
+  @Test
+  void test_failedRowsRemovalRollbackDoesNotRetainUncommittedSensitivity(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    table.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    admin.tables().update(table.getId().toString(), table);
+    FailedSampleFixture fixture =
+        failedSampleFixture(
+            ns,
+            table,
+            new TableData()
+                .withColumns(List.of("id", "name", "extra_column"))
+                .withRows(List.of(List.of("1", "private-value", "extra-value"))));
+    Table invalid = admin.tables().get(table.getId().toString(), "columns,tags");
+    invalid.setColumns(List.of(invalid.getColumns().getFirst()));
+    invalid.setTableConstraints(
+        List.of(
+            new TableConstraint()
+                .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
+                .withColumns(List.of("does_not_exist"))));
+    assertThrows(
+        OpenMetadataException.class,
+        () -> admin.tables().update(invalid.getId().toString(), invalid));
+    Table retained = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertEquals(2, retained.getColumns().size());
+    assertTrue(
+        retained.getColumns().get(1).getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+    assertEquals(0, removalRecord(table).sequence());
+    retained.getColumns().get(1).setTags(List.of());
+    admin.tables().update(retained.getId().toString(), retained);
+    retained = admin.tables().get(table.getId().toString(), "columns,tags");
+    retained.setColumns(List.of(retained.getColumns().getFirst()));
+    admin.tables().update(retained.getId().toString(), retained);
+    assertEquals(
+        List.of("1", "private-value", "extra-value"),
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst());
+    assertEquals(1, removalRecord(table).sequence());
+  }
+
+  @Test
+  void test_failedRowsOrdinaryNameReuseAndLegacyDecode(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    table.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    admin.tables().update(table.getId().toString(), table);
+    TableData data =
+        new TableData()
+            .withColumns(List.of("name", "extra_column"))
+            .withRows(List.of(List.of("synthetic-value", "extra-value")));
+    FailedSampleFixture first = failedSampleFixture(ns, table, data);
+    Table current = admin.tables().get(table.getId().toString(), "columns,tags");
+    current.setColumns(List.of(current.getColumns().getFirst()));
+    admin.tables().update(current.getId().toString(), current);
+    current = admin.tables().get(table.getId().toString(), "columns,tags");
+    current.getColumns().add(new Column().withName("name").withDataType(ColumnDataType.STRING));
+    admin.tables().update(current.getId().toString(), current);
+    FailedSampleFixture second = failedSampleFixture(ns, table, data);
+    current = admin.tables().get(table.getId().toString(), "columns,tags");
+    current.setColumns(List.of(current.getColumns().getFirst()));
+    admin.tables().update(current.getId().toString(), current);
+    assertEquals(
+        PIIMasker.MASKED_VALUE,
+        first
+            .reader()
+            .testCases()
+            .getFailedRowsSample(first.testCase().getId().toString())
+            .getRows()
+            .getFirst()
+            .getFirst());
+    assertEquals(
+        data,
+        second.reader().testCases().getFailedRowsSample(second.testCase().getId().toString()));
+    Entity.getCollectionDAO()
+        .entityExtensionDAO()
+        .insert(
+            first.testCase().getId(),
+            TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION,
+            "failedRowsSample",
+            JsonUtils.pojoToJson(data));
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, "extra-value"),
+        first
+            .reader()
+            .testCases()
+            .getFailedRowsSample(first.testCase().getId().toString())
+            .getRows()
+            .getFirst());
+  }
+
+  @Test
+  void test_failedRowsReadAndSaveWaitForRemovalCommit(TestNamespace ns) throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    table.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    admin.tables().update(table.getId().toString(), table);
+    FailedSampleFixture readFixture =
+        failedSampleFixture(
+            ns,
+            table,
+            new TableData().withColumns(List.of("name")).withRows(List.of(List.of("synthetic"))));
+    FailedSampleFixture saveFixture = failedSampleFixture(ns, table, idSample());
+    Table original = admin.tables().get(table.getId().toString(), "*");
+    Table updated = JsonUtils.deepCopy(original, Table.class);
+    updated.setColumns(List.of(updated.getColumns().getFirst()));
+    updated.setUpdatedBy("admin");
+    updated.setUpdatedAt(System.currentTimeMillis());
+    CountDownLatch captured = new CountDownLatch(1);
+    CountDownLatch release = new CountDownLatch(1);
+    TableRepository repository =
+        new TableRepository() {
+          @Override
+          public TableUpdater getUpdater(
+              Table before, Table after, Operation operation, ChangeSource source) {
+            return new TableUpdater(before, after, operation, source) {
+              @Override
+              protected void beforeEntityMutation() {
+                super.beforeEntityMutation();
+                captured.countDown();
+                awaitFailedRowsLatch(release);
+              }
+            };
+          }
+        };
+    ExecutorService workers = Executors.newFixedThreadPool(3);
+    try {
+      var removal =
+          workers.submit(
+              () -> repository.getUpdater(original, updated, Operation.PUT, null).update());
+      assertTrue(captured.await(30, TimeUnit.SECONDS));
+      CountDownLatch started = new CountDownLatch(2);
+      var read =
+          workers.submit(
+              () -> {
+                started.countDown();
+                return readFixture
+                    .reader()
+                    .testCases()
+                    .getFailedRowsSample(readFixture.testCase().getId().toString());
+              });
+      var save =
+          workers.submit(
+              () -> {
+                started.countDown();
+                return admin
+                    .testCases()
+                    .addFailedRowsSample(saveFixture.testCase().getId().toString(), idSample());
+              });
+      assertTrue(started.await(10, TimeUnit.SECONDS));
+      assertThrows(TimeoutException.class, () -> read.get(200, TimeUnit.MILLISECONDS));
+      assertThrows(TimeoutException.class, () -> save.get(200, TimeUnit.MILLISECONDS));
+      release.countDown();
+      removal.get(30, TimeUnit.SECONDS);
+      assertEquals(
+          PIIMasker.MASKED_VALUE, read.get(30, TimeUnit.SECONDS).getRows().getFirst().getFirst());
+      save.get(30, TimeUnit.SECONDS);
+      String stored =
+          Entity.getCollectionDAO()
+              .entityExtensionDAO()
+              .getExtension(
+                  saveFixture.testCase().getId(), TestCaseRepository.FAILED_ROWS_SAMPLE_EXTENSION);
+      assertEquals(1, FailedRowsSamplePolicy.decode(stored).observedSequence());
+    } finally {
+      release.countDown();
+      workers.shutdownNow();
+    }
+  }
+
+  @Test
+  void test_failedRowsRetryRebuildsRemovalFromRolledBackBaseline(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    table.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    admin.tables().update(table.getId().toString(), table);
+    FailedSampleFixture fixture =
+        failedSampleFixture(
+            ns,
+            table,
+            new TableData()
+                .withColumns(List.of("name", "extra_column"))
+                .withRows(List.of(List.of("synthetic", "extra"))));
+    AtomicInteger attempts = new AtomicInteger();
+    TableRepository repository =
+        new TableRepository() {
+          @Override
+          public TableUpdater getUpdater(
+              Table before, Table after, Operation operation, ChangeSource source) {
+            return new TableUpdater(before, after, operation, source) {
+              @Override
+              protected void beforeEntityMutation() {
+                super.beforeEntityMutation();
+                if (attempts.incrementAndGet() == 1) {
+                  throw new IllegalStateException(
+                      "Injected transaction retry", new SQLException("retry", "40001"));
+                }
+              }
+            };
+          }
+        };
+    Table original = admin.tables().get(table.getId().toString(), "*");
+    Table updated = JsonUtils.deepCopy(original, Table.class);
+    updated.setColumns(List.of(updated.getColumns().getFirst()));
+    updated.setUpdatedBy("admin");
+    updated.setUpdatedAt(System.currentTimeMillis());
+    repository.getUpdater(original, updated, Operation.PUT, null).update();
+    assertEquals(2, attempts.get());
+    assertEquals(1, removalRecord(table).sequence());
+    assertEquals(1, removalRecord(table).batches().size());
+    assertEquals(1, admin.tables().get(table.getId().toString(), "columns").getColumns().size());
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, "extra"),
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst());
+  }
+
+  private static void awaitFailedRowsLatch(CountDownLatch latch) {
+    try {
+      if (!latch.await(30, TimeUnit.SECONDS)) {
+        throw new IllegalStateException("Timed out waiting for failed-row ordering fixture");
+      }
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new IllegalStateException("Interrupted failed-row ordering fixture", exception);
+    }
+  }
+
+  @Test
+  void test_failedRowsDerivedTableSensitivityUsesAuthoritativeEffectiveTags(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    var glossary = GlossaryTestFactory.createSimple(ns);
+    var term =
+        admin
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("sensitive_term"))
+                    .withGlossary(glossary.getFullyQualifiedName())
+                    .withDescription("Synthetic sensitive term")
+                    .withTags(failedRowsSensitiveTags()));
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    table.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)));
+    admin.tables().update(table.getId().toString(), table);
+    Table effective = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertTrue(
+        effective.getTags().stream()
+            .anyMatch(tag -> PIIMasker.SENSITIVE_PII_TAG.equals(tag.getTagFQN())));
+    effective.setDescription("An unrelated edit must remain possible");
+    admin.tables().update(effective.getId().toString(), effective);
+    FailedSampleFixture fixture =
+        failedSampleFixture(
+            ns,
+            table,
+            new TableData()
+                .withColumns(List.of("name", "extra_column"))
+                .withRows(List.of(List.of("synthetic", "extra"))));
+    admin
+        .tables()
+        .patch(
+            table.getId(),
+            JsonUtils.readTree(
+                "[{\"op\":\"remove\",\"path\":\"/columns/1\"},{\"op\":\"replace\",\"path\":\"/tags\",\"value\":[]}]"));
+    assertEquals(
+        List.of(PIIMasker.MASKED_VALUE, "extra"),
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst());
+  }
+
+  @Test
+  void test_failedRowsDatatypeChangeDoesNotRetireSource(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Table table = admin.tables().get(createTable(ns).getId().toString(), "columns,tags");
+    table.getColumns().get(1).setTags(failedRowsSensitiveTags());
+    admin.tables().update(table.getId().toString(), table);
+    FailedSampleFixture fixture =
+        failedSampleFixture(
+            ns,
+            table,
+            new TableData().withColumns(List.of("name")).withRows(List.of(List.of("synthetic"))));
+    Table current = admin.tables().get(table.getId().toString(), "columns,tags");
+    current.getColumns().get(1).setDataType(ColumnDataType.TEXT);
+    current.getColumns().get(1).setDataTypeDisplay("text");
+    admin.tables().update(current.getId().toString(), current);
+    assertEquals(0, removalRecord(table).sequence());
+    current = admin.tables().get(table.getId().toString(), "columns,tags");
+    current.getColumns().get(1).setTags(List.of());
+    admin.tables().update(current.getId().toString(), current);
+    assertEquals(
+        "synthetic",
+        fixture
+            .reader()
+            .testCases()
+            .getFailedRowsSample(fixture.testCase().getId().toString())
+            .getRows()
+            .getFirst()
+            .getFirst());
+  }
+
+  private record FailedSampleFixture(TestCase testCase, OpenMetadataClient reader) {}
+
+  private FailedSampleFixture failedSampleFixture(TestNamespace ns, Table table, TableData data) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    TestCase testCase =
+        TestCaseBuilder.create(admin)
+            .name(ns.prefix("retired_" + ns.uniqueShortId()))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+    addTestCaseResult(admin, testCase, TestCaseStatus.Failed, 1L);
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/dataQuality/testCases/" + testCase.getId() + "/failedRowsSample?validate=false",
+            data,
+            TestCase.class);
+    User reader = UserTestFactory.createUser(ns, "failed_sample_reader");
+    return new FailedSampleFixture(
+        testCase, SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {}));
+  }
+
+  private FailedRowsSamplePolicy.RemovalRecord removalRecord(Table table) {
+    String json =
+        Entity.getCollectionDAO()
+            .entityExtensionDAO()
+            .getExtension(table.getId(), "table.failedRowsColumnRemovals");
+    return json == null
+        ? FailedRowsSamplePolicy.emptyRecord()
+        : JsonUtils.readValue(json, FailedRowsSamplePolicy.RemovalRecord.class);
   }
 
   private Table createTableWithName(TestNamespace ns, String nameSuffix) {
