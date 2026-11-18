@@ -3226,3 +3226,59 @@ df.write.format("snowflake").option("dbtable", "OUT_NUM_CMP").save()
         assert [(g.sources, g.targets) for g in parse_script_lineage_groups(numeric_cmp_script)] == [
             (Resolved((SnowflakeRef(table="RAW_NUM_TRUE"),)), Resolved((SnowflakeRef(table="OUT_NUM_CMP"),)))
         ]
+
+    def test_conditional_helper_def_loop_probe_helper_return_and_while_continue_exit(self):
+        # 1. Helper without defaults defined inside only one branch of an unknown `if` must not raise KeyError
+        cond_helper_script = """
+if unknown_cond():
+    def unused_helper():
+        return None
+df = spark.read.format("snowflake").option("dbtable", "RAW_OK").load()
+df.write.format("snowflake").option("dbtable", "OUT_COND_HELPER").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(cond_helper_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_OK"),)), Resolved((SnowflakeRef(table="OUT_COND_HELPER"),)))
+        ]
+
+        # 2. Helper called inside a dynamic `while` loop keeps its return value during loop-entry probes
+        probe_helper_script = """
+def identity(frame):
+    return frame
+
+df = spark.read.format("snowflake").option("dbtable", "RAW_KEEP").load()
+while has_more():
+    df = identity(df)
+    df.write.format("snowflake").option("dbtable", "OUT_PROBE_HELPER").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(probe_helper_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_KEEP"),)), Resolved((SnowflakeRef(table="OUT_PROBE_HELPER"),)))
+        ]
+
+        # 3. Initially-true `while keep_going:` exiting via `continue` after `keep_going = False` joins with `break`
+        while_continue_exit_script = """
+keep_going = True
+while keep_going:
+    if is_done():
+        df = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+        keep_going = False
+        continue
+    df = spark.read.format("snowflake").option("dbtable", "RAW_B").load()
+    break
+df.write.format("snowflake").option("dbtable", "OUT_WHILE_EXIT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(while_continue_exit_script)] == [
+            ("unresolved", Resolved((SnowflakeRef(table="OUT_WHILE_EXIT"),)))
+        ]
+
+        # 4. `while True:` with conditional `return` in helper cannot fall through to implicit `None`
+        while_true_return_script = """
+def poll_ready():
+    while True:
+        if is_ready():
+            return spark.read.format("snowflake").option("dbtable", "RAW_READY").load()
+
+poll_ready().write.format("snowflake").option("dbtable", "OUT_READY").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(while_true_return_script)] == [
+            (Resolved((SnowflakeRef(table="RAW_READY"),)), Resolved((SnowflakeRef(table="OUT_READY"),)))
+        ]

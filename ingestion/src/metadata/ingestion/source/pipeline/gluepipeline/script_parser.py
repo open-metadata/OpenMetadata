@@ -648,7 +648,7 @@ def _join_fn_defaults(
                 for p_name in set(l_defs) | set(r_defs)
             }
         else:
-            only_defs = left.get(fn_id) or right[fn_id]
+            only_defs = left[fn_id] if fn_id in left else right[fn_id]
             merged[fn_id] = {p_name: (_FrameVal("unresolved"), UNKNOWN) for p_name in only_defs}
     return merged
 
@@ -1028,14 +1028,16 @@ class _ProvenanceAnalyzer:
                 return_outcomes=return_outcomes,
             )
         if isinstance(stmt, (ast.AsyncFor, ast.While)):
-            always_enters = isinstance(stmt, ast.While) and self._eval_condition(stmt.test, state, scope) is True
+            while_test = stmt.test if isinstance(stmt, ast.While) else None
             return self._exec_dynamic_loop_body(
                 stmt.body,
                 stmt.orelse,
                 None,
                 state,
                 scope,
-                always_enters=always_enters,
+                while_test=while_test,
+                outer_break_states=break_states,
+                outer_continue_states=continue_states,
                 return_outcomes=return_outcomes,
             )
         if isinstance(stmt, (ast.With, ast.AsyncWith)):
@@ -1070,7 +1072,7 @@ class _ProvenanceAnalyzer:
             return "continue"
         if isinstance(stmt, ast.Return):
             ret_val = self._eval_expr(stmt.value, state, scope) if stmt.value is not None else _NONE_VAL
-            if return_outcomes is not None and self._suppress_io_depth == 0:
+            if return_outcomes is not None:
                 return_outcomes.append(state.clone_with_val(ret_val))
             return "return"
         return "normal"
@@ -1266,6 +1268,8 @@ class _ProvenanceAnalyzer:
                 state,
                 scope,
                 loop_node=stmt,
+                outer_break_states=outer_break_states,
+                outer_continue_states=outer_continue_states,
                 return_outcomes=return_outcomes,
             )
         if not items:
@@ -1389,7 +1393,7 @@ class _ProvenanceAnalyzer:
                 p_breaks: list[_ExecState] = []
                 p_conts: list[_ExecState] = []
                 p_status = self._exec_block(body, probe, scope, break_states=p_breaks, continue_states=p_conts)
-                candidates: list[_ExecState] = [entry, *p_breaks, *p_conts]
+                candidates: list[_ExecState] = [entry, *p_conts]
                 if p_status == "normal":
                     candidates.append(probe)
                 stabilized = self._merge_state_list(candidates)
@@ -1406,10 +1410,13 @@ class _ProvenanceAnalyzer:
         scope: ast.AST,
         *,
         loop_node: ast.For | None = None,
-        always_enters: bool = False,
+        while_test: ast.expr | None = None,
+        outer_break_states: list[_ExecState] | None = None,
+        outer_continue_states: list[_ExecState] | None = None,
         return_outcomes: list[tuple[_ExecState, _ProvVal]] | None = None,
     ) -> _FlowStatus:
         entry = state.clone()
+        enters_initially = while_test is not None and self._eval_condition(while_test, entry, scope) is True
         stabilized = self._stabilize_dynamic_loop_entry(body, target, entry, scope, loop_node)
         iter_state = stabilized.clone()
         if loop_node is not None:
@@ -1426,18 +1433,78 @@ class _ProvenanceAnalyzer:
             continue_states=c_states,
             return_outcomes=return_outcomes,
         )
-        if always_enters and body_status == "return" and not b_states:
-            return "return"
-        post_candidates: list[_ExecState] = [*b_states] if always_enters else [stabilized, *b_states, *c_states]
-        if body_status == "normal":
-            post_candidates.append(iter_state)
-        joined = self._merge_state_list(post_candidates) if post_candidates else stabilized
-        if orelse:
-            orelse_state = joined.clone()
-            orelse_status = self._exec_block(orelse, orelse_state, scope, return_outcomes=return_outcomes)
-            if orelse_status == "normal":
-                joined = _join_states(joined, orelse_state)
-        self._overwrite_state_in_place(state, joined)
+        header_exits = self._collect_dynamic_header_exits(
+            entry,
+            iter_state,
+            c_states,
+            body_status=body_status,
+            enters_initially=enters_initially,
+            while_test=while_test,
+            scope=scope,
+        )
+        return self._finalize_dynamic_loop(
+            orelse,
+            state,
+            scope,
+            header_exits=header_exits,
+            b_states=b_states,
+            body_status=body_status,
+            outer_break_states=outer_break_states,
+            outer_continue_states=outer_continue_states,
+            return_outcomes=return_outcomes,
+        )
+
+    def _collect_dynamic_header_exits(
+        self,
+        entry: _ExecState,
+        iter_state: _ExecState,
+        c_states: Sequence[_ExecState],
+        *,
+        body_status: _FlowStatus,
+        enters_initially: bool,
+        while_test: ast.expr | None,
+        scope: ast.AST,
+    ) -> list[_ExecState]:
+        header_exits: list[_ExecState] = [] if enters_initially else [entry]
+        loop_backs: list[_ExecState] = [*c_states, *([iter_state] if body_status == "normal" else [])]
+        header_exits.extend(
+            cand
+            for cand in loop_backs
+            if while_test is None or self._eval_condition(while_test, cand, scope) is not True
+        )
+        return header_exits
+
+    def _finalize_dynamic_loop(
+        self,
+        orelse: Sequence[ast.stmt],
+        state: _ExecState,
+        scope: ast.AST,
+        *,
+        header_exits: Sequence[_ExecState],
+        b_states: Sequence[_ExecState],
+        body_status: _FlowStatus,
+        outer_break_states: list[_ExecState] | None,
+        outer_continue_states: list[_ExecState] | None,
+        return_outcomes: list[tuple[_ExecState, _ProvVal]] | None,
+    ) -> _FlowStatus:
+        if not header_exits and not b_states:
+            return "return" if body_status == "return" or return_outcomes is not None else "normal"
+        if orelse and header_exits:
+            orelse_state = self._merge_state_list(header_exits).clone()
+            orelse_status = self._exec_block(
+                orelse,
+                orelse_state,
+                scope,
+                break_states=outer_break_states,
+                continue_states=outer_continue_states,
+                return_outcomes=return_outcomes,
+            )
+            post_states: list[_ExecState] = [*([orelse_state] if orelse_status == "normal" else []), *b_states]
+            if not post_states:
+                return orelse_status
+            self._overwrite_state_in_place(state, self._merge_state_list(post_states))
+            return "normal"
+        self._overwrite_state_in_place(state, self._merge_state_list([*header_exits, *b_states]))
         return "normal"
 
     def _bind_name(
