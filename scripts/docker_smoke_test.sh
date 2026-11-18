@@ -262,6 +262,15 @@ elif [ "${leftover:-0}" -ne 0 ]; then
 else
   pass "JAVA_TOOL_OPTIONS reaches the JVM without showing in its log or its command line"
 fi
+
+# CVE-2026-114938: the launcher keeps HotSpot's Base64 decode intrinsic off. The
+# -XX:+PrintCommandLineFlags line above shows the value the JVM ended up with.
+flags="$(echo "$startup" | grep -m1 -E -- '^-XX:.*-XX:\+PrintCommandLineFlags' || true)"
+case "$flags" in
+  *-XX:-UseBASE64Intrinsics*) pass "the server JVM runs with the Base64 decode intrinsic off" ;;
+  "") fail "no -XX:+PrintCommandLineFlags line to check the Base64 decode intrinsic against" ;;
+  *) fail "the server JVM runs with the Base64 decode intrinsic on: $flags" ;;
+esac
 docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
 
 echo

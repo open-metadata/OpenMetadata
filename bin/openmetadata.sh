@@ -36,7 +36,7 @@ function catalogStart {
        # Export CONSOLE_LOG_LEVEL=TRACE before starting to get the old behaviour back.
        export CONSOLE_LOG_LEVEL="${CONSOLE_LOG_LEVEL:-OFF}"
        cd ${CATALOG_HOME}
-       nohup ${JAVA} ${JAVA_TOOL_ARGS} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
+       nohup ${JAVA} ${JAVA_TOOL_ARGS} ${JVM_SECURITY_ARGS} ${CATALOG_HEAP_OPTS} ${CATALOG_JVM_PERF_OPTS} ${CATALOG_DEBUG_OPTS} ${CATALOG_GC_LOG_OPTS} ${CATALOG_JMX_OPTS} -cp ${CLASSPATH} "${APP_CLASS}" "server" "$@" 2>>"${ERR_FILE}" 1>>"${OUT_FILE}" &
        cd - &> /dev/null
        echo $! > ${PID_FILE}
        echo $(catalogStatus)
@@ -170,6 +170,10 @@ if [ -n "$JAVA_TOOL_OPTIONS" ]; then
   fi
   [ -z "$java_tool_options_file" ] || rm -f "$java_tool_options_file"
 fi
+
+# CVE-2026-114938, as in bin/openmetadata-server-start.sh: keep HotSpot's Base64 decode intrinsic
+# off. -XX:+UseBASE64Intrinsics in any CATALOG_*_OPTS turns it back on.
+JVM_SECURITY_ARGS="-XX:-UseBASE64Intrinsics"
 
 if [[ "x${CATALOG_HEAP_OPTS}" = "x" ]]; then
     export CATALOG_HEAP_OPTS="-Xmx2G -Xms2G"
