@@ -55,6 +55,20 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
   private static final String CREATE_AND_RUN_INGESTION_PIPELINE_TASK =
       "createAndRunIngestionPipelineTask";
 
+  /**
+   * Subtypes whose delegates dereference the deserialized {@code recognizerFeedback} workflow
+   * variable (and so NPE without a null guard when the variable is missing). The schema for these
+   * nodes declares every {@code inputNamespaceMap} key as {@code required} with a {@code "global"}
+   * default — but only when the map itself is present. Deploying such a node with the
+   * {@code inputNamespaceMap} absent leaves the delegate reading {@code null} feedback and failing
+   * at runtime, so deploying this shape is rejected at validation time.
+   */
+  private static final Set<String> RECOGNIZER_FEEDBACK_NODE_SUBTYPES =
+      Set.of(
+          "applyRecognizerFeedbackTask",
+          "rejectRecognizerFeedbackTask",
+          "createRecognizerFeedbackApprovalTask");
+
   public WorkflowDefinitionRepository() {
     super(
         WorkflowDefinitionResource.COLLECTION_PATH,
@@ -1041,6 +1055,26 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     for (WorkflowNodeDefinitionInterface node : workflowDefinition.getNodes()) {
       Map<String, String> inputNamespaceMap =
           JsonUtils.readOrConvertValue(node.getInputNamespaceMap(), Map.class);
+
+      // Nodes whose delegates dereference deserialized `recognizerFeedback` and NPE on a missing
+      // variable (ApplyRecognizerFeedbackImpl, RejectRecognizerFeedbackImpl,
+      // CheckFeedbackSubmitterIsReviewerImpl) declare all four `inputNamespaceMap` keys as
+      // schema-required with non-null "global" defaults — but only when the map itself is
+      // present. A node deployed without an inputNamespaceMap reads a null feedback variable
+      // and crashes; reject this state at deploy time with a descriptive error. The runtime
+      // null-guard in the delegates remains as a safety net for older definitions and the rare
+      // "map present but entry null" case.
+      if (RECOGNIZER_FEEDBACK_NODE_SUBTYPES.contains(node.getSubType())
+          && inputNamespaceMap == null) {
+        throw BadRequestException.of(
+            String.format(
+                "Invalid Workflow: Node '%s' of subType '%s' requires an inputNamespaceMap that "
+                    + "maps recognizerFeedback (and the related inputs) to a namespace, but the "
+                    + "inputNamespaceMap was omitted; provide an inputNamespaceMap with at least "
+                    + "{\"relatedEntity\":\"global\", \"updatedBy\":\"global\", "
+                    + "\"triggeringObjectId\":\"global\", \"recognizerFeedback\":\"global\"}",
+                node.getName(), node.getSubType()));
+      }
 
       if (inputNamespaceMap == null) {
         continue;

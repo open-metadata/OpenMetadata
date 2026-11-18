@@ -36,6 +36,14 @@ public class RejectRecognizerFeedbackImpl implements JavaDelegate {
               varHandler.getNamespacedVariable(
                   inputNamespaces.namespaceFor(RECOGNIZER_FEEDBACK), RECOGNIZER_FEEDBACK);
       RecognizerFeedback feedback = JsonUtils.readValue(feedbackJson, RecognizerFeedback.class);
+      if (feedback == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "'%s' workflow variable is missing or could not be deserialized for node '%s'; "
+                    + "ensure the workflow trigger or an upstream node sets the "
+                    + "inputNamespaceMap-provided '%s' variable",
+                RECOGNIZER_FEEDBACK, execution.getCurrentActivityId(), RECOGNIZER_FEEDBACK));
+      }
 
       String updatedByNamespace = inputNamespaces.namespaceFor(UPDATED_BY_VARIABLE);
       String reviewedBy = "governance-bot";
