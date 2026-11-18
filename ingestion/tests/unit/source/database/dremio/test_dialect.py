@@ -280,11 +280,18 @@ class TestNestedTypes:
             'ROW("a,b" VARCHAR, c INTEGER)',
             'ROW("say ""hi""" VARCHAR)',
             'ROW("a<b" VARCHAR)',
+            'ROW("a)b" VARCHAR)',
+            'ROW("a(b" VARCHAR)',
+            'ROW("a[b" VARCHAR)',
+            'ROW("a]b" VARCHAR)',
+            'ROW("a{b" VARCHAR)',
+            'ROW("a}b" VARCHAR)',
         ],
     )
     def test_a_row_whose_field_names_the_parser_cannot_hold_has_no_fields(self, data_type):
         # The column parser of OpenMetadata removes spaces and splits on commas
-        # and angle brackets: a struct without fields is better than wrong ones.
+        # and on the brackets it counts: a struct without fields is better than
+        # wrong ones, or than a parser error that drops the column.
         assert to_om_type(data_type) == "struct"
 
     def test_a_quoted_name_that_is_never_closed_gives_a_struct(self):
@@ -300,6 +307,10 @@ class TestNestedTypes:
             ('ROW("a""b" VARCHAR, "c.d" INTEGER)', ['a"b', "c.d"]),
             ('ROW("first name" VARCHAR, age INTEGER)', []),
             ('ROW("a,b" VARCHAR, c INTEGER)', []),
+            ('ROW("a)b" VARCHAR, c INTEGER)', []),
+            ('ROW("a(b" VARCHAR, c INTEGER)', []),
+            ('ROW("a{b" VARCHAR, c INTEGER)', []),
+            ('ROW(id BIGINT, "a:b" VARCHAR)', ["id", "a:b"]),
         ],
     )
     def test_the_column_parser_reads_the_fields_with_their_names(self, data_type, children):
