@@ -103,7 +103,7 @@ public class MigrationUtil {
               + failures.size()
               + " workflow definition(s); see preceding warnings. The migration will not be"
               + " recorded complete and will retry on the next migrate/startup.",
-          failures.get(0));
+          failures.getFirst());
     }
   }
 }
