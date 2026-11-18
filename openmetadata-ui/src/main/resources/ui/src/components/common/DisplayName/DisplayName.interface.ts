@@ -44,4 +44,10 @@ export interface DisplayNameProps {
    * modal always opens with a valid name regardless of search highlighting.
    */
   entityName?: string;
+  /**
+   * Raw (un-highlighted) display name used to seed the edit-displayName modal.
+   * Same reason as `entityName`: a highlighted `displayName` node would seed an
+   * empty field, and saving it unchanged would remove the stored display name.
+   */
+  entityDisplayName?: string;
 }
