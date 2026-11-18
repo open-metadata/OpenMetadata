@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.ContractExecutionStatus;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 
 /**
@@ -62,6 +64,28 @@ public class DataContractValidationAppIT {
   @BeforeAll
   static void setup() {
     server = OssTestServer.defaultHandle();
+  }
+
+  /** The app stores no configuration, so a trigger payload has nothing to be merged into. */
+  @Test
+  void aTriggerWithAConfigurationPayloadRunsTheApp() {
+    assumeFalse(TestSuiteBootstrap.isK8sEnabled(), "App trigger needs the embedded scheduler");
+    awaitNoRunInProgress();
+    long triggeredAt = System.currentTimeMillis();
+    // Only a run still holding the app's lock is retried; any other failure fails the test.
+    Awaitility.await(APP + " trigger with a payload to be accepted")
+        .atMost(RUN_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreException(ConflictException.class)
+        .until(
+            () -> {
+              ReindexHelpers.triggerAppWithConfig(server, APP, Map.of());
+              return true;
+            });
+
+    AppRunRecord run = awaitRunTriggeredAfter(triggeredAt);
+
+    assertEquals(AppRunRecord.Status.SUCCESS, run.getStatus(), "run should succeed");
   }
 
   @Test
@@ -160,14 +184,7 @@ public class DataContractValidationAppIT {
   }
 
   private static AppRunRecord runApp() {
-    Awaitility.await("previous " + APP + " run to finish")
-        .atMost(RUN_TIMEOUT)
-        .pollInterval(Duration.ofSeconds(1))
-        .ignoreExceptions()
-        .until(
-            () ->
-                ReindexHelpers.latestRunStatus(server, APP) == null
-                    || ReindexHelpers.latestRunIsTerminal(server, APP));
+    awaitNoRunInProgress();
     long triggeredAt = System.currentTimeMillis();
     Awaitility.await(APP + " trigger to be accepted")
         .atMost(RUN_TIMEOUT)
@@ -178,6 +195,21 @@ public class DataContractValidationAppIT {
               ReindexHelpers.triggerApp(server, APP);
               return true;
             });
+    return awaitRunTriggeredAfter(triggeredAt);
+  }
+
+  private static void awaitNoRunInProgress() {
+    Awaitility.await("previous " + APP + " run to finish")
+        .atMost(RUN_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () ->
+                ReindexHelpers.latestRunStatus(server, APP) == null
+                    || ReindexHelpers.latestRunIsTerminal(server, APP));
+  }
+
+  private static AppRunRecord awaitRunTriggeredAfter(long triggeredAt) {
     Awaitility.await(APP + " run to finish")
         .atMost(RUN_TIMEOUT)
         .pollInterval(Duration.ofSeconds(1))

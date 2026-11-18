@@ -621,8 +621,7 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/secrets/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/fernet/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/**/*Secret*",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*",
-        "openmetadata-service/src/main/java/org/openmetadata/service/util/AzureTokenProvider*"
+        "openmetadata-service/src/main/java/org/openmetadata/service/util/AwsCredentials*"
       ],
       "tests": [
         "*Secret*IT",

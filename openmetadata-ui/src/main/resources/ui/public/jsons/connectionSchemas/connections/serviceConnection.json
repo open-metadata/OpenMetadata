@@ -3600,6 +3600,42 @@
                             "personalAccessTokenSecret"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -5431,6 +5467,12 @@
                       "type": "string",
                       "default": "v2"
                     },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
+                    },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
                       "title": "Default Dashboard Filter Pattern",
@@ -6080,6 +6122,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -23441,9 +23575,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -23463,7 +23596,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -34290,9 +34424,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -34326,22 +34459,24 @@
                       "title": "Supports Metadata Extraction"
                     },
                     "supportsLineageExtraction": {
+                      "title": "Supports Lineage Extraction",
+                      "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Lineage Extraction"
+                      "default": false
                     },
                     "supportsUsageExtraction": {
+                      "title": "Supports Operational data Extraction",
                       "description": "Supports Usage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Operational data Extraction"
+                      "default": false
                     }
                   },
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -34511,6 +34646,42 @@
                           "required": [
                             "personalAccessTokenName",
                             "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
                           ],
                           "additionalProperties": false
                         }
@@ -41889,6 +42060,42 @@
                             "personalAccessTokenSecret"
                           ],
                           "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
+                          ],
+                          "additionalProperties": false
                         }
                       ]
                     },
@@ -43720,6 +43927,12 @@
                       "type": "string",
                       "default": "v2"
                     },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
+                    },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
                       "title": "Default Dashboard Filter Pattern",
@@ -44369,6 +44582,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -61730,9 +62035,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "paginationLimit": {
                       "title": "Pagination Limit",
@@ -61752,7 +62056,8 @@
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -72579,9 +72884,8 @@
                     },
                     "salesforceDomain": {
                       "title": "Salesforce Domain",
-                      "description": "Domain of Salesforce instance",
-                      "type": "string",
-                      "default": "login"
+                      "description": "Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain: Salesforce rejects `login` and `test`.",
+                      "type": "string"
                     },
                     "data360DbServiceName": {
                       "title": "Data 360 Database Service Name",
@@ -72615,22 +72919,24 @@
                       "title": "Supports Metadata Extraction"
                     },
                     "supportsLineageExtraction": {
+                      "title": "Supports Lineage Extraction",
+                      "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
                       "description": "Supports Lineage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Lineage Extraction"
+                      "default": false
                     },
                     "supportsUsageExtraction": {
+                      "title": "Supports Operational data Extraction",
                       "description": "Supports Usage Extraction.",
                       "type": "boolean",
-                      "default": true,
-                      "title": "Supports Operational data Extraction"
+                      "default": false
                     }
                   },
                   "additionalProperties": false,
                   "required": [
                     "consumerKey",
-                    "consumerSecret"
+                    "consumerSecret",
+                    "salesforceDomain"
                   ]
                 },
                 {
@@ -72800,6 +73106,42 @@
                           "required": [
                             "personalAccessTokenName",
                             "personalAccessTokenSecret"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "title": "TableauConnectedAppAuth",
+                          "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                          "properties": {
+                            "clientId": {
+                              "title": "Client ID",
+                              "description": "Client ID of the Tableau connected app.",
+                              "type": "string"
+                            },
+                            "secretId": {
+                              "title": "Secret ID",
+                              "description": "ID of the connected app secret.",
+                              "type": "string"
+                            },
+                            "secretValue": {
+                              "title": "Secret Value",
+                              "description": "Value of the connected app secret.",
+                              "type": "string",
+                              "format": "password"
+                            },
+                            "username": {
+                              "title": "Username",
+                              "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "clientId",
+                            "secretId",
+                            "secretValue",
+                            "username"
                           ],
                           "additionalProperties": false
                         }

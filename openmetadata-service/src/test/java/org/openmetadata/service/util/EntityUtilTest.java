@@ -1018,6 +1018,61 @@ class EntityUtilTest {
   }
 
   @Test
+  void addDomainQueryParam_restrictedUserKeepsTheFullScopeForTypesThePickNeverNarrows() {
+    // A task list about an asset shows every task on it; for a domain-only user the role still
+    // limits it to their domains, but the pick must not (e.g. count and list would disagree).
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Finance");
+    EntityReference sales =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("domain")
+            .withFullyQualifiedName("Sales");
+    EntityReference domainRole =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType("role")
+            .withName(DOMAIN_ONLY_ACCESS_ROLE);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    org.openmetadata.schema.entity.teams.User analyst =
+        new org.openmetadata.schema.entity.teams.User()
+            .withName("analyst")
+            .withRoles(List.of(domainRole))
+            .withDomains(List.of(finance, sales))
+            .withDefaultDomain(sales);
+
+    try (MockedStatic<DefaultAuthorizer> authorizer =
+            org.mockito.Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entity =
+            org.mockito.Mockito.mockStatic(Entity.class, org.mockito.Mockito.CALLS_REAL_METHODS)) {
+      for (EntityReference domain : List.of(finance, sales)) {
+        entity
+            .when(() -> Entity.getEntityReferenceById("domain", domain.getId(), NON_DELETED))
+            .thenReturn(domain);
+      }
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(new SubjectContext(analyst, null));
+      ListFilter tables = new ListFilter();
+      ListFilter tasks = new ListFilter();
+
+      ActiveDomainContext.setActiveDomain(sales);
+      EntityUtil.addDomainQueryParam(securityContext, tables, "table");
+      EntityUtil.addDomainQueryParam(securityContext, tasks, Entity.TASK);
+      ActiveDomainContext.clear();
+
+      assertEquals("'" + sales.getId() + "'", tables.getQueryParam("domainId"));
+      String taskScope = tasks.getQueryParam("domainId");
+      assertTrue(taskScope.contains(finance.getId().toString()), taskScope);
+      assertTrue(taskScope.contains(sales.getId().toString()), taskScope);
+      assertEquals("true", tasks.getQueryParam("domainAccessControl"));
+    }
+  }
+
+  @Test
   void addNavbarDomainFilter_skipsTheDomainOnlyAccessCondition() {
     // Glossary terms never enforced domain access on their list; adding the navbar filter must not
     // bring the domain-only role's exact-id condition with it.

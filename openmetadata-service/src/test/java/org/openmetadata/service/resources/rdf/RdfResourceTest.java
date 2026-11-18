@@ -117,7 +117,13 @@ class RdfResourceTest {
         BadRequestException.class,
         () ->
             rdfResource.exploreEntityGraph(
-                securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", 2, null, null));
+                null,
+                securityContext,
+                UUID.randomUUID(),
+                "table } UNION { ?s ?p ?o",
+                2,
+                null,
+                null));
   }
 
   @Test

@@ -23,7 +23,6 @@ import {
   ArrowRight,
   Lightbulb01,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import React, { lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getLearningResourcesByContext } from '../../../rest/learningResourceAPI';
@@ -42,8 +41,8 @@ const LearningDrawer = withSuspenseFallback(
 export const LearningIcon: React.FC<LearningIconProps> = ({
   pageId,
   title,
-  className = '',
-  size = 'sm',
+  className,
+  size = 'lg',
 }) => {
   const { t } = useTranslation();
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -124,10 +123,7 @@ export const LearningIcon: React.FC<LearningIconProps> = ({
         onOpenChange={handlePopoverOpenChange}>
         <ButtonUtility
           aria-label={t('label.learn-how-this-feature-works')}
-          className={classNames(
-            'tw:align-middle tw:*:data-icon:size-5 tw:*:data-icon:p-0',
-            className
-          )}
+          className={className}
           data-testid="learning-icon"
           icon={Lightbulb01}
           size={size}

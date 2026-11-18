@@ -11,15 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  ButtonUtility,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import CopyButton from '../../../components/common/CopyButton/CopyButton';
 import type { TestCase } from '../../../generated/tests/testCase';
 import { renderHighlightedText } from '../../../utils/EntitySearchUtils';
 import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
@@ -27,9 +23,7 @@ import type { UseTestCaseDetailPageResult } from './useTestCaseDetailPage';
 interface TestCaseHeaderTitleProps {
   deleted?: TestCase['deleted'];
   displayName: UseTestCaseDetailPageResult['displayName'];
-  hasCopied: boolean;
   testCaseName: TestCase['name'];
-  onCopy: () => Promise<void>;
 }
 
 const breakableTooltipText = (text?: ReactNode) => (
@@ -39,9 +33,7 @@ const breakableTooltipText = (text?: ReactNode) => (
 const TestCaseHeaderTitle = ({
   deleted,
   displayName,
-  hasCopied,
   testCaseName,
-  onCopy,
 }: TestCaseHeaderTitleProps) => {
   const { t } = useTranslation();
 
@@ -88,18 +80,10 @@ const TestCaseHeaderTitle = ({
           {t('label.deleted')}
         </span>
       )}
-      <ButtonUtility
-        data-testid="entity-header-copy-button"
-        icon={Copy01}
-        size="lg"
-        tooltip={
-          hasCopied
-            ? t('message.link-copy-to-clipboard')
-            : t('label.copy-item', {
-                item: t('label.url-uppercase'),
-              })
-        }
-        onClick={onCopy}
+      <CopyButton
+        testId="entity-header-copy-button"
+        tooltip={t('label.copy-item', { item: t('label.url-uppercase') })}
+        value={globalThis.location.href}
       />
     </Box>
   );

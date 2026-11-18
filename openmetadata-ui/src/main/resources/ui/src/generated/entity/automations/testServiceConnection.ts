@@ -1395,6 +1395,10 @@ export interface AirflowConnectionObject {
     salesforceApiVersion?: string;
     /**
      * Domain of Salesforce instance
+     *
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -1927,6 +1931,16 @@ export interface AirflowConnectionObject {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      *
@@ -2801,6 +2815,9 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -2883,6 +2900,8 @@ export interface AuthenticationType {
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      *
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
@@ -2952,6 +2971,9 @@ export interface AuthenticationType {
      *
      * Username to access the service.
      *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
+     *
      * Username to authenticate with SAP S/4HANA.
      *
      * Username for NATS authentication.
@@ -2991,6 +3013,14 @@ export interface AuthenticationType {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
     /**
      * Authentication type identifier.
      */

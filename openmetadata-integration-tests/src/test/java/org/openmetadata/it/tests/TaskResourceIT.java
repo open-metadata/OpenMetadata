@@ -1728,6 +1728,46 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testDomainOnlyUserWithoutDomainsCannotListRequestedDomainTasks(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain requestedDomain = createDomain(ns, "domain-only-requested");
+    Table requestedTable =
+        createTableWithDomainAndOwners(
+            ns, requestedDomain.getEntityReference(), List.of(shared.USER1_REF));
+    Task requestedTask = createTaskAboutTable(ns, "domain-only-requested", requestedTable);
+    OpenMetadataClient domainOnlyClient = createDomainOnlyTaskUserClient(ns, List.of());
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> domainOnlyClient.tasks().get(requestedTask.getId().toString()));
+
+    ListResponse<Task> unfilteredTasks =
+        domainOnlyClient
+            .tasks()
+            .listWithFilters(Map.of("limit", "1000", "fields", "domains,about"));
+    assertTrue(
+        unfilteredTasks.getData().isEmpty(),
+        "Domain-only user without domains should not list tasks");
+
+    ListResponse<Task> requestedDomainTasks =
+        domainOnlyClient
+            .tasks()
+            .listWithFilters(
+                Map.of(
+                    "limit",
+                    "1000",
+                    "domain",
+                    requestedDomain.getFullyQualifiedName(),
+                    "fields",
+                    "domains,about,payload,assignees,createdBy"));
+
+    assertTrue(
+        requestedDomainTasks.getData().isEmpty(),
+        "Requested domain must not replace the user's no-domain restriction");
+    assertEquals(0, requestedDomainTasks.getTotal());
+  }
+
+  @Test
   void testDomainOnlyUserCannotCreateTaskOutsideAllowedDomain(TestNamespace ns) {
     SharedEntities shared = SharedEntities.get();
 
@@ -2654,9 +2694,9 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             () ->
                 SdkClients.adminClient()
                     .tasks()
-                    .create(tagTaskRequest(ns, "unknown-field", table, "columns.no_such_column")));
-    assertTrue(
-        unknownField.getMessage().contains("is not a tagged field"), unknownField.getMessage());
+                    .create(
+                        tagTaskRequest(ns, "unknown-field", table, "columns.no_such_column.tags")));
+    assertTrue(unknownField.getMessage().contains("names no field"), unknownField.getMessage());
 
     Task task =
         SdkClients.adminClient()
@@ -2678,8 +2718,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .resolve(
                         task.getId().toString(),
                         new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
-    assertTrue(
-        removedField.getMessage().contains("is not a tagged field"), removedField.getMessage());
+    assertTrue(removedField.getMessage().contains("names no field"), removedField.getMessage());
     assertEquals(
         TaskEntityStatus.Open,
         SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
@@ -5039,6 +5078,11 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   private OpenMetadataClient createDomainOnlyTaskUserClient(
       TestNamespace ns, Domain allowedDomain) {
+    return createDomainOnlyTaskUserClient(ns, List.of(allowedDomain.getFullyQualifiedName()));
+  }
+
+  private OpenMetadataClient createDomainOnlyTaskUserClient(
+      TestNamespace ns, List<String> domains) {
     Role domainOnlyRole = SdkClients.adminClient().roles().getByName("DomainOnlyAccessRole");
     Role elevatedRole = getElevatedRoleForTaskTests();
     String userName = "domtask_" + UUID.randomUUID().toString().substring(0, 8);
@@ -5049,7 +5093,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withName(userName)
             .withEmail(email)
             .withDescription("Domain-only task test user")
-            .withDomains(List.of(allowedDomain.getFullyQualifiedName()))
+            .withDomains(domains)
             .withRoles(List.of(domainOnlyRole.getId(), elevatedRole.getId()));
 
     SdkClients.adminClient().users().create(request);

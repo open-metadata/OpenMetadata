@@ -43,6 +43,8 @@ jest.mock('../../../../../common/RichTextEditor/RichTextEditor', () =>
 
 // Mock core-ui components with native HTML to avoid react-aria provider requirements
 jest.mock('@openmetadata/ui-core-components', () => ({
+  // The unsaved-changes popover only opens on a dirty exit.
+  ConfirmPopover: () => null,
   Box: ({
     children,
     ...props
@@ -148,6 +150,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
 import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import AccessControlAddRoleForm from './AccessControlAddRoleForm';
 
+// The unsaved-changes guard is covered by SettingsFormLayout.test.tsx and the
+// Playwright specs; here Cancel simply leaves.
 const mockOnNavigate = jest.fn();
 
 const renderComponent = () =>

@@ -67,7 +67,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { uniqBy } from 'lodash';
-import { FC, Fragment } from 'react';
+import { Fragment } from 'react';
 import { ExpandableConfig } from '../components/common/Table/Table.interface';
 import ConstraintIcon from '../components/discovery/database/ConstraintIcon/ConstraintIcon';
 import { ConstraintTypes } from '../enums/table.enum';
@@ -306,8 +306,7 @@ export const getColumnDataTypeIcon = ({
 
 export function getTableExpandableConfig<T>(
   isDraggable?: boolean,
-  expandIconClass?: string,
-  DragIcon: FC<{ className?: string }> = Reorder
+  expandIconClass?: string
 ): ExpandableConfig<T> {
   const expandableConfig: ExpandableConfig<T> = {
     expandIcon: ({ expanded, onExpand, expandable, record }) => {
@@ -315,7 +314,7 @@ export function getTableExpandableConfig<T>(
 
       return expandable ? (
         <>
-          {isDraggable && <DragIcon className="drag-icon" />}
+          {isDraggable && <Reorder className="drag-icon" />}
           <ButtonUtility
             aria-label={expanded ? t('label.collapse') : t('label.expand')}
             className={classNames(
@@ -333,7 +332,7 @@ export function getTableExpandableConfig<T>(
       ) : (
         isDraggable && (
           <>
-            <DragIcon className="drag-icon" />
+            <Reorder className="drag-icon" />
             <span className="expand-cell-empty-icon-container" />
           </>
         )

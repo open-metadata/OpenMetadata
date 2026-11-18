@@ -25,6 +25,7 @@ import {
 } from '../../../generated/governance/changeRequest/changeRequest';
 import {
   buildResolutions,
+  elementChanges,
   groupSuggestions,
   incompleteRequests,
   isCompeting,
@@ -241,6 +242,219 @@ describe('ReviewPendingChanges utils', () => {
         decision: ChangeDecisionType.Reject,
       },
     ]);
+  });
+
+  it('shows the columns whose descriptions a request changes, and how', () => {
+    const columns = (amount: string, id: string) =>
+      JSON.stringify([
+        { name: 'id', description: id, dataType: 'INT' },
+        {
+          name: 'amount',
+          description: amount,
+          dataType: 'STRUCT',
+          children: [{ name: 'currency', description: 'ISO code' }],
+        },
+      ]);
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: columns('<p>Total</p>', 'Key'),
+      value: columns('<p>Total in cents</p>', 'Row key'),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'id',
+        status: 'changed',
+        properties: [
+          { property: 'description', before: 'Key', after: 'Row key' },
+        ],
+      },
+      {
+        element: 'amount',
+        status: 'changed',
+        properties: [
+          {
+            property: 'description',
+            before: 'Total',
+            after: 'Total in cents',
+          },
+        ],
+      },
+    ]);
+    expect(elementChanges(DESCRIPTION)).toBeUndefined();
+
+    const [group] = groupSuggestions([request('a', true, [op])]);
+
+    expect(group.current).toBeUndefined();
+    expect(group.suggestions[0].changes).toEqual(elementChanges(op));
+  });
+
+  it('names a nested element by its path, and lists elements added and removed', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([
+        {
+          name: 'amount',
+          children: [{ name: 'currency', description: 'ISO' }],
+        },
+        { name: 'legacy' },
+      ]),
+      value: JSON.stringify([
+        {
+          name: 'amount',
+          children: [{ name: 'currency', description: 'ISO 4217' }],
+        },
+        { name: 'region' },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'amount.currency',
+        status: 'changed',
+        properties: [
+          { property: 'description', before: 'ISO', after: 'ISO 4217' },
+        ],
+      },
+      { element: 'region', status: 'added', properties: [] },
+      { element: 'legacy', status: 'removed', properties: [] },
+    ]);
+  });
+
+  it('shows a first nested column added with its details', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([{ name: 'amount', children: [] }]),
+      value: JSON.stringify([
+        {
+          name: 'amount',
+          children: [{ name: 'currency', description: 'ISO code' }],
+        },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'amount.currency',
+        status: 'added',
+        properties: [
+          { property: 'description', before: '', after: 'ISO code' },
+        ],
+      },
+    ]);
+  });
+
+  it("shows a column's tags as one change of the column, by their FQN", () => {
+    const sensitive = {
+      tagFQN: 'PII.Sensitive',
+      name: 'Sensitive',
+      source: 'Classification',
+    };
+    const term = {
+      tagFQN: 'Finance.Sensitive',
+      name: 'Sensitive',
+      source: 'Glossary',
+    };
+    const legacy = { tagFQN: 'Tier.Tier3', name: 'Tier3' };
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([
+        { name: 'id' },
+        { name: 'amount', tags: [term, legacy] },
+      ]),
+      value: JSON.stringify([
+        { name: 'id', tags: [sensitive] },
+        { name: 'amount', tags: [term, sensitive] },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      {
+        element: 'id',
+        status: 'changed',
+        properties: [{ property: 'tags', before: '', after: 'PII.Sensitive' }],
+      },
+      {
+        element: 'amount',
+        status: 'changed',
+        properties: [
+          {
+            property: 'tags',
+            before: 'Finance.Sensitive, Tier.Tier3',
+            after: 'Finance.Sensitive, PII.Sensitive',
+          },
+        ],
+      },
+    ]);
+  });
+
+  it('shows the nested columns of an added column with their details', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([{ name: 'id' }]),
+      value: JSON.stringify([
+        { name: 'id' },
+        {
+          name: 'amount',
+          children: [
+            {
+              name: 'currency',
+              description: 'ISO code',
+              children: [{ name: 'symbol', description: 'Sign' }],
+            },
+          ],
+        },
+      ]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      { element: 'amount', status: 'added', properties: [] },
+      {
+        element: 'amount.currency',
+        status: 'added',
+        properties: [
+          { property: 'description', before: '', after: 'ISO code' },
+        ],
+      },
+      {
+        element: 'amount.currency.symbol',
+        status: 'added',
+        properties: [{ property: 'description', before: '', after: 'Sign' }],
+      },
+    ]);
+  });
+
+  it('shows every column removed when a change empties the list', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([{ name: 'id' }, { name: 'amount' }]),
+      value: JSON.stringify([]),
+    };
+
+    expect(elementChanges(op)).toEqual([
+      { element: 'id', status: 'removed', properties: [] },
+      { element: 'amount', status: 'removed', properties: [] },
+    ]);
+  });
+
+  it('keeps the current value of a column change that changes no column, such as a reorder', () => {
+    const op = {
+      op: MutationOpType.Set,
+      field: 'columns',
+      baseValue: JSON.stringify([{ name: 'id' }, { name: 'amount' }]),
+      value: JSON.stringify([{ name: 'amount' }, { name: 'id' }]),
+    };
+    const [group] = groupSuggestions([request('a', true, [op])]);
+
+    expect(elementChanges(op)).toBeUndefined();
+    expect(group.suggestions[0].changes).toBeUndefined();
+    expect(group.current).toBe('id, amount');
   });
 
   it('reads the published value of a list field from the asset', () => {
