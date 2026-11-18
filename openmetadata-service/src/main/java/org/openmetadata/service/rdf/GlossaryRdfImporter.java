@@ -668,11 +668,7 @@ public class GlossaryRdfImporter {
     Map<String, RelationshipType> updates = new LinkedHashMap<>();
     for (RelationshipType type : toAdd.values()) {
       if (isSymmetric(type)) {
-        // A symmetric property is its own inverse; preserve the self-reference set by
-        // applyCharacteristics and do not rewire it to a declared named inverse. OWL 2 DL
-        // treats `A owl:inverseOf B` on a symmetric `A` as an equivalent-property axiom, not
-        // a separate inverse, so wiring A to B would both lose the symmetry and trip the
-        // validator's "symmetric must be its own inverse" check.
+        // Symmetric properties must retain their self-inverse.
         continue;
       }
       if (type.getInverse() != null) {
@@ -705,13 +701,9 @@ public class GlossaryRdfImporter {
 
   private boolean isCompatibleInversePartner(
       Model model, RelationshipType type, RelationshipType partner) {
-    if (partner == null) {
+    // A self-inverse partner cannot round-trip a different authored predicate.
+    if (partner == null || isSymmetric(partner)) {
       return false;
-    }
-    if (isSymmetric(partner)) {
-      // A symmetric partner keeps its self-inverse; it can still be named as this type's
-      // inverse without the partner's own inverse being rewritten (see completeInversePartner).
-      return true;
     }
     String inverseIri = inversePredicateIri(model, type.getRdfPredicate().toString());
     String partnerInverse = inverseName(partner);
@@ -721,10 +713,6 @@ public class GlossaryRdfImporter {
 
   private void completeInversePartner(
       RelationshipType type, RelationshipType partner, Map<String, RelationshipType> updates) {
-    if (isSymmetric(partner)) {
-      // The partner is its own inverse; do not overwrite that self-reference.
-      return;
-    }
     EntityReference inverse = partner.getInverse();
     if (inverse == null
         || !type.getName().equals(inverse.getName())
@@ -1008,11 +996,7 @@ public class GlossaryRdfImporter {
   }
 
   private void persistRelationTypeUpdates(Collection<RelationshipType> intended) {
-    // Existing partners are claimed against the snapshot taken in registerRelationTypes, but
-    // persisted later through a whole-entity createOrUpdate. Re-fetch each partner right before
-    // writing so a concurrent import that already set its inverse (or edited unrelated fields)
-    // is not silently overwritten — only the inverse field is mutated on the fresh state, and
-    // a partner whose inverse no longer matches the snapshot is left untouched.
+    // The discovery snapshot can be stale by the time the partner is persisted.
     RelationshipTypeRepository repository =
         (RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE);
     RelationshipTypeResolver resolver =

@@ -30,6 +30,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.RelationshipPaletteKey;
 import org.openmetadata.schema.type.RelationshipTypeCategory;
+import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.ontology.RelationshipTypeIds;
@@ -875,18 +877,7 @@ public class GlossaryRdfImportIT {
     relationshipTypeIds.add(RelationshipTypeIds.stableId(forward));
     relationshipTypeIds.add(RelationshipTypeIds.stableId(inverse));
 
-    String ontology =
-        """
-        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
-        @prefix owl: <http://www.w3.org/2002/07/owl#> .
-        @prefix hcp: <http://example.com/ontology/%s#> .
-        hcp:Term0 a skos:Concept ; hcp:%s hcp:Term1 .
-        hcp:Term1 a skos:Concept ; hcp:%s hcp:Term2 .
-        hcp:Term2 a skos:Concept ; hcp:%s hcp:Term0 .
-        hcp:%s a owl:ObjectProperty ; a owl:SymmetricProperty ; owl:inverseOf hcp:%s .
-        hcp:%s a owl:ObjectProperty .
-        """
-            .formatted(glossary.getName(), forward, forward, forward, forward, inverse, inverse);
+    String ontology = symmetricInverseOntology(glossary.getName(), forward, inverse, forward);
 
     JsonNode result = importRdfBody(glossary.getName(), ontology);
 
@@ -894,15 +885,10 @@ public class GlossaryRdfImportIT {
     assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
     JsonNode forwardType = getRelationshipType(forward);
     JsonNode inverseType = getRelationshipType(inverse);
-    // A symmetric property is its own inverse; the declared named inverse must not overwrite
-    // that self-reference (which would trip the validator).
+    // Symmetric properties must retain their self-inverse.
     assertEquals(forward, forwardType.path("inverse").path("name").asText());
     assertEquals(forwardType.path("id"), forwardType.path("inverse").path("id"));
-    // The named inverse still points back at the symmetric property.
-    assertEquals(forward, inverseType.path("inverse").path("name").asText());
-    assertEquals(forwardType.path("id"), inverseType.path("inverse").path("id"));
-    // Symmetry flips the reverse direction back to the authored predicate, so each term
-    // sees forward edges to both its neighbours.
+    assertTrue(inverseType.path("inverse").isMissingNode());
     for (int index = 0; index < 3; index++) {
       GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
       String next = "Term" + ((index + 1) % 3);
@@ -925,6 +911,54 @@ public class GlossaryRdfImportIT {
           term.getRelatedTerms().stream().noneMatch(edge -> inverse.equals(edge.getRelationType())),
           "named inverse must not appear on symmetric edges");
     }
+  }
+
+  @Test
+  void importKeepsNamedPartnerEdgesWhenInverseIsSymmetric(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createWithName(ns, "glossarySymmetricPartner");
+    String symmetric = relationshipTypeName(glossary.getName());
+    String authored = symmetric + "Inverse";
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(symmetric));
+    relationshipTypeIds.add(RelationshipTypeIds.stableId(authored));
+
+    JsonNode result =
+        importRdfBody(
+            glossary.getName(),
+            symmetricInverseOntology(glossary.getName(), symmetric, authored, authored));
+
+    assertEquals(2, result.path("relationTypesRegistered").asInt(), result.toString());
+    assertEquals(3, result.path("relationsAdded").asInt(), result.toString());
+    // A directed cycle necessarily includes both UUID orderings.
+    for (int index = 0; index < 3; index++) {
+      GlossaryTerm term = getTerm(glossary.getName() + ".Term" + index);
+      assertEquals(2, term.getRelatedTerms().size());
+      for (TermRelation relation : term.getRelatedTerms()) {
+        assertEquals(
+            authored,
+            relation.getRelationType(),
+            "Both ends must retain the authored named partner");
+      }
+      assertEquals(
+          Set.of("Term" + ((index + 1) % 3), "Term" + ((index + 2) % 3)),
+          term.getRelatedTerms().stream()
+              .map(relation -> relation.getTerm().getName())
+              .collect(Collectors.toSet()));
+    }
+    assertEquals(symmetric, getRelationshipType(symmetric).path("inverse").path("name").asText());
+    assertTrue(getRelationshipType(authored).path("inverse").isMissingNode());
+  }
+
+  private String symmetricInverseOntology(
+      String glossaryName, String symmetric, String partner, String authored) {
+    return inverseCycleOntology(glossaryName, authored, partner, "none")
+        + "hcp:"
+        + symmetric
+        + " a owl:ObjectProperty, owl:SymmetricProperty ; owl:inverseOf hcp:"
+        + partner
+        + " .\n"
+        + "hcp:"
+        + partner
+        + " a owl:ObjectProperty .\n";
   }
 
   private RelationshipType createExistingPartner(Glossary glossary, String name, String inverse) {

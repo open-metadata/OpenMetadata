@@ -222,12 +222,10 @@ class GlossaryRdfImporterTest {
       assertTrue(
           forward.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC),
           "prescribes is symmetric");
-      // applyCharacteristics makes a symmetric property its own inverse, and that self
-      // reference must survive even though owl:inverseOf also names a partner.
+      // A named inverse declaration cannot change a symmetric property's self-reference.
       assertNotNull(forward.getInverse());
       assertEquals("prescribes", forward.getInverse().getName());
       assertEquals(forward.getId(), forward.getInverse().getId());
-      // The named partner is still resolved as the reverse direction.
       assertNotNull(reverse.getInverse());
       assertEquals("prescribes", reverse.getInverse().getName());
       assertEquals(forward.getId(), reverse.getInverse().getId());
