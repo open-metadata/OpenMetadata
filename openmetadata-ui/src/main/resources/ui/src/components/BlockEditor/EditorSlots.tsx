@@ -111,7 +111,7 @@ const EditorSlots = forwardRef<EditorSlotsRef, EditorSlotsProps>(
         const href = target.getAttribute('href');
         const linkTarget = target.getAttribute('target');
         if (href && linkTarget) {
-          window.open(href, linkTarget);
+          window.open(href, linkTarget, 'noopener,noreferrer');
         }
 
         return;
