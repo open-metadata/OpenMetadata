@@ -233,7 +233,7 @@
       "items": {
         "$ref": "../../type/tagLabel.json"
       },
-      "default": null
+      "default": []
     },
     "usageSummary": {
       "description": "Latest usage information for this ML Model.",
