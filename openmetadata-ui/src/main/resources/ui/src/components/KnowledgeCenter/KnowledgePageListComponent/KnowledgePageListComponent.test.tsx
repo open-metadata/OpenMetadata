@@ -271,19 +271,23 @@ describe('KnowledgePageListComponent fetch failure and empty-state reporting', (
       .mockRejectedValueOnce(new Error('load-more failed'))
       .mockResolvedValueOnce(page('p1'))
       .mockResolvedValueOnce(page('p2'));
-    const element = (
+    const permissions = { ViewAll: true } as OperationPermission;
+    const onPageChange = jest.fn();
+    // A fresh element per render: React may bail out of re-rendering an
+    // identical element, and the in-view flag only changes via the mock.
+    const buildElement = () => (
       <KnowledgePageListComponent
-        permissions={{ ViewAll: true } as OperationPermission}
+        permissions={permissions}
         restSortField="updatedAt"
-        onPageChange={jest.fn()}
+        onPageChange={onPageChange}
       />
     );
-    const { rerender } = render(element, { wrapper: MemoryRouter });
+    const { rerender } = render(buildElement(), { wrapper: MemoryRouter });
 
     await waitFor(() => expect(mockGetList).toHaveBeenCalledTimes(1));
 
     mockIsInView = true;
-    rerender(element);
+    rerender(buildElement());
 
     await waitFor(() => {
       expect(
