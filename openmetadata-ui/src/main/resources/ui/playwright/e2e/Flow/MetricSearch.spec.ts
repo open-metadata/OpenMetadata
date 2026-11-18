@@ -15,10 +15,10 @@ import { migratedTo } from '../../constant/migration';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
 import {
-    createNewPage,
-    expectNoErrorToast,
-    redirectToHomePage,
-    uuid
+  createNewPage,
+  expectNoErrorToast,
+  redirectToHomePage,
+  uuid,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
