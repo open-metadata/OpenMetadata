@@ -52,7 +52,9 @@ export const parseTaskTags = (value?: string | TagLabel[]): TagLabel[] => {
   }
 
   try {
-    return JSON.parse(value) as TagLabel[];
+    const parsed: unknown = JSON.parse(value);
+
+    return Array.isArray(parsed) ? (parsed as TagLabel[]) : [];
   } catch {
     return [];
   }

@@ -341,49 +341,54 @@ describe('TaskPayloadSchemaFields', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
-  describe('tagSelector on a string field', () => {
-    const STRING_TAGS_SCHEMA: JsonSchemaObject = {
+  describe('tagSelector on a string field (TagSuggestion seed)', () => {
+    const TAG_SUGGESTION_SCHEMA: JsonSchemaObject = {
       type: 'object',
       properties: {
-        suggestedValue: { title: 'Suggested Tags', type: 'string' },
+        suggestedValue: { title: 'Suggested Tags (JSON)', type: 'string' },
       },
     };
-    const uiSchema = { suggestedValue: { 'ui:widget': 'tagSelector' } };
+    const TAG_SUGGESTION_UI_SCHEMA: JsonSchemaObject = {
+      suggestedValue: { 'ui:widget': 'tagSelector' },
+    };
 
-    it('reads the tags out of the JSON string', () => {
+    it('reads the JSON string as tags', () => {
       render(
         <TaskPayloadSchemaFields
           mode="read"
           payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
-          schema={STRING_TAGS_SCHEMA}
-          uiSchema={uiSchema}
-          onChange={jest.fn()}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
         />
       );
 
       expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
     });
 
-    it('writes edited tags back as a JSON string so the payload stays valid', () => {
+    it('writes edited tags back as a JSON string', () => {
       const onChange = jest.fn();
 
       render(
         <TaskPayloadSchemaFields
           payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
-          schema={STRING_TAGS_SCHEMA}
-          uiSchema={uiSchema}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
           onChange={onChange}
         />
       );
 
       fireEvent.click(screen.getByTestId('tag-selector'));
 
-      const { suggestedValue } = onChange.mock.calls[0][0];
-
-      expect(typeof suggestedValue).toBe('string');
-      expect(JSON.parse(suggestedValue)).toEqual([
-        expect.objectContaining({ tagFQN: 'Tier.Tier1' }),
-      ]);
+      expect(onChange).toHaveBeenCalledWith({
+        suggestedValue: JSON.stringify([
+          {
+            labelType: LabelType.Manual,
+            source: TagSource.Classification,
+            state: State.Confirmed,
+            tagFQN: 'Tier.Tier1',
+          },
+        ]),
+      });
     });
   });
 

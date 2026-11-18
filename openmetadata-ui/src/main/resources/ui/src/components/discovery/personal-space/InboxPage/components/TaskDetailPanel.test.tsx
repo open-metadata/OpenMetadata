@@ -80,7 +80,6 @@ jest.mock('rest/tasksAPI', () => ({
 jest.mock('utils/TaskFormSchemaUtils', () => ({
   getResolvedTaskFormSchema: (...a: unknown[]) =>
     mockGetResolvedTaskFormSchema(...a),
-  getTaskFormSchemaName: () => undefined,
   applyTaskFormSchemaDefaults: (payload: Record<string, unknown>) => payload,
   getEditableTaskPayload: (task: { payload?: Record<string, unknown> }) =>
     task.payload ?? {},
@@ -1901,7 +1900,13 @@ describe('TaskDetailPanel', () => {
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
         'Approval',
-        undefined
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 

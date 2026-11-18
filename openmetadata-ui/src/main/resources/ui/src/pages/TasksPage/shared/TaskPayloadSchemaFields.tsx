@@ -516,14 +516,14 @@ const TaskPayloadSchemaFields = ({
     );
   };
 
-  // A string-typed field (TagSuggestion's suggestedValue) holds the tags as
-  // JSON; keep it a string so the payload still validates against its schema.
   const renderTagSelectorField: FieldRenderer = (
     fieldName,
     fieldSchema,
     label,
     description
   ) => {
+    // A string-typed tag field (TagSuggestion's suggestedValue) holds the tags as JSON.
+    const isJsonField = fieldSchema?.type === 'string';
     const tags = parseTaskTags(
       payload[fieldName] as string | TagLabel[] | undefined
     ).filter(Boolean);
@@ -540,7 +540,7 @@ const TaskPayloadSchemaFields = ({
           onChange={(newTags) =>
             updateField(
               fieldName,
-              fieldSchema?.type === 'string' ? JSON.stringify(newTags) : newTags
+              isJsonField ? JSON.stringify(newTags) : newTags
             )
           }
         />
