@@ -516,10 +516,17 @@ jest.mock('../../components/common/TestConnection/TestConnection', () =>
   jest
     .fn()
     .mockImplementation(
-      ({ serviceCategory, extraInfo }: TestConnectionProps) => (
+      ({
+        serviceCategory,
+        extraInfo,
+        isTestingDisabled,
+      }: TestConnectionProps) => (
         <div data-testid="test-connection">
           <span data-testid="test-connection-category">{serviceCategory}</span>
           <span data-testid="test-connection-extra-info">{extraInfo}</span>
+          <span data-testid="test-connection-disabled">
+            {String(isTestingDisabled)}
+          </span>
         </div>
       )
     )
@@ -1764,12 +1771,20 @@ describe('ServiceDetailsPage', () => {
       }));
 
       await renderComponent();
+
+      expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+        'true'
+      );
+
       await act(async () => finishExtraInfo());
 
       await waitFor(() => {
         expect(
           screen.getByTestId('test-connection-extra-info')
         ).toHaveTextContent(ingestionRunnerName);
+        expect(
+          screen.getByTestId('test-connection-disabled')
+        ).toHaveTextContent('false');
       });
     });
   });

@@ -559,9 +559,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [serviceCategory]
   );
 
+  // Wait for the extra info, or a test started meanwhile goes out without the service's runner.
   const isTestingDisabled = useMemo(
-    () => !canEditAll || !connectionDetails,
-    [canEditAll, connectionDetails]
+    () => !isExtraInfoLoaded || !canEditAll || !connectionDetails,
+    [isExtraInfoLoaded, canEditAll, connectionDetails]
   );
 
   const goToEditConnection = useCallback(() => {
