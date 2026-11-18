@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.util.ArrayList;
@@ -82,6 +83,115 @@ public class RelationshipTypeLegacyInverseIT {
     for (UUID id : typeIds) {
       client.relationshipTypes().delete(id.toString(), true);
     }
+  }
+
+  @Test
+  void removingHealthyInverseNamePreservesThePair(TestNamespace ns) {
+    assertHealthyPatchPreservesEdges(
+        ns,
+        MAPPER
+            .createArrayNode()
+            .add(MAPPER.createObjectNode().put("op", "remove").put("path", "/inverse/name")));
+  }
+
+  @Test
+  void idOnlyInversePatchResolvesItsName(TestNamespace ns) {
+    assertHealthyPatchPreservesEdges(
+        ns,
+        inversePatch(
+            new EntityReference().withId(inverse.getId()).withType(Entity.RELATIONSHIP_TYPE)));
+  }
+
+  @Test
+  void inverseIdOverridesAContradictoryFqn(TestNamespace ns) {
+    assertHealthyPatchPreservesEdges(
+        ns,
+        inversePatch(
+            new EntityReference()
+                .withId(inverse.getId())
+                .withType(Entity.RELATIONSHIP_TYPE)
+                .withFullyQualifiedName(forward.getFullyQualifiedName())));
+  }
+
+  @Test
+  void partialReciprocalPatchCreatesAWorkingPair(TestNamespace ns) {
+    final CreateRelationshipType backRequest = typeRequest("partialBack" + ns.uniqueShortId());
+    final RelationshipType back = client.relationshipTypes().create(backRequest);
+    typeIds.add(back.getId());
+    final RelationshipType front =
+        client
+            .relationshipTypes()
+            .create(typeRequest("partialFront" + ns.uniqueShortId()).withInverse(back.getName()));
+    typeIds.add(front.getId());
+    final RelationshipType saved =
+        client
+            .relationshipTypes()
+            .patch(
+                back.getId(),
+                inversePatch(
+                    new EntityReference()
+                        .withId(front.getId())
+                        .withType(Entity.RELATIONSHIP_TYPE)
+                        .withFullyQualifiedName(front.getFullyQualifiedName())));
+    assertResolvedReference(saved, front);
+    final List<GlossaryTerm> ascending = orderedTerms(ns, "partialAscending");
+    final List<GlossaryTerm> descending = orderedTerms(ns, "partialDescending");
+    postEdge(ascending.getFirst(), ascending.getLast(), front.getName());
+    postEdge(descending.getLast(), descending.getFirst(), front.getName());
+    assertPerspective(ascending.getFirst(), ascending.getLast(), front);
+    assertPerspective(ascending.getLast(), ascending.getFirst(), back);
+    assertPerspective(descending.getLast(), descending.getFirst(), front);
+    assertPerspective(descending.getFirst(), descending.getLast(), back);
+  }
+
+  @Test
+  void selfIdOnlyPatchPreservesItsNameAndEdge(TestNamespace ns) {
+    final String name = "selfPatch" + ns.uniqueShortId();
+    final RelationshipType self =
+        client
+            .relationshipTypes()
+            .create(
+                typeRequest(name)
+                    .withInverse(name)
+                    .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC)));
+    typeIds.add(self.getId());
+    final List<GlossaryTerm> terms = orderedTerms(ns, "selfPatch");
+    postEdge(terms.getLast(), terms.getFirst(), name);
+    final OntologyRelationshipRow row = storedRow(terms.getFirst(), terms.getLast());
+    final RelationshipType saved =
+        client
+            .relationshipTypes()
+            .patch(
+                self.getId(),
+                inversePatch(
+                    new EntityReference().withId(self.getId()).withType(Entity.RELATIONSHIP_TYPE)));
+    assertResolvedReference(saved, self);
+    assertPerspective(terms.getFirst(), terms.getLast(), self);
+    assertPerspective(terms.getLast(), terms.getFirst(), self);
+    assertEquals(row, storedRow(terms.getFirst(), terms.getLast()));
+  }
+
+  @Test
+  void unknownInverseIdCannotFallBackToARegisteredFqn(TestNamespace ns) {
+    final List<GlossaryTerm> terms = orderedTerms(ns, "unknownInverse");
+    postEdge(terms.getLast(), terms.getFirst(), forward.getName());
+    final RelationshipType original = reload(forward);
+    final OntologyRelationshipRow row = storedRow(terms.getFirst(), terms.getLast());
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            client
+                .relationshipTypes()
+                .patch(
+                    forward.getId(),
+                    inversePatch(
+                        new EntityReference()
+                            .withId(UUID.randomUUID())
+                            .withType(Entity.RELATIONSHIP_TYPE)
+                            .withFullyQualifiedName(inverse.getFullyQualifiedName()))));
+    assertResolvedReference(reload(forward), inverse);
+    assertEquals(original.getVersion(), reload(forward).getVersion());
+    assertEquals(row, storedRow(terms.getFirst(), terms.getLast()));
   }
 
   @Test
@@ -279,13 +389,7 @@ public class RelationshipTypeLegacyInverseIT {
             .withCharacteristics(Set.of(RelationshipCharacteristic.SYMMETRIC));
     RelationshipType self = client.relationshipTypes().create(request);
     typeIds.add(self.getId());
-    client
-        .relationshipTypes()
-        .patch(
-            self.getId(),
-            MAPPER
-                .createArrayNode()
-                .add(MAPPER.createObjectNode().put("op", "remove").put("path", "/inverse/name")));
+    seedNamelessInverse(self);
     List<GlossaryTerm> terms = orderedTerms(ns, "self");
     postEdge(terms.getLast(), terms.getFirst(), self.getName());
     OntologyRelationshipRow before = storedRow(terms.getFirst(), terms.getLast());
@@ -304,6 +408,49 @@ public class RelationshipTypeLegacyInverseIT {
       views.add(edgeView(pair.getLast(), pair.getFirst()));
     }
     return views;
+  }
+
+  private void assertHealthyPatchPreservesEdges(TestNamespace ns, JsonNode patch) {
+    final List<GlossaryTerm> ascending = orderedTerms(ns, "healthyAscending");
+    final List<GlossaryTerm> descending = orderedTerms(ns, "healthyDescending");
+    postEdge(ascending.getFirst(), ascending.getLast(), forward.getName());
+    postEdge(descending.getLast(), descending.getFirst(), forward.getName());
+    final List<EdgeView> before = views(ascending, descending);
+    final List<OntologyRelationshipRow> rows =
+        List.of(
+            storedRow(ascending.getFirst(), ascending.getLast()),
+            storedRow(descending.getFirst(), descending.getLast()));
+    assertResolvedReference(client.relationshipTypes().patch(forward.getId(), patch), inverse);
+    assertResolvedReference(patchForward("add", "/inverse/name", inverse.getName()), inverse);
+    assertResolvedReference(client.relationshipTypes().upsert(forwardRequest), inverse);
+    assertEquals(before, views(ascending, descending));
+    assertEquals(
+        rows,
+        List.of(
+            storedRow(ascending.getFirst(), ascending.getLast()),
+            storedRow(descending.getFirst(), descending.getLast())));
+    final List<GlossaryTerm> next = orderedTerms(ns, "afterHealthyPatch");
+    postEdge(next.getLast(), next.getFirst(), forward.getName());
+    assertPerspective(next.getLast(), next.getFirst(), forward);
+    assertPerspective(next.getFirst(), next.getLast(), inverse);
+  }
+
+  private static JsonNode inversePatch(EntityReference reference) {
+    return MAPPER
+        .createArrayNode()
+        .add(
+            MAPPER
+                .createObjectNode()
+                .put("op", "add")
+                .put("path", "/inverse")
+                .set("value", MAPPER.valueToTree(reference)));
+  }
+
+  private static void assertResolvedReference(RelationshipType type, RelationshipType expected) {
+    assertNotNull(type.getInverse());
+    assertEquals(expected.getId(), type.getInverse().getId());
+    assertEquals(expected.getName(), type.getInverse().getName());
+    assertEquals(expected.getFullyQualifiedName(), type.getInverse().getFullyQualifiedName());
   }
 
   private record EdgeView(
@@ -358,16 +505,19 @@ public class RelationshipTypeLegacyInverseIT {
 
   private void makePairNameless() {
     for (RelationshipType type : List.of(forward, inverse)) {
-      client
-          .relationshipTypes()
-          .patch(
-              type.getId(),
-              MAPPER
-                  .createArrayNode()
-                  .add(MAPPER.createObjectNode().put("op", "remove").put("path", "/inverse/name")));
+      seedNamelessInverse(type);
     }
     assertNamelessReference(reload(forward), inverse);
     assertNamelessReference(reload(inverse), forward);
+  }
+
+  private void seedNamelessInverse(final RelationshipType type) {
+    // Historical fixtures must bypass the API protection against dropping a resolved name.
+    final RelationshipType stored = reload(type);
+    stored.getInverse().setName(null);
+    Entity.getCollectionDAO().relationshipTypeDAO().update(stored);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.RELATIONSHIP_TYPE, stored.getId(), stored.getFullyQualifiedName());
   }
 
   private RelationshipType reload(RelationshipType type) {

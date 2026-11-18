@@ -1,7 +1,7 @@
 # Legacy inverse reference updates preserve existing edge meaning
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-18 (initial)
+- **Revisions:** v1 2026-11-18 (initial) · v2 2026-11-18 (prevent named references becoming legacy)
 - **Deciders:** Contribution author, subject to maintainer review
 - **Guard:** `RelationshipTypeLegacyInverseIT`, `RelationshipTypeRepositoryTest`, `RelationshipTypeRepositoryUpdaterTest`
 - **Related:** open-metadata/OpenMetadata#38113
@@ -18,6 +18,10 @@ canonicalized edges can have similar shapes, and later edits or migrations can c
 ## Decision
 
 - New pairs carry resolved inverse names.
+- A missing name on an ID-stamped reference resolves by authoritative ID, including self IDs. Do
+  not fall back to a supplied FQN when that ID is unknown. Already named and unresolved pre-stamped
+  references keep their batch-registration behavior. A non-null inverse on a previously named
+  definition must not lose its name, even when a caller bypasses prepare.
 - For an existing nameless inverse, an unchanged or omitted inverse on PUT preserves the entire
   stored reference. Unrelated PATCH edits preserve it too, including FQN-only references hydrated
   during prepare.
@@ -36,7 +40,8 @@ canonicalized edges can have similar shapes, and later edits or migrations can c
 ## Consequences
 
 Ordinary form saves and unrelated edits remain usable while existing term perspectives and stored
-rows are preserved. Named definitions keep their previous update behavior. The conservative policy
+rows are preserved. Named definitions retain intentional inverse removal and retargeting; partial
+reference edits cannot turn them into nameless legacy definitions. The conservative policy
 also restricts empty legacy definitions; it does not claim to repair historical data. A future
 repair workflow must establish original intent and coordinate activation with edge reconciliation.
 The rejection points to a separate reviewed repair mechanism. Reviewing or deleting rows alone is

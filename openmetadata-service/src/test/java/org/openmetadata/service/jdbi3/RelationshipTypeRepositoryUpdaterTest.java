@@ -2,8 +2,10 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +33,16 @@ class RelationshipTypeRepositoryUpdaterTest {
   @AfterEach
   void cleanup() {
     Entity.cleanup();
+  }
+
+  @Test
+  void updaterCannotStripANamedInverseWhenPrepareIsBypassed() {
+    final RelationshipType original = type(PEER);
+    final var updater =
+        repository.new RelationshipTypeUpdater(original, type(null), Operation.PATCH);
+    updater.changeDescription = new ChangeDescription();
+    assertThrows(BadRequestException.class, () -> updater.entitySpecificUpdate(false));
+    assertEquals(PEER, original.getInverse().getName());
   }
 
   @Test

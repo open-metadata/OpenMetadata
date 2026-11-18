@@ -26,6 +26,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
@@ -112,7 +113,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   /**
-   * Resolve FQN→id for {@code inverse}, {@code replacedBy}, {@code propertyChain}, and {@code
+   * Resolve FQN→id/name for {@code inverse}, {@code replacedBy}, {@code propertyChain}, and {@code
    * disjointWith} references. The public REST API ({@link
    * org.openmetadata.service.resources.ontology.RelationshipTypeMapper}) builds these references
    * with only {@code type} + {@code fullyQualifiedName} set ({@code id == null}), because a client
@@ -120,7 +121,8 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
    * RelationshipTypeValidator} and downstream consumers (e.g. the RDF glossary exporter) break for
    * every client-supplied reference. Self-references (where the reference FQN equals the entity's
    * own FQN) are hydrated from the entity's own id, which is already set before {@code prepare}
-   * runs.
+   * runs. ID-stamped references missing a name are enriched when their target exists; unresolved
+   * pre-stamped references remain valid for batch registration.
    */
   private void hydrateReferences(final RelationshipType entity) {
     final String selfFqn = entity.getFullyQualifiedName();
@@ -143,8 +145,11 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   private EntityReference hydrate(
       final EntityReference reference, final String selfFqn, final UUID selfId) {
-    if (reference == null || reference.getId() != null) {
+    if (reference == null) {
       return reference;
+    }
+    if (reference.getId() != null) {
+      return hydrateNameById(reference, selfFqn, selfId);
     }
     final String fqn = reference.getFullyQualifiedName();
     if (fqn == null) {
@@ -160,6 +165,24 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     return reference;
   }
 
+  private EntityReference hydrateNameById(
+      final EntityReference reference, final String selfFqn, final UUID selfId) {
+    if (reference.getName() != null) {
+      return reference;
+    }
+    if (reference.getId().equals(selfId)) {
+      return reference.withName(selfFqn).withFullyQualifiedName(selfFqn);
+    }
+    try {
+      final RelationshipType resolved = find(reference.getId(), Include.ALL);
+      return reference
+          .withName(resolved.getName())
+          .withFullyQualifiedName(resolved.getFullyQualifiedName());
+    } catch (EntityNotFoundException ignored) {
+      return reference;
+    }
+  }
+
   static EntityReference inverseForUpdate(
       final RelationshipType original,
       final RelationshipType updated,
@@ -167,6 +190,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
       final boolean inverseRequested) {
     final EntityReference stored = original.getInverse();
     final EntityReference requested = updated.getInverse();
+    requireNamedInverse(original, requested);
     if (stored == null || stored.getName() != null) {
       return requested;
     }
@@ -176,6 +200,26 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     if (isSafeSelfInverse(updated, requested)) {
       return requested;
     }
+    return legacyInverseForUpdate(original, requested, operation);
+  }
+
+  private static void requireNamedInverse(
+      final RelationshipType original, final EntityReference requested) {
+    final EntityReference stored = original.getInverse();
+    if (stored != null
+        && stored.getName() != null
+        && requested != null
+        && requested.getName() == null) {
+      throw new BadRequestException(
+          "Inverse reference of relationship type '"
+              + original.getName()
+              + "' must carry its resolved name");
+    }
+  }
+
+  private static EntityReference legacyInverseForUpdate(
+      final RelationshipType original, final EntityReference requested, final Operation operation) {
+    final EntityReference stored = original.getInverse();
     if (operation.isPut() && (requested == null || sameReferencedType(stored, requested))) {
       return stored;
     }

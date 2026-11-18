@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -24,6 +25,23 @@ class RelationshipTypeRepositoryTest {
     for (EntityReference stored : new EntityReference[] {null, reference(PEER_ID, PEER, PEER)}) {
       assertSame(requested, apply(stored, requested, Operation.PUT, true));
     }
+    final EntityReference pendingBatchReference = reference(OTHER_ID, "pending", null);
+    assertSame(pendingBatchReference, apply(null, pendingBatchReference, Operation.PUT, true));
+  }
+
+  @Test
+  void namedInverseCannotLoseItsNameWithoutPrepare() {
+    final EntityReference stored = reference(PEER_ID, PEER, PEER);
+    for (final Operation operation : new Operation[] {Operation.PUT, Operation.PATCH}) {
+      assertThrows(
+          BadRequestException.class,
+          () -> apply(stored, reference(PEER_ID, PEER, null), operation, true));
+    }
+  }
+
+  @Test
+  void deliberateRemovalOfAnAlreadyNamedInverseKeepsItsExistingBehavior() {
+    assertNull(apply(reference(PEER_ID, PEER, PEER), null, Operation.PATCH, true));
   }
 
   @Test
