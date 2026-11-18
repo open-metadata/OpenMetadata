@@ -14,8 +14,8 @@ from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bi
 
 @pytest.fixture(autouse=True, scope="session")
 def config_logging():
-    """Set the log level of sqlfluff to CRITICAL."""
-    logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
+    """Set the log level of collate-sqlfluff to CRITICAL."""
+    logging.getLogger("collate_sqlfluff").setLevel(logging.CRITICAL)
 
 
 @pytest.fixture(scope="module")
