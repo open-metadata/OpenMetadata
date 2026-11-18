@@ -14,9 +14,12 @@ Test Greenplum using the topology
 """
 
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, PropertyMock, patch
 
-from metadata.generated.schema.entity.data.table import TableType
+import pytest
+from sqlalchemy.exc import SQLAlchemyError
+
+from metadata.generated.schema.entity.data.table import Column, ConstraintType, DataType, TableConstraint, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
@@ -106,3 +109,50 @@ class greenplumUnitTest(TestCase):  # noqa: N801
             results = list(self.greenplum_source.query_view_names_and_types("public"))
 
         self.assertEqual([(r.name, r.type_) for r in results], [("regular_view", TableType.View)])
+
+
+@pytest.fixture
+def distribution_source():
+    with patch.object(GreenplumSource, "test_connection"):
+        source = GreenplumSource.create(mock_greenplum_config["source"], MagicMock())
+    with patch.object(GreenplumSource, "connection", new_callable=PropertyMock) as connection:
+        try:
+            yield source, connection.return_value
+        finally:
+            source.close()
+
+
+@pytest.mark.parametrize("keys", [["id"], ["region", "id"], []])
+def test_distribution_columns_form_one_constraint(distribution_source, keys):
+    source, connection = distribution_source
+    connection.execute.return_value = [(name,) for name in keys]
+    unique = TableConstraint(constraintType=ConstraintType.UNIQUE, columns=["id", "region"])
+
+    constraints = source.update_table_constraints(
+        table_name="my_table",
+        schema_name="my_schema",
+        db_name="demo_db",
+        table_constraints=[unique],
+        foreign_columns=[],
+        columns=[Column(name=name, dataType=DataType.INT) for name in ("id", "region")],
+    )
+
+    expected = [unique]
+    if keys:
+        expected.append(TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=keys))
+    assert constraints == expected
+
+
+def test_distribution_lookup_failure_is_not_an_empty_policy(distribution_source):
+    source, connection = distribution_source
+    connection.execute.side_effect = SQLAlchemyError("catalog unavailable")
+
+    with pytest.raises(SQLAlchemyError, match="catalog unavailable"):
+        source.update_table_constraints(
+            table_name="my_table",
+            schema_name="my_schema",
+            db_name="demo_db",
+            table_constraints=None,
+            foreign_columns=[],
+            columns=[Column(name="id", dataType=DataType.INT)],
+        )

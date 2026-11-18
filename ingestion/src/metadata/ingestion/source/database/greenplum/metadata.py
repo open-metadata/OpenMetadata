@@ -22,8 +22,11 @@ from sqlalchemy.engine import Inspector
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import (
+    Column,
+    ConstraintType,
     PartitionColumnDetails,
     PartitionIntervalTypes,
+    TableConstraint,
     TablePartition,
     TableType,
 )
@@ -48,6 +51,7 @@ from metadata.ingestion.source.database.common_pg_mappings import (
     ischema_names,
 )
 from metadata.ingestion.source.database.greenplum.queries import (
+    GREENPLUM_DISTRIBUTION_KEYS,
     GREENPLUM_GET_DB_NAMES,
     GREENPLUM_GET_TABLE_NAMES,
     GREENPLUM_PARTITION_DETAILS,
@@ -181,3 +185,29 @@ class GreenplumSource(PgMatviewMixin, CommonDbSourceService, MultiDBSource):
             )
             return True, partition_details
         return False, None
+
+    def update_table_constraints(
+        self,
+        table_name: str,
+        schema_name: str,
+        db_name: str,
+        table_constraints: list[TableConstraint] | None,
+        foreign_columns: list[dict],
+        columns: list[Column],
+    ) -> list[TableConstraint]:
+        """Include Greenplum distribution columns in the table constraints."""
+        table_constraints = table_constraints or []
+        distribution_columns = [
+            row[0]
+            for row in self.connection.execute(
+                text(GREENPLUM_DISTRIBUTION_KEYS),
+                {"schema_name": schema_name, "table_name": table_name},
+            )
+        ]
+        if distribution_columns:
+            table_constraints.append(
+                TableConstraint(constraintType=ConstraintType.DIST_KEY, columns=distribution_columns)
+            )
+        return super().update_table_constraints(
+            table_name, schema_name, db_name, table_constraints, foreign_columns, columns
+        )
