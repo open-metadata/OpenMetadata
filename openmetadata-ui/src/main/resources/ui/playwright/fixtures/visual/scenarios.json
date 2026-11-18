@@ -4264,7 +4264,7 @@
       }
     ],
     "initialReady": {
-      "testId": "my-data-page"
+      "testId": "home-landing-page"
     }
   },
   {
@@ -4281,7 +4281,7 @@
       }
     ],
     "initialReady": {
-      "testId": "my-data-page"
+      "testId": "home-landing-page"
     }
   },
   {
