@@ -32,7 +32,7 @@ export interface NormalizedTaskPayload {
   isSuggestionEmpty: boolean;
 }
 
-const parseTaskTags = (value?: string | TagLabel[]): TagLabel[] => {
+export const parseTaskTags = (value?: string | TagLabel[]): TagLabel[] => {
   if (!value) {
     return [];
   }
@@ -42,7 +42,9 @@ const parseTaskTags = (value?: string | TagLabel[]): TagLabel[] => {
   }
 
   try {
-    return JSON.parse(value) as TagLabel[];
+    const parsed: unknown = JSON.parse(value);
+
+    return Array.isArray(parsed) ? (parsed as TagLabel[]) : [];
   } catch {
     return [];
   }

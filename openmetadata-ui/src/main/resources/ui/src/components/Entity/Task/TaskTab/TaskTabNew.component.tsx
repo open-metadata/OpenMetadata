@@ -1475,9 +1475,20 @@ export const TaskTabNew = ({
   }, [initialAssignees, assigneeOptions]);
 
   useEffect(() => {
+    let active = true;
     setTaskFormSchema(getDefaultTaskFormSchema(task.type, task.category));
-    getResolvedTaskFormSchema(task.type, task.category).then(setTaskFormSchema);
-  }, [task.category, task.type]);
+    getResolvedTaskFormSchema(task.type, task.category, {
+      // Prefer the schema the backend stamped on the task, falling back to
+      // payload-based disambiguation for Suggestion variants (description vs
+      // tag share one taskType+taskCategory binding). See TaskFormSchemaUtils.
+      taskFormSchemaId: task.taskFormSchemaId,
+      payload: task.payload,
+    }).then((schema) => active && setTaskFormSchema(schema));
+
+    return () => {
+      active = false;
+    };
+  }, [task.category, task.type, task.taskFormSchemaId, task.payload]);
 
   useEffect(() => {
     setSelectedTransitionId(task.availableTransitions?.[0]?.id);
