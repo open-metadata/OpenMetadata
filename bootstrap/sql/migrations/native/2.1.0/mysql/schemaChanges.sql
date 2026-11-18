@@ -1216,6 +1216,27 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
   KEY ontology_concept_binding_asset_index (assetId)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+SET @context_file_visibility_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'context_file'
+        AND column_name = 'visibility'
+    ),
+    'SELECT 1',
+    'ALTER TABLE context_file ADD COLUMN visibility VARCHAR(16) GENERATED ALWAYS AS (NULLIF(json_unquote(json_extract(json, ''$.shareConfig.visibility'')), ''null'')) STORED, ADD INDEX idx_context_file_visibility (visibility)'
+  )
+);
+PREPARE context_file_visibility_stmt FROM @context_file_visibility_ddl;
+EXECUTE context_file_visibility_stmt;
+DEALLOCATE PREPARE context_file_visibility_stmt;
+
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;

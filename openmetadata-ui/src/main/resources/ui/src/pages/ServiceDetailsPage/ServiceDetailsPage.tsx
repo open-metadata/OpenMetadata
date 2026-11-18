@@ -57,7 +57,6 @@ import {
   INITIAL_PAGING_VALUE,
   INITIAL_TABLE_FILTERS,
   pagingObject,
-  ROUTES,
 } from '../../constants/constants';
 import { SERVICE_INSIGHTS_WORKFLOW_DEFINITION_NAME } from '../../constants/ServiceInsightsTab.constants';
 import {
@@ -73,7 +72,6 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { ServiceAttributes } from '../../generated/entity/services/serviceAttributes';
@@ -302,6 +300,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [files, setFiles] = useState<Array<File>>([]);
   const [spreadsheets, setSpreadsheets] = useState<Array<Spreadsheet>>([]);
   const [isLoading, setIsLoading] = useState(!isOpenMetadataService);
+  const [isForbidden, setIsForbidden] = useState(false);
   // Seeded to match `isLoading` above: the fetch is kicked off from an effect that waits on the
   // airflow status, so a `false` seed lets the agents tab read an empty list as "no agents".
   const [isIngestionPipelineLoading, setIsIngestionPipelineLoading] = useState(
@@ -1054,14 +1053,15 @@ const ServiceDetailsPage: FunctionComponent = () => {
         }
       );
       setServiceDetails(response);
+      setIsForbidden(false);
       setConnectionDetails(response.connection?.config as DashboardConnection);
       // show deleted child entities if service is deleted
       setFilters({ showDeletedTables: response.deleted ?? false });
     } catch (error) {
-      // Error
-      if ((error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN) {
-        navigate(ROUTES.FORBIDDEN, { replace: true });
-      }
+      // 403 renders the permission placeholder in place, e.g. another domain's service
+      setIsForbidden(
+        (error as AxiosError)?.response?.status === ClientErrors.FORBIDDEN
+      );
     } finally {
       setIsLoading(false);
     }
@@ -2098,14 +2098,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     decodedServiceFQN,
     isOpenMetadataService,
   ]);
-  const servicePermissionWithTrigger = useMemo(
-    () => ({
-      ...servicePermission,
-      Trigger: permissions[ResourceEntity.APPLICATION]?.Trigger || false,
-    }),
-    [servicePermission, permissions[ResourceEntity.APPLICATION]]
-  );
-
   const afterAutoPilotAppTrigger = useCallback(() => {
     fetchWorkflowInstanceStates();
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
@@ -2127,13 +2119,16 @@ const ServiceDetailsPage: FunctionComponent = () => {
     return <EntityDetailsPageSkeleton />;
   }
 
-  if (!flags.hasViewAccess) {
+  if (!flags.hasViewAccess || isForbidden) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
           data-testid="permission-error-placeholder"
           permissionValue={t('label.view-entity', {
-            entity: `${getEntityName(serviceDetails)} ${t('label.service')}`,
+            // A 403 keeps the previous service's details, so name the one requested.
+            entity: `${
+              isForbidden ? decodedServiceFQN : getEntityName(serviceDetails)
+            } ${t('label.service')}`,
           })}
         />
       </div>
@@ -2168,7 +2163,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
               isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
-              permissions={servicePermissionWithTrigger}
+              permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onFollowClick={handleFollowClick}

@@ -13,7 +13,7 @@
 
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
 import type { Task } from '../../../../../generated/entity/tasks/task';
 import type { User } from '../../../../../generated/entity/teams/user';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
@@ -23,6 +23,7 @@ const mockListTasks = jest.fn();
 const mockListVisibleTasks = jest.fn();
 const mockSetItems = jest.fn();
 const mockSetTotal = jest.fn();
+const mockLoadMore = jest.fn();
 const mockInvalidateQueries = jest.fn();
 let capturedFetchPage: (after?: string) => unknown;
 let capturedQueryKey: unknown[];
@@ -32,6 +33,7 @@ let hookState: {
   isLoading: boolean;
   total: number;
   hasMore?: boolean;
+  isLoadMoreError?: boolean;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -81,6 +83,8 @@ jest.mock('../useInboxInfiniteList', () => ({
       sentinelRef: { current: null },
       setItems: mockSetItems,
       setTotal: mockSetTotal,
+      loadMore: mockLoadMore,
+      isLoadMoreError: Boolean(hookState.isLoadMoreError),
     };
   },
 }));
@@ -177,13 +181,20 @@ jest.mock('../components/TaskDetailPanel', () => ({
     taskId,
     onResolved,
     onTaskUpdated,
+    onLoaded,
   }: {
     taskId?: string;
     onResolved: (...args: unknown[]) => void;
     onTaskUpdated: (...args: unknown[]) => void;
+    onLoaded: (...args: unknown[]) => void;
   }) => (
     <div data-testid="detail">
       <span>{taskId}</span>
+      <button
+        data-testid="loaded"
+        onClick={() => onLoaded({ id: taskId, ...resolvedPayload })}>
+        loaded
+      </button>
       <button
         data-testid="resolve"
         onClick={() => onResolved({ id: taskId, ...resolvedPayload })}>
@@ -209,16 +220,20 @@ jest.mock('components/common/Loader/Loader', () => ({
 }));
 
 let tabsOnChange: ((key: string) => void) | undefined;
+let tabsSelectedKey: string | undefined;
 
 jest.mock('@openmetadata/ui-core-components', () => {
   const TabsRoot = ({
     onSelectionChange,
+    selectedKey,
     children,
   }: {
     onSelectionChange?: (...args: unknown[]) => void;
+    selectedKey?: string;
     children?: ReactNode;
   }) => {
     tabsOnChange = onSelectionChange;
+    tabsSelectedKey = selectedKey;
 
     return <div>{children}</div>;
   };
@@ -238,6 +253,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
   }) => (
     <button
       data-badge={badge}
+      data-selected={id === tabsSelectedKey}
       data-testid={`task-status-${id}`}
       type="button"
       onClick={() => tabsOnChange?.(id)}>
@@ -291,6 +307,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         ))}
       </div>
     ),
+    Button: ({
+      children,
+      onClick,
+    }: {
+      children?: ReactNode;
+      onClick?: () => void;
+    }) => <button onClick={onClick}>{children}</button>,
     Tabs,
   };
 });
@@ -440,9 +463,12 @@ describe('TasksTab', () => {
 
     fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
 
-    expect(screen.getByTestId('inbox-tasks-no-match')).toHaveTextContent(
-      'message.no-match-found'
-    );
+    // Under the filters it answers, not across the empty detail pane.
+    expect(
+      within(screen.getByTestId('inbox-tasks-scroll')).getByTestId(
+        'inbox-tasks-no-match'
+      )
+    ).toHaveTextContent('message.no-match-found');
     expect(
       screen.queryByText('label.no-open-tasks-yet')
     ).not.toBeInTheDocument();
@@ -694,6 +720,78 @@ describe('TasksTab', () => {
     expect(screen.getByTestId('detail')).toHaveTextContent('t9');
   });
 
+  it('opens a linked closed task on the Closed tab, once', () => {
+    resolvedPayload = { status: 'Cancelled' };
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(capturedQueryKey[2]).toBe('closed');
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+
+    fireEvent.click(screen.getByTestId('task-status-open'));
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-open')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
+  // The notification bell can link to another task while the tab stays open.
+  it('opens a second linked closed task on the Closed tab while mounted', () => {
+    const FollowLink = () => {
+      const navigate = useNavigate();
+
+      return (
+        <button
+          data-testid="follow-link"
+          onClick={() => navigate('/inbox/tasks?taskId=t8')}>
+          follow
+        </button>
+      );
+    };
+    resolvedPayload = { status: 'Cancelled' };
+    render(
+      <MemoryRouter initialEntries={['/inbox/tasks?taskId=t9']}>
+        <TasksTab />
+        <FollowLink />
+      </MemoryRouter>
+    );
+
+    fireEvent.click(screen.getByTestId('loaded'));
+    fireEvent.click(screen.getByTestId('task-status-open'));
+    fireEvent.click(screen.getByTestId('follow-link'));
+
+    expect(screen.getByTestId('detail')).toHaveTextContent('t8');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-closed')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t8');
+  });
+
+  it('keeps the Open tab for a linked open task', () => {
+    resolvedPayload = { status: 'Open' };
+    renderTab({}, '/inbox/tasks?taskId=t9');
+
+    fireEvent.click(screen.getByTestId('loaded'));
+
+    expect(screen.getByTestId('task-status-open')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
+    expect(screen.getByTestId('detail')).toHaveTextContent('t9');
+  });
+
   // A capped scan is the only way to reach matches on later pages, so its
   // "Load more" must stay reachable while the linked task holds the detail.
   it('keeps "Load more" reachable on a capped scan while a linked task is open', () => {
@@ -896,6 +994,69 @@ describe('TasksTab', () => {
       renderTab();
 
       expect(screen.getByTestId('detail')).toHaveTextContent('t2');
+    });
+
+    // Groups sort by urgency, so one built from the newest page alone would
+    // hide an older incident until the list was scrolled to its end.
+    it('reads on past the screen while grouped, up to the scan cap', () => {
+      hookState = { ...hookState, hasMore: true };
+      renderTab();
+
+      expect(mockLoadMore).toHaveBeenCalled();
+
+      mockLoadMore.mockClear();
+      fireEvent.click(screen.getByTestId('toolbar-group-none'));
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    // A failed page would otherwise be requested again on every settle.
+    it('stops reading on after a page fails', () => {
+      hookState = { ...hookState, hasMore: true, isLoadMoreError: true };
+      renderTab();
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    // A filter that hides every loaded row leaves nothing to scroll, so the
+    // sentinel can't retry the failed page; the list must offer it.
+    it('offers a retry for a failed page under a filter that empties the list', () => {
+      hookState = { ...hookState, hasMore: true, isLoadMoreError: true };
+      renderTab();
+      fireEvent.click(screen.getByTestId('toolbar-filter-tag'));
+      fireEvent.click(screen.getByTestId('toolbar-status-pending'));
+
+      const retry = screen.getByTestId('inbox-tasks-load-more-error');
+
+      expect(retry).toHaveTextContent('server.entity-fetch-error');
+
+      fireEvent.click(within(retry).getByText('label.retry'));
+
+      expect(mockLoadMore).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops reading on at the scan cap', () => {
+      hookState = {
+        items: Array.from(
+          { length: 200 },
+          (_, index) => ({ ...TAG_TASK, id: `t${index}` } as Task)
+        ),
+        isLoading: false,
+        total: 500,
+        hasMore: true,
+      };
+      renderTab();
+
+      expect(mockLoadMore).not.toHaveBeenCalled();
+    });
+
+    it('marks group counts as floors while pages are still unread', () => {
+      hookState = { ...hookState, hasMore: true };
+      renderTab();
+
+      expect(screen.getAllByTestId('inbox-task-group')[0]).toHaveTextContent(
+        '1+'
+      );
     });
 
     it('drops the group headers when grouping is turned off', () => {

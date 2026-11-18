@@ -14,6 +14,10 @@
 import { AxiosError, AxiosResponse } from 'axios';
 import { OntologyConceptType } from '../generated/api/data/createOntologyConcept';
 import { Kind } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
+import {
+  Format,
+  type NativeOntologyImportSummary,
+} from '../generated/api/data/nativeOntologyImportSummary';
 import { Operation } from '../generated/api/data/ontologyBulkRequest';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
 import { Direction } from '../generated/api/data/ontologyConceptQuery';
@@ -53,6 +57,7 @@ import {
   patchOntologyConcept,
   putOntologyConceptBinding,
   releaseOntologyEditLock,
+  reviewNativeOntologyPack,
   submitOntologyBulkOperation,
   suggestOntologyMappings,
   suggestOntologyRelationships,
@@ -73,6 +78,33 @@ const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 describe('ontologyAPI', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+  });
+
+  it('reads the bounded library summary without requesting draft operations', async () => {
+    const response: NativeOntologyImportSummary = {
+      detectedFormat: Format.Turtle,
+      counts: {
+        newConcepts: 1,
+        updatedConcepts: 0,
+        newProperties: 0,
+        updatedProperties: 0,
+        newRelations: 0,
+        newMappings: 0,
+        skippedDefinitions: 0,
+        skippedRelations: 0,
+      },
+      items: [],
+    };
+    const request = { moduleIds: ['ssn'] };
+    mockedApiClient.post.mockResolvedValue({ data: response });
+
+    await expect(
+      reviewNativeOntologyPack('ontology-id', 'sosa-ssn', request)
+    ).resolves.toEqual(response);
+    expect(mockedApiClient.post).toHaveBeenCalledWith(
+      '/ontologies/ontology-id/library/sosa-ssn/summary',
+      request
+    );
   });
 
   it.each([

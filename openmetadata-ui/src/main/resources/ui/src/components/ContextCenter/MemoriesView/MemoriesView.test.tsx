@@ -69,7 +69,7 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   getContextMemoryVersions: jest.fn(),
 }));
 
-jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
+jest.mock('../../common/CopyButton/CopyButton', () =>
   jest.fn(() => <button aria-label="Copy link" data-testid="copy-link-btn" />)
 );
 

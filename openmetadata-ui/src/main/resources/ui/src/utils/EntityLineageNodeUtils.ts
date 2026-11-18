@@ -49,6 +49,7 @@ import { t } from './i18next/LocalUtil';
 type EntityChildrenMapping = {
   data: EntityChildren;
   label: string;
+  singularLabel: string;
   childrenCount: number;
 };
 
@@ -57,6 +58,7 @@ const getTableEntityChildren = (
 ): EntityChildrenMapping => ({
   data: node.flattenChildren ?? node.columns ?? [],
   label: t('label.column-plural'),
+  singularLabel: t('label.column'),
   childrenCount: node.columns?.length ?? 0,
 });
 
@@ -65,6 +67,7 @@ const getDashboardEntityChildren = (
 ): EntityChildrenMapping => ({
   data: node.charts ?? [],
   label: t('label.chart-plural'),
+  singularLabel: t('label.chart'),
   childrenCount: node.charts?.length ?? 0,
 });
 
@@ -73,6 +76,7 @@ const getMlModelEntityChildren = (
 ): EntityChildrenMapping => ({
   data: node.mlFeatures ?? [],
   label: t('label.feature-plural'),
+  singularLabel: t('label.feature'),
   childrenCount: node.mlFeatures?.length ?? 0,
 });
 
@@ -81,6 +85,7 @@ const getContainerEntityChildren = (
 ): EntityChildrenMapping => ({
   data: node.flattenChildren ?? node.dataModel?.columns ?? [],
   label: t('label.column-plural'),
+  singularLabel: t('label.column'),
   childrenCount: node.dataModel?.columns?.length ?? 0,
 });
 
@@ -89,6 +94,7 @@ const getTopicEntityChildren = (
 ): EntityChildrenMapping => ({
   data: node.flattenChildren ?? node.messageSchema?.schemaFields ?? [],
   label: t('label.field-plural'),
+  singularLabel: t('label.field'),
   childrenCount: node.messageSchema?.schemaFields?.length ?? 0,
 });
 
@@ -101,6 +107,7 @@ const getApiEndpointEntityChildren = (
     node?.requestSchema?.schemaFields ??
     [],
   label: t('label.field-plural'),
+  singularLabel: t('label.field'),
   childrenCount:
     node?.responseSchema?.schemaFields?.length ??
     node?.requestSchema?.schemaFields?.length ??
@@ -112,6 +119,7 @@ const getSearchIndexEntityChildren = (
 ): EntityChildrenMapping => ({
   data: node.flattenChildren ?? node.fields ?? [],
   label: t('label.field-plural'),
+  singularLabel: t('label.field'),
   childrenCount: node.fields?.length ?? 0,
 });
 
@@ -127,6 +135,7 @@ const getMetricEntityChildren = (
 ): EntityChildrenMapping => ({
   data: [node],
   label: t('label.metric'),
+  singularLabel: t('label.metric'),
   childrenCount: 0,
 });
 
@@ -149,18 +158,20 @@ export function getEntityChildrenAndLabel(node: LineageNodeType) {
     return {
       children: [],
       childrenHeading: '',
+      childHeading: '',
       childrenCount: 0,
     };
   }
 
   const resolver = ENTITY_CHILDREN_RESOLVERS[node.entityType as EntityType];
-  const { data, label, childrenCount } = resolver
+  const { data, label, singularLabel, childrenCount } = resolver
     ? resolver(node)
-    : { data: [], label: '', childrenCount: 0 };
+    : { data: [], label: '', singularLabel: '', childrenCount: 0 };
 
   return {
     children: data,
     childrenHeading: label,
+    childHeading: singularLabel,
     childrenCount,
   };
 }

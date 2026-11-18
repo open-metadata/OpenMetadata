@@ -121,6 +121,7 @@ import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandle
 import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.events.consumer.schedule.EventSubscriptionScheduler;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
@@ -158,7 +159,10 @@ import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.*;
 import org.openmetadata.service.ontology.OntologyBulkJobHandler;
 import org.openmetadata.service.ontology.OntologyBulkJobManager;
+import org.openmetadata.service.ontology.OntologyPackInstallJobHandler;
+import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
+import org.openmetadata.service.rdf.RdfDisabledMark;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -330,6 +334,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Metrics initialization now handled by MicrometerBundle
 
+    // Before any resource starts work, so extraction can tell a server stop from a failure.
+    // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+    ServerStopping.registerShutdownHook();
     AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
     environment.lifecycle().manage(RdfBackgroundScheduler.getInstance());
 
@@ -389,6 +396,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Validate native migrations before anything writes settings: seeding and reconciling them
     // use columns a pending migration adds, and must not run against a schema it has not reached.
     startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
+
+    // After migration validation, because nothing should write to the database before its schema is
+    // validated. Here, not in a helper subclasses override or in app registration, which the ops
+    // CLI also reaches without starting a server.
+    RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
 
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     startupTimer.time(
@@ -492,6 +504,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
+    // The mark is written twice at stop. When the stop begins, because a shutdown that outlasts
+    // the platform's grace period is killed before any hook below runs. And after ManagedShutdown
+    // (registered before it; hooks stop in reverse order), to follow the hooks that stop this
+    // server's background writers.
+    environment
+        .lifecycle()
+        .addEventListener(
+            RdfDisabledMark.whenStopBegins(catalogConfig.getRdfConfiguration(), jdbi));
+    environment
+        .lifecycle()
+        .manage(RdfDisabledMark.atStop(catalogConfig.getRdfConfiguration(), jdbi));
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
@@ -580,6 +603,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
         CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
         new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     registry.register(OntologyBulkJobManager.HANDLER_NAME, ontologyBulkJobHandler);
+    registry.register(
+        OntologyPackInstallJobManager.HANDLER_NAME, OntologyPackInstallJobHandler.createDefault());
     registry.register(new ContextMemoryExtractionJobHandler());
     registry.register(new MemoryGlossaryDerivationJobHandler());
     return registry;

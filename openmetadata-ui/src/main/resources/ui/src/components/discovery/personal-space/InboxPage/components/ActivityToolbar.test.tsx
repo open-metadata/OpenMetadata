@@ -194,15 +194,17 @@ describe('ActivityToolbar', () => {
     expect(onTypeKeysChange).toHaveBeenCalledWith(['label.owner-plural']);
   });
 
+  // Every window runs to now, so a one-day preset is today, not yesterday.
   it('offers the date presets up to 30 days and reports the one picked', () => {
     const { onDatePresetChange } = renderToolbar();
     const dates = screen.getByTestId('activity-date-filter');
 
-    expect(dates).toHaveTextContent('label.yesterday');
+    expect(dates).toHaveTextContent('label.today');
+    expect(dates).not.toHaveTextContent('label.yesterday');
     expect(dates).not.toHaveTextContent('60');
 
-    fireEvent.click(screen.getByText('label.yesterday'));
+    fireEvent.click(screen.getByText('label.today'));
 
-    expect(onDatePresetChange).toHaveBeenCalledWith('yesterday');
+    expect(onDatePresetChange).toHaveBeenCalledWith('today');
   });
 });

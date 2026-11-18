@@ -103,15 +103,14 @@ TESTID_MAX_OWNERS = 3
 
 # Delegated spec globs are managed by the hand-authored map already — they
 # run outside spec-impact selection (Auth → playwright-sso-login-nightly.yml;
-# Features/KnowledgeGraph.spec.ts + Features/Ontology*Rdf.spec.ts and
-# VisualRegression/** → the path-gated `rdf` and `visual` lanes of
+# Features/KnowledgeGraph.spec.ts and VisualRegression/** → the path-gated `rdf` and `visual` lanes of
 # playwright-e2e-reusable.yml). Regenerating them here would emit source→spec
 # entries that select_playwright_tests would then strip via its
 # `remove_delegated_specs` pass — pointless noise in the file and misleading
 # to a reviewer skimming it.
 #
 # The source of truth is `impact-map.json.delegatedSpecs`. Loaded at build
-# time so a change to that list (e.g. Ontology*Rdf added, KnowledgeGraph
+# time so a change to that list (e.g. a spec added, KnowledgeGraph
 # renamed) automatically prunes the generated map on the next regen — no
 # second constant to update in lock-step.
 IMPACT_MAP_PATH = Path(".github/playwright/impact-map.json")

@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.util.List;
@@ -282,7 +283,41 @@ public class ChangeSummaryResourceIT {
         "Expected email column changedBy to contain admin but was: " + emailChangedBy);
   }
 
+  /** Usage workflow lifeCycle PATCHes must not take over the description author (#37663). */
+  @Test
+  void testLifeCyclePatchesKeepDescriptionAuthor(TestNamespace ns) throws Exception {
+    Table table = createTestTableWithColumns(ns);
+    Table described =
+        SdkClients.botClient()
+            .tables()
+            .patch(table.getId(), jsonPatch("add", "/columns/1/description", "Customer name"));
+
+    patchLifeCycleAccessed(table, 1000L);
+    Table afterUsage = patchLifeCycleAccessed(table, 2000L);
+
+    assertEquals(described.getVersion(), afterUsage.getVersion());
+    assertEquals(described.getUpdatedBy(), afterUsage.getUpdatedBy());
+    assertEquals(described.getUpdatedAt(), afterUsage.getUpdatedAt());
+    Map<String, Object> nameEntry =
+        extractChangeSummary(getChangeSummary("table", table.getFullyQualifiedName()))
+            .get("columns.name.description");
+    assertNotNull(nameEntry, "Expected changeSummary entry for columns.name.description");
+    assertEquals(described.getUpdatedBy(), nameEntry.get("changedBy"));
+  }
+
   // --- Helper methods ---
+  private Table patchLifeCycleAccessed(Table table, long timestamp) {
+    Map<String, Object> lifeCycle = Map.of("accessed", Map.of("timestamp", timestamp));
+    return SdkClients.adminClient()
+        .tables()
+        .patch(table.getId(), jsonPatch("add", "/lifeCycle", lifeCycle));
+  }
+
+  private JsonNode jsonPatch(String op, String path, Object value) {
+    return MAPPER
+        .createArrayNode()
+        .add(MAPPER.valueToTree(Map.of("op", op, "path", path, "value", value)));
+  }
 
   private Table createTestTable(TestNamespace ns) {
     String shortId = ns.shortPrefix();

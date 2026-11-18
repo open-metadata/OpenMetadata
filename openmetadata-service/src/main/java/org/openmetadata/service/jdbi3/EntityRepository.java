@@ -296,6 +296,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
@@ -3579,11 +3580,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Stamp who created the entity and when, derived from updatedAt/updatedBy so a freshly created
    * entity satisfies createdAt == updatedAt and createdBy == updatedBy.
    *
-   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: PUT reaches
-   * the create path through {@code EntityResource.createOrUpdate}, which calls
-   * {@code prepareInternal(entity, true)}, so a prepare-time hook would skip every entity created
-   * by ingestion. createNewEntity is the one funnel all create paths share, and by then the
-   * late updatedBy override in {@code createInternal} has already been applied.
+   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: {@link
+   * #createOrUpdate} creates a missing entity through createNewEntity without a prepare pass, so a
+   * prepare-time hook would skip every entity created that way. createNewEntity is the one funnel
+   * all create paths share, and by then the late updatedBy override in {@code createInternal} has
+   * already been applied.
    *
    * <p>Entities whose schema does not declare these fields fall through to the no-op
    * EntityInterface defaults.
@@ -5164,15 +5165,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
   }
 
   /**
@@ -5242,15 +5244,32 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Apply JSON patch to the original entity to get the updated entity
-    return patchCommonWithOptimisticLocking(
-        original,
-        patch,
-        patchedFieldNames,
-        actor,
-        uriInfo,
-        changeSource,
-        useOptimisticLocking,
-        null);
+    return withInheritedTags(
+        patchCommonWithOptimisticLocking(
+            original,
+            patch,
+            patchedFieldNames,
+            actor,
+            uriInfo,
+            changeSource,
+            useOptimisticLocking,
+            null));
+  }
+
+  /**
+   * Answers a PATCH with the tags a read of the same entity returns. {@code prepareInternal} drops
+   * the DERIVED labels it is given, since none is stored, so the patched entity carries only its
+   * own tags and the ones they imply, while a read also merges in the tags it inherits from its
+   * parents. A client that renders the response would otherwise show the inherited tags as removed
+   * until it reads the entity again. A held change answers with the entity as it was read, which
+   * already carries them.
+   */
+  private PatchResponse<T> withInheritedTags(final PatchResponse<T> response) {
+    // ADR:2026-11-14-a-patch-answers-with-the-tags-a-read-returns
+    if (supportsTags && response.status() == Status.OK && response.entity() != null) {
+      setInheritedFields(response.entity(), getFields(FIELD_TAGS));
+    }
+    return response;
   }
 
   private PatchResponse<T> patchCommonWithOptimisticLocking(
@@ -5715,6 +5734,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return () -> {};
   }
 
+  /**
+   * This repository's post-delete cleanup and every lifecycle handler's, both captured while the
+   * entities' rows still exist. The handlers' cleanup runs even when the repository's fails. Call it
+   * before removing references and queue the result with {@link PostCommitActionQueue#runOrDefer}
+   * (ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed).
+   */
+  private Runnable prepareHardDeleteCleanup(List<T> entities) {
+    Runnable repositoryCleanup = preparePostDeleteCleanup(entities);
+    Runnable handlerCleanup =
+        EntityLifecycleEventDispatcher.getInstance().prepareHardDelete(entities);
+    return () -> {
+      try {
+        repositoryCleanup.run();
+      } finally {
+        handlerCleanup.run();
+      }
+    };
+  }
+
   protected void postDelete(T entity, boolean hardDelete) {
     // A bulk hard-delete cascade cancels the change requests of each chunk in one query; an entity
     // without an id was never stored, so it has none.
@@ -5922,7 +5960,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
           // ordering for direct-entity hard delete.
           hardDeleteAdditionalChildren(original.getId(), deletedBy);
-          Runnable postDeleteCleanup = preparePostDeleteCleanup(List.of(updated));
+          Runnable postDeleteCleanup = prepareHardDeleteCleanup(List.of(updated));
           cleanup(updated);
           PostCommitActionQueue.runOrDefer(postDeleteCleanup);
           changeType = ENTITY_DELETED;
@@ -6383,11 +6421,62 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createNewEntityFlush(T entity) {
+    checkAppliedGlossaryTermsApproved(entity);
     assignInitialEntityStatus(entity);
     flushInOneTransaction(List.of(entity), () -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
+  }
+
+  final void checkAppliedGlossaryTermsApproved(T entity) {
+    ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
+  }
+
+  /**
+   * Rejects a glossary term that is not Approved and that {@code updated} newly applies to the
+   * entity or one of its fields. Edits an approval workflow holds are checked when they are staged,
+   * so a term is rejected before a change request is opened for it, not when the request is
+   * approved.
+   */
+  public final void checkNewlyAppliedGlossaryTermsApproved(
+      final EntityInterface original, final EntityInterface updated) {
+    final T stored = entityClass.cast(original);
+    final T edited = entityClass.cast(updated);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        ApprovedGlossaryTermGuard.tagsByStoredTarget(
+            new ApprovedGlossaryTermGuard.TaggedEntity(edited, taggedFieldContainers(edited)),
+            new ApprovedGlossaryTermGuard.TaggedEntity(stored, taggedFieldContainers(stored))),
+        glossaryTagsByTarget(stored));
+  }
+
+  /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
+  final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
+    return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
+  }
+
+  /**
+   * The inline fields that carry their own tags, by the container path that holds them. The
+   * default reads the {@link ChildFieldResolver} registry; a repository whose tagged fields are not
+   * registered there overrides it, or the approved-term guard would not see their labels.
+   */
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(T entity) {
+    Map<String, List<? extends FieldInterface>> fieldsByContainer = new LinkedHashMap<>();
+    if (ChildFieldResolver.supports(entityType)) {
+      for (String containerPath : ChildFieldResolver.specFor(entityType).containerPaths()) {
+        fieldsByContainer.put(containerPath, fieldsAt(entity, containerPath));
+      }
+    }
+    return fieldsByContainer;
+  }
+
+  // The registry declares each container's element class as a FieldInterface type, but walks the
+  // POJO reflectively and hands the list back untyped.
+  @SuppressWarnings("unchecked")
+  private static List<? extends FieldInterface> fieldsAt(
+      EntityInterface<?> entity, String containerPath) {
+    return (List<? extends FieldInterface>)
+        listOrEmpty(ChildFieldResolver.containerListFor(entity, containerPath));
   }
 
   private void createNewEntityFlushBody(T entity) {
@@ -6700,6 +6789,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
+    entities.forEach(this::checkAppliedGlossaryTermsApproved);
     entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
@@ -7173,7 +7263,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return JsonUtils.treeToValue(jsonNode, Object.class);
   }
 
-  private void validateExtension(T entity, boolean update) {
+  protected void validateExtension(T entity, boolean update) {
     // Validate complete extension field only on POST
     if (entity.getExtension() == null || update) {
       return;
@@ -7877,7 +7967,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * #applyCertification} in tolerating a certification with no usable tag rather than failing the
    * create — that shape is already a no-op downstream.
    */
-  private void prepareCertification(T entity) {
+  protected void prepareCertification(T entity) {
     if (!supportsCertification || entity.getCertification() == null) {
       return;
     }
@@ -8697,7 +8787,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
         // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
         // already deleted by the recursion above, so this transaction is bounded to this chunk.
-        Runnable postDeleteCleanup = preparePostDeleteCleanup(entities);
+        Runnable postDeleteCleanup = prepareHardDeleteCleanup(entities);
         bulkDeleteReferencesAndRows(entities);
         PostCommitActionQueue.runOrDefer(postDeleteCleanup);
         bulkInvalidate(entities);
@@ -11172,6 +11262,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * unchanged caller POJOs avoid a redundant restore.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
+      checkNewlyAppliedGlossaryTermsApproved();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
@@ -11186,6 +11277,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           invalidateCachesAfterStore();
         }
       }
+    }
+
+    // Runs before any write, and before consolidation rebases `original` onto the pre-session
+    // version, so the baseline is the stored entity this request changes.
+    private void checkNewlyAppliedGlossaryTermsApproved() {
+      EntityRepository.this.checkNewlyAppliedGlossaryTermsApproved(original, updated);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
@@ -11394,6 +11491,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      */
     @Transaction
     public final void updateWithDeferredStore() {
+      checkNewlyAppliedGlossaryTermsApproved();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
@@ -11404,14 +11502,24 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       versionChanged = updateVersion(original.getVersion());
       if (!versionChanged && entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
       } else if (!versionChanged) {
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
       }
+    }
+
+    /**
+     * A non-versioned change (lifeCycle) keeps the current version's change description, author and
+     * timestamp; otherwise the writer's next PATCH consolidates over a version it did not make.
+     */
+    private void keepCurrentVersionAttribution() {
+      if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+        updated.setChangeDescription(original.getChangeDescription());
+      }
+      updated.setUpdatedBy(original.getUpdatedBy());
+      updated.setUpdatedAt(original.getUpdatedAt());
     }
 
     public boolean isVersionChanged() {
@@ -12240,7 +12348,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         return;
       }
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
-      List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
+      List<EntityReference> updatedExperts =
+          keptWhenBotPutNamesNone(origExperts, getEntityReferences(updated.getExperts()));
       validateUsers(updatedExperts);
       updateToRelationships(
           FIELD_EXPERTS,
@@ -12254,12 +12363,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setExperts(updatedExperts);
     }
 
+    /**
+     * Users curate reviewers and experts and no connector sends them, so a bot PUT that names none
+     * keeps the stored ones. See ADR:2026-11-12-a-bot-put-never-removes-reviewers-or-experts.
+     */
+    private List<EntityReference> keptWhenBotPutNamesNone(
+        List<EntityReference> stored, List<EntityReference> requested) {
+      boolean botPutNamesNone = operation.isPut() && updatedByBot() && nullOrEmpty(requested);
+      return botPutNamesNone ? new ArrayList<>(listOrEmpty(stored)) : requested;
+    }
+
     protected void updateReviewers() {
       if (!supportsReviewers) {
         return;
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
-      List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
+      List<EntityReference> updatedReviewers =
+          keptWhenBotPutNamesNone(origReviewers, getEntityReferences(updated.getReviewers()));
       validateReviewers(updatedReviewers);
       // Either all users or team which is one team at a time, assuming all ref to have same type,
       // validateReviewer checks it
@@ -12800,9 +12920,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           storeNewVersion(); // Store the update version of the entity
         }
       } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
         try (var ignored = phase("storeUpdateCurrent")) {
           storeNewVersion();
         }
@@ -12875,9 +12993,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           }
         }
       } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
         if (isConsolidating) {
           try (var ignored = phase("storeUpdateCurrent")) {
             storeNewVersion();

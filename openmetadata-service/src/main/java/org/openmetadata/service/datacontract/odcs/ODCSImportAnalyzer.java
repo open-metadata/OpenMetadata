@@ -88,13 +88,13 @@ public final class ODCSImportAnalyzer {
 
   public ContractValidation analyze(Request request) {
     ODCSImportIssues issues = new ODCSImportIssues();
-    JsonNode original = request.document().deepCopy();
-    Optional<ODCSDataContract> odcs =
-        ODCSLenientReader.read(request.mapper(), request.document(), issues);
+    Optional<ODCSImportService.Document> prepared =
+        ODCSImportService.read(request.mapper(), request.document(), issues);
     ContractValidation validation = new ContractValidation().withValid(false);
     List<ODCSRuleOutcome> outcomes = List.of();
     Optional<DataContract> contract =
-        odcs.flatMap(document -> convert(document, original, request, issues));
+        prepared.flatMap(
+            document -> convert(document.contract(), document.original(), request, issues));
     if (contract.isPresent()) {
       try {
         resolveSlaColumn(contract.get(), issues);
@@ -106,7 +106,10 @@ public final class ODCSImportAnalyzer {
     }
     return withReport(
         validation,
-        odcs.map(document -> document.getApiVersion().value()),
+        Optional.ofNullable(request.document())
+            .map(document -> document.get("apiVersion"))
+            .filter(JsonNode::isTextual)
+            .map(JsonNode::asText),
         issues,
         outcomes,
         request);

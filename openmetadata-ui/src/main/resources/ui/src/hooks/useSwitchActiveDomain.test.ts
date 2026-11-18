@@ -89,6 +89,26 @@ describe('useSwitchActiveDomain', () => {
     expect(mockNavigate).toHaveBeenCalledWith(0);
   });
 
+  it('drops the list page from the URL before reloading', async () => {
+    (updateUserDetail as jest.Mock).mockResolvedValue({ id: 'user-id' });
+    window.history.replaceState(
+      {},
+      '',
+      '/tables?currentPage=3&cursorType=after&cursorValue=abc&pageSize=25'
+    );
+
+    await switchTo(pickedDomain);
+
+    expect(mockNavigate).toHaveBeenNthCalledWith(
+      1,
+      { search: 'pageSize=25', hash: '' },
+      { replace: true }
+    );
+    expect(mockNavigate).toHaveBeenLastCalledWith(0);
+
+    window.history.replaceState({}, '', '/');
+  });
+
   it('clears the saved domain when switching to all domains', async () => {
     (updateUserDetail as jest.Mock).mockResolvedValue({ id: 'user-id' });
 

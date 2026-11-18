@@ -221,7 +221,7 @@ jest.mock('@openmetadata/ui-core-components/icons', () => ({
   ChevronDown: () => <span>ChevronDown</span>,
   Download01: () => <span data-testid="download-01-icon" />,
   Edit01: () => <span data-testid="edit-01-icon" />,
-  FilterFunnel01: () => <span data-testid="filter-funnel-icon" />,
+  AdvancedSearch: () => <span data-testid="advanced-search-icon" />,
   Trash01: () => <span data-testid="trash-icon" />,
   XCircle: () => <span data-testid="x-circle-icon" />,
   XClose: () => <span data-testid="x-close-icon" />,

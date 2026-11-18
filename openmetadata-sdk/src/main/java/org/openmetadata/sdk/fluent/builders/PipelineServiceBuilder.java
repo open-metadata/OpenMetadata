@@ -48,13 +48,6 @@ public class PipelineServiceBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public PipelineServiceBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreatePipelineService request without executing it.
    */
   public CreatePipelineService build() {

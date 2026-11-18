@@ -5,7 +5,6 @@ import static org.openmetadata.service.ontology.NativeOntologyCsvCodec.ROW_FORMA
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -74,11 +73,11 @@ final class NativeOntologyCsvReader {
   }
 
   private static void requireWithinSize(final String csv) {
-    if (csv == null
-        || csv.isBlank()
-        || csv.getBytes(StandardCharsets.UTF_8).length > SafeRdfModelParser.MAX_INPUT_BYTES) {
-      throw new BadRequestException("Native ontology CSV must contain at most 10 MiB of data");
-    }
+    SafeRdfModelParser.requireContent(
+        csv,
+        SafeRdfModelParser.MAX_INPUT_BYTES,
+        "Native ontology CSV is empty",
+        "Native ontology CSV must contain at most 10 MiB of data");
   }
 
   private static void requireHeader(final Iterator<CSVRecord> records) {
@@ -206,6 +205,7 @@ final class NativeOntologyCsvReader {
             .withCharacteristics(characteristics(row))
             .withPropertyChain(iris(row, Column.PROPERTY_CHAIN, false))
             .withDisjointWith(iris(row, Column.DISJOINT_WITH, true))
+            .withSuperProperties(iris(row, Column.SUPER_PROPERTIES, true))
             .withDeprecated(flag(row, Column.DEPRECATED))
             .withReplacedBy(
                 row.filled(Column.REPLACED_BY)

@@ -44,12 +44,15 @@ const pickRole = async (
       new URL(response.url()).searchParams.get('q') === roleName,
     200
   );
+  // The combobox opens with every role on focus, so search first; otherwise the
+  // pick can land on the unfiltered list and the awaited search is never sent.
+  await input.fill(roleName);
+  await searchResponse;
   await selectOptionWithRetry(
     input,
     page.getByRole('option', { name: displayName, exact: true }),
     () => input.fill(roleName)
   );
-  await searchResponse;
   // Multi-select keeps its listbox open after a pick, which blocks the next field.
   await input.press('Escape');
   await expect(page.getByRole('listbox')).toBeHidden();
@@ -122,7 +125,8 @@ test.describe(
 
         await clientId.fill('changed-client-id');
         await page.getByTestId('cancel-sso-configuration').click();
-        await page.getByTestId('sso-unsaved-changes-discard').click();
+        await expect(page.getByTestId('unsaved-changes-popover')).toBeVisible();
+        await page.getByTestId('unsaved-changes-popover-confirm').click();
 
         await expect(clientId).toHaveValue('okta-client-id');
         expect(writes.puts).toHaveLength(0);

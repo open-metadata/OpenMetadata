@@ -20,6 +20,10 @@ import {
 import { ReactNode, useEffect } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Node, ReactFlowInstance } from 'reactflow';
+import {
+  ZOOM_TRANSITION_DURATION,
+  ZOOM_VALUE,
+} from '../../../constants/Lineage.constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
 import { User } from '../../../generated/entity/teams/user';
@@ -186,16 +190,18 @@ const UpdateEntityDataConsumer = () => {
   );
 };
 
+const mockReactFlowInstance = {
+  viewportInitialized: true,
+  setCenter: jest.fn(),
+  fitView: jest.fn(),
+  getZoom: jest.fn(() => 1),
+} as unknown as ReactFlowInstance;
+
 const ReactFlowInitConsumer = () => {
   const { onInitReactFlow } = useLineageHandlers();
 
   useEffect(() => {
-    onInitReactFlow({
-      viewportInitialized: true,
-      setCenter: jest.fn(),
-      fitView: jest.fn(),
-      getZoom: jest.fn(() => 1),
-    } as unknown as ReactFlowInstance);
+    onInitReactFlow(mockReactFlowInstance);
   }, [onInitReactFlow]);
 
   return null;
@@ -419,6 +425,32 @@ describe('Lineage integration', () => {
     });
 
     expect(seenHandlers[seenHandlers.length - 1]).toBe(initial);
+  });
+
+  it('fits the whole graph into view after the initial draw', async () => {
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(TEMP_LINEAGE_RESPONSE);
+
+    render(
+      <MemoryRouter>
+        <Lineage
+          entity={entityFixture}
+          entityFqn="svc.db.s.t1"
+          entityType={EntityType.TABLE}
+          isPlatformLineage={false}>
+          <ReactFlowInitConsumer />
+        </Lineage>
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(mockReactFlowInstance.fitView).toHaveBeenCalledWith({
+        padding: 0.2,
+        maxZoom: ZOOM_VALUE,
+        duration: ZOOM_TRANSITION_DURATION,
+      })
+    );
+
+    expect(mockReactFlowInstance.setCenter).not.toHaveBeenCalled();
   });
 
   it('hides and shows temp tables from the user preference without refetching', async () => {

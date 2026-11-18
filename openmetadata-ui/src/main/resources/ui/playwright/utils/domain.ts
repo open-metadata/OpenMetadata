@@ -2082,6 +2082,14 @@ export const verifyPortCounts = async (
     });
 };
 
+// The modal runs an unfiltered search as it opens. Waiting on any search can
+// resolve on that one, and the typed search then re-renders the cards under the
+// checkbox click, which lands on a card's service link instead.
+const isPortAssetSearch = (query: string) => (res: Response) =>
+  res.request().method() === 'GET' &&
+  new URL(res.url()).pathname.endsWith('/api/v1/search/query') &&
+  new URL(res.url()).searchParams.get('q') === query;
+
 /**
  * Adds an input port to a data product via UI.
  */
@@ -2108,11 +2116,7 @@ export const addInputPortToDataProduct = async (
     .getByTestId('asset-selection-modal')
     .getByTestId('searchbar');
 
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.request().method() === 'GET'
-  );
+  const searchRes = page.waitForResponse(isPortAssetSearch(displayName));
   await searchBar.fill(displayName);
   await searchRes;
 
@@ -2155,11 +2159,7 @@ export const addOutputPortToDataProduct = async (
     .getByTestId('asset-selection-modal')
     .getByTestId('searchbar');
 
-  const searchRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/api/v1/search/query') &&
-      res.request().method() === 'GET'
-  );
+  const searchRes = page.waitForResponse(isPortAssetSearch(displayName));
   await searchBar.fill(displayName);
   await searchRes;
 

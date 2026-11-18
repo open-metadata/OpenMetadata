@@ -376,7 +376,10 @@ describe('BotDetailPanel', () => {
     });
 
     expect(deleteEntity).toHaveBeenCalledWith('bots', 'bot-1', false, true);
-    expect(mockOnNavigate).toHaveBeenCalledWith({ type: 'list' });
+    expect(mockOnNavigate).toHaveBeenCalledWith(
+      { type: 'list' },
+      { replace: true }
+    );
   });
 
   it('keeps the header delete popover open and stays on the bot when the delete fails', async () => {
