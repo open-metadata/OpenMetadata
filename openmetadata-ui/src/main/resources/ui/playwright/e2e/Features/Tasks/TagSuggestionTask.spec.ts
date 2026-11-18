@@ -28,33 +28,19 @@ test.describe('Tag suggestion task', () => {
     labelType: 'Generated',
     state: 'Suggested',
   };
+  let task: { id: string; taskId: string };
+  let columnName: string;
 
-  test.beforeAll('Create the table', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await table.create(apiContext);
-    await afterAction();
-  });
+  test.beforeAll(
+    'Create the table and its tag suggestion',
+    async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await table.create(apiContext);
+      columnName = table.entityResponseData.columns?.[0]?.name ?? '';
 
-  test.afterAll('Delete the table', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await table.delete(apiContext);
-    await afterAction();
-  });
-
-  test('shows the suggested tags as tags and applies them on accept', async ({
-    page,
-  }) => {
-    test.slow();
-
-    await redirectToHomePage(page);
-    const { apiContext, afterAction } = await getApiContext(page);
-    const columnName = table.entityResponseData.columns?.[0]?.name ?? '';
-    const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
-
-    try {
       const createResponse = await apiContext.post('/api/v1/tasks', {
         data: {
-          about: `<#E::table::${tableFqn}>`,
+          about: `<#E::table::${table.entityResponseData.fullyQualifiedName}>`,
           type: 'Suggestion',
           category: 'MetadataUpdate',
           assignees: ['admin'],
@@ -67,8 +53,28 @@ test.describe('Tag suggestion task', () => {
         },
       });
       expect(createResponse.ok()).toBe(true);
-      const task = await createResponse.json();
+      task = await createResponse.json();
+      await afterAction();
+    }
+  );
 
+  test.afterAll('Delete the task and the table', async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await apiContext.delete(`/api/v1/tasks/${task.id}?hardDelete=true`);
+    await table.delete(apiContext);
+    await afterAction();
+  });
+
+  test('shows the suggested tags as tags and applies them on accept', async ({
+    page,
+  }) => {
+    test.slow();
+
+    await redirectToHomePage(page);
+    const { apiContext, afterAction } = await getApiContext(page);
+    const tableFqn = table.entityResponseData.fullyQualifiedName ?? '';
+
+    try {
       await test.step('The task card shows the tag, not raw JSON', async () => {
         await page.goto(
           `/table/${encodeURIComponent(tableFqn)}/activity_feed/tasks`
@@ -79,9 +85,12 @@ test.describe('Tag suggestion task', () => {
         await expect(taskCard).toBeVisible();
         await taskCard.click();
 
-        await expect(taskCard.getByTestId('diff-added')).toContainText(
-          'Sensitive'
-        );
+        // Exact text: "PII.Sensitive" is also a substring of the raw JSON.
+        await expect(
+          taskCard
+            .getByTestId('diff-added')
+            .getByText(suggestedTag.tagFQN, { exact: true })
+        ).toBeVisible();
         await expect(taskCard).not.toContainText('"tagFQN"');
       });
 
@@ -89,8 +98,10 @@ test.describe('Tag suggestion task', () => {
         const taskPanel = page.getByTestId('task-tab');
 
         await expect(
-          taskPanel.getByTestId('task-payload-details')
-        ).toContainText('Sensitive');
+          taskPanel
+            .getByTestId('task-payload-details')
+            .getByText(suggestedTag.tagFQN, { exact: true })
+        ).toBeVisible();
         await expect(taskPanel).not.toContainText('Suggested Description');
         await expect(taskPanel).not.toContainText('"tagFQN"');
       });

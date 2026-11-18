@@ -6,6 +6,9 @@
 - **Guard:** `TaskFormSchemaUtils.test.ts` (`getResolvedTaskFormSchema`, `getSuggestionSchemaName`), `playwright/e2e/Features/Tasks/TaskSuggestionForm.spec.ts`, `playwright/e2e/Features/Tasks/TagSuggestionTask.spec.ts`
 - **Related:** open-metadata/openmetadata-collate#8554, #38033, #38061, #38073
 
+This record documents, after the fact, the resolution order introduced by #38061. #38073 added it
+because #38061 merged without one, and #38073 depends on the same order.
+
 ## Context
 
 Both suggestion form schemas, `DescriptionSuggestion` and `TagSuggestion`, have `taskType: Suggestion` and
