@@ -197,6 +197,18 @@ class CreateTaskTest {
   }
 
   @Test
+  void returningIncidentClearsAssigneesInTheStageUpdate() {
+    Task existingTask =
+        new Task()
+            .withType(TaskEntityType.TestCaseResolution)
+            .withWorkflowStageId("assigned")
+            .withAssignees(users(1));
+
+    assertEquals(
+        List.of(), CreateTask.resolveExistingTaskAssignees(existingTask, List.of(), List.of()));
+  }
+
+  @Test
   void testShouldSkipDeletedWorkflowManagedDraftTaskWhenPendingDraftWasRemoved() {
     assertTrue(CreateTask.shouldSkipDeletedWorkflowManagedDraftTask(UUID.randomUUID(), true, null));
   }

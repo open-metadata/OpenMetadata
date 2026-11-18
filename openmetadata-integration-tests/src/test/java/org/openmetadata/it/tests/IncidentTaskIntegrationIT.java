@@ -662,7 +662,10 @@ public class IncidentTaskIntegrationIT {
     assertEquals(task.getId(), returned.getId());
     assertTrue(returned.getAssignees() == null || returned.getAssignees().isEmpty());
     assertLatestTcrsEventually(client, task.getId(), target, null);
-    assertTrue(tcrsTimeline(client, task.getId()).containsAll(assignedHistory));
+    List<TestCaseResolutionStatus> returnedHistory = tcrsTimeline(client, task.getId());
+    assertEquals(assignedHistory.size() + 1, returnedHistory.size());
+    assertEquals(assignedHistory, returnedHistory.subList(0, assignedHistory.size()));
+    assertEquals(target, returnedHistory.getLast().getTestCaseResolutionStatusType());
     awaitTestCaseIncidentId(client, testCase, task.getId());
     assertEquals(1, countIncidentTasksForTestCase(client, testCase));
   }
@@ -724,6 +727,18 @@ public class IncidentTaskIntegrationIT {
               secondStateId[0] = fetched.getIncidentId();
             });
     assertLatestTcrsEventually(client, secondStateId[0], TestCaseResolutionStatusTypes.New, null);
+    List<TestCaseResolutionStatus> resolvedHistory = tcrsTimeline(client, firstStateId);
+    createTcrs(client, testCase, TestCaseResolutionStatusTypes.Ack, null);
+    createTcrs(
+        client,
+        testCase,
+        TestCaseResolutionStatusTypes.Assigned,
+        new Assigned().withAssignee(SharedEntities.get().USER1_REF));
+    createTcrs(client, testCase, TestCaseResolutionStatusTypes.Resolved, null);
+    assertLatestTcrsEventually(
+        client, secondStateId[0], TestCaseResolutionStatusTypes.Resolved, null);
+    awaitIncidentTask(client, firstStateId, TaskEntityStatus.Completed, "resolved", null);
+    assertEquals(resolvedHistory, tcrsTimeline(client, firstStateId));
     assertEquals(
         2,
         countIncidentTasksForTestCase(client, testCase),

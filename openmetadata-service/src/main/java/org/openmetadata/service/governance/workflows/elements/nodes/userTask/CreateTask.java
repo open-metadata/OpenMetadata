@@ -1017,6 +1017,11 @@ public class CreateTask implements TaskListener {
       Task existingTask,
       List<EntityReference> workflowAssignees,
       List<EntityReference> requestedAssignees) {
+    if (existingTask.getType() == TaskEntityType.TestCaseResolution
+        && requestedAssignees != null
+        && requestedAssignees.isEmpty()) {
+      return List.of();
+    }
     List<EntityReference> existingAssignees = existingTask.getAssignees();
     boolean hasExistingAssignees = existingAssignees != null && !existingAssignees.isEmpty();
     boolean hasRequestedAssignees = requestedAssignees != null && !requestedAssignees.isEmpty();

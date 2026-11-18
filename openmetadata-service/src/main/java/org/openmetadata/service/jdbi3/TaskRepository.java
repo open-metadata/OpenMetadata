@@ -973,19 +973,18 @@ public class TaskRepository extends EntityRepository<Task> {
               : (ObjectNode) JsonUtils.valueToTree(resolvedPayload);
       payload.putArray("assignees");
       resolvedPayload = payload;
-      task = replaceAssignees(current, List.of(), user);
+      task = current;
     }
     try {
       return TaskWorkflowHandler.getInstance()
           .resolveTask(
               task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
     } catch (RuntimeException failure) {
-      // Both APIs clear assignment before Flowable computes the next stage's assignees. Restore
-      // the prior assignment if the transition is refused, without undoing a committed stage move.
+      // The stage callback clears assignment in the same write as the stage change. If it never
+      // commits, restore only the process variables; the persisted assignment is still intact.
       if (clearingIncidentAssignment) {
         Task current = get(null, task.getId(), getFields("*"));
         if (Objects.equals(current.getWorkflowStageId(), task.getWorkflowStageId())) {
-          replaceAssignees(current, previousAssignees, user);
           WorkflowHandler handler = WorkflowHandler.getInstance();
           handler.setProcessVariable(
               task.getId(),
@@ -1037,14 +1036,6 @@ public class TaskRepository extends EntityRepository<Task> {
               "Incident task %s is resolved and cannot be reopened; a new test failure opens a new incident",
               task.getId()));
     }
-  }
-
-  /** Replaces the task's assignees in their own write, before a stage change that depends on them. */
-  public Task replaceAssignees(Task task, List<EntityReference> assignees, String user) {
-    Task original = get(null, task.getId(), getFields("*"));
-    Task updated = JsonUtils.deepCopy(original, Task.class);
-    updated.setAssignees(assignees);
-    return persistLifecycleChange(original, updated, user);
   }
 
   /**
