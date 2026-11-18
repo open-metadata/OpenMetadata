@@ -37,7 +37,7 @@ final class FailedRowsSampleStore {
     String json = dao.entityExtensionDAO().getExtensionForUpdate(id, REMOVALS_EXTENSION);
     return json == null
         ? FailedRowsSamplePolicy.emptyRecord()
-        : JsonUtils.readValue(json, RemovalRecord.class);
+        : FailedRowsSamplePolicy.decodeRemovalRecord(json);
   }
 
   void captureRemoval(Table original, Table updated) {

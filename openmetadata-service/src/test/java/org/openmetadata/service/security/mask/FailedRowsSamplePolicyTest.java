@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -266,6 +267,52 @@ class FailedRowsSamplePolicyTest {
             JsonUtils.readValue(
                 "{\"sequence\":null,\"facts\":[{\"path\":[\"ssn\"],\"sensitive\":false}]}",
                 FailedRowsSamplePolicy.RemovalBatch.class));
+  }
+
+  @Test
+  void rejectsScalarCoercionAtBothPrivateRecordBoundaries() {
+    var sample =
+        FailedRowsSamplePolicy.bind(
+            data("ssn"), table(column("ssn", false)), FailedRowsSamplePolicy.emptyRecord());
+    var record =
+        FailedRowsSamplePolicy.append(
+            FailedRowsSamplePolicy.emptyRecord(), table(column("ssn", true)), table());
+    for (String value : List.of("0.5", "\"0\"", "null", "9223372036854775808", "true")) {
+      ObjectNode sampleNode = (ObjectNode) JsonUtils.valueToTree(sample);
+      sampleNode.set("observedSequence", JsonUtils.readTree(value));
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> FailedRowsSamplePolicy.decode(sampleNode.toString()));
+      for (String field : List.of("formatVersion", "sequence", "coverageThrough")) {
+        ObjectNode recordNode = (ObjectNode) JsonUtils.valueToTree(record);
+        recordNode.set(field, JsonUtils.readTree(value));
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> FailedRowsSamplePolicy.decodeRemovalRecord(recordNode.toString()));
+      }
+    }
+    for (String value : List.of("0", "1", "0.5", "\"false\"", "null")) {
+      ObjectNode recordNode = (ObjectNode) JsonUtils.valueToTree(record);
+      ((ObjectNode) recordNode.path("batches").get(0).path("facts").get(0))
+          .set("sensitive", JsonUtils.readTree(value));
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> FailedRowsSamplePolicy.decodeRemovalRecord(recordNode.toString()));
+    }
+    assertThrows(
+        IllegalArgumentException.class, () -> FailedRowsSamplePolicy.decodeRemovalRecord("null"));
+  }
+
+  @Test
+  void strictMetadataReadersPreserveArbitraryRowObjects() {
+    TableData data =
+        new TableData()
+            .withColumns(List.of("source"))
+            .withRows(List.of(List.of(Map.of("number", 0.5, "text", "0", "boolean", true))));
+    var record =
+        FailedRowsSamplePolicy.bind(
+            data, table(column("source", false)), FailedRowsSamplePolicy.emptyRecord());
+    assertEquals(data, FailedRowsSamplePolicy.decode(JsonUtils.pojoToJson(record)).data());
   }
 
   private Table table(Column... columns) {

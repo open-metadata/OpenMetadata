@@ -3,7 +3,12 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectReader;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,6 +27,13 @@ public final class FailedRowsSamplePolicy {
   public static final int MAX_PATH_FACTS = 1000;
   public static final int MAX_RECORD_BYTES = 1024 * 1024;
   private static final String FORMAT_FIELD = "formatVersion";
+  private static final ObjectMapper RECORD_MAPPER =
+      JsonUtils.getObjectMapper()
+          .copy()
+          .disable(MapperFeature.ALLOW_COERCION_OF_SCALARS)
+          .disable(DeserializationFeature.ACCEPT_FLOAT_AS_INT);
+  private static final ObjectReader SAMPLE_READER = RECORD_MAPPER.readerFor(SampleRecord.class);
+  private static final ObjectReader REMOVAL_READER = RECORD_MAPPER.readerFor(RemovalRecord.class);
 
   private FailedRowsSamplePolicy() {}
 
@@ -210,12 +222,28 @@ public final class FailedRowsSamplePolicy {
           || node.get(FORMAT_FIELD).intValue() != FORMAT_VERSION) {
         throw new IllegalArgumentException("Unsupported failed-row sample format");
       }
-      return JsonUtils.readValue(json, SampleRecord.class);
+      return readPrivateRecord(json, SAMPLE_READER);
     }
     if (!node.has("columns") || !node.has("rows")) {
       throw new IllegalArgumentException("Unrecognized failed-row sample format");
     }
     return new SampleRecord(0, JsonUtils.readValue(json, TableData.class), null, 0L, List.of());
+  }
+
+  public static RemovalRecord decodeRemovalRecord(String json) {
+    return readPrivateRecord(json, REMOVAL_READER);
+  }
+
+  private static <T> T readPrivateRecord(String json, ObjectReader reader) {
+    try {
+      T record = reader.readValue(json);
+      if (record == null) {
+        throw new IllegalArgumentException("Missing failed-row private record");
+      }
+      return record;
+    } catch (JsonProcessingException failure) {
+      throw new IllegalArgumentException("Invalid failed-row private record", failure);
+    }
   }
 
   public static TableData mask(SampleRecord sample, Table table, RemovalRecord record) {
