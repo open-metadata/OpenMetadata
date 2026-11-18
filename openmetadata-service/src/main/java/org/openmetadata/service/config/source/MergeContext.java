@@ -26,6 +26,16 @@ final class MergeContext {
   private final MergeInput input;
   private final ObjectNode originalStored;
   private final ObjectNode stored;
+
+  /**
+   * The deployment value the next reconciliation should compare against. Starts as a copy of the
+   * deployment; when a nested secret is preserved over a blank deployment value, the preserved
+   * value is written back here too, so the next reconciliation sees the stored secret as the
+   * deployment's own last-applied value rather than as a UI edit (which would falsely report a
+   * conflict on a later sibling change to the enclosing object).
+   */
+  private final ObjectNode lastApplied;
+
   private final MergeReport report = new MergeReport();
   private final List<MergeUnit> units;
   private final ProviderChange providerChange;
@@ -34,6 +44,7 @@ final class MergeContext {
     this.input = input;
     this.originalStored = objectOrEmpty(input.stored());
     this.stored = originalStored.deepCopy();
+    this.lastApplied = objectOrEmpty(input.deployment());
     this.units = input.policy().unitsFor(fieldPointers());
     this.providerChange =
         input.policy().hasIdentityProvider()
@@ -211,6 +222,7 @@ final class MergeContext {
         if (SettingValues.isBlank(JsonPointers.valueAt(input.deployment(), secret))
             && !SettingValues.isBlank(originalSecret)) {
           JsonPointers.setValue(stored, secret, originalSecret.deepCopy());
+          JsonPointers.setValue(lastApplied, secret, originalSecret.deepCopy());
         }
       }
     }
@@ -225,8 +237,7 @@ final class MergeContext {
   }
 
   MergeResult result() {
-    return new MergeResult(
-        stored, input.deployment().deepCopy(), report, !stored.equals(originalStored));
+    return new MergeResult(stored, lastApplied, report, !stored.equals(originalStored));
   }
 
   private JsonNode storedAt(String pointer) {

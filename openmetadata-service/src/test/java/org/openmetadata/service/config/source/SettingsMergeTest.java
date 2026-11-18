@@ -796,6 +796,106 @@ class SettingsMergeTest {
     assertTrue(result.report().has(MergeOutcome.KEPT_OVER_BLANK));
   }
 
+  @Test
+  void aLaterSiblingChangeToTheTrustStoreObjectIsAppliedAfterThePasswordWasPreserved() {
+    // Two reconciliations: the first preserves the password over a blank deployment value; the
+    // second feeds that result's stored and lastApplied into a later deployment edit to a sibling
+    // field (verifyHostname). Unless the preserved secret is carried into lastApplied, the stored
+    // object differs from lastApplied at the password, the sibling edit reads as a conflict, and
+    // the deployment change is dropped even though nobody touched the UI.
+    String stored0 =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ks-p4ss','trustStoreFileFormat':'JKS',"
+            + "'verifyHostname':false}}}}";
+    String deployment1 =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'','trustStoreFileFormat':'JKS','verifyHostname':false}}}}";
+
+    MergeResult first = ldapAuth(ConfigSourceMode.AUTO, deployment1, stored0, stored0);
+    assertEquals(
+        "ks-p4ss",
+        first
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText());
+
+    // A later deployment edit flips a sibling field; the password env var is still missing.
+    String deployment2 =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'','trustStoreFileFormat':'JKS','verifyHostname':true}}}}";
+
+    MergeResult second =
+        merge.merge(
+            ldapAuthInput(ConfigSourceMode.AUTO, deployment2, "{}", null)
+                .stored(first.stored())
+                .lastApplied(first.lastApplied())
+                .build());
+
+    assertEquals(
+        true,
+        second
+            .stored()
+            .at("/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/verifyHostname")
+            .asBoolean(),
+        "the later sibling edit is applied, not dropped as a conflict");
+    assertEquals(
+        "ks-p4ss",
+        second
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "the preserved password survives the later sibling edit");
+    assertFalse(
+        second.report().has(MergeOutcome.CONFLICT),
+        "no UI edit happened, so the sibling change must not read as a conflict");
+  }
+
+  @Test
+  void aRealUiEditOfTheNestedSecretStillConflictsWhenTheDeploymentSetsIt() {
+    // The fix preserves a secret only over a BLANK deployment value; a deployment that deliberately
+    // sets the secret still conflicts with a UI edit of it, so the UI value wins and is not
+    // silently overwritten. The sibling edit is dropped with it, as for any single-value conflict.
+    String lastApplied =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ks-p4ss','trustStoreFileFormat':'JKS',"
+            + "'verifyHostname':false}}}}";
+    String stored =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'ui-edit','trustStoreFileFormat':'JKS',"
+            + "'verifyHostname':false}}}}";
+    String deployment =
+        "{'provider':'ldap','clientType':'public','ldapConfiguration':{'host':'ldap.example',"
+            + "'trustStoreConfig':{'customTrustManagerConfig':{'trustStoreFilePath':'/ts',"
+            + "'trustStoreFilePassword':'dep-pw','trustStoreFileFormat':'JKS',"
+            + "'verifyHostname':true}}}}";
+
+    MergeResult result = ldapAuth(ConfigSourceMode.AUTO, deployment, stored, lastApplied);
+
+    assertEquals(
+        "ui-edit",
+        result
+            .stored()
+            .at(
+                "/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/trustStoreFilePassword")
+            .asText(),
+        "a UI edit of the secret is kept when the deployment sets a different value");
+    assertEquals(
+        false,
+        result
+            .stored()
+            .at("/ldapConfiguration/trustStoreConfig/customTrustManagerConfig/verifyHostname")
+            .asBoolean(),
+        "the conflicting deployment sibling edit is not applied");
+    assertTrue(result.report().has(MergeOutcome.CONFLICT));
+  }
+
   private MergeResult auth(
       ConfigSourceMode mode, String deployment, String stored, String lastApplied) {
     return merge.merge(authInput(mode, deployment, stored, lastApplied).build());
