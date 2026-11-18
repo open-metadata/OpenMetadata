@@ -30,6 +30,7 @@ import {
   CreatePolicy,
   Rule,
 } from '../../../../../../generated/api/policies/createPolicy';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -39,6 +40,7 @@ import {
 } from '../../../../../../utils/ToastUtils';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import { INITIAL_RULE } from './AccessControl.constants';
 import type { AccessControlView } from './AccessControl.types';
 import AccessControlRuleForm from './AccessControlRuleForm';
@@ -78,6 +80,12 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
   ];
 
   const [isSaveLoading, setIsSaveLoading] = useState(false);
+  // The description editor holds its value outside the form, so it counts
+  // as an edit too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty || ruleForm.formState.isDirty || hasDescription
+  );
 
   const handleCreate = async () => {
     let ruleData: Rule | undefined;
@@ -154,6 +162,9 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
                 data-testid="policy-description-input"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
 
@@ -185,9 +196,10 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
         <Button
           color="tertiary"
           data-testid="cancel-btn"
-          onPress={() => onNavigate({ type: 'policies' })}>
+          onPress={() => runGuarded(() => onNavigate({ type: 'policies' }))}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"

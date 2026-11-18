@@ -37,7 +37,6 @@ import {
 import { Task } from '../../../rest/tasksAPI';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 
 interface FeedbackApprovalTaskProps {
@@ -163,7 +162,7 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
         </>
       )}
 
-      {feedback.createdBy && (
+      {feedback.createdBy?.name && (
         <>
           <Grid.Item span={8}>
             <Typography
@@ -176,9 +175,9 @@ const FeedbackApprovalTask: FC<FeedbackApprovalTaskProps> = ({ task }) => {
           <Grid.Item span={16}>
             <UserPopOverCard
               showUserName
-              displayName={getEntityName(feedback.createdBy)}
+              displayName={feedback.createdBy.displayName}
               profileWidth={22}
-              userName={feedback.createdBy.name || '-'}
+              userName={feedback.createdBy.name}
             />
           </Grid.Item>
         </>

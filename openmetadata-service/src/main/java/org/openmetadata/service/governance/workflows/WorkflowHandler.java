@@ -1014,6 +1014,12 @@ public class WorkflowHandler {
     return activityId;
   }
 
+  /** The workflow node an OM task belongs to, or null when no runtime task waits on it. */
+  public String getTaskNode(UUID customTaskId) {
+    Task task = getTaskFromCustomTaskId(customTaskId);
+    return task == null ? null : getParentActivityId(task.getExecutionId());
+  }
+
   private Task getTaskFromCustomTaskId(UUID customTaskId) {
     TaskService taskService = processEngine.getTaskService();
     List<Task> tasks =
@@ -2042,6 +2048,21 @@ public class WorkflowHandler {
   public void updateBusinessKey(String processInstanceId, UUID workflowInstanceBusinessKey) {
     RuntimeService runtimeService = processEngine.getRuntimeService();
     runtimeService.updateBusinessKey(processInstanceId, workflowInstanceBusinessKey.toString());
+  }
+
+  /** The business key of a running process instance, which an OM workflow run uses as its id. */
+  public String getProcessBusinessKey(String processInstanceId) {
+    String businessKey = null;
+    if (processInstanceId != null && !processInstanceId.isBlank()) {
+      ProcessInstance processInstance =
+          processEngine
+              .getRuntimeService()
+              .createProcessInstanceQuery()
+              .processInstanceId(processInstanceId)
+              .singleResult();
+      businessKey = processInstance != null ? processInstance.getBusinessKey() : null;
+    }
+    return businessKey;
   }
 
   public boolean hasProcessInstanceFinished(String processInstanceId) {

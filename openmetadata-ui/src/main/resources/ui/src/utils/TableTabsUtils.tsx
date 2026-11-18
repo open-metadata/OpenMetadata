@@ -242,6 +242,13 @@ const getTableQueriesTabChildren = ({
     </div>
   );
 
+/** The graph explorer answers only admins, so other users are not offered its tab. */
+const isKnowledgeGraphTabAvailable = () => {
+  const { rdfEnabled, currentUser } = useApplicationStore.getState();
+
+  return Boolean(rdfEnabled && currentUser?.isAdmin);
+};
+
 export const getTableDetailPageBaseTabs = ({
   queryCount,
   isQueryCountLoading,
@@ -410,7 +417,7 @@ export const getTableDetailPageBaseTabs = ({
           />
         </Suspense>
       ),
-      isHidden: !useApplicationStore.getState().rdfEnabled,
+      isHidden: !isKnowledgeGraphTabAvailable(),
     },
     {
       label: (

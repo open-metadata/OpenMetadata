@@ -61,6 +61,7 @@ jest.mock('constants/Task.constant', () => ({
 jest.mock('rest/tasksAPI', () => ({
   TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
     .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
@@ -615,6 +616,33 @@ describe('TaskDetailPanel', () => {
     expect(
       screen.getAllByText('Approval required for sales_table').length
     ).toBeGreaterThan(0);
+  });
+
+  // Not the list row it falls back on: the server's task carries the status
+  // the list needs to file a linked task under its tab.
+  it('reports the full task once it loads', async () => {
+    const onLoaded = jest.fn();
+    const listRow = { ...TASK, status: 'Open' } as unknown as ComponentProps<
+      typeof TaskDetailPanel
+    >['fallbackTask'];
+    mockGetTaskById.mockResolvedValue({
+      data: { ...TASK, status: 'Rejected' },
+    });
+
+    await act(async () =>
+      render(
+        <TaskDetailPanel
+          fallbackTask={listRow}
+          taskId="task-1"
+          onLoaded={onLoaded}
+        />
+      )
+    );
+
+    expect(onLoaded).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'Rejected' })
+    );
+    expect(onLoaded).not.toHaveBeenCalledWith(listRow);
   });
 
   it('fetches the task with the full field set', async () => {
@@ -1689,6 +1717,75 @@ describe('TaskDetailPanel', () => {
       expect(screen.getByTestId('task-approve')).toBeInTheDocument();
     });
 
+    // The list row has no assignees, payload or ontologyReview: rendering the body
+    // from it flashed "Unassigned", a one-event timeline and, for an ontology
+    // review, a "could not be loaded" error before the full task replaced them.
+    it('renders only the header from the list row until the full task loads', async () => {
+      const pending: { resolve?: (value: { data: unknown }) => void } = {};
+      mockGetTaskById.mockReturnValue(
+        new Promise((resolve) => {
+          pending.resolve = resolve;
+        })
+      );
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={{ ...LEGACY_APPROVAL_TASK, assignees: [] } as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(screen.getByTestId('loader')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-detail-summary')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText('label.unassigned')).not.toBeInTheDocument();
+
+      await act(async () => pending.resolve?.({ data: LEGACY_APPROVAL_TASK }));
+
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
+    });
+
+    // The placeholder already explains a failed first load; a toast would say it twice.
+    it('shows why the task failed to load in place of the body, once, with a retry', async () => {
+      mockGetTaskById.mockRejectedValueOnce({ response: { status: 500 } });
+
+      await act(async () =>
+        render(
+          <TaskDetailPanel
+            fallbackTask={LEGACY_APPROVAL_TASK as never}
+            taskId="task-1"
+          />
+        )
+      );
+
+      expect(screen.getByTestId('task-detail-panel')).toBeInTheDocument();
+      expect(
+        screen.getByText('message.something-went-wrong')
+      ).toBeInTheDocument();
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
+      expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('task-activity-timeline')
+      ).not.toBeInTheDocument();
+
+      mockGetTaskById.mockResolvedValueOnce({ data: LEGACY_APPROVAL_TASK });
+      await act(async () => {
+        fireEvent.click(screen.getByRole('button', { name: 'label.reload' }));
+      });
+
+      expect(screen.getByTestId('task-detail-summary')).toBeInTheDocument();
+      expect(screen.getByTestId('task-activity-timeline')).toBeInTheDocument();
+    });
+
     // Only the first load gates the actions; a reload after a comment must not
     // blank the buttons (or flip the status label) while it runs.
     it('keeps its actions while a comment reloads the task', async () => {
@@ -1802,7 +1899,14 @@ describe('TaskDetailPanel', () => {
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 

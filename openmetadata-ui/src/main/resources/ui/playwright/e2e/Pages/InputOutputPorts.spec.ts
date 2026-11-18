@@ -1627,13 +1627,44 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Enter fullscreen and exit with Escape', async () => {
-        await page.getByTestId('toggle-fullscreen-btn').click();
-
         const lineageView = page.getByTestId('ports-lineage-view');
+        // React Flow keeps the viewport transform across a container resize,
+        // so a graph that was not refit sits off-center (or outside) the pane.
+        const graphOffsetFromCenter = async () => {
+          const view = await lineageView.boundingBox();
+          const graph = await lineageView
+            .locator('.react-flow__node')
+            .evaluateAll((nodes) => {
+              const rects = nodes.map((node) => node.getBoundingClientRect());
+
+              return {
+                left: Math.min(...rects.map((r) => r.left)),
+                right: Math.max(...rects.map((r) => r.right)),
+                top: Math.min(...rects.map((r) => r.top)),
+                bottom: Math.max(...rects.map((r) => r.bottom)),
+              };
+            });
+          if (!view) {
+            return Number.POSITIVE_INFINITY;
+          }
+
+          return Math.max(
+            Math.abs(
+              (graph.left + graph.right) / 2 - (view.x + view.width / 2)
+            ),
+            Math.abs(
+              (graph.top + graph.bottom) / 2 - (view.y + view.height / 2)
+            )
+          );
+        };
+
+        await page.getByTestId('toggle-fullscreen-btn').click();
         await expect(lineageView).toHaveCSS('position', 'fixed');
+        await expect.poll(graphOffsetFromCenter).toBeLessThan(40);
 
         await page.keyboard.press('Escape');
         await expect(lineageView).toHaveCSS('position', 'relative');
+        await expect.poll(graphOffsetFromCenter).toBeLessThan(40);
       });
     });
 

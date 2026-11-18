@@ -312,7 +312,13 @@ export const DataAssetsHeader = ({
         : EntityStatus.Unprocessed;
 
     return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
+      <EntityStatusBadge
+        entityId={dataAsset.id}
+        entityType={entityType}
+        fqn={dataAsset.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
     ) : null;
   }, [entityType, dataAsset]);
 
@@ -327,24 +333,25 @@ export const DataAssetsHeader = ({
     }
 
     return (
-      <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger
-          aria-label={t('label.check-upstream-failure')}
-          onPress={() =>
-            navigate({
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            })
-          }>
-          <Alerts className="tw:text-fg-error-primary" size={24} />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Alerts}
+        size="lg"
+        tooltip={t('label.check-upstream-failure')}
+        tooltipPlacement="right"
+        onClick={() =>
+          navigate({
+            pathname: getEntityDetailsPath(
+              entityType,
+              dataAsset?.fullyQualifiedName ?? '',
+              EntityTabs.LINEAGE
+            ),
+            search: QueryString.stringify({
+              layers: [LineageLayer.DataObservability],
+            }),
+          })
+        }
+      />
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
@@ -857,8 +864,10 @@ export const DataAssetsHeader = ({
               Activity
             )
           }
+          radius="lg"
+          shape="square"
           size="md"
-          theme="surface"
+          theme="modern"
         />
         {editStylePermission && (
           <ButtonUtility

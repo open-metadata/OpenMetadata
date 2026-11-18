@@ -1418,7 +1418,7 @@ class NativeOntologyRdfImporterTest {
     assertEquals("Native CSV import preview", preview.getChangeSet().getDescription());
     final var axiom = axiomOperations(preview.getChangeSet()).getFirst().getAxiom();
     assertEquals("Imported from native CSV", axiom.getDescription());
-    assertEquals("Imported subclass of", axiom.getDisplayName());
+    assertEquals("A is a kind of B", axiom.getDisplayName());
     final var rdf =
         importer.preview(importer.read(turtleRequest(BASE_TURTLE)), emptySnapshot(root));
     assertEquals("Native RDF import", rdf.getChangeSet().getDisplayName());

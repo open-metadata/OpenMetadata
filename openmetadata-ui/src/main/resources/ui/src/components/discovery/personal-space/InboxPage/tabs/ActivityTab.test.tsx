@@ -31,6 +31,8 @@ let activityState: {
   items: MockInboxItem[];
   total: number;
   isLoading: boolean;
+  isCapped?: boolean;
+  cutAt?: number;
   error?: unknown;
 };
 const mockRefetch = jest.fn();
@@ -52,6 +54,8 @@ jest.mock('../useInboxActivity', () => ({
       items: activityState.items,
       total: activityState.total,
       isLoading: activityState.isLoading,
+      isCapped: activityState.isCapped ?? false,
+      cutAt: activityState.cutAt,
       error: activityState.error ?? null,
       refetch: mockRefetch,
     };
@@ -490,6 +494,104 @@ describe('ActivityTab', () => {
     expect(screen.getByTestId('activity-group')).toHaveTextContent(
       'label.number-update-plural:45'
     );
+  });
+
+  // A capped feed is cut inside its oldest day: only that count is a floor,
+  // and the end of the list says older updates are not shown.
+  it('marks the cut day as a floor and says the feed is capped', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'earlier', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: DAY,
+    };
+
+    render(<ActivityTab />);
+
+    const [newest, oldest] = screen.getAllByTestId('activity-group');
+
+    expect(newest).toHaveTextContent('label.one-update');
+    expect(oldest).toHaveTextContent('label.number-update-plural:1+');
+    expect(
+      screen.getByText('message.inbox-activity-capped')
+    ).toBeInTheDocument();
+  });
+
+  // The cut is the whole feed's: a type filter that empties the cut day must
+  // not move the floor onto a complete one.
+  it('keeps the floor on the cut day when a type filter empties it', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        {
+          activity: {
+            id: 'tags',
+            eventType: 'TagsUpdated',
+            timestamp: 3 * DAY,
+          },
+        },
+        {
+          activity: {
+            id: 'created',
+            eventType: 'EntityCreated',
+            timestamp: DAY,
+          },
+        },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: DAY,
+    };
+
+    render(<ActivityTab />);
+    fireEvent.click(screen.getByText('tags-only'));
+
+    expect(screen.getByTestId('activity-group')).toHaveTextContent(
+      'label.one-update'
+    );
+  });
+
+  // A Mentions feed keeps an old event mentioned today, so its last card can
+  // sit past the cut; the floor goes on the day the feed was cut.
+  it('marks the day the feed was cut, not the day of its last card', () => {
+    const DAY = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'today', timestamp: 3 * DAY } },
+        { activity: { id: 'old-mentioned-today', timestamp: DAY } },
+      ],
+      total: 2,
+      isLoading: false,
+      isCapped: true,
+      cutAt: 3 * DAY,
+    };
+
+    render(<ActivityTab />);
+
+    const [cutDay, olderDay] = screen.getAllByTestId('activity-group');
+
+    expect(cutDay).toHaveTextContent('label.number-update-plural:1+');
+    expect(olderDay).toHaveTextContent('label.one-update');
+  });
+
+  it('says nothing about a cap when the feed is complete', () => {
+    activityState = {
+      items: [{ activity: { id: 'a1', timestamp: 1 } }],
+      total: 1,
+      isLoading: false,
+    };
+
+    render(<ActivityTab />);
+
+    expect(
+      screen.queryByText('message.inbox-activity-capped')
+    ).not.toBeInTheDocument();
   });
 
   // A batch revealed later would grow a group above the viewport, so Asset and

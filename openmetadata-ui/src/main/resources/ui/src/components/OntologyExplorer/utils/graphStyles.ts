@@ -133,7 +133,12 @@ import {
 } from '../OntologyExplorer.constants';
 import { ASK_COLLATE_SPARKLE_SRC } from './askCollateSparkle';
 import { computeCardinalityLabelAttrs } from './cardinalityLabelUtils';
-import { CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK } from './conflictHighlight';
+import {
+  CONFLICT_COLOR,
+  CONFLICT_COLOR_FALLBACK,
+  CONFLICT_DOT_COLOR,
+  CONFLICT_DOT_COLOR_FALLBACK,
+} from './conflictHighlight';
 import './ontologyComboAwarePolylineEdge';
 import { getRelationshipColor } from './relationshipTypeUtils';
 import {
@@ -490,46 +495,27 @@ class StudioTermNode extends RectNode {
     );
   }
 
+  // The design marks a clashing concept with a small solid dot on its top-right corner.
   private renderConflictBadge(
     attrs: Record<string, unknown>,
     bounds: { min: number[]; max: number[] },
     container: Group
   ): void {
-    const isConflict = attrs.studioConflict === true;
-    const color = getCanvasColor(CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK);
-    const cx = bounds.max[0] - 2;
-    const cy = bounds.min[1] + 2;
     this.upsert(
       'studio-conflict-badge',
       GCircle,
-      isConflict
+      attrs.studioConflict === true
         ? {
-            cx,
-            cy,
-            r: 8,
-            fill: color,
+            cx: bounds.max[0] - 2,
+            cy: bounds.min[1] + 2,
+            r: 4,
+            fill: getCanvasColor(
+              CONFLICT_DOT_COLOR,
+              CONFLICT_DOT_COLOR_FALLBACK
+            ),
             stroke: getCanvasColor(NODE_FILL_DEFAULT, '#ffffff'),
             lineWidth: 1.5,
             zIndex: 2,
-          }
-        : false,
-      container
-    );
-    this.upsert(
-      'studio-conflict-mark',
-      GText,
-      isConflict
-        ? {
-            x: cx,
-            y: cy,
-            text: '!',
-            fill: '#ffffff',
-            fontFamily: 'Inter',
-            fontSize: 11,
-            fontWeight: 700,
-            textAlign: 'center',
-            textBaseline: 'middle',
-            zIndex: 3,
           }
         : false,
       container

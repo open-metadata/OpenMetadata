@@ -463,18 +463,23 @@ public final class NativeOntologyRdfImporter {
         : new Updated<>(current, proposed);
   }
 
-  /** Axioms match by signature; the stored copies of a signature absorb the parsed ones in order. */
+  /**
+   * Axioms match by signature. A signature the file repeats is a duplicate, because applying
+   * refuses a second identical rule. ADR:2026-11-16-a-live-rule-is-stated-once
+   */
   private static List<Outcome<OntologyAxiom>> classifyAxioms(
       final List<OntologyAxiom> parsed, final Map<String, List<OntologyAxiom>> stored) {
-    final Map<String, Integer> seen = new HashMap<>();
+    final Set<String> seen = new HashSet<>();
     final List<Outcome<OntologyAxiom>> outcomes = new ArrayList<>();
     for (final OntologyAxiom axiom : parsed) {
       final String signature = NativeOntologyDocument.signature(axiom);
-      final int ordinal = seen.merge(signature, 1, Integer::sum) - 1;
-      outcomes.add(
-          ordinal < stored.getOrDefault(signature, List.of()).size()
-              ? new Unchanged<>(axiom)
-              : new Added<>(axiom, signature + ":" + ordinal));
+      if (!seen.add(signature)) {
+        outcomes.add(new Duplicate<>(axiom));
+      } else if (stored.containsKey(signature)) {
+        outcomes.add(new Unchanged<>(axiom));
+      } else {
+        outcomes.add(new Added<>(axiom, signature + ":0"));
+      }
     }
     return outcomes;
   }
@@ -984,14 +989,7 @@ public final class NativeOntologyRdfImporter {
         case Added<OntologyAxiom> added -> {
           final OntologyAxiom axiom =
               identified(added, OntologyAxiom.class, axiomNames)
-                  .withDisplayName(
-                      "Imported "
-                          + added
-                              .parsed()
-                              .getAxiomType()
-                              .value()
-                              .replace('_', ' ')
-                              .toLowerCase(Locale.ROOT))
+                  .withDisplayName(sentence(added.parsed()))
                   .withDescription("Imported from native " + family)
                   .withProvenance(RelationProvenance.IMPORTED);
           final List<URI> needs = referencedNewConcepts(added.parsed());
