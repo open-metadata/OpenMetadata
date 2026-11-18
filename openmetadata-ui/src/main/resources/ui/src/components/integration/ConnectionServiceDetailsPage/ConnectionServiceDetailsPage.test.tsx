@@ -405,8 +405,19 @@ jest.mock('./ServiceFollowButton', () => ({
 
 jest.mock('../../common/TestConnection/TestConnection', () => ({
   __esModule: true,
-  default: ({ extraInfo }: { extraInfo?: string }) => (
-    <span data-testid="test-connection-extra-info">{extraInfo}</span>
+  default: ({
+    extraInfo,
+    isTestingDisabled,
+  }: {
+    extraInfo?: string;
+    isTestingDisabled?: boolean;
+  }) => (
+    <>
+      <span data-testid="test-connection-extra-info">{extraInfo}</span>
+      <span data-testid="test-connection-disabled">
+        {String(isTestingDisabled)}
+      </span>
+    </>
   ),
 }));
 
@@ -648,6 +659,44 @@ describe('ConnectionServiceDetailsPage', () => {
         screen.getByTestId('test-connection-extra-info')
       ).toHaveTextContent('hybrid-runner');
     });
+    extraInfoSpy.mockRestore();
+  });
+
+  it('keeps the connection test disabled until the ingestion runners load', async () => {
+    let finishExtraInfo: () => void = () => undefined;
+    const loadSpy = jest
+      .spyOn(serviceUtilClassBase, 'getExtraInfo')
+      .mockReturnValue(
+        new Promise<void>((resolve) => {
+          finishExtraInfo = resolve;
+        })
+      );
+    const extraInfoSpy = jest
+      .spyOn(serviceUtilClassBase, 'getServiceExtraInfo')
+      .mockReturnValue({ name: 'hybrid-runner' } as ReturnType<
+        typeof serviceUtilClassBase.getServiceExtraInfo
+      >);
+    mockTabParam = 'connection';
+
+    await act(async () => {
+      render(<ConnectionServiceDetailsPage />);
+    });
+
+    expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+      'true'
+    );
+
+    await act(async () => finishExtraInfo());
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId('test-connection-extra-info')
+      ).toHaveTextContent('hybrid-runner');
+      expect(screen.getByTestId('test-connection-disabled')).toHaveTextContent(
+        'false'
+      );
+    });
+    loadSpy.mockRestore();
     extraInfoSpy.mockRestore();
   });
 
