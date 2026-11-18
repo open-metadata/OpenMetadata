@@ -32,6 +32,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.JobRecoveryManager;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.JobSnapshot;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.RecordCounts;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
 
 /**
@@ -164,12 +166,8 @@ public class SearchReindexOrphanSweepIT {
       final String jobId, final IndexJobStatus readStatus, final long readUpdatedAt) {
     return dao.searchIndexJobDAO()
         .failIfUnchanged(
-            jobId,
-            readStatus.name(),
-            readUpdatedAt,
-            0,
-            0,
-            0,
+            new JobSnapshot(jobId, readStatus.name(), readUpdatedAt),
+            new RecordCounts(0, 0, 0),
             System.currentTimeMillis(),
             TEST_NAME);
   }

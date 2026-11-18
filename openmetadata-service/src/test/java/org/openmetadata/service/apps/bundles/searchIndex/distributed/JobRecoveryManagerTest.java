@@ -44,6 +44,8 @@ import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.JobSnapshot;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.RecordCounts;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.SearchIndexJobRecord;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexPartitionDAO.AggregatedStatsRecord;
@@ -172,12 +174,10 @@ class JobRecoveryManagerTest {
 
     verify(jobDAO)
         .failIfUnchanged(
-            eq(jobId.toString()),
-            eq(IndexJobStatus.RUNNING.name()),
-            eq(jobRecord.updatedAt()),
-            eq(5000L),
-            eq(4900L),
-            eq(100L),
+            eq(
+                new JobSnapshot(
+                    jobId.toString(), IndexJobStatus.RUNNING.name(), jobRecord.updatedAt())),
+            eq(new RecordCounts(5000, 4900, 100)),
             anyLong(),
             eq(ABANDONED_JOB_ERROR));
     verify(partitionDAO).cancelPendingPartitions(jobId.toString());
@@ -452,12 +452,8 @@ class JobRecoveryManagerTest {
     assertFalse(result.isPresent());
     verify(jobDAO)
         .failIfUnchanged(
-            eq(jobId.toString()),
-            eq(IndexJobStatus.STOPPING.name()),
-            eq(staleUpdateTime),
-            eq(40L),
-            eq(35L),
-            eq(5L),
+            eq(new JobSnapshot(jobId.toString(), IndexJobStatus.STOPPING.name(), staleUpdateTime)),
+            eq(new RecordCounts(40, 35, 5)),
             anyLong(),
             eq("Force-completed: stuck in STOPPING state"));
     verify(lockDAO).releaseLock("SEARCH_REINDEX_LOCK", jobId.toString());
@@ -780,29 +776,11 @@ class JobRecoveryManagerTest {
   }
 
   private void stubFailIfUnchanged(int rowsUpdated) {
-    when(jobDAO.failIfUnchanged(
-            anyString(),
-            anyString(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyString()))
-        .thenReturn(rowsUpdated);
+    when(jobDAO.failIfUnchanged(any(), any(), anyLong(), anyString())).thenReturn(rowsUpdated);
   }
 
   private void verifyNeverFailed() {
-    verify(jobDAO, never())
-        .failIfUnchanged(
-            anyString(),
-            anyString(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyLong(),
-            anyString());
+    verify(jobDAO, never()).failIfUnchanged(any(), any(), anyLong(), anyString());
   }
 
   private SearchIndexJobRecord createJobRecord(UUID jobId, IndexJobStatus status) {

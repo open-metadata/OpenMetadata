@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.apps.AppRunInterruption;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.JobSnapshot;
+import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchIndexJobDAO.RecordCounts;
 import org.openmetadata.service.jdbi3.SearchReindexDAOs.SearchReindexLockDAO;
 
 /**
@@ -518,21 +520,22 @@ public class JobRecoveryManager {
   }
 
   private boolean markFailedIfUnchanged(SearchIndexJob job, String errorMessage, long now) {
-    CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord stats =
-        collectionDAO.searchIndexPartitionDAO().getAggregatedStats(job.getId().toString());
+    JobSnapshot read =
+        new JobSnapshot(job.getId().toString(), job.getStatus().name(), job.getUpdatedAt());
     int updated =
         collectionDAO
             .searchIndexJobDAO()
-            .failIfUnchanged(
-                job.getId().toString(),
-                job.getStatus().name(),
-                job.getUpdatedAt(),
-                stats != null ? stats.processedRecords() : job.getProcessedRecords(),
-                stats != null ? stats.successRecords() : job.getSuccessRecords(),
-                stats != null ? stats.failedRecords() : job.getFailedRecords(),
-                now,
-                errorMessage);
+            .failIfUnchanged(read, finalCounts(job), now, errorMessage);
     return updated > 0;
+  }
+
+  private RecordCounts finalCounts(SearchIndexJob job) {
+    CollectionDAO.SearchIndexPartitionDAO.AggregatedStatsRecord stats =
+        collectionDAO.searchIndexPartitionDAO().getAggregatedStats(job.getId().toString());
+    return stats != null
+        ? new RecordCounts(stats.processedRecords(), stats.successRecords(), stats.failedRecords())
+        : new RecordCounts(
+            job.getProcessedRecords(), job.getSuccessRecords(), job.getFailedRecords());
   }
 
   /**
