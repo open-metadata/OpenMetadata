@@ -41,7 +41,7 @@ from metadata.pii.algorithms.presidio_utils import (
 from metadata.utils.entity_link import (
     get_entity_link,  # pyright: ignore[reportUnknownVariableType]
 )
-from metadata.utils.fqn import FQN_SEPARATOR
+from metadata.utils.fqn import FQN_SEPARATOR, split_raw_name, unquote_name
 
 TARGET_MAP = {
     recognizer.Target.content: tagLabelRecognizerMetadata.Target.content,
@@ -142,14 +142,15 @@ class TagAnalyzer:
     def should_skip_recognizer(self, exception_list: list[RecognizerException]):
         blacklisted_entities = {ex.entityLink.root for ex in exception_list}
 
-        (
-            *table_fqn_parts,
-            column_name,
-        ) = self._column.fullyQualifiedName.root.split(  # pyright: ignore[reportOptionalMemberAccess]
-            FQN_SEPARATOR
+        # A name with a dot in it is quoted in the FQN, so only split on the separators outside quotes.
+        *table_fqn_parts, column_name = split_raw_name(
+            self._column.fullyQualifiedName.root  # pyright: ignore[reportOptionalMemberAccess]
         )
-        return (
-            get_entity_link(Table, FQN_SEPARATOR.join(table_fqn_parts), column_name=column_name) in blacklisted_entities
+        table_fqn = FQN_SEPARATOR.join(table_fqn_parts)
+        # The exception may name such a column as it is or quoted, as in its FQN.
+        return any(
+            get_entity_link(Table, table_fqn, column_name=name) in blacklisted_entities
+            for name in {column_name, unquote_name(column_name)}
         )
 
     def _supports_language(self, created: EntityRecognizer) -> bool:

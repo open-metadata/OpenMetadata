@@ -707,6 +707,57 @@ class TestTagAnalyzer:
         analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
         assert analyzer.should_skip_recognizer(email_tag.recognizers[0].exceptionList) is True
 
+    @pytest.mark.parametrize(
+        "entity_link",
+        [
+            "<#E::table::svc.db.sch.users::columns::user.email>",
+            '<#E::table::svc.db.sch.users::columns::"user.email">',
+        ],
+    )
+    def test_exception_list_filtering_column_name_with_a_dot(self, email_tag, nlp_engine, entity_link):
+        """A column whose name contains a dot is quoted in its FQN; its exception must still apply"""
+        column = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        exceptions = [RecognizerException(entityLink=entity_link, reason="Test exception")]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is True
+
+    def test_exception_list_filtering_other_column_with_a_dot(self, email_tag, nlp_engine):
+        """An exception for one column does not apply to another column of the table"""
+        column = Column(
+            name=ColumnName(root="user.email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch.users."user.email"',
+        )
+        exceptions = [
+            RecognizerException(entityLink="<#E::table::svc.db.sch.users::columns::email>", reason="Test exception"),
+            RecognizerException(entityLink="<#E::table::svc.db.sch.users::columns::user>", reason="Test exception"),
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is False
+
+    def test_exception_list_filtering_table_name_with_a_dot(self, email_tag, nlp_engine):
+        """A quoted table name keeps its quotes in the entity link, as in the table's FQN"""
+        column = Column(
+            name=ColumnName(root="email"),
+            dataType=DataType.STRING,
+            fullyQualifiedName='svc.db.sch."users.v2".email',
+        )
+        exceptions = [
+            RecognizerException(
+                entityLink='<#E::table::svc.db.sch."users.v2"::columns::email>',
+                reason="Test exception",
+            )
+        ]
+
+        analyzer = TagAnalyzer(tag=email_tag, column=column, nlp_engine=nlp_engine)
+        assert analyzer.should_skip_recognizer(exceptions) is True
+
 
 class TestBuildRecognizerMetadata:
     """Tests for TagScorer._build_recognizer_metadata recognizer attribution logic."""
