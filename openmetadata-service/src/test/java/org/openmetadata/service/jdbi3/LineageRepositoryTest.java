@@ -1576,8 +1576,14 @@ class LineageRepositoryTest {
     assertEquals(stored, incoming.getColumnsLineage().get(0));
   }
 
+  /**
+   * An explicit empty list is the UI's clear-all signal (the column-lineage editor sends {@code
+   * columnsLineage: []} when the last column mapping is removed). Restoring the stored entries on
+   * an empty list would silently re-instate the removed mappings on refresh, so an empty list must
+   * pass through unchanged. Only {@code null} (the OpenLineage no-facet signal) is restored.
+   */
   @Test
-  void testPreserveAssetEdges_IncomingColumnsLineageEmpty_PreservesStoredColumnsLineage() {
+  void testPreserveAssetEdges_IncomingColumnsLineageEmpty_KeepsEmptyClearsStored() {
     ColumnLineage stored =
         new ColumnLineage().withFromColumns(List.of("db.s.from.col")).withToColumn("db.s.to.col");
     LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(stored));
@@ -1586,8 +1592,33 @@ class LineageRepositoryTest {
     LineageRepository.preserveAssetEdges(incoming, prior);
 
     assertNotNull(incoming.getColumnsLineage());
-    assertEquals(1, incoming.getColumnsLineage().size());
-    assertEquals(stored, incoming.getColumnsLineage().get(0));
+    assertTrue(incoming.getColumnsLineage().isEmpty(), "empty list must not be restored");
+  }
+
+  /**
+   * The restored list is a deep copy: mutating the incoming entries through {@code
+   * validateLineageDetails} (which filters invalid fromColumns in place) must not reach the prior
+   * edge's {@link ColumnLineage} objects, or {@code payloadChanged} would compare two already-mutated
+   * references and miss a real change.
+   */
+  @Test
+  void testPreserveAssetEdges_RestoredColumnsLineageIsDeepCopyOfPrior() {
+    ColumnLineage stored =
+        new ColumnLineage()
+            .withFromColumns(new ArrayList<>(List.of("db.s.from.col")))
+            .withToColumn("db.s.to.col");
+    LineageDetails prior = new LineageDetails().withColumnsLineage(List.of(stored));
+    LineageDetails incoming = new LineageDetails().withColumnsLineage(null);
+
+    LineageRepository.preserveAssetEdges(incoming, prior);
+
+    assertNotSame(stored, incoming.getColumnsLineage().get(0), "entry must be a copy, not shared");
+    assertNotSame(
+        prior.getColumnsLineage(), incoming.getColumnsLineage(), "list must be a copy, not shared");
+    // Mutating the restored entry must not bleed into the prior edge.
+    incoming.getColumnsLineage().get(0).getFromColumns().add("db.s.from.extra");
+    assertEquals(
+        List.of("db.s.from.col"), stored.getFromColumns(), "prior entry must be untouched");
   }
 
   /**

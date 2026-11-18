@@ -88,35 +88,23 @@ class OpenLineageColumnLineagePreservationIT {
    */
   @Test
   void testNoFacetCompleteEventPreservesStoredColumnLineage(TestNamespace ns) throws Exception {
-    Table[] tables = createTablePair(ns);
-    Table src = tables[0];
-    Table dst = tables[1];
+    Table src = createSourceTable();
+    Table dst = createTargetTable(schemaFqnOf(src));
 
-    // Step 1: establish column-level lineage on the edge via the lineage API (the way dbt
-    // ingestion or manual lineage would set it up; the bug surface is path-independent).
-    ColumnLineage stored =
-        new ColumnLineage()
-            .withFromColumns(List.of(src.getFullyQualifiedName() + ".amount"))
-            .withToColumn(dst.getFullyQualifiedName() + ".amount");
+    ColumnLineage stored = columnLineage(src, dst, "amount");
     putColumnLineage(src, dst, stored);
     assertEdgeHasColumnLineage(src, dst, stored, "after initial PUT");
 
     // Step 2: send a second OpenLineage COMPLETE event for the same datasets but WITHOUT a
     // columnLineage facet — the routine producer path. Before the fix, this wiped the stored
     // column lineage; after the fix, the stored entries survive.
-    String response =
-        OpenLineage.event()
-            .withEventType("COMPLETE")
-            .withEventTime(Instant.now().toString())
-            .withJob(ns.prefix("no_facet_job"), ns.prefix("namespace"))
-            .withRun(UUID.randomUUID().toString())
-            .addInput(datasetBareName(src), serviceNamespace(src))
-            .addOutput(datasetBareName(dst), serviceNamespace(dst))
-            .send();
+    String response = sendNoFacetCompleteEvent(ns, src, dst);
 
-    assertNotNull(response);
     JsonNode json = MAPPER.readTree(response);
     assertEquals("success", json.get("status").asText(), response);
+    assertTrue(
+        json.get("lineageEdgesCreated").asInt() >= 1,
+        "expected at least 1 lineage edge created, got: " + response);
 
     // Step 3: re-fetch the edge and confirm the stored column lineage is intact.
     assertEdgeHasColumnLineage(src, dst, stored, "after no-facet OpenLineage COMPLETE event");
@@ -131,32 +119,44 @@ class OpenLineageColumnLineagePreservationIT {
   @Test
   void testFacetCarryingCompleteEventReplacesStoredColumnLineage(TestNamespace ns)
       throws Exception {
-    Table[] tables = createTablePair(ns);
-    Table src = tables[0];
-    Table dst = tables[1];
+    Table src = createSourceTable();
+    Table dst = createTargetTable(schemaFqnOf(src));
 
-    ColumnLineage initial =
-        new ColumnLineage()
-            .withFromColumns(List.of(src.getFullyQualifiedName() + ".amount"))
-            .withToColumn(dst.getFullyQualifiedName() + ".amount");
+    ColumnLineage initial = columnLineage(src, dst, "amount");
     putColumnLineage(src, dst, initial);
     assertEdgeHasColumnLineage(src, dst, initial, "after initial PUT");
 
-    ColumnLineage replacement =
-        new ColumnLineage()
-            .withFromColumns(List.of(src.getFullyQualifiedName() + ".id"))
-            .withToColumn(dst.getFullyQualifiedName() + ".id");
+    ColumnLineage replacement = columnLineage(src, dst, "id");
     putColumnLineage(src, dst, replacement);
     assertEdgeHasColumnLineage(src, dst, replacement, "after replacing write");
   }
 
-  /** Creates a fresh service/db/schema pair with two tables sharing a column layout. */
-  private Table[] createTablePair(TestNamespace ns) {
+  private String sendNoFacetCompleteEvent(TestNamespace ns, Table src, Table dst) {
+    String response =
+        OpenLineage.event()
+            .withEventType("COMPLETE")
+            .withEventTime(Instant.now().toString())
+            .withJob(ns.prefix("no_facet_job"), ns.prefix("namespace"))
+            .withRun(UUID.randomUUID().toString())
+            .addInput(datasetBareName(src), serviceNamespace(src))
+            .addOutput(datasetBareName(dst), serviceNamespace(dst))
+            .send();
+    assertNotNull(response);
+    return response;
+  }
+
+  private static ColumnLineage columnLineage(Table src, Table dst, String column) {
+    return new ColumnLineage()
+        .withFromColumns(List.of(src.getFullyQualifiedName() + "." + column))
+        .withToColumn(dst.getFullyQualifiedName() + "." + column);
+  }
+
+  /** Creates the source table under a fresh, uniquely-named service/db/schema triple. */
+  private Table createSourceTable() {
     String uniqueId = UUID.randomUUID().toString().substring(0, 8);
-    String serviceName = "ol_col_lin_pres_" + uniqueId;
     DatabaseService service =
         DatabaseServices.builder()
-            .name(serviceName)
+            .name("ol_col_lin_pres_" + uniqueId)
             .connection(
                 DatabaseServices.postgresConnection()
                     .hostPort("localhost:5432")
@@ -165,23 +165,39 @@ class OpenLineageColumnLineagePreservationIT {
             .description("Test service for OpenLineage column-lineage preservation tests")
             .create();
     Database db =
-        Databases.create().name("ecommerce_db").in(service.getFullyQualifiedName()).execute();
+        Databases.create()
+            .name("ecommerce_" + uniqueId)
+            .in(service.getFullyQualifiedName())
+            .execute();
+    // Unique schema + table names so the OpenLineage dataset resolver — which, without a
+    // namespaceToServiceMapping, falls back to a suffix LIKE search across every service —
+    // matches only this test's tables under CONCURRENT execution.
     DatabaseSchema schema =
-        DatabaseSchemas.create().name("shopify").in(db.getFullyQualifiedName()).execute();
-    String schemaFqn = schema.getFullyQualifiedName();
-    Table src =
-        Tables.create()
-            .name("raw_order")
-            .inSchema(schemaFqn)
-            .withColumns(DEFAULT_COLUMNS)
+        DatabaseSchemas.create()
+            .name("shopify_" + uniqueId)
+            .in(db.getFullyQualifiedName())
             .execute();
-    Table dst =
-        Tables.create()
-            .name("fact_order")
-            .inSchema(schemaFqn)
-            .withColumns(DEFAULT_COLUMNS)
-            .execute();
-    return new Table[] {src, dst};
+    return Tables.create()
+        .name("raw_order_" + uniqueId)
+        .inSchema(schema.getFullyQualifiedName())
+        .withColumns(DEFAULT_COLUMNS)
+        .execute();
+  }
+
+  /** Creates the target table inside the source table's schema so the edge shares a service. */
+  private Table createTargetTable(String schemaFqn) {
+    String uniqueId = UUID.randomUUID().toString().substring(0, 8);
+    return Tables.create()
+        .name("fact_order_" + uniqueId)
+        .inSchema(schemaFqn)
+        .withColumns(DEFAULT_COLUMNS)
+        .execute();
+  }
+
+  /** FQN is {@code <service>.<db>.<schema>.<table>}; the schema FQN is the first three tokens. */
+  private static String schemaFqnOf(Table t) {
+    String[] parts = t.getFullyQualifiedName().split("\\.");
+    return parts[0] + "." + parts[1] + "." + parts[2];
   }
 
   /** PUTs an edge with the given column lineage entry (sets source=MANUAL). Idempotent / retried. */
@@ -239,7 +255,7 @@ class OpenLineageColumnLineagePreservationIT {
     assertTrue(cols.isArray() && cols.size() == 1, "expected 1 entries " + when + ", got: " + cols);
     assertEquals(expected.getToColumn(), cols.get(0).get("toColumn").asText(), "toColumn " + when);
     assertEquals(
-        expected.getFromColumns().get(0),
+        expected.getFromColumns().getFirst(),
         cols.get(0).get("fromColumns").get(0).asText(),
         "fromColumns " + when);
   }
