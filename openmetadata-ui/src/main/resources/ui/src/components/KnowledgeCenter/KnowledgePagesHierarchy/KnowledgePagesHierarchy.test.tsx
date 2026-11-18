@@ -291,6 +291,38 @@ describe('KnowledgePagesHierarchy', () => {
     expect(screen.getAllByTestId('page-icon')).toHaveLength(3);
   });
 
+  it('renders a real focusable drag handle button (slot="drag") per row only when EditAll is granted', async () => {
+    const { unmount } = await act(async () => {
+      const result = render(
+        <KnowledgePagesHierarchy
+          permissions={{ ...DEFAULT_ENTITY_PERMISSION, EditAll: true }}
+        />,
+        { wrapper: TestWrapper }
+      );
+
+      return result;
+    });
+
+    const handles = screen.getAllByRole('button', { name: 'label.move' });
+
+    expect(handles.length).toBeGreaterThan(0);
+
+    handles.forEach((handle) => {
+      expect(handle).toHaveAttribute('slot', 'drag');
+      expect(handle).not.toHaveAttribute('aria-hidden');
+    });
+
+    unmount();
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+        { wrapper: TestWrapper }
+      );
+    });
+
+    expect(screen.queryAllByRole('button', { name: 'label.move' })).toEqual([]);
+  });
+
   it('should render the total count from getListKnowledgePages, not the hierarchy paging', async () => {
     await act(async () => {
       render(

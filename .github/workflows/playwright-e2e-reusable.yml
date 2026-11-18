@@ -321,7 +321,6 @@ jobs:
               - 'openmetadata-spec/src/main/resources/json/schema/entity/data/glossaryTerm.json'
               - 'openmetadata-spec/src/main/resources/rdf/**'
               - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts'
-              - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/Ontology*Rdf.spec.ts'
               - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
               - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/GlossaryHeader/**'
               - 'openmetadata-ui/src/main/resources/ui/src/components/Glossary/ImportOntologyModal/**'
@@ -574,7 +573,7 @@ jobs:
         run: mvn -DskipTests package -pl openmetadata-ui -am
 
       - name: Upload the regular UI bundle
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-visual-ui
           overwrite: true
@@ -884,7 +883,6 @@ jobs:
             --project=search-nightly \
             --project=visual-regression \
             --project="Knowledge Graph" \
-            --project="Ontology RDF" \
             > "$RUNNER_TEMP/playwright-test-list.json"
 
       - name: Fetch auto-refreshed timing baseline

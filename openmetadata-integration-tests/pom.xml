@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against the published
@@ -469,6 +469,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -538,6 +539,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -637,6 +639,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -705,6 +708,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -805,6 +809,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -874,6 +879,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -974,6 +980,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -1042,6 +1049,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -1141,6 +1149,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -1209,6 +1218,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -1307,6 +1317,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -1376,6 +1387,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -1491,6 +1503,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -1561,6 +1574,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>
@@ -1667,6 +1681,7 @@
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
+                    <include>**/ContextMemoryExtractionRequestIT.java</include>
                     <include>**/NativeOntologyEveryPackInstallIT.java</include>
                     <include>**/DataProductDeleteRaceIT.java</include>
                     <include>**/ContextMemoryDerivationIT.java</include>
@@ -1736,6 +1751,7 @@
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
+                    <exclude>**/ContextMemoryExtractionRequestIT.java</exclude>
                     <exclude>**/NativeOntologyEveryPackInstallIT.java</exclude>
                     <exclude>**/DataProductDeleteRaceIT.java</exclude>
                     <exclude>**/ContextMemoryDerivationIT.java</exclude>

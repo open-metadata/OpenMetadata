@@ -75,7 +75,7 @@ from metadata.ingestion.source.database.data360.utils import (
 )
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_table
+from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
@@ -171,7 +171,7 @@ class Data360Source(DatabaseServiceSource):
             if not dataspace_name:
                 self.log_warning(f"Skipping Data 360 dataspace with no name: {dataspace}")
                 continue
-            if filter_by_database(self.source_config.databaseFilterPattern, dataspace_name):
+            if self._is_database_filtered(dataspace_name):
                 self.status.filter(dataspace_name, "Database Filtered Out")
                 continue
             self.dataspace_map[dataspace_name] = dataspace
@@ -230,13 +230,17 @@ class Data360Source(DatabaseServiceSource):
                 )
             )
 
-    def get_database_schema_names(self) -> Iterable[str]:
+    def get_raw_database_schema_names(self) -> Iterable[str]:
         """Yields the three fixed schema names for DLO, DMO, and CIO."""
         yield from [
             Constant.DATA_LAKE_OBJECTS,
             Constant.DATA_MODEL_OBJECTS,
             Constant.CALCULATED_INSIGHTS,
         ]
+
+    def get_database_schema_names(self) -> Iterable[str]:
+        """Yields the schemas that pass the schema filter."""
+        yield from self._get_filtered_schema_names()
 
     def yield_database_schema(self, schema_name: str) -> Iterable[Either[CreateDatabaseSchemaRequest]]:
         """Yields a CreateDatabaseSchemaRequest for each DataCloud object category."""

@@ -51,6 +51,7 @@ public class DashboardDataModelBuilder {
    * Set custom extension data.
    */
   public DashboardDataModelBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

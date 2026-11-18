@@ -105,6 +105,8 @@ export const getChartTypeForWidget = (chartType: SystemChartType) => {
       return SystemChartType.PIICoverage;
     case SystemChartType.AssetsWithTierLive:
       return SystemChartType.TierCoverage;
+    case SystemChartType.HealthyDataAssetsLive:
+      return SystemChartType.HealthyDataAssets;
     default:
       return chartType;
   }

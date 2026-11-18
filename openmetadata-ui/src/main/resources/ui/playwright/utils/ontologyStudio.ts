@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -93,12 +94,54 @@ export async function findOntologyInScopeMenu(
   return page.getByTestId(`ontology-scope-${ontology.id}`);
 }
 
+/** The concept panel's relationship type is a select; picks one by type id. */
+export async function chooseInspectorRelationType(
+  page: Page,
+  inspector: Locator,
+  typeId: string
+) {
+  await selectOptionWithRetry(
+    inspector.getByTestId('ontology-relationship-type').getByRole('button'),
+    page.getByTestId(`relation-type-${typeId}`)
+  );
+}
+
+/** Opens the full relationship chooser (search, glosses, new type) from the panel's select. */
+export async function openInspectorRelationChooser(
+  page: Page,
+  inspector: Locator
+) {
+  await chooseInspectorRelationType(
+    page,
+    inspector,
+    '__browse-relation-types__'
+  );
+  await expect(page.getByTestId('relationship-type-picker')).toBeVisible();
+}
+
 /**
- * The release history control: a chip with the version for readers, an icon for editors whose
- * accessible name carries the same text. Matches either by name.
+ * Opens release history: readers have the release chip, editors reach it under
+ * Review & publish → Releases.
  */
-export const releaseNameContaining = (text: string) =>
-  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+export async function openReleaseHistory(page: Page) {
+  const readerChip = page.getByTestId('ontology-release-history-trigger');
+  const publish = page.getByTestId('ontology-publication-trigger');
+  // A user has exactly one of the two, so the union never matches twice. Which one
+  // can still swap while permissions load, so the pick and click retry together.
+  await expect(readerChip.or(publish)).toBeVisible();
+  let isReader = false;
+  await expect(async () => {
+    isReader = await readerChip.isVisible();
+    await (isReader ? readerChip : publish).click({ timeout: 2000 });
+  }).toPass({ timeout: 15_000 });
+  if (isReader) {
+    return;
+  }
+  await page.getByTestId('ontology-publication-tab-releases').click();
+  await expect(
+    page.getByTestId('ontology-publication-tab-releases')
+  ).toHaveAttribute('aria-selected', 'true');
+}
 
 /** The Import / export button opens a menu; this opens the Import or the Export dialog. */
 export async function openOntologyTransfer(

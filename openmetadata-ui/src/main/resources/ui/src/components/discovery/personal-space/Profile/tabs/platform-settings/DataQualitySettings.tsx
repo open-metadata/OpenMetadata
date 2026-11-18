@@ -27,6 +27,7 @@ import {
 import { AxiosError } from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { NO_DATA_PLACEHOLDER } from '../../../../../../constants/constants';
 import { DataQualityDimension } from '../../../../../../generated/tests/dataQualityDimension';
 import { deleteDataQualityDimension } from '../../../../../../rest/dataQualityDimensionAPI';
 import {
@@ -125,7 +126,7 @@ const DataQualitySettings = ({
       case 'description':
         return (
           <Typography className="tw:text-secondary" size="text-sm">
-            {dimension.description || '--'}
+            {dimension.description || NO_DATA_PLACEHOLDER}
           </Typography>
         );
       case 'type':
