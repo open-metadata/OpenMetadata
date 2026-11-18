@@ -100,6 +100,7 @@
     "admin-access-required": "Admin access required.",
     "admin-plural": "ผู้ดูแลระบบหลายคน",
     "admin-profile": "โปรไฟล์ผู้ดูแลระบบ",
+    "admin-superuser": "ผู้ดูแลระบบ (ผู้ใช้สิทธิ์สูงสุด)",
     "admin-uppercase": "ผู้ดูแลระบบ",
     "advance-filter": "ตัวกรองขั้นสูง",
     "advanced": "ขั้นสูง",
