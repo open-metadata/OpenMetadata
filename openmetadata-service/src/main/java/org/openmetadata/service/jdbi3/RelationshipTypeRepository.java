@@ -26,7 +26,6 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
@@ -173,14 +172,15 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
     if (reference.getId().equals(selfId)) {
       return reference.withName(selfFqn).withFullyQualifiedName(selfFqn);
     }
-    try {
-      final RelationshipType resolved = find(reference.getId(), Include.ALL);
-      return reference
-          .withName(resolved.getName())
-          .withFullyQualifiedName(resolved.getFullyQualifiedName());
-    } catch (EntityNotFoundException ignored) {
+    final String json =
+        dao.findById(dao.getTableName(), reference.getId(), dao.getCondition(Include.ALL));
+    if (json == null) {
       return reference;
     }
+    final RelationshipType resolved = dao.jsonToEntity(json, reference.getId());
+    return reference
+        .withName(resolved.getName())
+        .withFullyQualifiedName(resolved.getFullyQualifiedName());
   }
 
   static EntityReference inverseForUpdate(
