@@ -15,7 +15,6 @@ import java.util.StringJoiner;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.util.ChildFieldResolver;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -133,15 +132,15 @@ final class FqnKeyedRowCleanup {
   }
 
   /**
-   * The hashes that sit under an entity with inline fields (a table's columns, a topic's schema
-   * fields): a free-form FQN can equal one of its fields' FQNs and then shares that field's rows.
+   * The hashes that sit under an entity with tagged inline fields (a table's columns, a topic's
+   * schema fields, a file's columns): a free-form FQN can equal one of its fields' FQNs and then
+   * shares that field's rows.
    */
   private Set<String> fieldHashes(List<String> hashes) {
     List<String> prefixes =
         hashes.stream().flatMap(hash -> properPrefixes(hash).stream()).distinct().toList();
     Map<String, String> bindings = bindAll("prefix", prefixes, "");
-    List<EntityTable> tables =
-        tables(repository -> ChildFieldResolver.supports(repository.getEntityType()));
+    List<EntityTable> tables = tables(EntityRepository::hasTaggedFields);
     Set<String> fieldHolders =
         prefixes.isEmpty()
             ? Set.of()

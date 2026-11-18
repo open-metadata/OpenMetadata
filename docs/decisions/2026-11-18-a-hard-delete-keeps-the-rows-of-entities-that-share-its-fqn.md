@@ -22,9 +22,9 @@ Before removing the rows at and under an FQN, a hard delete looks for entities i
 - If an entity of another taggable type has the same FQN, the rows at that FQN are its rows too,
   and it may own rows under the FQN. The delete removes none of them.
 - A free-form FQN (a type that `nestsUnderUnrelatedFqns()`, such as a metric's bare name) can equal
-  a field of an entity with inline fields (a table column, a topic schema field; see
-  `ChildFieldResolver`). If such an entity sits above the FQN, the rows at and under it may be
-  that field's, so the delete removes none of them.
+  a field of an entity whose inline fields carry tags (`EntityRepository.hasTaggedFields()`: a
+  table column, a topic schema field, a Drive file column). If such an entity sits above the FQN,
+  the rows at and under it may be that field's, so the delete removes none of them.
 - Entities that nest under the FQN without being its descendants keep the rows at and under their
   own FQNs, and the delete removes the rest. The search covers only types whose FQN can nest
   under an unrelated FQN (`EntityRepository.nestsUnderUnrelatedFqns()`): bare-name types, and data
@@ -40,13 +40,16 @@ Before removing the rows at and under an FQN, a hard delete looks for entities i
   table and one for nested entities; a free-form FQN adds one for entities with inline fields.
 
 ## Consequences
-No hard delete removes another entity's tag labels or field relationships. Where rows are shared,
-some of the deleted entity's rows stay. These are the rows at an FQN another type has, which are
-that entity's too, plus the nested-part rows (columns, fields) under that FQN, and the rows of a
-free-form FQN that an entity with inline fields sits above. Each hard delete costs two more queries
-(three for a free-form FQN), a recursive one two more before its cascade, and descendants that
-remove their own rows two more per batch of 50. A new type whose FQN can nest under an unrelated FQN
-must override `nestsUnderUnrelatedFqns()`. If its entities are also the cascade-covered descendants
-of a parent type, it names that type in `fqnParentType()`; without it, deleting such a parent still
-removes the right rows, one descendant at a time. Recording the target's entity type on each row
-would make all of this exact, but that schema change is still deferred.
+A hard delete no longer removes the rows of an entity that has its FQN or nests under it, nor, for a
+free-form FQN, those of a field at that FQN. Where rows are shared, some of the deleted entity's
+rows stay. These are the rows at an FQN another type has, which are that entity's too, plus the
+nested-part rows (columns, fields) under that FQN, and the rows of a free-form FQN that an entity
+with inline fields sits above. Each hard delete costs two more queries (three for a free-form FQN),
+a recursive one two more before its cascade, and descendants that remove their own rows two more per
+batch of 50. A new type whose FQN can nest under an unrelated FQN must override
+`nestsUnderUnrelatedFqns()`. If its entities are also the cascade-covered descendants of a parent
+type, it names that type in `fqnParentType()`; without it, deleting such a parent still removes the
+right rows, one descendant at a time. One case remains: an FQN derived from its parents can still
+equal another entity's field when names repeat across types at several levels (schema `X.a.b` and
+the task `b` of pipeline `X.a`), and deleting it removes that field's rows. Recording the target's
+entity type on each row would make all of this exact, but that schema change is still deferred.

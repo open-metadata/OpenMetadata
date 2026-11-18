@@ -6510,6 +6510,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
+   * Whether entities of this type have inline fields that carry their own tags: the type-level
+   * answer to {@link #taggedFieldContainers}, so a repository that overrides that hook for fields
+   * outside the {@link ChildFieldResolver} registry overrides this one too.
+   */
+  protected boolean hasTaggedFields() {
+    return ChildFieldResolver.supports(entityType);
+  }
+
+  /**
    * The inline fields that carry their own tags, by the container path that holds them. The
    * default reads the {@link ChildFieldResolver} registry; a repository whose tagged fields are not
    * registered there overrides it, or the approved-term guard would not see their labels.

@@ -22,6 +22,7 @@ import org.openmetadata.schema.api.data.CreateDashboardDataModel;
 import org.openmetadata.schema.api.data.CreateDashboardDataModel.DashboardServiceType;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateFile;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
@@ -32,6 +33,8 @@ import org.openmetadata.schema.api.data.StoredProcedureCode;
 import org.openmetadata.schema.api.services.CreateDashboardService;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
+import org.openmetadata.schema.api.services.CreateDriveService;
+import org.openmetadata.schema.api.services.CreateDriveService.DriveServiceType;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.entity.data.Chart;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.File;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
@@ -49,18 +53,21 @@ import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.DriveService;
 import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.services.connections.dashboard.MetabaseConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
+import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.type.ChartType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.DashboardConnection;
 import org.openmetadata.schema.type.DataModelType;
+import org.openmetadata.schema.type.DriveConnection;
 import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
@@ -249,6 +256,30 @@ public class HardDeleteCleanupIT {
     assertKeepsItsTags(table);
   }
 
+  /** A Drive file's columns carry tags outside ChildFieldResolver, and share FQNs the same way. */
+  @Test
+  void hardDeletingAMetricNamedLikeAFileColumnKeepsTheColumnsTags(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    DriveService drive = createDriveService(ns, uniqueName("hd_drive_"));
+    File file =
+        admin
+            .files()
+            .create(
+                new CreateFile()
+                    .withName("ledger")
+                    .withService(drive.getFullyQualifiedName())
+                    .withColumns(List.of(taggedColumn())));
+    Metric namedLikeTheColumn =
+        admin
+            .metrics()
+            .create(new CreateMetric().withName(file.getColumns().get(0).getFullyQualifiedName()));
+
+    admin.metrics().delete(namedLikeTheColumn.getId().toString(), HARD_DELETE);
+
+    File reloaded = admin.files().get(file.getId().toString(), "columns,tags");
+    assertEquals(List.of(PERSONAL_TAG), tagFqns(reloaded.getColumns().get(0).getTags()));
+  }
+
   /** Data models nest under {@code <service>.model}, the FQN of a chart named "model". */
   @Test
   void hardDeletingAChartNamedModelKeepsTheTagsOfTheServicesDataModels(TestNamespace ns) {
@@ -412,6 +443,21 @@ public class HardDeleteCleanupIT {
                 .withName(name)
                 .withService(service.getFullyQualifiedName())
                 .withTags(tags));
+  }
+
+  private static DriveService createDriveService(TestNamespace ns, String name) {
+    return ns.trackRoot(
+        Entity.DRIVE_SERVICE,
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/services/driveServices",
+                new CreateDriveService()
+                    .withName(name)
+                    .withServiceType(DriveServiceType.GoogleDrive)
+                    .withConnection(new DriveConnection().withConfig(new GoogleDriveConnection())),
+                DriveService.class));
   }
 
   private static DashboardService createDashboardService(TestNamespace ns, String name) {
