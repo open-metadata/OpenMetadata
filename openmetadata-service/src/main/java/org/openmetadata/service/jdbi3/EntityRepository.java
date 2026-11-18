@@ -9332,14 +9332,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       versionChanged = updateVersion(original.getVersion());
       if (!versionChanged && entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
       } else if (!versionChanged) {
         updated.setChangeDescription(original.getChangeDescription());
         updated.setUpdatedBy(original.getUpdatedBy());
         updated.setUpdatedAt(original.getUpdatedAt());
       }
+    }
+
+    /**
+     * A non-versioned change (lifeCycle) keeps the current version's change description, author and
+     * timestamp; otherwise the writer's next PATCH consolidates over a version it did not make.
+     */
+    private void keepCurrentVersionAttribution() {
+      if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
+        updated.setChangeDescription(original.getChangeDescription());
+      }
+      updated.setUpdatedBy(original.getUpdatedBy());
+      updated.setUpdatedAt(original.getUpdatedAt());
     }
 
     public boolean isVersionChanged() {
@@ -10743,9 +10753,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           storeNewVersion(); // Store the update version of the entity
         }
       } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
         try (var ignored = phase("storeUpdateCurrent")) {
           storeNewVersion();
         }
@@ -10809,9 +10817,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           }
         }
       } else if (entityChanged) {
-        if (updated.getVersion().equals(changeDescription.getPreviousVersion())) {
-          updated.setChangeDescription(original.getChangeDescription());
-        }
+        keepCurrentVersionAttribution();
         if (isConsolidating) {
           try (var ignored = phase("storeUpdateCurrent")) {
             storeNewVersion();
