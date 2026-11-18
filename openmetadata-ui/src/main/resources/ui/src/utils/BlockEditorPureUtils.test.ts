@@ -687,6 +687,13 @@ describe('getTrimmedHtmlContent', () => {
     expect(getTrimmedHtmlContent(html, 350)).toBe(html);
   });
 
+  it('should count an editor table row with paragraphs in its cells as one block', () => {
+    const html =
+      '<table><tbody><tr><td><p>a</p></td><td><p>b</p></td></tr><tr><td><p>c</p></td><td><p>d</p></td></tr></tbody></table>';
+
+    expect(getTrimmedHtmlContent(html, 350)).toBe(html);
+  });
+
   it('should return the content unchanged when only a trailing line break follows the limit', () => {
     const html = '<p>Hello<br></p>';
 

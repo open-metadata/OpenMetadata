@@ -334,7 +334,9 @@ const getPreviewNodes = (body: HTMLElement) => {
 };
 
 const getPreviewBlock = (text: Text) =>
-  text.parentElement?.closest(PREVIEW_BLOCK_SELECTOR) ?? null;
+  text.parentElement?.closest('tr') ??
+  text.parentElement?.closest(PREVIEW_BLOCK_SELECTOR) ??
+  null;
 
 const findPreviewCut = (body: HTMLElement, limit: number) => {
   const nodes = getPreviewNodes(body);
