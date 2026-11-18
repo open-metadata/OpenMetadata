@@ -1,6 +1,6 @@
 # Greenplum distribution keys require the modern catalog and preserve lookup failures
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-18-greenplum-distribution-lookup-errors-skip-only-the-constraint
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `ingestion/tests/unit/topology/database/test_greenplum.py`, `ingestion/tests/integration/greenplum/test_metadata.py`

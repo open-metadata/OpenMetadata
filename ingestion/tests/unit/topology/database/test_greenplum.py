@@ -144,19 +144,22 @@ def test_distribution_columns_form_one_constraint(distribution_source, keys):
     assert constraints == expected
 
 
-def test_distribution_lookup_failure_is_not_an_empty_policy(distribution_source):
+def test_distribution_lookup_failure_preserves_existing_constraints(distribution_source, caplog):
     source, connection = distribution_source
     connection.execute.side_effect = SQLAlchemyError("catalog unavailable")
+    unique = TableConstraint(constraintType=ConstraintType.UNIQUE, columns=["id", "region"])
 
-    with pytest.raises(SQLAlchemyError, match="catalog unavailable"):
-        source.update_table_constraints(
-            table_name="my_table",
-            schema_name="my_schema",
-            db_name="demo_db",
-            table_constraints=None,
-            foreign_columns=[],
-            columns=[Column(name="id", dataType=DataType.INT)],
-        )
+    constraints = source.update_table_constraints(
+        table_name="my_table",
+        schema_name="my_schema",
+        db_name="demo_db",
+        table_constraints=[unique],
+        foreign_columns=[],
+        columns=[Column(name=name, dataType=DataType.INT) for name in ("id", "region")],
+    )
+
+    assert constraints == [unique]
+    assert "DIST_KEY" in caplog.text
 
 
 def test_greenplum_5_preserves_constraints_without_distribution_catalog(distribution_source):

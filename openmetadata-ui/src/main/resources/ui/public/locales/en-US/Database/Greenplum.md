@@ -8,6 +8,8 @@ In this section, we provide guides and references to use the Greenplum connector
 
 Distribution key extraction requires the Greenplum 6+ catalog layout and has been validated on Greenplum 6.27.1. Columns defined with `DISTRIBUTED BY` are ingested together as one `DIST_KEY` table constraint. Greenplum 5 skips this extraction and retains the existing metadata ingestion path.
 
+If the distribution-key lookup fails, the connector logs a warning and ingests the table without the `DIST_KEY` constraint.
+
 This feature does not establish full connector compatibility with Greenplum 7, whose partition catalogs differ from those used by the connector.
 
 ### Profiler & Data Quality

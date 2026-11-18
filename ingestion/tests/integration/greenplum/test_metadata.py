@@ -141,3 +141,29 @@ def test_distribution_keys_are_scoped_to_schema(greenplum_source, distribution_s
         assert [c.columns for c in result.right.tableConstraints if c.constraintType == ConstraintType.DIST_KEY] == [
             keys
         ]
+
+
+def test_distribution_query_error_keeps_table_and_next_table(greenplum_source, distribution_schemas, caplog):
+    schema, _ = distribution_schemas
+    greenplum_source.context.get().__dict__["database_schema"] = schema
+    with patch(
+        "metadata.ingestion.source.database.greenplum.metadata.GREENPLUM_DISTRIBUTION_KEYS",
+        "SELECT attname FROM pg_catalog.om_missing_distribution_policy",
+    ):
+        result = next(greenplum_source.yield_table(("primary_key_table", TableType.Regular)))
+
+    assert result.left is None, result.left
+    assert [column.name.root for column in result.right.columns] == ["id", "region"]
+    assert [(constraint.constraintType, constraint.columns) for constraint in result.right.tableConstraints] == [
+        (ConstraintType.PRIMARY_KEY, ["id", "region"])
+    ]
+    assert "DIST_KEY" in caplog.text
+    assert greenplum_source.connection.execute(text("SELECT 1")).scalar_one() == 1
+
+    next_result = next(greenplum_source.yield_table(("single_key", TableType.Regular)))
+    assert next_result.left is None, next_result.left
+    assert [
+        constraint.columns
+        for constraint in next_result.right.tableConstraints
+        if constraint.constraintType == ConstraintType.DIST_KEY
+    ] == [["id"]]
