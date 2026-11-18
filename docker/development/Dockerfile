@@ -31,7 +31,27 @@ RUN mkdir -p /opt/openmetadata && \
     mkdir -p /shim/usr/bin && \
     ln -s /busybox/env /shim/usr/bin/env
 
-FROM eclipse-temurin:21-jdk AS jre-builder
+# Amazon Corretto, pinned to the SHA-256s in its release notes
+# (https://github.com/corretto/corretto-21/releases/tag/21.0.13.1.2); see
+# ADR:2026-11-18-shipped-jvm-images-take-the-jdk-from-a-pinned-corretto-build. binutils: jlink --strip-debug runs objcopy.
+FROM debian:13-slim AS jre-builder
+ARG TARGETARCH
+RUN set -eu; \
+    version=21.0.13.1.2; \
+    case "$TARGETARCH" in \
+      amd64) arch=x64; sha256=2aaa2a9a43143b20ff0b28c8d0da27407b97dc40b160d9a2f60a26965815e948 ;; \
+      arm64) arch=aarch64; sha256=55751c47c7e3be3b33af43ccdcf3a6f4814d308390b7400477594d421bd16a53 ;; \
+      *) echo "no Corretto build for $TARGETARCH" >&2; exit 1 ;; \
+    esac; \
+    apt-get update; \
+    apt-get install -y --no-install-recommends binutils ca-certificates curl; \
+    curl -fsSL --retry 3 -o /tmp/jdk.tar.gz \
+      "https://corretto.aws/downloads/resources/$version/amazon-corretto-$version-linux-$arch.tar.gz"; \
+    echo "$sha256  /tmp/jdk.tar.gz" | sha256sum -c -; \
+    mkdir /opt/jdk; \
+    tar -xzf /tmp/jdk.tar.gz -C /opt/jdk --strip-components=1; \
+    rm -rf /tmp/jdk.tar.gz /var/lib/apt/lists/*
+ENV PATH="/opt/jdk/bin:${PATH}"
 
 RUN jlink \
       --add-modules ALL-MODULE-PATH \
@@ -45,7 +65,7 @@ RUN jlink \
 # eMudhra's compromised intermediates chain to three emSign roots (ECC G3, ECC C3, C1). Oracle JDK
 # 21.0.13.0.3 also removes emSign G1, G2 and Comodo's AAA Certificate Services from cacerts, so
 # this step drops those too.
-# Until eclipse-temurin:21-jdk ships none of them, drop them here by SHA-256 and fail
+# Until the JDK ships none of them, drop them here by SHA-256 and fail
 # the build if any is still trusted. Once the base no longer ships them nothing is deleted.
 # Roots, not the advisory's intermediate fingerprints in blocked.certs: an ECDSA signature
 # re-encoded as (r, n-s) gives an intermediate a new fingerprint that still verifies.
