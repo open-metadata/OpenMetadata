@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.utils.v171;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 
+import java.util.ArrayList;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -72,6 +73,14 @@ public class MigrationUtil {
     List<WorkflowDefinition> workflowDefinitions =
         workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
 
+    // Best-effort: keep backfilling the remaining definitions so a single bad row does not
+    // block the rest, but collect each failure and propagate after the loop. Returning
+    // normally after a failed createOrUpdate — as the previous per-definition catch did —
+    // lets MigrationWorkflow record v1.7.1 as complete, leaving that definition with
+    // config = null permanently (the NPE-on-edit/redeploy failure mode this PR fixes).
+    // Throwing after the loop makes the next migrate/startup retry the whole backfill (see
+    // DataMigrationStep: "A step that fails records nothing, so the next run retries it").
+    List<Exception> failures = new ArrayList<>();
     for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
       try {
         if (workflowDefinition.getConfig() == null) {
@@ -84,7 +93,17 @@ public class MigrationUtil {
       } catch (Exception ex) {
         LOG.warn(ex.toString());
         LOG.warn("Error updating workflow definition {}", workflowDefinition.getName());
+        failures.add(ex);
       }
+    }
+
+    if (!failures.isEmpty()) {
+      throw new IllegalStateException(
+          "v1.7.1 workflow config backfill failed for "
+              + failures.size()
+              + " workflow definition(s); see preceding warnings. The migration will not be"
+              + " recorded complete and will retry on the next migrate/startup.",
+          failures.get(0));
     }
   }
 }
