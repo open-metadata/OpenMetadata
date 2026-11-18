@@ -100,6 +100,17 @@ final class MergeContext {
     return !SettingValues.same(deploymentValue(unit), lastAppliedValue(unit));
   }
 
+  /**
+   * Whether applying {@code unit} from the deployment actually changed the stored value. A
+   * preserved nested secret over a blank deployment value writes the same value back, so without
+   * this check an unchanged start after a password was preserved would report {@link
+   * MergeOutcome#APPLIED} or {@link MergeOutcome#DEFAULT_CHANGED} even though {@code stored} is
+   * identical to what it was before the reconciliation.
+   */
+  boolean storedChangedByApply(MergeUnit unit) {
+    return !SettingValues.same(storedValue(unit), valueOf(originalStored, unit));
+  }
+
   /** Whether the stored value was changed, through the UI or an API, since it was last applied. */
   /**
    * An empty value saved in the UI is a change like any other. A field that is absent is not: forms
