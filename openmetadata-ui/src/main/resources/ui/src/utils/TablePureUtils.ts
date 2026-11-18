@@ -336,6 +336,18 @@ export const createTableConstraintObject = (
 ) =>
   isEmpty(constraints) ? [] : [{ columns: constraints, constraintType: type }];
 
+export const getConstraintGroupLabel = (index: number): string => {
+  let label = '';
+  let remaining = index;
+
+  do {
+    label = String.fromCharCode(65 + (remaining % 26)) + label;
+    remaining = Math.floor(remaining / 26) - 1;
+  } while (remaining >= 0);
+
+  return label;
+};
+
 export const getColumnOptionsFromTableColumn = (
   columns: Column[],
   useFullyQualifiedName = false

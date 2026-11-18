@@ -109,6 +109,22 @@
       "dashboard",
       "server"
     ],
+    "llmModel": [
+      "service",
+      "modelVersion"
+    ],
+    "mcpServer": [
+      "service",
+      "serverType",
+      "transportType",
+      "protocolVersion",
+      "developmentStage"
+    ],
+    "aiApplication": [
+      "applicationType",
+      "developmentStage",
+      "framework"
+    ],
     "dataProduct": [
       "experts",
       "domains",
