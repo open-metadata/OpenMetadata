@@ -290,8 +290,14 @@ def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> Pipeli
             lines.append(line)
         else:
             lines[index] = line
-        if error is not None and error.failedTask == update.job and line.executionStatus == StatusType.Successful:
-            # A later try of the failed step succeeded, so its failure no longer explains the run.
+        if (
+            error is not None
+            and status != StatusType.Failed
+            and error.failedTask == update.job
+            and line.executionStatus == StatusType.Successful
+        ):
+            # A later try of the failed step succeeded before the run failed, so its failure
+            # no longer explains the run.
             error = None
 
     ended_at = None

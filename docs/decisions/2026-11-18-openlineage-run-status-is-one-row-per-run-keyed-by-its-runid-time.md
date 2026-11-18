@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-18 (initial)
 - **Deciders:** Akash Verma
-- **Guard:** `test_openlineage_status.py` — `test_successful_run_is_one_row_with_a_line_per_job`, `test_failed_sql_job_fails_the_run_although_the_application_completes`, `test_each_try_of_a_retried_airflow_task_is_its_own_line`, `test_tries_read_out_of_order_each_find_their_own_line`, `test_tasks_read_before_the_dag_run_start_are_kept`, `test_run_whose_id_carries_the_millisecond_of_another_run_takes_the_next_free_key`, `test_dag_run_error_names_the_task_that_failed_it_not_a_try_a_retry_made_good`, `test_start_read_in_a_later_ingestion_than_complete_never_downgrades`
+- **Guard:** `test_openlineage_status.py` — `test_successful_run_is_one_row_with_a_line_per_job`, `test_failed_sql_job_fails_the_run_although_the_application_completes`, `test_each_try_of_a_retried_airflow_task_is_its_own_line`, `PipelineDetailsUtils.test.tsx`, `test_tries_read_out_of_order_each_find_their_own_line`, `test_tasks_read_before_the_dag_run_start_are_kept`, `test_run_whose_id_carries_the_millisecond_of_another_run_takes_the_next_free_key`, `test_dag_run_error_names_the_task_that_failed_it_not_a_try_a_retry_made_good`, `test_start_read_in_a_later_ingestion_than_complete_never_downgrades`
 - **Related:** #19481, #19321, #37990, ADR:2026-11-18-openlineage-runs-are-their-own-pipelines-and-steps-join-their-parent
 
 ## Context
@@ -25,10 +25,12 @@ event therefore has to find the same row without any state kept between ingestio
   task (`jobType` TASK): a retry or a trigger rule can still let the DAG run succeed, and the DAG
   run sends its own FAIL. A Spark application always ends with COMPLETE, so this is how its failed
   SQL job fails it. Any event opens the row; the run stays Pending until its own final event.
-- Each try of a step is its own task line, holding the try's `runId` as `taskId`. The run itself
-  is not a task. A step's task is added to the pipeline and never removed.
-- The row's error is the first failure that still stands: a step's error is dropped once a later
-  try of that step succeeds, and any error is dropped when the run ends Successful.
+- Each try of a step is its own task line, holding the try's `runId` as `taskId`. A task's status
+  in the Tasks view is that of its latest try (`getTaskExecStatus`). The run itself is not a task.
+  A step's task is added to the pipeline and never removed.
+- The row's error is the first failure that still stands: a step's error is dropped when a later
+  try of that step succeeds before the run has failed, and any error is dropped when the run ends
+  Successful.
 - FAIL and ABORT events write status only, never lineage: their datasets are what the job meant to
   read and write.
 

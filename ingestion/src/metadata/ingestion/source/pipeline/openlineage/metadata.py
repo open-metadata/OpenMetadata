@@ -1117,19 +1117,26 @@ class OpenlineageSource(PipelineServiceSource):
         service named after the namespace), when it has that task. Its task is named after the
         job, or after the part of it that follows the root's name for a native connector. None
         when no pipeline, or more than one, has the task.
+
+        Pipelines this ingestion wrote are read by FQN: the search index may not hold them yet,
+        and an empty search result stays cached in ``_search_es_entity``.
         """
         root_name = root["name"]
+        own_name = f"{root['namespace']}-{root_name}"
         try:
             candidates = [
                 self._get_by_name_cached(
                     Pipeline, f"{root['namespace']}.{fqn.quote_name(root_name)}", fields=["tasks"]
                 ),
                 *(
+                    self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn, fields=["tasks"])
+                    for pipeline_fqn in list(self._known_pipelines)
+                    if fqn.split(pipeline_fqn)[-1] == own_name
+                ),
+                *(
                     self.metadata.es_search_from_fqn(
                         entity_type=Pipeline,
-                        fqn_search_string=fqn.prefix_entity_for_wildcard_search(
-                            Pipeline, fqn.quote_name(f"{root['namespace']}-{root_name}")
-                        ),
+                        fqn_search_string=fqn.prefix_entity_for_wildcard_search(Pipeline, fqn.quote_name(own_name)),
                         fields="tasks",
                     )
                     or []

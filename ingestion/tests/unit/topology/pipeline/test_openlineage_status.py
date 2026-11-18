@@ -780,3 +780,43 @@ def test_run_takes_the_last_free_key_of_its_window_and_none_past_it(source, serv
     assert [key for (_, key), row in server.statuses.items() if row.executionId == OK_RUN_ID] == (
         [written_key] if written_key else []
     )
+
+
+def test_failed_spark_sql_job_keeps_its_error_when_a_same_named_job_succeeds(source, server):
+    """One application running the same write twice sends two steps with one name."""
+    second_write = event("failed_run", 5)
+    second_write.run_facet["runId"] = "01a1e86e-127f-7000-8000-0000000000bb"
+
+    ingest(source, server, [event("failed_run", 4), second_write])
+
+    [row] = server.statuses.values()
+    assert row.executionStatus == StatusType.Failed
+    assert (row.error.errorMessage, row.error.failedTask) == (
+        "Job aborted due to stage failure: ValueError: intentional failure",
+        "report_app.deserialize_to_object",
+    )
+
+
+def test_retry_read_after_the_dag_run_failed_leaves_the_run_its_error(source, server):
+    load_fails = event("retried_task", 8, eventType="FAIL")
+    load_fails.run_facet["facets"]["errorMessage"] = {
+        "message": "load lost its connection",
+        "programmingLanguage": "python",
+    }
+    dag_fails = event("retried_task", 9, eventType="FAIL")
+
+    ingest(source, server, [event("retried_task", index) for index in (0, 1, 2)] + [load_fails, dag_fails])
+    ingest(source, server, [event("retried_task", index) for index in (5, 6)])
+
+    [row] = server.statuses.values()
+    assert row.executionStatus == StatusType.Failed
+    assert row.error is not None
+
+
+def test_dag_pipeline_written_by_this_ingestion_is_found_before_search_indexes_it(source, server):
+    ingest(source, server, whole_run("full_task_info"))
+    source.metadata.es_search_from_fqn.side_effect = lambda *args, **kwargs: []
+
+    [(from_id, to_id, _)] = pipeline_links(source, server, started_by_transform(0))
+
+    assert (from_id, to_id) == (pipeline_id(AIRFLOW_PIPELINE), pipeline_id(FAILED_PIPELINE))
