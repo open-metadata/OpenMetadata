@@ -148,6 +148,7 @@ class LoginLockoutIT {
     CountDownLatch done = new CountDownLatch(parallel);
     List<HttpResponse<String>> responses =
         java.util.Collections.synchronizedList(new ArrayList<>());
+    Throwable[] workerFailure = new Throwable[1];
     try {
       for (int i = 0; i < parallel; i++) {
         pool.submit(
@@ -155,8 +156,11 @@ class LoginLockoutIT {
               try {
                 startGun.await();
                 responses.add(login(user, WRONG_PASSWORD));
-              } catch (Exception e) {
-                // Surface via the assertion below; the list will be short.
+              } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                captureFirst(workerFailure, e);
+              } catch (Throwable t) {
+                captureFirst(workerFailure, t);
               } finally {
                 done.countDown();
               }
@@ -166,6 +170,9 @@ class LoginLockoutIT {
     } finally {
       pool.shutdownNow();
       assertTrue(pool.awaitTermination(60, TimeUnit.SECONDS), "pool must terminate");
+    }
+    if (workerFailure[0] != null) {
+      throw new AssertionError("a parallel login worker failed", workerFailure[0]);
     }
 
     assertEquals(parallel, responses.size(), "every parallel request must return a response");
@@ -178,6 +185,14 @@ class LoginLockoutIT {
     // than maxLoginFailAttempts increments, leaving the account unlocked and the correct password
     // working.
     assertLockedOut(user, password);
+  }
+
+  private static void captureFirst(Throwable[] bucket, Throwable t) {
+    synchronized (bucket) {
+      if (bucket[0] == null) {
+        bucket[0] = t;
+      }
+    }
   }
 
   private static User createUser(TestNamespace ns, String password) {
