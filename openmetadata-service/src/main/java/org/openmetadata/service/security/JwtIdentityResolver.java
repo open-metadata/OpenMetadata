@@ -74,7 +74,7 @@ public class JwtIdentityResolver {
     }
 
     String userName = resolveLegacyUserName(claims, internallyIssued);
-    String email = resolveLegacyEmail(claims, internallyIssued);
+    String email = resolveLegacyEmail(claims, internallyIssued, isBotUser);
     // The legacy path resolves identity from the claims too, so it needs the same guard: a
     // provider that says the address is unverified must not reach an account through it either.
     validateEmailVerifiedClaim(claims, email);
@@ -92,9 +92,16 @@ public class JwtIdentityResolver {
         () -> findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims));
   }
 
-  private String resolveLegacyEmail(Map<String, Claim> claims, boolean internallyIssued) {
+  /**
+   * Our own tokens carry the account's stored email. A bot's is used even under a claims mapping:
+   * bot resolution skips the mapping and would take the first claim in the order instead, which
+   * in a bot token minted under the mapping is the bare username (for example {@code upn}), and
+   * then build {@code <username>@<principalDomain>} - another address than the bot's.
+   */
+  private String resolveLegacyEmail(
+      Map<String, Claim> claims, boolean internallyIssued, boolean isBotUser) {
     if (internallyIssued
-        && nullOrEmpty(jwtPrincipalClaimsMapping)
+        && (nullOrEmpty(jwtPrincipalClaimsMapping) || isBotUser)
         && claims.containsKey(EMAIL_CLAIM_KEY)) {
       return extractEmailFromClaim(claims, EMAIL_CLAIM_KEY);
     }
