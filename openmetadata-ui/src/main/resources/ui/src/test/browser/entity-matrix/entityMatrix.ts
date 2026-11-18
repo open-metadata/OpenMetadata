@@ -210,21 +210,47 @@ const columnOf = (parent: string, columns: Column[]): ChildServer => {
   };
 };
 
+/** Where an entity keeps the columns its page lists. */
+interface HeldColumns {
+  read: (entity: EntityLike) => Column[];
+  write: (entity: EntityLike, columns: Column[]) => EntityLike;
+}
+
+const DATA_MODEL_COLUMNS: HeldColumns = {
+  read: (entity) => (entity as unknown as { columns: Column[] }).columns,
+  write: (entity, columns) => ({ ...entity, columns } as EntityLike),
+};
+
+/** A topic's schema fields, which the page lists and edits like columns. */
+const TOPIC_FIELDS: HeldColumns = {
+  read: (entity) =>
+    ((entity as unknown as Topic).messageSchema?.schemaFields ??
+      []) as unknown as Column[],
+  write: (entity, columns) => {
+    const topic = entity as unknown as Topic;
+
+    return {
+      ...topic,
+      messageSchema: { ...topic.messageSchema, schemaFields: columns },
+    } as unknown as EntityLike;
+  },
+};
+
 /**
- * Columns held inside the entity (a data model): the page edits a row with
- * `PUT /columns/name/{fqn}` and the detail panel with a PATCH on the entity,
- * and both land in the same columns, as on the server.
+ * Columns held inside the entity (a data model's columns, a topic's schema
+ * fields): the page lists them through `/<parent>/name/{fqn}/columns`, edits a
+ * row with `PUT /columns/name/{fqn}` and the detail panel with a PATCH on the
+ * entity, and both land in the same columns, as on the server.
  */
 const entityColumnsOf = (
   parent: string,
-  server: EntityServer<EntityLike>
+  server: EntityServer<EntityLike>,
+  held: HeldColumns = DATA_MODEL_COLUMNS
 ): ChildServer => {
-  const columns = () =>
-    (server.current() as unknown as { columns: Column[] }).columns;
+  const columns = () => held.read(server.current());
   const store = serveColumns(parent, [], {
     read: columns,
-    write: (next) =>
-      server.replace({ ...server.current(), columns: next } as EntityLike),
+    write: (next) => server.replace(held.write(server.current(), next)),
   });
 
   return {
@@ -302,8 +328,7 @@ const ENTITIES: EntityConfig[] = [
     url: at('topic', makeTopic().fullyQualifiedName),
     endpoint: 'topics',
     make: makeTopic,
-    serveExtras: (server) =>
-      childOf<Topic>(server, (e) => e.messageSchema?.schemaFields?.[0]),
+    serveExtras: (server) => entityColumnsOf('topics', server, TOPIC_FIELDS),
     children: {
       tabId: 'schema',
       rowId:
