@@ -135,7 +135,11 @@ public final class ServiceVersionSecretsMasking {
     JsonNode config = holder.path("connection").path("config");
     String fallbackType = holder.path(workflow ? "connectionType" : "serviceType").asText();
     String type = config.path("type").asText(fallbackType);
-    List<String> paths = SECRET_PATHS.getOrDefault(serviceEntity, Map.of()).get(type);
+    // Only Test Connection requests name a service type; any other workflow (e.g. a query runner
+    // request) or an unknown type has no listed paths, so it is left as it is.
+    Map<String, List<String>> pathsByType =
+        serviceEntity == null ? Map.of() : SECRET_PATHS.getOrDefault(serviceEntity, Map.of());
+    List<String> paths = pathsByType.get(type);
     return paths == null ? null : new Connection(config, paths);
   }
 

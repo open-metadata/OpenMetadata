@@ -156,7 +156,19 @@ class ServiceVersionSecretsMaskingTest {
             testConnection("Pipeline", databricks("token", PLAIN)),
             testConnection("Pipeline", databricks("token", MASK))),
         unchanged(
-            id, "workflow.version.0.2", testConnection("Dashboard", databricks("token", PLAIN))));
+            id, "workflow.version.0.2", testConnection("Dashboard", databricks("token", PLAIN))),
+        unchanged(
+            id,
+            "workflow.version.0.3",
+            "{\"name\":\"run-query\",\"workflowType\":\"QUERY_RUNNER\",\"request\":"
+                + "{\"query\":\"select 1\",\"connection\":{\"config\":"
+                + "{\"type\":\"Mysql\",\"authType\":{\"password\":\""
+                + PLAIN
+                + "\"}}}}}"),
+        unchanged(
+            id,
+            "workflow.version.0.4",
+            testConnection("NotAServiceType", databricks("token", PLAIN))));
   }
 
   /** {@code consumerConfig} is a map whose every value is a secret. */
