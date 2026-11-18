@@ -243,11 +243,21 @@ public class SearchResource {
           boolean includeAggregations)
       throws IOException {
 
-    final SearchRequest request =
+    if (nullOrEmpty(query)) {
+      query = "*";
+    }
+    // Add Domain Filter
+    List<EntityReference> domains = new ArrayList<>();
+    SubjectContext subjectContext = getSubjectContext(securityContext);
+    if (!subjectContext.isAdmin()) {
+      domains = subjectContext.getUserDomains();
+    }
+
+    SearchRequest request =
         new SearchRequest()
             .withQuery(query)
             .withSize(size)
-            .withIndex(index)
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(index))
             .withFrom(from)
             .withQueryFilter(queryFilter)
             .withPostFilter(postFilter)
@@ -259,10 +269,14 @@ public class SearchResource {
             .withIncludeSourceFields(includeSourceFields)
             .withExcludeSourceFields(excludeSourceFields)
             .withIsHierarchy(getHierarchy)
+            .withDomains(domains)
+            .withApplyDomainFilter(
+                !subjectContext.isAdmin() && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
             .withSearchAfter(SearchUtils.searchAfter(searchAfter))
             .withExplain(explain)
             .withIncludeAggregations(includeAggregations);
-    return executeSearch(securityContext, request);
+
+    return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
   }
 
   @POST
@@ -295,22 +309,31 @@ public class SearchResource {
     // The GET route validates pagination with @Min on its params; the body has no such annotations.
     requireNonNegative("from", body.getFrom());
     requireNonNegative("size", body.getSize());
-    return executeSearch(securityContext, body);
-  }
-
-  /**
-   * Runs a search for either route. Domain scope comes from the caller's security context, never
-   * from the request, and the index is resolved to its alias so a raw index cannot be addressed.
-   */
-  private Response executeSearch(final SecurityContext securityContext, final SearchRequest request)
-      throws IOException {
     final SubjectContext subjectContext = getSubjectContext(securityContext);
     final boolean isAdmin = subjectContext.isAdmin();
-    request
-        .withQuery(nullOrEmpty(request.getQuery()) ? "*" : request.getQuery())
-        .withIndex(Entity.getSearchRepository().getIndexOrAliasName(request.getIndex()))
-        .withDomains(isAdmin ? new ArrayList<>() : subjectContext.getUserDomains())
-        .withApplyDomainFilter(!isAdmin && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE));
+    // Authorization-relevant fields never come from the body: the domain scope is the caller's,
+    // and the index resolves to its alias exactly as the GET route does.
+    final SearchRequest request =
+        new SearchRequest()
+            .withQuery(nullOrEmpty(body.getQuery()) ? "*" : body.getQuery())
+            .withSize(body.getSize())
+            .withIndex(Entity.getSearchRepository().getIndexOrAliasName(body.getIndex()))
+            .withFrom(body.getFrom())
+            .withQueryFilter(body.getQueryFilter())
+            .withPostFilter(body.getPostFilter())
+            .withFetchSource(body.getFetchSource())
+            .withTrackTotalHits(body.getTrackTotalHits())
+            .withSortFieldParam(body.getSortFieldParam())
+            .withDeleted(body.getDeleted())
+            .withSortOrder(body.getSortOrder())
+            .withIncludeSourceFields(body.getIncludeSourceFields())
+            .withExcludeSourceFields(body.getExcludeSourceFields())
+            .withIsHierarchy(body.getIsHierarchy())
+            .withDomains(isAdmin ? new ArrayList<>() : subjectContext.getUserDomains())
+            .withApplyDomainFilter(!isAdmin && subjectContext.hasAnyRole(DOMAIN_ONLY_ACCESS_ROLE))
+            .withSearchAfter(body.getSearchAfter())
+            .withExplain(body.getExplain())
+            .withIncludeAggregations(body.getIncludeAggregations());
     return filterTestCaseResponses(cachedSearch(request, subjectContext), securityContext, request);
   }
 
