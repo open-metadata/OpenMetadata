@@ -903,6 +903,7 @@
         "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TestSuite.spec.ts",
@@ -1306,6 +1307,7 @@
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
@@ -1638,6 +1640,7 @@
         "playwright/e2e/Pages/Lineage/LineageControls.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageRightPanel.spec.ts",
         "playwright/e2e/Pages/PipelineExecution.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TasksUIFlow.spec.ts",
         "playwright/e2e/VersionPages/EntityVersionPages.spec.ts"
       ]
@@ -1912,6 +1915,7 @@
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TableSharding.spec.ts",
@@ -3330,6 +3334,7 @@
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TableSharding.spec.ts",
@@ -3924,6 +3929,7 @@
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TableSharding.spec.ts",
@@ -6384,6 +6390,7 @@
         "playwright/e2e/Features/Table.spec.ts",
         "playwright/e2e/Features/TierWidget.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel_KnowledgeCenter.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts"
       ]
     },
@@ -13085,6 +13092,7 @@
         "playwright/e2e/Pages/SearchSettings.spec.ts",
         "playwright/e2e/Pages/ServiceEntity.spec.ts",
         "playwright/e2e/Pages/ServiceListing.spec.ts",
+        "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts",
         "playwright/e2e/Pages/TableSharding.spec.ts",

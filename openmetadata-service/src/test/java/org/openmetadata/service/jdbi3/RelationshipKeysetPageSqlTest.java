@@ -161,7 +161,7 @@ class RelationshipKeysetPageSqlTest {
 
   @Container
   static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.3.0"))
+      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
           .withEnv("MYSQL_DATABASE", DATABASE)
           .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
           .withEnv("MYSQL_ROOT_HOST", "%")

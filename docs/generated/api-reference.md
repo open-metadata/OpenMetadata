@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**2012 endpoints** across 75 resource packages · 2002 carry a summary.
+**2013 endpoints** across 75 resource packages · 2003 carry a summary.
 
 ## (root)
 
@@ -1676,6 +1676,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/search/nlq/query` | Search entities using Natural Language Query (NLQ) |
 | `POST` | `/v1/search/preview` | Preview Search Results |
 | `GET` | `/v1/search/query` | Search entities |
+| `POST` | `/v1/search/query` | Search entities using a request body |
 | `GET` | `/v1/search/reindex/failures` | Get reindex failures |
 | `POST` | `/v1/search/reindexEntities` | Only Reindex the selected entities in Elasticsearch. |
 | `GET` | `/v1/search/sourceUrl` | Search entities |

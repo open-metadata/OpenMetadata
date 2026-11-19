@@ -42,6 +42,7 @@ import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepai
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v209.ServiceVersionSecretsMasking;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AppCreatedAlerts;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -54,6 +55,7 @@ import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigr
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
+import org.openmetadata.service.migration.utils.v210.IncidentWorkflowTransitionMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MicroStrategyChartRename;
@@ -209,6 +211,14 @@ public class Migration extends MigrationProcessImpl {
           initializeWorkflowHandler();
           GlossaryAutomationReviewMigration.sendAutomationProposalsToPeople();
         });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        IncidentWorkflowTransitionMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
+        });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnPostgres(handle);
     UnsupportedNotificationTemplates.review(handle);
@@ -226,5 +236,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ContextFileFqnRepair.STEP_NAME,
         () -> ContextFileFqnRepair.repairAll(handle, POSTGRES));
+    // A database that recorded 2.1.0 before the 2.0.9 masking step existed never runs 2.0.9's data
+    // migration again, so the plain text secrets in its service version history are masked here.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ServiceVersionSecretsMasking.STEP_NAME,
+        () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, POSTGRES));
   }
 }

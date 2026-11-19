@@ -19,7 +19,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 def mysql_container(tmp_path_factory):
     """Start a PostgreSQL container with the dvdrental database."""
     test_db_tar_path = os.path.join(os.path.dirname(__file__), "data", "mysql", "test_db-1.0.7.tar.gz")  # noqa: PTH118, PTH120
-    container = MySqlContainer(image="mysql:8.4.5", dbname="employees")
+    container = MySqlContainer(image="mysql:8.4.13", dbname="employees")
     with try_bind(container, 3306, 3307) if not os.getenv("CI") else container as container:
         docker_container = container.get_wrapped_container()
         docker_container.exec_run(["mkdir", "-p", "/data"])
