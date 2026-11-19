@@ -42,9 +42,6 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * too: the database secrets manager reads it as part of a password, and a secret manager reference
  * in an old version is never resolved. Old versions cannot be restored, so a masked secret loses
  * nothing; the version endpoints mask these fields anyway.
- *
- * <p>It runs from 2.0.9 and again from 2.1.0, because a database that recorded 2.1.0 before this
- * step existed never runs the 2.0.9 data migration again.
  */
 @Slf4j
 public final class ServiceVersionSecretsMasking {
