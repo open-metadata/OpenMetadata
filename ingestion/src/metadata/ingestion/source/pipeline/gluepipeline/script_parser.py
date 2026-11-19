@@ -109,6 +109,7 @@ IN_MEMORY_FRAME_CONSTRUCTORS = {
     "from_rdd",
     "parallelize",
 }
+_MODELED_COMPARE_OPS = (ast.Eq, ast.NotEq, ast.Is, ast.IsNot, ast.In, ast.NotIn)
 # ADR:2026-11-13-glue-parameterized-lineage-evaluates-per-run-context
 MAX_TOTAL_LOOP_STEPS = 256
 MAX_CALL_DEPTH = 8
@@ -958,8 +959,6 @@ class _ProvenanceAnalyzer:
             return "normal"
         if isinstance(stmt, ast.Expr):
             self._eval_expr(stmt.value, state, scope)
-            if isinstance(stmt.value, ast.Call):
-                self._mark_opaque_side_effect_call(stmt.value, state, scope)
             return "normal"
         if isinstance(stmt, (ast.Import, ast.ImportFrom)):
             for alias in stmt.names:
@@ -1070,6 +1069,9 @@ class _ProvenanceAnalyzer:
             if continue_states is not None:
                 continue_states.append(state.clone())
             return "continue"
+        if isinstance(stmt, ast.Assert):
+            self._eval_condition(stmt.test, state, scope)
+            return "normal"
         if isinstance(stmt, ast.Return):
             ret_val = self._eval_expr(stmt.value, state, scope) if stmt.value is not None else _NONE_VAL
             if return_outcomes is not None:
@@ -1730,8 +1732,9 @@ class _ProvenanceAnalyzer:
             return (not inner) if inner is not None else None
         if isinstance(test, ast.BoolOp):
             return self._eval_bool_op(test, state, scope)
-        if isinstance(test, ast.Compare) and len(test.ops) == 1 and len(test.comparators) == 1:
+        if isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], _MODELED_COMPARE_OPS):
             return self._eval_single_compare(test.left, test.ops[0], test.comparators[0], state, scope)
+        self._eval_expr(test, state, scope)
         return None
 
     def _eval_bool_op(self, test: ast.BoolOp, state: _ExecState, scope: ast.AST) -> bool | None:
@@ -1795,6 +1798,8 @@ class _ProvenanceAnalyzer:
         left_is_none = isinstance(left_expr, ast.Constant) and left_expr.value is None
         right_is_none = isinstance(right_expr, ast.Constant) and right_expr.value is None
         if not (left_is_none or right_is_none):
+            self._eval_expr(left_expr, state, scope)
+            self._eval_expr(right_expr, state, scope)
             return None
         other_val = self._eval_expr(right_expr if left_is_none else left_expr, state, scope)
         if isinstance(other_val, (_OpaqueVal, _UnboundVal)):
@@ -1894,6 +1899,11 @@ class _ProvenanceAnalyzer:
         if isinstance(node, ast.DictComp):
             probe = self._eval_expr(node.value, state.clone(), scope)
             return _FrameDict(entries={}, has_unknown_entries=True, contains_frames=_carries_frame(probe))
+        if not isinstance(node, ast.Lambda):
+            # Unmodelled operators (`not`, `and`/`or`, `<`, ...) still execute their operands' calls.
+            for child in ast.iter_child_nodes(node):
+                if isinstance(child, ast.expr):
+                    self._eval_expr(child, state, scope)
         return _OPAQUE_VAL
 
     def _eval_name(self, node: ast.Name, state: _ExecState, scope: ast.AST) -> _ProvVal:
@@ -2511,22 +2521,23 @@ class _ProvenanceAnalyzer:
                 else:
                     collected_sides.extend(_as_required_frame_side(item) for item in v.entries.values())
 
+        # The result reflects the arguments as passed; an uninspectable callee may still have mutated them in
+        # place, so invalidate after collecting. Runs wherever the call appears (statement, RHS, nested, return).
+        self._mark_opaque_side_effect_call(call, recv, state, scope)
         if saw_frame_carrier:
             return _FrameVal(merge_sides(collected_sides))
         dk = self._reader_for(state).dict_key(call)
         return _ScalarVal(dk) if not isinstance(dk, UnknownValue) else _OPAQUE_VAL
 
-    def _mark_opaque_side_effect_call(self, call: ast.Call, state: _ExecState, scope: ast.AST) -> None:
-        if self._bindings.resolve_function_def(call.func) is not None:
-            return
+    def _mark_opaque_side_effect_call(
+        self, call: ast.Call, recv: _ProvVal | None, state: _ExecState, scope: ast.AST
+    ) -> None:
         if isinstance(call.func, ast.Name) and call.func.id in ("print", "len", "dict", "list", "tuple", "reduce"):
             return
         if isinstance(call.func, ast.Attribute):
-            if call.func.attr in TEMP_VIEW_METHODS or call.func.attr in ("dropTempView", "dropGlobalTempView", "sql"):
-                return
             if isinstance(call.func.value, ast.Name) and call.func.value.id in ("logger", "logging", "job"):
                 return
-            if isinstance(self._eval_expr(call.func.value, state.clone(), scope), (_FrameDict, _ListVal, _FrameVal)):
+            if isinstance(recv, (_FrameDict, _ListVal, _FrameVal)):
                 return
         for arg in [*call.args, *(kw.value for kw in call.keywords)]:
             inner = arg.value if isinstance(arg, ast.Starred) else arg

@@ -2898,6 +2898,49 @@ df1.join(load_mystery_df(), "id").write.format("snowflake").option("dbtable", "O
             ("unresolved", Resolved((SnowflakeRef(table="OUT"),)))
         ]
 
+    @pytest.mark.parametrize(
+        ("call_site", "expected_sources"),
+        [
+            pytest.param("populate_externally(frames)", "unresolved", id="bare_statement"),
+            pytest.param("status = populate_externally(frames)", "unresolved", id="assigned_result"),
+            pytest.param("status: str = populate_externally(frames)", "unresolved", id="annotated_assignment"),
+            pytest.param("status = ext_module.populate(frames)", "unresolved", id="module_attribute_call"),
+            pytest.param("status = populate_externally(frames=frames)", "unresolved", id="keyword_argument"),
+            pytest.param("print(populate_externally(frames))", "unresolved", id="nested_in_call"),
+            pytest.param("ok = populate_externally(frames) or fallback()", "unresolved", id="bool_op_operand"),
+            pytest.param("if not populate_externally(frames):\n    raise SystemExit(1)", "unresolved", id="if_test"),
+            pytest.param("if populate_externally(frames) > 0:\n    pass", "unresolved", id="ordering_compare"),
+            pytest.param("while populate_externally(frames):\n    pass", "unresolved", id="while_test"),
+            pytest.param("assert populate_externally(frames)", "unresolved", id="assert_test"),
+            pytest.param(
+                "def wrap(d):\n    return populate_externally(d)\nstatus = wrap(frames)",
+                "unresolved",
+                id="returned_from_helper",
+            ),
+            pytest.param("print(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="print_keeps"),
+            pytest.param("n = len(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="len_keeps"),
+            pytest.param("logger.info(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="logger_keeps"),
+            pytest.param(
+                'if frames["k"].count() > 0:\n    pass',
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="frame_method_keeps",
+            ),
+        ],
+    )
+    def test_uninspectable_call_invalidates_container_argument_wherever_it_appears(
+        self, call_site: str, expected_sources: Any
+    ):
+        # The callee's body is not in the script, so it may have replaced frames["k"]; its result being used
+        # (assigned, tested, returned) must not hide that mutation.
+        script = f"""
+frames = {{"k": spark.read.format("snowflake").option("dbtable", "RAW_A").load()}}
+{call_site}
+frames["k"].write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (expected_sources, Resolved((SnowflakeRef(table="OUT"),)))
+        ]
+
     def test_helper_parameters_dict_items_loop_temp_view_lifecycle_and_container_aliases(self):
         # 1. Helper function with parameter + `frames.items()` tuple unpacking loop
         helper_items_script = """

@@ -58,8 +58,10 @@ Two failure modes must be avoided when resolving runtime parameters statically:
     tables evaluate to `"unresolved"`.
   - `merge_sides` preserves `"unresolved"` whenever any merged input is `"unresolved"`, and any write
     whose reaching source relationship cannot be established (disagreeing branches, dynamic or
-    early-exiting loops that rebind a frame/container/view, unknown dictionary keys, or opaque frame
-    calls) produces `sources = "unresolved"`.
+    early-exiting loops that rebind a frame/container/view, unknown dictionary keys, opaque frame
+    calls, or a container passed to a call the analyzer cannot inspect — wherever that call appears:
+    statement, assignment, condition, nested argument, or helper return) produces
+    `sources = "unresolved"`.
 - `getResolvedOptions(sys.argv, [...])` mirrors `awsglue.utils`: the result holds only the requested
   options and Glue's built-in options, keyed by argparse dest (`--flag-name` -> `flag_name`), so
   `args.get("NOT_REQUESTED", "x")` is `"x"`. A requested option missing from the context is
