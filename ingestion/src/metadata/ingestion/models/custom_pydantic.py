@@ -211,10 +211,8 @@ def resolve_secret_reference(reference: str) -> str | None:
     ADR:2026-11-19-an-unreadable-secret-reference-stops-ingestion
     """
     # Importing inside function to avoid circular import error
-    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
-        DBSecretsManager,
-    )
     from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        DBSecretsManager,
         SecretsManagerFactory,
     )
 
