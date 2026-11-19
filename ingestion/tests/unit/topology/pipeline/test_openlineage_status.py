@@ -242,12 +242,12 @@ def test_successful_run_is_one_row_with_a_line_per_job(source, server):
     assert row.error is None
     assert lines(row) == [
         (
-            "orders_app.execute_save_into_data_source_command.public_orders_copy",
+            "execute_save_into_data_source_command.public_orders_copy",
             StatusType.Successful,
             1794900877653,
             1794900878778,
         ),
-        ("orders_app.deserialize_to_object", StatusType.Successful, 1794900877747, 1794900878754),
+        ("deserialize_to_object", StatusType.Successful, 1794900877747, 1794900878754),
     ]
 
 
@@ -261,17 +261,17 @@ def test_failed_sql_job_fails_the_run_although_the_application_completes(source,
     assert row.endTime.root == 1794900891850
     assert lines(row) == [
         (
-            "report_app.execute_save_into_data_source_command.public_report",
+            "execute_save_into_data_source_command.public_report",
             StatusType.Successful,
             1794900890123,
             1794900891812,
         ),
         # Spark sends COMPLETE after this job's FAIL; the line keeps the failure.
-        ("report_app.deserialize_to_object", StatusType.Failed, 1794900890233, 1794900891811),
+        ("deserialize_to_object", StatusType.Failed, 1794900890233, 1794900891811),
     ]
     assert row.error.errorMessage == "Job aborted due to stage failure: ValueError: intentional failure"
     assert row.error.stackTrace.startswith("org.apache.spark.SparkException")
-    assert row.error.failedTask == "report_app.deserialize_to_object"
+    assert row.error.failedTask == "deserialize_to_object"
 
 
 def test_events_read_again_after_the_run_finished_change_nothing(source, server):
@@ -301,7 +301,7 @@ def test_sql_job_read_without_its_application_run_opens_a_pending_row(source, se
 
     [row] = server.statuses.values()
     assert (row.executionId, row.executionStatus) == (FAILED_RUN_ID, StatusType.Pending)
-    assert lines(row) == [("report_app.deserialize_to_object", StatusType.Successful, None, 1794900891811)]
+    assert lines(row) == [("deserialize_to_object", StatusType.Successful, None, 1794900891811)]
 
 
 def test_tasks_read_before_the_dag_run_start_are_kept(source, server):
@@ -311,8 +311,8 @@ def test_tasks_read_before_the_dag_run_start_are_kept(source, server):
     [row] = server.statuses.values()
     assert (row.executionId, row.executionStatus) == ("01a1e772-7380-7000-8000-000000000001", StatusType.Failed)
     assert lines(row) == [
-        ("nightly_sales.extract", StatusType.Successful, 1794917732608, 1794917736597),
-        ("nightly_sales.transform", StatusType.Failed, 1794917736622, 1794917736658),
+        ("extract", StatusType.Successful, 1794917732608, 1794917736597),
+        ("transform", StatusType.Failed, 1794917736622, 1794917736658),
     ]
 
 
@@ -380,31 +380,37 @@ def test_pipeline_gets_a_task_per_job_of_its_runs(source, server):
 
     assert [(task.name, task.displayName) for task in server.pipeline_tasks[FAILED_PIPELINE]] == [
         (
-            "report_app.execute_save_into_data_source_command.public_report",
+            "execute_save_into_data_source_command.public_report",
             "execute_save_into_data_source_command.public_report",
         ),
-        ("report_app.deserialize_to_object", "deserialize_to_object"),
+        ("deserialize_to_object", "deserialize_to_object"),
     ]
 
 
 def test_tasks_already_on_the_pipeline_are_kept(source, server):
-    server.pipeline_tasks[FAILED_PIPELINE] = [Task(name="report_app.monday_only_job")]
+    server.pipeline_tasks[FAILED_PIPELINE] = [Task(name="monday_only_job")]
 
     ingest(source, server, whole_run("failed_run"))
 
     assert [task.name for task in server.pipeline_tasks[FAILED_PIPELINE]] == [
-        "report_app.monday_only_job",
-        "report_app.execute_save_into_data_source_command.public_report",
-        "report_app.deserialize_to_object",
+        "monday_only_job",
+        "execute_save_into_data_source_command.public_report",
+        "deserialize_to_object",
     ]
 
 
 def test_every_status_line_names_a_task_of_the_pipeline(source, server):
     """The server rejects a status whose task is not on the pipeline (PipelineRepository.validateTasks)."""
-    ingest(source, server, whole_run("successful_run") + whole_run("failed_run"))
+    ingest(
+        source,
+        server,
+        whole_run("successful_run") + whole_run("failed_run") + whole_run("full_task_info") + whole_run("retried_task"),
+    )
 
+    assert len(server.statuses) == 4
     for (pipeline_fqn, _), row in server.statuses.items():
         task_names = {task.name for task in server.pipeline_tasks[pipeline_fqn]}
+        assert row.taskStatus
         assert {line.name for line in row.taskStatus} <= task_names
 
 
@@ -458,7 +464,7 @@ def test_failed_sql_job_records_the_failure_when_its_application_start_was_never
     row = server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)]
     assert row.executionStatus == StatusType.Failed
     assert lines(row) == [
-        ("report_app.deserialize_to_object", StatusType.Failed, None, 1794900891761),
+        ("deserialize_to_object", StatusType.Failed, None, 1794900891761),
     ]
 
 
@@ -487,8 +493,8 @@ def test_spark_application_launched_by_an_airflow_task_is_a_run_of_its_own_pipel
     row = server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)]
     assert (row.executionStatus, row.executionId) == (StatusType.Failed, FAILED_RUN_ID)
     assert [line.name for line in row.taskStatus] == [
-        "report_app.execute_save_into_data_source_command.public_report",
-        "report_app.deserialize_to_object",
+        "execute_save_into_data_source_command.public_report",
+        "deserialize_to_object",
     ]
 
 
@@ -522,12 +528,12 @@ def test_airflow_dag_run_fails_with_its_first_task_failure(source, server):
     [row] = server.statuses.values()
     assert row.executionStatus == StatusType.Failed
     assert [(line.name, line.executionStatus) for line in row.taskStatus] == [
-        ("nightly_sales.extract", StatusType.Successful),
-        ("nightly_sales.transform", StatusType.Failed),
+        ("extract", StatusType.Successful),
+        ("transform", StatusType.Failed),
     ]
     assert (row.error.errorMessage, row.error.failedTask) == (
         "ValueError: intentional failure",
-        "nightly_sales.transform",
+        "transform",
     )
 
 
@@ -542,8 +548,8 @@ def test_airflow_task_dates_reach_the_tasks_when_airflow_sends_them(source, serv
     ingest(source, server, whole_run("full_task_info"))
 
     assert [(task.name, task.startDate, task.endDate) for task in server.pipeline_tasks[AIRFLOW_PIPELINE]] == [
-        ("nightly_sales.extract", "2026-11-05T00:00:00+00:00", "2027-01-01T00:00:00+00:00"),
-        ("nightly_sales.transform", "2026-11-01T00:00:00+00:00", None),
+        ("extract", "2026-11-05T00:00:00+00:00", "2027-01-01T00:00:00+00:00"),
+        ("transform", "2026-11-01T00:00:00+00:00", None),
     ]
 
 
@@ -551,7 +557,7 @@ def test_task_dates_are_kept_when_later_events_do_not_carry_them(source, server)
     ingest(source, server, whole_run("full_task_info") + whole_run("default_task_info"))
 
     dates = {task.name: (task.startDate, task.endDate) for task in server.pipeline_tasks[AIRFLOW_PIPELINE]}
-    assert dates["nightly_sales.extract"] == ("2026-11-05T00:00:00+00:00", "2027-01-01T00:00:00+00:00")
+    assert dates["extract"] == ("2026-11-05T00:00:00+00:00", "2027-01-01T00:00:00+00:00")
 
 
 def test_spark_pipeline_has_no_start_date(source, server):
@@ -568,7 +574,7 @@ def test_task_end_date_is_cleared_when_airflow_no_longer_reports_one(source, ser
     ingest(source, server, [*whole_run("full_task_info"), later])
 
     dates = {task.name: (task.startDate, task.endDate) for task in server.pipeline_tasks[AIRFLOW_PIPELINE]}
-    assert dates["nightly_sales.extract"] == ("2026-11-05T00:00:00+00:00", None)
+    assert dates["extract"] == ("2026-11-05T00:00:00+00:00", None)
 
 
 def test_pipeline_start_date_is_kept_when_an_event_carries_none(source, server):
@@ -590,6 +596,19 @@ def test_step_joins_its_parents_run_whatever_its_name(source, server):
 
     row = server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)]
     assert [(line.name, line.executionStatus) for line in row.taskStatus] == [("shop.public.report", StatusType.Failed)]
+
+
+def test_step_name_without_its_parent_job_prefix_names_its_task_whole(source, server):
+    """A dbt model is named db.schema.model under its parent dbt-run-<project>: there is no prefix to drop."""
+    model = event("failed_run", 4)
+    model.job["name"] = "shop.public.report"
+
+    ingest(source, server, [model])
+
+    assert [(task.name, task.displayName) for task in server.pipeline_tasks[FAILED_PIPELINE]] == [
+        ("shop.public.report", "shop.public.report")
+    ]
+    assert server.statuses[(FAILED_PIPELINE, FAILED_RUN_KEY)].error.failedTask == "shop.public.report"
 
 
 def test_event_with_a_parent_and_no_job_type_is_a_step_of_the_parent(source, server):
@@ -627,10 +646,10 @@ def test_dag_run_triggered_by_another_dags_task_is_a_run_of_its_own_pipeline(sou
 
 RETRY_RUN_ID = "01a1ede9-bb77-7000-8000-000000000021"
 RETRY_TRIES = [
-    ("nightly_retry.flaky", StatusType.Failed, 1794992882308, 1794992885754),
-    ("nightly_retry.flaky", StatusType.Failed, 1794992890429, 1794992892362),
-    ("nightly_retry.flaky", StatusType.Successful, 1794992897884, 1794992899628),
-    ("nightly_retry.load", StatusType.Successful, 1794992900083, 1794992901612),
+    ("flaky", StatusType.Failed, 1794992882308, 1794992885754),
+    ("flaky", StatusType.Failed, 1794992890429, 1794992892362),
+    ("flaky", StatusType.Successful, 1794992897884, 1794992899628),
+    ("load", StatusType.Successful, 1794992900083, 1794992901612),
 ]
 
 
@@ -666,7 +685,7 @@ def test_failed_try_read_without_the_dag_run_start_leaves_the_outcome_to_the_dag
 
     [row] = server.statuses.values()
     assert row.executionStatus == StatusType.Pending
-    assert lines(row) == [("nightly_retry.flaky", StatusType.Failed, None, 1794992885754)]
+    assert lines(row) == [("flaky", StatusType.Failed, None, 1794992885754)]
 
     ingest(source, server, [event("retried_task", 9)])
 
@@ -722,7 +741,7 @@ def test_run_started_by_a_task_of_a_natively_ingested_dag_is_linked_from_that_da
 
 
 def test_run_is_not_linked_from_a_pipeline_without_the_task_that_started_it(source, server):
-    server.pipeline_tasks[AIRFLOW_PIPELINE] = [Task(name="nightly_sales.extract")]
+    server.pipeline_tasks[AIRFLOW_PIPELINE] = [Task(name="extract")]
 
     assert pipeline_links(source, server, started_by_transform(0)) == []
 
@@ -748,7 +767,7 @@ def test_dag_run_error_names_the_task_that_failed_it_not_a_try_a_retry_made_good
 
     [row] = server.statuses.values()
     assert row.executionStatus == StatusType.Failed
-    assert (row.error.errorMessage, row.error.failedTask) == ("load lost its connection", "nightly_retry.load")
+    assert (row.error.errorMessage, row.error.failedTask) == ("load lost its connection", "load")
 
 
 def test_run_started_by_a_task_whose_event_names_no_root_is_not_linked(source, server):
@@ -795,7 +814,7 @@ def test_failed_spark_sql_job_keeps_its_error_when_a_same_named_job_succeeds(sou
     assert row.executionStatus == StatusType.Failed
     assert (row.error.errorMessage, row.error.failedTask) == (
         "Job aborted due to stage failure: ValueError: intentional failure",
-        "report_app.deserialize_to_object",
+        "deserialize_to_object",
     )
 
 
@@ -811,7 +830,7 @@ def test_retry_of_the_blamed_task_moves_the_blame_to_a_task_still_failing(source
     row = retried_run_where_load_fails(source, server, ingestions)
 
     assert row.executionStatus == StatusType.Failed
-    assert (row.error.failedTask, row.error.errorMessage) == ("nightly_retry.load", None)
+    assert (row.error.failedTask, row.error.errorMessage) == ("load", None)
 
 
 @pytest.mark.parametrize(
@@ -825,7 +844,7 @@ def test_failed_try_read_after_its_retry_succeeded_does_not_become_the_error(sou
     row = retried_run_where_load_fails(source, server, [indexes])
 
     assert row.executionStatus == StatusType.Failed
-    assert (row.error.failedTask, row.error.errorMessage) == ("nightly_retry.load", "load lost its connection")
+    assert (row.error.failedTask, row.error.errorMessage) == ("load", "load lost its connection")
 
 
 def retried_run_where_load_fails(source, server, ingestions: list[list[int | str]]) -> PipelineStatus:
@@ -863,7 +882,7 @@ def test_pipeline_dropped_from_the_task_cache_keeps_all_its_tasks(source, server
     ingest(source, server, [ol_event for pair in runs for ol_event in pair if ol_event])
 
     assert {fqn: sorted(task.name for task in tasks) for fqn, tasks in server.pipeline_tasks.items()} == {
-        "airflow_openlineage.airflow-nightly_retry": ["nightly_retry.flaky", "nightly_retry.load"],
-        AIRFLOW_PIPELINE: ["nightly_sales.extract", "nightly_sales.transform"],
+        "airflow_openlineage.airflow-nightly_retry": ["flaky", "load"],
+        AIRFLOW_PIPELINE: ["extract", "transform"],
     }
     assert sum(known_pipeline_weight(known) for known in source._known_pipelines.values()) <= cap

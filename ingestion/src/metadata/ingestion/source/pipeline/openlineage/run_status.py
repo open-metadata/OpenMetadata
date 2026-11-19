@@ -147,22 +147,23 @@ def pipeline_start_date(event: OpenLineageEvent) -> DateTime | None:
     return DateTime(isoparse(start_date)) if start_date else None
 
 
+def step_name(event: OpenLineageEvent) -> str:
+    """
+    The job's name within its pipeline: without the ``<pipeline job>.`` prefix, the way the native
+    Airflow connector names a task by its task_id. A name without that prefix, such as a dbt model
+    named after its table, is kept whole.
+    """
+    return event.job["name"].removeprefix(f"{pipeline_job(event)['name']}.")
+
+
 def pipeline_tasks(event: OpenLineageEvent) -> list[Task]:
     """The task an event adds to its pipeline: its job, unless the event is of the pipeline run itself."""
-    run_name = pipeline_job(event)["name"]
-    job_name = event.job["name"]
-    if job_name == run_name:
+    if event.job["name"] == pipeline_job(event)["name"]:
         return []
     task_facet = _airflow_facet(event).get("task")
     dates = task_facet if isinstance(task_facet, dict) else {}
-    return [
-        Task(
-            name=job_name,
-            displayName=job_name.removeprefix(f"{run_name}."),
-            startDate=dates.get("start_date"),
-            endDate=dates.get("end_date"),
-        )
-    ]
+    name = step_name(event)
+    return [Task(name=name, displayName=name, startDate=dates.get("start_date"), endDate=dates.get("end_date"))]
 
 
 def _uuid7_millis(run_id: str) -> int | None:
@@ -190,7 +191,7 @@ def build_run_update(event: OpenLineageEvent) -> RunUpdate | None:
     if status is None:
         return None
     facets = event.run_facet.get("facets") or {}
-    job = event.job["name"]
+    job = step_name(event)
     is_pipeline_run = "parent" not in facets or _is_own_run(event)
     if is_pipeline_run:
         run_id = event.run_facet["runId"]

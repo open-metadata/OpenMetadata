@@ -1126,9 +1126,9 @@ class OpenlineageSource(PipelineServiceSource):
         """
         The one pipeline holding the task that started a run: the root job's pipeline, written by
         this connector (``<namespace>-<name>`` in any service) or by a native connector (the
-        service named after the namespace), when it has that task. Its task is named after the
-        job, or after the part of it that follows the root's name for a native connector. None
-        when no pipeline, or more than one, has the task.
+        service named after the namespace), when it has that task. Both name the task after the
+        part of the job name that follows the root's name (run_status.step_name); a task named
+        after the whole job matches too. None when no pipeline, or more than one, has the task.
 
         Pipelines this ingestion wrote are read by FQN: the search index may not hold them yet,
         and an empty search result stays cached in ``_search_es_entity``.
