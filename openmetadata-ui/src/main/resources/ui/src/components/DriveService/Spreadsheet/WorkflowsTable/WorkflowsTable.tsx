@@ -53,7 +53,7 @@ function WorkflowsTable() {
           </div>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<EntityReference>(),
     ],
     []
   );

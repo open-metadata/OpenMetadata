@@ -184,12 +184,19 @@ const defaultProps: BulkEditEntityProps = {
   handlePaste: jest.fn().mockReturnValue({}),
   pushToUndoStack: jest.fn(),
   handleOnRowsChange: jest.fn(),
+  searchText: '',
+  visibleRows: mockDataSource,
+  onSearchTextChange: jest.fn(),
 };
 
 const renderComponent = (props: Partial<BulkEditEntityProps> = {}) => {
   return render(
     <MemoryRouter>
-      <BulkEditEntity {...defaultProps} {...props} />
+      <BulkEditEntity
+        {...defaultProps}
+        visibleRows={props.dataSource ?? defaultProps.visibleRows}
+        {...props}
+      />
     </MemoryRouter>
   );
 };
@@ -608,6 +615,28 @@ describe('BulkEditEntity', () => {
       renderComponent();
 
       expect(mockTriggerExportForBulkEdit).toHaveBeenCalled();
+    });
+
+    it('labels the rows of a table bulk edit as columns', () => {
+      mockEntityType = EntityType.TABLE;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.column-plural`
+        )
+      ).toBeInTheDocument();
+    });
+
+    it('labels the rows of a glossary bulk edit as glossary terms', () => {
+      mockEntityType = EntityType.GLOSSARY;
+      renderComponent();
+
+      expect(
+        screen.getByText(
+          `label.edit ${mockDataSource.length} label.glossary-term-plural`
+        )
+      ).toBeInTheDocument();
     });
 
     it('should handle DATABASE entity type', () => {

@@ -42,6 +42,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -103,6 +104,8 @@ class UnitycatalogLineageSource(Source):
         # A table can be both a lineage target and an external table; the run summary
         # should still name it once.
         self._filter_reported: set[str] = set()
+        self._unresolved_reported: set[str] = set()
+        self._upstream_service_names = self._get_upstream_service_names()
         with close_on_failure(self._connection):
             self.test_connection()
 
@@ -316,39 +319,104 @@ class UnitycatalogLineageSource(Source):
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to cache external table locations: {exc}")
 
-    def _get_table_entity(self, databricks_table_fqn: str) -> Table | None:
+    def _get_upstream_service_names(self) -> list[str]:
         """
-        Resolve a `catalog.schema.table` name to the table ingested for it.
+        The services an upstream is looked up in: this one, then the cross database
+        services in the order they are configured.
 
-        A hot upstream is named by many edges and an upstream that was never ingested
-        is named just as often, so both answers are cached; a lookup that failed is
-        not, since one unreachable call would otherwise blind the rest of the run.
+        The system tables cover the whole metastore, so an edge into this service can
+        start at a table another service ingested. Only the upstream side looks further:
+        a target is always this service's own, since the other service's run emits the
+        edges that end in its tables (ADR:2026-10-19-unity-catalog-lineage-resolves-only-upstreams-across-services).
+        """
+        service_names = [model_str(self.config.serviceName)]
+        if self.source_config.processCrossDatabaseLineage and self.source_config.crossDatabaseServiceNames:
+            service_names.extend(self.source_config.crossDatabaseServiceNames)
+        return list(dict.fromkeys(service_names))
+
+    def _get_table_entity(self, databricks_table_fqn: str) -> Table | None:
+        """Resolve a `catalog.schema.table` name in this service, `None` when it cannot be."""
+        try:
+            return self._find_table(databricks_table_fqn, [model_str(self.config.serviceName)])
+        except Exception as exc:
+            logger.debug("Failed to resolve table %s: %s", databricks_table_fqn, exc)
+            logger.debug(traceback.format_exc())
+            return None
+
+    def _find_table(self, databricks_table_fqn: str, service_names: list[str]) -> Table | None:
+        """
+        Resolve a `catalog.schema.table` name to the table ingested for it, trying each
+        of `service_names` in turn.
+
+        Only a confirmed miss moves on to the next service. A failed request raises
+        instead: the table may well exist in the service that failed, and falling
+        through would link a same-named table in a later one.
 
         The name is built rather than searched for: Unity Catalog normalises its
         identifiers, so the three parts the system tables report are the three parts
         the table was ingested under, and `fqn.build` would spend an Elasticsearch
         search per table to arrive at the same string.
         """
-        if databricks_table_fqn in self._table_cache:
-            return self._table_cache[databricks_table_fqn]
-
         parts = databricks_table_fqn.split(".")
         if len(parts) != 3:
             logger.debug("Skipping malformed table name: %s", databricks_table_fqn)
             return None
-        catalog_name, schema_name, table_name = parts
 
-        entity_fqn = fqn._build(self.config.serviceName, catalog_name, schema_name, table_name)
+        for service_name in service_names:
+            entity = self._get_table_by_entity_fqn(fqn._build(service_name, *parts))
+            if entity:
+                return entity
+        return None
 
+    def _get_table_by_entity_fqn(self, entity_fqn: str) -> Table | None:
+        """
+        Fetch the table ingested under `entity_fqn`.
+
+        A hot upstream is named by many edges and an upstream that was never ingested
+        is named just as often, so both answers are cached; a request that failed
+        raises and is not cached, since one unreachable call would otherwise blind
+        the rest of the run.
+
+        The cache is keyed by the full name, service included: a table missing from this
+        service can still be found in a cross database service.
+        """
+        if entity_fqn not in self._table_cache:
+            self._table_cache[entity_fqn] = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
+        return self._table_cache[entity_fqn]
+
+    def _resolve_upstream(self, source_table_full_name: str, databricks_table_fqn: str) -> Table | None:
+        """
+        Resolve an upstream across the searched services, reporting it when it cannot be.
+
+        An edge into an ingested table that loses its upstream is lost lineage, not
+        noise, whether no service holds the table or the lookup failed, so either
+        reaches the run status rather than the debug log.
+        """
         try:
-            entity = self.metadata.get_by_name(entity=Table, fqn=entity_fqn)
+            from_entity = self._find_table(source_table_full_name, self._upstream_service_names)
         except Exception as exc:
-            logger.debug("Failed to resolve table %s: %s", databricks_table_fqn, exc)
             logger.debug(traceback.format_exc())
+            self._report_skipped_upstream(
+                source_table_full_name,
+                f"Failed to look up upstream table: {exc}; lineage to {databricks_table_fqn} skipped.",
+            )
             return None
 
-        self._table_cache[databricks_table_fqn] = entity
-        return entity
+        if not from_entity:
+            self._report_skipped_upstream(
+                source_table_full_name,
+                f"Upstream table not found in services {self._upstream_service_names};"
+                f" lineage to {databricks_table_fqn} skipped. Ingest the table, or add its"
+                " service to Cross Database Service Names with Process Cross Database Lineage on.",
+            )
+        return from_entity
+
+    def _report_skipped_upstream(self, source_table_full_name: str, reason: str) -> None:
+        """Warn once per upstream: a hot upstream feeds many targets."""
+        logger.debug("Skipping upstream %s: %s", source_table_full_name, reason)
+        if source_table_full_name not in self._unresolved_reported:
+            self._unresolved_reported.add(source_table_full_name)
+            self.status.warning(source_table_full_name, reason)
 
     def _get_data_model_column_fqn(self, data_model_entity: ContainerDataModel, column: str) -> str | None:
         if not data_model_entity:
@@ -519,9 +587,8 @@ class UnitycatalogLineageSource(Source):
             if source_table_full_name == databricks_table_fqn:
                 continue
             try:
-                from_entity = self._get_table_entity(source_table_full_name)
+                from_entity = self._resolve_upstream(source_table_full_name, databricks_table_fqn)
                 if not from_entity:
-                    logger.debug(f"Unable to find upstream entity: {source_table_full_name} -> {databricks_table_fqn}")
                     continue
 
                 lineage_details = self._get_column_lineage_details(

@@ -603,3 +603,24 @@ describe('isSameTooltipPosition', () => {
     );
   });
 });
+
+it('keeps each historical quality source through chart transformation', () => {
+  const sources = [1, 2].map((day) => ({
+    databaseName: 'demo_db',
+    schemaName: 'demo_schema',
+    tableName: `events_2026010${day}`,
+  }));
+  const result = prepareChartData({
+    entityThread: [],
+    testCaseParameterValue: [],
+    testCaseResults: sources.map((executionSource, timestamp) => ({
+      timestamp,
+      testCaseStatus: TestCaseStatus.Success,
+      evaluationScope: { executionSource },
+    })),
+  });
+
+  expect(result.data.map((point) => point.executionSource)).toEqual(
+    [...sources].reverse()
+  );
+});

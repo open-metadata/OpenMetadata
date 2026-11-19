@@ -20,6 +20,8 @@ import subprocess
 import tarfile
 from pathlib import Path
 
+import yaml
+
 
 ROOT = Path(__file__).resolve().parents[3]
 SCRIPTS = ROOT / ".github" / "scripts"
@@ -455,11 +457,11 @@ def test_distribution_cache_validates_manifest_archive_and_bundle_mode(
 
 def test_workflow_restores_assets_in_parallel_and_uses_scoped_fallback() -> None:
     workflow = (ROOT / ".github/workflows/playwright-postgresql-e2e.yml").read_text()
-    assert (
-        "restore-playwright-fixture:\n    needs: [cache-keys, plan-playwright]"
-        in workflow
-    )
-    assert "build:\n    needs: [check-changes, cache-keys]" in workflow
+    jobs = yaml.load(workflow, Loader=yaml.BaseLoader)["jobs"]
+    assert jobs["restore-playwright-fixture"]["needs"] == [
+        "cache-keys", "plan-playwright"
+    ]
+    assert jobs["build"]["needs"] == ["check-changes", "cache-keys"]
     assert "actions/cache/restore@v5" in workflow
     assert "actions/cache/save@v5" in workflow
     assert "playwright-golden-fixture-v2-" in workflow

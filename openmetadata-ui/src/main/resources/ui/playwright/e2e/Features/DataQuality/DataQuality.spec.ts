@@ -1082,11 +1082,9 @@ test.describe(
         await page.click('[data-testid="test-cases"]');
         await waitForAllLoadersToDisappear(page);
 
-        // get all the filters
+        // get all the filters; Last Run is already on by default, so clicking it would hide it
         await page.click('[data-testid="advanced-filter"]');
         await page.click('[value="testPlatforms"]');
-        await page.click('[data-testid="advanced-filter"]');
-        await page.click('[value="lastRunRange"]');
         await page.click('[data-testid="advanced-filter"]');
         await page.click('[value="serviceName"]');
         await page.click('[data-testid="advanced-filter"]');
@@ -1718,6 +1716,42 @@ test.describe(
         await tooltipTable.delete(apiContext);
         await afterAction();
       }
+    });
+  }
+);
+
+test.describe(
+  'Test Cases Last Run filter',
+  { tag: [`${DOMAIN_TAGS.OBSERVABILITY}:Data_Quality`] },
+  () => {
+    const isTestCaseList = (url: string) =>
+      url.includes('/api/v1/dataQuality/testCases/search/list');
+
+    test('Classic mode shows Last Run as All time and clears back to it', async ({
+      page,
+    }) => {
+      await page.goto('/data-quality/test-cases');
+      await waitForAllLoadersToDisappear(page);
+      const lastRun = page.getByTestId('date-picker-menu');
+
+      await expect(lastRun).toContainText('All time');
+
+      const filteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && r.url().includes('startTimestamp')
+      );
+      await lastRun.click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
+      expect((await filteredList).status()).toBe(200);
+
+      await expect(lastRun).toContainText('Last 7 days');
+
+      const unfilteredList = page.waitForResponse(
+        (r) => isTestCaseList(r.url()) && !r.url().includes('startTimestamp')
+      );
+      await page.getByTestId('clear-date-picker').click();
+      expect((await unfilteredList).status()).toBe(200);
+
+      await expect(lastRun).toContainText('All time');
     });
   }
 );

@@ -2,6 +2,7 @@ package org.openmetadata.service.security;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -252,6 +253,46 @@ class JWTTokenGeneratorTest {
     assertEquals(
         "jdoe@sub.example.com",
         findEmailFromClaims(mapping, principalClaims, claims, "example.com"));
+  }
+
+  /** Only an MCP access token names its client; JwtFilter looks those up in the token store. */
+  @Test
+  void mcpAccessTokenNamesItsClient() {
+    JWTAuthMechanism mcpToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sameSecondToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam",
+            Set.of(),
+            false,
+            "sam@example.com",
+            600,
+            false,
+            ServiceTokenType.OM_USER,
+            List.of(),
+            "mcp-client");
+    JWTAuthMechanism sessionToken =
+        jwtTokenGenerator.generateJWTToken(
+            "sam", Set.of(), false, "sam@example.com", 600, false, ServiceTokenType.OM_USER);
+
+    assertEquals(
+        "mcp-client",
+        decodedJWT(mcpToken.getJWTToken()).getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM).asString());
+    assertTrue(
+        decodedJWT(sessionToken.getJWTToken())
+            .getClaim(JWTTokenGenerator.CLIENT_ID_CLAIM)
+            .isMissing());
+    // Minted in the same second for the same user and client, yet distinct: the store keys by hash.
+    assertNotEquals(mcpToken.getJWTToken(), sameSecondToken.getJWTToken());
   }
 
   @Test

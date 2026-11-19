@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
@@ -203,6 +204,16 @@ public class EventBasedEntityTrigger implements TriggerInterface {
     relatedEntityIdParam.setTarget(
         getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE));
     inputParameters.add(relatedEntityIdParam);
+
+    // The main workflow's nodes judge the change of the version the event produced.
+    if (!triggerOutputs.contains(TRIGGERING_VERSION_VARIABLE)) {
+      IOParameter triggeringVersionParam = new IOParameter();
+      triggeringVersionParam.setSource(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE));
+      triggeringVersionParam.setTarget(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE));
+      inputParameters.add(triggeringVersionParam);
+    }
 
     // Dynamically add any additional outputs declared in trigger - Eg updatedBy in
     // GlossaryTermApprovalWorkflow

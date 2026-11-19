@@ -34,6 +34,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     ProviderType,
 )
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -163,6 +164,11 @@ def get_tag_label(
 
         # Check if the tag exists
         tag = metadata.get_by_name(entity=tag_type, fqn=tag_fqn)
+        # Only Approved glossary terms may be applied to assets, matching the server's CSV import rule.
+        if tag_type == GlossaryTerm and tag and tag.entityStatus != EntityStatus.Approved:
+            status = tag.entityStatus.value if tag.entityStatus else "missing a status"
+            logger.warning("Glossary term '%s' is %s, not Approved. Skipping it.", tag_fqn, status)
+            return None
         if tag:
             return TagLabel(
                 tagFQN=TagFQN(tag_fqn),

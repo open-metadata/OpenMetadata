@@ -77,6 +77,7 @@ import org.openmetadata.service.search.EntityBuilderConstant;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldResult;
+import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.QueryFilterBuilder;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
@@ -120,6 +121,11 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("experts", this::fetchAndSetExperts);
+  }
+
+  @Override
+  public List<PropagationDescriptor> getSearchPropagationDescriptors() {
+    return relabeledByReference(super.getSearchPropagationDescriptors());
   }
 
   @Override
@@ -474,8 +480,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
           String msg =
               String.format(
-                  "Asset '%s' is already part of %s ports and cannot be added to %s",
-                  ref.getFullyQualifiedName(), oppositePortType, fieldName);
+                  "Asset '%s' is already an %s port of this data product; an asset cannot be both an input and an output port",
+                  ref.getFullyQualifiedName(), oppositePortType);
           failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
           result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
           result.setStatus(ApiStatus.PARTIAL_SUCCESS);
@@ -729,6 +735,19 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
                 .withPaging(outputPorts.getPaging()));
   }
 
+  /**
+   * Locking the rows before the relationship sweep makes the delete, direct or through a domain
+   * cascade, wait for a writer that has share-locked a data product to link an asset (see {@code
+   * EntityRepository#lockDataProducts}), so the sweep removes the writer's edge instead of running
+   * before it commits and leaving it behind.
+   */
+  @Override
+  protected void lockRowsForDelete(List<DataProduct> dataProducts) {
+    List<String> ids =
+        dataProducts.stream().map(dataProduct -> dataProduct.getId().toString()).toList();
+    EntityDAO.queryInChunks(ids, chunk -> dao.lockIdsForUpdate(dao.getTableName(), chunk));
+  }
+
   @Transaction
   @Override
   protected BulkOperationResult bulkAssetsOperation(
@@ -790,7 +809,14 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         }
 
         if (isAdd) {
-          addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+          // The edge and the share lock on this data product commit together, so a concurrent
+          // hard delete either waits for the edge and sweeps it, or commits first and the add
+          // fails here instead of leaving an edge to a deleted data product.
+          flushInOneTransaction(
+              () -> {
+                lockDataProducts(List.of(dataProductRef));
+                addRelationship(entityId, ref.getId(), fromEntity, ref.getType(), relationship);
+              });
         } else {
           deleteRelationship(entityId, fromEntity, ref.getId(), ref.getType(), relationship);
         }

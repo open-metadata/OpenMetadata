@@ -527,3 +527,12 @@ export const getMessageFromArgumentName = (argumentName: string) => {
       return '';
   }
 };
+
+/**
+ * An event count as the alert page shows it: with a trailing "+" when the server evaluated only
+ * the first unread events, so the real count is at least this one.
+ */
+export const formatEventCount = (
+  count: number | undefined,
+  isLowerBound?: boolean
+): string => `${count ?? 0}${isLowerBound ? '+' : ''}`;

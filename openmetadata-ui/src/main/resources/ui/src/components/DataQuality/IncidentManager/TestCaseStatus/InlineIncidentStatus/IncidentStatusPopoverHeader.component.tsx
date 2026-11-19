@@ -52,6 +52,7 @@ export const IncidentStatusPopoverHeader = ({
       <ButtonUtility
         className="tw:outline-none"
         color="tertiary"
+        data-testid="incident-status-popover-back"
         icon={ArrowBackIcon}
         size="sm"
         tooltip={t('label.back')}

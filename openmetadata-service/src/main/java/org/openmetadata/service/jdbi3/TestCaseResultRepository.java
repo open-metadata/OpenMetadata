@@ -436,6 +436,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
       dimResult.setTestCaseResultId(testCaseResult.getId());
       // Ensure timestamp matches the parent result
       dimResult.setTimestamp(testCaseResult.getTimestamp());
+      dimResult.setEvaluationScope(testCaseResult.getEvaluationScope());
 
       // Store each dimensional result
       dimensionResultRepository.storeDimensionResult(testCaseFQN, dimResult);

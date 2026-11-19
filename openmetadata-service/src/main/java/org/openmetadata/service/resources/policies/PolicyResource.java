@@ -49,13 +49,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.Function;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourceDescriptor;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.FunctionList;
@@ -68,6 +66,7 @@ import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.policyevaluator.CompiledRule;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
@@ -110,26 +109,10 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
     repository.initSeedDataFromResources();
   }
 
-  @Override
-  public void upgrade() {
-    // 1.2.0 upgrade only - Add Create operation to OrganizationPolicy Owner Rule
-    try {
-      Policy organizationPolicy = repository.findByName("OrganizationPolicy", Include.NON_DELETED);
-      String originalJson = JsonUtils.pojoToJson(organizationPolicy);
-      for (Rule rule : organizationPolicy.getRules()) {
-        if (rule.getName().equals("OrganizationPolicy-Owner-Rule")
-            && !rule.getOperations().contains(MetadataOperation.ALL)) {
-          rule.getOperations().clear();
-          rule.getOperations().add(MetadataOperation.ALL);
-        }
-      }
-      String updatedJson = JsonUtils.pojoToJson(organizationPolicy);
-      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      repository.patch(null, organizationPolicy.getId(), "admin", patch);
-    } catch (Exception e) {
-      LOG.error("Failed to update OrganizationPolicy", e);
-    }
-  }
+  // The 1.2.0 upgrade() that reset OrganizationPolicy-Owner-Rule to ALL on every restart is
+  // removed:
+  // it undid an operator's deliberate narrowing of that rule on each boot
+  // (ADR:2026-11-03-seeded-policies-are-not-reset-on-startup).
 
   public static class PolicyList extends ResultList<Policy> {
     /* Required for serde */
@@ -360,6 +343,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @POST
+  @IdentityEndpoint
   @Operation(
       operationId = "createPolicy",
       summary = "Create a policy",
@@ -383,6 +367,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @PATCH
+  @IdentityEndpoint
   @Path("/{id}")
   @Operation(
       operationId = "patchPolicy",
@@ -411,6 +396,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @PATCH
+  @IdentityEndpoint
   @Path("/name/{fqn}")
   @Operation(
       operationId = "patchPolicy",
@@ -440,6 +426,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @PUT
+  @IdentityEndpoint
   @Operation(
       operationId = "createOrUpdatePolicy",
       summary = "Create or update a policy",
@@ -463,6 +450,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/{id}")
   @Operation(
       operationId = "deletePolicy",
@@ -485,6 +473,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/async/{id}")
   @Operation(
       operationId = "deletePolicyAsync",
@@ -507,6 +496,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @DELETE
+  @IdentityEndpoint
   @Path("/name/{fqn}")
   @Operation(
       operationId = "deletePolicyByFQN",
@@ -532,6 +522,7 @@ public class PolicyResource extends EntityResource<Policy, PolicyRepository> {
   }
 
   @PUT
+  @IdentityEndpoint
   @Path("/restore")
   @Operation(
       operationId = "restore",

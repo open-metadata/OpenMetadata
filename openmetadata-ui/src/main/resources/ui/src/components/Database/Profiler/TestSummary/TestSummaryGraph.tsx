@@ -90,6 +90,7 @@ interface ActiveTooltip {
 }
 
 interface TestSummaryTooltipContentProps {
+  isSharded?: boolean;
   activeTooltip?: ActiveTooltip;
   onMeasure: (size: TooltipSize, boundary: TooltipBoundary) => void;
   onMouseEnter: () => void;
@@ -99,6 +100,7 @@ interface TestSummaryTooltipContentProps {
 
 const TestSummaryTooltipContent = ({
   activeTooltip,
+  isSharded,
   onMeasure,
   onMouseEnter,
   onMouseLeave,
@@ -152,6 +154,7 @@ const TestSummaryTooltipContent = ({
     <div ref={contentRef}>
       <TestSummaryCustomTooltip
         active={Boolean(activeTooltip)}
+        isSharded={isSharded}
         payload={
           activeTooltip ? [{ payload: activeTooltip.payload }] : undefined
         }
@@ -163,6 +166,7 @@ const TestSummaryTooltipContent = ({
 };
 
 function TestSummaryGraph({
+  isSharded,
   testCaseName,
   testCaseParameterValue,
   testCaseResults,
@@ -424,6 +428,7 @@ function TestSummaryGraph({
           content={
             <TestSummaryTooltipContent
               activeTooltip={activeTooltip}
+              isSharded={isSharded}
               onMeasure={handleTooltipMeasure}
               onMouseEnter={cancelTooltipClose}
               onMouseLeave={handleTooltipClose}

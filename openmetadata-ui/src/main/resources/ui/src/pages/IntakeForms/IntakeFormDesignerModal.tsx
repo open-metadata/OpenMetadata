@@ -313,31 +313,39 @@ const IntakeFormDesignerModal = ({
       direction="col">
       <Box align="center" className="tw:gap-3 tw:bg-secondary tw:px-4 tw:py-2">
         {allowOptional && (
+          <div className="tw:w-20">
+            <Typography
+              className="tw:text-tertiary"
+              size="text-xs"
+              weight="semibold">
+              {t('label.include')}
+            </Typography>
+          </div>
+        )}
+        <div className="tw:w-20">
           <Typography
-            className="tw:w-20 tw:text-tertiary"
+            className="tw:text-tertiary"
             size="text-xs"
             weight="semibold">
-            {t('label.include')}
+            {t('label.required')}
           </Typography>
-        )}
-        <Typography
-          className="tw:w-20 tw:text-tertiary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.required')}
-        </Typography>
-        <Typography
-          className="tw:flex-1 tw:text-tertiary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.field')}
-        </Typography>
-        <Typography
-          className="tw:flex-1 tw:text-tertiary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.custom-error-message')}
-        </Typography>
+        </div>
+        <div className="tw:flex-1">
+          <Typography
+            className="tw:text-tertiary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.field')}
+          </Typography>
+        </div>
+        <div className="tw:flex-1">
+          <Typography
+            className="tw:text-tertiary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.custom-error-message')}
+          </Typography>
+        </div>
       </Box>
       {isLoading && (
         <Box className="tw:justify-center tw:py-6">

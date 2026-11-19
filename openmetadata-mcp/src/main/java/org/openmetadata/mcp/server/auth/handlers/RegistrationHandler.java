@@ -222,6 +222,7 @@ public class RegistrationHandler {
   }
 
   private void validateRedirectUri(URI uri) throws RegistrationException {
+    validateUriFieldLength(uri, "redirect_uri");
     String scheme = uri.getScheme();
     if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
       throw new RegistrationException(

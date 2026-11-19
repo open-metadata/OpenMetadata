@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
+import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { PipelineViewMode } from '../../generated/configuration/lineageSettings';
@@ -33,6 +34,7 @@ const mockGetEntityPermissionByFqn = jest.fn();
 const mockSearchQuery = jest.fn();
 const mockShowErrorToast = jest.fn();
 const mockShowModal = jest.fn();
+const mockOnExportClick = jest.fn();
 const mockGetOperationPermissions = jest.fn();
 const mockDebouncedSearchCallback = jest.fn();
 const mockSetLineageConfig = jest.fn();
@@ -64,6 +66,15 @@ let mockStoreLineageConfig: {
   nodesPerLayer: 50,
   pipelineViewMode: PipelineViewMode.Node,
 };
+
+// Interpolates only the platform type, so the tab title shows the entity
+// name while every other label stays its key.
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, params?: { platformType?: string }) =>
+      params?.platformType ? `${params.platformType} lineage` : key,
+  }),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => {
   type GridProps = { children?: React.ReactNode };
@@ -167,10 +178,6 @@ jest.mock('../../utils/EntityLineagePureUtils', () => ({
   getLineageEntityExclusionFilter: jest.fn(() => ({ mustNot: [] })),
 }));
 
-jest.mock('../../utils/EntityLineageLayoutUtils', () => ({
-  getViewportForLineageExport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
-}));
-
 jest.mock('../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn((val) => `escaped_${val}`),
   getEncodedFqn: jest.fn((val) => encodeURIComponent(val)),
@@ -178,10 +185,6 @@ jest.mock('../../utils/StringUtils', () => ({
 
 const mockEscapeESReservedCharacters = require('../../utils/StringUtils')
   .escapeESReservedCharacters as jest.Mock;
-
-jest.mock('../../utils/date-time/DateTimeUtils', () => ({
-  getCurrentISODate: jest.fn(() => '2025-03-05'),
-}));
 
 jest.mock(
   '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
@@ -219,6 +222,7 @@ jest.mock('../../context/LineageProvider/LineageProvider', () => ({
   default: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+  useLineageProvider: () => ({ onExportClick: mockOnExportClick }),
 }));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
@@ -587,17 +591,43 @@ describe('PlatformLineage Component Logic', () => {
   });
 
   describe('Export Functionality', () => {
-    it('should pass export callback in platformHeader', async () => {
+    it('exports the platform graph through the lineage provider', async () => {
+      mockLineage.mockImplementation(
+        ({ platformHeader }: { platformHeader: React.ReactNode }) => (
+          <div>{platformHeader}</div>
+        )
+      );
+
+      render(<PlatformLineage />);
+
+      fireEvent.click(await screen.findByTestId('export-button'));
+
+      // The provider holds the laid-out graph; the page's own export framed
+      // an empty node list and drew no edges.
+      expect(mockOnExportClick).toHaveBeenCalledWith([ExportTypes.PNG]);
+      expect(mockShowModal).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Page title', () => {
+    const lastPageTitle = () => mockPageLayoutV1.mock.calls.at(-1)[0].pageTitle;
+
+    it('names the focused entity in the browser tab title', async () => {
       render(<PlatformLineage />);
 
       await waitFor(() => {
-        expect(mockLineage).toHaveBeenCalled();
+        expect(lastPageTitle()).toBe('Customer Dimension lineage');
       });
+    });
 
-      const lineageCall = mockLineage.mock.calls.at(-1);
-      const platformHeader = lineageCall[0].platformHeader;
+    it('titles the platform root as Lineage', async () => {
+      mockFqn = '';
 
-      expect(platformHeader).toBeDefined();
+      render(<PlatformLineage />);
+
+      await waitFor(() => {
+        expect(lastPageTitle()).toBe('label.lineage');
+      });
     });
   });
 

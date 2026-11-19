@@ -130,16 +130,18 @@ class SSLManager:
     @setup_ssl.register(DorisConnection)
     @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
-        # Use the temporary file paths for SSL configuration
+        # PyMySQL's ``ssl`` dict takes ``ca``/``cert``/``key``. The ``ssl_``-prefixed names only
+        # exist as URL query params and top-level kwargs; inside the dict they are ignored, which
+        # leaves TLS on but the server certificate unverified.
         connection = cast(Union[MysqlConnection, DorisConnection, StarRocksConnection], connection)  # noqa: TC006, UP007
         connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         ssl_args = connection.connectionArguments.root.get("ssl", {})
         if connection.sslConfig.root.caCertificate:
-            ssl_args["ssl_ca"] = self.ca_file_path
+            ssl_args["ca"] = self.ca_file_path
         if connection.sslConfig.root.sslCertificate:
-            ssl_args["ssl_cert"] = self.cert_file_path
+            ssl_args["cert"] = self.cert_file_path
         if connection.sslConfig.root.sslKey:
-            ssl_args["ssl_key"] = self.key_file_path
+            ssl_args["key"] = self.key_file_path
         connection.connectionArguments.root["ssl"] = ssl_args
         return connection
 

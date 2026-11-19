@@ -3607,3 +3607,9 @@ om:name a rdf:Property ;
     om:projectionStatus om:InferenceOnly ;
     rdfs:label "name" ;
     rdfs:comment "Not emitted by the metadata projection for current 2.0 entity schemas. Available to conditional structured writers or explicit graph exports." .
+
+om:tableSharding a owl:DatatypeProperty ;
+    om:projectionStatus om:Stored ;
+    rdfs:domain om:Table ;
+    rdfs:range xsd:string ;
+    rdfs:label "tableSharding" .

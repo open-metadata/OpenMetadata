@@ -76,7 +76,7 @@ const RolesCard = ({
 
   if (!userData.isAdmin) {
     userRolesOption.push({
-      label: TERM_ADMIN,
+      label: t('label.admin-superuser'),
       value: toLower(TERM_ADMIN),
     });
   }

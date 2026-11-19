@@ -50,22 +50,29 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.Getter;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.auth.LogoutRequest;
 import org.openmetadata.schema.auth.ServiceTokenType;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.BotTokenCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -90,6 +97,13 @@ public class JwtFilter implements ContainerRequestFilter {
   public static final String ACTIVE_PERSONA_HEADER = "X-OpenMetadata-Persona";
   private static final Set<String> NATIVE_PASSWORD_PROVIDER_VALUES =
       Set.of(AuthProvider.BASIC.value(), AuthProvider.OPENMETADATA.value());
+  private static final Set<String> MULTI_TENANT_AUTHORITIES =
+      Set.of("common", "organizations", "consumers");
+  private static final Pattern TENANT_ID =
+      Pattern.compile(
+          "[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+  // The path segment after the tenant in a v2 endpoint authority, as in .../{tenant}/v2.0.
+  private static final String AUTHORITY_VERSION_SEGMENT = "v2.0";
   @Getter private List<String> jwtPrincipalClaims;
   @Getter private Map<String, String> jwtPrincipalClaimsMapping;
   @Getter private String jwtTeamClaimMapping;
@@ -100,6 +114,9 @@ public class JwtFilter implements ContainerRequestFilter {
   private AuthProvider providerType;
   private boolean useRolesFromProvider = false;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
+  private OidcClientConfig serverSideOidcClient;
+  private ProviderTokenValidator providerTokenValidator =
+      ProviderTokenValidator.acceptingAnyProviderToken();
 
   public static final List<String> EXCLUDED_ENDPOINTS =
       List.of(
@@ -139,6 +156,15 @@ public class JwtFilter implements ContainerRequestFilter {
       publicKeyUrlsBuilder.add(URI.create(publicKeyUrlStr).toURL());
     }
     this.jwkProvider = new MultiUrlJwkProvider(publicKeyUrlsBuilder.build());
+    this.serverSideOidcClient =
+        authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+            ? authenticationConfiguration.getOidcConfiguration()
+            : null;
+    this.providerTokenValidator =
+        new ProviderTokenValidator(
+            clientIdsOf(authenticationConfiguration),
+            this::providerIssuer,
+            publicClientEntraTenant(authenticationConfiguration));
 
     this.principalDomain = authorizerConfiguration.getPrincipalDomain();
     this.allowedDomains = authorizerConfiguration.getAllowedDomains();
@@ -171,6 +197,16 @@ public class JwtFilter implements ContainerRequestFilter {
     this.tokenValidationAlgorithm = AuthenticationConfiguration.TokenValidationAlgorithm.RS_256;
   }
 
+  @VisibleForTesting
+  JwtFilter(
+      JwkProvider jwkProvider,
+      List<String> jwtPrincipalClaims,
+      String principalDomain,
+      ProviderTokenValidator providerTokenValidator) {
+    this(jwkProvider, jwtPrincipalClaims, principalDomain, false);
+    this.providerTokenValidator = providerTokenValidator;
+  }
+
   @SneakyThrows
   @Override
   public void filter(ContainerRequestContext requestContext) {
@@ -190,8 +226,7 @@ public class JwtFilter implements ContainerRequestFilter {
       DecodedJWT decodedJwt = decodeAndVerify(tokenFromHeader);
       String tokenKeyId = decodedJwt.getKeyId();
       Map<String, Claim> claims = extractClaims(decodedJwt);
-      String userName =
-          findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+      String userName = resolveUserName(claims, tokenKeyId);
       String email =
           findEmailFromClaims(
               jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
@@ -282,6 +317,7 @@ public class JwtFilter implements ContainerRequestFilter {
       String impersonatedBy) {
     // the case where OMD generated the Token for the Client in case OM generated Token
     validateTokenIsNotUsedAfterLogout(tokenFromHeader);
+    validateMcpAccessTokenIsActive(tokenFromHeader, claims, tokenKeyId);
 
     // OM-issued tokens minted before JWTTokenGenerator mirrored the provider's claim shape carry a
     // bare preferred_username, which getFirstMatchJwtClaim-based domain extraction turns into an
@@ -313,6 +349,25 @@ public class JwtFilter implements ContainerRequestFilter {
     validatePersonalAccessToken(claims, tokenFromHeader, userName);
 
     validateSessionBoundToken(claims, userName);
+  }
+
+  /**
+   * The account a verified token names. The principal claims describe the provider's tokens; ours
+   * name the account they were minted for, and an email's local part can belong to another account
+   * (ADR:2026-11-03-an-openmetadata-token-resolves-to-the-account-it-names).
+   */
+  public String resolveUserName(Map<String, Claim> claims, String tokenKeyId) {
+    Optional<String> mintedUserName =
+        isInternallyIssuedToken(claims, tokenKeyId)
+            ? JWTTokenGenerator.mintedUserName(claims)
+            : Optional.empty();
+    return mintedUserName.orElseGet(
+        () -> findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims));
+  }
+
+  /** The account a verified token names, read with the token's own key id. */
+  public String resolveTokenUserName(String token, Map<String, Claim> claims) {
+    return resolveUserName(claims, JWT.decode(token).getKeyId());
   }
 
   private boolean isInternallyIssuedToken(Map<String, Claim> claims, String tokenKeyId) {
@@ -361,8 +416,87 @@ public class JwtFilter implements ContainerRequestFilter {
       throw AuthenticationException.getInvalidTokenException(
           "Invalid token. Token verification failed. Public key mismatch.", runtimeException);
     }
+    requireIssuedForThisDeployment(jwt);
 
     return jwt;
+  }
+
+  private void requireIssuedForThisDeployment(DecodedJWT jwt) {
+    if (!isSignedWithOpenMetadataKey(jwt)) {
+      providerTokenValidator.validate(jwt);
+    }
+  }
+
+  /**
+   * Key lookup resolves OpenMetadata's own key id locally before any configured URL, so a verified
+   * token carrying it was signed with our key. Unlike {@link #isInternallyIssuedToken}, this does
+   * not require the current issuer: long-lived bot tokens minted under an earlier one are still ours.
+   */
+  private static boolean isSignedWithOpenMetadataKey(DecodedJWT jwt) {
+    return isOpenMetadataKeyId(jwt.getKeyId());
+  }
+
+  private static boolean isOpenMetadataKeyId(String tokenKeyId) {
+    String openMetadataKeyId = JWTTokenGenerator.getInstance().getKid();
+    return !nullOrEmpty(openMetadataKeyId) && openMetadataKeyId.equals(tokenKeyId);
+  }
+
+  /** The OIDC client IDs this deployment's sign-in flows request tokens for. */
+  static Set<String> clientIdsOf(AuthenticationConfiguration authenticationConfiguration) {
+    OidcClientConfig oidcClient = authenticationConfiguration.getOidcConfiguration();
+    return Stream.of(
+            authenticationConfiguration.getClientId(),
+            oidcClient == null ? null : oidcClient.getId())
+        .filter(clientId -> !nullOrEmpty(clientId) && !clientId.isBlank())
+        .collect(Collectors.toUnmodifiableSet());
+  }
+
+  /**
+   * The Entra ID tenant a public client's authority names, which provider tokens must come from. A
+   * confidential client checks the issuer from discovery instead, so it has none. A multi-tenant
+   * authority (common, organizations, consumers) restricts nothing on purpose. A tenant named by
+   * domain cannot be compared with the token's tenant ID without a discovery lookup.
+   */
+  @VisibleForTesting
+  static String publicClientEntraTenant(AuthenticationConfiguration authenticationConfiguration) {
+    if (authenticationConfiguration.getProvider() != AuthProvider.AZURE
+        || authenticationConfiguration.getClientType() == ClientType.CONFIDENTIAL
+        || nullOrEmpty(authenticationConfiguration.getAuthority())) {
+      return null;
+    }
+    List<String> segments =
+        Stream.of(
+                URI.create(authenticationConfiguration.getAuthority().trim()).getPath().split("/"))
+            .filter(segment -> !segment.isEmpty() && !AUTHORITY_VERSION_SEGMENT.equals(segment))
+            .toList();
+    String tenant = segments.isEmpty() ? null : segments.get(segments.size() - 1);
+    if (tenant == null || MULTI_TENANT_AUTHORITIES.contains(tenant.toLowerCase(Locale.ROOT))) {
+      return null;
+    }
+    if (!TENANT_ID.matcher(tenant).matches()) {
+      LOG.warn(
+          "Entra ID tokens are accepted from any tenant: the authority names tenant '{}' by domain;"
+              + " use the tenant ID to restrict sign-in to it",
+          tenant);
+      return null;
+    }
+    return tenant;
+  }
+
+  @VisibleForTesting
+  Optional<String> providerIssuer() {
+    return codeFlowHandler().map(AuthenticationCodeFlowHandler::getProviderIssuer);
+  }
+
+  /**
+   * The server-side sign-in handler, when it serves this filter's OIDC client. It registers after
+   * this filter at startup and is replaced on a configuration change, so it is looked up per use.
+   */
+  private Optional<AuthenticationCodeFlowHandler> codeFlowHandler() {
+    return AuthServeletHandlerRegistry.getHandler() instanceof AuthenticationCodeFlowHandler handler
+            && handler.servesClient(serverSideOidcClient)
+        ? Optional.of(handler)
+        : Optional.empty();
   }
 
   private static Map<String, Claim> extractClaims(DecodedJWT jwt) {
@@ -425,6 +559,26 @@ public class JwtFilter implements ContainerRequestFilter {
       if (previouslyLoggedOutEvent != null) {
         throw AuthenticationException.invalidTokenMessage();
       }
+    }
+  }
+
+  /**
+   * An MCP OAuth access token is stored when issued and deleted when revoked or when its client is
+   * deleted, so one missing from the store is refused on every server. Only a token OpenMetadata
+   * signed is looked up, a provider's own token may carry a client_id claim too, and it is picked by
+   * our key id like the signature check, not by the current issuer, which can change.
+   * ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
+   */
+  private void validateMcpAccessTokenIsActive(
+      String token, Map<String, Claim> claims, String tokenKeyId) {
+    boolean isMcpAccessToken =
+        claims.containsKey(JWTTokenGenerator.CLIENT_ID_CLAIM) && isOpenMetadataKeyId(tokenKeyId);
+    if (isMcpAccessToken
+        && Entity.getCollectionDAO()
+                .oauthAccessTokenDAO()
+                .findByTokenHash(CollectionDAO.OAuthAccessTokenDAO.hashToken(token))
+            == null) {
+      throw AuthenticationException.getInvalidTokenException("Token has been revoked.");
     }
   }
 
@@ -503,8 +657,9 @@ public class JwtFilter implements ContainerRequestFilter {
   }
 
   public CatalogSecurityContext getCatalogSecurityContext(String token) {
-    Map<String, Claim> claims = validateJwtAndGetClaims(token);
-    String userName = findUserNameFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims);
+    DecodedJWT decodedJwt = decodeAndVerify(token);
+    Map<String, Claim> claims = extractClaims(decodedJwt);
+    String userName = resolveUserName(claims, decodedJwt.getKeyId());
     String email =
         findEmailFromClaims(jwtPrincipalClaimsMapping, jwtPrincipalClaims, claims, principalDomain);
     CatalogPrincipal catalogPrincipal = new CatalogPrincipal(userName, email);

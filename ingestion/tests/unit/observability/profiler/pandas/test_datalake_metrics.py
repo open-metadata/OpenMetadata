@@ -15,11 +15,13 @@ Test Metrics behavior
 
 import os
 import sys
+from datetime import datetime
 from unittest import TestCase, mock
 from unittest.mock import Mock, patch
 from uuid import uuid4
 
 import pytest
+from pandas import DataFrame
 from sqlalchemy import TEXT, Column, Date, DateTime, Integer, String, Time
 from sqlalchemy.orm import DeclarativeBase
 
@@ -35,8 +37,10 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.core import add_props
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
+from metadata.profiler.processor.runner import PandasRunner
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
 from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.utils.sqa_like_column import SQALikeColumn
 
 
 class Base(DeclarativeBase):
@@ -715,3 +719,35 @@ class DatalakeMetricsTest(TestCase):
         )
 
         assert res.get(User.age.name)[Metrics.sum.name] == 124
+
+
+@pytest.mark.parametrize("metric", [Metrics.min, Metrics.max])
+@pytest.mark.parametrize("preserve_datetime", [False, True])
+@pytest.mark.parametrize("data_type", [DataType.DATE, DataType.DATETIME])
+def test_datetime_extrema_output_preserves_precision_when_requested(metric, preserve_datetime, data_type):
+    frames = [
+        DataFrame({"value": ["2023-02-01T11:30:00.500456+05:30", None]}),
+        DataFrame({"value": [None]}),
+        DataFrame({"value": ["2023-02-01T01:30:00.125123-03:30"]}),
+    ]
+    runner = PandasRunner(dataset=lambda: iter(frames), raw_dataset=lambda: iter(frames))
+    column = SQALikeColumn(name="value", type=data_type)
+    configured_metric = add_props(preserve_datetime=preserve_datetime)(metric.value)(column)
+    result = configured_metric.df_fn(runner)
+    if preserve_datetime:
+        expected = (
+            datetime(2023, 2, 1, 5, 0, 0, 125123) if metric == Metrics.min else datetime(2023, 2, 1, 6, 0, 0, 500456)
+        )
+        assert result == expected
+        assert result.tzinfo is None
+    else:
+        assert result == (1675227600125 if metric == Metrics.min else 1675231200500)
+    assert metric.value(column).df_fn(runner) == (1675227600125 if metric == Metrics.min else 1675231200500)
+
+
+@pytest.mark.parametrize("metric,expected", [(Metrics.min, 1.25), (Metrics.max, 3.5)])
+def test_preserve_datetime_keeps_numeric_extrema_numeric(metric, expected):
+    runner = PandasRunner.from_dataframe(DataFrame({"value": [3.5, None, 1.25]}))
+    column = SQALikeColumn(name="value", type=DataType.FLOAT)
+    configured_metric = add_props(preserve_datetime=True)(metric.value)(column)
+    assert configured_metric.df_fn(runner) == expected

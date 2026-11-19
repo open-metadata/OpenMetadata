@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DatePickerMenu from '../../../components/common/DatePickerMenu/DatePickerMenu.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
+import { useDataInsightProvider } from '../../../components/DataInsight/DataInsightProvider/DataInsightProvider';
 import DataInsightSummary from '../../../components/DataInsight/DataInsightSummary';
 import KPIChart from '../../../components/DataInsight/KPIChart';
 import SearchDropdown from '../../../components/SearchDropdown/SearchDropdown';
@@ -31,7 +32,6 @@ import { formatDate } from '../../../utils/date-time/DateTimeUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import dataInsightClassBase from '../DataInsightClassBase';
-import { useDataInsightProvider } from '../DataInsightProvider';
 import { DataInsightHeaderProps } from './DataInsightHeader.interface';
 const DataInsightHeader = ({ onScrollToChart }: DataInsightHeaderProps) => {
   const {

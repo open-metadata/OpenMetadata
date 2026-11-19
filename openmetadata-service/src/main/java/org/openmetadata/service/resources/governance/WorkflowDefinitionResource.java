@@ -32,6 +32,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -45,8 +46,8 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.ResourceRegistry;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -77,6 +78,13 @@ public class WorkflowDefinitionResource
 
   public WorkflowDefinitionResource(Authorizer authorizer, Limits limits) {
     super(Entity.WORKFLOW_DEFINITION, authorizer, limits);
+    // A JSON Patch is authorized by the first mapped segment of its path, so without these a
+    // nested key such as /trigger/config/filter/description would be authorized as a description
+    // edit. Every change under these fields is a change to the deployed workflow.
+    for (String field : List.of("config", "trigger", "nodes", "edges")) {
+      ResourceRegistry.mapEntityFieldOperation(
+          Entity.WORKFLOW_DEFINITION, field, MetadataOperation.EDIT_ALL);
+    }
   }
 
   public static class WorkflowDefinitionList extends ResultList<WorkflowDefinition> {
@@ -231,6 +239,10 @@ public class WorkflowDefinitionResource
           @PathParam("id")
           UUID id,
       @Context SecurityContext securityContext) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL),
+        getResourceContextById(id));
     WorkflowDefinition wd =
         repository.get(
             uriInfo,
@@ -238,8 +250,7 @@ public class WorkflowDefinitionResource
             new EntityUtil.Fields(repository.getAllowedFields()),
             Include.NON_DELETED,
             false);
-    WorkflowHandler.getInstance().deleteWorkflowDefinition(wd);
-    WorkflowHandler.getInstance().deploy(new Workflow(wd));
+    WorkflowHandler.getInstance().redeploy(wd);
     return Response.status(Response.Status.OK).entity("Workflow Redeployed").build();
   }
 

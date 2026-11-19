@@ -12,6 +12,7 @@ from cachetools import LRUCache
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.pipeline import Pipeline, Task
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -217,6 +218,18 @@ class OpenLineageUnitTest(unittest.TestCase):
     def setUp(self, mock_consumer, mock_test_connection):
         mock_test_connection.return_value = False
         self.mock_consumer = mock_consumer
+        catalog = patch.object(
+            OpenMetadataConnection,
+            "get_by_name",
+            create=True,
+            side_effect=lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity is Table
+                else None
+            ),
+        )
+        catalog.start()
+        self.addCleanup(catalog.stop)
         # Fresh per-test resolution cache, mirroring what prepare() sets up in
         # production, so each test starts with no memoized resolutions.
         for source in (self.open_lineage_source, self.open_lineage_kinesis_source):
@@ -1051,16 +1064,16 @@ class OpenLineageUnitTest(unittest.TestCase):
         ):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
                 # source of table lineage
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(columns=[], tableType="Regular", id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
                 # dst of table lineage
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(columns=[], tableType="Regular", id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             else:
                 # pipeline
-                z = Mock()
+                z = Mock(columns=[], tableType="Regular")
                 z.id.root = "79fc8906-4a4a-45ab-9a54-9cc2d399e10e"
                 return z
 
@@ -1130,12 +1143,14 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"glueService.{table_details.schema}.{table_details.name}"
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             ids = {
                 "glueService.store_of_value.src_table": src_uuid,
                 "glueService.store_of_value.gsheet_recon_stats_notes": dst_uuid,
             }
-            return Mock(id=Mock(root=ids.get(fqn, "33333333-3333-3333-3333-333333333333")))
+            return Mock(
+                columns=[], tableType="Regular", id=Mock(root=ids.get(fqn, "33333333-3333-3333-3333-333333333333"))
+            )
 
         mock_get_table_from_om.side_effect = t_fqn_build_side_effect
 
@@ -1193,10 +1208,14 @@ class OpenLineageUnitTest(unittest.TestCase):
             "glueService.silver-stagingdb.recon_stats": dst_uuid,
         }
 
-        def mock_get_by_name(entity, fqn):
+        def mock_get_by_name(entity, fqn, **kwargs):
             # Any FQN still carrying the backticks resolves to this sentinel id,
             # so a leaked quote shows up as a wrong edge rather than no edge.
-            return Mock(id=Mock(root=catalogued.get(fqn, "33333333-3333-3333-3333-333333333333")))
+            return Mock(
+                columns=[],
+                tableType="Regular",
+                id=Mock(root=catalogued.get(fqn, "33333333-3333-3333-3333-333333333333")),
+            )
 
         mock_get_table_from_om.side_effect = t_fqn_build_side_effect
 
@@ -1337,13 +1356,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         from_table_id = "69fc8906-4a4a-45ab-9a54-9cc2d399e10e"
         to_table_id = "59fc8906-4a4a-45ab-9a54-9cc2d399e10e"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root=from_table_id))
+                return Mock(columns=[], tableType="Regular", id=Mock(root=from_table_id))
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root=to_table_id))
+                return Mock(columns=[], tableType="Regular", id=Mock(root=to_table_id))
             elif "openlineage_source" in fqn:  # Pipeline entity
-                return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(columns=[], tableType="Regular", id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             return None
 
         # Process START event with lineage
@@ -1536,13 +1555,13 @@ class OpenLineageUnitTest(unittest.TestCase):
         def t_fqn_build_side_effect(table_details, services=None):
             return f"testService.shopify.{table_details.name}"
 
-        def mock_get_uuid_by_name(entity, fqn):
+        def mock_get_uuid_by_name(entity, fqn, **kwargs):
             if fqn == "testService.shopify.raw_product_catalog":
-                return Mock(id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(columns=[], tableType="Regular", id=Mock(root="69fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             elif fqn == "testService.shopify.fact_order_new5":  # noqa: RET505
-                return Mock(id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(columns=[], tableType="Regular", id=Mock(root="59fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
             else:
-                return Mock(id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
+                return Mock(columns=[], tableType="Regular", id=Mock(root="79fc8906-4a4a-45ab-9a54-9cc2d399e10e"))
 
         mock_get_table_from_om.side_effect = t_fqn_build_side_effect
 
@@ -1846,7 +1865,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # MySQL namespace -> scheme resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -1901,7 +1928,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
             result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
@@ -1946,7 +1981,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"

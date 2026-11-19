@@ -451,3 +451,22 @@ export function removeAttachmentsWithoutUrl(htmlString: string): string {
 
   return doc.body.innerHTML;
 }
+
+const SAFE_URL_PROTOCOLS = ['http:', 'https:'];
+
+/**
+ * Returns the URL only when it is an absolute http(s) URL, otherwise undefined.
+ * Use before rendering any user- or ingestion-supplied URL as an `href`, so
+ * `javascript:`/`data:` URLs never become clickable.
+ */
+export const getSafeHttpUrl = (url?: string): string | undefined => {
+  if (!url) {
+    return undefined;
+  }
+
+  try {
+    return SAFE_URL_PROTOCOLS.includes(new URL(url).protocol) ? url : undefined;
+  } catch {
+    return undefined;
+  }
+};

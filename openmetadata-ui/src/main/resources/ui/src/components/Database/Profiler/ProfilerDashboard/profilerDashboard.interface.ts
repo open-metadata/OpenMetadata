@@ -17,12 +17,14 @@ import { CurveType } from 'recharts/types/shape/Curve';
 import type { TestCaseDeletionMode } from '../../../../constants/DataQuality.constants';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Thread } from '../../../../generated/entity/feed/thread';
+import { ResourcePermission } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../../rest/testAPI';
 import { NextPreviousProps } from '../../../common/NextPrevious/NextPrevious.interface';
 import { TitleBreadcrumbProps } from '../../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import { ProfileExecutionSourceProps } from '../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 
 export type MetricChartType = {
   information: {
@@ -37,7 +39,8 @@ export type MetricChartType = {
   data: Record<string, string | number | undefined>[];
 };
 
-export interface ProfilerDetailsCardProps {
+export interface ProfilerDetailsCardProps
+  extends Pick<ProfileExecutionSourceProps, 'profiles' | 'isSharded'> {
   showYAxisCategory?: boolean;
   chartCollection: MetricChartType;
   name: string;
@@ -81,6 +84,9 @@ export interface DataQualityTabProps {
   editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
   emptyStateAction?: EmptyPlaceholderAction;
+  // Per-entity permissions keyed by test-case id, supplied by the list API when
+  // includePermissions=true. When present, the tab skips per-row permission calls.
+  entityPermissions?: Record<string, ResourcePermission>;
   deletionMode?: TestCaseDeletionMode;
 }
 
@@ -100,11 +106,19 @@ export type TestCaseAction = {
   action: 'UPDATE' | 'DELETE' | 'RESTORE' | 'UPDATE_STATUS';
 };
 
+import { TableExecutionSource } from '../../../../generated/type/tableExecutionSource';
+
 export type TestCaseChartDataType = {
   information: { label: string; color: string }[];
   data: Record<
     string,
-    string | number | undefined | Task | Thread | number[]
+    | string
+    | number
+    | undefined
+    | Task
+    | Thread
+    | number[]
+    | TableExecutionSource
   >[];
 };
 

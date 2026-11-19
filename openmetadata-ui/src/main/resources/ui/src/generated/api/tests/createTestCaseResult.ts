@@ -19,6 +19,7 @@ export interface CreateTestCaseResult {
      * specified.
      */
     dimensionResults?: TestCaseDimensionResult[];
+    evaluationScope?:  TestCaseEvaluationScope;
     /**
      * Number of rows that failed.
      */
@@ -84,7 +85,8 @@ export interface TestCaseDimensionResult {
      * Array of dimension name-value pairs for this result (e.g., [{'name': 'region', 'value':
      * 'mumbai'}, {'name': 'product', 'value': 'laptop'}])
      */
-    dimensionValues: DimensionValue[];
+    dimensionValues:  DimensionValue[];
+    evaluationScope?: TestCaseEvaluationScope;
     /**
      * Number of rows that failed for this dimension combination
      */
@@ -149,6 +151,23 @@ export interface DimensionValue {
      * Value for this dimension (e.g., 'address', 'US', 'gold')
      */
     value: string;
+}
+
+/**
+ * Physical execution source of a test case run.
+ */
+export interface TestCaseEvaluationScope {
+    executionSource?: TableExecutionSource;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

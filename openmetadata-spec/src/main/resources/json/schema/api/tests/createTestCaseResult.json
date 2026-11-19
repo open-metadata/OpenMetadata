@@ -68,8 +68,15 @@
       "items": {
         "$ref": "../../tests/basic.json#/definitions/testCaseDimensionResult"
       }
+    },
+    "evaluationScope": {
+      "$ref": "../../tests/basic.json#/definitions/testCaseEvaluationScope"
     }
   },
-  "required": ["timestamp", "testCaseStatus", "testResultValue"],
+  "required": [
+    "timestamp",
+    "testCaseStatus",
+    "testResultValue"
+  ],
   "additionalProperties": false
 }

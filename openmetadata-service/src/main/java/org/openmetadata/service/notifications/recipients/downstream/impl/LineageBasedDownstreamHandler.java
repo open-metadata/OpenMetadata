@@ -41,6 +41,9 @@ import org.openmetadata.service.util.LineageGraphExplorer;
  *    c. For each downstream entity, resolve recipients
  * 3. Return aggregated set of all stakeholders (root + downstream)
  *
+ * A resolver that answers with no parents means the event's entity takes part in lineage itself,
+ * so lineage is traversed from that entity.
+ *
  * Extension Point: The downstreamStrategy parameter allows resolving any recipient category
  * (owners, followers, admins, etc.) for entities in the lineage. New entity types with special
  * lineage needs register EntityLineageResolver (no modification to this class needed).
@@ -101,6 +104,15 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
                   e);
             }
           });
+    } else {
+      try {
+        allRecipients.addAll(
+            resolveEntitiesDownstream(
+                changeEvent.getEntityId(), entityType, action, destination, maxDepth));
+      } catch (Exception e) {
+        LOG.error(
+            "Failed to resolve downstream for {} {}", entityType, changeEvent.getEntityId(), e);
+      }
     }
 
     return allRecipients;
@@ -144,34 +156,16 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
           downstreamStrategy.resolve(entityId, entityType, action, destination);
       allRecipients.addAll(parentRecipients);
 
-      // Step 2: Traverse lineage downstream from this parent
-      LineageGraphExplorer lineageExplorer = new LineageGraphExplorer(Entity.getCollectionDAO());
-      Set<EntityReference> downstreamEntities =
-          lineageExplorer.findUniqueEntitiesDownstream(entityId, entityType, maxDepth);
+      // Step 2: Traverse lineage downstream from this parent and resolve each entity's recipients
+      allRecipients.addAll(
+          resolveEntitiesDownstream(entityId, entityType, action, destination, maxDepth));
 
-      // Step 3: Resolve recipients from each downstream entity
-      downstreamEntities.forEach(
-          downstream -> {
-            try {
-              Set<Recipient> downstreamRecipients =
-                  downstreamStrategy.resolve(
-                      downstream.getId(), downstream.getType(), action, destination);
-              allRecipients.addAll(downstreamRecipients);
-            } catch (Exception e) {
-              LOG.warn(
-                  "Failed to resolve recipients for downstream {} {}",
-                  downstream.getType(),
-                  downstream.getId(),
-                  e);
-            }
-          });
-
-      // Step 4: Check if this parent entity has its own parent (recursive case)
+      // Step 3: Check if this parent entity has its own parent (recursive case)
       EntityLineageResolver resolver =
           lineageResolvers.getOrDefault(entityType, lineageResolvers.get("*"));
       Set<EntityReference> ancestorRefs = resolver.resolveTraversalEntities(entityId, entityType);
 
-      // Step 5: If parent has parent, recursively resolve its lineage
+      // Step 4: If parent has parent, recursively resolve its lineage
       ancestorRefs.forEach(
           ancestorRef -> {
             try {
@@ -208,6 +202,35 @@ public class LineageBasedDownstreamHandler implements DownstreamHandler {
     }
 
     return allRecipients;
+  }
+
+  private Set<Recipient> resolveEntitiesDownstream(
+      UUID entityId,
+      String entityType,
+      SubscriptionAction action,
+      SubscriptionDestination destination,
+      Integer maxDepth) {
+    Set<Recipient> recipients = new HashSet<>();
+    LineageGraphExplorer lineageExplorer = new LineageGraphExplorer(Entity.getCollectionDAO());
+    Set<EntityReference> downstreamEntities =
+        lineageExplorer.findUniqueEntitiesDownstream(entityId, entityType, maxDepth);
+
+    downstreamEntities.forEach(
+        downstream -> {
+          try {
+            recipients.addAll(
+                downstreamStrategy.resolve(
+                    downstream.getId(), downstream.getType(), action, destination));
+          } catch (Exception e) {
+            LOG.warn(
+                "Failed to resolve recipients for downstream {} {}",
+                downstream.getType(),
+                downstream.getId(),
+                e);
+          }
+        });
+
+    return recipients;
   }
 
   /**

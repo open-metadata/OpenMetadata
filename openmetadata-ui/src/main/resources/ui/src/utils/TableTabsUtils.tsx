@@ -32,6 +32,7 @@ import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { PageType } from '../generated/system/ui/uiCustomization';
 import { useApplicationStore } from '../hooks/useApplicationStore';
 import type { WidgetConfig } from '../pages/CustomizablePage/CustomizablePage.interface';
+import { TableShardingWidget } from '../pages/TableDetailsPageV1/Sharding/TableSharding';
 import { t } from './i18next/LocalUtil';
 import type { TableDetailPageTabProps } from './TableClassBase';
 
@@ -490,6 +491,9 @@ export const getTableDetailPageBaseTabs = ({
 export const getTableWidgetFromKey = (
   widgetConfig: WidgetConfig
 ): JSX.Element | null => {
+  if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SHARDING)) {
+    return <TableShardingWidget />;
+  }
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.TABLE_SCHEMA)) {
     return <SchemaTable />;
   } else if (

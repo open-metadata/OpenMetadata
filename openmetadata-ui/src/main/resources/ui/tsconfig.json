@@ -57,7 +57,8 @@
     "skipLibCheck": true,
     "noImplicitAny": true,
     "paths": {
-      "react-hook-form": ["./node_modules/react-hook-form"]
+      "react-hook-form": ["./node_modules/react-hook-form"],
+      "@tiptap/react/menus": ["./node_modules/@tiptap/react/dist/menus"]
     }
   },
   "include": ["src"]

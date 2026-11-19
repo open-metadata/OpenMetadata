@@ -81,6 +81,7 @@ import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.data.CreateEntityProfile;
 import org.openmetadata.schema.api.data.CreateTableProfile;
 import org.openmetadata.schema.api.feed.ResolveTask;
@@ -148,10 +149,10 @@ public class TableRepository extends EntityRepository<Table> {
 
   // Table fields that can be patched in a PATCH request
   public static final String PATCH_FIELDS =
-      "tableConstraints,tablePartition,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,columns,schemaDefinition";
   // Table fields that can be updated in a PUT request
   public static final String UPDATE_FIELDS =
-      "tableConstraints,tablePartition,dataModel,sourceUrl,columns,schemaDefinition";
+      "tableConstraints,tablePartition,tableSharding,dataModel,sourceUrl,columns,schemaDefinition";
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
@@ -1395,6 +1396,22 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  // The labels a data model applies, keyed by the table or matching stored column they land on.
+  private static Map<String, List<TagLabel>> modelTagsByTarget(Table table, DataModel dataModel) {
+    Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
+    tagsByTarget.put(table.getFullyQualifiedName(), listOrEmpty(dataModel.getTags()));
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+      listOrEmpty(table.getColumns()).stream()
+          .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
+          .findAny()
+          .ifPresent(
+              column ->
+                  tagsByTarget.put(
+                      column.getFullyQualifiedName(), listOrEmpty(modelColumn.getTags())));
+    }
+    return tagsByTarget;
+  }
+
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
@@ -1404,6 +1421,8 @@ public class TableRepository extends EntityRepository<Table> {
             getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -1463,6 +1482,9 @@ public class TableRepository extends EntityRepository<Table> {
     // above (entity- and column-level) actually reach RDF.
     invalidateCacheForEntity(entityType, table.getId(), table.getFullyQualifiedName());
     RdfUpdater.updateEntity(table);
+    // Skipping postUpdate skips the search update as well: rebuild the table's document from the
+    // merged row, so that its tags, owners and column tags show the model.
+    searchRepository.updateEntity(table.getEntityReference());
     setFieldsInternal(table, new Fields(Set.of(FIELD_OWNERS), FIELD_OWNERS));
     setFieldsInternal(table, new Fields(Set.of(FIELD_TAGS), FIELD_TAGS));
     return table;
@@ -1470,12 +1492,22 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   public void prepare(Table table, boolean update) {
+    DatabaseUtil.validateTableSharding(table);
     var schema = (DatabaseSchema) getCachedParentOrLoad(table.getDatabaseSchema(), "", ALL);
     table
         .withDatabaseSchema(schema.getEntityReference())
         .withDatabase(schema.getDatabase())
         .withService(schema.getService())
         .withServiceType(schema.getServiceType());
+
+    if (table.getTableSharding() != null) {
+      var source = table.getTableSharding().getRepresentative();
+      if (!source.getDatabaseName().equals(table.getDatabase().getName())
+          || !source.getSchemaName().equals(schema.getName())) {
+        throw new IllegalArgumentException(
+            "Shard representative must belong to the table database and schema");
+      }
+    }
 
     // For create operations (update=false), validate constraints immediately.
     // For update operations (PATCH/PUT), constraint validation happens in updateTableConstraints()
@@ -1690,7 +1722,73 @@ public class TableRepository extends EntityRepository<Table> {
               TABLE,
               Relationship.CONTAINS));
     }
+    // Re-add the FK/ER (RELATED_TO) edges that clearEntitySpecificRelationshipsForMany removed. The
+    // single-entity store path does this via storeEntity() -> addConstraintRelationship(); the bulk
+    // path (recursive CSV import, bulk create) only restored CONTAINS, so a table's foreign-key
+    // relationship disappeared even though its tableConstraints JSON was preserved.
+    relationships.addAll(buildConstraintRelationships(entities));
     bulkInsertRelationships(relationships);
+  }
+
+  /**
+   * Build the FK RELATED_TO edges for a batch of tables, folded into the caller's bulk insert (no
+   * per-foreign-key lookup or insert). A referred table that is not persisted yet (e.g. created in a
+   * later bulk chunk) is skipped rather than failing the whole request.
+   */
+  private List<CollectionDAO.EntityRelationshipObject> buildConstraintRelationships(
+      List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = collectReferredTables(entities);
+    if (referredByTable.isEmpty()) {
+      return List.of();
+    }
+    Map<String, UUID> fqnToId = resolveTableIds(entities, referredByTable);
+    List<CollectionDAO.EntityRelationshipObject> edges = new ArrayList<>();
+    referredByTable.forEach(
+        (fromId, referredFqns) ->
+            referredFqns.stream()
+                .map(fqnToId::get)
+                .filter(Objects::nonNull)
+                .forEach(
+                    toId ->
+                        edges.add(
+                            newRelationship(fromId, toId, TABLE, TABLE, Relationship.RELATED_TO))));
+    return edges;
+  }
+
+  /** Referred parent-table FQNs per table, deduplicated (a composite FK yields one entry). */
+  private Map<UUID, Set<String>> collectReferredTables(List<Table> entities) {
+    Map<UUID, Set<String>> referredByTable = new HashMap<>();
+    for (Table table : entities) {
+      Set<String> referredFqns =
+          listOrEmpty(table.getTableConstraints()).stream()
+              .flatMap(constraint -> listOrEmpty(constraint.getReferredColumns()).stream())
+              .map(FullyQualifiedName::getParentFQN)
+              .collect(Collectors.toSet());
+      if (!referredFqns.isEmpty()) {
+        referredByTable.put(table.getId(), referredFqns);
+      }
+    }
+    return referredByTable;
+  }
+
+  /**
+   * Resolve referred table ids from the batch first and query only the rest, since a recursive
+   * import usually carries the referred table in the same batch (no need to reload its JSON).
+   */
+  private Map<String, UUID> resolveTableIds(
+      List<Table> batch, Map<UUID, Set<String>> referredByTable) {
+    Set<String> wanted =
+        referredByTable.values().stream().flatMap(Set::stream).collect(Collectors.toSet());
+    Map<String, UUID> fqnToId = new HashMap<>();
+    batch.stream()
+        .filter(table -> wanted.contains(table.getFullyQualifiedName()))
+        .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    List<String> missing = wanted.stream().filter(fqn -> !fqnToId.containsKey(fqn)).toList();
+    if (!missing.isEmpty()) {
+      findByNames(missing, ALL)
+          .forEach(table -> fqnToId.put(table.getFullyQualifiedName(), table.getId()));
+    }
+    return fqnToId;
   }
 
   @Override
@@ -2413,6 +2511,11 @@ public class TableRepository extends EntityRepository<Table> {
           "tableType",
           () -> recordChange("tableType", origTable.getTableType(), updatedTable.getTableType()));
       compareAndUpdate(
+          "tableSharding",
+          () ->
+              recordChange(
+                  "tableSharding", origTable.getTableSharding(), updatedTable.getTableSharding()));
+      compareAndUpdate(
           "dataModel",
           () -> recordChange("dataModel", origTable.getDataModel(), updatedTable.getDataModel()));
       compareAndUpdate(
@@ -2541,18 +2644,10 @@ public class TableRepository extends EntityRepository<Table> {
       List<TableConstraint> origConstraints = listOrEmpty(origTable.getTableConstraints());
       List<TableConstraint> updatedConstraints = listOrEmpty(updatedTable.getTableConstraints());
       origConstraints.sort(EntityUtil.compareTableConstraint);
-      origConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      origConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      origConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       updatedConstraints.sort(EntityUtil.compareTableConstraint);
-      updatedConstraints.stream().map(TableConstraint::getColumns).forEach(Collections::sort);
-      updatedConstraints.stream()
-          .filter(c -> c.getReferredColumns() != null)
-          .map(TableConstraint::getReferredColumns)
-          .forEach(Collections::sort);
+      updatedConstraints.forEach(EntityUtil::sortConstraintPairs);
 
       List<TableConstraint> added = new ArrayList<>();
       List<TableConstraint> deleted = new ArrayList<>();
@@ -3133,17 +3228,53 @@ public class TableRepository extends EntityRepository<Table> {
     }
     if (fieldsParam.contains("profile")) {
       setColumnProfile(singleton);
-      if (!fieldsParam.contains("tags")) {
-        populateEntityFieldTags(entityType, singleton, table.getFullyQualifiedName(), true);
-      }
-      if (piiOwners != null) {
-        PIIMasker.getTableProfile(piiOwners, singleton, authorizer, securityContext);
-      } else {
-        PIIMasker.getTableProfile(
-            table.getFullyQualifiedName(), singleton, authorizer, securityContext);
-      }
+      maskSingleColumnProfile(table, column, singleton, piiOwners, authorizer, securityContext);
     }
     return column;
+  }
+
+  /**
+   * Masking walks only the columns it is handed: a nested child alone cannot carry the
+   * {@code PII.Sensitive} tag an ancestor column above it holds, so the ancestors are resolved out
+   * of the table's columns and their tags hydrated for the decision.
+   */
+  private void maskSingleColumnProfile(
+      Table table,
+      Column column,
+      List<Column> singleton,
+      List<EntityReference> piiOwners,
+      Authorizer authorizer,
+      SecurityContext securityContext) {
+    List<Column> ancestors = columnAncestors(table, column);
+    // Hydrating the ancestors flattens to the child's own subtree, so no second pass is needed;
+    // with none resolved, only the column itself has to be hydrated before the masker decides.
+    populateEntityFieldTags(
+        entityType,
+        nullOrEmpty(ancestors) ? singleton : ancestors,
+        table.getFullyQualifiedName(),
+        true);
+    if (piiOwners != null) {
+      PIIMasker.getSingleColumnProfile(piiOwners, ancestors, column, authorizer, securityContext);
+    } else {
+      PIIMasker.getSingleColumnProfile(
+          table.getFullyQualifiedName(), ancestors, column, authorizer, securityContext);
+    }
+  }
+
+  private List<Column> columnAncestors(Table table, Column column) {
+    String tableFqn = FullyQualifiedName.getTableFQN(column.getFullyQualifiedName());
+    if (tableFqn.equals(column.getFullyQualifiedName())) {
+      return List.of();
+    }
+    List<Column> columnChain =
+        ColumnUtil.resolveColumnChainByPath(
+            table.getColumns(), column.getFullyQualifiedName().substring(tableFqn.length() + 1));
+    if (columnChain.size() > 1 && columnChain.getLast() == column) {
+      return new ArrayList<>(columnChain.subList(0, columnChain.size() - 1));
+    }
+    // A single-element resolution names the column itself (no chain above it); anything whose leaf
+    // is not the requested column matched a different node, and both leave no ancestor context.
+    return List.of();
   }
 
   private static void validateTableColumns(List<Column> columns) {
@@ -3682,5 +3813,11 @@ public class TableRepository extends EntityRepository<Table> {
         pipelineFqn,
         indexName,
         docId);
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Table table) {
+    return Map.of("columns", listOrEmpty(table.getColumns()));
   }
 }

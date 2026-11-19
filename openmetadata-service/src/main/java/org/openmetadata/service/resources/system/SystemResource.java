@@ -110,6 +110,7 @@ import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
 import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -555,17 +556,12 @@ public class SystemResource {
                     schema = @Schema(implementation = Settings.class)))
       })
   public Settings getProfilerConfigurationSetting(
-      @Context UriInfo uriInfo,
-      @Context SecurityContext securityContext,
-      @Parameter(
-              description = "Entity type for which to get the global profiler configuration",
-              schema = @Schema(type = "string"))
-          @QueryParam("entityType")
-          @DefaultValue("table")
-          String entityType) {
-    ResourceContext resourceContext = new ResourceContext(entityType);
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    // One global setting, so one resource decides it: a caller-chosen type would let a policy on
+    // tables be stepped around by asking as another type.
+    ResourceContext resourceContext = new ResourceContext(Entity.TABLE);
     OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
+        new OperationContext(Entity.TABLE, MetadataOperation.VIEW_PROFILER_GLOBAL_CONFIGURATION);
     authorizer.authorize(securityContext, operationContext, resourceContext);
     return systemRepository.getConfigWithKey(SettingsType.PROFILER_CONFIGURATION.value());
   }
@@ -922,6 +918,7 @@ public class SystemResource {
 
   @PUT
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "updateSecurityConfig",
       summary = "Update complete security configuration",
@@ -1074,6 +1071,7 @@ public class SystemResource {
 
   @PATCH
   @Path("/security/config")
+  @IdentityEndpoint
   @Operation(
       operationId = "patchSecurityConfig",
       summary = "Patch security configuration",

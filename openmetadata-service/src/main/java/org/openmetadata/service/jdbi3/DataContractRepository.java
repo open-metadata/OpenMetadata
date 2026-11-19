@@ -1598,7 +1598,10 @@ public class DataContractRepository extends EntityRepository<DataContract> {
 
   private void updateLatestResult(DataContract dataContract, DataContractResult result) {
     try {
-      DataContract updated = JsonUtils.deepCopy(dataContract, DataContract.class);
+      // Callers pass contracts loaded without owners/reviewers/extension. The updater diffs every
+      // patch field, so a field missing here would be recorded as deleted (#34343).
+      DataContract original = get(null, dataContract.getId(), getPatchFields());
+      DataContract updated = JsonUtils.deepCopy(original, DataContract.class);
       updated.setLatestResult(
           new LatestResult()
               .withTimestamp(result.getTimestamp())
@@ -1606,7 +1609,7 @@ public class DataContractRepository extends EntityRepository<DataContract> {
               .withMessage(result.getResult())
               .withResultId(result.getId()));
       EntityRepository.EntityUpdater entityUpdater =
-          getUpdater(dataContract, updated, EntityRepository.Operation.PATCH, null);
+          getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
       entityUpdater.update();
     } catch (Exception e) {
       LOG.error(

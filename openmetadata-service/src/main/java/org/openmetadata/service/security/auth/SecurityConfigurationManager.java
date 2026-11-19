@@ -77,7 +77,7 @@ public class SecurityConfigurationManager {
   private OpenMetadataApplication application;
   private Environment environment;
   private OpenMetadataApplicationConfig config;
-  @Getter private AuthenticatorHandler authenticatorHandler;
+  @Getter private volatile AuthenticatorHandler authenticatorHandler;
 
   private SecurityConfigurationManager() {}
 

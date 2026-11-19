@@ -175,6 +175,7 @@ jest.mock(
       .fn()
       .mockImplementation(
         ({
+          data,
           isAdditionalValidationPending,
           onSave,
           onValidateAdditionalRequiredFields,
@@ -188,7 +189,14 @@ jest.mock(
           return (
             <div>
               <button
-                onClick={() => onSave({ formData: { host: 'localhost' } })}>
+                onClick={() =>
+                  onSave({
+                    formData: {
+                      ...data?.connection?.config,
+                      host: 'localhost',
+                    },
+                  })
+                }>
                 Save Connection
               </button>
               <button
@@ -312,6 +320,68 @@ describe('AddServicePage', () => {
   afterEach(() => {
     jest.useRealTimers();
     jest.clearAllMocks();
+  });
+
+  it('creates BigQuery connections without pipeline sharding settings', async () => {
+    const supported = serviceUtilClassBaseModule.default
+      .getSupportedServiceFromList as jest.Mock;
+    const configData = serviceUtilClassBaseModule.default
+      .getServiceConfigData as jest.Mock;
+    supported.mockReturnValue({
+      databaseServices: ['mysql', 'BigQuery'],
+      dashboardServices: ['Looker'],
+    });
+    configData.mockImplementation(
+      ({ serviceName, serviceType, configData: config }) => ({
+        name: serviceName,
+        serviceType,
+        connection: { config },
+      })
+    );
+    try {
+      await act(async () => {
+        render(<AddServicePage {...mockProps} />, {
+          wrapper: ({ children }) => (
+            <MemoryRouter
+              initialEntries={[
+                {
+                  pathname: '/add-service',
+                  state: { serviceType: 'BigQuery' },
+                },
+              ]}>
+              {children}
+            </MemoryRouter>
+          ),
+        });
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Set Service Name'));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText('Save Connection'));
+      });
+      await act(async () => {
+        fireEvent.click(await screen.findByText('Save Filters'));
+      });
+
+      expect(postService).toHaveBeenCalledWith(
+        'databaseServices',
+        expect.objectContaining({
+          serviceType: 'BigQuery',
+          connection: {
+            config: expect.not.objectContaining({
+              shardedTables: expect.anything(),
+            }),
+          },
+        })
+      );
+    } finally {
+      supported.mockReturnValue({
+        databaseServices: ['mysql'],
+        dashboardServices: ['Looker'],
+      });
+      configData.mockReset();
+    }
   });
 
   it('should render the component', async () => {

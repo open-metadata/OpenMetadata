@@ -51,10 +51,13 @@ export const SAML_VISIBLE_FIELDS = [
   'SP Private Key',
   'Debug Mode',
   'Strict Mode',
-  'Want Assertions Signed',
-  'Want Messages Signed',
   'Send Signed Auth Request',
   'Allowed Domains',
+];
+
+export const SAML_STRICT_MODE_FIELDS = [
+  'Want Assertions Signed',
+  'Want Messages Signed',
 ];
 
 export const LDAP_VISIBLE_FIELDS = [

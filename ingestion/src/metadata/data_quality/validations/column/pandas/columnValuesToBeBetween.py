@@ -15,7 +15,7 @@ Validator for column values to be between test case
 
 from collections import defaultdict
 from datetime import datetime
-from typing import List, Optional, cast  # noqa: UP035
+from typing import List, cast  # noqa: UP035
 
 import pandas as pd
 
@@ -57,14 +57,14 @@ class ColumnValuesToBeBetweenValidator(
 ):
     """Validator for column values to be between test case"""
 
-    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> Optional[int]:  # noqa: UP045
+    def _run_results(self, metric: Metrics, column: SQALikeColumn) -> int | datetime | None:
         """compute result of the test case
 
         Args:
             metric: metric
             column: column
         """
-        return self.run_dataframe_results(self.runner, metric, column)
+        return self.run_dataframe_results(self.runner, metric, column, preserve_datetime=True)
 
     def _build_dimension_metric_values(self, row, metrics_to_compute, test_params=None):
         metric_values = self._build_metric_values_from_row(row, metrics_to_compute, test_params)

@@ -32,6 +32,7 @@ logger = test_suite_logger()
 RESERVED_PARAMS = {"table_name"}
 
 DATABASES_WITHOUT_DATABASE_CONCEPT = {
+    DatabaseServiceType.Athena.value,
     DatabaseServiceType.Mysql.value,
     DatabaseServiceType.MariaDB.value,
     DatabaseServiceType.SQLite.value,
@@ -41,6 +42,8 @@ DATABASES_WITHOUT_DATABASE_CONCEPT = {
 
 class TableRuleLibrarySqlExpressionValidator(BaseTestValidator):
     """Validator for table-level SQL Expression based rules in the Rule Library."""
+
+    BYPASSES_SAMPLER = True
 
     runtime_params: RuleLibrarySqlExpressionRuntimeParameters
 

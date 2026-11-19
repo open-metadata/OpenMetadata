@@ -57,9 +57,9 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
-import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
@@ -68,7 +68,7 @@ import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
-import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
 import org.openmetadata.schema.type.csv.CsvErrorType;
@@ -131,10 +131,12 @@ public class UserRepository extends EntityRepository<User> {
   static final String TEAMS_FIELD = "teams";
   public static final String AUTH_MECHANISM_FIELD = "authenticationMechanism";
   public static final String ALLOW_IMPERSONATION_FIELD = "allowImpersonation";
+  // lastLoginTime and lastActivityTime are loaded so a PATCH or a soft delete writes them back
+  // instead of clearing them; a PUT keeps them in UserUpdater.
   static final String USER_PATCH_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences,lastLoginTime,lastActivityTime";
   static final String USER_UPDATE_FIELDS =
-      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences";
+      "profile,roles,teams,authenticationMechanism,isEmailVerified,personas,defaultPersona,domains,personaPreferences,lastLoginTime,lastActivityTime";
   private static final String OWNS_ENTITY_TYPE_PARAM = "ownsEntityType";
   private static final String DIRECT_OWNS_ONLY_PARAM = "directOwnsOnly";
   private volatile EntityReference organization;
@@ -749,13 +751,10 @@ public class UserRepository extends EntityRepository<User> {
    * Fields an authentication flow must load before it mutates a user and PUTs it back. {@code
    * createOrUpdate} compares the whole entity against the stored one, so any field {@link
    * #clearFields} nulls and the caller did not ask for is recorded as a deletion and erased --
-   * that is the user's teams, profile, authentication mechanism, personas and domains. The two
-   * login timestamps are added on top of the update fields because they live in the stored JSON
-   * but are not part of the PUT field set.
+   * that is the user's teams, profile, authentication mechanism, personas and domains.
    */
   public Fields getAuthUpdateFields() {
     Set<String> fields = new HashSet<>(putFields.getFieldList());
-    fields.addAll(Set.of("lastLoginTime", "lastActivityTime"));
     return new Fields(fields);
   }
 
@@ -1284,8 +1283,13 @@ public class UserRepository extends EntityRepository<User> {
       if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
         return;
       }
-      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      if (Boolean.TRUE.equals(user.getIsAdmin()) || isStoredAdmin(user)) {
         importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
+        processRecord = false;
+        return;
+      }
+      if (Boolean.TRUE.equals(user.getIsBot()) || isStoredBot(user)) {
+        importFailure(printer, privilegedFieldRequiresAdmin(6, "isBot"), csvRecord);
         processRecord = false;
         return;
       }
@@ -1293,6 +1297,16 @@ public class UserRepository extends EntityRepository<User> {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
       }
+    }
+
+    private static boolean isStoredAdmin(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
+    }
+
+    private static boolean isStoredBot(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsBot());
     }
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
@@ -1383,6 +1397,17 @@ public class UserRepository extends EntityRepository<User> {
     testCaseResolutionStatusRepository.cleanUpAssignees(user.getFullyQualifiedName());
   }
 
+  /**
+   * Every delete path runs this, including the bulk soft delete of a deleted bot's user that skips
+   * {@link #postDelete}, so the user's MCP grants end here. They are keyed by user name, so a later
+   * account with the same name would otherwise take them over.
+   */
+  @Override
+  protected void preDelete(User entity, String deletedBy) {
+    super.preDelete(entity, deletedBy);
+    daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(entity.getName());
+  }
+
   @Override
   protected void postDelete(User entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
@@ -1393,7 +1418,12 @@ public class UserRepository extends EntityRepository<User> {
     revokeLiveSessions(entity);
     // Lightweight app-managed table, no FK - clean up explicitly rather than via cascade.
     userPreferencesRepository.delete(entity.getId());
-    deleteSuggestionTasksForUser(entity);
+    if (hardDelete) {
+      // A soft delete can be restored, so the user's tasks must survive it. A permanent delete
+      // removes only the suggestions they created; their other tasks stay.
+      // ADR:2026-10-22-deleting-a-user-removes-only-their-suggestions-on-hard-delete
+      deleteSuggestionTasksForUser(entity);
+    }
 
     AsyncService.getInstance()
         .executeDatabaseTask(
@@ -1409,23 +1439,43 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
+   * Ends the sign-ins made with a user's previous password: refresh tokens, live sessions and MCP
+   * grants. Personal access tokens and bot tokens are credentials of their own and stay
+   * (ADR:2026-11-03-a-password-change-ends-the-users-sign-ins).
+   */
+  public void endSignIns(User user) {
+    endSignIns(user, AuthServeletHandlerRegistry.getSessionService());
+  }
+
+  /** For callers outside the server, such as the ops CLI, which build their own session service. */
+  public void endSignIns(User user, SessionService sessionService) {
+    Entity.getTokenRepository()
+        .deleteTokenByUserAndType(user.getId(), TokenType.REFRESH_TOKEN.toString());
+    daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(user.getName());
+    revokeLiveSessions(user, sessionService);
+  }
+
+  /**
    * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
    * user's existing session-bound tokens keep working until natural expiry (7 days by default)
    * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
    * sockets as well.
    */
   private void revokeLiveSessions(User entity) {
-    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    revokeLiveSessions(entity, AuthServeletHandlerRegistry.getSessionService());
+  }
+
+  private void revokeLiveSessions(User entity, SessionService sessionService) {
     if (sessionService == null || entity.getId() == null) {
       return;
     }
     try {
       int revoked = sessionService.revokeSessionsForUser(entity.getId().toString());
       if (revoked > 0) {
-        LOG.info("Revoked {} session(s) for deleted user {}", revoked, entity.getName());
+        LOG.info("Revoked {} session(s) for user {}", revoked, entity.getName());
       }
     } catch (Exception e) {
-      LOG.error("Failed to revoke sessions for deleted user {}", entity.getName(), e);
+      LOG.error("Failed to revoke sessions for user {}", entity.getName(), e);
     }
   }
 
@@ -1443,7 +1493,7 @@ public class UserRepository extends EntityRepository<User> {
                     event.getNumberOfRetryAttempts() + 1,
                     MAX_TASK_CLEANUP_RETRIES));
     String creatorId = entity.getId().toString();
-    String category = TaskCategory.MetadataUpdate.value();
+    String type = TaskEntityType.Suggestion.value();
     // Capture the (id, fqn) pairs *before* the bulk DELETE so we know which L1 Guava cache
     // entries to drop. The DELETE is a direct SQL update that bypasses EntityRepository.delete
     // and its cache-invalidate hook — without explicit eviction the next GET on a
@@ -1452,9 +1502,8 @@ public class UserRepository extends EntityRepository<User> {
     // GET /v1/tasks/name/{taskId} (CACHE_WITH_NAME-keyed); dropping only by id would leave a
     // by-name reader pinned to a stale entry.
     List<EntityDAO.EntityIdFqnPair> tasksToInvalidate =
-        daoCollection.taskDAO().listIdAndFqnByCreatorAndCategory(creatorId, category);
-    retry.executeRunnable(
-        () -> daoCollection.taskDAO().deleteByCreatorAndCategory(creatorId, category));
+        daoCollection.taskDAO().listIdAndFqnByCreatorAndType(creatorId, type);
+    retry.executeRunnable(() -> daoCollection.taskDAO().deleteByCreatorAndType(creatorId, type));
     if (!tasksToInvalidate.isEmpty()) {
       invalidateTaskCacheForIds(tasksToInvalidate);
     }
@@ -1572,6 +1621,12 @@ public class UserRepository extends EntityRepository<User> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // LowerCase Email
       updated.setEmail(original.getEmail().toLowerCase());
+      // The server records these on login and on each request, and a PUT body never carries them,
+      // so a PUT keeps the stored values instead of clearing them
+      // (ADR:2026-10-30-user-writes-keep-login-and-activity-times).
+      if (operation.isPut()) {
+        keepServerRecordedTimes();
+      }
       compareAndUpdate(
           "lastLoginTime",
           () ->
@@ -1611,6 +1666,15 @@ public class UserRepository extends EntityRepository<User> {
           () -> SubjectCache.invalidateUserContext(updated.getName()),
           "personas",
           "defaultPersona");
+    }
+
+    private void keepServerRecordedTimes() {
+      if (updated.getLastLoginTime() == null) {
+        updated.setLastLoginTime(original.getLastLoginTime());
+      }
+      if (updated.getLastActivityTime() == null) {
+        updated.setLastActivityTime(original.getLastActivityTime());
+      }
     }
 
     private void updateAllowImpersonation() {
@@ -1698,13 +1762,16 @@ public class UserRepository extends EntityRepository<User> {
       recordListChange(
           TEAMS_FIELD, origTeams, updatedTeams, added, deleted, EntityUtil.entityReferenceMatch);
 
-      // Update users and userCount in team search index
-      Stream.concat(added.stream(), deleted.stream())
-          .forEach(
-              teamRef -> {
-                EntityInterface team = Entity.getEntity(teamRef, "id,userCount", Include.ALL);
-                searchRepository.updateEntityIndex(team);
-              });
+      // The teams' user counts changed. Rebuild their documents from full reads: a team read with
+      // only its id and user count would blank the owners and domains in its document. There is
+      // no retry locator, because the rebuild files a retry for each document it fails to write.
+      List<EntityReference> changedTeams = Stream.concat(added.stream(), deleted.stream()).toList();
+      searchRepository.deferIfFlushScopeActive(
+          () -> searchRepository.updateEntitiesByReference(changedTeams),
+          "reindexChangedTeams",
+          null,
+          null,
+          Entity.TEAM);
     }
 
     private void updatePersonas(User original, User updated) {

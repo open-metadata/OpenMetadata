@@ -69,9 +69,9 @@ extension. The `OPTIONS` response is the only way to tell.
 
 ## What the image contains
 
-- **Fuseki 6.2.0** on `eclipse-temurin:21-jre-jammy`, downloaded from `archive.apache.org` and
-  verified against a pinned SHA-512 so a tampered mirror fails the build. 6.2.0 is pinned for
-  CVE-2026-61372 (SPARQL Update `LOAD` accepting local file URLs).
+- **Fuseki 6.2.0** on Ubuntu 22.04 with an Amazon Corretto 21 runtime, downloaded from
+  `archive.apache.org` and verified against a pinned SHA-512 so a tampered mirror fails the build.
+  6.2.0 is pinned for CVE-2026-61372 (SPARQL Update `LOAD` accepting local file URLs).
 - **The OpenMetadata Graph Store extension**, compiled in a second build stage against that exact
   `fuseki-server.jar` and refreshed into `$FUSEKI_BASE/extra/` by the entrypoint on every start.
 - **`config.ttl`**, the server assembler. `CMD` is already `./fuseki-server --config=/fuseki/config.ttl`.

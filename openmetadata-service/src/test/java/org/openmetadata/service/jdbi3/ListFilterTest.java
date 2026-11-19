@@ -1,12 +1,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
@@ -52,48 +57,6 @@ class ListFilterTest {
     // escape).
     assertEquals("a\\\\b", ListFilter.escape("a\\b"));
     assertEquals("a\\\\b\\_c", ListFilter.escape("a\\b_c"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_passesThroughPlainStrings() {
-    assertEquals("abcd", ListFilter.escapeForMySqlRegexReplacement("abcd"));
-    assertEquals("", ListFilter.escapeForMySqlRegexReplacement(""));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_doublesApostrophesOnce() {
-    // Apostrophes only matter for the SQL string-literal layer — REGEXP_REPLACE's
-    // replacement context doesn't reserve them. Expect a single ' → '' doubling.
-    assertEquals("a''b", ListFilter.escapeForMySqlRegexReplacement("a'b"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_quadruplesBackslashes() {
-    // One input backslash needs to round-trip to one literal backslash in the
-    // REGEXP_REPLACE output, so it must be FOUR backslashes in the emitted SQL text:
-    //   SQL text  : \\\\  (4 backslashes)
-    //   SQL parser: \\    (2 backslashes — '\\' is the SQL string-literal escape for '\')
-    //   regex eng : \     (1 backslash — '\\' in the regex replacement is a literal '\')
-    // Without the regex-replacement escape, the regex engine would interpret the lone
-    // remaining '\' as the start of an escape/backref sequence.
-    assertEquals("a\\\\\\\\b", ListFilter.escapeForMySqlRegexReplacement("a\\b"));
-    assertEquals("\\\\\\\\", ListFilter.escapeForMySqlRegexReplacement("\\"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_protectsBackreferenceLookalikes() {
-    // Without the extra regex-replacement layer, "\1" in the input would survive as "\1"
-    // in the regex replacement and be interpreted as a backreference to capture group 1
-    // (REGEXP_REPLACE doesn't have groups when called like updateFqn does, but the
-    // behaviour is implementation-defined — usually empty-string substitution). After
-    // the double escape it survives as a literal "\1" in the output.
-    assertEquals("\\\\\\\\1bar", ListFilter.escapeForMySqlRegexReplacement("\\1bar"));
-  }
-
-  @Test
-  void test_escapeForMySqlRegexReplacement_combinesBackslashAndApostrophe() {
-    // Backslashes get four-x'd, apostrophes double once.
-    assertEquals("a\\\\\\\\''b", ListFilter.escapeForMySqlRegexReplacement("a\\'b"));
   }
 
   @Test
@@ -541,5 +504,77 @@ class ListFilterTest {
     assertFalse(condition.contains("OR 1=1"), condition);
     assertTrue(condition.contains(":folderIdParam"), condition);
     assertEquals(hostile, filter.getQueryParam("folderIdParam"));
+  }
+
+  private static final String POSTGRES_ENTITY_LINK_HASH_CONDITION =
+      "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+  private static final String MYSQL_ENTITY_LINK_HASH_CONDITION = "entityLinkHash = :entityLinkHash";
+  private static final String ENTITY_LINK_CONDITION = "entityLink = :entityLink";
+  private static final String MD5_CALL = "md5(";
+  private static final String ENTITY_LINK_HASH_PARAM = "entityLinkHash";
+  private static final String WORKFLOW_INSTANCE_ID_PARAM = "workflowInstanceId";
+  private static final String WORKFLOW_INSTANCE_ID_CONDITION =
+      "workflowInstanceId = :workflowInstanceId";
+
+  /**
+   * The run list for an entity is only an index lookup when its condition is exactly the key of
+   * idx_wf_instance_entity_link from the 2.0.7 migration: md5(COALESCE(entityLink, '')) on
+   * PostgreSQL, the entityLinkHash virtual column on MySQL. Any drift in either text silently turns
+   * the lookup back into a scan of every run.
+   */
+  @Test
+  void entityLinkHashCondition_matchesTheEntityLinkIndexKeyOnEachDialect() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    filter.addQueryParam(ENTITY_LINK_HASH_PARAM, "0cc175b9c0f1b6a831c399e269772661");
+
+    final String postgres = filter.getCondition();
+    assertTrue(postgres.contains(POSTGRES_ENTITY_LINK_HASH_CONDITION));
+    assertTrue(postgres.contains(ENTITY_LINK_CONDITION));
+
+    try (MockedStatic<DatasourceConfig> ds = mockStatic(DatasourceConfig.class)) {
+      final DatasourceConfig mysqlConfig = mock(DatasourceConfig.class);
+      ds.when(DatasourceConfig::getInstance).thenReturn(mysqlConfig);
+      when(mysqlConfig.isMySQL()).thenReturn(true);
+      final String mysql = filter.getCondition();
+      assertTrue(mysql.contains(MYSQL_ENTITY_LINK_HASH_CONDITION));
+      assertFalse(mysql.contains(MD5_CALL));
+    }
+  }
+
+  @Test
+  void entityLinkHashCondition_absentWhenNotRequested() {
+    final ListFilter filter = new ListFilter(null);
+    filter.addQueryParam("entityLink", "<#E::glossaryTerm::g.t>");
+    assertFalse(filter.getCondition().contains(ENTITY_LINK_HASH_PARAM));
+  }
+
+  @Test
+  void workflowInstanceIdCondition_appliedOnlyWhenRequested() {
+    final ListFilter filter = new ListFilter(null);
+    assertFalse(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_PARAM));
+
+    filter.addQueryParam(WORKFLOW_INSTANCE_ID_PARAM, "11111111-1111-1111-1111-111111111111");
+    assertTrue(filter.getCondition().contains(WORKFLOW_INSTANCE_ID_CONDITION));
+  }
+
+  // A null include means "no deletion scoping" — an explicit ALL — never the no-arg
+  // NON_DELETED default, whose deleted clause is invalid on the time-series tables that
+  // have no deleted column. Consumers of getInclude() must never observe a null.
+  @Test
+  void aNullIncludeIsAnExplicitAllThatEmitsNoDeletedClause() {
+    final ListFilter filter = new ListFilter(null);
+
+    assertEquals(Include.ALL, filter.getInclude());
+    assertEquals("", filter.getIncludeCondition(null));
+    assertFalse(filter.getCondition().contains("deleted"));
+  }
+
+  @Test
+  void theNoArgConstructorKeepsTheNonDeletedDefaultForEntityTables() {
+    assertEquals(Include.NON_DELETED, new ListFilter().getInclude());
+    assertEquals("deleted = FALSE", new ListFilter().getIncludeCondition(null));
+    assertEquals("deleted = TRUE", new ListFilter(Include.DELETED).getIncludeCondition(null));
+    assertEquals("", new ListFilter(Include.ALL).getIncludeCondition(null));
   }
 }

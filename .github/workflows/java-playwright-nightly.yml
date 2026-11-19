@@ -99,7 +99,7 @@ on:
 
 permissions:
   contents: read
-  checks: write
+  checks: read
 
 concurrency:
   # One run per PR (or per ref for dispatch/cron); a new push cancels the prior in-flight run.
@@ -134,6 +134,7 @@ jobs:
           # On a PR, test the PR head (the changed code). workflow_dispatch honours the
           # dispatched ref so feature branches can validate the nightly matrix before merge.
           # Cron/anything else runs against main (EPIC #3731 / PR #28008).
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
@@ -222,6 +223,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
@@ -346,29 +348,6 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Publish Test Report
-        id: report
-        if: ${{ always() }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # mvn verify already fails the job on test failures. This step just
-          # publishes the check run with per-test details; it shouldn't itself
-          # gate the job conclusion (otherwise a flake here breaks Slack).
-          fail_on_test_failures: false
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
-
-      - name: Slack notification
-        if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
-        uses: slackapi/slack-github-action@v3.0.5
-        with:
-          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
-          webhook-type: incoming-webhook
-          payload: |
-            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Playwright Nightly (${{ matrix.searchEngine }}): ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        env:
-          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
-
   search-it-nightly:
     # Server-global destructive search ITs (tests/search/*IT.java): full reindex with
     # recreateIndex, alias swaps, and ES container pause. They mutate cluster-wide state, so
@@ -392,6 +371,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha || (github.event_name == 'workflow_dispatch' && github.ref || 'main') }}
 
       - name: Set up JDK 21
@@ -436,21 +416,18 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Publish Test Report
-        if: ${{ always() }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: false
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
-
+  notify:
+    needs: [ui-it-nightly, search-it-nightly]
+    if: ${{ always() && github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) }}
+    runs-on: ubuntu-latest
+    env:
+      SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+    steps:
       - name: Slack notification
-        if: ${{ always() && github.event_name != 'pull_request' && env.SLACK_JAVA_PLAYWRIGHT_URL != '' }}
+        if: env.SLACK_JAVA_PLAYWRIGHT_URL != ''
         uses: slackapi/slack-github-action@v3.0.5
         with:
           webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
           payload: |
-            text: "${{ job.status == 'success' && ':white_check_mark:' || ':fire:' }} Java Search ITs Nightly: ${{ job.status }}\nRef: ${{ github.ref_name }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-        env:
-          SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+            text: "Java Playwright: UI=${{ needs.ui-it-nightly.result }}, search=${{ needs.search-it-nightly.result }}. Logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

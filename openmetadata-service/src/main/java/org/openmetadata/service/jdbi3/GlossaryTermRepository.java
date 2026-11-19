@@ -115,6 +115,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
@@ -394,6 +395,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     descriptors.add(
         new PropagationDescriptor(
             FIELD_REVIEWERS, PropagationDescriptor.PropagationType.ENTITY_REFERENCE_LIST, null));
+    // Term labels on assets carry a copy of the term's style; propagateToRelatedEntities refreshes
+    // it.
+    descriptors.add(
+        new PropagationDescriptor(
+            Entity.FIELD_STYLE, PropagationDescriptor.PropagationType.EXTERNAL_HANDLER, null));
     descriptors.add(
         new PropagationDescriptor(
             FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
@@ -1067,6 +1073,11 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(GLOSSARY_TERM);
+  }
+
+  @Override
   public void setFullyQualifiedName(GlossaryTerm entity) {
     // Validate parent
     if (entity.getParent() == null) { // Glossary term at the root of the glossary
@@ -1090,6 +1101,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
+    // This endpoint only applies the term, so a term that is not Approved is refused outright.
+    TagLabelUtil.checkGlossaryTermsApproved(Set.of(term.getFullyQualifiedName()));
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();
@@ -1741,26 +1754,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       newAbout = new EntityLink(entityType, child.getFullyQualifiedName());
       feedRepository.updateLegacyThreadsAbout(newAbout.getLinkString(), child.getId().toString());
     }
-
-    // Task entities key tasks by aboutFqnHash (the about reference itself is stored as a
-    // relationship, not in the task JSON), and it is computed once at creation. Batch the hash
-    // rewrites for the moved term and every nested descendant.
-    Map<String, String> taskFqnHashUpdates = new HashMap<>();
-    taskFqnHashUpdates.put(
-        FullyQualifiedName.buildHash(oldFqn), FullyQualifiedName.buildHash(newFqn));
-    for (GlossaryTerm descendant : getNestedTerms(updated)) {
-      String descendantNewFqn = descendant.getFullyQualifiedName();
-      if (nullOrEmpty(descendantNewFqn) || !descendantNewFqn.startsWith(newFqn)) {
-        continue;
-      }
-      String descendantOldFqn = oldFqn + descendantNewFqn.substring(newFqn.length());
-      taskFqnHashUpdates.put(
-          FullyQualifiedName.buildHash(descendantOldFqn),
-          FullyQualifiedName.buildHash(descendantNewFqn));
-    }
-    updateTaskAboutFqnHashes(taskFqnHashUpdates);
-
-    repointWorkflowInstancesForFqnChange(GLOSSARY_TERM, oldFqn, newFqn);
   }
 
   private List<GlossaryTerm> getNestedTerms(GlossaryTerm glossaryTerm) {
@@ -2119,8 +2112,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
 
     @Override
-    protected void updateTags(
+    protected List<TagLabel> updateTags(
         String fqn, String fieldName, List<TagLabel> origTags, List<TagLabel> updatedTags) {
+      final List<TagLabel> requestedTags = updatedTags;
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
       origTags = listOrEmpty(origTags);
@@ -2155,6 +2149,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         updatedTags.sort(compareTagLabel);
         applyTags(updatedTags, fqn);
       }
+      return updatedTags.isEmpty() ? requestedTags : updatedTags;
     }
 
     private void updateSynonyms(GlossaryTerm origTerm, GlossaryTerm updatedTerm) {
@@ -2318,6 +2313,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       }
 
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     /**
@@ -2384,6 +2380,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       updateAssetIndexes(oldFqn, newFqn);
 
       finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
+      reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
     }
 
     private void validateParent() {

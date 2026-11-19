@@ -17,7 +17,7 @@
 #   - Tests run in isolation from the regular sharded Playwright E2E tests
 #
 # Triggers:
-#   - Pull requests with "safe to test" label (mock-oidc only, Chromium + WebKit)
+#   - Credential-free pull requests (mock-oidc only, Chromium + WebKit)
 #   - Manual trigger via workflow_dispatch (any SSO provider, Chromium + WebKit)
 #
 # Test Location:
@@ -27,9 +27,8 @@ name: SSO Playwright E2E Tests
 
 on:
   merge_group:
-  pull_request_target:
+  pull_request:
     types:
-      - labeled
       - opened
       - synchronize
       - reopened
@@ -68,23 +67,21 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: sso-playwright-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: true
 
 jobs:
   sso-auth-tests:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'sso-auth-tests (ignored label)' || 'sso-auth-tests' }}
-    runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    environment: test
+    runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'workflow_dispatch' || inputs.sso_provider == 'mock-oidc') }}
 
     strategy:
       fail-fast: false
       matrix:
-        provider: ${{ github.event_name == 'pull_request_target' && fromJSON('["mock-oidc"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["mock-oidc"]') }}
+        provider: [mock-oidc]
 
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -97,24 +94,6 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
 
       - name: Checkout
         uses: actions/checkout@v5
@@ -199,18 +178,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         timeout-minutes: 60
 
-      - name: Run SSO Authentication Tests
-        if: ${{ matrix.provider != 'mock-oidc' }}
-        working-directory: openmetadata-ui/src/main/resources/ui
-        run: npx playwright test --config=playwright.sso.config.ts --workers=1
-        env:
-          SSO_PROVIDER_TYPE: ${{ matrix.provider }}
-          SSO_USERNAME: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_USERNAME || matrix.provider == 'okta' && secrets.OKTA_SSO_USERNAME || matrix.provider == 'azure' && secrets.AZURE_SSO_USERNAME || matrix.provider == 'auth0' && secrets.AUTH0_SSO_USERNAME || matrix.provider == 'saml' && secrets.SAML_SSO_USERNAME || matrix.provider == 'cognito' && secrets.COGNITO_SSO_USERNAME || '' }}
-          SSO_PASSWORD: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_PASSWORD || matrix.provider == 'okta' && secrets.OKTA_SSO_PASSWORD || matrix.provider == 'azure' && secrets.AZURE_SSO_PASSWORD || matrix.provider == 'auth0' && secrets.AUTH0_SSO_PASSWORD || matrix.provider == 'saml' && secrets.SAML_SSO_PASSWORD || matrix.provider == 'cognito' && secrets.COGNITO_SSO_PASSWORD || '' }}
-          PLAYWRIGHT_IS_OSS: true
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        timeout-minutes: 60
-
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v6
@@ -269,10 +236,9 @@ jobs:
           sudo rm -rf "${PWD}/docker-volume"
 
   sso-summary:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'sso-summary (ignored label)' || 'sso-summary' }}
-    if: ${{ always() && github.event_name == 'pull_request_target' && (github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ always() && github.event_name == 'pull_request' }}
     needs: sso-auth-tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout trusted CI classifier
         uses: actions/checkout@v5
@@ -312,7 +278,7 @@ jobs:
           if-no-files-found: warn
           retention-days: 30
 
-      - name: Post SSO test summary as PR comment
+      - name: Write SSO test summary
         if: always()
         uses: actions/github-script@v8
         env:
@@ -467,28 +433,149 @@ jobs:
               core.warning(`Could not write the SSO Playwright job summary: ${error.message}`);
             }
 
-            try {
-              let existingComment = null;
-              for await (const response of github.paginate.iterator(
-                github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-              )) {
-                const found = response.data.find(c =>
-                  c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-                );
-                if (found) { existingComment = found; break; }
-              }
-
-              if (existingComment) {
-                await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-              } else {
-                await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
-              }
-            } catch (error) {
-              core.warning(`Could not publish the SSO Playwright PR comment: ${error.message}`);
-            }
-
             if (failed.length > 0 || infrastructureIssues.length > 0) {
               core.setFailed(
                 `${failed.length} SSO Playwright test failure(s); ${infrastructureIssues.length} pipeline/setup failure(s).`
               );
             }
+
+  sso-live-tests:
+    runs-on: ubuntu-24.04
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) && github.event_name == 'workflow_dispatch' && inputs.sso_provider != 'mock-oidc' }}
+    environment: test
+
+    strategy:
+      fail-fast: false
+      matrix:
+        provider: ${{ github.event_name == 'pull_request' && fromJSON('["mock-oidc"]') || github.event.inputs.sso_provider && fromJSON(format('["{0}"]', github.event.inputs.sso_provider)) || fromJSON('["mock-oidc"]') }}
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v5
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -i false"
+          ingestion_dependency: "all"
+          install-test-dependencies: "false"
+        env:
+          AUTHENTICATION_PROVIDER: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || 'basic' }}
+          CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: ${{ matrix.provider == 'mock-oidc' && 'mock-oidc' || '' }}
+          AUTHENTICATION_PUBLIC_KEYS: ${{ matrix.provider == 'mock-oidc' && '[http://localhost:9090/jwks,http://localhost:8585/api/v1/system/config/jwks]' || '[http://localhost:8585/api/v1/system/config/jwks]' }}
+          AUTHENTICATION_AUTHORITY: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090' || 'https://accounts.google.com' }}
+          AUTHENTICATION_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
+          AUTHENTICATION_CALLBACK_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || '' }}
+          AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING: ${{ matrix.provider == 'mock-oidc' && '[username:sub,email:email]' || '' }}
+          OIDC_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
+          OIDC_TYPE: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || '' }}
+          OIDC_CLIENT_SECRET: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test-secret' || '' }}
+          OIDC_DISCOVERY_URI: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090/.well-known/openid-configuration' || '' }}
+          OIDC_CALLBACK: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || 'http://localhost:8585/callback' }}
+          OIDC_SERVER_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585' || 'http://localhost:8585' }}
+          AUTHENTICATION_CLIENT_TYPE: ${{ matrix.provider == 'mock-oidc' && 'confidential' || 'public' }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn playwright install chromium webkit --with-deps
+
+      - name: Run SSO Authentication Tests
+        if: ${{ matrix.provider != 'mock-oidc' }}
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright test --config=playwright.sso.config.ts --workers=1
+        env:
+          SSO_PROVIDER_TYPE: ${{ matrix.provider }}
+          SSO_USERNAME: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_USERNAME || matrix.provider == 'okta' && secrets.OKTA_SSO_USERNAME || matrix.provider == 'azure' && secrets.AZURE_SSO_USERNAME || matrix.provider == 'auth0' && secrets.AUTH0_SSO_USERNAME || matrix.provider == 'saml' && secrets.SAML_SSO_USERNAME || matrix.provider == 'cognito' && secrets.COGNITO_SSO_USERNAME || '' }}
+          SSO_PASSWORD: ${{ matrix.provider == 'google' && secrets.GOOGLE_SSO_PASSWORD || matrix.provider == 'okta' && secrets.OKTA_SSO_PASSWORD || matrix.provider == 'azure' && secrets.AZURE_SSO_PASSWORD || matrix.provider == 'auth0' && secrets.AUTH0_SSO_PASSWORD || matrix.provider == 'saml' && secrets.SAML_SSO_PASSWORD || matrix.provider == 'cognito' && secrets.COGNITO_SSO_PASSWORD || '' }}
+          PLAYWRIGHT_IS_OSS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        timeout-minutes: 60
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v6
+        continue-on-error: true
+        with:
+          name: sso-auth-test-results-${{ matrix.provider }}
+          overwrite: true
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/sso-playwright-report
+            openmetadata-ui/src/main/resources/ui/playwright/output/sso-test-results
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Upload results JSON for summary
+        uses: actions/upload-artifact@v6
+        if: always()
+        with:
+          name: sso-results-json-${{ matrix.provider }}
+          overwrite: true
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/sso-results.json
+          retention-days: 1
+          if-no-files-found: ignore
+
+      - name: Collect failure diagnostics
+        if: failure() || cancelled()
+        continue-on-error: true
+        run: |
+          DIAGNOSTICS_DIR="${RUNNER_TEMP}/sso-playwright-ci-diagnostics"
+          mkdir -p "$DIAGNOSTICS_DIR"
+          df -h > "$DIAGNOSTICS_DIR/disk-usage.txt" 2>&1 || true
+          docker system df > "$DIAGNOSTICS_DIR/docker-disk-usage.txt" 2>&1 || true
+          if [ -f docker/development/docker-compose.yml ]; then
+            docker compose -f docker/development/docker-compose.yml --profile sso-test ps --all \
+              > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
+            docker compose -f docker/development/docker-compose.yml --profile sso-test logs --no-color --tail 5000 \
+              > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
+          fi
+
+      - name: Upload failure diagnostics
+        uses: actions/upload-artifact@v6
+        if: failure() || cancelled()
+        continue-on-error: true
+        with:
+          name: sso-playwright-ci-diagnostics-${{ matrix.provider }}
+          path: ${{ runner.temp }}/sso-playwright-ci-diagnostics
+          retention-days: 5
+          if-no-files-found: ignore
+
+      - name: Clean Up
+        if: always()
+        continue-on-error: true
+        run: |
+          cd ./docker/development
+          docker compose --profile sso-test down --remove-orphans 2>/dev/null || true
+          docker compose down --remove-orphans
+          sudo rm -rf "${PWD}/docker-volume"

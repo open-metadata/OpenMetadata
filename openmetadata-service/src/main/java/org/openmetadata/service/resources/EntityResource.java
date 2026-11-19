@@ -47,9 +47,11 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -59,6 +61,7 @@ import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -70,6 +73,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -96,6 +100,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -124,6 +129,7 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 @LatencyPhase
 public abstract class EntityResource<T extends EntityInterface, K extends EntityRepository<T>> {
+  private static final String INCLUDE_PERMISSIONS_PARAM = "includePermissions";
   protected final Class<T> entityClass;
   protected final String entityType;
   protected final Set<String> allowedFields;
@@ -210,6 +216,40 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     }
   }
 
+  /**
+   * When a list request opts in with {@code ?includePermissions=true}, attach each listed entity's
+   * permissions for the current user so the UI can render row-level actions without firing one
+   * permission call per entity. No-op (and zero cost) for the default listing.
+   */
+  public final ResultList<T> addPermissions(
+      UriInfo uriInfo, SecurityContext securityContext, ResultList<T> list) {
+    if (isPermissionsRequested(uriInfo) && !nullOrEmpty(list.getData())) {
+      list.setEntityPermissions(
+          PagePermissionsResolver.resolve(
+              authorizer, securityContext, entityType, repository, list.getData()));
+    }
+    return list;
+  }
+
+  private boolean isPermissionsRequested(UriInfo uriInfo) {
+    return Boolean.parseBoolean(uriInfo.getQueryParameters().getFirst(INCLUDE_PERMISSIONS_PARAM));
+  }
+
+  /** Cursor-paged list inputs, grouped so the paging helper stays within the parameter limit. */
+  private record CursorPage(
+      Fields fields, ListFilter filter, int limit, String before, String after) {}
+
+  private ResultList<T> listCursorPaged(
+      UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
+    ResultList<T> resultList =
+        page.before() != null // Reverse paging
+            ? repository.listBefore(
+                uriInfo, page.fields(), page.filter(), page.limit(), page.before())
+            : repository.listAfter(
+                uriInfo, page.fields(), page.filter(), page.limit(), page.after());
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
+  }
+
   public ResultList<T> listInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -250,14 +290,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    // List
-    ResultList<T> resultList;
-    if (before != null) { // Reverse paging
-      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else { // Forward paging or first page
-      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, resultList);
+    return listCursorPaged(
+        uriInfo, securityContext, new CursorPage(fields, filter, limitParam, before, after));
   }
 
   public ResultList<T> listInternal(
@@ -275,14 +309,8 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     // Add Domain Filter
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
-    // List
-    ResultList<T> resultList;
-    if (before != null) { // Reverse paging
-      resultList = repository.listBefore(uriInfo, fields, filter, limitParam, before);
-    } else { // Forward paging or first page
-      resultList = repository.listAfter(uriInfo, fields, filter, limitParam, after);
-    }
-    return addHref(uriInfo, resultList);
+    return listCursorPaged(
+        uriInfo, securityContext, new CursorPage(fields, filter, limitParam, before, after));
   }
 
   protected ResultList<T> searchInternal(
@@ -306,7 +334,7 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
 
     ResultList<T> resultList =
         repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
-    return addHref(uriInfo, resultList);
+    return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
   }
 
   public ResultList<T> listInternalFromSearch(
@@ -322,16 +350,18 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       List<AuthRequest> authRequests)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
-    return repository.listFromSearchWithOffset(
-        uriInfo,
-        fields,
-        searchListFilter,
-        limit,
-        offset,
-        searchSortFilter,
-        q,
-        queryString,
-        securityContext);
+    ResultList<T> resultList =
+        repository.listFromSearchWithOffset(
+            uriInfo,
+            fields,
+            searchListFilter,
+            limit,
+            offset,
+            searchSortFilter,
+            q,
+            queryString,
+            securityContext);
+    return addPermissions(uriInfo, securityContext, resultList);
   }
 
   public T getInternal(
@@ -462,7 +492,33 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getVersion(id, version);
+    T stored = repository.getVersion(id, version);
+    return snapshotRedaction(securityContext)
+        .map(redaction -> redaction.apply(stored))
+        .orElse(stored);
+  }
+
+  /**
+   * The versions and history endpoints return entities as they were stored, without the
+   * post-processing the entity's own reads apply. A resource whose entities carry secrets returns
+   * the redaction its reads apply; empty, the default, shows a stored snapshot unchanged.
+   */
+  protected Optional<UnaryOperator<T>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.empty();
+  }
+
+  /** Applies {@code redaction} to the entity a response carries, bare or inside a change event. */
+  @SuppressWarnings("unchecked")
+  protected final Response withRedactedEntity(Response response, UnaryOperator<T> redaction) {
+    Object body = response.getEntity();
+    if (entityClass.isInstance(body)) {
+      return Response.fromResponse(response).entity(redaction.apply((T) body)).build();
+    }
+    if (body instanceof ChangeEvent changeEvent
+        && entityClass.isInstance(changeEvent.getEntity())) {
+      changeEvent.setEntity(redaction.apply((T) changeEvent.getEntity()));
+    }
+    return response;
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
@@ -476,7 +532,20 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listVersions(id);
+    EntityHistory history = repository.listVersions(id);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setVersions(
+                    history.getVersions().stream()
+                        .map(
+                            version ->
+                                (Object)
+                                    JsonUtils.pojoToJson(
+                                        redaction.apply(
+                                            JsonUtils.readValue((String) version, entityClass))))
+                        .collect(Collectors.toList())));
+    return history;
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
@@ -490,7 +559,14 @@ public abstract class EntityResource<T extends EntityInterface, K extends Entity
     ResourceContext resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    ResultList<T> history =
+        repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setData(
+                    history.getData().stream().map(redaction).collect(Collectors.toList())));
+    return history;
   }
 
   public T getByNameInternal(

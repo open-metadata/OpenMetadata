@@ -234,6 +234,45 @@ class BuildEntityUrlHelperTest {
   }
 
   @Test
+  void task_linksToTheTasksTabOfItsAsset() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id",
+            UUID.randomUUID().toString(),
+            "fullyQualifiedName",
+            "TASK-00761",
+            "name",
+            "Approval required for ClaimEventFeature",
+            "about",
+            Map.of("type", "table", "fullyQualifiedName", "svc.db.sch.ClaimEventFeature"));
+
+    String url = extractHref(render(Entity.TASK, entity));
+
+    assertEquals(BASE_URL + "/table/svc.db.sch.ClaimEventFeature/activity_feed/tasks", url);
+  }
+
+  @Test
+  void task_aboutATestCase_linksToTheIssuesTab() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "fullyQualifiedName",
+            "TASK-00762",
+            "about",
+            Map.of("type", Entity.TEST_CASE, "fullyQualifiedName", "svc.db.sch.t.tc1"));
+
+    String url = extractHref(render(Entity.TASK, entity));
+
+    assertEquals(BASE_URL + "/test-case/svc.db.sch.t.tc1/issues", url);
+  }
+
+  @Test
+  void task_withoutAbout_hasNoLink() throws IOException {
+    String url = extractHref(renderFeedLink(Entity.TASK, "TASK-00761", "tasks"));
+
+    assertEquals("", url, () -> "2.0 has no task page, so /task(s)/{id} would 404: " + url);
+  }
+
+  @Test
   void testCaseResultLink_keepsResultsTabWithoutView() throws IOException {
     Map<String, Object> entity =
         Map.of(

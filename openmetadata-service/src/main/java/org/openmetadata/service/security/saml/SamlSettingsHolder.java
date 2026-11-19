@@ -15,8 +15,10 @@ package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -27,6 +29,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.SamlSecurityConfig;
+import org.openmetadata.catalog.type.ServiceProviderConfig;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
@@ -38,14 +41,9 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 public class SamlSettingsHolder {
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
-  private Map<String, Object> samlData;
-  private SettingsBuilder builder;
   @Getter private String relayState;
 
-  private SamlSettingsHolder() {
-    samlData = new HashMap<>();
-    builder = new SettingsBuilder();
-  }
+  private SamlSettingsHolder() {}
 
   public static SamlSettingsHolder getInstance() {
     return new SamlSettingsHolder();
@@ -55,12 +53,18 @@ public class SamlSettingsHolder {
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
         SecurityConfigurationManager.getCurrentAuthConfig().getSamlConfiguration();
-    if (samlData == null) {
-      samlData = new HashMap<>();
-    }
-    if (builder == null) {
-      builder = new SettingsBuilder();
-    }
+    relayState = samlConfig.getSp().getCallback();
+    saml2Settings = buildSettings(samlConfig);
+  }
+
+  /**
+   * Builds OneLogin settings for a SAML configuration without touching the process-wide settings.
+   * Login installs the result for the live configuration; the configuration check builds a throwaway
+   * one for a candidate, which must never replace the live settings.
+   */
+  public static Saml2Settings buildSettings(SamlSSOClientConfig samlConfig)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    Map<String, Object> samlData = new HashMap<>();
     // Lib Setting
     samlData.put(SettingsBuilder.DEBUG_PROPERTY_KEY, samlConfig.getDebugMode());
 
@@ -76,7 +80,6 @@ public class SamlSettingsHolder {
         SettingsBuilder.SP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
     samlData.put(SettingsBuilder.SP_NAMEIDFORMAT_PROPERTY_KEY, samlConfig.getIdp().getNameId());
-    relayState = samlConfig.getSp().getCallback();
 
     // Idp Info
     samlData.put(SettingsBuilder.IDP_ENTITYID_PROPERTY_KEY, samlConfig.getIdp().getEntityId());
@@ -114,30 +117,57 @@ public class SamlSettingsHolder {
         "http://www.w3.org/2001/04/xmldsig-more#rsa-sha256");
     samlData.put(
         SettingsBuilder.SECURITY_DIGEST_ALGORITHM, "http://www.w3.org/2001/04/xmlenc#sha256");
-    if (securityConfig.getSendSignedAuthRequest() || securityConfig.getWantAssertionEncrypted()) {
-      if (!CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
-          && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
-          && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {
-        KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(
-            new FileInputStream(securityConfig.getKeyStoreFilePath()),
-            securityConfig.getKeyStorePassword().toCharArray());
-        samlData.put(SettingsBuilder.KEYSTORE_KEY, keyStore);
-        samlData.put(SettingsBuilder.KEYSTORE_ALIAS, securityConfig.getKeyStoreAlias());
-        samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
-      } else if (!CommonUtil.nullOrEmpty(samlConfig.getSp().getSpX509Certificate())
-          || !CommonUtil.nullOrEmpty(samlConfig.getSp().getSpPrivateKey())) {
-        samlData.put(
-            SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, samlConfig.getSp().getSpPrivateKey());
-        samlData.put(
-            SettingsBuilder.SP_X509CERT_PROPERTY_KEY, samlConfig.getSp().getSpX509Certificate());
-      } else {
-        throw new IllegalArgumentException(
-            "Either Specify (KeyStoreFilePath, KeyStoreAlias and KeyStorePassword) or (Sp X509 Certificate and Private Key) as one of both is mandatory.");
-      }
-    }
+    putSpCredentials(samlData, samlConfig.getSp(), securityConfig);
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
-    saml2Settings = builder.fromValues(samlData).build();
+    return new SettingsBuilder().fromValues(samlData).build();
+  }
+
+  /**
+   * Gives java-saml the SP certificate and key whenever they are configured, not only when this SP
+   * signs requests or demands encryption: an identity provider can encrypt assertions on its own, as
+   * Microsoft Entra does once token encryption is on, and java-saml decrypts them with this key. The
+   * keystore is still read only when signing or encryption needs it.
+   */
+  private static void putSpCredentials(
+      Map<String, Object> samlData, ServiceProviderConfig sp, SamlSecurityConfig securityConfig)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    boolean credentialsRequired =
+        securityConfig.getSendSignedAuthRequest() || securityConfig.getWantAssertionEncrypted();
+    if (credentialsRequired && hasKeyStore(securityConfig)) {
+      KeyStore keyStore =
+          loadKeyStore(
+              securityConfig.getKeyStoreFilePath(),
+              securityConfig.getKeyStorePassword().toCharArray());
+      samlData.put(SettingsBuilder.KEYSTORE_KEY, keyStore);
+      samlData.put(SettingsBuilder.KEYSTORE_ALIAS, securityConfig.getKeyStoreAlias());
+      samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
+    } else if (hasPemCredentials(sp)) {
+      samlData.put(SettingsBuilder.SP_PRIVATEKEY_PROPERTY_KEY, sp.getSpPrivateKey());
+      samlData.put(SettingsBuilder.SP_X509CERT_PROPERTY_KEY, sp.getSpX509Certificate());
+    } else if (credentialsRequired) {
+      throw new IllegalArgumentException(
+          "Either Specify (KeyStoreFilePath, KeyStoreAlias and KeyStorePassword) or (Sp X509 Certificate and Private Key) as one of both is mandatory.");
+    }
+  }
+
+  private static boolean hasKeyStore(SamlSecurityConfig securityConfig) {
+    return !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
+        && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
+        && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias());
+  }
+
+  private static boolean hasPemCredentials(ServiceProviderConfig sp) {
+    return !CommonUtil.nullOrEmpty(sp.getSpX509Certificate())
+        || !CommonUtil.nullOrEmpty(sp.getSpPrivateKey());
+  }
+
+  private static KeyStore loadKeyStore(String filePath, char[] password)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    try (InputStream inputStream = Files.newInputStream(Path.of(filePath))) {
+      KeyStore keyStore = KeyStore.getInstance("JKS");
+      keyStore.load(inputStream, password);
+      return keyStore;
+    }
   }
 
   public static void setSaml2Settings(Saml2Settings settings) {

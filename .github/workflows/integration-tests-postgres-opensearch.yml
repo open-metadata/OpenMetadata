@@ -32,17 +32,17 @@ on:
       - "bootstrap/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-postgres-opensearch.yml"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
   pull-requests: read
-  checks: write
+  checks: read
 
 concurrency:
   group: integration-tests-pg-os-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: true
 jobs:
   # Detect whether relevant paths changed. When no matching files are modified
   # the downstream job is skipped via its `if` condition.
@@ -51,8 +51,8 @@ jobs:
     name: Detect Changes
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    # pull_request_target uses the GitHub API and does not require a checkout. Merge
+    if: ${{ !github.event.pull_request.draft }}
+    # pull_request uses the GitHub API and does not require a checkout. Merge
     # queue runs check out the merge-queue commit so dorny can diff against
     # merge_group.base_sha and skip the heavy work when nothing backend-relevant
     # changed. Push and workflow_dispatch remain force-true — push is already
@@ -70,7 +70,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -97,23 +97,6 @@ jobs:
     timeout-minutes: 60
     if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true
 
       - name: Checkout
         uses: actions/checkout@v5
@@ -409,23 +392,11 @@ jobs:
           docker compose down --remove-orphans
           sudo rm -rf "${PWD}/docker-volume"
 
-      - name: Publish Test Report
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ScalableCapital/action-surefire-report@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          check_name: Integration Test Report (postgres-opensearch, ${{ matrix.lane.name }})
-          fail_on_test_failures: false
-          fail_if_no_tests: false
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
-
   integration-tests-postgres-opensearch:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'integration-tests-postgres-opensearch (ignored label)' || 'integration-tests-postgres-opensearch' }}
     needs: [changes, integration-test-build, integration-test-lanes]
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ always() && !github.event.pull_request.draft }}
     steps:
       - name: Verify Maven Integration Test Lanes
         env:

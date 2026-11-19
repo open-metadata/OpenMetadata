@@ -106,6 +106,8 @@ public class WorkflowRepository extends EntityRepository<Workflow> {
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      // Trigger authorization and stored credentials are bound to the original execution inputs.
+      updated.withWorkflowType(original.getWorkflowType()).withRequest(original.getRequest());
       compareAndUpdate(
           "status", () -> recordChange("status", original.getStatus(), updated.getStatus()));
       compareAndUpdate(

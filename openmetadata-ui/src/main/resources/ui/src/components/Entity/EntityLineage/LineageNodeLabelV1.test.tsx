@@ -186,6 +186,38 @@ describe('LineageNodeLabelV1', () => {
       expect(screen.getByText('shopify')).toBeInTheDocument();
     });
 
+    it('should render only the name for a temp table node', () => {
+      render(
+        <LineageNodeLabelV1
+          node={{
+            ...mockBasicNode,
+            fullyQualifiedName: 'sample_data.ecommerce_db.tmp_order_staging',
+            isTempTable: true,
+            name: 'tmp_order_staging',
+          }}
+        />
+      );
+
+      expect(
+        screen.getByTestId('entity-header-display-name')
+      ).toHaveTextContent('tmp_order_staging');
+      expect(
+        screen.queryByTestId('lineage-breadcrumbs')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not render breadcrumbs when every segment is empty', () => {
+      render(
+        <LineageNodeLabelV1
+          node={{ ...mockBasicNode, fullyQualifiedName: '..orphan' }}
+        />
+      );
+
+      expect(
+        screen.queryByTestId('lineage-breadcrumbs')
+      ).not.toBeInTheDocument();
+    });
+
     it('should render dbt icon when node has dbt model', () => {
       render(
         <LineageNodeLabelV1

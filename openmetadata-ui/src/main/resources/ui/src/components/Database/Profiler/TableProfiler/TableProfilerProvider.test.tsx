@@ -177,6 +177,7 @@ describe('TableProfilerProvider', () => {
         entityLink: 'entityLink',
         fields: ['testCaseResult', 'incidentId', 'incidentStatus'],
         includeAllTests: true,
+        includePermissions: true,
         limit: 10,
         include: 'non-deleted',
       });
@@ -202,6 +203,7 @@ describe('TableProfilerProvider', () => {
         entityLink: 'entityLink',
         fields: ['testCaseResult', 'incidentId', 'incidentStatus'],
         includeAllTests: true,
+        includePermissions: true,
         limit: 10,
         include: 'deleted',
       });

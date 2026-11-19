@@ -18,6 +18,10 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  excludeGlossaryFromApprovalWorkflow,
+  includeGlossaryInApprovalWorkflow,
+} from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -98,6 +102,8 @@ test.describe(
         const { apiContext, afterAction } = await createNewPage(browser);
 
         await glossary.create(apiContext);
+        // Excluded until afterAll so a late approval run cannot overwrite the seeded statuses.
+        await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
         approvedParent = new GlossaryTerm(
           glossary,
@@ -174,6 +180,7 @@ test.describe(
 
     test.afterAll('Cleanup glossary', async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
+      await includeGlossaryInApprovalWorkflow(apiContext, glossary);
       await glossary.delete(apiContext);
       await afterAction();
     });

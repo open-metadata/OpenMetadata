@@ -38,9 +38,11 @@ import {
   calculateRowCountMetrics,
   calculateSystemMetrics,
 } from '../../../../../utils/TableProfilerUtils';
+import { isShardedTable } from '../../../../../utils/TableShardingUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import SummaryCardV1 from '../../../../common/SummaryCard/SummaryCardV1';
+import { ProfileExecutionSource } from '../../../../observability/profiler/ExecutionSource/ProfileExecutionSource';
 import CustomBarChart from '../../../../Visualisations/Chart/CustomBarChart';
 import { MetricChartType } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ProfilerDetailsCard from '../../ProfilerDetailsCard/ProfilerDetailsCard';
@@ -62,8 +64,10 @@ const TableProfilerChart = ({
     overallSummary,
     isProfilingEnabled,
     customMetric: tableCustomMetric,
+    table: contextTable,
   } = useTableProfiler();
 
+  const isSharded = isShardedTable(tableDetails ?? contextTable);
   const { fqn: datasetFQN } = useFqn();
 
   const dateRangeObject = useMemo(() => {
@@ -148,6 +152,12 @@ const TableProfilerChart = ({
   );
   const fetchSystemProfiler = useCallback(
     async (fqn: string, dateRangeObj: DateRangeObject) => {
+      if (isSharded) {
+        setShowSystemMetrics(false);
+        setIsSystemProfilerLoading(false);
+
+        return;
+      }
       setIsSystemProfilerLoading(true);
       try {
         const { data } = await getSystemProfileList(fqn, dateRangeObj);
@@ -163,7 +173,7 @@ const TableProfilerChart = ({
         setIsSystemProfilerLoading(false);
       }
     },
-    [operationMetrics]
+    [operationMetrics, isSharded]
   );
 
   const fetchProfilerData = useCallback(
@@ -222,17 +232,23 @@ const TableProfilerChart = ({
       <div
         className="tw:flex tw:flex-col tw:gap-[30px]"
         data-testid="table-profiler-chart-metrics">
+        <ProfileExecutionSource
+          isSharded={isSharded}
+          profiles={profileMetrics}
+        />
         <div data-testid="row-metrics">
           <ProfilerDetailsCard
             chartCollection={rowCountMetrics}
             chartType="area"
             isLoading={isTableProfilerLoading}
+            isSharded={isSharded}
             name="rowCount"
             noDataPlaceholderText={noProfilerMessage}
+            profiles={profileMetrics}
             title={t('label.data-volume')}
           />
         </div>
-        {showSystemMetrics && (
+        {!isSharded && showSystemMetrics && (
           <ProfilerStateWrapper
             dataTestId="operation-metrics"
             isLoading={isSystemProfilerLoading}
@@ -252,6 +268,8 @@ const TableProfilerChart = ({
           customMetrics={customMetrics}
           customMetricsGraphData={tableCustomMetricsProfiling}
           isLoading={isTableProfilerLoading || isSummaryLoading}
+          isSharded={isSharded}
+          profiles={profileMetrics}
         />
       </div>
     </div>

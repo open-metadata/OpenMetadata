@@ -26,6 +26,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -50,6 +51,8 @@ import org.openmetadata.service.apps.bundles.changeEvent.AlertPublisher;
 import org.openmetadata.service.audit.AuditLogConsumer;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.subscription.AlertUtil;
+import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EventSubscriptionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
@@ -75,6 +78,7 @@ import org.quartz.spi.TriggerFiredBundle;
 public class EventSubscriptionScheduler {
   public static final String ALERT_JOB_GROUP = "OMAlertJobGroup";
   public static final String ALERT_TRIGGER_GROUP = "OMAlertJobGroup";
+  static final int MAX_PENDING_EVALUATED = 500;
   private static EventSubscriptionScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler alertsScheduler;
@@ -367,44 +371,58 @@ public class EventSubscriptionScheduler {
             .eventSubscriptionDAO()
             .getSuccessfulRecordCount(subscriptionId.toString());
 
-    long unprocessedEventsCount = getRelevantUnprocessedEvents(subscriptionId);
-    long totalEventsCount = failedEventsCount + successfulEventsCount + unprocessedEventsCount;
+    PendingCount pending = countRelevantUnprocessedEvents(subscriptionId);
+    long totalEventsCount = failedEventsCount + successfulEventsCount + pending.count();
 
     return new EventsRecord()
         .withTotalEventsCount(totalEventsCount)
         .withFailedEventsCount(failedEventsCount)
-        .withPendingEventsCount(unprocessedEventsCount)
-        .withSuccessfulEventsCount(successfulEventsCount);
+        .withPendingEventsCount(pending.count())
+        .withSuccessfulEventsCount(successfulEventsCount)
+        .withCountsAreLowerBound(pending.lowerBound());
   }
 
-  public long getRelevantUnprocessedEvents(UUID subscriptionId) {
-    // Fetch subscription ONCE before the loop to avoid N+1 query problem
-    // Previously, getEventSubscription was called for each event in the stream
+  /** How many unread events the alert lets through, and whether more were left unevaluated. */
+  record PendingCount(long count, boolean lowerBound) {}
+
+  // Every unread event carries the whole entity that changed, so the count evaluates only the
+  // first MAX_PENDING_EVALUATED of them, read within the DAO's byte budget.
+  PendingCount countRelevantUnprocessedEvents(UUID subscriptionId) {
     EventSubscription subscription = getEventSubscription(subscriptionId);
-    FilteringRules filteringRules = subscription.getFilteringRules();
+    Optional<EventSubscriptionOffset> storedOffset = getEventSubscriptionOffset(subscriptionId);
+    ChangeEventDAO changeEventDAO = Entity.getCollectionDAO().changeEventDAO();
+    long latestOffset = changeEventDAO.getLatestOffset();
+    long offset = storedOffset.map(EventSubscriptionOffset::getCurrentOffset).orElse(latestOffset);
     Long startingTimestamp =
         AlertUtil.alertingWatermark(
             subscription,
-            getEventSubscriptionOffset(subscriptionId)
-                .map(EventSubscriptionOffset::getStartingTimestamp)
-                .orElse(null));
+            storedOffset.map(EventSubscriptionOffset::getStartingTimestamp).orElse(null));
+    FilteringRules filteringRules = subscription.getFilteringRules();
+    Predicate<ChangeEvent> relevant =
+        event ->
+            AlertUtil.isChangeEventAllowed(
+                event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR);
 
-    long offset =
-        getEventSubscriptionOffset(subscriptionId)
-            .map(EventSubscriptionOffset::getCurrentOffset)
-            .orElse(Entity.getCollectionDAO().changeEventDAO().getLatestOffset());
+    return countRelevant(
+        changeEventDAO.listWithOffsetWithinBudget(MAX_PENDING_EVALUATED, offset),
+        latestOffset,
+        relevant);
+  }
 
-    return Entity.getCollectionDAO().changeEventDAO().listUnprocessedEvents(offset).parallelStream()
-        .map(
-            eventJson -> {
-              ChangeEvent event = JsonUtils.readValue(eventJson, ChangeEvent.class);
-              return AlertUtil.isChangeEventAllowed(
-                      event, filteringRules, startingTimestamp, AlertUtil.LOG_EVALUATION_ERROR)
-                  ? event
-                  : null;
-            })
-        .filter(Objects::nonNull)
-        .count();
+  // Events written after latestOffset was read may fill the read in place of older ones, so they
+  // are not counted, and a count that stops at them is still exact.
+  static PendingCount countRelevant(
+      List<ChangeEventRecord> read, long latestOffset, Predicate<ChangeEvent> relevant) {
+    List<ChangeEventRecord> counted =
+        read.stream().takeWhile(row -> row.offset() <= latestOffset).toList();
+    long count =
+        counted.parallelStream()
+            .map(row -> JsonUtils.readValue(row.json(), ChangeEvent.class))
+            .filter(relevant)
+            .count();
+    boolean moreUnread =
+        counted.size() == read.size() && !read.isEmpty() && read.getLast().offset() < latestOffset;
+    return new PendingCount(count, moreUnread);
   }
 
   public EventSubscriptionDiagnosticInfo getEventSubscriptionDiagnosticInfo(

@@ -74,6 +74,7 @@ import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
+import { getSafeHttpUrl } from './StringUtils';
 import { getServiceIcon } from './TableUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -799,7 +800,7 @@ class SearchClassBase {
       const pageEntity = entity as KnowledgePageSearchSource;
       const isQuickLink = pageEntity.pageType === PageType.QUICK_LINK;
       const link = isQuickLink
-        ? (pageEntity?.page as QuickLink)?.url
+        ? getSafeHttpUrl((pageEntity?.page as QuickLink)?.url)
         : getKnowledgePagePath(pageEntity.fullyQualifiedName ?? '');
 
       return link ?? '';

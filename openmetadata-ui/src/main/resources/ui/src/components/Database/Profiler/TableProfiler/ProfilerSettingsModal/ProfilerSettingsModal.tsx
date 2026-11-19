@@ -95,6 +95,9 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const [isLoading, setIsLoading] = useState(false);
   const [isDataLoading, setIsDataLoading] = useState(true);
+  // The PUT replaces the stored config whole, so saving the defaults left by a
+  // failed load would wipe it.
+  const [isFetchFailed, setIsFetchFailed] = useState(false);
 
   const initialState: ProfilerSettingModalState = useMemo(
     () => ({
@@ -245,6 +248,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
 
   const fetchProfileConfig = async () => {
     setIsDataLoading(true);
+    setIsFetchFailed(false);
     try {
       const response = await getTableProfilerConfig(tableId);
       const { tableProfilerConfig } = response;
@@ -256,6 +260,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
         await updateInitialConfig(tableProfilerConfig);
       }
     } catch (error) {
+      setIsFetchFailed(true);
       showErrorToast(
         error as AxiosError,
         t('server.fetch-table-profiler-config-error')
@@ -456,6 +461,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
           {t('label.cancel')}
         </Button>
         <Button
+          disabled={isFetchFailed}
           form="profiler-setting-form"
           htmlType="submit"
           loading={isLoading}
@@ -466,11 +472,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     </div>
   );
 
-  const renderContent = isDataLoading ? (
-    <div className="profiler-settings-loader">
-      <Loader />
-    </div>
-  ) : (
+  const formContent = (
     <div className="profiler-settings-drawer-content new-form-style">
       <Row gutter={[16, 16]}>
         <Col data-testid="profile-sample-container" span={24}>
@@ -954,6 +956,34 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
     </div>
   );
 
+  const getContent = () => {
+    if (isDataLoading) {
+      return (
+        <div className="profiler-settings-loader">
+          <Loader />
+        </div>
+      );
+    }
+    if (isFetchFailed) {
+      return (
+        <Space
+          align="center"
+          className="w-full p-y-lg"
+          data-testid="profiler-settings-load-error"
+          direction="vertical">
+          <Typography.Text>
+            {t('server.fetch-table-profiler-config-error')}
+          </Typography.Text>
+          <Button type="primary" onClick={fetchProfileConfig}>
+            {t('label.try-again')}
+          </Button>
+        </Space>
+      );
+    }
+
+    return formContent;
+  };
+
   return (
     <Drawer
       destroyOnClose
@@ -975,7 +1005,7 @@ const ProfilerSettingsModal: React.FC<ProfilerSettingsModalProps> = ({
       title={t('label.setting-plural')}
       width="40%"
       onClose={handleCancel}>
-      {renderContent}
+      {getContent()}
     </Drawer>
   );
 };

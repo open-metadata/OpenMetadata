@@ -2962,6 +2962,24 @@ public class ContainerResourceIT extends BaseEntityIT<Container, CreateContainer
   }
 
   @Test
+  void patch_containerParent_cascadesFqnBelowAQuotedName_200(TestNamespace ns) {
+    StorageService service = StorageServiceTestFactory.createS3(ns);
+    Container parentA = createUnderService(ns, service, "quoteA");
+    Container parentB = createUnderService(ns, service, "quoteB");
+    // A dot makes the FQN segment quoted, and the JSON text escapes those quotes
+    Container child = createUnderParent(ns, service, parentA, "it's.quoted\\");
+    Container grandchild = createUnderParent(ns, service, child, "quoteGrandchild");
+
+    child.setParent(parentRefOf(parentB));
+    Container moved = patchEntity(child.getId().toString(), child);
+
+    Container refetchedGrand = getEntity(grandchild.getId().toString());
+    assertEquals(
+        moved.getFullyQualifiedName() + "." + grandchild.getName(),
+        refetchedGrand.getFullyQualifiedName());
+  }
+
+  @Test
   void patch_containerParent_cascadesToColumnFqns_200(TestNamespace ns) {
     StorageService service = StorageServiceTestFactory.createS3(ns);
     Container parentA = createUnderService(ns, service, "colA");

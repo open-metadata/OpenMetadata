@@ -26,8 +26,10 @@ import {
 } from '@tanstack/react-query';
 import {
   AlertCircle,
+  Archive,
   Check,
   ChevronDown,
+  Clock,
   CursorClick01,
   Download01,
   Edit03,
@@ -145,11 +147,48 @@ const METRIC_COLUMN_LABEL_KEYS: Record<MetricColumnId, string> = {
   updatedAt: 'label.last-updated',
 };
 
-const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
-  EntityStatus.Approved,
-  EntityStatus.InReview,
-  EntityStatus.Draft,
-];
+const METRIC_STATUS_CONFIG: Record<
+  EntityStatus,
+  { labelKey: string; className: string; Icon: typeof Check }
+> = {
+  [EntityStatus.Approved]: {
+    labelKey: 'label.approved',
+    className: 'metric-status-approved',
+    Icon: Check,
+  },
+  [EntityStatus.InReview]: {
+    labelKey: 'label.in-review',
+    className: 'metric-status-review',
+    Icon: AlertCircle,
+  },
+  [EntityStatus.Draft]: {
+    labelKey: 'label.draft',
+    className: 'metric-status-draft',
+    Icon: Edit03,
+  },
+  [EntityStatus.Rejected]: {
+    labelKey: 'label.rejected',
+    className: 'metric-status-rejected',
+    Icon: XClose,
+  },
+  [EntityStatus.Deprecated]: {
+    labelKey: 'label.deprecated',
+    className: 'metric-status-draft',
+    Icon: Trash01,
+  },
+  [EntityStatus.Archived]: {
+    labelKey: 'label.archived',
+    className: 'metric-status-draft',
+    Icon: Archive,
+  },
+  [EntityStatus.Unprocessed]: {
+    labelKey: 'label.unprocessed',
+    className: 'metric-status-draft',
+    Icon: Clock,
+  },
+};
+
+const METRIC_STATUS_FILTER_OPTIONS = Object.values(EntityStatus);
 
 const getInputChangeValue = (value: string | ChangeEvent<HTMLInputElement>) =>
   typeof value === 'string' ? value : value.target.value;
@@ -306,27 +345,11 @@ const MetricListPage = () => {
 
   const getMetricStatus = useCallback(
     (status?: EntityStatus) => {
-      switch (status) {
-        case EntityStatus.Approved:
-          return {
-            label: t('label.approved'),
-            className: 'metric-status-approved',
-            Icon: Check,
-          };
-        case EntityStatus.InReview:
-          return {
-            label: t('label.in-review'),
-            className: 'metric-status-review',
-            Icon: AlertCircle,
-          };
-        case EntityStatus.Draft:
-        default:
-          return {
-            label: t('label.draft'),
-            className: 'metric-status-draft',
-            Icon: Edit03,
-          };
-      }
+      const config =
+        (status && METRIC_STATUS_CONFIG[status]) ??
+        METRIC_STATUS_CONFIG[EntityStatus.Draft];
+
+      return { ...config, label: t(config.labelKey) };
     },
     [t]
   );

@@ -38,7 +38,7 @@ install_all:  ## Install the ingestion module with all dependencies
 
 .PHONY: install_apis
 install_apis:  ## Install the REST APIs module to the current environment
-	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ setuptools~=70.3.0
+	python -m pip install $(ROOT_DIR)/openmetadata-airflow-apis/ "setuptools>=83"
 
 .PHONY: static-checks
 static-checks:  ## Run basedpyright type checks (delegates to nox so local matches CI)

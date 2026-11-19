@@ -16,6 +16,7 @@ package org.openmetadata.service;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
 import com.fasterxml.jackson.databind.SerializationFeature;
+import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -107,6 +108,7 @@ import org.openmetadata.service.exception.CatalogGenericExceptionMapper;
 import org.openmetadata.service.exception.ConstraintViolationExceptionMapper;
 import org.openmetadata.service.exception.JsonMappingExceptionMapper;
 import org.openmetadata.service.exception.OMErrorPageHandler;
+import org.openmetadata.service.exception.RdfStorageMaintenanceExceptionMapper;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
@@ -179,6 +181,7 @@ import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.security.saml.OMMicrometerHttpFilter;
 import org.openmetadata.service.security.saml.SamlAssertionConsumerServlet;
+import org.openmetadata.service.security.saml.SamlLoginCompletionServlet;
 import org.openmetadata.service.security.saml.SamlLoginServlet;
 import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
@@ -195,6 +198,7 @@ import org.openmetadata.service.swagger.SwaggerBundle;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CustomParameterNameProvider;
+import org.openmetadata.service.util.PerRequestContextCleanupFilter;
 import org.openmetadata.service.util.incidentSeverityClassifier.IncidentSeverityClassifierInterface;
 import org.quartz.SchedulerException;
 
@@ -204,7 +208,7 @@ import org.quartz.SchedulerException;
     info =
         @Info(
             title = "OpenMetadata APIs",
-            version = "2.0.6",
+            version = "2.0.9",
             description = "Common types and API definition for OpenMetadata",
             contact =
                 @Contact(
@@ -413,6 +417,13 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // context) after every response so state cannot leak across requests that share a Jetty
     // worker thread. Non-HTTP pools clear the same set via PerRequestContextCleaner.
     environment.jersey().register(ImpersonationCleanupFilter.class);
+    // The same cleanup around servlets and filters outside Jersey. Prepended, so it runs before the
+    // filters registered earlier on the application context, including ones that answer without
+    // chaining.
+    environment
+        .servlets()
+        .addFilter("PerRequestContextCleanupFilter", new PerRequestContextCleanupFilter())
+        .addMappingForUrlPatterns(EnumSet.of(DispatcherType.REQUEST), false, "/*");
 
     // Blocks impersonated sessions from the identity-affecting endpoints (token mint/revoke,
     // password change, logout) - those call no authorizer, so nothing else would stop them.
@@ -696,6 +707,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     environment.jersey().register(new JsonProcessingExceptionMapper(false));
     environment.jersey().register(new EarlyEofExceptionMapper());
     environment.jersey().register(JsonMappingExceptionMapper.class);
+    environment.jersey().register(RdfStorageMaintenanceExceptionMapper.class);
   }
 
   private void registerMicrometerFilter(
@@ -755,6 +767,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/acs")) {
         contextHandler.addServlet(
             new ServletHolder(new SamlAssertionConsumerServlet()), "/api/v1/saml/acs");
+      }
+      if (!isSamlServletRegistered(contextHandler, SamlLoginCompletionServlet.PATH)) {
+        contextHandler.addServlet(
+            new ServletHolder(new SamlLoginCompletionServlet()), SamlLoginCompletionServlet.PATH);
       }
       if (!isSamlServletRegistered(contextHandler, "/api/v1/saml/metadata")) {
         contextHandler.addServlet(
@@ -904,10 +920,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
               config.getJwtTokenConfiguration());
 
       // Re-register authenticator with new config
-      registerAuthenticator(SecurityConfigurationManager.getInstance());
+      AuthenticatorHandler reloadedAuthenticator = authenticatorForCurrentProvider();
       reRegisterAuthorizer(config, environment);
       config.setAuthenticationConfiguration(SecurityConfigurationManager.getCurrentAuthConfig());
-      authenticatorHandler.init(config);
+      initializeThenPublish(reloadedAuthenticator, config);
+      authenticatorHandler = reloadedAuthenticator;
 
       // Reinitialize SAML settings if SAML is enabled
       if (SecurityConfigurationManager.getCurrentAuthConfig() != null
@@ -925,6 +942,18 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       // Rollback is handled internally by SecurityConfigurationManager
       throw new RuntimeException("Authentication system reinitialization failed", e);
     }
+  }
+
+  /**
+   * Registers an authenticator a reload built only once it is initialized, since logins read the
+   * registered one on every request. One that fails to start is never registered, so logins keep
+   * the previous authenticator while the reload rolls back.
+   */
+  @VisibleForTesting
+  static void initializeThenPublish(
+      AuthenticatorHandler authenticator, OpenMetadataApplicationConfig config) {
+    authenticator.init(config);
+    SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticator);
   }
 
   /**
@@ -1046,16 +1075,17 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   }
 
   private void registerAuthenticator(SecurityConfigurationManager catalogConfig) {
-    AuthenticationConfiguration authenticationConfiguration =
-        SecurityConfigurationManager.getCurrentAuthConfig();
-    switch (authenticationConfiguration.getProvider()) {
-      case BASIC -> authenticatorHandler = new BasicAuthenticator();
-      case LDAP -> authenticatorHandler = new LdapAuthenticator();
-      default ->
-      // For all other types, google, okta etc. auth is handled externally
-      authenticatorHandler = new NoopAuthenticator();
-    }
+    authenticatorHandler = authenticatorForCurrentProvider();
     SecurityConfigurationManager.getInstance().setAuthenticatorHandler(authenticatorHandler);
+  }
+
+  private static AuthenticatorHandler authenticatorForCurrentProvider() {
+    return switch (SecurityConfigurationManager.getCurrentAuthConfig().getProvider()) {
+      case BASIC -> new BasicAuthenticator();
+      case LDAP -> new LdapAuthenticator();
+        // For all other types, google, okta etc. auth is handled externally
+      default -> new NoopAuthenticator();
+    };
   }
 
   private void registerLimits(OpenMetadataApplicationConfig serverConfig)

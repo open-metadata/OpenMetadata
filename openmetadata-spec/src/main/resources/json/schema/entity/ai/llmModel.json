@@ -23,6 +23,7 @@
       ]
     },
     "modelCapability": {
+      "javaType": "org.openmetadata.schema.entity.ai.ModelCapability",
       "type": "string",
       "enum": ["TextGeneration", "CodeGeneration", "Embeddings", "Chat", "Vision", "Audio", "FunctionCalling", "ToolUse"]
     },

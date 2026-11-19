@@ -23,6 +23,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
@@ -31,7 +32,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -57,18 +58,22 @@ public class AIContextFinder {
   private static final int MAX_CONTENT_CHARS = 2000;
 
   private final SubjectContext subjectContext;
+  private final Predicate<KnowledgeItem> canView;
 
   public AIContextFinder() {
-    this(null);
+    this(null, item -> true);
   }
 
   /**
    * @param subjectContext the caller's subject, threaded into the candidate-asset search so
    *     glossary-routed candidates are RBAC-filtered to assets the caller can see. Null means
    *     server-internal use with no caller to scope to.
+   * @param canView the caller's per-item check; a knowledge hit it rejects is neither returned nor
+   *     routed to candidate assets.
    */
-  public AIContextFinder(SubjectContext subjectContext) {
+  public AIContextFinder(SubjectContext subjectContext, Predicate<KnowledgeItem> canView) {
     this.subjectContext = subjectContext;
+    this.canView = canView;
   }
 
   public record CandidateAsset(String fullyQualifiedName, String entityType, String via) {}
@@ -99,7 +104,9 @@ public class AIContextFinder {
    * article matches once per relevant chunk and would otherwise appear repeatedly, blowing the
    * caller's size budget with duplicates; first (highest-scoring) chunk wins. Type is part of the
    * key because knowledge types can share an FQN (a metric and a page both named "Revenue") — an
-   * FQN-only key would drop the second item along with the assets it routes to.
+   * FQN-only key would drop the second item along with the assets it routes to. A hit the caller
+   * cannot view is skipped before routing, so the assets it would route to are not suggested
+   * through it.
    */
   void collectHit(
       Map<String, Object> hit,
@@ -108,7 +115,7 @@ public class AIContextFinder {
     KnowledgeItem item = toKnowledgeItem(hit);
     if (item != null) {
       String itemKey = item.getType().value() + ":" + item.getFullyQualifiedName();
-      if (!items.containsKey(itemKey)) {
+      if (!items.containsKey(itemKey) && canView.test(item)) {
         items.put(itemKey, item);
         for (CandidateAsset asset : routeToAssets(hit, item)) {
           // FQNs are only unique per entity type (a chart and a dashboard under the same service
@@ -122,7 +129,7 @@ public class AIContextFinder {
   private VectorSearchResponse searchKnowledge(String query, int size) {
     VectorSearchResponse response = null;
     if (Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
-      OpenSearchVectorService service = OpenSearchVectorService.getInstance();
+      VectorIndexService service = Entity.getSearchRepository().getVectorIndexService();
       if (service != null) {
         try {
           // Over-fetch: collectHit dedupes chunk documents per FQN, so a long item occupying

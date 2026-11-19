@@ -32,6 +32,19 @@ describe('StorylaneTour', () => {
     expect(document.querySelector('.ant-spin')).toBeInTheDocument();
   });
 
+  it.each([
+    'javascript:alert(document.domain)',
+    'data:text/html,<script>alert(1)</script>',
+    'not-a-valid-url',
+  ])('should never load a non-web URL into the frame: %s', (url) => {
+    const { container } = render(
+      <StorylaneTour resource={createMockResource(url)} />
+    );
+
+    expect(container.querySelector('iframe')).toBeNull();
+    expect(screen.getByText('label.invalid-url')).toBeInTheDocument();
+  });
+
   it('should render iframe with correct URL', () => {
     const resource = createMockResource('https://app.storylane.io/demo/abc123');
     render(<StorylaneTour resource={resource} />);

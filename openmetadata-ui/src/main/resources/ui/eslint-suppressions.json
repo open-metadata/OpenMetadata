@@ -680,14 +680,6 @@
       "count": 1
     }
   },
-  "playwright/e2e/Flow/IngestionBot.spec.ts": {
-    "om-playwright/no-blanket-test-slow": {
-      "count": 1
-    },
-    "om-playwright/no-positional-locator": {
-      "count": 1
-    }
-  },
   "playwright/e2e/Flow/Metric.spec.ts": {
     "om-playwright/no-blanket-test-slow": {
       "count": 1

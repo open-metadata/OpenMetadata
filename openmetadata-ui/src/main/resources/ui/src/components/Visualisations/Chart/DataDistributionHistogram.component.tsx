@@ -42,10 +42,12 @@ import {
 import { CustomDQTooltip } from '../../../utils/DataQuality/CustomDQTooltip.component';
 import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import { ExecutionSource } from '../../observability/profiler/ExecutionSource/ExecutionSource';
 import { DataDistributionHistogramProps } from './Chart.interface';
 
 const DataDistributionHistogram = ({
   data,
+  isSharded,
   noDataPlaceholderText,
 }: DataDistributionHistogramProps) => {
   const { t } = useTranslation();
@@ -128,6 +130,10 @@ const DataDistributionHistogram = ({
                 }`}
               </Badge>
             </div>
+            <ExecutionSource
+              isSharded={isSharded}
+              source={columnProfile?.executionSource}
+            />
             <div className="tw:flex-1 tw:min-h-87.5">
               <ResponsiveContainer
                 debounce={200}

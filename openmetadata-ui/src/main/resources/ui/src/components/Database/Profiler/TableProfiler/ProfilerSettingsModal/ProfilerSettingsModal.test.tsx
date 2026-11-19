@@ -462,3 +462,72 @@ describe('ProfilerSettingsModal profile-sample round-trip', () => {
     expect(payload.profileSampleConfig).toBeUndefined();
   });
 });
+
+describe('ProfilerSettingsModal when the stored config fetch fails', () => {
+  beforeEach(() => {
+    cleanup();
+    jest.clearAllMocks();
+  });
+
+  it('hides the defaults-filled form and blocks the save', async () => {
+    (getTableProfilerConfig as jest.Mock).mockRejectedValueOnce(
+      new Error('Network Error')
+    );
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    expect(
+      await screen.findByTestId('profiler-settings-load-error')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('interval-type')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /save/i })).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    });
+
+    expect(putTableProfileConfig).not.toHaveBeenCalled();
+  });
+
+  it('saves the stored config, not the defaults, after a successful retry', async () => {
+    (getTableProfilerConfig as jest.Mock)
+      .mockRejectedValueOnce(new Error('Network Error'))
+      .mockResolvedValueOnce({
+        ...MOCK_TABLE,
+        tableProfilerConfig: mockTableProfilerConfig,
+      });
+
+    await act(async () => {
+      render(<ProfilerSettingsModal {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByRole('button', { name: 'label.try-again' })
+      );
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('interval-type')).toBeInTheDocument();
+    });
+
+    expect(screen.getByRole('button', { name: /save/i })).not.toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /save/i }));
+    });
+
+    await waitFor(() => {
+      expect(putTableProfileConfig).toHaveBeenCalled();
+    });
+
+    const payload = (putTableProfileConfig as jest.Mock).mock.calls[0][1];
+
+    expect(payload.profileQuery).toBe(mockTableProfilerConfig.profileQuery);
+    expect(payload.excludeColumns).toEqual(
+      mockTableProfilerConfig.excludeColumns
+    );
+  });
+});

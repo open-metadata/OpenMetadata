@@ -18,6 +18,10 @@ import {
   disableEtagConditionalReads,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import {
+  excludeGlossaryFromApprovalWorkflow,
+  includeGlossaryInApprovalWorkflow,
+} from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -201,6 +205,8 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
+    // Excluded until afterAll so a late approval run cannot overwrite the seeded statuses.
+    await excludeGlossaryFromApprovalWorkflow(apiContext, glossary);
 
     // Create 2 terms per status (10 terms total)
     for (const status of STATUSES_TO_TEST) {
@@ -224,6 +230,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   test.afterAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
+    await includeGlossaryInApprovalWorkflow(apiContext, glossary);
     await glossary.delete(apiContext);
     console.log('Deleted test glossary');
 

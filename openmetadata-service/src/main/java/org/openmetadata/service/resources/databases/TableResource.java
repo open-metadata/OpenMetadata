@@ -107,7 +107,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
   private final TableMapper mapper = new TableMapper();
   public static final String COLLECTION_PATH = "/v1/tables/";
   public static final String FIELDS =
-      "tableConstraints,tablePartition,usageSummary,owners,customMetrics,columns,sampleData,"
+      "tableConstraints,tablePartition,tableSharding,usageSummary,owners,customMetrics,columns,sampleData,"
           + "tags,followers,joins,schemaDefinition,dataModel,extension,testSuite,domains,dataProducts,lifeCycle,sourceHash";
 
   @Override

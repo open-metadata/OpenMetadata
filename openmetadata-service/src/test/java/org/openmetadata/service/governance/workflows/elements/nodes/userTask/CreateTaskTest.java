@@ -963,4 +963,25 @@ class CreateTaskTest {
     assertTrue(result instanceof DataAccessRequestPayload);
     assertEquals("policy override", ((DataAccessRequestPayload) result).getManualGrantReason());
   }
+
+  @Test
+  void rejectionThresholdNeverExceedsTheUsersAbleToVote() {
+    EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, List.of(owner)));
+  }
+
+  @Test
+  void approvalThresholdNeverExceedsTheUsersAbleToVote() {
+    EntityReference owner = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    EntityReference reviewer = new EntityReference().withId(UUID.randomUUID()).withType("user");
+    EntityReference team = new EntityReference().withId(UUID.randomUUID()).withType("team");
+
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, List.of(owner)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(3, List.of(owner, reviewer)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(owner, reviewer)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(owner, team)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of()));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, null));
+  }
 }

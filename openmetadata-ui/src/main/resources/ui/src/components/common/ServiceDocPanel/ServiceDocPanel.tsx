@@ -528,6 +528,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   const [connectorMarkdown, setConnectorMarkdown] = useState<string>('');
   const [isMarkdownReady, setIsMarkdownReady] = useState<boolean>(false);
   const markdownRequestIdRef = useRef(0);
+  const panelRef = useRef<HTMLDivElement>(null);
 
   const getActiveFieldName = useCallback(
     (activeFieldValue?: ServiceDocPanelProp['activeField']) => {
@@ -662,33 +663,48 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   );
 
   useEffect(() => {
-    if (!isMarkdownReady || focusedMode) {
+    if (!isMarkdownReady || focusedMode || !activeFieldName) {
       return;
     }
 
-    if (activeFieldName) {
-      // Use requestAnimationFrame to ensure DOM is ready
-      requestAnimationFrame(() => {
-        // Remove all previous highlights first
-        const previousHighlighted = document.querySelectorAll(
-          '[data-highlighted="true"]'
-        );
-        previousHighlighted.forEach((el) => {
-          (el as HTMLElement).dataset.highlighted = 'false';
+    const selector = `[data-id="${CSS.escape(activeFieldName)}"]`;
+    let observer: MutationObserver | undefined;
+
+    const highlight = () => {
+      const element = panelRef.current?.querySelector<HTMLElement>(selector);
+      if (!element) {
+        return false;
+      }
+
+      observer?.disconnect();
+      scrollDocElementIntoView(element, activeFieldName === 'selected-entity');
+      element.dataset.highlighted = 'true';
+
+      return true;
+    };
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    const frame = requestAnimationFrame(() => {
+      // Remove all previous highlights first
+      panelRef.current
+        ?.querySelectorAll<HTMLElement>('[data-highlighted="true"]')
+        .forEach((el) => {
+          el.dataset.highlighted = 'false';
         });
 
-        const element = document.querySelector(
-          `[data-id="${CSS.escape(activeFieldName)}"]`
-        );
-        if (element) {
-          scrollDocElementIntoView(
-            element as HTMLElement,
-            activeFieldName === 'selected-entity'
-          );
-          (element as HTMLElement).dataset.highlighted = 'true';
-        }
-      });
-    }
+      // The docs body is rendered by a lazily loaded editor, so a field
+      // focused right after the markdown arrives can find no section yet.
+      // Watch the panel until the section appears instead of giving up.
+      if (!highlight() && panelRef.current) {
+        observer = new MutationObserver(highlight);
+        observer.observe(panelRef.current, { childList: true, subtree: true });
+      }
+    });
+
+    return () => {
+      cancelAnimationFrame(frame);
+      observer?.disconnect();
+    };
   }, [activeFieldName, focusedMode, isMarkdownReady]);
 
   const displayMarkdown = useMemo(
@@ -929,7 +945,8 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
   return (
     <Row
       className={focusedMode ? 'service-doc-panel-focused' : undefined}
-      data-testid="service-requirements">
+      data-testid="service-requirements"
+      ref={panelRef}>
       <Col span={24}>{docsPanel}</Col>
     </Row>
   );

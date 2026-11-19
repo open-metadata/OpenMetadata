@@ -392,10 +392,34 @@ public class WorkflowHandler {
     }
   }
 
+  /** The main and trigger BPMN documents of a workflow, built before anything is undeployed. */
+  public record WorkflowBpmn(byte[] main, byte[] trigger) {}
+
+  public static WorkflowBpmn toBpmn(Workflow workflow) {
+    BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
+    return new WorkflowBpmn(
+        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel()),
+        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel()));
+  }
+
   public void deploy(Workflow workflow) {
+    deploy(workflow, toBpmn(workflow));
+  }
+
+  /**
+   * Removes every deployment and running instance of the workflow, then deploys it again. The BPMN is
+   * built first, so a definition that cannot be built leaves the current deployment in place.
+   */
+  public void redeploy(WorkflowDefinition workflowDefinition) {
+    Workflow workflow = new Workflow(workflowDefinition);
+    WorkflowBpmn bpmn = toBpmn(workflow);
+    deleteWorkflowDefinition(workflowDefinition);
+    deploy(workflow, bpmn);
+  }
+
+  private void deploy(Workflow workflow, WorkflowBpmn bpmn) {
     RepositoryService repositoryService = processEngine.getRepositoryService();
     ManagementService managementService = processEngine.getManagementService();
-    BpmnXMLConverter bpmnXMLConverter = new BpmnXMLConverter();
 
     // Before deploying, check if this is an update and handle timer jobs
     String triggerWorkflowKey = workflow.getTriggerWorkflow().getWorkflowName();
@@ -460,8 +484,7 @@ public class WorkflowHandler {
     }
 
     // Deploy Main Workflow
-    byte[] bpmnMainWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getMainWorkflow().getModel());
+    byte[] bpmnMainWorkflowBytes = bpmn.main();
     repositoryService
         .createDeployment()
         .addBytes(
@@ -471,8 +494,7 @@ public class WorkflowHandler {
         .deploy();
 
     // Deploy Trigger Workflow
-    byte[] bpmnTriggerWorkflowBytes =
-        bpmnXMLConverter.convertToXML(workflow.getTriggerWorkflow().getModel());
+    byte[] bpmnTriggerWorkflowBytes = bpmn.trigger();
     repositoryService
         .createDeployment()
         .addBytes(

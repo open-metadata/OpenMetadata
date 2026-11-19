@@ -25,6 +25,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
+import org.openmetadata.service.apps.bundles.searchIndex.ReindexingConfiguration;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.search.ReindexContext;
@@ -341,7 +342,8 @@ public class DistributedJobParticipant implements Managed {
                   : 100,
               job.getJobConfiguration().getPayLoadSize() != null
                   ? job.getJobConfiguration().getPayLoadSize()
-                  : SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES);
+                  : SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES,
+              ReindexingConfiguration.from(job.getJobConfiguration()).bulkRetryPolicy());
 
       int batchSize =
           job.getJobConfiguration().getBatchSize() != null

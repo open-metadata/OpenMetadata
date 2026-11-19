@@ -19,7 +19,10 @@ import java.util.List;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
+import org.jdbi.v3.sqlobject.SqlObjects;
+import org.openmetadata.service.jdbi3.CollectionDAO.RdfReindexLockDAO;
 import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.testcontainers.containers.GenericContainer;
@@ -75,16 +78,47 @@ final class RdfTestDatabase implements AutoCloseable {
     return jdbi;
   }
 
+  /** The production lock DAO, with each dialect's statements, over this database. */
+  RdfReindexLockDAO lockDao() {
+    return jdbi.onDemand(RdfReindexLockDAO.class);
+  }
+
   private void initializeSchema() {
+    jdbi.installPlugin(new SqlObjectPlugin());
+    jdbi.getConfig(SqlObjects.class)
+        .setSqlLocator(
+            new ConnectionAwareAnnotationSqlLocator(
+                backend == Backend.POSTGRES
+                    ? "org.postgresql.Driver"
+                    : "com.mysql.cj.jdbc.Driver"));
     createTable("1.3.0", "change_event_consumers");
     createTable("1.13.0", "rdf_index_job");
     createTable("1.13.0", "rdf_index_partition");
+    createTable("1.13.0", "rdf_reindex_lock");
     applyReleaseMigration();
     applyReleaseMigration();
+    applyTableChanges("2.0.8", "rdf_projection_health");
   }
 
   void applyReleaseMigration() {
     jdbi.useHandle(handle -> migrationStatements("2.0.2").forEach(handle::execute));
+    applyConsumerProtocolMigration();
+  }
+
+  void applyConsumerProtocolMigration() {
+    applyTableChanges("2.0.8", "rdf_live_write_guard");
+  }
+
+  /** Every statement of a release that names the table, in file order, on one connection. */
+  private void applyTableChanges(final String version, final String table) {
+    final List<String> changes =
+        migrationStatements(version).stream()
+            .filter(statement -> statement.contains(table))
+            .toList();
+    if (changes.isEmpty()) {
+      throw new IllegalStateException("Missing migration for " + table);
+    }
+    jdbi.useHandle(handle -> changes.forEach(handle::execute));
   }
 
   private void createTable(final String version, final String table) {

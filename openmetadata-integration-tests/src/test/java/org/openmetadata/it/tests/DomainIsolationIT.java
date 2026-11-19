@@ -2,6 +2,7 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -28,6 +29,8 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.classification.CreateClassification;
+import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
@@ -60,6 +64,8 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -135,6 +141,129 @@ public class DomainIsolationIT {
       assertFalse(
           dbGraphNodes.contains(t2.getFullyQualifiedName()),
           "DB-graph lineage must NOT expose foreign-domain node");
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_createInAnotherDomainsSchema_isDeniedEvenNamingTheCallersDomain(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      DatabaseSchema financeSchema = createSchemaInDomain(admin, p + "_f", finance, cleanup);
+      DatabaseSchema marketingSchema = createSchemaInDomain(admin, p + "_m", marketing, cleanup);
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              marketer
+                  .tables()
+                  .create(
+                      new CreateTable()
+                          .withName(p + "_naming_own")
+                          .withDatabaseSchema(financeSchema.getFullyQualifiedName())
+                          .withColumns(List.of(COLUMN))
+                          .withDomains(List.of(marketing.getFullyQualifiedName()))));
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              marketer
+                  .tables()
+                  .create(
+                      new CreateTable()
+                          .withName(p + "_naming_foreign")
+                          .withDatabaseSchema(marketingSchema.getFullyQualifiedName())
+                          .withColumns(List.of(COLUMN))
+                          .withDomains(List.of(finance.getFullyQualifiedName()))));
+      Table own =
+          marketer
+              .tables()
+              .create(
+                  new CreateTable()
+                      .withName(p + "_own")
+                      .withDatabaseSchema(marketingSchema.getFullyQualifiedName())
+                      .withColumns(List.of(COLUMN)));
+      cleanup.push(() -> admin.tables().delete(own.getId()));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_tagCreateInAnotherDomainsClassification_isDenied(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain sales = createDomain(admin, p + "_sal", cleanup);
+      Classification financeLabels =
+          admin
+              .classifications()
+              .create(
+                  new CreateClassification()
+                      .withName(p + "_labels")
+                      .withDescription("Classification in another domain")
+                      .withDomains(List.of(finance.getFullyQualifiedName())));
+      cleanup.push(
+          () ->
+              admin
+                  .classifications()
+                  .delete(
+                      financeLabels.getId().toString(),
+                      Map.of("recursive", "true", "hardDelete", "true")));
+      OpenMetadataClient seller = createRestrictedUserClient(admin, p, sales, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              seller
+                  .tags()
+                  .create(
+                      new CreateTag()
+                          .withName("approved")
+                          .withDescription("Tag in another domain's classification")
+                          .withClassification(financeLabels.getFullyQualifiedName())));
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
+  void test_putOnASoftDeletedTableOutsideTheCallersDomain_isDenied(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain finance = createDomain(admin, p + "_fin", cleanup);
+      Domain marketing = createDomain(admin, p + "_mkt", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_ledger", schema, finance, cleanup);
+      admin.tables().delete(table.getId().toString());
+      OpenMetadataClient marketer = createRestrictedUserClient(admin, p, marketing, cleanup);
+
+      assertThrows(
+          ForbiddenException.class,
+          () ->
+              marketer
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.PUT,
+                      "/v1/tables",
+                      new CreateTable()
+                          .withName(table.getName())
+                          .withDatabaseSchema(schema.getFullyQualifiedName())
+                          .withColumns(List.of(COLUMN))
+                          .withDescription("Rewritten"),
+                      Table.class));
+      assertTrue(
+          admin.tables().get(table.getId().toString(), null, "deleted").getDeleted(),
+          "The table must stay soft-deleted");
     } finally {
       drain(cleanup);
     }
@@ -375,6 +504,38 @@ public class DomainIsolationIT {
   }
 
   @Test
+  void test_ingestionBot_readsDomainAssetAndService(TestNamespace ns) throws Exception {
+    // Moved from playwright Flow/IngestionBot.spec.ts, which drove the UI with the ingestion bot's
+    // token. The UI now rejects bot tokens, so the same guarantee is checked here at the API. The
+    // stored bot JWT (isBot / tokenType=BOT claims) is used rather than a minted one so the request
+    // takes the same server path as real ingestion traffic.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Deque<Runnable> cleanup = new ArrayDeque<>();
+    try {
+      String p = ns.shortPrefix();
+      Domain domain = createDomain(admin, p + "_ingbot", cleanup);
+      DatabaseSchema schema = createSchema(ns, cleanup);
+      Table table = createTable(admin, p + "_ingbot_t", schema, domain, cleanup);
+
+      String serviceId = schema.getService().getId().toString();
+      DatabaseService service = admin.databaseServices().get(serviceId, "domains");
+      service.setDomains(List.of(domain.getEntityReference()));
+      admin.databaseServices().update(serviceId, service);
+
+      OpenMetadataClient ingestionBot = storedIngestionBotClient(admin);
+      String domainFqn = domain.getFullyQualifiedName();
+
+      Table botTable = ingestionBot.tables().get(table.getId().toString(), "domains");
+      assertEquals(domainFqn, botTable.getDomains().get(0).getFullyQualifiedName());
+
+      DatabaseService botService = ingestionBot.databaseServices().get(serviceId, "domains");
+      assertEquals(domainFqn, botService.getDomains().get(0).getFullyQualifiedName());
+    } finally {
+      drain(cleanup);
+    }
+  }
+
+  @Test
   void test_lineage_restrictedBotSeesOnlyOwnDomainNodes(TestNamespace ns) throws Exception {
     // Deliberately does NOT enable search access control: the lineage prune is gated on the role
     // alone (DomainAccessFilter#shouldApply), independently of the search RBAC setting.
@@ -561,6 +722,31 @@ public class DomainIsolationIT {
                 .withDatabase(database.getFullyQualifiedName()));
   }
 
+  private DatabaseSchema createSchemaInDomain(
+      OpenMetadataClient admin, String prefix, Domain domain, Deque<Runnable> cleanup) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(prefix + "_db")
+                    .withService(SharedEntities.get().MYSQL_SERVICE.getFullyQualifiedName()));
+    cleanup.push(
+        () ->
+            admin
+                .databases()
+                .delete(
+                    database.getId().toString(),
+                    Map.of("recursive", "true", "hardDelete", "true")));
+    return admin
+        .databaseSchemas()
+        .create(
+            new CreateDatabaseSchema()
+                .withName(prefix + "_sch")
+                .withDatabase(database.getFullyQualifiedName())
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+  }
+
   private DatabaseSchema createSchema(TestNamespace ns, Deque<Runnable> cleanup) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     cleanup.push(
@@ -661,6 +847,24 @@ public class DomainIsolationIT {
     org.openmetadata.schema.entity.teams.User bot = admin.users().create(request);
     cleanup.push(() -> admin.users().delete(bot.getId()));
     return SdkClients.createClient(email, email, new String[] {});
+  }
+
+  /** Reads the ingestion bot's stored token; generating one would rotate it under other tests. */
+  private OpenMetadataClient storedIngestionBotClient(OpenMetadataClient admin) throws Exception {
+    org.openmetadata.schema.entity.teams.User botUser = admin.users().getByName("ingestion-bot");
+    JsonNode auth =
+        admin
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                "/v1/users/auth-mechanism/" + botUser.getId(),
+                null,
+                JsonNode.class);
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.baseUrl())
+            .accessToken(auth.at("/config/JWTToken").asText())
+            .build());
   }
 
   /**

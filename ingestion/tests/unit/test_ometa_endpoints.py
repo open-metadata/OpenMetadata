@@ -16,12 +16,21 @@ OpenMetadata high-level API endpoint test
 from unittest import TestCase
 from unittest.mock import MagicMock
 
+import pytest
+
+from metadata.generated.schema.api.ai.createAIApplication import (
+    CreateAIApplicationRequest,
+)
+from metadata.generated.schema.api.ai.createLLMModel import CreateLLMModelRequest
 from metadata.generated.schema.api.data.createTableProfile import (
     CreateTableProfileRequest,
 )
 from metadata.generated.schema.api.data.createTopic import CreateTopicRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,
+)
+from metadata.generated.schema.api.services.createLLMService import (
+    CreateLLMServiceRequest,
 )
 from metadata.generated.schema.api.services.ingestionPipelines.createIngestionPipeline import (
     CreateIngestionPipelineRequest,
@@ -30,6 +39,8 @@ from metadata.generated.schema.api.teams.createUser import CreateUserRequest
 from metadata.generated.schema.api.tests.createTestCaseResult import (
     CreateTestCaseResult,
 )
+from metadata.generated.schema.entity.ai.aiApplication import AIApplication
+from metadata.generated.schema.entity.ai.llmModel import LLMModel
 from metadata.generated.schema.entity.data.chart import Chart
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.database import Database
@@ -48,6 +59,7 @@ from metadata.generated.schema.entity.services.databaseService import DatabaseSe
 from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipeline import (
     IngestionPipeline,
 )
+from metadata.generated.schema.entity.services.llmService import LLMService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
 from metadata.generated.schema.entity.teams.user import User
@@ -134,6 +146,45 @@ class OMetaEndpointTest(TestCase):
 
         entity = self.metadata.get_entity_from_create(CreateTableProfileRequest)
         assert entity is TableProfile
+
+
+@pytest.mark.parametrize(
+    ("entity", "expected_suffix"),
+    [
+        (LLMModel, "/llmModels"),
+        (CreateLLMModelRequest, "/llmModels"),
+        (AIApplication, "/aiApplications"),
+        (CreateAIApplicationRequest, "/aiApplications"),
+        (LLMService, "/services/llmServices"),
+        (CreateLLMServiceRequest, "/services/llmServices"),
+    ],
+)
+def test_ai_governance_entity_suffix(entity, expected_suffix):
+    assert OMetaEndpointTest.metadata.get_suffix(entity) == expected_suffix
+
+
+@pytest.mark.parametrize(
+    ("create_request", "expected_entity"),
+    [
+        (CreateLLMModelRequest, LLMModel),
+        (CreateAIApplicationRequest, AIApplication),
+    ],
+)
+def test_ai_governance_entity_from_create(create_request, expected_entity):
+    assert OMetaEndpointTest.metadata.get_entity_from_create(create_request) is expected_entity
+
+
+def test_ai_application_response_allows_unknown_shadow_model():
+    application = AIApplication.model_validate(
+        {
+            "id": "4f0888c4-e996-4f3f-8f6a-24e880fef807",
+            "name": "unknown-shadow-application",
+            "applicationType": "Chatbot",
+            "modelConfigurations": [],
+        }
+    )
+
+    assert application.modelConfigurations == []
 
 
 def test_get_context_builds_okf_markdown_path():

@@ -357,7 +357,59 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
     }
   });
 
-  test('name guard blocks a YAML whose product name targets a different product', async ({
+  test('re-imports an exported YAML with an edited display name onto the same product', async ({
+    page,
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const dataProduct = new DataProduct();
+    const cleanName = `pwodpsrelabel${uuid()}`;
+    dataProduct.data.name = cleanName;
+    dataProduct.data.displayName = cleanName;
+    dataProduct.data.fullyQualifiedName = cleanName;
+    const newLabel = `Relabelled ${cleanName}`;
+
+    try {
+      const created = await dataProduct.create(apiContext);
+      // productID stays the export's FQN; only the display label changes.
+      const doc = yamlLoad(await exportOdpsYaml(apiContext, created.id)) as {
+        product: { details: Record<string, { name?: string }> };
+      };
+      Object.values(doc.product.details).forEach((detail) => {
+        detail.name = newLabel;
+      });
+
+      await dataProduct.visitEntityPage(page);
+      await openManageMenu(page, 'import-odps-button');
+      await page.getByTestId('import-odps-button').click();
+      await expect(page.getByTestId('odps-import-modal')).toBeVisible();
+
+      const yamlField = page
+        .getByTestId('odps-yaml-content')
+        .locator('textarea');
+      await yamlField.click();
+      await yamlField.fill(yamlDump(doc));
+
+      const importResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/dataProducts/odps/yaml') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('odps-import-submit').click();
+      const imported = await importResponse;
+
+      expect(imported.status()).toBe(200);
+      const body = await imported.json();
+      expect(body.id).toBe(created.id);
+      expect(body.displayName).toBe(newLabel);
+      await expect(page.getByTestId('odps-import-modal')).toBeHidden();
+    } finally {
+      await dataProduct.delete(apiContext);
+      await afterAction();
+    }
+  });
+
+  test('productID guard blocks a YAML whose productID targets a different product', async ({
     page,
     browser,
   }) => {
@@ -375,10 +427,9 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
       await page.getByTestId('import-odps-button').click();
       await expect(page.getByTestId('odps-import-modal')).toBeVisible();
 
-      // A decoy top-level `name:` matches THIS product (what a first-`name:`
-      // regex would grab), but the real product name lives at
-      // product.details.en.name and targets a different product. The hardened
-      // js-yaml guard reads that path and must block the import.
+      // Both the top-level and product.details.en `name` match THIS product,
+      // but the productID — what the backend uses to pick the target — points
+      // at a different product. The guard must block on productID.
       const decoyYaml = [
         `name: "${cleanName}"`,
         'schema: "https://opendataproducts.org/v4.1/schema/odps.json"',
@@ -386,7 +437,7 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
         'product:',
         '  details:',
         '    en:',
-        '      name: "a-different-product"',
+        `      name: "${cleanName}"`,
         '      productID: "a-different-product"',
         '      visibility: "private"',
         '      status: "development"',
@@ -412,7 +463,7 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
       page.on('response', listener);
       await page.getByTestId('odps-import-submit').click();
 
-      // Positive signal: the guard raises a name-mismatch toast and returns
+      // Positive signal: the guard raises a mismatch toast and returns
       // before any API call. Waiting for that toast (which only appears when the
       // guard fires) is the real regression check — if the guard regressed, the
       // import would proceed and this would time out. By the time the toast is
@@ -428,7 +479,7 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
     }
   });
 
-  test('name guard blocks a YAML with no readable product name', async ({
+  test('productID guard blocks a YAML with no readable productID', async ({
     page,
     browser,
   }) => {
@@ -446,17 +497,16 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
       await page.getByTestId('import-odps-button').click();
       await expect(page.getByTestId('odps-import-modal')).toBeVisible();
 
-      // A structurally ODPS-ish document whose product.details omits `name`.
-      // The backend would still resolve (and overwrite) some product from the
-      // document, so an unreadable name must block the import rather than
-      // silently bypass the guard.
+      // product.details carries a `name` matching THIS product but no
+      // productID. An unreadable productID can't be verified, so it must block
+      // the import rather than silently bypass the guard.
       const noNameYaml = [
         'schema: "https://opendataproducts.org/v4.1/schema/odps.json"',
         'version: "4.1"',
         'product:',
         '  details:',
         '    en:',
-        '      productID: "some-other-product"',
+        `      name: "${cleanName}"`,
         '      visibility: "private"',
         '      status: "development"',
         '      type: "dataset"',
@@ -481,7 +531,7 @@ test.describe('DataProduct ODPS & metadata — UI', () => {
       page.on('response', listener);
       await page.getByTestId('odps-import-submit').click();
 
-      await toastNotification(page, /could not read a product name/i);
+      await toastNotification(page, /could not read a productID/i);
       expect(putFired).toBe(false);
       page.off('response', listener);
       await expect(page.getByTestId('odps-import-modal')).toBeVisible();

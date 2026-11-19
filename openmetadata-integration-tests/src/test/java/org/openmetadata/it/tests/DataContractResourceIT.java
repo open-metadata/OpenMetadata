@@ -18,6 +18,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -2678,6 +2679,41 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         SdkClients.adminClient().dataContracts().update(contract.getId().toString(), contract);
 
     assertTrue(updated.getReviewers() == null || updated.getReviewers().isEmpty());
+  }
+
+  @Test
+  void testContractResultsPreserveOwnersAndReviewers(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    CreateDataContract request =
+        createMinimalRequest(ns)
+            .withOwners(List.of(SharedEntities.get().USER2_REF))
+            .withReviewers(List.of(SharedEntities.get().USER1_REF));
+    DataContract contract = client.dataContracts().create(request);
+    // A subsequent edit gives session consolidation a previous version with owners and reviewers.
+    request.setDescription("Reviewed contract");
+    contract = client.dataContracts().createOrUpdate(request);
+    assertTrue(contract.getVersion() > 0.1);
+
+    DataContractResult result =
+        new DataContractResult()
+            .withDataContractFQN(contract.getFullyQualifiedName())
+            .withTimestamp(System.currentTimeMillis())
+            .withExecutionTime(100L);
+    for (ContractExecutionStatus status :
+        List.of(ContractExecutionStatus.Running, ContractExecutionStatus.Success)) {
+      result =
+          client
+              .dataContracts()
+              .addResult(contract.getId(), result.withContractExecutionStatus(status));
+      DataContract stored =
+          client.dataContracts().get(contract.getId().toString(), "owners,reviewers");
+      assertEquals("Reviewed contract", stored.getDescription());
+      assertEquals(SharedEntities.get().USER2_REF.getId(), stored.getOwners().getFirst().getId());
+      assertEquals(
+          SharedEntities.get().USER1_REF.getId(), stored.getReviewers().getFirst().getId());
+      assertEquals(result.getId(), stored.getLatestResult().getResultId());
+      assertEquals(status, stored.getLatestResult().getStatus());
+    }
   }
 
   @Test
@@ -7272,6 +7308,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
           new Column().withName("updated_at").withDataType(ColumnDataType.TIMESTAMP));
 
   private static String odcsWithQualityRules(String contractName, String tableName) {
+    return odcsWithQualityRules(contractName, tableName, 0);
+  }
+
+  private static String odcsWithQualityRules(
+      final String contractName, final String tableName, final int regexTolerance) {
     return """
         apiVersion: v3.1.0
         kind: DataContract
@@ -7314,7 +7355,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                     metric: invalidValues
                     arguments:
                       pattern: "^[^@]+@[^@]+$"
-                    mustBeLessOrEqualTo: 5
+                    mustBeLessOrEqualTo: %d
                     unit: percent
               - name: updated_at
                 logicalType: timestamp
@@ -7331,7 +7372,7 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
             engine: greatExpectations
             implementation: "type: expect_column_values_to_not_be_null"
         """
-        .formatted(UUID.randomUUID(), contractName, tableName);
+        .formatted(UUID.randomUUID(), contractName, tableName, regexTolerance);
   }
 
   private static TestCase testCaseNamed(DataContract contract, String name) {
@@ -7394,13 +7435,48 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     assertEquals("true", parameter(knownStatus, "matchEnum"));
 
     TestCase emailFormat = testCaseNamed(contract, "odcs_email_format");
-    assertEquals("5", parameter(emailFormat, "threshold"));
-    assertEquals("PERCENTAGE", parameter(emailFormat, "thresholdUnit"));
+    assertEquals("^[^@]+@[^@]+$", parameter(emailFormat, "regex"));
+    assertNull(parameter(emailFormat, "threshold"));
+    assertNull(parameter(emailFormat, "thresholdUnit"));
 
     TestCase blankEmails = testCaseNamed(contract, "odcs_no_blank_emails");
     assertTrue(
         parameter(blankEmails, "sqlExpression").contains(table.getName()),
         "The ${object} placeholder must be replaced with the table");
+  }
+
+  @Test
+  void testODCSRegexToleranceSurvivesExportWithoutAnExecutableTest(final TestNamespace ns) {
+    final Table table = createTestTable(ns, QUALITY_RULE_COLUMNS);
+    final DataContract imported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .importFromODCSYaml(
+                odcsWithQualityRules(ns.prefix("odcs_regex_tolerance"), table.getName(), 5),
+                table.getId(),
+                "table");
+    assertPreservedRegexTolerance(imported);
+
+    final String exported =
+        SdkClients.adminClient().dataContracts().exportToODCSYaml(imported.getId());
+    final DataContract reimported =
+        SdkClients.adminClient()
+            .dataContracts()
+            .createOrUpdateFromODCSYaml(exported, table.getId(), "table", "replace");
+    assertPreservedRegexTolerance(reimported);
+  }
+
+  private static void assertPreservedRegexTolerance(final DataContract contract) {
+    assertEquals(5, contract.getQualityExpectations().size());
+    assertFalse(qualityExpectationNames(contract).contains("odcs_email_format"));
+    final ODCSQualityRule emailRule =
+        contract.getOdcsQualityRules().stream()
+            .filter(rule -> "Email format".equals(rule.getName()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("^[^@]+@[^@]+$", emailRule.getArguments().getPattern());
+    assertEquals(5.0, emailRule.getMustBeLessOrEqualTo());
+    assertEquals("percent", emailRule.getUnit());
   }
 
   @Test

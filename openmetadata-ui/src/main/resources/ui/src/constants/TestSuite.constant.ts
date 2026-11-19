@@ -87,6 +87,27 @@ export const TEST_CASE_RESOLUTION_STATUS_LABELS: Record<
   [TestCaseResolutionStatusTypes.Resolved]: i18n.t('label.resolved'),
 };
 
+const ALL_INCIDENT_STATUSES = Object.values(TestCaseResolutionStatusTypes);
+
+/**
+ * Statuses an incident's status menu offers from each status: its own, plus
+ * the edges `TestCaseResolutionTaskWorkflow` declares from that stage. An
+ * assigned incident can only be reassigned or resolved. A resolved one is
+ * reopened rather than transitioned, so it offers every status.
+ */
+export const INCIDENT_STATUS_MENU_OPTIONS: Record<
+  TestCaseResolutionStatusTypes,
+  TestCaseResolutionStatusTypes[]
+> = {
+  [TestCaseResolutionStatusTypes.New]: ALL_INCIDENT_STATUSES,
+  [TestCaseResolutionStatusTypes.ACK]: ALL_INCIDENT_STATUSES,
+  [TestCaseResolutionStatusTypes.Assigned]: [
+    TestCaseResolutionStatusTypes.Assigned,
+    TestCaseResolutionStatusTypes.Resolved,
+  ],
+  [TestCaseResolutionStatusTypes.Resolved]: ALL_INCIDENT_STATUSES,
+};
+
 export const TABLE_DIFF = 'tableDiff';
 export const TABLE_DATA_TO_BE_FRESH = 'tableDataToBeFresh';
 export const TABLE_FRESHNESS_KEY = 'freshness';

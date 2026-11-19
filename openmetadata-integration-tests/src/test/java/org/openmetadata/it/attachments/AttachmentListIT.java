@@ -43,9 +43,19 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.SdkClients;
 import org.openmetadata.sdk.test.util.TestNamespace;
@@ -268,5 +278,85 @@ class AttachmentListIT {
     assertEquals(2, assets.size(), "Expected both attachments returned without sort/pagination");
     assertNotNull(a.getId());
     assertNotNull(b.getId());
+  }
+
+  @Test
+  void testAttachmentReadsFollowParentEntityVisibility(TestNamespace ns) {
+    Glossary glossary = createGlossary(RestClient.admin(), ns, "attach-parent-visibility");
+    Asset asset = uploadAttachment(entityLink(glossary), "visibility.txt", "v");
+
+    RestClient restricted = userWithoutGlossaryView("att_deny");
+    assertEquals(403, readStatus(restricted, ATTACHMENTS_PATH + "/" + asset.getId()));
+    assertEquals(403, readStatus(restricted, externalListPath(glossary)));
+  }
+
+  @Test
+  void testAttachmentReadsAllowedWhenParentIsVisible(TestNamespace ns) {
+    Glossary glossary = createGlossary(RestClient.admin(), ns, "attach-parent-visible");
+    Asset asset = uploadAttachment(entityLink(glossary), "visible.txt", "v");
+
+    RestClient viewer = plainUser("att_view");
+    assertEquals(200, readStatus(viewer, ATTACHMENTS_PATH + "/" + asset.getId()));
+    assertEquals(200, readStatus(viewer, externalListPath(glossary)));
+  }
+
+  private static String externalListPath(Glossary glossary) {
+    return ATTACHMENTS_PATH + "/fqn/" + glossary.getFullyQualifiedName() + "/External";
+  }
+
+  private static int readStatus(RestClient client, String path) {
+    try (Response response = client.rawGet(path)) {
+      return response.getStatus();
+    }
+  }
+
+  private static String shortName(String label) {
+    return label + "_" + UUID.randomUUID().toString().substring(0, 8);
+  }
+
+  private static RestClient plainUser(String label) {
+    String userName = shortName(label);
+    String email = userName + "@test.openmetadata.org";
+    SdkClients.adminClient().users().create(new CreateUser().withName(userName).withEmail(email));
+    return RestClient.forUser(email, new String[] {});
+  }
+
+  private static RestClient userWithoutGlossaryView(String label) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String prefix = shortName(label);
+    Rule denyView =
+        new Rule()
+            .withName(prefix + "_rule")
+            .withResources(List.of("glossary"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL, MetadataOperation.VIEW_BASIC))
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        admin
+            .policies()
+            .create(new CreatePolicy().withName(prefix + "_policy").withRules(List.of(denyView)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(prefix + "_role")
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    Team team =
+        admin
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(prefix + "_team")
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withDefaultRoles(List.of(role.getId())));
+    String email = prefix + "u@test.openmetadata.org";
+    admin
+        .users()
+        .create(
+            new CreateUser()
+                .withName(prefix + "u")
+                .withEmail(email)
+                .withTeams(List.of(team.getId())));
+    return RestClient.forUser(email, new String[] {});
   }
 }

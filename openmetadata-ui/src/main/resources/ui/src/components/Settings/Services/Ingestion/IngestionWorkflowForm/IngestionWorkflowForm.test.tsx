@@ -24,6 +24,7 @@ import { IngestionWorkflowData } from '../../../../../interface/service.interfac
 import IngestionWorkflowForm from './IngestionWorkflowForm';
 
 const DBT_WORKFLOW_DATA = {
+  name: 'dbt_agent',
   type: 'DBT',
   dbtConfigSource: {
     dbtConfigType: 'local',
@@ -32,7 +33,7 @@ const DBT_WORKFLOW_DATA = {
   catalogMapping: { bq_catalog: 'my-gcp-project' },
 } as unknown as IngestionWorkflowData;
 
-const renderDbtForm = (onChange = jest.fn()) =>
+const renderDbtForm = (onChange = jest.fn(), onSubmit = jest.fn()) =>
   render(
     <IngestionWorkflowForm
       okText="Submit"
@@ -42,7 +43,7 @@ const renderDbtForm = (onChange = jest.fn()) =>
       onCancel={jest.fn()}
       onChange={onChange}
       onFocus={jest.fn()}
-      onSubmit={jest.fn()}
+      onSubmit={onSubmit}
     />
   );
 
@@ -53,6 +54,14 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     expect(await screen.findByText('Catalog Mapping')).toBeInTheDocument();
     expect(screen.getByDisplayValue('bq_catalog')).toBeInTheDocument();
     expect(screen.getByDisplayValue('my-gcp-project')).toBeInTheDocument();
+    // the key is the editable input beside the value, not a label above it
+    expect(screen.queryByText('bq_catalog')).not.toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: 'bq_catalog' })).toHaveValue(
+      'my-gcp-project'
+    );
+    expect(screen.getByRole('textbox', { name: 'label.key' })).toHaveValue(
+      'bq_catalog'
+    );
   });
 
   it('adds a catalog entry to the workflow data', async () => {
@@ -65,11 +74,133 @@ describe('IngestionWorkflowForm dbt catalogMapping', () => {
     });
 
     await waitFor(() => expect(onChange).toHaveBeenCalled());
-    const { catalogMapping } = onChange.mock.lastCall[0];
+    const { catalogMapping } = onChange.mock.calls.at(-1)[0];
 
     expect(catalogMapping).toEqual(
       expect.objectContaining({ bq_catalog: 'my-gcp-project' })
     );
     expect(Object.keys(catalogMapping)).toHaveLength(2);
+    // RJSF's visible default, so an untouched row is noticed before it is saved
+    expect(catalogMapping.newKey).toBe('New Value');
   });
+
+  it('saves the catalog mapping without a row that was added but never filled in', async () => {
+    const onSubmit = jest.fn();
+    const { container } = renderDbtForm(jest.fn(), onSubmit);
+    await screen.findByText('Catalog Mapping');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.add-entity' }));
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].catalogMapping).toEqual({
+      bq_catalog: 'my-gcp-project',
+    });
+  });
+});
+
+describe('BigQuery metadata sharding configuration', () => {
+  it('renders and submits only the grouping toggle in the metadata form', async () => {
+    const onSubmit = jest.fn();
+    const { container } = render(
+      <IngestionWorkflowForm
+        okText="Submit"
+        pipeLineType={PipelineType.Metadata}
+        serviceCategory={ServiceCategory.DATABASE_SERVICES}
+        serviceData={{ name: 'demo_bigquery', serviceType: 'BigQuery' }}
+        workflowData={
+          {
+            name: 'metadata-agent',
+            type: 'DatabaseMetadata',
+            shardedTables: { enabled: true },
+          } as IngestionWorkflowData
+        }
+        onCancel={jest.fn()}
+        onFocus={jest.fn()}
+        onSubmit={onSubmit}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(
+        await screen.findByRole('button', { name: /label.scope-and-behaviour/ })
+      );
+    });
+    const toggle = await screen.findByRole('switch', {
+      name: 'Group Sharded Tables',
+    });
+
+    expect(toggle).toBeChecked();
+    expect(
+      screen.queryByRole('combobox', { name: 'Exclude Patterns' })
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(toggle);
+    });
+    await act(async () => {
+      fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    });
+    await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+
+    expect(onSubmit.mock.calls[0][0].shardedTables).toEqual({
+      enabled: false,
+    });
+  });
+});
+
+describe('metadata sharding visibility and omitted defaults', () => {
+  it.each(['BigQuery', 'Mysql'])(
+    'preserves omitted settings for %s',
+    async (serviceType) => {
+      const onSubmit = jest.fn();
+      const { container } = render(
+        <IngestionWorkflowForm
+          pipeLineType={PipelineType.Metadata}
+          serviceCategory={ServiceCategory.DATABASE_SERVICES}
+          serviceData={{ name: 'demo_service', serviceType }}
+          workflowData={
+            {
+              name: 'metadata-agent',
+              type: 'DatabaseMetadata',
+            } as IngestionWorkflowData
+          }
+          onCancel={jest.fn()}
+          onFocus={jest.fn()}
+          onSubmit={onSubmit}
+        />
+      );
+      await act(async () => {
+        fireEvent.click(
+          await screen.findByRole('button', {
+            name: /label.scope-and-behaviour/,
+          })
+        );
+      });
+      if (serviceType === 'BigQuery') {
+        expect(
+          await screen.findByRole('switch', { name: 'Group Sharded Tables' })
+        ).not.toBeChecked();
+      } else {
+        expect(
+          screen.queryByRole('switch', { name: 'Group Sharded Tables' })
+        ).not.toBeInTheDocument();
+      }
+      await act(async () => {
+        fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+      });
+      await waitFor(() => expect(onSubmit).toHaveBeenCalled());
+      if (serviceType === 'BigQuery') {
+        expect(onSubmit.mock.calls[0][0].shardedTables?.enabled ?? false).toBe(
+          false
+        );
+      } else {
+        expect(onSubmit.mock.calls[0][0]).not.toHaveProperty('shardedTables');
+      }
+    }
+  );
 });

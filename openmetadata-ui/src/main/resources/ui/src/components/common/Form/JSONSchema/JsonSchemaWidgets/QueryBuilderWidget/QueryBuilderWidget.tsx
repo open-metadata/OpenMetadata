@@ -17,6 +17,7 @@ import {
   Builder,
   Config,
   ImmutableTree,
+  JsonLogicTree,
   Query,
   Utils as QbUtils,
 } from '@react-awesome-query-builder/antd';
@@ -44,6 +45,11 @@ import {
   getEmptyJsonTree,
   getEmptyJsonTreeForQueryBuilder,
 } from '../../../../../../utils/AdvancedSearchPureUtils';
+import {
+  fromEngineJsonLogic,
+  hasExplicitNegation,
+  toEngineJsonLogic,
+} from '../../../../../../utils/queryBuilder/jsonLogicNegation';
 import { elasticSearchFormat } from '../../../../../../utils/QueryBuilderElasticsearchFormatUtils';
 import {
   addEntityTypeFilter,
@@ -144,6 +150,9 @@ const QueryBuilderWidget: FC<
     [outputType, value, isCountLoading]
   );
 
+  // The builder offers no NOT, so its control is shown only for a rule that already has one.
+  const [showNot, setShowNot] = useState(false);
+
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
     onTreeUpdate(nTree, nConfig);
 
@@ -167,7 +176,11 @@ const QueryBuilderWidget: FC<
     } else {
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
-        onChange(JSON.stringify(jsonLogic.logic ?? ''));
+        onChange(
+          JSON.stringify(
+            jsonLogic.logic ? toEngineJsonLogic(jsonLogic.logic) : ''
+          )
+        );
       } catch {
         onChange('');
       }
@@ -194,7 +207,10 @@ const QueryBuilderWidget: FC<
         }
       } else {
         // migrate existing json logic to new format
-        const migratedValue = migrateJsonLogic(parsedValue);
+        const migratedValue = fromEngineJsonLogic(
+          migrateJsonLogic(parsedValue)
+        ) as JsonLogicTree;
+        setShowNot(hasExplicitNegation(migratedValue));
 
         const tree = QbUtils.loadFromJsonLogic(migratedValue, config);
         if (tree) {
@@ -278,6 +294,7 @@ const QueryBuilderWidget: FC<
               }}
               settings={{
                 ...config.settings,
+                ...(showNot ? { showNot } : {}),
                 ...(props.readonly ? READONLY_SETTINGS : {}),
                 removeEmptyGroupsOnLoad: false,
                 removeEmptyRulesOnLoad: false,

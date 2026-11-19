@@ -162,8 +162,20 @@ export const updateWidgetHeightRecursively = (
   widgetId: string,
   height: number,
   widgets: WidgetConfig[]
-) =>
-  widgets.reduce((acc, widget) => {
+) => {
+  // Same reference lets setLayout bail out instead of re-rendering every context consumer.
+  const isUnchanged = widgets.some(
+    (widget) =>
+      (widget.i === widgetId && widget.h === height) ||
+      widget.children?.some(
+        (child) => child.i === widgetId && child.h === height
+      )
+  );
+  if (isUnchanged) {
+    return widgets;
+  }
+
+  return widgets.reduce((acc, widget) => {
     if (widget.i === widgetId) {
       acc.push({ ...widget, h: height });
     } else if (widget.children) {
@@ -179,3 +191,4 @@ export const updateWidgetHeightRecursively = (
 
     return acc;
   }, [] as WidgetConfig[]);
+};

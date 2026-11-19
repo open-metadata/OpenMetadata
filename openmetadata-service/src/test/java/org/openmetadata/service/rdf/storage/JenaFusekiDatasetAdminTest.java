@@ -26,16 +26,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.service.rdf.RdfWriteMode;
 
 /**
  * Exercises the Fuseki admin surface blue/green rebuilds depend on — dataset existence, readiness,
@@ -251,6 +256,32 @@ class JenaFusekiDatasetAdminTest {
   }
 
   @Test
+  @DisplayName("a dataset whose disk guard refuses writes is reachable, so readiness does not fail")
+  void aDatasetBelowItsFreeSpaceReserveIsStillReady() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST /build_a", 507);
+
+      assertDoesNotThrow(() -> storage.createDatasetIfMissing("build_a"));
+    }
+  }
+
+  @Test
+  @DisplayName("a reconcile batch the disk guard refuses reaches the caller as a low-disk refusal")
+  void aReconcileBatchTheGuardRefusesIsALowDiskRefusal() {
+    try (JenaFusekiStorage storage = storage()) {
+      statusByPath.put("POST " + DATASET_PATH, 507);
+      final Model model = ModelFactory.createDefaultModel();
+      model.add(model.createResource("urn:test:table"), RDFS.label, "table");
+      final List<RdfStorageInterface.EntityWriteRequest> batch =
+          List.of(new RdfStorageInterface.EntityWriteRequest("table", UUID.randomUUID(), model));
+
+      assertThrows(
+          RdfStorageLowDiskException.class,
+          () -> storage.bulkStoreEntities(batch, RdfWriteMode.RECONCILE));
+    }
+  }
+
+  @Test
   @DisplayName("a probe write with an unknown outcome is still removed, since it may land later")
   void probeWriteWithAnUnknownOutcomeIsStillRemoved() {
     try (JenaFusekiStorage storage = storage()) {
@@ -324,5 +355,40 @@ class JenaFusekiDatasetAdminTest {
     assertTrue(
         storage.fetchServerMaxHeapBytes().isEmpty(),
         "an unauthorized scrape must fall back to defaults rather than fail the run");
+  }
+
+  @Test
+  @DisplayName("the storage report is read where OpenMetadata's Fuseki images serve it")
+  void storageReportIsReadFromTheImage() {
+    JenaFusekiStorage storage = storage();
+    bodyForPath =
+        (method, path) ->
+            path.equals(JenaFusekiStorage.STORAGE_REPORT_PATH)
+                ? "{\"totalBytes\":1000,\"usableBytes\":80,\"reserveBytes\":100,"
+                    + "\"lowOnSpace\":true}"
+                : "";
+
+    StorageFacts facts = storage.storageFacts().orElseThrow();
+
+    assertEquals(1000, facts.totalBytes());
+    assertEquals(80, facts.usableBytes());
+    assertTrue(facts.lowOnSpace());
+    assertTrue(requests.contains("GET " + JenaFusekiStorage.STORAGE_REPORT_PATH));
+  }
+
+  @Test
+  @DisplayName("an image without the storage report, or one the account cannot read, has no facts")
+  void missingStorageReportMeansScheduleOnly() {
+    JenaFusekiStorage storage = storage();
+
+    statusByPath.put(JenaFusekiStorage.STORAGE_REPORT_PATH, 404);
+    assertTrue(storage.storageFacts().isEmpty(), "stock Fuseki, or the extension turned off");
+
+    statusByPath.put(JenaFusekiStorage.STORAGE_REPORT_PATH, 401);
+    assertTrue(storage.storageFacts().isEmpty(), "a non-admin account");
+
+    statusByPath.remove(JenaFusekiStorage.STORAGE_REPORT_PATH);
+    bodyForPath = (method, path) -> "<html>not a report</html>";
+    assertTrue(storage.storageFacts().isEmpty(), "something else answering on that path");
   }
 }

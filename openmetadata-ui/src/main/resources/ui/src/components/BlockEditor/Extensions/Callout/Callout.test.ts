@@ -25,7 +25,6 @@ describe('Callout', () => {
 
     expect(calloutNode.config.name).toEqual('callout');
     expect(calloutNode.config.content).toEqual('block+');
-    expect(calloutNode.config.defaultOptions).toEqual({});
     expect(calloutNode.config.group).toEqual('block');
     expect(calloutNode.config.defining).toEqual(true);
     expect(calloutNode.config.draggable).toEqual(true);

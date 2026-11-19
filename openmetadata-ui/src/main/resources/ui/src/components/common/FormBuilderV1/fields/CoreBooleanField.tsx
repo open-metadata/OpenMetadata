@@ -12,15 +12,21 @@
  */
 
 import { Toggle } from '@openmetadata/ui-core-components';
-import { FieldProps } from '@rjsf/utils';
+import { ADDITIONAL_PROPERTY_FLAG, FieldProps } from '@rjsf/utils';
 import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
+import { getWidgetAriaProps } from '../widgets/coreWidgetUtils';
 
 const CoreBooleanField = (props: FieldProps) => {
   return (
     <Toggle
+      {...getWidgetAriaProps({ label: props.name, schema: props.schema })}
       isDisabled={props.disabled || props.readonly}
       isSelected={props.formData ?? false}
-      label={props.schema.title ?? getFormDisplayLabel(props.name)}
+      label={
+        ADDITIONAL_PROPERTY_FLAG in props.schema
+          ? undefined
+          : props.schema.title ?? getFormDisplayLabel(props.name)
+      }
       onChange={(value) => {
         props.formContext?.handleFocus?.(props.idSchema.$id);
         props.onChange(value);

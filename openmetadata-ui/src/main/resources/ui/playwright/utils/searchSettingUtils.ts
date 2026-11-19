@@ -84,32 +84,58 @@ export const mockEntitySearchConfig = {
   boostMode: 'multiply',
 };
 
+// A drag that lands within this many steps of the target is finished with
+// arrow keys; a larger miss means the drag was lost and is retried.
+const SLIDER_KEY_STEP_LIMIT = 10;
+
 export async function setSliderValue(
   page: Page,
   testId: string,
   value: number,
   min = 0,
-  max = 100
+  max = 100,
+  step = 0.1
 ) {
-  const sliderHandle = page.getByTestId(testId).locator('.ant-slider-handle');
-  const sliderTrack = page.getByTestId(testId).locator('.ant-slider-step');
+  const slider = page.getByTestId(testId);
+  const sliderHandle = slider.getByRole('slider');
+  const sliderTrack = slider.locator('.ant-slider-step');
 
-  // Get slider track dimensions
-  const box = await sliderTrack.boundingBox();
-  if (!box) {
-    throw new Error('Slider track not found');
-  }
+  const toSteps = (v: number) => Math.round((v - min) / step);
+  const target = toSteps(value);
+  const currentSteps = async () =>
+    toSteps(Number(await sliderHandle.getAttribute('aria-valuenow')));
 
-  const { x, width } = box;
+  // The slider sits in a collapse panel that may still be expanding or
+  // scrolling, so coordinates are re-read on every attempt after hover() has
+  // scrolled it into view; stale ones send the drag off the handle and the
+  // value silently never changes.
+  await expect(async () => {
+    await sliderHandle.hover();
+    const trackBox = await sliderTrack.boundingBox();
+    const handleBox = await sliderHandle.boundingBox();
+    if (!trackBox || !handleBox) {
+      throw new Error(`Slider ${testId} not found`);
+    }
 
-  // Calculate the exact x-position for the value
-  const valuePosition = x + ((value - min) / (max - min)) * width;
+    await page.mouse.down();
+    await page.mouse.move(
+      trackBox.x + ((value - min) / (max - min)) * trackBox.width,
+      handleBox.y + handleBox.height / 2
+    );
+    await page.mouse.up();
 
-  // Move the slider handle to the calculated position
-  await sliderHandle.hover(); // Ensure visibility
-  await page.mouse.down();
-  await page.mouse.move(valuePosition, box.y);
-  await page.mouse.up();
+    const delta = target - (await currentSteps());
+    if (Math.abs(delta) > SLIDER_KEY_STEP_LIMIT) {
+      throw new Error(`Slider ${testId} drag missed the target ${value}`);
+    }
+
+    await sliderHandle.focus();
+    for (let i = 0; i < Math.abs(delta); i++) {
+      await page.keyboard.press(delta > 0 ? 'ArrowRight' : 'ArrowLeft');
+    }
+
+    await expect.poll(currentSteps, { timeout: 2_000 }).toBe(target);
+  }).toPass({ timeout: 15_000 });
 }
 
 // The entity search settings page opens with the "Ranking Details" accordion

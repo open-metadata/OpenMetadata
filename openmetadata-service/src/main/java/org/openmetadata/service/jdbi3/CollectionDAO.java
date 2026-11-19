@@ -24,16 +24,20 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeLikeBindValue;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -1030,15 +1034,7 @@ public interface CollectionDAO {
      * in the JSON document so column FQNs follow their container. {@code WHERE fqnHash LIKE
      * 'oldHash.%'} restricts the update to descendants — the moved row itself updates via the
      * standard {@code storeEntity} path after {@code setFullyQualifiedName} runs in memory.
-     *
-     * <p><b>On SQL interpolation:</b> mirrors the pre-existing {@link EntityDAO#updateFqn}
-     * pattern — values are spliced into the SQL via {@link String#format} because the
-     * connection-aware {@code @SqlUpdate} dispatcher takes the full statement as a single
-     * {@code <mySqlUpdate>}/{@code <postgresUpdate>} bind. The values come from server-side
-     * code (the FQN computed by {@code setFullyQualifiedName}, not user-supplied input), and
-     * {@link ListFilter#escapeApostrophe} handles the only SQL meta-character that can appear
-     * in a validated entity name. If a future code path lets arbitrary strings reach this
-     * method, swap to a parameterised form with {@code @Bind} parameters.
+     * Container names are user input, so like {@link EntityDAO#updateFqn} the prefixes are bound.
      */
     @Override
     default void updateFqn(String oldPrefix, String newPrefix) {
@@ -1047,32 +1043,34 @@ public interface CollectionDAO {
       }
       String oldHash = FullyQualifiedName.buildHash(oldPrefix);
       String newHash = FullyQualifiedName.buildHash(newPrefix);
-      String mySqlUpdate =
-          String.format(
-              "UPDATE %s SET json = CAST(REPLACE(CAST(json AS CHAR), "
-                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.') AS JSON), "
-                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                  + "WHERE fqnHash LIKE '%s.%%'",
-              getTableName(),
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              oldHash,
-              newHash,
-              oldHash);
-      String postgresUpdate =
-          String.format(
-              "UPDATE %s SET json = REPLACE(json::text, "
-                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.')::jsonb, "
-                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                  + "WHERE fqnHash LIKE '%s.%%'",
-              getTableName(),
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              oldHash,
-              newHash,
-              oldHash);
-      updateFqnInternal(mySqlUpdate, postgresUpdate);
+      updateDescendantFqnsInternal(
+          EntityDAO.jsonFqnPrefix(oldPrefix),
+          EntityDAO.jsonFqnPrefix(newPrefix),
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE storage_container_entity SET json = "
+                + "CAST(REPLACE(CAST(json AS CHAR), :oldJsonPrefix, :newJsonPrefix) AS JSON), "
+                + "fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+                + "WHERE fqnHash LIKE :oldHashLike",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE storage_container_entity SET json = "
+                + "REPLACE(json::text, :oldJsonPrefix, :newJsonPrefix)::jsonb, "
+                + "fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+                + "WHERE fqnHash LIKE :oldHashLike",
+        connectionType = POSTGRES)
+    void updateDescendantFqnsInternal(
+        @Bind("oldJsonPrefix") String oldJsonPrefix,
+        @Bind("newJsonPrefix") String newJsonPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
 
     /**
      * Cheap descendant count used by the PATCH re-parent guard (#24294) to short-circuit
@@ -1822,6 +1820,19 @@ public interface CollectionDAO {
 
     default void deleteAllBatch(List<String> ids) {
       EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
+    }
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>) AND jsonSchema = :jsonSchema")
+    void deleteByJsonSchemaBatchInternal(
+        @BindList("ids") List<String> ids, @Bind("jsonSchema") String jsonSchema);
+
+    /**
+     * Batch-delete only the rows of a given jsonSchema for the ids -- one statement per chunk. Used
+     * to clear an entity's own custom-property rows ("customFieldSchema") without touching its
+     * columnExtension or version rows the way deleteAllBatch() would.
+     */
+    default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
+      EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
     }
   }
 
@@ -4620,21 +4631,49 @@ public interface CollectionDAO {
     int updateAboutFqnHash(
         @Bind("oldFqnHash") String oldFqnHash, @Bind("newFqnHash") String newFqnHash);
 
-    @Transaction
-    @ConnectionAwareSqlBatch(
+    /**
+     * Swap the {@code oldFqnHash} prefix for {@code newFqnHash} on the tasks about the entity
+     * itself (exact hash, {@code entityType}) and about the entities nested under it ({@code
+     * hash.%}, {@code nestedTypes}). One statement, so a row the exact match moves is not matched
+     * again by the prefix. Other entity types can share an FQN (a domain and a glossary both named
+     * {@code X}), so each match also requires the task's {@code about} relationship to come from
+     * the matching type. Hashes are hex and dots, so the prefix holds no LIKE wildcard.
+     */
+    @ConnectionAwareSqlUpdate(
         value =
-            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', :newFqnHash) "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.aboutFqnHash')) = :oldFqnHash",
+            "UPDATE task_entity SET json = JSON_SET(json, '$.aboutFqnHash', "
+                + "CONCAT(:newFqnHash, SUBSTRING(aboutFqnHash, CHAR_LENGTH(:oldFqnHash) + 1))) "
+                + "WHERE (aboutFqnHash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutFqnHash LIKE CONCAT(:oldFqnHash, '.%') AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = MYSQL)
-    @ConnectionAwareSqlBatch(
+    @ConnectionAwareSqlUpdate(
         value =
             "UPDATE task_entity SET json = jsonb_set(json, '{aboutFqnHash}', "
-                + "to_jsonb(:newFqnHash::text)) WHERE json->>'aboutFqnHash' = :oldFqnHash",
+                + "to_jsonb(:newFqnHash::text || "
+                + "substring(aboutfqnhash from char_length(:oldFqnHash::text) + 1))) "
+                + "WHERE (aboutfqnhash = :oldFqnHash AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "= :entityType)) "
+                + "OR (aboutfqnhash LIKE :oldFqnHash::text || '.%' AND EXISTS ("
+                + TASK_ABOUT_FROM
+                + "IN (<nestedTypes>)))",
         connectionType = POSTGRES)
-    @BatchChunkSize(100)
-    int[] updateAboutFqnHashBatch(
-        @Bind("oldFqnHash") List<String> oldFqnHashes,
-        @Bind("newFqnHash") List<String> newFqnHashes);
+    int repointAboutFqnHash(
+        @Bind("oldFqnHash") String oldFqnHash,
+        @Bind("newFqnHash") String newFqnHash,
+        @Bind("entityType") String entityType,
+        @Bind("relation") int relation,
+        @BindList(value = "nestedTypes", onEmpty = BindList.EmptyHandling.NULL_STRING)
+            List<String> nestedTypes);
+
+    /** Opens the {@code about} relationship check; the caller appends the entity-type predicate. */
+    String TASK_ABOUT_FROM =
+        "SELECT 1 FROM entity_relationship er WHERE er.toId = task_entity.id "
+            + "AND er.toEntity = 'task' AND er.relation = :relation AND er.fromEntity ";
 
     @Override
     default void update(UUID id, String fqn, String json) {
@@ -4732,24 +4771,22 @@ public interface CollectionDAO {
         @Bind("category") String category,
         @BindList("statuses") List<String> statuses);
 
-    @SqlUpdate(
-        "DELETE FROM task_entity " + "WHERE createdById = :createdById AND category = :category")
-    void deleteByCreatorAndCategory(
-        @Bind("createdById") String createdById, @Bind("category") String category);
+    @SqlUpdate("DELETE FROM task_entity WHERE createdById = :createdById AND type = :type")
+    void deleteByCreatorAndType(@Bind("createdById") String createdById, @Bind("type") String type);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, json_unquote(json_extract(json, '$.fullyQualifiedName')) AS fqn "
-                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+                + "FROM task_entity WHERE createdById = :createdById AND type = :type",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT id, json->>'fullyQualifiedName' AS fqn "
-                + "FROM task_entity WHERE createdById = :createdById AND category = :category",
+                + "FROM task_entity WHERE createdById = :createdById AND type = :type",
         connectionType = POSTGRES)
     @RegisterRowMapper(EntityDAO.EntityIdFqnPairMapper.class)
-    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndCategory(
-        @Bind("createdById") String createdById, @Bind("category") String category);
+    List<EntityDAO.EntityIdFqnPair> listIdAndFqnByCreatorAndType(
+        @Bind("createdById") String createdById, @Bind("type") String type);
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
@@ -5216,17 +5253,28 @@ public interface CollectionDAO {
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqn) {
+    /**
+     * Deletes the rows under {@code fqn}, an FQN of {@code entityType}. Custom property definitions
+     * are rows of type {@code type} under an entity type's name, so only deleting that type removes
+     * them; an entity of another type that shares the name leaves them alone.
+     */
+    default void deleteAllByPrefix(String fqn, String entityType) {
       String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String condition = "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)";
+      String typeCondition =
+          Entity.TYPE.equals(entityType)
+              ? " AND fromType = :typeRow AND toType = :typeRow"
+              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      String condition =
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
       Map<String, String> bindMap = new HashMap<>();
       bindMap.put("prefix", prefix);
+      bindMap.put("typeRow", Entity.TYPE);
       deleteAllByPrefixInternal(condition, bindMap);
     }
 
     default void deleteAllByPrefixes(List<String> threadIds) {
       for (String threadId : threadIds) {
-        deleteAllByPrefix(threadId);
+        deleteAllByPrefix(threadId, Entity.THREAD);
       }
     }
 
@@ -5264,20 +5312,29 @@ public interface CollectionDAO {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldToFQNPrefix);
+      String newHash = FullyQualifiedName.buildHash(newToFQNPrefix);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix + Entity.SEPARATOR,
+          newToFQNPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          escapeLikeBindValue(oldToFQNPrefix) + Entity.SEPARATOR + "%",
+          oldHash + Entity.SEPARATOR + "%");
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE field_relationship SET toFQN = REPLACE(toFQN, :oldPrefix, :newPrefix), "
+            + "toFQNHash = REPLACE(toFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE fromtype = 'THREAD' AND relation = '3' "
+            + "AND toFQN LIKE :oldPrefixLike AND toFQNHash LIKE :oldHashLike")
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldPrefixLike") String oldPrefixLike,
+        @Bind("oldHashLike") String oldHashLike);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
@@ -7224,14 +7281,6 @@ public interface CollectionDAO {
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
 
     @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash ORDER BY tagFQN",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash",
-        connectionType = POSTGRES)
-    void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
-
-    @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash ORDER BY tagFQN",
         connectionType = MYSQL)
@@ -7272,28 +7321,26 @@ public interface CollectionDAO {
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, '%s.', '%s.'), tagFQNHash = REPLACE(tagFQNHash, '%s.', '%s.') WHERE source = %s AND tagFQNHash LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              FullyQualifiedName.buildHash(oldPrefix),
-              FullyQualifiedName.buildHash(newPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldPrefix));
-      updateTagPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+      String newHash = FullyQualifiedName.buildHash(newPrefix);
+      updateTagPrefixInternal(
+          source,
+          oldPrefix + Entity.SEPARATOR,
+          newPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
 
     default void updateTargetFQNHashPrefix(
         int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
-              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
-      updateTagPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldTargetFQNHashPrefix);
+      String newHash = FullyQualifiedName.buildHash(newTargetFQNHashPrefix);
+      updateTargetFQNHashPrefixInternal(
+          source,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
 
     default void rename(int source, String oldFQN, String newFQN) {
@@ -7326,8 +7373,26 @@ public interface CollectionDAO {
         @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
         @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
-    @SqlUpdate("<update>")
-    void updateTagPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, :oldPrefix, :newPrefix), "
+            + "tagFQNHash = REPLACE(tagFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE source = :source AND tagFQNHash LIKE :oldHashLike")
+    void updateTagPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
+
+    @SqlUpdate(
+        "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE source = :source AND targetFQNHash LIKE :oldHashLike")
+    void updateTargetFQNHashPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
@@ -8894,9 +8959,6 @@ public interface CollectionDAO {
         @Bind("limit") int limit,
         @Bind("paginationOffset") long paginationOffset);
 
-    @SqlQuery("SELECT json FROM change_event ce where ce.offset > :offset")
-    List<String> listUnprocessedEvents(@Bind("offset") long offset);
-
     @SqlQuery(
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
@@ -9027,6 +9089,71 @@ public interface CollectionDAO {
     @RegisterRowMapper(ChangeEventRecordMapper.class)
     List<ChangeEventRecord> listWithOffset(
         @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+
+    /** How many bytes a change event's stored JSON takes, read without loading the JSON. */
+    record ChangeEventSize(long offset, long bytes) {}
+
+    /** The most bytes of change event JSON one bounded read loads, except that it loads one. */
+    long MAX_BYTES_PER_READ = 8L * 1024 * 1024;
+
+    /**
+     * The first change events after {@code afterOffset} in offset order: at most {@code limit} of
+     * them and {@link #MAX_BYTES_PER_READ} bytes, because each event embeds a whole entity.
+     */
+    default List<ChangeEventRecord> listWithOffsetWithinBudget(int limit, long afterOffset) {
+      List<Long> offsets =
+          offsetsWithinBudget(listSizesAfter(limit, afterOffset), MAX_BYTES_PER_READ);
+      return offsets.isEmpty() ? List.of() : listByOffsets(offsets);
+    }
+
+    /** The leading offsets whose sizes add up to at most {@code maxBytes}, and always the first. */
+    static List<Long> offsetsWithinBudget(List<ChangeEventSize> sizes, long maxBytes) {
+      List<Long> offsets = new ArrayList<>();
+      long bytes = 0;
+      for (ChangeEventSize size : sizes) {
+        bytes += size.bytes();
+        if (!offsets.isEmpty() && bytes > maxBytes) {
+          break;
+        }
+        offsets.add(size.offset());
+      }
+      return List.copyOf(offsets);
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, LENGTH(json) AS bytes FROM change_event "
+                + "WHERE `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", octet_length(json::text) AS bytes FROM change_event "
+                + "WHERE \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventSizeMapper.class)
+    List<ChangeEventSize> listSizesAfter(
+        @Bind("limit") int limit, @Bind("afterOffset") long afterOffset);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset`, json FROM change_event WHERE `offset` IN (<offsets>) "
+                + "ORDER BY `offset` ASC",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\", json FROM change_event WHERE \"offset\" IN (<offsets>) "
+                + "ORDER BY \"offset\" ASC",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listByOffsets(@BindList("offsets") List<Long> offsets);
+  }
+
+  class ChangeEventSizeMapper implements RowMapper<ChangeEventDAO.ChangeEventSize> {
+    @Override
+    public ChangeEventDAO.ChangeEventSize map(ResultSet rs, StatementContext ctx)
+        throws SQLException {
+      return new ChangeEventDAO.ChangeEventSize(rs.getLong("offset"), rs.getLong("bytes"));
+    }
   }
 
   class ChangeEventRecordMapper implements RowMapper<ChangeEventDAO.ChangeEventRecord> {
@@ -9658,7 +9785,11 @@ public interface CollectionDAO {
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("tierFilter") String tierFilter);
+        @Define("tierFilter") String tierFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9771,7 +9902,11 @@ public interface CollectionDAO {
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
-        @Define("tierFilter") String tierFilter);
+        @Define("tierFilter") String tierFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9823,7 +9958,11 @@ public interface CollectionDAO {
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
         @Define("startTsFilter") String startTsFilter,
-        @Define("endTsFilter") String endTsFilter);
+        @Define("endTsFilter") String endTsFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9877,7 +10016,11 @@ public interface CollectionDAO {
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
         @Define("startTsFilter") String startTsFilter,
-        @Define("endTsFilter") String endTsFilter);
+        @Define("endTsFilter") String endTsFilter,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9929,7 +10072,11 @@ public interface CollectionDAO {
         @Define("postgresStatusFilter") String postgresStatusFilter,
         @Bind("search") String search,
         @Bind("limit") int limit,
-        @Bind("offset") int offset);
+        @Bind("offset") int offset,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9966,7 +10113,11 @@ public interface CollectionDAO {
         @Define("tierFilter") String tierFilter,
         @Define("mysqlStatusFilter") String mysqlStatusFilter,
         @Define("postgresStatusFilter") String postgresStatusFilter,
-        @Bind("search") String search);
+        @Bind("search") String search,
+        @Bind("psService") String psService,
+        @Bind("psServiceType") String psServiceType,
+        @Bind("psStatus") String psStatus,
+        @Bind("psTier") String psTier);
   }
 
   interface AppsDataStore {
@@ -10651,77 +10802,214 @@ public interface CollectionDAO {
         @BindMap Map<String, ?> outerParams,
         @Define("outerCond") String outerFilter);
 
+    // The same latest listing without a time range: the base partitioned query cannot rank the
+    // incidents' own status fields, and the originEntityFQN predicate reads the
+    // testCaseEntityFQN alias the join introduces, so the join travels with every latest shape.
+    @SqlQuery(
+        "SELECT json FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "ORDER BY timestamp DESC) ranked "
+            + "<outerCond> AND ranked.row_num = 1 LIMIT :limit OFFSET :offset")
+    List<String> listWithOffset(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("limit") int limit,
+        @Bind("offset") int offset,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default List<String> listWithOffset(ListFilter filter, int limit, int offset, boolean latest) {
+      if (!latest) {
+        return EntityTimeSeriesDAO.super.listWithOffset(filter, limit, offset, false);
+      }
+      ListFilter outerFilter = latestRecordFilter(filter);
+      LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
+      IncidentCondition shaped = incidentCondition(filter);
+      return listWithOffset(
+          getTimeSeriesTableName(),
+          shaped.params(),
+          shaped.condition(),
+          getPartitionFieldName(),
+          limit,
+          offset,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
+    }
+
+    // The latest count without a time range: partition count over the same origin join and
+    // outer filter the listing reads, minus the timestamp window.
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond>) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
+    @Override
+    default int listCount(ListFilter filter, boolean latest) {
+      if (!latest) {
+        return EntityTimeSeriesDAO.super.listCount(filter, false);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      IncidentCondition shaped = incidentCondition(innerFilter);
+      return listCount(
+          getTimeSeriesTableName(),
+          shaped.params(),
+          shaped.condition(),
+          getPartitionFieldName(),
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
+    }
+
+    List<String> LATEST_RECORD_PARAMS = List.of("testCaseResolutionStatusType", "assignee");
+
+    String TEST_CASE_JOIN =
+        "INNER JOIN (SELECT entityFQN AS testCaseEntityFQN,fqnHash AS testCaseHash, deleted"
+            + " FROM test_case) tc ON entityFQNHash = testCaseHash ";
+
+    String NON_DELETED_TEST_CASE_EXISTS =
+        " AND EXISTS (SELECT 1 FROM test_case tcScope"
+            + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = FALSE)";
+
+    String DELETED_TEST_CASE_EXISTS =
+        " AND EXISTS (SELECT 1 FROM test_case tcScope"
+            + " WHERE tcScope.fqnHash = entityFQNHash AND tcScope.deleted = TRUE)";
+
+    static ListFilter latestRecordFilter(ListFilter filter) {
+      ListFilter outerFilter = new ListFilter(null);
+      LATEST_RECORD_PARAMS.forEach(
+          param -> outerFilter.addQueryParam(param, filter.getQueryParam(param)));
+      return outerFilter;
+    }
+
+    // The incident listings scope deletion on test_case, and the include parameter names that
+    // scope (the endpoint's documented default is non-deleted): the time-series table has no
+    // deleted column, so getIncludeCondition's unqualified `deleted` clause never rides them.
+    // The scope travels qualified instead — with the test_case join when the originEntityFQN
+    // predicate needs its testCaseEntityFQN alias (tc.deleted), or an indexed EXISTS when the
+    // join is not needed — and the params carry the binds the planted conditions reference
+    // (ADR:2026-10-29-incident-listing-test-case-deletion-scoping-is-qualified).
+    record IncidentCondition(String condition, Map<String, ?> params) {}
+
+    static IncidentCondition incidentCondition(ListFilter filter) {
+      ListFilter conditionSource = new ListFilter(Include.ALL);
+      filter.getQueryParams().forEach(conditionSource::addQueryParam);
+      boolean joinNeeded = filter.getQueryParam("originEntityFQN") != null;
+      String condition = conditionSource.getCondition();
+      if (joinNeeded) {
+        condition = TEST_CASE_JOIN + condition;
+      }
+      condition =
+          switch (filter.getInclude()) {
+            case NON_DELETED -> condition
+                + (joinNeeded ? " AND tc.deleted = FALSE" : NON_DELETED_TEST_CASE_EXISTS);
+            case DELETED -> condition
+                + (joinNeeded ? " AND tc.deleted = TRUE" : DELETED_TEST_CASE_EXISTS);
+            case ALL -> condition;
+          };
+      return new IncidentCondition(condition, conditionSource.getQueryParams());
+    }
+
     @Override
     default List<String> listWithOffset(
         ListFilter filter, int limit, int offset, Long startTs, Long endTs, boolean latest) {
       if (latest) {
-        // When fetching latest, we need to apply Assignee and Status filters on the outer query
-        // i.e. after we have fetched the latest records for each testCaseFQNHash
-        // We'll first get the values, remove then from `filter` and then create `outerFilter`
-        String testCaseResolutionStatusType = filter.getQueryParam("testCaseResolutionStatusType");
-        filter.removeQueryParam("testCaseResolutionStatusType");
-        String assignee = filter.getQueryParam("assignee");
-        filter.removeQueryParam("assignee");
-
-        ListFilter outerFilter = new ListFilter(null);
-        outerFilter.addQueryParam("testCaseResolutionStatusType", testCaseResolutionStatusType);
-        outerFilter.addQueryParam("assignee", assignee);
-
-        String condition = filter.getCondition();
-        condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+        // Status and assignee describe an incident as it stands, so they apply to each incident's
+        // latest record (the outer query) rather than to the records it is ranked from.
+        ListFilter outerFilter = latestRecordFilter(filter);
+        LATEST_RECORD_PARAMS.forEach(filter::removeQueryParam);
+        IncidentCondition shaped = incidentCondition(filter);
 
         return listWithOffset(
             getTimeSeriesTableName(),
-            filter.getQueryParams(),
-            condition,
+            shaped.params(),
+            shaped.condition(),
             getPartitionFieldName(),
             limit,
             offset,
             startTs,
             endTs,
-            filter.getQueryParams(),
+            outerFilter.getQueryParams(),
             outerFilter.getCondition());
       }
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
           getTimeSeriesTableName(),
-          filter.getQueryParams(),
-          condition,
+          shaped.params(),
+          shaped.condition(),
           limit,
           offset,
           startTs,
           endTs);
     }
 
+    // The ranged latest count mirrors the listing: the record-status fields apply to each
+    // incident's latest record (the outer query), or the total disagrees with the page it sizes.
+    @SqlQuery(
+        "SELECT count(*) FROM "
+            + "(SELECT id, json, testCaseResolutionStatusType, assignee, ROW_NUMBER() OVER(PARTITION BY <partition> ORDER BY timestamp DESC) AS row_num "
+            + "FROM <table> <cond> "
+            + "AND timestamp BETWEEN :startTs AND :endTs) ranked "
+            + "<outerCond> AND ranked.row_num = 1")
+    int listCount(
+        @Define("table") String table,
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Define("partition") String partition,
+        @Bind("startTs") Long startTs,
+        @Bind("endTs") Long endTs,
+        @BindMap Map<String, ?> outerParams,
+        @Define("outerCond") String outerFilter);
+
     @Override
     default int listCount(ListFilter filter, Long startTs, Long endTs, boolean latest) {
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
-      return latest
-          ? listCount(
-              getTimeSeriesTableName(),
-              getPartitionFieldName(),
-              filter.getQueryParams(),
-              condition,
-              startTs,
-              endTs)
-          : listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition, startTs, endTs);
+      if (!latest) {
+        IncidentCondition shaped = incidentCondition(filter);
+        return listCount(
+            getTimeSeriesTableName(), shaped.params(), shaped.condition(), startTs, endTs);
+      }
+      // The listing reads the same filter afterwards, so it is copied rather than trimmed.
+      ListFilter innerFilter = new ListFilter(filter.getInclude());
+      filter.getQueryParams().forEach(innerFilter::addQueryParam);
+      LATEST_RECORD_PARAMS.forEach(innerFilter::removeQueryParam);
+      ListFilter outerFilter = latestRecordFilter(filter);
+      IncidentCondition shaped = incidentCondition(innerFilter);
+      return listCount(
+          getTimeSeriesTableName(),
+          shaped.params(),
+          shaped.condition(),
+          getPartitionFieldName(),
+          startTs,
+          endTs,
+          outerFilter.getQueryParams(),
+          outerFilter.getCondition());
     }
 
     @Override
     default List<String> listWithOffset(ListFilter filter, int limit, int offset) {
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
+      IncidentCondition shaped = incidentCondition(filter);
       return listWithOffset(
-          getTimeSeriesTableName(), filter.getQueryParams(), condition, limit, offset);
+          getTimeSeriesTableName(), shaped.params(), shaped.condition(), limit, offset);
     }
 
     @Override
     default int listCount(ListFilter filter) {
-      String condition = filter.getCondition();
-      condition = TestCaseResolutionStatusRepository.addOriginEntityFQNJoin(filter, condition);
-      return listCount(getTimeSeriesTableName(), filter.getQueryParams(), condition);
+      IncidentCondition shaped = incidentCondition(filter);
+      return listCount(getTimeSeriesTableName(), shaped.params(), shaped.condition());
     }
 
     // relation = 9 corresponds to Relationship.PARENT_OF (the enum ordinal is stable;
@@ -11344,13 +11632,14 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insert(@BindJson("json") String json);
 
+    /** The number of rows changed: 0 once the token was replaced or deleted. */
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = :json WHERE token = :token",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
-    void update(@Bind("token") String token, @BindJson("json") String json);
+    int update(@Bind("token") String token, @BindJson("json") String json);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
@@ -12114,6 +12403,71 @@ public interface CollectionDAO {
         @Bind("status") String status,
         @Bind("endedAt") long endedAt,
         @Bind("exception") String exception);
+
+    record ExpiredRun(String id, long timestamp) {}
+
+    /** A keyset cursor over expired runs: the page after {@code (afterTs, afterId)}. */
+    record ExpiredRunPage(long cutoffTs, long afterTs, String afterId, int limit) {
+      public static ExpiredRunPage first(long cutoffTs, int limit) {
+        return new ExpiredRunPage(cutoffTs, 0, "", limit);
+      }
+
+      public ExpiredRunPage after(ExpiredRun run) {
+        return new ExpiredRunPage(cutoffTs, run.timestamp(), run.id(), limit);
+      }
+    }
+
+    class ExpiredRunMapper implements RowMapper<ExpiredRun> {
+      @Override
+      public ExpiredRun map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new ExpiredRun(rs.getString("id"), rs.getLong("timestamp"));
+      }
+    }
+
+    /**
+     * One keyset page, oldest first, of the runs Data Retention may delete: started before {@code
+     * cutoffTs}, past the {@code (afterTs, afterId)} cursor, ended, with no live Flowable process,
+     * and followed by a newer run of the same workflow for the same entity, so every entity keeps
+     * its latest run of each workflow. The status alone does not prove a run has stopped: a
+     * superseded or cancelled run is marked before its process is deleted, and that delete may
+     * fail, while an EXCEPTION run may still be retried. Flowable keys every process a run starts
+     * by the run id, so no ACT_RU_EXECUTION row with that business key (ACT_IDX_EXEC_BUSKEY) means
+     * nothing can still write to the run. The newer-run probe matches the key of
+     * idx_wf_instance_entity_link (2.0.7 migration), so it is an index lookup rather than a scan. {@code timestamp >= :afterTs} repeats the cursor as a
+     * plain range: PostgreSQL cannot start an index scan from the OR alone, and without it every
+     * page would walk the timestamp index from the oldest run, past everything already deleted.
+     */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT i.id, i.timestamp FROM workflow_instance_time_series i "
+                + "WHERE i.timestamp < :cutoffTs AND i.timestamp >= :afterTs "
+                + "AND (i.timestamp > :afterTs OR (i.timestamp = :afterTs AND i.id > :afterId)) "
+                + "AND i.status IN (<endedStatuses>) "
+                + "AND NOT EXISTS (SELECT 1 FROM ACT_RU_EXECUTION e WHERE e.BUSINESS_KEY_ = i.id) "
+                + "AND EXISTS (SELECT 1 FROM workflow_instance_time_series n "
+                + "WHERE n.workflowDefinitionId = i.workflowDefinitionId "
+                + "AND n.entityLinkHash = i.entityLinkHash AND n.timestamp > i.timestamp) "
+                + "ORDER BY i.timestamp, i.id LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT i.id, i.timestamp FROM workflow_instance_time_series i "
+                + "WHERE i.timestamp < :cutoffTs AND i.timestamp >= :afterTs "
+                + "AND (i.timestamp > :afterTs OR (i.timestamp = :afterTs AND i.id > :afterId)) "
+                + "AND i.status IN (<endedStatuses>) "
+                + "AND NOT EXISTS (SELECT 1 FROM ACT_RU_EXECUTION e WHERE e.BUSINESS_KEY_ = i.id) "
+                + "AND EXISTS (SELECT 1 FROM workflow_instance_time_series n "
+                + "WHERE n.workflowDefinitionId = i.workflowDefinitionId "
+                + "AND md5(COALESCE(n.entityLink, '')) = md5(COALESCE(i.entityLink, '')) "
+                + "AND n.timestamp > i.timestamp) "
+                + "ORDER BY i.timestamp, i.id LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ExpiredRunMapper.class)
+    List<ExpiredRun> listExpiredRuns(
+        @BindMethods ExpiredRunPage page, @BindList("endedStatuses") List<String> endedStatuses);
+
+    @SqlUpdate("DELETE FROM workflow_instance_time_series WHERE id IN (<ids>)")
+    int deleteByIds(@BindList("ids") List<String> ids);
   }
 
   interface WorkflowInstanceStateTimeSeriesDAO extends EntityTimeSeriesDAO {
@@ -12142,6 +12496,10 @@ public interface CollectionDAO {
                 + "ORDER BY timestamp ASC LIMIT 1")
     String findWorkflowInstanceIdByExecutionId(
         @Bind("workflowInstanceExecutionId") String workflowInstanceExecutionId);
+
+    @SqlUpdate(
+        "DELETE FROM workflow_instance_state_time_series WHERE workflowInstanceId IN (<ids>)")
+    int deleteByWorkflowInstanceIds(@BindList("ids") List<String> ids);
   }
 
   interface RecognizerFeedbackDAO {
@@ -14539,6 +14897,14 @@ public interface CollectionDAO {
       String json) {}
 
   interface ActivityStreamDAO {
+    @SqlQuery(
+        "SELECT MIN(timestamp) FROM activity_stream WHERE entityType = :entityType "
+            + "AND entityId = :entityId AND eventType = :eventType")
+    Long findCreationTimestamp(
+        @Bind("entityType") String entityType,
+        @Bind("entityId") String entityId,
+        @Bind("eventType") String eventType);
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO activity_stream(id, eventType, entityType, entityId, entityFqnHash, "
@@ -14897,27 +15263,32 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND entityType = :entityType "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND entitytype = :entityType "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listByAbout(
         @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("after") long after,
         @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND entityType = :entityType "
                 + "AND JSON_OVERLAPS(domains, :domainJson) "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND entitytype = :entityType "
                 + "AND EXISTS ("
                 + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
                 + "WHERE domain_id IN (<domainIds>)) "
@@ -14925,6 +15296,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listByAboutAndDomains(
         @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("domainJson") String domainJson,
         @BindList("domainIds") List<String> domainIds,
         @Bind("after") long after,
@@ -15014,6 +15386,12 @@ public interface CollectionDAO {
     int deleteExpiredLocks(@Bind("now") long now);
 
     @SqlUpdate(
+        "DELETE FROM rdf_reindex_lock WHERE lockKey = :lockKey AND jobId = :jobId "
+            + "AND expiresAt < :now")
+    int deleteExpired(
+        @Bind("lockKey") String lockKey, @Bind("jobId") String jobId, @Bind("now") long now);
+
+    @SqlUpdate(
         "UPDATE rdf_reindex_lock SET jobId = :toJobId, serverId = :serverId, "
             + "lastHeartbeat = :heartbeat, expiresAt = :expiresAt "
             + "WHERE lockKey = :lockKey AND jobId = :fromJobId")
@@ -15035,7 +15413,9 @@ public interface CollectionDAO {
 
       RdfReindexLockRecord existing = findByKey(lockKey);
       if (existing != null && existing.isExpired()) {
-        delete(lockKey);
+        // Delete only the expired holder we read: another server may have replaced it since, and
+        // deleting by key alone would let two servers each believe they hold the lock.
+        deleteExpired(lockKey, existing.jobId(), System.currentTimeMillis());
         inserted = insertIfNotExists(lockKey, jobId, serverId, acquiredAt, acquiredAt, expiresAt);
         return inserted > 0;
       }
@@ -15377,6 +15757,20 @@ public interface CollectionDAO {
   }
 
   interface OAuthAccessTokenDAO {
+    /**
+     * The SHA-256 key the OAuth token tables store a token under. One definition, shared by the MCP
+     * repository that writes rows and JwtFilter that looks access tokens up.
+     */
+    static String hashToken(String token) {
+      try {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
+        return Base64.getEncoder().encodeToString(hash);
+      } catch (NoSuchAlgorithmException e) {
+        throw new IllegalStateException("SHA-256 algorithm not available", e);
+      }
+    }
+
     @SqlQuery(
         "SELECT id, token_hash, access_token_encrypted, client_id, user_name, scopes, expires_at FROM oauth_access_tokens WHERE token_hash = :tokenHash")
     @RegisterRowMapper(OAuthAccessTokenRowMapper.class)
@@ -15443,6 +15837,77 @@ public interface CollectionDAO {
     @SqlUpdate(
         "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE client_id = :clientId AND user_name = :userName AND revoked = FALSE")
     void revokeAllForUser(@Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    @SqlUpdate(
+        "DELETE FROM oauth_access_tokens WHERE client_id = :clientId AND user_name = :userName")
+    void deleteAccessTokensForUser(
+        @Bind("clientId") String clientId, @Bind("userName") String userName);
+
+    /**
+     * Revokes a refresh token and deletes the access tokens of its grant in one transaction. Apart, a
+     * failure after the first write would leave the access tokens valid, and a retry would find the
+     * refresh token already revoked and nothing left to do. The revoke goes first so a refresh racing
+     * it fails its rotation.
+     */
+    @Transaction
+    default void revokeWithAccessTokens(String tokenHash, String clientId, String userName) {
+      revoke(tokenHash);
+      deleteAccessTokensForUser(clientId, userName);
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_authorization_codes WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
+    void deleteAuthorizationCodesOfUser(@Bind("userName") String userName);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE user_name = :userName AND revoked = FALSE",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE oauth_refresh_tokens SET revoked = TRUE WHERE LOWER(user_name) = LOWER(:userName) AND revoked = FALSE",
+        connectionType = POSTGRES)
+    void revokeRefreshTokensOfUser(@Bind("userName") String userName);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM oauth_access_tokens WHERE LOWER(user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
+    void deleteAccessTokensOfUser(@Bind("userName") String userName);
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM mcp_pending_auth_requests WHERE consent_user_name = :userName",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "DELETE FROM mcp_pending_auth_requests WHERE LOWER(consent_user_name) = LOWER(:userName)",
+        connectionType = POSTGRES)
+    void deletePendingConsentsOfUser(@Bind("userName") String userName);
+
+    /**
+     * Ends every grant held under a user name, on all clients. Grants are keyed by name only, so a
+     * later account with the same name would otherwise take them over. Names compare ignoring case:
+     * rows written before grants were stored under the account's own name may hold the provider's
+     * spelling of it. Codes go first, so none can start a new grant.
+     *
+     * <p>On MySQL these tables' utf8mb4_unicode_ci collation already ignores case, so the MySQL
+     * queries compare names plainly and use the user-name indexes added in 2.0.8. Wrapped in LOWER()
+     * they scanned and locked every user's rows, and a token refresh by any other user deadlocked
+     * against the delete.
+     */
+    @Transaction
+    default void revokeAllGrantsOfUser(String userName) {
+      deletePendingConsentsOfUser(userName);
+      deleteAuthorizationCodesOfUser(userName);
+      revokeRefreshTokensOfUser(userName);
+      deleteAccessTokensOfUser(userName);
+    }
   }
 
   interface McpPendingAuthRequestDAO {
@@ -15485,6 +15950,26 @@ public interface CollectionDAO {
         @Bind("pac4jState") String pac4jState,
         @Bind("pac4jNonce") String pac4jNonce,
         @Bind("pac4jCodeVerifier") String pac4jCodeVerifier);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = :consentTokenHash, consent_user_name = :userName, expires_at = :expiresAt WHERE auth_request_id = :authRequestId AND consent_user_name IS NULL AND expires_at > :currentTime")
+    int storeConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("userName") String userName,
+        @Bind("expiresAt") long expiresAt,
+        @Bind("currentTime") long currentTime);
+
+    @SqlUpdate(
+        "UPDATE mcp_pending_auth_requests SET consent_token_hash = NULL WHERE auth_request_id = :authRequestId AND consent_token_hash = :consentTokenHash AND expires_at > :currentTime")
+    int claimConsent(
+        @Bind("authRequestId") String authRequestId,
+        @Bind("consentTokenHash") String consentTokenHash,
+        @Bind("currentTime") long currentTime);
+
+    @SqlQuery(
+        "SELECT consent_user_name FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
+    String findConsentUserName(@Bind("authRequestId") String authRequestId);
 
     @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE auth_request_id = :authRequestId")
     void delete(@Bind("authRequestId") String authRequestId);

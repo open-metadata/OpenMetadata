@@ -1,0 +1,18 @@
+{
+  "llmServices": [
+    {
+      "name": "ai_governance_llm",
+      "displayName": "AI Governance LLM Providers",
+      "description": "Demo LLM service for AI Governance Studio assets, covering approved, pending, rejected, and unauthorized model deployments.",
+      "serviceType": "CustomLLM"
+    }
+  ],
+  "mcpServices": [
+    {
+      "name": "ai_governance_mcp",
+      "displayName": "AI Governance MCP Registry",
+      "description": "Demo MCP service for AI Governance Studio servers, tools, resources, prompts, and security posture review.",
+      "serviceType": "Mcp"
+    }
+  ]
+}

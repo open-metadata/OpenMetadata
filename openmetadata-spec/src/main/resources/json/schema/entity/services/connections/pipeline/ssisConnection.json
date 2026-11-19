@@ -31,11 +31,14 @@
         "$ref": "../database/mssqlConnection.json"
       },
       "packageConnection": {
-        "title": "SSIS Projects Location (Local Path or S3 Bucket)",
+        "title": "SSIS Projects Location (Local Path, S3 Bucket or Azure Blob Container)",
         "description": "Underlying storage connection",
         "oneOf": [
           {
             "$ref": "../storage/s3Connection.json"
+          },
+          {
+            "$ref": "../storage/adlsConnection.json"
           },
           {
             "$ref": "#/definitions/localProjectsPath"

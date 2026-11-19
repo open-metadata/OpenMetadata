@@ -27,6 +27,13 @@ export interface DashboardServiceMetadataPipeline {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * the app views, last run status, run time and refresh time of Hex projects) onto the
+     * dashboard extension. The custom property definitions are shared by every dashboard in
+     * OpenMetadata, so this is disabled by default.
+     */
+    includeCustomProperties?: boolean;
+    /**
      * Optional configuration to toggle the ingestion of data models.
      */
     includeDataModels?: boolean;

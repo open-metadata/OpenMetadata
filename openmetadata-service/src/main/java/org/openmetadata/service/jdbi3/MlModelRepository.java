@@ -34,6 +34,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -546,7 +547,7 @@ public class MlModelRepository extends EntityRepository<MlModel> {
       for (MlFeature updatedFeature : listOrEmpty(updatedModel.getMlFeatures())) {
         MlFeature storedFeature =
             listOrEmpty(origModel.getMlFeatures()).stream()
-                .filter(feature -> mlFeatureMatch.test(feature, updatedFeature))
+                .filter(feature -> feature.getName().equals(updatedFeature.getName()))
                 .findAny()
                 .orElse(null);
         if (storedFeature == null) {
@@ -554,6 +555,12 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         }
 
         updateMlFeatureDescription(storedFeature, updatedFeature);
+        updatedFeature.setTags(
+            updateTags(
+                storedFeature.getFullyQualifiedName(),
+                EntityUtil.getFieldName("mlFeatures", updatedFeature.getName(), Entity.FIELD_TAGS),
+                storedFeature.getTags(),
+                updatedFeature.getTags()));
       }
     }
 
@@ -622,5 +629,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         }
       }
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(MlModel mlModel) {
+    return Map.of(
+        "mlFeatures",
+        listOrEmpty(mlModel.getMlFeatures()).stream()
+            .map(
+                feature ->
+                    ApprovedGlossaryTermGuard.TaggedField.of(
+                        feature.getName(), feature.getFullyQualifiedName(), feature.getTags()))
+            .toList());
   }
 }

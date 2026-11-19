@@ -13,7 +13,7 @@
 Common Class For Profiler Converter.
 """
 
-from typing import Dict, Set  # noqa: UP035
+from typing import ClassVar, Dict, Set  # noqa: UP035
 
 import sqlalchemy
 from sqlalchemy.sql.sqltypes import TypeEngine
@@ -27,6 +27,8 @@ class CommonMapTypes:
     """
     Base Class for mapping types
     """
+
+    quote_schema: ClassVar[bool | None] = None
 
     _TYPE_MAP = {  # noqa: RUF012
         DataType.NUMBER: sqlalchemy.NUMERIC,

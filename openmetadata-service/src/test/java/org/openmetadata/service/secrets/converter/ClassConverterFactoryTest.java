@@ -13,6 +13,7 @@ import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
 import org.openmetadata.schema.services.connections.dashboard.LookerConnection;
+import org.openmetadata.schema.services.connections.dashboard.MicroStrategyConnection;
 import org.openmetadata.schema.services.connections.dashboard.SupersetConnection;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
@@ -45,6 +46,7 @@ public class ClassConverterFactoryTest {
         GCSConnection.class,
         ElasticSearchConnection.class,
         LookerConnection.class,
+        MicroStrategyConnection.class,
         SSOAuthMechanism.class,
         SupersetConnection.class,
         GCPCredentials.class,

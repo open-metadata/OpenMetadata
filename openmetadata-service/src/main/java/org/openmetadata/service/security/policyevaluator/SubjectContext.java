@@ -350,11 +350,31 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
     for (EntityReference owner : resourceOwners) {
       if (owner.getType().equals(Entity.TEAM)) {
-        allPolicies.addAll(SubjectCache.getTeamPoliciesForResource(owner.getId(), teamsVisited));
+        // teamsVisited already holds the teams the user belongs to, so these are owner teams the
+        // caller is not a member of. Only their deny rules apply: a team's allow rules are granted
+        // by membership, not by the team owning an asset
+        // (ADR:2026-11-03-an-owning-teams-allow-rules-stay-with-its-members).
+        for (PolicyContext ownerPolicy :
+            SubjectCache.getTeamPoliciesForResource(owner.getId(), teamsVisited)) {
+          allPolicies.add(denyRulesOnly(ownerPolicy));
+        }
       }
     }
 
     return allPolicies.iterator();
+  }
+
+  private static PolicyContext denyRulesOnly(PolicyContext policyContext) {
+    List<CompiledRule> denyRules =
+        listOrEmpty(policyContext.rules).stream()
+            .filter(rule -> rule.getEffect() == Rule.Effect.DENY)
+            .toList();
+    return new PolicyContext(
+        policyContext.entityType,
+        policyContext.entityName,
+        policyContext.roleName,
+        policyContext.policyName,
+        denyRules);
   }
 
   public List<EntityReference> getTeams() {
@@ -484,11 +504,7 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
     private static List<CompiledRule> getPolicyRules(UUID policyId) {
       Policy policy = Entity.getEntity(Entity.POLICY, policyId, "rules", Include.NON_DELETED);
-      List<CompiledRule> rules = new ArrayList<>();
-      for (Rule r : policy.getRules()) {
-        rules.add(new CompiledRule(r));
-      }
-      return rules;
+      return CompiledRule.enforcedRules(policy);
     }
   }
 

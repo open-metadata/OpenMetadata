@@ -16,13 +16,14 @@ supporting sqlalchemy abstraction layer
 
 from collections.abc import Iterable
 from copy import deepcopy
-from typing import Any, List, Type, cast  # noqa: UP035
+from typing import Any, Type, cast  # noqa: UP035
 
 from sqlalchemy import Column, inspect
 from sqlalchemy.sql.type_api import TypeEngine
 
-from metadata.generated.schema.entity.data.table import SystemProfile
+from metadata.generated.schema.entity.data.table import SystemProfile, TableType
 from metadata.generated.schema.security.credentials.gcpValues import SingleProjectId
+from metadata.ingestion.ometa.utils import model_str
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
@@ -54,9 +55,15 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         runner: QueryRunner,
         *args,
         **kwargs,
-    ) -> List[SystemProfile]:  # noqa: UP006
-        logger.debug(f"Computing {metrics.name()} metric for {runner.table_name}")
-        self.system_metrics_class = cast(Type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006, UP006
+    ) -> list[SystemProfile]:
+        if self.table_entity.tableType == TableType.Sharded:
+            self.status.warning(
+                model_str(self.table_entity.fullyQualifiedName),
+                "System metrics are not supported for sharded tables yet",
+            )
+            return []
+        logger.debug("Computing %s metric for %s", metrics.name(), runner.table_name)
+        self.system_metrics_class = cast(type[BigQuerySystemMetricsComputer], self.system_metrics_class)  # noqa: TC006
         instance = self.system_metrics_class(
             session=self.session,
             runner=runner,

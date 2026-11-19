@@ -39,6 +39,7 @@ from metadata.data_quality.validations.impact_score import (
     DEFAULT_TOP_DIMENSIONS,
     MAX_TOP_DIMENSIONS,
 )
+from metadata.data_quality.validations.models import EvaluationScopeRuntimeParameters
 from metadata.generated.schema.tests.basic import (
     DimensionValue,
     TestCaseDimensionResult,
@@ -106,6 +107,8 @@ class BaseTestValidator(ABC):
     This can be useful to resolve complex test parameters based on the parameters given by the user.
     """
 
+    BYPASSES_SAMPLER = False
+
     def __init__(
         self,
         runner: Union[QueryRunner, PandasRunner],  # noqa: UP007
@@ -149,6 +152,13 @@ class BaseTestValidator(ABC):
         """
         # Execute the main validation logic (overall results)
         test_result = self._run_validation()
+        if test_result.testCaseStatus != TestCaseStatus.Aborted and not self.BYPASSES_SAMPLER:
+            try:
+                scope = self.get_runtime_parameters(EvaluationScopeRuntimeParameters)
+            except ValueError:
+                scope = None
+            if scope and scope.execution_source and not scope.sample_query:
+                test_result.evaluationScope = scope.to_result_scope(False)
 
         # Add dimensional results if configured
         if self.is_dimensional_test():

@@ -40,7 +40,7 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   public ListFilter(Include include) {
-    this.include = include;
+    this.include = include == null ? Include.ALL : include;
   }
 
   public String getSortField() {
@@ -84,6 +84,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getOwnedByCondition());
     conditions.add(getTierCondition(tableName));
     conditions.add(getEntityFQNHashCondition());
+    conditions.add(getWorkflowInstanceIdCondition());
     conditions.add(getTestCaseResolutionStatusType());
     conditions.add(getDirectoryCondition(tableName));
     conditions.add(getSpreadsheetCondition(tableName));
@@ -98,6 +99,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
     conditions.add(getEntityLinkCondition());
+    conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition(tableName));
     conditions.add(getAgentTypeCondition());
     conditions.add(getProviderCondition(tableName));
@@ -352,6 +354,24 @@ public class ListFilter extends Filter<ListFilter> {
     return entityLinkStr == null ? "" : "entityLink = :entityLink";
   }
 
+  /**
+   * Matches workflow runs by the md5 of their entityLink, in the exact form the
+   * idx_wf_instance_entity_link key takes (2.0.7 migration), so the run list for an entity is an
+   * index lookup; entityLink is unbounded TEXT and has no index of its own. See
+   * ADR:2026-10-22-governance-workflow-runs-keep-each-entitys-latest-run.
+   */
+  private String getEntityLinkHashCondition() {
+    final String entityLinkHash = queryParams.get("entityLinkHash");
+    String condition = "";
+    if (entityLinkHash != null) {
+      condition =
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? "entityLinkHash = :entityLinkHash"
+              : "md5(COALESCE(entityLink, '')) = :entityLinkHash";
+    }
+    return condition;
+  }
+
   private String getActiveCondition(String tableName) {
     String active = queryParams.get("active");
     if (active == null || !"announcement_entity".equals(tableName)) {
@@ -506,10 +526,13 @@ public class ListFilter extends Filter<ListFilter> {
 
   public String getIncludeCondition(String tableName) {
     String columnName = tableName == null ? "deleted" : tableName + ".deleted";
-    if (include == Include.NON_DELETED || include == Include.DELETED) {
-      return columnName + String.format(" = %s", include == Include.NON_DELETED ? "FALSE" : "TRUE");
-    }
-    return "";
+    // Exhaustive on purpose: ALL must stay a named "" and not a siloed fall-through that a
+    // refactor could turn back into a deleted clause (invalid on time-series tables).
+    return switch (include) {
+      case NON_DELETED -> columnName + " = FALSE";
+      case DELETED -> columnName + " = TRUE";
+      case ALL -> "";
+    };
   }
 
   public String getDatabaseCondition(String tableName) {
@@ -764,6 +787,11 @@ public class ListFilter extends Filter<ListFilter> {
   private String getEntityFQNHashCondition() {
     String entityFQN = getQueryParam("entityFQNHash");
     return entityFQN == null ? "" : "entityFQNHash = :entityFQNHash";
+  }
+
+  private String getWorkflowInstanceIdCondition() {
+    String workflowInstanceId = queryParams.get("workflowInstanceId");
+    return workflowInstanceId == null ? "" : "workflowInstanceId = :workflowInstanceId";
   }
 
   public String getParentCondition(String tableName) {
@@ -1149,31 +1177,27 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
-   * Escape a string for use as the <em>replacement</em> argument to MySQL's
-   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
-   * <ol>
-   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
-   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
-   *       Each literal backslash in the input needs to become {@code \\} for the regex
-   *       engine to emit a single {@code \}.</li>
-   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
-   *       single-quoted SQL string, so each remaining {@code \} doubles again
-   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
-   * </ol>
-   * Net effect: one input backslash → four backslashes in the SQL statement text, which
-   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
-   * folds to one literal backslash in the replacement output. Apostrophes just double
-   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   * Escapes a name for the replacement argument of a {@code REGEXP_REPLACE} rendered into MySQL
+   * statement text: backslashes double for the regex layer, then backslashes and apostrophes
+   * double again for the string literal.
    *
-   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
-   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
-   * re-escape the apostrophes we already doubled.
+   * @deprecated the server's own statements bind these values
+   *     (ADR:2026-11-03-dao-statements-bind-every-value); kept for extensions that still render
+   *     them, until they move to bound parameters.
    */
+  @Deprecated(forRemoval = true)
   public static String escapeForMySqlRegexReplacement(String name) {
-    // Step 1: double backslashes for the regex replacement layer.
-    String regexEscaped = name.replace("\\", "\\\\");
-    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
-    return escapeBackslashAndApostrophe(regexEscaped);
+    return escapeBackslashAndApostrophe(name.replace("\\", "\\\\"));
+  }
+
+  /**
+   * Escape a value that travels as a LIKE <em>bind</em> parameter: only the LIKE metacharacters
+   * and the escape character itself need escaping. Apostrophes stay as typed — {@link #escape}
+   * doubles them for literal interpolation, which would make a bound search for "it's" match
+   * nothing.
+   */
+  public static String escapeLikeBindValue(String value) {
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
   }
 
   public static String escape(String name) {

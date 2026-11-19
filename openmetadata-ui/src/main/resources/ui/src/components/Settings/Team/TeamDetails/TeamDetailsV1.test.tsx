@@ -27,12 +27,16 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+let mockIsAdminUser = true;
 jest.mock('../../../../hooks/authHooks', () => ({
-  useAuth: () => ({ isAdminUser: true }),
+  useAuth: () => ({ isAdminUser: mockIsAdminUser }),
 }));
 
+let mockCurrentUser: { id: string; teams?: { id: string }[] } = {
+  id: 'admin-id',
+};
 jest.mock('../../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: () => ({ currentUser: { id: 'admin-id' } }),
+  useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
 let mockLocationSearch = '';
@@ -280,5 +284,58 @@ describe('TeamDetailsV1 default tab selection', () => {
     renderComponent({ childTeams: [ORGANIZATION_TEAM] });
 
     expect(screen.queryByText('TeamHierarchy')).not.toBeInTheDocument();
+  });
+});
+
+describe('TeamDetailsV1 join and leave team', () => {
+  const groupTeam = (isJoinable: boolean) =>
+    ({
+      ...ORGANIZATION_TEAM,
+      id: 'group-id',
+      name: 'group-team',
+      fullyQualifiedName: 'group-team',
+      teamType: TeamType.Group,
+      isJoinable,
+    } as unknown as Team);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetTabs.mockReturnValue([]);
+    mockLocationSearch = '';
+    mockIsAdminUser = false;
+  });
+
+  afterEach(() => {
+    mockCurrentUser = { id: 'admin-id' };
+    mockIsAdminUser = true;
+  });
+
+  it('offers a member who is not an admin to leave a joinable team', async () => {
+    mockCurrentUser = { id: 'member-id', teams: [{ id: 'group-id' }] };
+
+    renderComponent({ currentTeam: groupTeam(true) });
+
+    expect(await screen.findByTestId('leave-team-button')).toBeInTheDocument();
+  });
+
+  it('does not offer a member who is not an admin to leave a team that is not joinable', async () => {
+    mockCurrentUser = { id: 'member-id', teams: [{ id: 'group-id' }] };
+
+    renderComponent({ currentTeam: groupTeam(false) });
+
+    expect(
+      await screen.findByTestId('team-details-collapse')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('leave-team-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('join-teams')).not.toBeInTheDocument();
+  });
+
+  it('offers an admin to leave a team that is not joinable', async () => {
+    mockIsAdminUser = true;
+    mockCurrentUser = { id: 'admin-id', teams: [{ id: 'group-id' }] };
+
+    renderComponent({ currentTeam: groupTeam(false) });
+
+    expect(await screen.findByTestId('leave-team-button')).toBeInTheDocument();
   });
 });

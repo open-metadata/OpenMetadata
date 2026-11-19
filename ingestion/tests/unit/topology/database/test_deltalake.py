@@ -15,7 +15,6 @@ Here we don't need to patch, as we can just create our own metastore
 """
 
 import shutil
-import sys
 import unittest
 from datetime import date, datetime
 from unittest import TestCase
@@ -100,9 +99,9 @@ MOCK_DATABASE_SCHEMA = DatabaseSchema(
 )
 
 
-@unittest.skipUnless(
-    sys.version_info < (3, 11),
-    reason="https://github.com/open-metadata/OpenMetadata/issues/14408",
+@unittest.skip(
+    "Spark 3.5/Hadoop JVM startup fails on runner Java (Subject.getSubject); "
+    "Delta Lake connector removed in 2.1 (#35299)."
 )
 class DeltaLakeUnitTest(TestCase):
     """

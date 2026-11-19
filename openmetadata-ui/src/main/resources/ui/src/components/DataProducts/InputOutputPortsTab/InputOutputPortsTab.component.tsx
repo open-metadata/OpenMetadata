@@ -35,7 +35,11 @@ import { ReactFlowProvider } from 'reactflow';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/ic-no-records.svg';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { getDataProductPortsView } from '../../../rest/dataProductAPI';
+import {
+  getDataProductInputPorts,
+  getDataProductOutputPorts,
+  getDataProductPortsView,
+} from '../../../rest/dataProductAPI';
 import { getQueryFilterForDataProductPorts } from '../../../utils/DataProductPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -68,6 +72,12 @@ export const InputOutputPortsTab = forwardRef<
     const { t } = useTranslation();
     const [isAddingInputPort, setIsAddingInputPort] = useState(false);
     const [isAddingOutputPort, setIsAddingOutputPort] = useState(false);
+    const [excludedFromInputPicker, setExcludedFromInputPicker] = useState<
+      string[]
+    >([]);
+    const [excludedFromOutputPicker, setExcludedFromOutputPicker] = useState<
+      string[]
+    >([]);
     const [isLineageFullScreen, setIsLineageFullScreen] = useState(false);
     const [isLineageExpanded, setIsLineageExpanded] = useState(false);
     const [isInputPortsExpanded, setIsInputPortsExpanded] = useState(true);
@@ -89,11 +99,30 @@ export const InputOutputPortsTab = forwardRef<
     const [inputPortsCount, setInputPortsCount] = useState(0);
     const [outputPortsCount, setOutputPortsCount] = useState(0);
 
-    // Compute query filter for port selection drawer
-    // Only show assets that belong to the DataProduct
-    const portQueryFilter = useMemo(() => {
-      return getQueryFilterForDataProductPorts(dataProductFqn);
-    }, [dataProductFqn]);
+    // Output ports must be assets of the data product, and an asset cannot be
+    // both an input and an output port, so each picker hides the other kind.
+    const outputPortQueryFilter = useMemo(
+      () =>
+        getQueryFilterForDataProductPorts(
+          dataProductFqn,
+          excludedFromOutputPicker
+        ),
+      [dataProductFqn, excludedFromOutputPicker]
+    );
+
+    const inputPortQueryFilter = useMemo(
+      () =>
+        excludedFromInputPicker.length > 0
+          ? {
+              query: {
+                bool: {
+                  must_not: [{ ids: { values: excludedFromInputPicker } }],
+                },
+              },
+            }
+          : undefined,
+      [excludedFromInputPicker]
+    );
 
     // Fetch lineage data and counts (only when lineage section is expanded, or on initial load for counts)
     const fetchLineageData = useCallback(async () => {
@@ -165,13 +194,34 @@ export const InputOutputPortsTab = forwardRef<
       refreshPorts,
     }));
 
-    const handleAddInputPort = useCallback(() => {
-      setIsAddingInputPort(true);
-    }, []);
+    // ponytail: first 1000 ports (the API max); a product past that can still
+    // list an opposite port, which the save then rejects inline.
+    // Each picker keeps its own list, so a late response for one picker can
+    // never replace the other's exclusions.
+    const fetchPortIds = useCallback(
+      async (getPorts: typeof getDataProductInputPorts) => {
+        try {
+          const { data } = await getPorts(dataProductFqn, { limit: 1000 });
 
-    const handleAddOutputPort = useCallback(() => {
+          return data.map(({ id }) => id as string);
+        } catch (error) {
+          showErrorToast(error as AxiosError);
+
+          return [];
+        }
+      },
+      [dataProductFqn]
+    );
+
+    const handleAddInputPort = useCallback(async () => {
+      setExcludedFromInputPicker(await fetchPortIds(getDataProductOutputPorts));
+      setIsAddingInputPort(true);
+    }, [fetchPortIds]);
+
+    const handleAddOutputPort = useCallback(async () => {
+      setExcludedFromOutputPicker(await fetchPortIds(getDataProductInputPorts));
       setIsAddingOutputPort(true);
-    }, []);
+    }, [fetchPortIds]);
 
     const handleInputPortSave = useCallback(async () => {
       setIsAddingInputPort(false);
@@ -470,6 +520,7 @@ export const InputOutputPortsTab = forwardRef<
         <AssetSelectionDrawer
           entityFqn={dataProductFqn}
           open={isAddingInputPort}
+          queryFilter={inputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', { entity: t('label.input') }),
           })}
@@ -482,7 +533,7 @@ export const InputOutputPortsTab = forwardRef<
           entityFqn={dataProductFqn}
           infoBannerText={t('message.output-ports-from-data-product-assets')}
           open={isAddingOutputPort}
-          queryFilter={portQueryFilter}
+          queryFilter={outputPortQueryFilter}
           title={t('label.add-entity', {
             entity: t('label.entity-port-plural', {
               entity: t('label.output'),

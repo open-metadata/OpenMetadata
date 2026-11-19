@@ -559,4 +559,38 @@ class ChangePreviewUtilsTest {
     assertTrue(result instanceof Map<?, ?>);
     assertTrue(!((Map<?, ?>) result).containsKey("proposedChanges"));
   }
+
+  // The workflow sets the status before the task exists, in the same version as the edit under
+  // review: a task that opens a cycle previews that version's whole change, not the status hop.
+  @Test
+  void buildProposedChangesPayload_openingTask_previewsTheStoredChangeNotTheStatusHop() {
+    EntityInterface entity =
+        new GlossaryTerm()
+            .withName("t")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(
+                        List.of(
+                            new FieldChange()
+                                .withName("tags")
+                                .withNewValue("[{\"tagFQN\":\"PII.Sensitive\"}]"))))
+            .withIncrementalChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("entityStatus")
+                                .withOldValue("Approved")
+                                .withNewValue("In Review"))));
+
+    Map<String, FieldDiff> opening =
+        ChangePreviewUtils.extractProposedChanges(
+            ChangePreviewUtils.buildProposedChangesPayload(entity, null, true));
+    Map<String, FieldDiff> continuing =
+        ChangePreviewUtils.extractProposedChanges(
+            ChangePreviewUtils.buildProposedChangesPayload(entity, null, false));
+
+    assertEquals(List.of("PII.Sensitive"), opening.get("tags").added());
+    assertNull(continuing.get("tags"));
+  }
 }

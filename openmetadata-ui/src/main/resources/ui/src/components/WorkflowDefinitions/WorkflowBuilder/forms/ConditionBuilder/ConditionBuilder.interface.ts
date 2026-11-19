@@ -33,6 +33,8 @@ export type ConditionType = 'AND' | 'OR';
 export interface ConditionBuilderOption {
   value: string;
   label: string;
+  /** Parent path (e.g. a tag's classification) to tell same-named options apart. */
+  supportingText?: string;
 }
 
 export type ConditionValueType = 'boolean' | 'dropdown' | 'text';

@@ -18,13 +18,17 @@ import { getDialogContainer } from '../getDialogContainer';
 import { SlashCommandList, SlashCommandRef } from './SlashCommandList';
 
 const renderItems = () => {
-  let component: ReactRenderer;
+  let component: ReactRenderer | undefined;
+  // Suggestion awaits async items, so a newer query's onUpdate can arrive before onStart.
+  let pendingProps: SuggestionProps | undefined;
   let popup: Instance<Props>[] = [];
   let suggestionProps: SuggestionProps;
   let hasPopup = !isEmpty(popup);
 
   return {
-    onStart: (props: SuggestionProps) => {
+    onStart: (startProps: SuggestionProps) => {
+      const props = pendingProps ?? startProps;
+      pendingProps = undefined;
       suggestionProps = props;
       component = new ReactRenderer(SlashCommandList, {
         props,
@@ -52,6 +56,11 @@ const renderItems = () => {
     },
     onUpdate: (props: SuggestionProps) => {
       suggestionProps = props;
+      if (!component) {
+        pendingProps = props;
+
+        return;
+      }
       component.updateProps(props);
 
       if (!props.clientRect) {

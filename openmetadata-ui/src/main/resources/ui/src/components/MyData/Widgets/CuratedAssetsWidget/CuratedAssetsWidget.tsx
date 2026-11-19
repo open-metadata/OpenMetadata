@@ -124,10 +124,11 @@ const CuratedAssetsWidgetContent = ({
     [curatedAssetsConfig]
   );
 
-  const title = useMemo(
-    () => get(curatedAssetsConfig, 'title', ''),
-    [curatedAssetsConfig]
-  );
+  const title = useMemo(() => {
+    const configTitle: unknown = get(curatedAssetsConfig, 'title');
+
+    return typeof configTitle === 'string' ? configTitle : '';
+  }, [curatedAssetsConfig]);
 
   const showWidgetFooterMoreButton = useMemo(
     () => Boolean(!isLoading) && data?.length > PAGE_SIZE_BASE,

@@ -147,7 +147,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -429,7 +429,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -603,7 +603,8 @@ export interface Connection {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -1172,10 +1173,16 @@ export interface Connection {
      */
     spaceUUID?: string;
     /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
+    /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**
@@ -1188,6 +1195,16 @@ export interface Connection {
      * Space types of Qlik Cloud to filter the dashboards ingested into the platform.
      */
     spaceTypes?: SpaceType[];
+    /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
     /**
      * ThoughtSpot authentication configuration
      *
@@ -1343,7 +1360,9 @@ export interface Connection {
      */
     s3StagingDir?: string;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
     workgroup?: string;
     /**
@@ -1834,7 +1853,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -2214,7 +2234,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     /**
      * Fivetran API Secret.
      */
@@ -2348,7 +2368,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**
@@ -3021,9 +3043,9 @@ export interface AWSCredentials {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
     /**
@@ -3513,9 +3535,9 @@ export enum CloudProvider {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface DeltaLakeConfigurationSource {
     /**
@@ -3527,7 +3549,7 @@ export interface DeltaLakeConfigurationSource {
      *
      * Available sources to fetch files.
      */
-    connection?: ConfigSourceConnection;
+    connection?: Connection;
     /**
      * Bucket Name of the data source.
      */
@@ -3570,7 +3592,7 @@ export interface DeltaLakeConfigurationSource {
  *
  * DataLake S3 bucket will ingest metadata of files in bucket
  */
-export interface ConfigSourceConnection {
+export interface Connection {
     /**
      * Thrift connection to the metastore service. E.g., localhost:9083
      */
@@ -3610,9 +3632,9 @@ export interface ConfigSourceConnection {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  *
  * GCP credentials configs.
  *
@@ -3878,7 +3900,7 @@ export interface AirflowConnectionConnection {
     /**
      * Service Type
      */
-    type?: ConnectionType;
+    type?: S3Type;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -4242,7 +4264,7 @@ export enum SSLMode {
  *
  * S3 service type
  */
-export enum ConnectionType {
+export enum S3Type {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -4284,9 +4306,9 @@ export enum VerifySSL {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface PurpleGCPCredentials {
     /**
@@ -4768,9 +4790,11 @@ export interface OracleConnectionType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -4791,14 +4815,25 @@ export interface S3Connection {
      * Service Type
      */
     type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
 export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 

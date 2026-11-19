@@ -18,6 +18,7 @@ import functools
 import json
 import traceback
 from collections.abc import Collection, Sequence
+from dataclasses import dataclass
 from typing import (  # noqa: UP035
     Generic,
     Iterable,
@@ -29,7 +30,7 @@ from typing import (  # noqa: UP035
     TypeVar,
     Union,
 )
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlencode
 
 from pydantic import Field, field_validator
 from typing_extensions import Annotated  # noqa: UP035
@@ -59,6 +60,15 @@ SERVICE_NAME_FIELD = "service.name.keyword"
 def _batched(values: Sequence[str], size: int) -> Iterator[list[str]]:
     for start in range(0, len(values), size):
         yield list(values[start : start + size])
+
+
+@dataclass(frozen=True)
+class FqnSearchResult:
+    """Unhydrated FQN candidates and the server hit count."""
+
+    fqns: tuple[str, ...]
+    total: int
+    total_is_exact: bool
 
 
 class TotalModel(BaseModel):
@@ -128,6 +138,76 @@ class ESMixin(Generic[T]):
     """
 
     client: REST
+
+    def search_fqn_candidates(
+        self,
+        entity_type: type[T],
+        value: str,
+        *,
+        wildcard: bool = False,
+        size: int = 11,
+    ) -> FqnSearchResult:
+        """Search active FQNs without caching or hydration; propagate lookup failures."""
+        if size < 1:
+            raise ValueError("Candidate search size must be positive")
+        if not wildcard:
+            value = value.replace("\\", "\\\\").replace("*", "\\*").replace("?", "\\?")
+        params = urlencode(
+            {
+                "fieldName": "fullyQualifiedName",
+                "fieldValue": value,
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": size,
+            }
+        )
+        response = self.client.get("/search/fieldQuery?" + params)
+        return self._parse_fqn_candidates(response)
+
+    def search_filtered_fqns(
+        self, entity_type: type[T], query_filter: dict, max_candidates: int = 100
+    ) -> tuple[str, ...]:
+        """Return a complete bounded set of active FQNs matching a structured filter."""
+        if max_candidates < 1:
+            raise ValueError("Candidate limit must be positive")
+        params = urlencode(
+            {
+                "q": "",
+                "query_filter": json.dumps(query_filter),
+                "index": ES_INDEX_MAP[entity_type.__name__],
+                "deleted": "false",
+                "from": 0,
+                "size": max_candidates + 1,
+                "track_total_hits": "true",
+                "include_aggregations": "false",
+                "include_source_fields": "fullyQualifiedName",
+            }
+        )
+        found = self._parse_fqn_candidates(self.client.get("/search/query?" + params))
+        if found.total > max_candidates or len(found.fqns) > max_candidates:
+            raise ValueError("FQN candidate search exceeds the configured limit")
+        if not found.total_is_exact or found.total != len(found.fqns):
+            raise ValueError("Incomplete FQN candidate search")
+        return found.fqns
+
+    @staticmethod
+    def _parse_fqn_candidates(response: object) -> FqnSearchResult:
+        if not isinstance(response, dict):
+            raise TypeError("Invalid FQN search response")
+        if response.get("timed_out") or response.get("_shards", {}).get("failed", 0):
+            raise ValueError("Incomplete FQN search response")
+        hits = response["hits"]
+        total = hits["total"]
+        if isinstance(total, int):
+            count, exact = total, True
+        else:
+            count, exact = total["value"], total["relation"] == "eq"
+        return FqnSearchResult(
+            fqns=tuple(hit["_source"]["fullyQualifiedName"] for hit in hits["hits"]),
+            total=count,
+            total_is_exact=exact,
+        )
 
     fqdn_search = (
         "/search/fieldQuery?fieldName={field_name}&fieldValue={field_value}&from={from_}"
@@ -209,6 +289,7 @@ class ESMixin(Generic[T]):
         from_count: int = 0,
         size: int = 10,
         fields: Optional[str] = None,  # noqa: UP045
+        raise_on_error: bool = False,
     ) -> Optional[List[T]]:  # noqa: UP006, UP045
         """
         Given a service name and filters, search for entities using Elasticsearch.
@@ -231,6 +312,7 @@ class ESMixin(Generic[T]):
             from_count=from_count,
             size=size,
             fields=fields,
+            raise_on_error=raise_on_error,
         )
 
     def es_search_from_alias(
@@ -293,6 +375,7 @@ class ESMixin(Generic[T]):
         from_count: int = 0,
         size: int = 10,
         fields: Optional[str] = None,  # noqa: UP045
+        raise_on_error: bool = False,
     ) -> Optional[List[T]]:  # noqa: UP006, UP045
         """
         Search for entities using Elasticsearch.
@@ -320,9 +403,13 @@ class ESMixin(Generic[T]):
             response = self._search_es_entity(entity_type=entity_type, query_string=query_string, fields=fields)
             return response  # noqa: RET504, TRY300
         except KeyError as err:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Cannot find the index in ES_INDEX_MAP for {entity_type.__name__}: {err}")
         except Exception as exc:
+            if raise_on_error:
+                raise
             logger.debug(traceback.format_exc())
             logger.warning(f"Elasticsearch search failed for query [{query_string}]: {exc}")
         return None

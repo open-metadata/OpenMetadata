@@ -42,7 +42,7 @@ class K8sPipelineClientBotTokenBugTest {
     when(userRepository.getByName(eq(null), eq("ingestion-bot"), any(EntityUtil.Fields.class)))
         .thenReturn(botUser);
 
-    K8sPipelineClient client = newClient(skipInit(false));
+    K8sPipelineClient client = newClient(skipInit(true));
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.BOT)).thenReturn(botRepository);
@@ -72,7 +72,7 @@ class K8sPipelineClientBotTokenBugTest {
     when(userRepository.getByName(eq(null), eq("ingestion-bot"), any(EntityUtil.Fields.class)))
         .thenReturn(botUser);
 
-    K8sPipelineClient client = newClient(skipInit(false));
+    K8sPipelineClient client = newClient(skipInit(true));
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
       entity.when(() -> Entity.getEntityRepository(Entity.BOT)).thenReturn(botRepository);

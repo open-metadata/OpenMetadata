@@ -11,9 +11,12 @@
  *  limitations under the License.
  */
 
+import { Typography } from '@openmetadata/ui-core-components';
 import { Spin } from 'antd';
 import React, { useCallback, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { LearningResource } from '../../../rest/learningResourceAPI';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import './storylane-tour.less';
 
 interface StorylaneTourProps {
@@ -21,11 +24,23 @@ interface StorylaneTourProps {
 }
 
 export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(true);
+  const tourUrl = getSafeHttpUrl(resource.source.url);
 
   const handleLoad = useCallback(() => {
     setIsLoading(false);
   }, []);
+
+  if (!tourUrl) {
+    return (
+      <div className="tw:p-4">
+        <Typography as="span" size="text-sm">
+          {t('label.invalid-url')}
+        </Typography>
+      </div>
+    );
+  }
 
   return (
     <div className="storylane-tour-wrapper">
@@ -39,7 +54,7 @@ export const StorylaneTour: React.FC<StorylaneTourProps> = ({ resource }) => {
           className="storylane-tour-iframe"
           frameBorder="0"
           sandbox="allow-scripts allow-same-origin allow-presentation allow-popups allow-forms"
-          src={resource.source.url}
+          src={tourUrl}
           title={resource.displayName || resource.name}
           onLoad={handleLoad}
         />

@@ -26,6 +26,7 @@ import com.auth0.jwt.JWTCreator;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTCreationException;
 import com.auth0.jwt.exceptions.JWTDecodeException;
+import com.auth0.jwt.interfaces.Claim;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -42,8 +43,11 @@ import java.util.Base64;
 import java.util.Date;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
@@ -65,6 +69,10 @@ public class JWTTokenGenerator {
   public static final String USERNAME = "username";
   public static final String IMPERSONATED_USER_CLAIM = "impersonatedUser";
   public static final String SESSION_ID_CLAIM = "sessionId";
+
+  /** The MCP OAuth client an access token was issued to (RFC 9068); only MCP tokens carry it. */
+  public static final String CLIENT_ID_CLAIM = "client_id";
+
   public static final String SCOPE_CLAIM = "scope";
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
@@ -167,6 +175,20 @@ public class JWTTokenGenerator {
       boolean isBot,
       ServiceTokenType tokenType,
       List<String> scopes) {
+    return generateJWTToken(
+        userName, roles, isAdmin, email, expiryInSeconds, isBot, tokenType, scopes, null);
+  }
+
+  public JWTAuthMechanism generateJWTToken(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      long expiryInSeconds,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      List<String> scopes,
+      String clientId) {
     return getJwtAuthMechanism(
         userName,
         roles,
@@ -176,7 +198,9 @@ public class JWTTokenGenerator {
         tokenType,
         getCustomExpiryDate(expiryInSeconds),
         null,
-        scopes);
+        scopes,
+        null,
+        clientId);
   }
 
   public JWTAuthMechanism generateJWTTokenForSession(
@@ -238,6 +262,23 @@ public class JWTTokenGenerator {
       JWTTokenExpiry expiry,
       List<String> scopes,
       String sessionId) {
+    return getJwtAuthMechanism(
+        userName, roles, isAdmin, email, isBot, tokenType, expires, expiry, scopes, sessionId,
+        null);
+  }
+
+  public JWTAuthMechanism getJwtAuthMechanism(
+      String userName,
+      Set<String> roles,
+      boolean isAdmin,
+      String email,
+      boolean isBot,
+      ServiceTokenType tokenType,
+      Date expires,
+      JWTTokenExpiry expiry,
+      List<String> scopes,
+      String sessionId,
+      String clientId) {
     try {
       if (isAdmin) {
         if (nullOrEmpty(roles)) {
@@ -264,6 +305,11 @@ public class JWTTokenGenerator {
       }
       if (!nullOrEmpty(sessionId)) {
         tokenBuilder.withClaim(SESSION_ID_CLAIM, sessionId);
+      }
+      if (!nullOrEmpty(clientId)) {
+        // RFC 9068 asks for a jti. It also keeps two tokens minted in the same second for the same
+        // user and client distinct; the token store keys them by hash and refuses a duplicate.
+        tokenBuilder.withClaim(CLIENT_ID_CLAIM, clientId).withJWTId(UUID.randomUUID().toString());
       }
 
       String token = tokenBuilder.sign(algorithm);
@@ -323,6 +369,26 @@ public class JWTTokenGenerator {
     } else if (!principalClaims.isEmpty()) {
       claims.put(principalClaims.getFirst(), principal);
     }
+  }
+
+  /**
+   * The stored user name a token we minted names, read back from {@link #identityClaims}: {@code
+   * sub}, or {@code username} when the configured claims put the email into {@code sub}. Empty when
+   * the token carries neither, so the caller falls back to the configured principal claims.
+   */
+  public static Optional<String> mintedUserName(Map<String, Claim> claims) {
+    String subject = claimValue(claims, SUBJECT_CLAIM);
+    String userName =
+        subject == null || subject.equalsIgnoreCase(claimValue(claims, EMAIL_CLAIM))
+            ? claimValue(claims, USERNAME)
+            : subject;
+    return Optional.ofNullable(userName).map(name -> name.toLowerCase(Locale.ROOT));
+  }
+
+  private static String claimValue(Map<String, Claim> claims, String claimName) {
+    Claim claim = claims.get(claimName);
+    String value = claim == null ? null : claim.asString();
+    return nullOrEmpty(value) ? null : value;
   }
 
   public static Date getExpiryDate(JWTTokenExpiry jwtTokenExpiry) {

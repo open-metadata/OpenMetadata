@@ -104,7 +104,7 @@ public final class NamespaceCleanup {
    */
   private static boolean awaitGone(
       final HttpClient http, final String collection, final EntityRoot root) {
-    final String path = "/v1/" + collection + "/" + root.id();
+    final String path = "/v1/" + collection + "/" + root.id() + "?include=all";
     boolean gone = true;
     try {
       Awaitility.await("cleanup cascade for " + root.entityType() + " " + root.id())

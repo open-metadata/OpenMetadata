@@ -17,7 +17,6 @@ import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
-import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import './roles-element.styles.less';
 import { RolesElementProps } from './RolesElement.interface';
@@ -31,7 +30,7 @@ const RolesElement = ({ userData }: RolesElementProps) => {
         <div className="mb-2 d-flex items-center gap-2">
           <Icon component={IconUser} style={{ fontSize: '16px' }} />
 
-          <span>{TERM_ADMIN}</span>
+          <span>{t('label.admin-superuser')}</span>
         </div>
       )}
       {userData?.roles?.map((role, i) => (

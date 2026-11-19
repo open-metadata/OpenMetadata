@@ -35,6 +35,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Container;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
@@ -368,6 +369,11 @@ public class ContainerRepository extends EntityRepository<Container> {
 
   protected List<EntityReference> getChildren(Container container) {
     return findTo(container.getId(), CONTAINER, Relationship.CONTAINS, CONTAINER);
+  }
+
+  @Override
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of(CONTAINER);
   }
 
   @Override
@@ -1433,5 +1439,15 @@ public class ContainerRepository extends EntityRepository<Container> {
             updated.getDataModel().getIsPartitioned());
       }
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Container container) {
+    return Map.of(
+        "dataModel.columns",
+        container.getDataModel() == null
+            ? List.of()
+            : listOrEmpty(container.getDataModel().getColumns()));
   }
 }

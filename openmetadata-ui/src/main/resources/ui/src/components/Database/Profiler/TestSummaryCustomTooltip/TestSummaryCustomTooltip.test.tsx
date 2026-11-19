@@ -223,3 +223,49 @@ describe('Test TestSummaryCustomTooltip component', () => {
     });
   });
 });
+
+it.each([false, true])(
+  'shows a recorded quality source for the hovered run (%s)',
+  (isSharded) => {
+    render(
+      <TestSummaryCustomTooltip
+        {...mockProps}
+        isSharded={isSharded}
+        payload={[
+          {
+            ...mockProps.payload[0],
+            payload: {
+              ...mockProps.payload[0].payload,
+              executionSource: {
+                databaseName: 'demo_db',
+                schemaName: 'demo_schema',
+                tableName: 'events_20260101',
+              },
+            },
+          },
+        ]}
+      />
+    );
+
+    expect(
+      screen.getByText('demo_db.demo_schema.events_20260101')
+    ).toBeInTheDocument();
+    expect(screen.queryByText('[object Object]')).not.toBeInTheDocument();
+  }
+);
+
+it.each([false, true])(
+  'shows unavailable only for sharded quality records without a source (%s)',
+  (isSharded) => {
+    render(<TestSummaryCustomTooltip {...mockProps} isSharded={isSharded} />);
+    if (isSharded) {
+      expect(
+        screen.getByText('message.execution-source-unavailable')
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByText('message.execution-source-unavailable')
+      ).not.toBeInTheDocument();
+    }
+  }
+);

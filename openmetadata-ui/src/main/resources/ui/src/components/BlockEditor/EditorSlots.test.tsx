@@ -164,3 +164,33 @@ describe('EditorSlots link handling', () => {
     document.body.removeChild(dialog);
   });
 });
+
+describe('EditorSlots mention links', () => {
+  it('opens a mention link without giving the new tab an opener', () => {
+    const editor = createTestEditor('<p>Hello</p>');
+    const ref = createRef<EditorSlotsRef>();
+    const openSpy = jest.spyOn(window, 'open').mockImplementation(() => null);
+
+    render(<EditorSlots editor={editor} menuType="bar" ref={ref} />);
+
+    const mention = document.createElement('a');
+    mention.setAttribute('data-type', 'mention');
+    mention.setAttribute('href', 'https://example.com/profile');
+    mention.setAttribute('target', '_blank');
+
+    act(() => {
+      ref.current?.onMouseDown({
+        target: mention,
+      } as unknown as Parameters<EditorSlotsRef['onMouseDown']>[0]);
+    });
+
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://example.com/profile',
+      '_blank',
+      'noopener,noreferrer'
+    );
+
+    openSpy.mockRestore();
+    editor.destroy();
+  });
+});

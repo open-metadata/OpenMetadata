@@ -12,19 +12,27 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 
@@ -53,6 +61,39 @@ class ElasticSearchVectorServiceTest {
         .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
     vectorService = new ElasticSearchVectorService(mockEsClient, mockEmbeddingClient);
+  }
+
+  @Test
+  void reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent() throws Exception {
+    long updatedAt = 1_700_000_000_000L;
+    Table unchanged = table("orders", "Orders placed online", updatedAt);
+    Table textChanged = table("payments", "Customer payments by card", updatedAt);
+    // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
+    Table textChangedAsLastEmbedded =
+        table("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    Table unfingerprintable = table("refunds", "Refunds issued", updatedAt);
+    answerIdSearchesFrom(
+        Map.of(
+            id(unchanged), storedEntityDoc(unchanged, unchanged),
+            id(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
+            id(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
+
+    Map<String, JsonNode> reusable =
+        vectorService.getExistingEmbeddingsBatch(
+            "table_search_index",
+            Map.of(
+                id(unchanged), currentFingerprint(unchanged),
+                id(textChanged), currentFingerprint(textChanged),
+                id(unfingerprintable),
+                    () -> {
+                      throw new IllegalStateException("tag without an FQN");
+                    },
+                UUID.randomUUID().toString(), currentFingerprint(unchanged)));
+
+    assertEquals(Set.of(id(unchanged)), reusable.keySet());
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(unchanged),
+        reusable.get(id(unchanged)).path("fingerprint").asText());
   }
 
   @Test
@@ -572,5 +613,73 @@ class ElasticSearchVectorServiceTest {
               int idx = Math.min(callCount.getAndIncrement(), responses.length - 1);
               return new ByteArrayInputStream(responses[idx].getBytes(StandardCharsets.UTF_8));
             });
+  }
+
+  private static Table table(String name, String description, long updatedAt) {
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName(name)
+        .withFullyQualifiedName("svc.db.schema." + name)
+        .withDescription(description)
+        .withUpdatedAt(updatedAt);
+  }
+
+  private static String id(Table table) {
+    return table.getId().toString();
+  }
+
+  private static Supplier<String> currentFingerprint(Table table) {
+    return () -> VectorDocBuilder.computeFingerprintForEntity(table);
+  }
+
+  /** An entity doc as a reindex left it: current updatedAt, embedding of {@code embeddedAs}. */
+  private static ObjectNode storedEntityDoc(Table current, Table embeddedAs) {
+    ObjectNode doc = JsonUtils.getObjectNode();
+    doc.put("name", current.getName());
+    doc.put("updatedAt", current.getUpdatedAt());
+    doc.put("fingerprint", VectorDocBuilder.computeFingerprintForEntity(embeddedAs));
+    doc.putArray("embedding").add(0.1).add(0.2).add(0.3);
+    doc.put("parentId", id(current));
+    return doc;
+  }
+
+  /** Answers an ids query like the engine: only stored ids, only the requested _source fields. */
+  private void answerIdSearchesFrom(Map<String, ObjectNode> storedById) throws Exception {
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(
+            invocation -> {
+              Request request = invocation.getArgument(0);
+              JsonNode query;
+              try (InputStream content = request.getEntity().getContent()) {
+                query =
+                    JsonUtils.readTree(new String(content.readAllBytes(), StandardCharsets.UTF_8));
+              }
+              ObjectNode body = JsonUtils.getObjectNode();
+              var hits = body.putObject("hits").putArray("hits");
+              for (JsonNode id : query.path("query").path("ids").path("values")) {
+                ObjectNode stored = storedById.get(id.asText());
+                if (stored != null) {
+                  ObjectNode hit = hits.addObject().put("_id", id.asText());
+                  ObjectNode source = hit.putObject("_source");
+                  query.path("_source").forEach(field -> copyField(stored, source, field.asText()));
+                }
+              }
+              return responseWith(body.toString());
+            });
+  }
+
+  private static void copyField(ObjectNode from, ObjectNode to, String field) {
+    if (from.has(field)) {
+      to.set(field, from.get(field));
+    }
+  }
+
+  private static Response responseWith(String json) throws Exception {
+    Response response = mock(Response.class);
+    HttpEntity entity = mock(HttpEntity.class);
+    when(response.getEntity()).thenReturn(entity);
+    when(entity.getContent())
+        .thenAnswer(inv -> new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+    return response;
   }
 }

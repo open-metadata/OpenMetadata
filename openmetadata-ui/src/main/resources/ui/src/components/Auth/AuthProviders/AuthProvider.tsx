@@ -98,6 +98,7 @@ import {
   clearOidcToken,
   getOidcToken,
   getRefreshToken,
+  setApiOnlyTokenListener,
 } from '../../../utils/SwTokenStorageUtils';
 import { showErrorToast, showInfoToast } from '../../../utils/ToastUtils';
 import { checkIfUpdateRequired } from '../../../utils/UserDataUtils';
@@ -369,6 +370,17 @@ export const AuthProvider = ({
     // Upon logout, redirect to the login page
     navigate(ROUTES.SIGNIN);
   }, [timeoutId]);
+
+  // Bot and personal access tokens are API-only: sign out fully when one is
+  // found in token storage.
+  useEffect(() => {
+    setApiOnlyTokenListener(() => {
+      showErrorToast(t('server.api-only-token-ui-access-denied'));
+      onLogoutHandler();
+    });
+
+    return () => setApiOnlyTokenListener();
+  }, [onLogoutHandler, t]);
 
   // handledVerifiedUser is memoized into handleSuccessfulLogin, so it needs a ref
   // to see the current page rather than the one the user logged out from.

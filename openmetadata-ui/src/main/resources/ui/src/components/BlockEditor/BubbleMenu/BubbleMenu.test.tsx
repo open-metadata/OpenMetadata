@@ -16,8 +16,8 @@ import BubbleMenu from './BubbleMenu';
 
 const mockIsActive = jest.fn();
 
-jest.mock('@tiptap/react', () => {
-  const originalModule = jest.requireActual('@tiptap/react');
+jest.mock('@tiptap/react/menus', () => {
+  const originalModule = jest.requireActual('@tiptap/react/menus');
 
   return {
     ...originalModule,

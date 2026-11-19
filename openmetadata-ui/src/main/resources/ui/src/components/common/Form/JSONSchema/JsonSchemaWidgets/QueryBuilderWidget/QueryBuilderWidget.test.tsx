@@ -10,10 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { AntdConfig } from '@react-awesome-query-builder/antd';
+import { AntdConfig, ImmutableTree } from '@react-awesome-query-builder/antd';
 import { Registry } from '@rjsf/utils';
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { SearchIndex } from '../../../../../../enums/search.enum';
+import jsonLogicSearchClassBase from '../../../../../../utils/JSONLogicSearchClassBase';
+import { useAdvanceSearch } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.component';
+import { SearchOutputType } from '../../../../../Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import QueryBuilderWidget from './QueryBuilderWidget';
 
 const mockOnFocus = jest.fn();
@@ -70,5 +74,61 @@ describe('QueryBuilderWidget', () => {
     const builder = screen.getByTestId('query-builder-form-field');
 
     expect(builder).toBeInTheDocument();
+  });
+});
+
+describe('QueryBuilderWidget – negated JSON Logic rules', () => {
+  const tagIs = (fqn: string) => ({
+    some: [{ var: 'tags' }, { '==': [{ var: 'tagFQN' }, fqn] }],
+  });
+
+  const renderRule = (rule: unknown) => {
+    const config = jsonLogicSearchClassBase.getQbConfigs([
+      SearchIndex.GLOSSARY_TERM,
+    ]);
+    // The provider owns the tree; this keeps it in state so the widget re-renders the loaded rule.
+    (useAdvanceSearch as jest.Mock).mockImplementation(() => {
+      const [treeInternal, setTreeInternal] = React.useState<ImmutableTree>();
+
+      return {
+        onChangeSearchIndex: jest.fn(),
+        searchIndex: SearchIndex.GLOSSARY_TERM,
+        isUpdating: false,
+        config,
+        treeInternal,
+        onTreeUpdate: (tree: ImmutableTree) => setTreeInternal(tree),
+      };
+    });
+
+    return render(
+      <QueryBuilderWidget
+        {...mockProps}
+        schema={{
+          ...mockProps.schema,
+          entityType: 'glossaryTerm',
+          outputType: SearchOutputType.JSONLogic,
+        }}
+        value={JSON.stringify(rule)}
+      />
+    );
+  };
+
+  it('shows the NOT of a rule written through the API around several conditions', () => {
+    const { container } = renderRule({
+      '!': { and: [tagIs('A'), tagIs('B')] },
+    });
+
+    expect(container.querySelector('.group--conjunctions')).toHaveTextContent(
+      /not/i
+    );
+  });
+
+  it('shows no NOT once a negated single rule loads as an "Is Not" row', () => {
+    const { container } = renderRule({ '!': { and: [tagIs('A')] } });
+
+    expect(
+      container.querySelector('.group--conjunctions')
+    ).not.toHaveTextContent(/not/i);
+    expect(screen.getByText('label.is-not')).toBeInTheDocument();
   });
 });

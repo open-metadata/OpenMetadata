@@ -35,7 +35,8 @@
         "ThoughtSpotDataModel",
         "SapS4HanaCdsView",
         "SsrsDataModel",
-        "OmniDataModel"
+        "OmniDataModel",
+        "HexDataModel"
       ],
       "javaEnums": [
         {
@@ -94,6 +95,9 @@
         },
         {
           "name": "OmniDataModel"
+        },
+        {
+          "name": "HexDataModel"
         }
       ]
     }

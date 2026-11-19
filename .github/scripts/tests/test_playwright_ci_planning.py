@@ -1496,7 +1496,11 @@ def test_summary_reconciles_results_and_evaluates_performance_independently():
     assert "playwright-results-json-*/results.json" in coverage_step
     assert "evaluate_playwright_performance.py" not in coverage_step
     assert "evaluate_playwright_performance.py" in performance_step
-    assert "if: ${{ always() && !cancelled() }}" in summary_job
+    summary_condition = summary_job.split("    if:", 1)[1].split("\n", 1)[0]
+    assert "always()" in summary_condition
+    assert "!cancelled()" in summary_condition
+    assert "github.event_name != 'pull_request'" in summary_condition
+    assert "github.ref == 'refs/heads/2.0'" in summary_condition
     assert "require('./.github/scripts/render_playwright_summary.cjs')" in summary_job
     assert "await renderPlaywrightSummary({ github, context, core });" in summary_job
     summary_script = summary_job.split("          script: |\n", 1)[1].split(
@@ -2071,7 +2075,7 @@ def test_generator_drops_testids_owned_by_too_many_files(tmp_path):
     # 4 owners for `loader`, over the threshold.
     for name in ("A", "B", "C", "D"):
         (ui / "src" / f"{name}.tsx").write_text(
-            f'export const X = () => <div data-testid="loader" />;\n'
+            'export const X = () => <div data-testid="loader" />;\n'
         )
     (ui / "playwright/e2e/Features/UsesLoader.spec.ts").write_text(
         "test('waits', async ({ page }) => {\n"

@@ -7,7 +7,7 @@ from dirty_equals import HasAttributes
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseStatus
-from metadata.generated.schema.tests.testCase import TestCase
+from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
 from metadata.generated.schema.type.basic import EntityLink
 from metadata.sdk.data_quality import (
     ColumnValuesToBeBetween,
@@ -18,6 +18,16 @@ from metadata.sdk.data_quality import (
     TableRowCountToBeBetween,
     TestRunner,
 )
+
+
+def declared_parameters(test_case: TestCase) -> list[TestCaseParameterValue]:
+    """The parameters the test case was defined with, without the runtime ones
+
+    Runtime parameter setters append what they resolved to `parameterValues` -- the evaluation
+    scope for every test case, the table diff configuration for a few. Only the declared
+    parameters identify which test case a result belongs to.
+    """
+    return [param for param in test_case.parameterValues or [] if not param.name.endswith("RuntimeParameters")]
 
 
 def test_table_row_count_tests(
@@ -270,27 +280,23 @@ def test_multiple_tests_in_single_runner(
     table_row_count_result = next(
         r
         for r in results
-        if r.testCase
-        == HasAttributes(
-            testDefinition=HasAttributes(name=tests[0].test_definition_name),
-            parameterValues=[
-                HasAttributes(name="minValue", value="1"),
-                HasAttributes(name="maxValue", value="10"),
-            ],
-        )
+        if r.testCase.testDefinition == HasAttributes(name=tests[0].test_definition_name)
+        and declared_parameters(r.testCase)
+        == [
+            HasAttributes(name="minValue", value="1"),
+            HasAttributes(name="maxValue", value="10"),
+        ]
     )
     assert table_row_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 
     test_table_column_count_result = next(
         r
         for r in results
-        if r.testCase
-        == HasAttributes(
-            testDefinition=HasAttributes(name=tests[1].test_definition_name),
-            parameterValues=[
-                HasAttributes(name="minColValue", value="3"),
-            ],
-        )
+        if r.testCase.testDefinition == HasAttributes(name=tests[1].test_definition_name)
+        and declared_parameters(r.testCase)
+        == [
+            HasAttributes(name="minColValue", value="3"),
+        ]
     )
     assert test_table_column_count_result.testCaseResult.testCaseStatus == TestCaseStatus.Success
 

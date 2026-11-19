@@ -68,6 +68,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.SecurityUtil;
 import org.openmetadata.service.util.UserUtil;
 
@@ -301,6 +302,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return super.getVersionInternal(securityContext, id, version);
   }
 
+  @IdentityEndpoint
   @POST
   @Operation(
       operationId = "createBot",
@@ -325,6 +327,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         impersonationChange, updatedBy, () -> create(uriInfo, securityContext, bot));
   }
 
+  @IdentityEndpoint
   @PUT
   @Operation(
       operationId = "createOrUpdateBot",
@@ -349,6 +352,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         impersonationChange, updatedBy, () -> createOrUpdate(uriInfo, securityContext, bot));
   }
 
+  @IdentityEndpoint
   @PATCH
   @Path("/{id}")
   @Operation(
@@ -377,6 +381,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 
+  @IdentityEndpoint
   @PATCH
   @Path("/name/{fqn}")
   @Operation(
@@ -406,6 +411,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return patchInternal(uriInfo, securityContext, fqn, patch);
   }
 
+  @IdentityEndpoint
   @DELETE
   @Path("/{id}")
   @Operation(
@@ -428,6 +434,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return delete(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @IdentityEndpoint
   @DELETE
   @Path("/async/{id}")
   @Operation(
@@ -450,6 +457,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
     return deleteByIdAsync(uriInfo, securityContext, id, true, hardDelete);
   }
 
+  @IdentityEndpoint
   @DELETE
   @Path("/name/{name}")
   @Operation(
@@ -474,6 +482,7 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
         uriInfo, securityContext, EntityInterfaceUtil.quoteName(name), true, hardDelete);
   }
 
+  @IdentityEndpoint
   @PUT
   @Path("/restore")
   @Operation(

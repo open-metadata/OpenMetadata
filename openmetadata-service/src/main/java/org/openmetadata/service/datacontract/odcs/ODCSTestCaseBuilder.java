@@ -115,11 +115,7 @@ final class ODCSTestCaseBuilder {
           ruleOnTarget, COLUMN_VALUES_TO_BE_UNIQUE, List.of());
       case VALID_VALUES -> failureCountTest(
           ruleOnTarget, COLUMN_VALUES_TO_BE_IN_SET, inSetParameters(rule));
-        // ODCSRuleKind only classifies a rule as PATTERN when it carries a pattern.
-      case PATTERN -> failureCountTest(
-          ruleOnTarget,
-          COLUMN_VALUES_TO_MATCH_REGEX,
-          List.of(parameter(REGEX, ODCSRuleArguments.pattern(rule).orElseThrow())));
+      case PATTERN -> patternTest(ruleOnTarget);
       case COMPLETENESS -> completenessTest(ruleOnTarget);
       case MISSING_VALUES -> missingValuesTest(ruleOnTarget);
       case TEXT_LENGTH -> columnRangeTest(
@@ -132,6 +128,20 @@ final class ODCSTestCaseBuilder {
       case OPENMETADATA_TEST -> ODCSOpenMetadataRules.toTestCase(ruleOnTarget);
       case UNSUPPORTED -> unsupported(rule, ODCSRuleKind.unsupportedReason(rule));
     };
+  }
+
+  private static ODCSRuleOutcome patternTest(final RuleOnTarget ruleOnTarget) {
+    final ODCSQualityRule rule = ruleOnTarget.rule();
+    return ODCSRuleOperators.failureTolerance(rule)
+        .filter(tolerance -> tolerance.value() == 0)
+        .<ODCSRuleOutcome>map(
+            tolerance ->
+                testCase(
+                    ruleOnTarget,
+                    COLUMN_VALUES_TO_MATCH_REGEX,
+                    ruleOnTarget.columnLink(),
+                    List.of(parameter(REGEX, ODCSRuleArguments.pattern(rule).orElseThrow()))))
+        .orElseGet(() -> unsupported(rule, "Regex tests only support zero failures."));
   }
 
   private static ODCSRuleOutcome failureCountTest(

@@ -1163,6 +1163,39 @@ class RuleEvaluatorTest {
   }
 
   @Test
+  void test_hasDomain_onCreate_needsTheContainersDomainAndEveryRequestedDomain() {
+    EntityReference finance =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("Finance")
+            .withFullyQualifiedName("Finance");
+    EntityReference marketing =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.DOMAIN)
+            .withName("Marketing")
+            .withFullyQualifiedName("Marketing");
+    SubjectContext marketer =
+        new SubjectContext(new User().withName("marketer").withDomains(List.of(marketing)), null);
+
+    assertFalse(hasDomainOnCreate(marketer, List.of(finance), List.of(marketing)));
+    assertFalse(hasDomainOnCreate(marketer, List.of(marketing), List.of(finance)));
+    assertFalse(hasDomainOnCreate(marketer, List.of(), List.of(finance)));
+    assertTrue(hasDomainOnCreate(marketer, List.of(marketing), List.of(marketing)));
+    assertTrue(hasDomainOnCreate(marketer, List.of(marketing), List.of()));
+    assertTrue(hasDomainOnCreate(marketer, List.of(), List.of()));
+  }
+
+  private static boolean hasDomainOnCreate(
+      SubjectContext subject, List<EntityReference> container, List<EntityReference> requested) {
+    CreateResourceContext<?> create = mock(CreateResourceContext.class);
+    Mockito.when(create.getContainerDomains()).thenReturn(container);
+    Mockito.when(create.getRequestedDomains()).thenReturn(requested);
+    return new RuleEvaluator(null, subject, create).hasDomain();
+  }
+
+  @Test
   void test_noDomain() {
     // Test 1: Entity with no domains assigned
     CreateResourceContext<?> contextNoDomains = mock(CreateResourceContext.class);

@@ -41,6 +41,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -70,6 +71,9 @@ public class TopicRepository extends EntityRepository<Topic> {
   private static final Set<String> CHANGE_SUMMARY_FIELDS =
       Set.of("messageSchema.schemaFields.description");
   public static final String TOPIC_SAMPLE_DATA_EXTENSION = "topic.sampleData";
+  // A PUT loads the stored topic with these fields, and the bulk loader reads schema field tags
+  // only with messageSchema. Without it, a re-run that sends no field tags indexes the fields bare.
+  private static final String UPDATE_FIELDS = "messageSchema";
 
   public TopicRepository() {
     super(
@@ -78,7 +82,7 @@ public class TopicRepository extends EntityRepository<Topic> {
         Topic.class,
         Entity.getCollectionDAO().topicDAO(),
         "",
-        "",
+        UPDATE_FIELDS,
         CHANGE_SUMMARY_FIELDS);
     supportsSearch = true;
     // Covered by the parent service delete cascade: search docs by service.id
@@ -766,11 +770,12 @@ public class TopicRepository extends EntityRepository<Topic> {
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);
-        updateTags(
-            stored.getFullyQualifiedName(),
-            EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
-            stored.getTags(),
-            updated.getTags());
+        updated.setTags(
+            updateTags(
+                stored.getFullyQualifiedName(),
+                EntityUtil.getFieldName(schemaFieldPrefix, FIELD_TAGS),
+                stored.getTags(),
+                updated.getTags()));
 
         if (updated.getChildren() != null && stored.getChildren() != null) {
           updateSchemaFields(
@@ -817,5 +822,15 @@ public class TopicRepository extends EntityRepository<Topic> {
           origField.getDataTypeDisplay(),
           updatedField.getDataTypeDisplay());
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Topic topic) {
+    return Map.of(
+        "messageSchema.schemaFields",
+        topic.getMessageSchema() == null
+            ? List.of()
+            : listOrEmpty(topic.getMessageSchema().getSchemaFields()));
   }
 }

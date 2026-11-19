@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.tasks;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.RESULT_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 
@@ -55,7 +57,6 @@ import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
-import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionBinding;
@@ -134,6 +135,7 @@ public class TaskWorkflowHandler {
         transitionId,
         effectiveResolutionType,
         user);
+    TaskTagTarget.requireTagFieldToApply(task, effectiveResolutionType, resolvedPayload);
 
     // During migration cutover, legacy workflow tasks can be converted to Task entities before
     // workflowInstanceId is backfilled. Runtime-task presence is the source of truth in that case.
@@ -602,12 +604,9 @@ public class TaskWorkflowHandler {
           fieldPath,
           newDescription.length() > 50 ? newDescription.substring(0, 50) + "..." : newDescription);
 
-      // Use FieldPathUtils for clean field update
-      boolean success =
-          FieldPathUtils.updateFieldDescription(
-              entity, repository, user, fieldPath, newDescription);
-
-      if (success) {
+      String before = JsonUtils.pojoToJson(entity);
+      if (FieldPathUtils.setFieldDescription(entity, fieldPath, newDescription)) {
+        saveChange(entity, repository, user, before, null);
         LOG.info(
             "[TaskWorkflowHandler] Successfully applied description update for task '{}'",
             task.getId());
@@ -632,6 +631,7 @@ public class TaskWorkflowHandler {
       String fieldPath = null;
       List<TagLabel> tagsToAdd = null;
       List<TagLabel> tagsToRemove = null;
+      List<TagLabel> snapshot = null;
 
       if (payload != null) {
         JsonNode payloadNode = JsonUtils.valueToTree(payload);
@@ -639,46 +639,79 @@ public class TaskWorkflowHandler {
         tagsToAdd =
             readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
         tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
+        snapshot = readTagLabels(payloadNode, action.currentTagsField(), "currentTags", null);
       }
 
-      // A non-empty resolver-supplied newValue is the final desired tag set (reviewer-edited),
-      // so treat it as a full replace instead of merging with payload's add/remove split.
-      if (newValue != null && !newValue.isEmpty()) {
-        List<TagLabel> newTags =
-            JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
-        if (newTags != null && !newTags.isEmpty()) {
-          tagsToAdd = newTags;
-          tagsToRemove = null;
-        }
+      List<TagLabel> resolvedTags = readResolvedTags(newValue);
+      if (!resolvedTags.isEmpty()) {
+        tagsToRemove =
+            tagsReplacedBy(resolvedTags, snapshot, tagsToRemove, targetTags(entity, fieldPath));
+        tagsToAdd = resolvedTags;
       }
 
-      if (isEntityLevelTagPath(fieldPath)) {
+      if (TaskTagTarget.isEntityLevel(fieldPath)) {
         // Entity-level: patch the entity so the versioned path runs — tag_usage is synced,
         // version is bumped, change event fires. Same code path as PATCH /v1/tables/{id} tags.
         patchEntityTags(entity, repository, user, tagsToAdd, tagsToRemove);
-      } else if (!patchFieldTags(entity, repository, user, fieldPath, tagsToAdd, tagsToRemove)) {
-        // Fallback: field POJO could not be located (unusual container or renamed field).
-        // Keep the direct tag_usage write so the tag still applies — the audit/version gap
-        // in this branch is a knowingly-accepted degradation.
-        String targetFqn = resolveTagTargetFqn(entity, fieldPath);
-        if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
-          repository.applyTagsDelete(tagsToRemove, targetFqn);
-        }
-        if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
-          repository.applyTags(tagsToAdd, targetFqn);
-        }
-        RdfUpdater.updateEntity(entity);
+      } else {
+        patchFieldTags(entity, repository, user, fieldPath, tagsToAdd, tagsToRemove);
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
     }
   }
 
-  private boolean isEntityLevelTagPath(String fieldPath) {
-    return fieldPath == null
-        || fieldPath.isEmpty()
-        || "tags".equals(fieldPath)
-        || "entity".equals(fieldPath);
+  private static List<TagLabel> readResolvedTags(String newValue) {
+    return nullOrEmpty(newValue)
+        ? List.of()
+        : listOrEmpty(JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {}));
+  }
+
+  /**
+   * A resolver's newValue is the final tag list the reviewer approved, built from the task's
+   * currentTags snapshot (the UI previews snapshot - tagsToRemove + tagsToAdd). It replaces what the
+   * task saw, the snapshot plus tagsToRemove; a task without a snapshot only removes its
+   * tagsToRemove. A tag added to the target since stays, unless a newValue tag of the same mutually
+   * exclusive classification displaces it, as a direct tag edit would.
+   */
+  private static List<TagLabel> tagsReplacedBy(
+      List<TagLabel> resolvedTags,
+      List<TagLabel> snapshot,
+      List<TagLabel> tagsToRemove,
+      List<TagLabel> targetTags) {
+    Set<String> approved = tagFqns(resolvedTags);
+    Set<String> survivors =
+        tagFqns(TagLabelUtil.mergeTagsWithIncomingPrecedence(targetTags, resolvedTags));
+    List<TagLabel> replaced = new ArrayList<>(listOrEmpty(snapshot));
+    replaced.addAll(listOrEmpty(tagsToRemove));
+    replaced.removeIf(tag -> approved.contains(tag.getTagFQN()));
+    targetTags.stream().filter(tag -> !survivors.contains(tag.getTagFQN())).forEach(replaced::add);
+    return replaced;
+  }
+
+  private static Set<String> tagFqns(List<TagLabel> tags) {
+    return tags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
+  }
+
+  private static List<TagLabel> targetTags(EntityInterface entity, String fieldPath) {
+    return TaskTagTarget.isEntityLevel(fieldPath)
+        ? listOrEmpty(entity.getTags())
+        : FieldPathUtils.findField(entity, TaskTagTarget.locatablePath(fieldPath))
+            .map(TaskWorkflowHandler::fieldTags)
+            .orElse(List.of());
+  }
+
+  // FieldPathUtils.findField returns the tagged field untyped (a Column, Field, ...); each of them
+  // has getTags, so it is read reflectively, as patchFieldTags writes it.
+  @SuppressWarnings("unchecked")
+  private static List<TagLabel> fieldTags(Object field) {
+    List<TagLabel> tags = List.of();
+    try {
+      tags = listOrEmpty((List<TagLabel>) field.getClass().getMethod("getTags").invoke(field));
+    } catch (ReflectiveOperationException e) {
+      LOG.warn("[TaskWorkflowHandler] Field {} has no readable tags", field.getClass(), e);
+    }
+    return tags;
   }
 
   private void patchEntityTags(
@@ -695,53 +728,58 @@ public class TaskWorkflowHandler {
       EntityRepository<?> repository,
       String user,
       List<TagLabel> updatedTags) {
-    String originalJson = JsonUtils.pojoToJson(entity);
+    String before = JsonUtils.pojoToJson(entity);
     entity.setTags(updatedTags);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
-    if (patch != null && !patch.toJsonArray().isEmpty()) {
-      PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
-      recordChangeEvent(response, user);
-    }
+    saveChange(entity, repository, user, before, null);
   }
 
-  @SuppressWarnings("unchecked")
-  private boolean patchFieldTags(
+  // Approval refuses a field path that names no tagged field (TaskTagTarget), so a field that is
+  // missing here has gone since; nothing is written for it.
+  private void patchFieldTags(
       EntityInterface entity,
       EntityRepository<?> repository,
       String user,
       String fieldPath,
       List<TagLabel> tagsToAdd,
       List<TagLabel> tagsToRemove) {
-    Optional<Object> target = FieldPathUtils.findField(entity, fieldPath);
+    Optional<Object> target =
+        FieldPathUtils.findField(entity, TaskTagTarget.locatablePath(fieldPath));
     if (target.isEmpty()) {
       LOG.warn(
-          "[TaskWorkflowHandler] Could not locate field '{}' for TagUpdate; falling back to direct DAO",
-          fieldPath);
-      return false;
+          "[TaskWorkflowHandler] Could not locate tagged field '{}'; no tags applied", fieldPath);
+      return;
     }
-    boolean applied = false;
     try {
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       Object field = target.get();
-      Method getTags = field.getClass().getMethod("getTags");
       Method setTags = field.getClass().getMethod("setTags", List.class);
-      List<TagLabel> current = (List<TagLabel>) getTags.invoke(field);
-      setTags.invoke(field, mergeTags(current, tagsToAdd, tagsToRemove));
-      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, JsonUtils.pojoToJson(entity));
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        PatchResponse<?> response = repository.patch(null, entity.getId(), user, patch, null, null);
-        recordChangeEvent(response, user);
-      }
-      applied = true;
+      setTags.invoke(field, mergeTags(fieldTags(field), tagsToAdd, tagsToRemove));
+      saveChange(entity, repository, user, before, null);
     } catch (NoSuchMethodException e) {
       LOG.warn(
-          "[TaskWorkflowHandler] Field at '{}' has no tags setter; falling back to direct DAO",
-          fieldPath);
+          "[TaskWorkflowHandler] Field at '{}' has no tags setter; no tags applied", fieldPath);
     } catch (Exception e) {
       LOG.warn(
           "[TaskWorkflowHandler] patchFieldTags failed at '{}': {}", fieldPath, e.getMessage(), e);
     }
-    return applied;
+  }
+
+  /**
+   * Saves what an approved task changed on its entity and records it as the entity's own change
+   * event, as a direct edit would. The write runs inside the task's request, so no response filter
+   * records it.
+   */
+  private void saveChange(
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      String before,
+      ChangeSource changeSource) {
+    JsonPatch patch = JsonUtils.getJsonPatch(before, JsonUtils.pojoToJson(entity));
+    if (patch != null && !patch.toJsonArray().isEmpty()) {
+      recordChangeEvent(
+          repository.patch(null, entity.getId(), user, patch, changeSource, null), user);
+    }
   }
 
   private void recordChangeEvent(PatchResponse<?> response, String user) {
@@ -789,56 +827,6 @@ public class TaskWorkflowHandler {
       }
     }
     return merged;
-  }
-
-  private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
-    if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
-      return entity.getFullyQualifiedName();
-    }
-
-    String normalizedFieldPath = fieldPath.replace("\"", "");
-    if (normalizedFieldPath.endsWith(".tags")) {
-      normalizedFieldPath =
-          normalizedFieldPath.substring(0, normalizedFieldPath.length() - ".tags".length());
-    }
-
-    if (normalizedFieldPath.startsWith("requestSchema.schemaFields.")) {
-      return entity.getFullyQualifiedName()
-          + ".requestSchema."
-          + normalizedFieldPath.substring("requestSchema.schemaFields.".length());
-    }
-
-    if (normalizedFieldPath.startsWith("responseSchema.schemaFields.")) {
-      return entity.getFullyQualifiedName()
-          + ".responseSchema."
-          + normalizedFieldPath.substring("responseSchema.schemaFields.".length());
-    }
-
-    if (normalizedFieldPath.startsWith("requestSchema.")) {
-      return entity.getFullyQualifiedName() + "." + normalizedFieldPath;
-    }
-
-    if (normalizedFieldPath.startsWith("responseSchema.")) {
-      return entity.getFullyQualifiedName() + "." + normalizedFieldPath;
-    }
-
-    String[] supportedPrefixes = {
-      "columns.",
-      "messageSchema.schemaFields.",
-      "messageSchema.",
-      "dataModel.columns.",
-      "dataModel."
-    };
-
-    for (String prefix : supportedPrefixes) {
-      if (normalizedFieldPath.startsWith(prefix)) {
-        return entity.getFullyQualifiedName()
-            + "."
-            + normalizedFieldPath.substring(prefix.length());
-      }
-    }
-
-    return entity.getFullyQualifiedName() + "." + normalizedFieldPath;
   }
 
   private String readPayloadString(
@@ -902,18 +890,13 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       entity.setOwners(newOwners);
-      String updatedJson = JsonUtils.pojoToJson(entity);
-
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
-        LOG.info(
-            "[TaskWorkflowHandler] Applied OwnershipUpdate for entity '{}': {} owners",
-            entity.getName(),
-            newOwners.size());
-      }
+      saveChange(entity, repository, user, before, null);
+      LOG.info(
+          "[TaskWorkflowHandler] Applied OwnershipUpdate for entity '{}': {} owners",
+          entity.getName(),
+          newOwners.size());
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply OwnershipUpdate: {}", e.getMessage(), e);
     }
@@ -970,18 +953,13 @@ public class TaskWorkflowHandler {
         return;
       }
 
-      String originalJson = JsonUtils.pojoToJson(entity);
+      String before = JsonUtils.pojoToJson(entity);
       entity.setDomains(newDomains);
-      String updatedJson = JsonUtils.pojoToJson(entity);
-
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      if (patch != null && !patch.toJsonArray().isEmpty()) {
-        repository.patch(null, entity.getId(), user, patch, null, null);
-        LOG.info(
-            "[TaskWorkflowHandler] Applied DomainUpdate for entity '{}': domain={}",
-            entity.getName(),
-            newDomains.get(0).getFullyQualifiedName());
-      }
+      saveChange(entity, repository, user, before, null);
+      LOG.info(
+          "[TaskWorkflowHandler] Applied DomainUpdate for entity '{}': domain={}",
+          entity.getName(),
+          newDomains.get(0).getFullyQualifiedName());
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply DomainUpdate: {}", e.getMessage(), e);
     }
@@ -1068,15 +1046,14 @@ public class TaskWorkflowHandler {
               fieldPath);
           return;
         }
-        boolean success =
-            FieldPathUtils.updateFieldDescription(
-                entity,
-                repository,
-                user,
-                fieldPath,
-                suggestedValue,
-                isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
-        if (success) {
+        String before = JsonUtils.pojoToJson(entity);
+        if (FieldPathUtils.setFieldDescription(entity, fieldPath, suggestedValue)) {
+          saveChange(
+              entity,
+              repository,
+              user,
+              before,
+              isAgentAuthored(task, payloadNode, suggestedValue) ? ChangeSource.SUGGESTED : null);
           LOG.info("[TaskWorkflowHandler] Applied description suggestion: fieldPath={}", fieldPath);
         } else {
           LOG.warn(
@@ -1089,11 +1066,10 @@ public class TaskWorkflowHandler {
         if (tags != null && !tags.isEmpty()) {
           // Reuse the same field-path resolution as applyTagUpdate so both "::" and dot-form
           // paths (e.g. columns.customer_id.tags) land on the suggested field, not the parent.
-          if (isEntityLevelTagPath(fieldPath)) {
+          if (TaskTagTarget.isEntityLevel(fieldPath)) {
             applyEntityLevelTags(entity, repository, user, tags);
-          } else if (!patchFieldTags(entity, repository, user, fieldPath, tags, null)) {
-            repository.applyTags(tags, resolveTagTargetFqn(entity, fieldPath));
-            RdfUpdater.updateEntity(entity);
+          } else {
+            patchFieldTags(entity, repository, user, fieldPath, tags, null);
           }
           LOG.info(
               "[TaskWorkflowHandler] Applied tag suggestion: {} tags for entity '{}'",
@@ -1110,16 +1086,9 @@ public class TaskWorkflowHandler {
 
   private void applyEntityLevelTags(
       EntityInterface entity, EntityRepository<?> repository, String user, List<TagLabel> tags) {
-    String originalJson = JsonUtils.pojoToJson(entity);
-    List<TagLabel> mergedTags =
-        org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence(
-            entity.getTags(), tags);
-    entity.setTags(mergedTags);
-    String updatedJson = JsonUtils.pojoToJson(entity);
-    jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    if (patch != null && !patch.toJsonArray().isEmpty()) {
-      repository.patch(null, entity.getId(), user, patch, null, null);
-    }
+    String before = JsonUtils.pojoToJson(entity);
+    entity.setTags(TagLabelUtil.mergeTagsWithIncomingPrecedence(entity.getTags(), tags));
+    saveChange(entity, repository, user, before, null);
   }
 
   private String resolveSuggestionChangeSummaryField(String fieldPath) {

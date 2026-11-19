@@ -82,14 +82,21 @@ jobs:
         run: |
           cat <(echo -e "${{ secrets.OSSRH_GPG_SECRET_KEY }}") | gpg --batch --import
           gpg --list-secret-keys --keyid-format LONG
+      - name: Build openmetadata-service
+        # Not published, but the Java client is generated from the swagger.json its compile writes.
+        run: mvn --no-transfer-progress --batch-mode -DskipTests -pl openmetadata-service -am install
       - name: Publish to Central Repository
         env:
           MAVEN_USERNAME: ${{ secrets.OSSRH_USERNAME }}
           MAVEN_PASSWORD: ${{ secrets.OSSRH_TOKEN }}
           MAVEN_GPG_PASSPHRASE: ${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }}
         run: |
+          # Only these modules are published; the root pom skips everything else
+          # (ADR:2026-10-21-maven-central-publishing-is-opt-in-per-module).
           mvn \
             --no-transfer-progress \
             --batch-mode \
             -Dgpg.passphrase=${{ secrets.OSSRH_GPG_SECRET_KEY_PASSWORD }} \
+            -pl .,common,openmetadata-spec,openmetadata-sdk,openmetadata-clients,openmetadata-clients/openmetadata-java-client \
+            -DskipPublishing=false \
             -DskipTests -Prelease clean deploy

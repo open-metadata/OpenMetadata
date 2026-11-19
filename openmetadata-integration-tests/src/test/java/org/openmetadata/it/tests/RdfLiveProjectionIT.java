@@ -37,15 +37,20 @@ import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
+import org.openmetadata.schema.entity.data.Pipeline;
+import org.openmetadata.schema.entity.data.PipelineStatus;
+import org.openmetadata.schema.type.StatusType;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -196,6 +201,40 @@ public class RdfLiveProjectionIT {
   }
 
   @Test
+  void aPipelineRunReachesTheGraphThroughTheLiveWriteQueue(final TestNamespace namespace) {
+    RdfUpdater.initialize(servingConfig);
+    final Pipeline pipeline =
+        SdkClients.adminClient()
+            .pipelines()
+            .create(
+                new CreatePipeline()
+                    .withName(namespace.prefix("pipeline"))
+                    .withService(
+                        PipelineServiceTestFactory.createAirflow(namespace)
+                            .getFullyQualifiedName()));
+    final long timestamp = System.currentTimeMillis();
+    SdkClients.adminClient()
+        .pipelines()
+        .addPipelineStatus(
+            pipeline.getFullyQualifiedName(),
+            new PipelineStatus()
+                .withExecutionStatus(StatusType.Successful)
+                .withTimestamp(timestamp));
+
+    // The queue replays the run from its stored status; a lookup that misses would drop it quietly.
+    try (JenaFusekiStorage storage = new JenaFusekiStorage(servingConfig)) {
+      Awaitility.await("The queued run reaches the graph")
+          .atMost(Duration.ofSeconds(60))
+          .until(
+              () ->
+                  JsonUtils.readTree(
+                          storage.executeSparqlQuery(askForRun(pipeline, timestamp), "json"))
+                      .path("boolean")
+                      .asBoolean());
+    }
+  }
+
+  @Test
   void persistedFailureSurvivesHealthReinitialization() throws Exception {
     RdfUpdater.initialize(servingConfig);
     final RdfLiveWriteStore store = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
@@ -234,6 +273,14 @@ public class RdfLiveProjectionIT {
         .withPassword("test-admin")
         .withRequestTimeoutMs(10000)
         .withWriteMaxRetries(0);
+  }
+
+  /** The run is written without a graph, so it lands in the stored default graph. */
+  private static String askForRun(final Pipeline pipeline, final long timestamp) {
+    final String run =
+        "<https://open-metadata.org/execution/" + pipeline.getId() + "/" + timestamp + ">";
+    final String isRun = run + " a <https://open-metadata.org/ontology/PipelineExecution>";
+    return "ASK { { " + isRun + " } UNION { GRAPH <urn:x-arq:DefaultGraph> { " + isRun + " } } }";
   }
 
   private static void assertHasGlossaryTerm(

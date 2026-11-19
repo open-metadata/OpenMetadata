@@ -355,7 +355,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, unmask(workflow));
+    Response response = create(uriInfo, securityContext, unmask(securityContext, workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -477,7 +477,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    workflow = unmask(workflow);
+    workflow = unmask(securityContext, workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -634,13 +634,13 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     }
   }
 
-  private Workflow unmask(Workflow workflow) {
+  private Workflow unmask(SecurityContext securityContext, Workflow workflow) {
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
       // name
-      originalWorkflow = buildFromOriginalServiceConnection(workflow);
+      originalWorkflow = buildFromOriginalServiceConnection(securityContext, workflow);
     } else {
       originalWorkflow =
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
@@ -673,24 +673,31 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflowDecrypted;
   }
 
-  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
+  private Workflow buildFromOriginalServiceConnection(
+      SecurityContext securityContext, Workflow workflow) {
     Workflow originalWorkflow =
         repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
       originalWorkflow =
           (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
-    }
-    if (originalWorkflow.getRequest()
-        instanceof TestServiceConnectionRequest testServiceConnection) {
-      EntityRepository<? extends EntityInterface> serviceRepository =
-          Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
-      ServiceEntityInterface originalService =
-          (ServiceEntityInterface)
-              serviceRepository.findByNameOrNull(
-                  testServiceConnection.getServiceName(), Include.NON_DELETED);
-      if (originalService != null && originalService.getConnection() != null) {
-        testServiceConnection.setConnection(originalService.getConnection());
-        originalWorkflow.setRequest(testServiceConnection);
+      if (originalWorkflow.getRequest()
+          instanceof TestServiceConnectionRequest testServiceConnection) {
+        EntityRepository<? extends EntityInterface> serviceRepository =
+            Entity.getServiceEntityRepository(testServiceConnection.getServiceType());
+        ServiceEntityInterface originalService =
+            (ServiceEntityInterface)
+                serviceRepository.findByNameOrNull(
+                    testServiceConnection.getServiceName(), Include.NON_DELETED);
+        if (originalService != null && originalService.getConnection() != null) {
+          // ADR:2026-11-03-test-connection-workflows-check-service-edit-permission
+          final String serviceEntityType = serviceRepository.getEntityType();
+          authorizer.authorize(
+              securityContext,
+              new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL),
+              new ResourceContext<>(serviceEntityType, originalService.getId(), null));
+          testServiceConnection.setConnection(originalService.getConnection());
+          originalWorkflow.setRequest(testServiceConnection);
+        }
       }
     }
     return originalWorkflow;

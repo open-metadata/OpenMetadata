@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.SubscriptionAction;
@@ -43,6 +44,8 @@ import org.openmetadata.service.notifications.recipients.strategy.RecipientResol
 public class UserRecipientResolver implements RecipientResolutionStrategy {
 
   private static final String USER_FIELDS = "id,profile,email";
+  private static final Predicate<User> ANYONE = user -> true;
+  private static final Predicate<User> PEOPLE = user -> !Boolean.TRUE.equals(user.getIsBot());
 
   @Override
   public Set<Recipient> resolve(
@@ -101,22 +104,34 @@ public class UserRecipientResolver implements RecipientResolutionStrategy {
    * @return set of resolved user recipients
    */
   public Set<Recipient> resolve(List<UUID> userIds, SubscriptionDestination destination) {
+    return resolveById(userIds, ANYONE, destination);
+  }
+
+  /** Like {@link #resolve(List, SubscriptionDestination)}, but a bot user reaches nobody. */
+  public Set<Recipient> resolvePeople(List<UUID> userIds, SubscriptionDestination destination) {
+    return resolveById(userIds, PEOPLE, destination);
+  }
+
+  private Set<Recipient> resolveById(
+      List<UUID> userIds, Predicate<User> reachable, SubscriptionDestination destination) {
     if (userIds == null || userIds.isEmpty()) {
       return Collections.emptySet();
     }
 
     SubscriptionDestination.SubscriptionType notificationType = destination.getType();
     return userIds.stream()
-        .map(userId -> resolveUserById(userId, notificationType))
+        .map(userId -> resolveUserById(userId, reachable, notificationType))
         .filter(Objects::nonNull)
         .collect(Collectors.toUnmodifiableSet());
   }
 
   private Recipient resolveUserById(
-      UUID userId, SubscriptionDestination.SubscriptionType notificationType) {
+      UUID userId,
+      Predicate<User> reachable,
+      SubscriptionDestination.SubscriptionType notificationType) {
     try {
       User user = Entity.getEntity(Entity.USER, userId, USER_FIELDS, Include.NON_DELETED);
-      return Recipient.fromUser(user, notificationType);
+      return reachable.test(user) ? Recipient.fromUser(user, notificationType) : null;
     } catch (EntityNotFoundException e) {
       LOG.debug("Skipping user recipient {}: {}", userId, e.getMessage());
       return null;

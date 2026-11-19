@@ -33,6 +33,8 @@ jobs:
 
     steps:
       - name: Checkout
+        with:
+          persist-credentials: false
         uses: actions/checkout@v5
 
       - name: Validate OpenMetadata Docker Compose

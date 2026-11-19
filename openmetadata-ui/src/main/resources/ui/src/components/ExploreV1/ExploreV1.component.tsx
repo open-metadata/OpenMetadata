@@ -109,6 +109,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
+  additionalSearchResults,
   showRankingDetails = false,
   onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
@@ -885,6 +886,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
             <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
               <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
                 <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
+                  {additionalSearchResults}
                   {!loading && !isElasticSearchIssue ? (
                     <SearchedData
                       data={searchResults?.hits.hits ?? []}

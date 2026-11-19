@@ -15,7 +15,9 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseConnection,
     DatabaseServiceType,
 )
+from metadata.generated.schema.tests.basic import TestCaseEvaluationScope
 from metadata.generated.schema.tests.testDefinition import TestDefinition
+from metadata.generated.schema.type.tableExecutionSource import TableExecutionSource
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
@@ -59,3 +61,15 @@ class TableCustomSQLQueryRuntimeParameters(BaseModel):
 class RuleLibrarySqlExpressionRuntimeParameters(BaseModel):
     conn_config: DatabaseConnection
     test_definition: TestDefinition
+
+
+class EvaluationScopeRuntimeParameters(BaseModel):
+    """Physical execution source resolved for the current test run."""
+
+    execution_source: TableExecutionSource | None = Field(default=None)
+    sample_query: str | None = Field(default=None)
+
+    def to_result_scope(self, bypasses_sampler: bool) -> TestCaseEvaluationScope:
+        return TestCaseEvaluationScope(
+            executionSource=self.execution_source if not bypasses_sampler and not self.sample_query else None
+        )

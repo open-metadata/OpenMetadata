@@ -54,7 +54,11 @@ public class FindContextTool implements McpTool {
       int size = Math.min(Math.max(McpParams.getInt(params, "size", DEFAULT_SIZE), 1), MAX_SIZE);
       LOG.info("Finding company context for query: {}, format: {}", query, format);
       SubjectContext subjectContext = DefaultAuthorizer.getSubjectContext(securityContext);
-      FoundContext found = new AIContextFinder(subjectContext).find(query, size);
+      FoundContext found =
+          new AIContextFinder(
+                  subjectContext,
+                  AIContextFinderAccess.knowledgeViewer(authorizer, securityContext))
+              .find(query, size);
       result =
           render(
               AIContextFinderAccess.filterCandidates(found, authorizer, securityContext), format);

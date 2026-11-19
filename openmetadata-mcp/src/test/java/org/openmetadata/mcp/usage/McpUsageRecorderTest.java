@@ -33,10 +33,9 @@ import org.mockito.Mockito;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 
@@ -44,8 +43,6 @@ class McpUsageRecorderTest {
 
   private CollectionDAO.AppExtensionTimeSeries dao;
   private MockedStatic<Entity> entityStatic;
-  private MockedStatic<ApplicationContext> appContextStatic;
-  private ApplicationContext appContext;
 
   @BeforeEach
   void setUp() {
@@ -55,16 +52,11 @@ class McpUsageRecorderTest {
 
     entityStatic = Mockito.mockStatic(Entity.class);
     entityStatic.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
-
-    appContext = mock(ApplicationContext.class);
-    appContextStatic = Mockito.mockStatic(ApplicationContext.class);
-    appContextStatic.when(ApplicationContext::getInstance).thenReturn(appContext);
   }
 
   @AfterEach
   void tearDown() {
     entityStatic.close();
-    appContextStatic.close();
   }
 
   @Test
@@ -115,7 +107,7 @@ class McpUsageRecorderTest {
 
   @Test
   void recordSkipsWhenMcpApplicationNotInitialized() {
-    when(appContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(null);
+    stubMcpAppLookup(null);
 
     McpUsageRecorder.record("any_tool", "alice", true);
 
@@ -174,9 +166,15 @@ class McpUsageRecorderTest {
   }
 
   private void stubMcpApp(UUID appId, String appName) {
-    AbstractNativeApplication nativeApp = mock(AbstractNativeApplication.class);
-    App app = new App().withId(appId).withName(appName);
-    when(nativeApp.getApp()).thenReturn(app);
-    when(appContext.getAppIfExists(appName)).thenReturn(nativeApp);
+    stubMcpAppLookup(new App().withId(appId).withName(appName));
+  }
+
+  private void stubMcpAppLookup(App app) {
+    entityStatic
+        .when(
+            () ->
+                Entity.findEntityByNameOrNull(
+                    Entity.APPLICATION, McpAppConstants.MCP_APP_NAME, Include.ALL))
+        .thenReturn(app);
   }
 }

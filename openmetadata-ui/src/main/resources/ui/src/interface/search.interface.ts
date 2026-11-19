@@ -372,6 +372,7 @@ export type SearchRequest<
     SearchIndexSearchSourceMapping[SI]
   > = KeysOfUnion<SearchIndexSearchSourceMapping[SI]>
 > = {
+  signal?: AbortSignal;
   pageNumber?: number;
   pageSize?: number;
   searchIndex?: SI;

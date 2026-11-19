@@ -34,6 +34,15 @@ public class TokenRepository {
     dao.getTokenDAO().insert(JsonUtils.pojoToJson(tokenInterface));
   }
 
+  /**
+   * Replaces {@code token} with {@code replacement} in one statement. Every column of the row comes
+   * from its JSON, so the row takes the replacement's token, and of several requests replacing the
+   * same token only one succeeds: false when it was already replaced or deleted.
+   */
+  public boolean replaceToken(String token, TokenInterface replacement) {
+    return dao.getTokenDAO().update(token, JsonUtils.pojoToJson(replacement)) > 0;
+  }
+
   public void deleteToken(String token) {
     try {
       dao.getTokenDAO().delete(token);
