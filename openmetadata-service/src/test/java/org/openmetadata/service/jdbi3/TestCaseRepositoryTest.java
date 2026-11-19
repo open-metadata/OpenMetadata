@@ -219,8 +219,15 @@ class TestCaseRepositoryTest {
       TestCaseRepository repository = boundaries.registerRepositories(entity);
 
       String callingThread = Thread.currentThread().getName();
-      repository.entitySpecificCleanup(
-          testCase(UUID.randomUUID(), "delete me", entityReference(Entity.TEST_SUITE, "suite")));
+      Runnable cleanup =
+          repository.preparePostDeleteCleanup(
+              List.of(
+                  testCase(
+                      UUID.randomUUID(),
+                      "delete me",
+                      entityReference(Entity.TEST_SUITE, "suite"))));
+      assertEquals(0, boundaries.timeSeriesDeletes.get());
+      cleanup.run();
 
       await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.timeSeriesDeletes.get() > 0);
       // A redundant second delete would push these past one, so the counts must *hold* at one for a
@@ -258,7 +265,9 @@ class TestCaseRepositoryTest {
           testCase(UUID.randomUUID(), "second", entityReference(Entity.TEST_SUITE, "s"))
               .withFullyQualifiedName(secondFqn);
 
-      repository.bulkEntitySpecificCleanup(List.of(first, second), "admin");
+      Runnable cleanup = repository.preparePostDeleteCleanup(List.of(first, second));
+      assertEquals(0, boundaries.timeSeriesDeletes.get());
+      cleanup.run();
 
       await().atMost(Duration.ofSeconds(5)).until(() -> boundaries.searchDeletes.get() == 1);
       assertEquals(List.of(TEST_CASE_FQN, secondFqn), boundaries.deletedTestCaseFQNs.get());
@@ -351,6 +360,8 @@ class TestCaseRepositoryTest {
           mock(CollectionDAO.DataQualityDataTimeSeriesDAO.class);
       CollectionDAO.TestCaseDimensionResultTimeSeriesDAO dimensionDao =
           mock(CollectionDAO.TestCaseDimensionResultTimeSeriesDAO.class);
+      when(collectionDAO.relationshipDAO())
+          .thenReturn(mock(CollectionDAO.EntityRelationshipDAO.class));
       when(collectionDAO.testCaseDAO()).thenReturn(mock(CollectionDAO.TestCaseDAO.class));
       when(collectionDAO.testCaseResultTimeSeriesDao())
           .thenReturn(mock(CollectionDAO.TestCaseResultTimeSeriesDAO.class));

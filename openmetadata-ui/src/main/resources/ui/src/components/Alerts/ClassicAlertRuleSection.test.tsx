@@ -35,7 +35,13 @@ jest.mock('../../rest/searchAPI', () => ({
 const selection: AlertSelection = {
   sources: ['table'],
   loading: false,
-  capabilities: { loading: false },
+  capabilities: {
+    knownSources: [],
+    loading: false,
+    settled: true,
+    retry: jest.fn(),
+  },
+  ready: true,
   support: {
     supportedFilters: [
       {
@@ -256,6 +262,22 @@ describe('Classic alert rules', () => {
 
   it('disables adding a filter until a source is selected', () => {
     render(<Controlled sources={[]} />);
+
+    expect(screen.getByTestId('add-filters')).toBeDisabled();
+  });
+
+  // While the server answers for other sources, the save could reject what they support.
+  it('disables adding a filter until the server has answered for the chosen sources', () => {
+    render(
+      <AlertSelectionProvider value={{ ...selection, support: {} }}>
+        <ClassicAlertRuleSection
+          field="filters"
+          title="Filters"
+          value={initial}
+          onChange={jest.fn()}
+        />
+      </AlertSelectionProvider>
+    );
 
     expect(screen.getByTestId('add-filters')).toBeDisabled();
   });

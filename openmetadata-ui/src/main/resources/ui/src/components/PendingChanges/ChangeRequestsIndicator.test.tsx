@@ -161,16 +161,16 @@ describe('ChangeRequestsIndicator', () => {
     expect(getChangeRequestsForEntity).not.toHaveBeenCalled();
   });
 
-  it('shows no count when no request is open', async () => {
+  it('shows no button when no request is open', async () => {
     (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([
       request({ status: ChangeRequestStatus.Applied }),
     ]);
 
     await renderIndicator();
 
-    expect(screen.getByTestId('pending-change-requests')).not.toHaveTextContent(
-      '1'
-    );
+    expect(
+      screen.queryByTestId('pending-change-requests')
+    ).not.toBeInTheDocument();
   });
 
   it('opens the review of every pending change, grouped by field', async () => {
@@ -192,14 +192,23 @@ describe('ChangeRequestsIndicator', () => {
     ).toBeInTheDocument();
   });
 
-  it('shows the request count and an empty review when the asset has none', async () => {
-    (getChangeRequestsForEntity as jest.Mock).mockResolvedValue([]);
+  it('keeps the review open once its last request is withdrawn', async () => {
+    (getChangeRequestsForEntity as jest.Mock)
+      .mockResolvedValueOnce([request({})])
+      .mockResolvedValue([]);
+    (withdrawChangeRequest as jest.Mock).mockResolvedValue({});
 
     await openModal();
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('withdraw-cr-1|2|description'));
+    });
 
     expect(
       screen.getByText('message.no-pending-changes-on-asset')
     ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('pending-change-requests')
+    ).not.toBeInTheDocument();
   });
 
   it('lets the requester withdraw their own request', async () => {

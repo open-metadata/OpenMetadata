@@ -55,7 +55,6 @@ from metadata.utils.filters import filter_by_schema
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
-    from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.generated.schema.type.filterPattern import FilterPattern
     from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
@@ -69,11 +68,6 @@ DEFAULT_CATALOG = "AwsDataCatalog"
 # statement capture records nothing; the reported command is the API operation.
 LIST_DATABASES = "athena:ListDatabases"
 LIST_TABLE_METADATA = "athena:ListTableMetadata"
-
-
-def _all_of(*tokens: str) -> Matcher:
-    """Match when every token is present in the error's cause-chain text."""
-    return lambda error: all(token in chain_text(error) for token in tokens)
 
 
 _AUTHORIZATION_CODES = frozenset({"AccessDeniedException", "AccessDenied"})
@@ -98,7 +92,7 @@ ATHENA_ERRORS = ErrorPack(
         fix="Grant the IAM principal the required Athena and Glue permissions "
         "(e.g. athena:StartQueryExecution, glue:GetDatabases, glue:GetTables).",
     ),
-    when(_all_of("workgroup", "is not found")).diagnose(
+    when(Matchers.all_of(Matchers.contains("workgroup"), Matchers.contains("is not found"))).diagnose(
         "Workgroup not found",
         fix="Verify the configured workgroup exists in this account and region.",
     ),

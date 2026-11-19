@@ -205,6 +205,45 @@ class PermissionDebugServiceTest {
   }
 
   @Test
+  void debugUserPermissionsProcessesAncestorReachedThroughMultipleParentsOnce() {
+    UserRepository userRepository = mock(UserRepository.class);
+    TeamRepository teamRepository = mock(TeamRepository.class);
+    RoleRepository roleRepository = mock(RoleRepository.class);
+    PolicyRepository policyRepository = mock(PolicyRepository.class);
+
+    stubFields(userRepository, teamRepository, roleRepository, policyRepository);
+
+    Team top = team("top", TeamType.DEPARTMENT, List.of(), List.of(), List.of());
+    Team left = team("left", TeamType.DEPARTMENT, List.of(), List.of(), List.of(top));
+    Team right = team("right", TeamType.DEPARTMENT, List.of(), List.of(), List.of(top));
+    Team group = team("group", TeamType.GROUP, List.of(), List.of(), List.of(left, right));
+
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("bob")
+            .withTeams(List.of(group.getEntityReference()));
+
+    when(userRepository.getByName(isNull(), eq("bob"), eq(EntityUtil.Fields.EMPTY_FIELDS)))
+        .thenReturn(user);
+    stubById(
+        teamRepository,
+        Map.of(group.getId(), group, left.getId(), left, right.getId(), right, top.getId(), top));
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      stubRepositories(
+          entityMock, userRepository, teamRepository, roleRepository, policyRepository);
+
+      PermissionDebugInfo debugInfo =
+          new PermissionDebugService().debugUserPermissionsByName("bob");
+
+      assertIterableEquals(
+          List.of("group", "left", "top", "right"),
+          debugInfo.getTeamPermissions().stream().map(t -> t.getTeam().getName()).toList());
+    }
+  }
+
+  @Test
   void debugShowsWildcardAllowDoesNotGrantSparql() {
     UserRepository userRepository = mock(UserRepository.class);
     TeamRepository teamRepository = mock(TeamRepository.class);

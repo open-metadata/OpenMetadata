@@ -22,6 +22,17 @@ class SnowflakeSettings(OMSettings):
 
     model_config = SettingsConfigDict(env_prefix="OM_SNOWFLAKE_")
 
+    system_metrics_cache_max_bytes: int = Field(
+        default=32 * 1024**2,
+        ge=0,
+        description=(
+            "Per-process combined byte budget for cached Snowflake DML and dynamic-table refresh history, "
+            "including batches being built. Oversized batches fall back to per-table scans "
+            "without writing history to disk. Zero disables batch caching. This does not "
+            "limit an individual table's history or final metrics."
+        ),
+    )
+
     schema_columns_cache_size: int = Field(
         default=2,
         ge=1,

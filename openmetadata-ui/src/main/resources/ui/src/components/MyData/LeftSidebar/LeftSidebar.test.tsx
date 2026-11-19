@@ -12,7 +12,8 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { BrowserRouter } from 'react-router-dom';
+import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import leftSidebarClassBase from '../../../utils/LeftSidebarClassBase';
 import LeftSidebar from './LeftSidebar.component';
 
 jest.mock(
@@ -31,6 +32,30 @@ jest.mock('../../../hooks/useCustomPages', () => ({
 }));
 
 describe('LeftSidebar', () => {
+  it('marks an item current for a route the class base aliases to it', () => {
+    const aliases = jest
+      .spyOn(leftSidebarClassBase, 'getSidebarPathAliases')
+      .mockReturnValue({ '/custom-section': '/explore' });
+
+    try {
+      render(
+        <MemoryRouter initialEntries={['/custom-section/create']}>
+          <LeftSidebar />
+        </MemoryRouter>
+      );
+
+      const current = document.querySelector('[aria-current="page"]');
+
+      expect(current).not.toBeNull();
+      expect(
+        current?.contains(screen.getByTestId('app-bar-item-explore')) ||
+          screen.getByTestId('app-bar-item-explore').contains(current)
+      ).toBe(true);
+    } finally {
+      aliases.mockRestore();
+    }
+  });
+
   it('renders sidebar links correctly', () => {
     render(
       <BrowserRouter>

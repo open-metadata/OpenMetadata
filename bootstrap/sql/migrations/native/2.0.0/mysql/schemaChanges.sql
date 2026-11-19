@@ -587,3 +587,73 @@ CREATE TABLE IF NOT EXISTS user_preferences (
 -- profiler_data_time_series_unique_hash_extension_ts (entityFQNHash, extension, operation,
 -- timestamp). Adding a second index on the same leading column would be write overhead with no
 -- read benefit.
+
+-- Tables that 2.1.0 creates (see 2.1.0/schemaChanges.sql), also created here: an upgrade from below
+-- 2.0.0 runs the 2.0.0 Java data migration before the 2.1.0 SQL, and the platform code it calls reads
+-- them. Keep each statement identical to its 2.1.0 copy, which still creates them for databases
+-- already past 2.0.0.
+CREATE TABLE IF NOT EXISTS test_case_incident (
+    stateId varchar(36) NOT NULL,
+    entityFQNHash varchar(768) CHARACTER SET ascii COLLATE ascii_bin NOT NULL,
+    testCaseResolutionStatusType varchar(36) NOT NULL,
+    assignee varchar(256) DEFAULT NULL,
+    severity varchar(36) DEFAULT NULL,
+    createdAt bigint unsigned NOT NULL,
+    updatedAt bigint unsigned NOT NULL,
+    latestRecordId varchar(36) NOT NULL,
+    PRIMARY KEY (stateId),
+    INDEX idx_tci_status_fqn (testCaseResolutionStatusType, entityFQNHash),
+    INDEX idx_tci_fqn (entityFQNHash),
+    INDEX idx_tci_assignee (assignee, testCaseResolutionStatusType),
+    INDEX idx_tci_updated (updatedAt)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS metric_group_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.id'))) STORED NOT NULL,
+    json JSON NOT NULL,
+    updatedAt BIGINT UNSIGNED GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedAt'))) VIRTUAL NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.updatedBy'))) VIRTUAL NOT NULL,
+    deleted TINYINT(1) GENERATED ALWAYS AS (json_extract(`json`, '$.deleted')) VIRTUAL,
+    fqnHash VARCHAR(768) CHARACTER SET ascii COLLATE ascii_bin DEFAULT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json_unquote(json_extract(`json`, '$.name'))) VIRTUAL NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY metric_group_entity_fqn_hash (fqnHash),
+    KEY metric_group_entity_name_index (name),
+    KEY idx_metric_group_entity_deleted_name_id (deleted, name, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS change_request (
+  id varchar(36) NOT NULL,
+  entityType varchar(256) NOT NULL,
+  entityId varchar(36) NOT NULL,
+  requestedBy varchar(256) NOT NULL,
+  workflowDefinitionId varchar(36) NOT NULL,
+  status varchar(32) NOT NULL,
+  activeInterceptKey varchar(300) DEFAULT NULL,
+  taskId varchar(36) DEFAULT NULL,
+  deliveryStatus varchar(32) NOT NULL,
+  deliveryAttempts int NOT NULL DEFAULT 0,
+  nextDeliveryAt bigint unsigned NOT NULL,
+  claimToken varchar(36) DEFAULT NULL,
+  leaseUntil bigint unsigned DEFAULT NULL,
+  updatedAt bigint unsigned NOT NULL,
+  json json NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE KEY change_request_active_intercept_key (activeInterceptKey),
+  KEY change_request_entity_status_index (entityId, status),
+  KEY change_request_requester_status_index (requestedBy, status),
+  KEY change_request_workflow_status_index (workflowDefinitionId, status),
+  KEY change_request_delivery_index (deliveryStatus, nextDeliveryAt),
+  KEY change_request_task_index (taskId)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+CREATE TABLE IF NOT EXISTS custom_property_reference (
+    id VARCHAR(36) NOT NULL,
+    columnKey VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL DEFAULT '',
+    propertyName VARCHAR(256) NOT NULL,
+    targetId VARCHAR(36) NOT NULL,
+    holderType VARCHAR(256) NOT NULL,
+    targetType VARCHAR(256) NOT NULL,
+    position INT NOT NULL,
+    json JSON NOT NULL,
+    PRIMARY KEY (id, columnKey, propertyName, targetId),
+    INDEX custom_property_reference_target (targetId),
+    INDEX custom_property_reference_property (holderType, propertyName)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

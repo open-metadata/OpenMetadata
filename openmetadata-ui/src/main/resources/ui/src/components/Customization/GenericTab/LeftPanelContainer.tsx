@@ -14,7 +14,7 @@ import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
 import { isUndefined, orderBy } from 'lodash';
-import { lazy, useMemo } from 'react';
+import { lazy, useCallback, useMemo } from 'react';
 import type {
   ItemCallback,
   Layout,
@@ -78,9 +78,12 @@ export const LeftPanelContainer = ({
   onDrag,
   onDragStop,
 }: GenericTabProps) => {
-  const handleRemoveWidget = (widgetKey: string) => {
-    onUpdate(layout.filter((widget) => widget.i !== widgetKey));
-  };
+  const handleRemoveWidget = useCallback(
+    (widgetKey: string) => {
+      onUpdate(layout.filter((widget) => widget.i !== widgetKey));
+    },
+    [layout, onUpdate]
+  );
 
   // The edit grid is controlled and always shows the flow layout view mode
   // draws, so a widget moved or resized into a gap snaps to where it will show.
@@ -100,56 +103,63 @@ export const LeftPanelContainer = ({
     );
   };
 
-  const handleWidgetConfigChange = (
-    widgetKey: string,
-    config: WidgetConfig['config']
-  ) => {
-    onUpdate(
-      layout.map((widget) =>
-        widget.i === widgetKey ? { ...widget, config } : widget
-      )
-    );
-  };
-
-  const getWidgetFromLayout = (layout: WidgetConfig[]) => {
-    return layout.map((widget) => {
-      let widgetComponent = null;
-
-      if (
-        widget.i.endsWith('.EmptyWidgetPlaceholder') &&
-        !isUndefined(handleOpenAddWidgetModal) &&
-        !isUndefined(handlePlaceholderWidgetKey) &&
-        !isUndefined(handleRemoveWidget)
-      ) {
-        widgetComponent = (
-          <EmptyWidgetPlaceholder
-            handleOpenAddWidgetModal={handleOpenAddWidgetModal}
-            handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
-            handleRemoveWidget={handleRemoveWidget}
-            isEditable={widget.isDraggable}
-            widgetKey={widget.i}
-          />
-        );
-      } else {
-        widgetComponent = (
-          <GenericWidget
-            isEditView
-            handleRemoveWidget={handleRemoveWidget}
-            handleWidgetConfigChange={handleWidgetConfigChange}
-            selectedGridSize={widget.w}
-            widgetConfig={widget}
-            widgetKey={widget.i}
-          />
-        );
-      }
-
-      return (
-        <div id={widget.i} key={widget.i}>
-          {widgetComponent}
-        </div>
+  const handleWidgetConfigChange = useCallback(
+    (widgetKey: string, config: WidgetConfig['config']) => {
+      onUpdate(
+        layout.map((widget) =>
+          widget.i === widgetKey ? { ...widget, config } : widget
+        )
       );
-    });
-  };
+    },
+    [layout, onUpdate]
+  );
+
+  const getWidgetFromLayout = useCallback(
+    (layout: WidgetConfig[]) =>
+      layout.map((widget) => {
+        let widgetComponent = null;
+
+        if (
+          widget.i.endsWith('.EmptyWidgetPlaceholder') &&
+          !isUndefined(handleOpenAddWidgetModal) &&
+          !isUndefined(handlePlaceholderWidgetKey) &&
+          !isUndefined(handleRemoveWidget)
+        ) {
+          widgetComponent = (
+            <EmptyWidgetPlaceholder
+              handleOpenAddWidgetModal={handleOpenAddWidgetModal}
+              handlePlaceholderWidgetKey={handlePlaceholderWidgetKey}
+              handleRemoveWidget={handleRemoveWidget}
+              isEditable={widget.isDraggable}
+              widgetKey={widget.i}
+            />
+          );
+        } else {
+          widgetComponent = (
+            <GenericWidget
+              isEditView
+              handleRemoveWidget={handleRemoveWidget}
+              handleWidgetConfigChange={handleWidgetConfigChange}
+              selectedGridSize={widget.w}
+              widgetConfig={widget}
+              widgetKey={widget.i}
+            />
+          );
+        }
+
+        return (
+          <div id={widget.i} key={widget.i}>
+            {widgetComponent}
+          </div>
+        );
+      }),
+    [
+      handleOpenAddWidgetModal,
+      handlePlaceholderWidgetKey,
+      handleRemoveWidget,
+      handleWidgetConfigChange,
+    ]
+  );
 
   const widgets = useMemo(() => {
     if (isEditView) {
@@ -169,12 +179,14 @@ export const LeftPanelContainer = ({
         </Grid.Item>
       );
     });
-  }, [layout, type, isEditView]);
+  }, [layout, type, isEditView, getWidgetFromLayout]);
 
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection();
 
   if (isEditView) {
+    // No container padding: the widgets sit flush with the panel's edges,
+    // level with the right-panel widgets.
     return (
       <ReactGridLayout
         autoSize
@@ -182,7 +194,7 @@ export const LeftPanelContainer = ({
         verticalCompact
         className="grid-container"
         cols={editColumns}
-        containerPadding={[16, 16]}
+        containerPadding={[0, 0]}
         isDraggable={isEditView}
         isResizable={isEditView}
         layout={editLayout}

@@ -17,11 +17,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import EntityVersionTimeLine from '../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Classification } from '../../generated/entity/classification/classification';
@@ -148,13 +147,14 @@ function ClassificationVersionPage() {
 
     if (!viewVersionPermission) {
       return (
-        <ErrorPlaceHolder
-          className="border-none"
-          permissionValue={t('label.view-entity', {
-            entity: t('label.classification-plural'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-        />
+        <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+          <PermissionPlaceholder
+            data-testid="permission-error-placeholder"
+            permissionValue={t('label.view-entity', {
+              entity: t('label.classification-plural'),
+            })}
+          />
+        </div>
       );
     }
 

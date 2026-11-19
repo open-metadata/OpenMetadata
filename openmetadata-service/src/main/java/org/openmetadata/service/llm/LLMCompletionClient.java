@@ -4,7 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.Semaphore;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 
@@ -17,6 +19,31 @@ import org.openmetadata.schema.configuration.LLMConfiguration;
 public abstract class LLMCompletionClient {
   static final int DEFAULT_MAX_CONCURRENT_REQUESTS = 5;
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final String JSON_RETRY_INSTRUCTION =
+      "\n\nThe previous response was not valid for the requested JSON format. "
+          + "Repeat the task and return ONLY the requested JSON array, with no prose or markdown. "
+          + "Keep the fields and decision rules specified above; do not substitute an explanation.";
+
+  // Mirrors CAIP's BaseBuilder.SAMPLING_PARAM_REJECTORS: these models fail the whole call when a
+  // request carries `temperature` (Bedrock: "`temperature` is deprecated for this model.").
+  // Hyphenated entries match as substrings so `sonnet-5` covers `sonnet-5-5` but not `sonnet-4-5`;
+  // bare ones (`o1`, `o3`) must equal a whole id segment so `gpt-4o-mini` is not caught.
+  // ADR:2026-10-20-temperature-is-sent-only-to-models-that-accept-it
+  private static final List<String> SAMPLING_PARAM_REJECTORS =
+      List.of(
+          "opus-4-7",
+          "opus-4-8",
+          "opus-5",
+          "sonnet-5",
+          "haiku-5",
+          "fable-5",
+          "mythos-5",
+          "o1",
+          "o3",
+          "o4-mini",
+          "gpt-5.6",
+          "gpt-6");
+  private static final Pattern MODEL_ID_SEPARATOR = Pattern.compile("[^a-z0-9]+");
 
   private final Semaphore concurrencyLimiter;
 
@@ -56,7 +83,11 @@ public abstract class LLMCompletionClient {
       parsed = parseArray(complete(systemPrompt, userPrompt).text(), elementType);
     } catch (LLMCompletionException firstFailure) {
       LOG.warn("LLM returned unparseable JSON; retrying once", firstFailure);
-      parsed = parseArray(complete(systemPrompt, userPrompt).text(), elementType);
+      String retryPrompt =
+          firstFailure.getCause() instanceof JsonProcessingException
+              ? systemPrompt + JSON_RETRY_INSTRUCTION
+              : systemPrompt;
+      parsed = parseArray(complete(retryPrompt, userPrompt).text(), elementType);
     }
     return parsed;
   }
@@ -96,6 +127,22 @@ public abstract class LLMCompletionClient {
       }
     }
     return result;
+  }
+
+  static boolean supportsTemperature(String modelId) {
+    boolean supported = true;
+    if (modelId != null) {
+      String id = modelId.toLowerCase(Locale.ROOT);
+      List<String> segments = List.of(MODEL_ID_SEPARATOR.split(id));
+      supported =
+          SAMPLING_PARAM_REJECTORS.stream()
+              .noneMatch(
+                  rejector ->
+                      rejector.indexOf('-') >= 0
+                          ? id.contains(rejector)
+                          : segments.contains(rejector));
+    }
+    return supported;
   }
 
   protected static int resolveMaxConcurrent(LLMConfiguration config) {

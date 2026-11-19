@@ -46,6 +46,21 @@ class SoftDeleteScriptTest {
         "unregistered entity types are treated as incompatible — fail-safe");
   }
 
+  // An incident takes its deletion from its test case, and an old document may lack the object.
+  @Test
+  void setsAnEmbeddedFieldOnlyOnIndexesThatNameIt() {
+    SoftDeleteScript script = new SoftDeleteScript(true, "testCase.deleted");
+    EntityIndexCapability incident =
+        EntityIndexCapability.forTimeSeries("testCaseResolutionStatus", "testCase.deleted");
+
+    assertEquals(
+        "if (ctx._source.testCase != null) { ctx._source.testCase.deleted = true; }",
+        script.painless());
+    assertTrue(script.compatibleWith(incident));
+    assertFalse(script.compatibleWith(EntityIndexCapability.forEntity("table")));
+    assertFalse(new SoftDeleteScript(true).compatibleWith(incident));
+  }
+
   @Test
   void paramsAreEmpty() {
     assertEquals(0, new SoftDeleteScript(true).params().size());

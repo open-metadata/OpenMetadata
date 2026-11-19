@@ -33,6 +33,7 @@ export interface PopoverTitleProps {
   userName: string;
   profilePicture: JSX.Element;
   type: OwnerType;
+  onTitleClick?: () => void;
 }
 
 export interface TeamPopoverContentProps {

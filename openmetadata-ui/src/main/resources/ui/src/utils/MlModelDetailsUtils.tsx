@@ -132,7 +132,7 @@ export const getMlModelDetailsPageTabs = ({
       ),
       key: EntityTabs.DETAILS,
       children: (
-        <div className="p-md border-default border-radius-sm flex gap-4">
+        <div className="p-md border-default border-radius-sm flex gap-4 tw:bg-surface">
           <div className="flex-half">{getMlHyperParameters}</div>
           <div className="flex-half">{getMlModelStore}</div>
         </div>

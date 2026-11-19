@@ -15,7 +15,7 @@
 
 .knowledge-graph-container {
   height: @asset-details-tab-pane-height;
-  min-height: calc(var(--om-space-40) * 14);
+  min-height: calc(var(--tw-spacing) * 140);
   position: relative;
   display: grid;
   // Row 2 must be `minmax(0, 1fr)` so the ReflexContainer stage inside
@@ -87,7 +87,7 @@
   // borders, with a 1s colour transition) outrank Tailwind utilities, so the
   // 1px divider and its brand hover are set here.
   .kg-stage-main.reflex-container.horizontal > .kg-stage-splitter {
-    height: calc(var(--tw-spacing) / 4);
+    height: 1px;
     border: 0;
     background-color: var(--tw-border-color-secondary);
     transition: none;
@@ -104,12 +104,6 @@
     min-width: 0;
   }
 
-  .kg-find {
-    flex: 1 1 calc(var(--om-space-40) * 5);
-    min-width: ~'min(calc(var(--om-space-40) * 3.25), 100%)';
-    max-width: 100%;
-  }
-
   @media (prefers-reduced-motion: reduce) {
     button {
       transition: none;
@@ -118,7 +112,7 @@
 
   .knowledge-graph-body {
     flex: 1;
-    min-height: calc(var(--om-space-40) * 8);
+    min-height: calc(var(--tw-spacing) * 80);
     min-width: 0;
     position: relative;
     overflow: hidden;
@@ -126,10 +120,10 @@
     background-color: var(--tw-background-color-primary);
     background-image: radial-gradient(
       circle,
-      var(--tw-border-color-secondary) var(--om-space-1),
-      transparent var(--om-space-1)
+      var(--tw-border-color-secondary) 1px,
+      transparent 1px
     );
-    background-size: var(--om-space-24) var(--om-space-24);
+    background-size: calc(var(--tw-spacing) * 6) calc(var(--tw-spacing) * 6);
   }
 
   .knowledge-graph-canvas {
@@ -148,12 +142,6 @@
     pointer-events: none;
   }
 
-  // Design: the direct band is a tinted brand surface, the extended band a
-  // neutral dashed outline; labels sit in the band's top padding.
-  .kg-band {
-    stroke-width: var(--om-space-1);
-  }
-
   .kg-band-direct {
     fill: var(--tw-color-utility-brand-50);
     stroke: var(--tw-color-utility-brand-200);
@@ -167,8 +155,8 @@
 
   // Font size is a scaled SVG attribute, so the label tracks the zoom.
   .kg-band-label {
-    font-weight: var(--om-font-weight-semibold);
-    letter-spacing: var(--om-letter-spacing-wide);
+    font-weight: var(--tw-font-weight-semibold);
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
 
@@ -201,35 +189,8 @@
     }
   }
 
-  .kg-details-tabs [role='tablist'] {
-    background: var(--tw-background-color-secondary);
-    border-radius: var(--om-radius-md);
-    padding: var(--om-space-2);
-    gap: var(--om-space-2);
-  }
-
   &.kg-details-open .knowledge-graph-body {
-    min-height: calc(var(--om-space-40) * 4);
-  }
-
-  .knowledge-graph-loading {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    pointer-events: none;
-  }
-
-  .kg-empty-hint {
-    position: absolute;
-    top: var(--om-space-16);
-    left: var(--om-space-16);
-    right: var(--om-space-16);
-    display: flex;
-    align-items: center;
-    gap: var(--om-space-8);
-    flex-wrap: wrap;
+    min-height: calc(var(--tw-spacing) * 40);
   }
 
   // Design: a 352px side panel with a titled header, a scrolling body and a
@@ -238,20 +199,7 @@
     grid-column: 2;
     grid-row-start: 1;
     grid-row-end: 3;
-    position: relative;
-    min-height: 0;
-    min-width: 0;
-    height: 100%;
-    overflow: hidden;
-    background: var(--tw-background-color-surface);
-    border-left: var(--om-space-1) solid var(--tw-border-color-secondary);
-    z-index: var(--om-z-10);
-  }
-
-  .kg-inspector-header {
-    flex-shrink: 0;
-    padding: var(--om-space-14) var(--om-space-14) var(--om-space-12);
-    border-bottom: var(--om-space-1) solid var(--tw-border-color-secondary);
+    border-left: 1px solid var(--tw-border-color-secondary);
   }
 
   .kg-inspector-body {
@@ -259,66 +207,60 @@
     min-height: 0;
     overflow: auto;
     overscroll-behavior: contain;
-    padding: var(--om-space-14);
-    gap: var(--om-space-14);
+    padding: calc(var(--tw-spacing) * 3.5);
+    gap: calc(var(--tw-spacing) * 3.5);
   }
 
   .kg-inspector-tile {
     display: grid;
     place-items: center;
     flex-shrink: 0;
-    border-radius: var(--om-radius-md);
-    border: var(--om-space-1) solid;
+    border-radius: var(--tw-radius-md);
+    border: 1px solid;
   }
 
   .kg-inspector-tile-md {
-    width: var(--om-space-32);
-    height: var(--om-space-32);
+    width: calc(var(--tw-spacing) * 8);
+    height: calc(var(--tw-spacing) * 8);
   }
 
   // Row-sized tile is just the raw entity icon — no border, no fill — so a
   // listing of related items reads as a plain list, not a stack of mini
   // cards. The md tile still owns the bordered-box look in drawer headers.
   .kg-inspector-tile-sm {
-    width: var(--om-space-20);
-    height: var(--om-space-20);
+    width: calc(var(--tw-spacing) * 5);
+    height: calc(var(--tw-spacing) * 5);
     border: 0;
     background: transparent !important;
     border-radius: 0;
   }
 
   .kg-inspector-statement {
-    padding: var(--om-space-12);
+    padding: calc(var(--tw-spacing) * 3);
     background: var(--tw-color-utility-gray-blue-50);
-    border-radius: var(--om-radius-lg);
+    border-radius: var(--tw-radius-lg);
   }
 
   .kg-inspector-dot {
-    width: var(--om-space-7);
-    height: var(--om-space-7);
+    width: calc(var(--tw-spacing) * 1.75);
+    height: calc(var(--tw-spacing) * 1.75);
     flex-shrink: 0;
-    border-radius: var(--om-radius-full);
-  }
-
-  .kg-inspector-section-title {
-    font-size: var(--om-font-size-11);
-    font-weight: var(--om-font-weight-semibold);
-    letter-spacing: var(--om-letter-spacing-wide);
-    text-transform: uppercase;
-    color: var(--tw-text-color-quaternary);
+    border-radius: var(--tw-radius-full);
   }
 
   // Card-style click target: a bordered row so a listing of relationships
   // reads as discrete items. The native `<button>` chrome is stripped and
   // replaced with a clean rounded border + hover + focus-visible outline.
   .kg-inspector-row {
-    padding: var(--om-space-10) var(--om-space-12);
+    padding: calc(var(--tw-spacing) * 2.5) calc(var(--tw-spacing) * 3);
     background: transparent;
-    border: var(--om-space-1) solid var(--tw-border-color-secondary);
-    border-radius: var(--om-radius-lg);
+    border: 1px solid var(--tw-border-color-secondary);
+    border-radius: var(--tw-radius-lg);
     outline: none;
     cursor: pointer;
-    transition: background-color 100ms ease-out, border-color 100ms ease-out;
+    transition-property: background-color, border-color;
+    transition-duration: var(--tw-default-transition-duration);
+    transition-timing-function: var(--tw-ease-out);
 
     &:hover:not(:disabled) {
       background: var(--tw-background-color-secondary_hover);
@@ -326,8 +268,8 @@
     }
 
     &:focus-visible {
-      outline: var(--om-space-2) solid var(--tw-border-color-brand);
-      outline-offset: var(--om-space-2);
+      outline: 2px solid var(--tw-border-color-brand);
+      outline-offset: 2px;
     }
 
     &:disabled {
@@ -349,9 +291,9 @@
 
   .kg-inspector-actions {
     flex-shrink: 0;
-    padding: var(--om-space-12) var(--om-space-14);
+    padding: calc(var(--tw-spacing) * 3) calc(var(--tw-spacing) * 3.5);
     background: var(--tw-background-color-surface);
-    border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
+    border-top: 1px solid var(--tw-border-color-secondary);
   }
 
   @media (max-width: 900px) {
@@ -361,7 +303,7 @@
     // the inspector always reaches its max-height.
     .kg-stage:has(.kg-inspector) {
       grid-template-columns: minmax(0, 1fr);
-      grid-template-rows: minmax(calc(var(--om-space-40) * 4), 1fr) auto auto;
+      grid-template-rows: minmax(calc(var(--tw-spacing) * 40), 1fr) auto auto;
       overflow: auto;
     }
 
@@ -370,35 +312,12 @@
       grid-row: 3;
       max-height: 40vh;
       border-left: 0;
-      border-top: var(--om-space-1) solid var(--tw-border-color-secondary);
+      border-top: 1px solid var(--tw-border-color-secondary);
     }
-  }
-
-  // Position the Lineage-style Card (elevated, hosts the zoom/fit/refresh row)
-  // at the canvas's bottom-right. Card owns the surface, border and spacing;
-  // the only responsibility left here is where it floats.
-  .knowledge-graph-action-buttons {
-    position: absolute;
-    bottom: var(--om-space-16);
-    right: var(--om-space-16);
-    z-index: var(--om-z-1001);
   }
 }
 
 .full-screen-knowledge-graph {
-  display: flex;
-  flex-direction: column;
-  position: fixed;
-  inset: 0;
-  padding: var(--om-space-16);
-  background: var(--tw-background-color-primary);
-  // Keep `overflow: auto` as a short-viewport safety net: once the toolbar +
-  // canvas floor + drawer min stack past the viewport, the page can still
-  // scroll to reach the drawer footer. The canvas row uses `minmax(0, 1fr)`
-  // so this fallback only kicks in on genuinely tight viewports.
-  overflow: auto;
-  z-index: var(--om-z-900);
-
   .knowledge-graph-container {
     flex: 1 1 0;
     min-height: 0;
@@ -423,32 +342,5 @@
   .knowledge-graph-canvas {
     width: 100%;
     height: 100%;
-  }
-}
-
-.kg-edge-tooltip {
-  z-index: var(--om-z-1500);
-  pointer-events: none;
-  background: var(--tw-background-color-surface);
-  border: var(--om-space-1) solid var(--tw-border-color-primary);
-  border-radius: var(--om-radius-md);
-  padding: var(--om-space-6) var(--om-space-10);
-  box-shadow: var(--om-shadow-lg);
-  max-width: var(--om-space-290);
-  font-size: var(--om-font-size-xs);
-  line-height: var(--om-line-height-normal);
-
-  &__direction {
-    color: var(--tw-text-color-tertiary);
-    margin-bottom: var(--om-space-4);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  &__label {
-    color: var(--tw-text-color-primary);
-    font-weight: var(--om-font-weight-medium);
-    word-break: break-word;
   }
 }

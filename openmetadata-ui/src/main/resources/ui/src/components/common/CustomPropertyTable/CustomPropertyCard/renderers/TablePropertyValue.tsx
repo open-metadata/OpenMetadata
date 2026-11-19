@@ -21,6 +21,7 @@ import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { FormEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Config } from '../../../../../generated/type/customProperty';
+import { useReportDirty } from '../../../../../hooks/common/useReportDirty';
 import { filterPopulatedTableRows } from '../../../../../utils/CustomProperty.utils';
 import {
   CustomPropertyRenderer,
@@ -76,6 +77,7 @@ const TablePropertyEdit = ({
   isSaving,
   onSave,
   formId,
+  onDirtyChange,
 }: PropertyEditProps) => {
   const { t } = useTranslation();
   const columns = getColumns(property.customPropertyConfig?.config);
@@ -101,6 +103,11 @@ const TablePropertyEdit = ({
 
   const removeRow = (key: number) =>
     setRows((prev) => prev.filter((row) => row.key !== key));
+
+  useReportDirty(
+    filterPopulatedTableRows(rows.map((row) => row.values)),
+    onDirtyChange
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -151,11 +158,10 @@ const TablePropertyEdit = ({
                   ))}
                   <td className="tw:px-1">
                     <ButtonUtility
-                      color="tertiary"
                       data-testid={`delete-row-${rowIndex}`}
                       icon={Trash01}
                       isDisabled={isSaving}
-                      size="xs"
+                      size="lg"
                       tooltip={t('label.delete-row')}
                       onClick={() => removeRow(row.key)}
                     />

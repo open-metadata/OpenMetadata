@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  Button,
-  EmptyPlaceholder,
-} from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   CheckCircle,
@@ -26,6 +22,8 @@ import { MEMORY_FIELDS } from '../../../../constants/ContextCenter.constants';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { getContextMemoryById } from '../../../../rest/contextMemoryAPI';
 import { CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY } from '../../../../utils/ContextCenterQueryKeys';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import InboxTaskListItem from '../../personal-space/InboxPage/components/InboxTaskListItem';
 import InboxTaskListSkeleton from '../../personal-space/InboxPage/components/InboxTaskListSkeleton';
 import MemoryConflictCompare from '../MemoryConflictCompare/MemoryConflictCompare';
@@ -71,7 +69,7 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   if (isError) {
     return (
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
-        <EmptyPlaceholder
+        <SomethingWentWrongPlaceholder
           actions={[
             { key: 'retry', label: t('label.retry'), onPress: onRetry },
           ]}
@@ -79,9 +77,8 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
           description={t('server.entity-fetch-error', {
             entity: t('label.task-plural'),
           })}
-          icon={<AlertCircle className="tw:text-fg-quaternary" />}
+          icon={<AlertCircle />}
           title={t('message.something-went-wrong')}
-          variant="blank"
         />
       </div>
     );
@@ -90,11 +87,10 @@ const MemoryConflictReviews: FC<MemoryConflictReviewsProps> = ({
   if (reviews.length === 0) {
     return (
       <div className="tw:relative tw:min-h-[320px] tw:py-12">
-        <EmptyPlaceholder
+        <NoDataPlaceholder
           description={t('message.no-memory-conflicts-to-review')}
-          icon={<CheckCircle className="tw:text-fg-quaternary" />}
+          icon={<CheckCircle />}
           title={t('label.nothing-to-review')}
-          variant="blank"
         />
       </div>
     );

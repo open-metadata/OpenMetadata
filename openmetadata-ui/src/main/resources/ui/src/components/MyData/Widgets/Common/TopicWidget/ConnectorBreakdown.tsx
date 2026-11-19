@@ -94,7 +94,8 @@ const ConnectorBreakdown: React.FC<ConnectorBreakdownProps> = ({
             <Typography
               className="tw:text-text-secondary!"
               data-testid="connector-name"
-              size="text-xs">
+              size="text-xs"
+              weight="medium">
               {segment.name}
             </Typography>
             <Typography

@@ -13,6 +13,8 @@
 
 import type { TFunction } from 'i18next';
 import type { AuthProvider } from '../../../../../../generated/settings/settings';
+import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
+import type { SettingsHistoryView } from '../../../../../../utils/SettingsHistory.utils';
 import { PLATFORM_SETTINGS_PAGES } from './PlatformSettings.constants';
 import type {
   PlatformSettingsPage,
@@ -45,11 +47,12 @@ export const hashSubPathToView = (
   }
 
   const isEditing = Boolean(page.hasEditView) && mode === EDIT_SEGMENT;
+  // Item ids travel URL-encoded in the hash; decode them once here.
   let itemId: string | undefined;
   if (isEditing) {
-    itemId = rest.length ? rest.join('/') : undefined;
+    itemId = rest.length ? safeDecodeURIComponent(rest.join('/')) : undefined;
   } else if (page.hasItemViews && mode && mode !== EDIT_SEGMENT) {
-    itemId = [mode, ...rest].join('/');
+    itemId = safeDecodeURIComponent([mode, ...rest].join('/'));
   }
 
   return {
@@ -67,14 +70,23 @@ export const viewToSubPath = (
     return undefined;
   }
 
+  const itemId = view.itemId && encodeURIComponent(view.itemId);
+
   if (!view.isEditing) {
-    return view.itemId ? `${view.page}/${view.itemId}` : view.page;
+    return itemId ? `${view.page}/${itemId}` : view.page;
   }
 
-  return view.itemId
-    ? `${view.page}/${EDIT_SEGMENT}/${view.itemId}`
+  return itemId
+    ? `${view.page}/${EDIT_SEGMENT}/${itemId}`
     : `${view.page}/${EDIT_SEGMENT}`;
 };
+
+/** The shape the shared settings history rule reads: an open editor is a form view. */
+export const toSettingsHistoryView = (
+  view: PlatformSettingsView
+): SettingsHistoryView => ({
+  type: view.type === 'page' && view.isEditing ? 'edit' : view.type,
+});
 
 /** Number inputs hold strings; an empty input means "unset", not zero. */
 export const toOptionalNumber = (value: string): number | undefined =>

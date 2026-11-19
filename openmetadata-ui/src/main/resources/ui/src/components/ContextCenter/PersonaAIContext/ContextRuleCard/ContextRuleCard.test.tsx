@@ -20,6 +20,27 @@ jest.mock('react-i18next', () => ({
 }));
 
 describe('ContextRuleCard', () => {
+  it('marks a disabled scoped rule without claiming its search filter is applied', () => {
+    render(
+      <ContextRuleCard
+        canEdit
+        rule={{
+          entityType: EntityType.TABLE,
+          name: 'Disabled tables',
+          enabled: false,
+          filteredInSearch: true,
+        }}
+        onDelete={jest.fn()}
+        onEdit={jest.fn()}
+      />
+    );
+
+    expect(screen.getAllByText('label.disabled').length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText('message.persona-context-scoped-rule-summary')
+    ).not.toBeInTheDocument();
+  });
+
   it('renders knowledge rules as fully rendered and hides edit actions', () => {
     render(
       <ContextRuleCard

@@ -34,7 +34,9 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
+import org.openmetadata.schema.entity.automations.TestSparkEngineConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowStatus;
 import org.openmetadata.schema.entity.automations.WorkflowType;
@@ -58,6 +61,7 @@ import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowRepository;
@@ -67,6 +71,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.masker.ConnectionSecretsGuard;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.AuthRequest;
 import org.openmetadata.service.security.AuthorizationException;
@@ -75,8 +80,10 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
+import org.openmetadata.service.util.RestUtil.DeleteResponse;
 
 @Slf4j
 @Path("/v1/automations/workflows")
@@ -177,6 +184,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (status != null) {
       filter.addQueryParam("workflowStatus", status);
     }
+    if (!isAdminOrBot(securityContext)) {
+      filter.addQueryParam(
+          ListFilter.QUERY_RUNNER_REQUESTER_ID, callerId(securityContext).toString());
+    }
     ResultList<Workflow> workflows =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -254,7 +265,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           String includeRelations) {
     return decryptOrNullify(
         securityContext,
-        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
+        requireReadable(
+            securityContext,
+            getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations)));
   }
 
   @GET
@@ -303,7 +316,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           String includeRelations) {
     return decryptOrNullify(
         securityContext,
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, includeRelations));
+        requireReadable(
+            securityContext,
+            getByNameInternal(
+                uriInfo, securityContext, name, fieldsParam, include, includeRelations)));
   }
 
   @GET
@@ -335,8 +351,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               schema = @Schema(type = "string", example = "0.1 or 1.1"))
           @PathParam("version")
           String version) {
-    return decryptOrNullify(
-        securityContext, super.getVersionInternal(securityContext, id, version));
+    return super.getVersionInternal(securityContext, id, version);
   }
 
   @POST
@@ -359,7 +374,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    Response response = create(uriInfo, securityContext, unmask(workflow));
+    Response response = create(uriInfo, securityContext, unmask(securityContext, workflow));
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -424,6 +439,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    requireReadableStored(securityContext, id);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -456,6 +472,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    requireReadable(securityContext, repository.findByName(fqn, Include.ALL));
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -481,7 +498,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    workflow = unmask(workflow);
+    repository.setFullyQualifiedName(workflow);
+    requireReadableIfStored(securityContext, workflow.getFullyQualifiedName());
+    workflow = unmask(securityContext, workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -508,7 +527,11 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
-    Response response = delete(uriInfo, securityContext, id, false, hardDelete);
+    final Workflow stored = requireReadable(securityContext, repository.find(id, Include.ALL));
+    Response response =
+        isRequester(securityContext, stored)
+            ? deleteOwnQueryRun(uriInfo, securityContext, stored, hardDelete)
+            : delete(uriInfo, securityContext, id, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -535,6 +558,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @PathParam("id")
           UUID id) {
 
+    requireReadableStored(securityContext, id);
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -560,7 +584,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
-    Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
+    final Workflow stored =
+        requireReadable(securityContext, repository.findByName(name, Include.ALL));
+    Response response =
+        isRequester(securityContext, stored)
+            ? deleteOwnQueryRun(uriInfo, securityContext, stored, hardDelete)
+            : deleteByName(uriInfo, securityContext, name, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
         .build();
@@ -585,6 +614,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
+    requireReadableStored(securityContext, restore.getId());
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -601,7 +631,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       case TEST_CONNECTION -> authorizeTestConnectionTrigger(securityContext, workflow);
       case REVERSE_INGESTION -> authorizeReverseIngestionTrigger(securityContext, workflow);
       case QUERY_RUNNER -> authorizeQueryRunnerTrigger(securityContext, workflow);
-      case TEST_SPARK_ENGINE_CONNECTION -> authorizeIngestionPipelineCreate(securityContext);
+      case TEST_SPARK_ENGINE_CONNECTION -> authorizeSparkEngineTrigger(securityContext, workflow);
       case null -> throw unauthorizableTrigger(workflow, "it has no workflow type");
     }
   }
@@ -625,14 +655,21 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         || !isResolvableService(reverseIngestion.getService())) {
       throw unauthorizableTrigger(workflow, "request does not name the service it writes to");
     }
-    EntityReference service = reverseIngestion.getService();
+    // Resolve the reference from the store rather than trusting the type, id and FQN the request
+    // carries: a mismatched trio would otherwise authorize a different entity than the one written.
+    EntityReference service;
+    try {
+      service = Entity.getEntityReference(reverseIngestion.getService(), Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      throw unauthorizableTrigger(workflow, "the service it writes to does not exist");
+    }
+    if (!Entity.getServiceEntityTypes().contains(service.getType())) {
+      throw unauthorizableTrigger(workflow, "it does not write to a service");
+    }
     authorizer.authorize(
         securityContext,
         new OperationContext(service.getType(), MetadataOperation.EDIT_ALL),
-        new ResourceContext<>(
-            service.getType(),
-            service.getId(),
-            service.getId() == null ? service.getFullyQualifiedName() : null));
+        new ResourceContext<>(service.getType(), service.getId(), null));
   }
 
   private static boolean isResolvableService(EntityReference service) {
@@ -647,13 +684,84 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
    * requester may trigger it again. Admins and bots dispatch these on users' behalf.
    */
   private void authorizeQueryRunnerTrigger(SecurityContext securityContext, Workflow workflow) {
-    UUID callerId = DefaultAuthorizer.getSubjectContext(securityContext).user().getId();
-    boolean isRequester =
-        typedRequest(workflow) instanceof QueryRunnerRequest queryRequest
-            && callerId.equals(queryRequest.getUserId());
-    if (!isRequester) {
+    if (!isRequester(securityContext, workflow)) {
       authorizer.authorizeAdminOrBot(securityContext);
     }
+  }
+
+  /**
+   * A query runner workflow carries its requester's SQL, so only that requester, an admin or a bot
+   * may read it, as with its results. Every other workflow is readable as its policies decide.
+   */
+  private static Workflow requireReadable(SecurityContext securityContext, Workflow workflow) {
+    if (!isReadable(securityContext, workflow)) {
+      throw new AuthorizationException(
+          String.format(
+              "Query runner workflow [%s] is only available to the user who ran it",
+              workflow.getId()));
+    }
+    return workflow;
+  }
+
+  /**
+   * SQL Studio deletes a query run once its results are read or the query is stopped, as the user
+   * who ran it. That user holds no Delete on workflows unless they are an admin, so every other
+   * user's runs used to stay stored. The requester may therefore delete their own run; anyone else
+   * still needs Delete.
+   */
+  private Response deleteOwnQueryRun(
+      UriInfo uriInfo, SecurityContext securityContext, Workflow workflow, boolean hardDelete) {
+    final DeleteResponse<Workflow> response =
+        repository.delete(
+            securityContext.getUserPrincipal().getName(), workflow.getId(), false, hardDelete);
+    if (hardDelete) {
+      limits.invalidateCache(entityType);
+    }
+    addHref(uriInfo, response.entity());
+    return response.toResponse();
+  }
+
+  /**
+   * A write returns the workflow it changed, and a PATCH or PUT could rewrite its requester, so a
+   * query runner workflow is written only by those who may read it.
+   */
+  private void requireReadableStored(SecurityContext securityContext, UUID id) {
+    requireReadable(securityContext, repository.find(id, Include.ALL));
+  }
+
+  private void requireReadableIfStored(SecurityContext securityContext, String fqn) {
+    final Workflow stored = repository.findByNameOrNull(fqn, Include.ALL);
+    if (stored != null) {
+      requireReadable(securityContext, stored);
+    }
+  }
+
+  private static boolean isReadable(SecurityContext securityContext, Workflow workflow) {
+    return workflow.getWorkflowType() != WorkflowType.QUERY_RUNNER
+        || isAdminOrBot(securityContext)
+        || isRequester(securityContext, workflow);
+  }
+
+  /** The history listing leaves out other users' query runs instead of refusing the page. */
+  @Override
+  protected List<Workflow> retainReadableHistory(
+      SecurityContext securityContext, List<Workflow> snapshots) {
+    return snapshots.stream().filter(workflow -> isReadable(securityContext, workflow)).toList();
+  }
+
+  private static boolean isRequester(SecurityContext securityContext, Workflow workflow) {
+    return typedRequest(workflow) instanceof QueryRunnerRequest queryRequest
+        && callerId(securityContext).equals(queryRequest.getUserId());
+  }
+
+  /** Admins and bots dispatch and clean up every user's query runs. */
+  private static boolean isAdminOrBot(SecurityContext securityContext) {
+    final SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
+  }
+
+  private static UUID callerId(SecurityContext securityContext) {
+    return DefaultAuthorizer.getSubjectContext(securityContext).user().getId();
   }
 
   private static AuthorizationException unauthorizableTrigger(Workflow workflow, String reason) {
@@ -690,6 +798,19 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     }
   }
 
+  /**
+   * A Spark engine test authorizes only an ingestion-pipeline create, the lightest of the trigger
+   * checks. A workflow stored before the converter was made type-strict could carry a reverse
+   * ingestion or test-connection request under this label, so confirm the stored request really is
+   * a Spark one before applying the lighter check.
+   */
+  private void authorizeSparkEngineTrigger(SecurityContext securityContext, Workflow workflow) {
+    if (!(typedRequest(workflow) instanceof TestSparkEngineConnectionRequest)) {
+      throw unauthorizableTrigger(workflow, "request is not a TestSparkEngineConnectionRequest");
+    }
+    authorizeIngestionPipelineCreate(securityContext);
+  }
+
   private void authorizeIngestionPipelineCreate(SecurityContext securityContext) {
     authorizer.authorize(
         securityContext,
@@ -697,18 +818,43 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
         new ResourceContext<>(Entity.INGESTION_PIPELINE));
   }
 
-  private Workflow unmask(Workflow workflow) {
+  private Workflow unmask(SecurityContext securityContext, Workflow workflow) {
     repository.setFullyQualifiedName(workflow);
     Workflow originalWorkflow;
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
       // name
-      originalWorkflow = buildFromOriginalServiceConnection(workflow);
+      originalWorkflow = buildFromOriginalServiceConnection(securityContext, workflow);
+      if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
+        requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
+      }
     } else {
       originalWorkflow =
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
+  }
+
+  /** A test against another endpoint may not borrow the stored secrets it would be sent. */
+  private static void requireSecretsReenteredOnRetarget(Workflow workflow, Workflow original) {
+    Workflow converted =
+        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+    if (converted.getRequest() instanceof TestServiceConnectionRequest request
+        && original.getRequest() instanceof TestServiceConnectionRequest stored
+        && request.getConnection() instanceof ServiceConnectionEntityInterface connection
+        && stored.getConnection() instanceof ServiceConnectionEntityInterface storedConnection) {
+      ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
+          connection.getConfig(),
+          storedConnection.getConfig(),
+          request.getConnectionType(),
+          request.getServiceType());
+    }
+  }
+
+  @Override
+  protected Optional<UnaryOperator<Workflow>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(
+        workflow -> decryptOrNullify(securityContext, requireReadable(securityContext, workflow)));
   }
 
   private Workflow decryptOrNullify(SecurityContext securityContext, Workflow workflow) {
@@ -736,7 +882,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflowDecrypted;
   }
 
-  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
+  private Workflow buildFromOriginalServiceConnection(
+      SecurityContext securityContext, Workflow workflow) {
     Workflow originalWorkflow =
         repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
@@ -752,6 +899,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               serviceRepository.findByNameOrNull(
                   testServiceConnection.getServiceName(), Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
+        // ADR:2026-11-03-test-connection-workflows-check-service-edit-permission
+        final String serviceEntityType = serviceRepository.getEntityType();
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL),
+            new ResourceContext<>(serviceEntityType, originalService.getId(), null));
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);
       }

@@ -12,11 +12,10 @@
  */
 
 import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import { Check, StatusRunning } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent } from '../AgentsPage.interface';
 import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
@@ -48,6 +47,8 @@ const STAT_VALUE_CLASS: Record<string, string> = {
 interface AgentCounts {
   done: number;
   failed: number;
+  // Stopped runs ended without finishing: not queued, and not holding the banner in progress.
+  stopped: number;
   queued: number;
   running: number;
   total: number;
@@ -69,9 +70,10 @@ function getAgentCounts(
   const running = activeAgents.filter((a) => a.status === 'running').length;
   const done = activeAgents.filter((a) => a.status === 'success').length;
   const failed = activeAgents.filter((a) => a.status === 'failed').length;
-  const queued = total - done - running - failed;
+  const stopped = activeAgents.filter((a) => a.status === 'stopped').length;
+  const queued = total - done - running - failed - stopped;
 
-  return { done, failed, queued, running, total };
+  return { done, failed, queued, running, stopped, total };
 }
 
 // Assets ingested reflects only the Metadata agent — other agents count
@@ -121,17 +123,27 @@ function getOverallPercent(activeAgents: Agent[], total: number): number {
 }
 
 function isAllDone(counts: AgentCounts): boolean {
-  return counts.running === 0 && counts.done + counts.failed === counts.total;
+  return (
+    counts.running === 0 &&
+    counts.done + counts.failed + counts.stopped === counts.total
+  );
 }
 
 function getFailedSuffix(failed: number, t: TFunction): string {
   return failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
 }
 
-function getAttentionSuffix(failed: number, t: TFunction): string {
-  return failed > 0
-    ? ` · ${failed} ${t('label.need-attention')}`
-    : ` · ${t('message.everything-healthy')}`;
+function getStoppedSuffix(stopped: number, t: TFunction): string {
+  return stopped > 0 ? ` · ${stopped} ${t('label.stopped-lowercase')}` : '';
+}
+
+function getAttentionSuffix(counts: AgentCounts, t: TFunction): string {
+  const stoppedSuffix = getStoppedSuffix(counts.stopped, t);
+  if (counts.failed > 0) {
+    return ` · ${counts.failed} ${t('label.need-attention')}${stoppedSuffix}`;
+  }
+
+  return stoppedSuffix || ` · ${t('message.everything-healthy')}`;
 }
 
 function getSubtitle(
@@ -141,7 +153,7 @@ function getSubtitle(
 ): string {
   if (allDone) {
     return t('message.agents-finished-summary', {
-      attentionSuffix: getAttentionSuffix(counts.failed, t),
+      attentionSuffix: getAttentionSuffix(counts, t),
       done: counts.done,
       total: counts.total,
     });
@@ -149,7 +161,10 @@ function getSubtitle(
 
   return t('message.agents-deploy-progress', {
     done: counts.done,
-    failedSuffix: getFailedSuffix(counts.failed, t),
+    failedSuffix: `${getFailedSuffix(counts.failed, t)}${getStoppedSuffix(
+      counts.stopped,
+      t
+    )}`,
     queued: counts.queued,
     running: counts.running,
   });
@@ -195,11 +210,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
     return allDone ? (
       <Check size={22} />
     ) : (
-      <RunRunningIcon
-        className="tw:animate-spin tw:text-fg-white"
-        height={22}
-        width={22}
-      />
+      <StatusRunning className="tw:animate-spin tw:text-fg-white" size={22} />
     );
   }
 
@@ -251,7 +262,9 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
               ? t('label.deployment-complete')
               : t('message.agents-deploying-ingesting')}
           </div>
-          <div className="tw:mt-0.5 tw:text-sm tw:text-tertiary">
+          <div
+            className="tw:mt-0.5 tw:text-sm tw:text-tertiary"
+            data-testid="deployment-summary-subtitle">
             {subtitle}
           </div>
         </div>

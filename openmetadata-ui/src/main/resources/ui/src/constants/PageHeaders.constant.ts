@@ -193,7 +193,7 @@ export const PAGE_HEADERS = {
   },
   INCIDENT_MANAGER: {
     header: 'label.incident-manager',
-    subHeader: 'message.page-sub-header-for-data-quality',
+    subHeader: 'message.incident-metrics-sub-header',
   },
   SETTING: {
     header: 'label.setting-plural',
@@ -282,6 +282,11 @@ export const PAGE_HEADERS = {
     header: 'label.team-plural',
     subHeader: 'message.define-custom-property-for-entity',
     subHeaderParams: { entity: 'label.team-plural' },
+  },
+  ARTICLE_CUSTOM_ATTRIBUTES: {
+    header: 'label.article-plural',
+    subHeader: 'message.define-custom-property-for-entity',
+    subHeaderParams: { entity: 'label.article-plural' },
   },
   USER_CUSTOM_ATTRIBUTES: {
     header: 'label.user-plural',

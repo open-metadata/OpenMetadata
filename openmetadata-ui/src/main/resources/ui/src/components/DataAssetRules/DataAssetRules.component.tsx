@@ -30,17 +30,13 @@ import { AxiosError } from 'axios';
 import { noop } from 'lodash';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
-import { useTranslation } from 'react-i18next';
 import { ReactComponent as AddPlaceHolderIcon } from '../../assets/svg/add-placeholder.svg';
 import { EntityReferenceFields } from '../../enums/AdvancedSearch.enum';
 import { SIZE } from '../../enums/common.enum';
-import {
-  SemanticsRule,
-  Settings,
-  SettingType,
-} from '../../generated/settings/settings';
+import { SemanticsRule, SettingType } from '../../generated/settings/settings';
 import {
   getSettingsConfigFromConfigType,
+  patchEntityRule,
   updateSettingsConfig,
 } from '../../rest/settingConfigAPI';
 import i18n, { t } from '../../utils/i18next/LocalUtil';
@@ -53,7 +49,6 @@ import { SearchOutputType } from '../Explore/AdvanceSearchProvider/AdvanceSearch
 import './DataAssetRules.less';
 
 export const useSemanticsRulesState = () => {
-  const { t } = useTranslation();
   const [semanticsRules, setSemanticsRules] = useState<SemanticsRule[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSaveLoading, setIsSaveLoading] = useState<boolean>(false);
@@ -77,23 +72,17 @@ export const useSemanticsRulesState = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [setSemanticsRules]);
+  }, []);
 
   useEffect(() => {
     fetchSemanticsRules();
-  }, []);
+  }, [fetchSemanticsRules]);
 
-  const updateSemanticsRules = useCallback(
-    async (configValues: SemanticsRule[]) => {
+  const saveSemanticsRules = useCallback(
+    async (save: () => Promise<unknown>) => {
       try {
         setIsSaveLoading(true);
-        const settingsConfigData: Settings = {
-          config_type: SettingType.EntityRulesSettings,
-          config_value: {
-            entitySemantics: configValues,
-          },
-        };
-        await updateSettingsConfig(settingsConfigData);
+        await save();
         fetchSemanticsRules();
 
         showSuccessToast(
@@ -116,7 +105,28 @@ export const useSemanticsRulesState = () => {
         setIsSaveLoading(false);
       }
     },
-    []
+    [fetchSemanticsRules]
+  );
+
+  const updateSemanticsRules = useCallback(
+    (configValues: SemanticsRule[]) =>
+      saveSemanticsRules(() =>
+        updateSettingsConfig({
+          config_type: SettingType.EntityRulesSettings,
+          config_value: { entitySemantics: configValues },
+        })
+      ),
+    [saveSemanticsRules]
+  );
+
+  const toggleRuleEnabled = useCallback(
+    (ruleName: string, enabled: boolean) =>
+      saveSemanticsRules(() =>
+        patchEntityRule(ruleName, [
+          { op: 'replace', path: '/enabled', value: enabled },
+        ])
+      ),
+    [saveSemanticsRules]
   );
 
   return {
@@ -125,6 +135,7 @@ export const useSemanticsRulesState = () => {
     isLoading,
     isSaveLoading,
     updateSemanticsRules,
+    toggleRuleEnabled,
   };
 };
 
@@ -297,6 +308,7 @@ export const DeleteSemanticsRuleConfirmationModal: React.FC<{
 export const useSemanticsRuleList = ({
   semanticsRules,
   onSemanticsRuleChange,
+  onToggleRuleEnabled,
   isSaveLoading,
   isLoading,
 }: {
@@ -304,6 +316,7 @@ export const useSemanticsRuleList = ({
   onSemanticsRuleChange: (
     updatedSemanticsRules: SemanticsRule[]
   ) => Promise<void>;
+  onToggleRuleEnabled: (ruleName: string, enabled: boolean) => Promise<void>;
   isSaveLoading?: boolean;
   isLoading?: boolean;
 }) => {
@@ -383,13 +396,13 @@ export const useSemanticsRuleList = ({
             isSelected={enabled}
             size="sm"
             onChange={() => {
-              handleSave({ ...record, enabled: !enabled });
+              onToggleRuleEnabled(record.name, !enabled);
             }}
           />
         ),
       },
     ],
-    [t, handleSave]
+    [onToggleRuleEnabled]
   );
 
   const dataAssetRuleList = useMemo(() => {
@@ -409,7 +422,14 @@ export const useSemanticsRuleList = ({
         </Grid.Item>
       </Grid>
     );
-  }, [semanticsRules, isLoading, isSaveLoading, columns]);
+  }, [
+    semanticsRules,
+    isLoading,
+    isSaveLoading,
+    columns,
+    addEditSemanticsRule,
+    deleteSemanticsRule,
+  ]);
 
   const quickAddSemanticsRule = !isLoading && semanticsRules.length === 0 && (
     <Box

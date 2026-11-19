@@ -236,7 +236,7 @@ describe('TestSummaryGraph', () => {
     jest.useRealTimers();
   });
 
-  it('should show the placeholder for the selected time range when there are no results', () => {
+  it('keeps the selected time range in the headline and extension guidance in the description', () => {
     render(
       <TestSummaryGraph
         {...mockProps}
@@ -248,7 +248,10 @@ describe('TestSummaryGraph', () => {
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
       screen.getByText('message.no-test-result-for-days Last 7 days')
-    ).toBeInTheDocument();
+    ).toHaveClass('tw:text-sm', 'tw:font-semibold');
+    expect(screen.getByText('message.try-extending-time-frame')).toHaveClass(
+      'tw:text-xs'
+    );
     expect(mockComposedChart).not.toHaveBeenCalled();
   });
 
@@ -721,24 +724,33 @@ describe('TestSummaryGraph', () => {
     });
   });
 
-  // Focusing a hovered series fades every other one, the allowed-range band
-  // and the expectation label included; with one series that only hides them.
-  it('should not fade the band and expectation line when a single series is hovered', () => {
-    render(
+  it('should give every series no hover state, however many there are', () => {
+    const { unmount } = render(
       <TestSummaryGraph {...mockProps} testCaseResults={singleSeriesResults} />
     );
 
-    expect(getSeries('value').seriesOption).not.toHaveProperty('emphasis');
-  });
+    expect(getSeries('value').seriesOption).toEqual(
+      expect.objectContaining({ emphasis: { disabled: true } })
+    );
 
-  it('should bring the hovered series forward when there are several', () => {
+    unmount();
     render(<TestSummaryGraph {...mockProps} />);
 
     ['min', 'max'].forEach((key) => {
       expect(getSeries(key).seriesOption).toEqual(
-        expect.objectContaining({ emphasis: { focus: 'series' } })
+        expect.objectContaining({ emphasis: { disabled: true } })
       );
     });
+  });
+
+  it('should give the dots of aborted and queued runs no hover state', () => {
+    render(
+      <TestSummaryGraph {...mockProps} testCaseResults={runsAroundAnAbort} />
+    );
+
+    expect(getSeries(placedSeriesKey('value')).seriesOption).toEqual(
+      expect.objectContaining({ emphasis: { disabled: true } })
+    );
   });
 
   it('should draw several series as palette lines', () => {

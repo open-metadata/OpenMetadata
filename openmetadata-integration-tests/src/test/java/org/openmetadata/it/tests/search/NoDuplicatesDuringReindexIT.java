@@ -19,6 +19,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.SeedData;
+import org.openmetadata.it.factories.SizeFactor;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
@@ -52,7 +53,7 @@ import org.slf4j.LoggerFactory;
 class NoDuplicatesDuringReindexIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(NoDuplicatesDuringReindexIT.class);
-  private static final int SEED_TABLES = 2_000;
+  private static final int SEED_TABLES = SizeFactor.scale(2_000);
   private static final int COLUMNS_PER_TABLE = 3;
   private static final int PARALLEL_LOAD_WORKERS = 8;
   private static final Duration PROBE_DURATION = Duration.ofSeconds(40);

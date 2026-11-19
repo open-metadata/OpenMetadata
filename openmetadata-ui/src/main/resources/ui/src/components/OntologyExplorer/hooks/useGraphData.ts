@@ -41,12 +41,18 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
+  conflictEdgeKey,
+  CONFLICT_COLOR,
+  CONFLICT_COLOR_FALLBACK,
+} from '../utils/conflictHighlight';
+import {
   METRIC_NODE_TYPE,
   SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
 import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
+  MODEL_NODE_MAX_LABEL_WIDTH,
   MODEL_NODE_MAX_WIDTH,
   NODE_HEIGHT,
   truncateNodeLabelByWidth,
@@ -56,6 +62,7 @@ import {
   buildDataModeAssetNodeStyle,
   buildDataModeTermNodeStyle,
   buildDefaultRectNodeStyle,
+  buildStudioConflictNodeStyle,
   buildStudioMetricNodeStyle,
   buildStudioProposedEdgeStyle,
   buildStudioProposedNodeStyle,
@@ -415,7 +422,7 @@ function computeTermLabelHSpacing(
       return max;
     }
     const rawLabel = n.originalLabel ?? n.label;
-    const w = Math.min(MODEL_NODE_MAX_WIDTH, estimateNodeWidth(rawLabel));
+    const w = Math.min(MODEL_NODE_MAX_LABEL_WIDTH, estimateNodeWidth(rawLabel));
 
     return Math.max(max, w);
   }, 0);
@@ -703,9 +710,10 @@ function computeNodeSelectionState(
     ctx.selectedNodeId !== null && !isSelected && !ctx.neighborSet.has(node.id);
   const isDimmedBySearch =
     ctx.searchNodeSet != null && !ctx.searchNodeSet.has(node.id);
+  // Studio marks a selection with its border only; fading the rest read as disabled.
   const isDimmed = ctx.searchHighlightActive
     ? isDimmedBySearch
-    : isDimmedBySelection;
+    : !ctx.studioMode && isDimmedBySelection;
 
   return { isSelected, isHighlighted, isDimmed };
 }
@@ -723,7 +731,7 @@ function computeNodeVisualState(
     isInModelMode || (ctx.explorationMode === 'data' && !isDataAsset);
   const estimatedWidth = estimateNodeWidth(rawLabel);
   const truncatedWidth = shouldTruncateLabel
-    ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
+    ? Math.min(MODEL_NODE_MAX_LABEL_WIDTH, estimatedWidth)
     : estimatedWidth;
   const nodeWidth = ctx.studioMode ? MODEL_NODE_MAX_WIDTH : truncatedWidth;
   const label = shouldTruncateLabel
@@ -874,6 +882,10 @@ function buildStudioKindStyle(node: OntologyNode, isSelected: boolean) {
     return buildStudioProposedNodeStyle(getCanvasColor, isSelected);
   }
 
+  if (node.hasConflict) {
+    return buildStudioConflictNodeStyle(getCanvasColor);
+  }
+
   return node.type === METRIC_NODE_TYPE
     ? buildStudioMetricNodeStyle(getCanvasColor)
     : {};
@@ -958,6 +970,7 @@ interface EdgeBuildContext {
   selectedScopedIds: Set<string> | null;
   searchHighlightActive: boolean;
   searchEdgeSet: Set<string> | null;
+  conflictEdgeKeys?: ReadonlySet<string>;
   clickedEdgeId: string | null;
   customRelationColorMap: Record<string, string>;
   cardinalityMap: Map<string, RelationshipType>;
@@ -1130,7 +1143,9 @@ function computeEdgeIsDimmed(
   const isDimmedBySearch =
     ctx.searchEdgeSet != null && !ctx.searchEdgeSet.has(edgeKeyStr);
 
-  return ctx.searchHighlightActive ? isDimmedBySearch : isDimmedBySelection;
+  return ctx.searchHighlightActive
+    ? isDimmedBySearch
+    : !ctx.studioMode && isDimmedBySelection;
 }
 
 function computeEdgeLabelVisibility(
@@ -1322,11 +1337,13 @@ function buildG6EdgeForSingle(
     isTermTermInDataMode,
     isSemanticProjection
   );
-  const edgeColor = computeEdgeColor(
-    singleEdge,
-    isDataModeAssetEdge,
-    ctx.customRelationColorMap
-  );
+  const edgeColor = ctx.conflictEdgeKeys?.has(conflictEdgeKey(singleEdge))
+    ? getCanvasColor(CONFLICT_COLOR, CONFLICT_COLOR_FALLBACK)
+    : computeEdgeColor(
+        singleEdge,
+        isDataModeAssetEdge,
+        ctx.customRelationColorMap
+      );
 
   const showLabel = computeEdgeLabelVisibility(
     isClickedEdge,
@@ -1584,6 +1601,7 @@ export function useGraphDataBuilder({
   layoutType,
   hierarchyCombos = [],
   graphSearchHighlight = null,
+  conflictEdgeKeys,
   isEditMode = false,
   relationTypes,
   relationColors,
@@ -1755,6 +1773,7 @@ export function useGraphDataBuilder({
       selectedScopedIds,
       searchHighlightActive,
       searchEdgeSet,
+      conflictEdgeKeys,
       clickedEdgeId,
       customRelationColorMap,
       cardinalityMap,
@@ -1801,6 +1820,7 @@ export function useGraphDataBuilder({
     explorationMode,
     hierarchyCombos,
     graphSearchHighlight,
+    conflictEdgeKeys,
     glossaries,
     cardinalityMap,
     customRelationColorMap,

@@ -15,13 +15,16 @@ Source connection handler
 from __future__ import annotations
 
 import traceback
+import uuid
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING
 
+import jwt
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
 from tableauserverclient.server.endpoint.exceptions import (
     InternalServerError,
-    ServerResponseError,
+    XMLError,
 )
 
 from metadata.core.connections.test_connection import (
@@ -45,6 +48,9 @@ from metadata.generated.schema.security.credentials.accessTokenAuth import (
     AccessTokenAuth,
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
+from metadata.generated.schema.security.credentials.tableauConnectedAppAuth import (
+    TableauConnectedAppAuth,
+)
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.source.dashboard.tableau.client import (
@@ -60,6 +66,8 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
 if TYPE_CHECKING:
+    from tableauserverclient.models import Credentials
+
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.generated.schema.entity.services.connections.pipeline.tableauPipelineConnection import (
@@ -73,18 +81,59 @@ METADATA_API_DOC = (
     "#enable-the-tableau-metadata-api-for-tableau-server"
 )
 
+# The calls the dashboard and pipeline connectors make, and the workbook description, owner and tag
+# and view tag writes of Collate's reverse metadata, need exactly these, measured on Tableau Cloud
+# (ADR:2026-11-04-tableau-connected-apps-sign-in-with-a-direct-trust-jwt).
+# ponytail: fixed scope set; a site that must grant fewer needs a config field.
+CONNECTED_APP_SCOPES = [
+    "tableau:content:read",
+    "tableau:users:read",
+    "tableau:server:read",
+    "tableau:flows:read",
+    "tableau:flow_runs:read",
+    "tableau:jobs:read",
+    "tableau:tasks:read",
+    "tableau:workbooks:update",
+    "tableau:workbook_tags:update",
+    "tableau:workbook_tags:delete",
+    "tableau:view_tags:update",
+    "tableau:view_tags:delete",
+]
+# The JWT only has to last until sign-in; the session it buys outlives it. Tableau Cloud allows 10 minutes.
+CONNECTED_APP_JWT_LIFETIME = timedelta(minutes=5)
+# Tableau answers a call outside the token's scopes with the same 401002 as bad credentials.
+CONNECTED_APP_REJECTED = (
+    "Tableau rejected the connected app's token (401). Check the client ID, secret ID, secret value and "
+    "username, that the connected app is enabled, that the Site Name matches the site it belongs to, and "
+    "that the clock of the host running the ingestion is correct. "
+    f"A call outside the token's scopes is rejected the same way; OpenMetadata requests {', '.join(CONNECTED_APP_SCOPES)}."
+)
+CONNECTED_APP_METADATA_API_FLOOR = (
+    "Tableau documents that a connected app can use the Metadata API only on Tableau Cloud and on Tableau "
+    "Server 2023.3 or later; on an older Tableau Server, use a Personal Access Token."
+)
+OWNERS_NOT_FOUND_FIX = (
+    "Owners could not be resolved. Grant the user permission to read users on the site, or "
+    "disable owner ingestion in the service configuration."
+)
+DATA_MODELS_FIX = (
+    "The Tableau Metadata API returned no data sources for the workbook. Enable the "
+    "Metadata API on the Tableau instance."
+)
+
 
 def _status_of(error: BaseException) -> int | None:
     """Return the HTTP status a Tableau error carries, if any.
 
     Only the two Tableau error types whose ``.code`` is HTTP-ish are trusted -
-    ``ServerResponseError.code`` is a string whose first three digits are the
-    status (e.g. ``401002``), ``InternalServerError.code`` is the status itself -
+    ``XMLError.code`` is a string whose first three digits are the status (e.g.
+    ``401002``), ``InternalServerError.code`` is the status itself -
     plus a raw ``requests`` error's ``.response.status_code``. Reading ``.code``
     off any exception would misclassify an unrelated app code the chain happens
-    to carry.
+    to carry. ``XMLError`` covers both ``ServerResponseError`` and the
+    ``FailedSignInError`` a rejected token, password or site raises at sign-in.
     """
-    if isinstance(error, ServerResponseError) and error.code[:3].isdigit():
+    if isinstance(error, XMLError) and error.code[:3].isdigit():
         status = int(error.code[:3])
     elif isinstance(error, InternalServerError) and isinstance(error.code, int):
         status = error.code
@@ -130,8 +179,7 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(TableauOwnersNotFound)).diagnose(
         "Owner information not available",
-        fix="Owners could not be resolved. Grant the user permission to read users on the site, or "
-        "disable owner ingestion in the service configuration.",
+        fix=OWNERS_NOT_FOUND_FIX,
     ),
     when(Matchers.exception(TableauUpstreamTablesRedacted)).diagnose(
         "Source table names are hidden from this account",
@@ -143,8 +191,7 @@ TABLEAU_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(TableauDataModelsException)).diagnose(
         "Data sources could not be read",
-        fix="The Tableau Metadata API returned no data sources for the workbook. Enable the "
-        "Metadata API on the Tableau instance.",
+        fix=DATA_MODELS_FIX,
         doc=METADATA_API_DOC,
     ),
     when(Matchers.contains("in incorrect format")).diagnose(
@@ -153,6 +200,21 @@ TABLEAU_ERRORS = ErrorPack(
         "https://<server>/#/site/MarketingTeam/home enter 'MarketingTeam'.",
     ),
 ).including(NETWORK_ERRORS)
+
+# A connected app has no PAT or password to check, and its token's scopes can be what Tableau refused.
+TABLEAU_CONNECTED_APP_ERRORS = ErrorPack(
+    when(http_status(401, extract=_status_of)).diagnose("Authentication failed", fix=CONNECTED_APP_REJECTED),
+    # The owner lookup swallows the 401, so a token without the users scope surfaces here instead.
+    when(Matchers.exception(TableauOwnersNotFound)).diagnose(
+        "Owner information not available",
+        fix=f"{OWNERS_NOT_FOUND_FIX} The connected app's token also needs the tableau:users:read scope.",
+    ),
+    when(Matchers.exception(TableauDataModelsException)).diagnose(
+        "Data sources could not be read",
+        fix=f"{DATA_MODELS_FIX} {CONNECTED_APP_METADATA_API_FLOOR}",
+        doc=METADATA_API_DOC,
+    ),
+).including(TABLEAU_ERRORS)
 
 
 def get_connection(connection: TableauConnectionConfig) -> TableauClient:
@@ -212,7 +274,7 @@ def set_verify_ssl(
 
 def build_server_config(
     connection: TableauConnectionConfig | TableauPipelineConnection,
-) -> TSC.TableauAuth | TSC.PersonalAccessTokenAuth:
+) -> Credentials:
     """
     Build client configuration
     Args:
@@ -233,6 +295,24 @@ def build_server_config(
             personal_access_token=connection.authType.personalAccessTokenSecret.get_secret_value(),
             site_id=connection.siteName if connection.siteName else "",
         )
+    elif isinstance(connection.authType, TableauConnectedAppAuth):
+        app = connection.authType
+        # Direct trust accepts only HS256 tokens signed with the connected app's secret value.
+        token = jwt.encode(
+            {
+                "iss": app.clientId,
+                "sub": app.username,
+                "aud": "tableau",
+                "exp": datetime.now(timezone.utc) + CONNECTED_APP_JWT_LIFETIME,
+                "jti": str(uuid.uuid4()),
+                "scp": CONNECTED_APP_SCOPES,
+            },
+            app.secretValue.get_secret_value(),
+            algorithm="HS256",
+            headers={"kid": app.secretId, "iss": app.clientId},
+        )
+        # site_id must be a keyword: JWTAuth's second positional parameter is isUat.
+        tableau_auth = TSC.JWTAuth(jwt=token, site_id=connection.siteName if connection.siteName else "")
     else:
         raise ValueError("Unsupported authentication type")  # noqa: TRY004
 
@@ -246,10 +326,9 @@ class TableauChecks:
     credentials or an unreachable server fail there and the rest are skipped.
     """
 
-    errors = TABLEAU_ERRORS
-
-    def __init__(self, server: Borrowed[TableauClient]) -> None:
+    def __init__(self, server: Borrowed[TableauClient], connected_app: bool = False) -> None:
         self._server = server
+        self.errors = TABLEAU_CONNECTED_APP_ERRORS if connected_app else TABLEAU_ERRORS
 
     @check(DashboardStep.ServerInfo)
     def server_info(self) -> Evidence:
@@ -324,4 +403,7 @@ class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
         return client
 
     def checks(self) -> ChecksProvider:
-        return TableauChecks(server=self.borrow())
+        return TableauChecks(
+            server=self.borrow(),
+            connected_app=isinstance(self.service_connection.authType, TableauConnectedAppAuth),
+        )

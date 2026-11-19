@@ -16,12 +16,12 @@ import {
   Box,
   Button,
   Card,
-  EmptyPlaceholder,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Table from '../../../../../common/Table/TableV2';
 import type { MembersInlineEntityTabProps } from './MembersTeamDetail.types';
 
@@ -37,6 +37,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   entityLabel,
   entityPluralLabel,
   entityDescription,
+  emptyIcon,
   tableTestId,
   addButtonTestId,
   addSelectTestId,
@@ -52,7 +53,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
   return (
     <Box direction="col">
       {isAdding && (
-        <Card className="tw:m-4" variant="muted">
+        <Card className="tw:m-4">
           <Card.Content className="tw:flex tw:flex-col tw:gap-4">
             <Typography
               className="tw:text-primary"
@@ -84,14 +85,14 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               )}
             </Autocomplete>
             <Box direction="row" gap={3} justify="end">
-              <Button color="tertiary" size="sm" onPress={onCancelAdd}>
+              <Button color="tertiary" size="xs" onPress={onCancelAdd}>
                 {t('label.cancel')}
               </Button>
               <Button
                 color="primary"
                 isDisabled={selectedNew.length === 0}
                 isLoading={isSavingInline}
-                size="sm"
+                size="xs"
                 onPress={onConfirmAdd}>
                 {t('label.save')}
               </Button>
@@ -110,11 +111,12 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               align="center"
               className="tw:min-h-32 tw:relative"
               justify="center">
-              <EmptyPlaceholder
+              <NoDataPlaceholder
                 description={t(
                   'message.adding-new-entity-is-easy-just-give-it-a-spin',
                   { entity: entityLabel }
                 )}
+                icon={emptyIcon}
                 title={t('label.no-entity-found', {
                   entity: entityPluralLabel,
                 })}
@@ -145,7 +147,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
               <Button
                 color="primary"
                 data-testid={addButtonTestId}
-                size="sm"
+                size="xs"
                 onPress={onStartAdd}>
                 {t('label.add-entity', { entity: entityLabel })}
               </Button>
@@ -154,6 +156,7 @@ const MembersInlineEntityTab: FC<MembersInlineEntityTabProps> = ({
         )}
         rowKey="id"
         size="small"
+        variant="muted"
       />
     </Box>
   );

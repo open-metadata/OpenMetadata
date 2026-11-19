@@ -53,9 +53,13 @@ jest.mock('./CriticalAnnouncements', () => ({
 
 jest.mock('./HomeLandingPageHeader', () => ({
   __esModule: true,
-  default: ({ headerColor }: { headerColor?: string }) => (
-    <div data-header-color={headerColor} data-testid="home-greeting" />
-  ),
+  default: () => <div data-testid="home-greeting" />,
+}));
+
+let mockIsAiMode = false;
+
+jest.mock('../../../hooks/useAppMode', () => ({
+  useIsAiMode: () => mockIsAiMode,
 }));
 
 jest.mock('./AnnouncementsRail', () => {
@@ -133,6 +137,7 @@ describe('HomeLandingPage', () => {
     mockSelectedPersona = { fullyQualifiedName: mockPersonaName };
     mockCurrentUser = mockUserData;
     mockHasLiveCritical = false;
+    mockIsAiMode = false;
     jest.clearAllMocks();
   });
 
@@ -189,24 +194,24 @@ describe('HomeLandingPage', () => {
     expect(screen.queryByTestId('home-greeting')).not.toBeInTheDocument();
   });
 
-  it("tints the greeting with the user's own Header Theme for the persona", async () => {
-    mockSelectedPersona = { fullyQualifiedName: mockPersonaName, id: 'p1' };
-    mockCurrentUser = {
-      ...mockUserData,
-      personaPreferences: [
-        {
-          personaId: 'p1',
-          personaName: mockPersonaName,
-          landingPageSettings: { headerColor: '#123456' },
-        },
-      ],
-    };
+  // AI mode's "Needs you now" heading greets the user instead.
+  it('opens on no greeting in AI mode', async () => {
+    mockIsAiMode = true;
     renderHome();
 
-    expect(await screen.findByTestId('home-greeting')).toHaveAttribute(
-      'data-header-color',
-      '#123456'
-    );
+    await screen.findByTestId('react-grid-layout');
+
+    expect(screen.queryByTestId('home-greeting')).not.toBeInTheDocument();
+  });
+
+  it('still gives the top slot to a live critical announcement in AI mode', async () => {
+    mockIsAiMode = true;
+    mockHasLiveCritical = true;
+    renderHome();
+
+    expect(
+      await screen.findByTestId('critical-announcements')
+    ).toBeInTheDocument();
   });
 
   it('offers no Customize entry point without a persona to edit', async () => {

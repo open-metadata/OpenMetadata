@@ -130,13 +130,23 @@ export const SlashCommandList = forwardRef<SlashCommandRef, SuggestionProps>(
             id={`editor-command-${item.title}`}
             key={item.title}
             onClick={() => selectItem(index)}>
-            <img
-              alt=""
-              className={classNames('slash-command-image', {
-                'svg-image': item.isSvg,
-              })}
-              src={item.imgSrc}
-            />
+            {item.Icon ? (
+              <span
+                className={classNames(
+                  'slash-command-image svg-image tw:flex tw:items-center tw:justify-center',
+                  item.iconClassName
+                )}>
+                <item.Icon size={24} />
+              </span>
+            ) : (
+              <img
+                alt=""
+                className={classNames('slash-command-image', {
+                  'svg-image': item.isSvg,
+                })}
+                src={item.imgSrc}
+              />
+            )}
             <Box inline direction="col">
               <Typography as="article" className="font-bold">
                 {item.title}

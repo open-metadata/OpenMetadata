@@ -20,11 +20,15 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notAdmi
 import io.micrometer.core.instrument.Timer;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ResourcePermission;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
@@ -145,6 +149,24 @@ public class DefaultAuthorizer implements Authorizer {
         subjectContextForUserName(userName), operationContext, resourceContext);
   }
 
+  @Override
+  public void authorizeActor(
+      final ChangeActor actor,
+      final OperationContext operationContext,
+      final ResourceContextInterface resourceContext) {
+    authorizeSubject(actorSubjectContext(actor), operationContext, resourceContext);
+  }
+
+  // The impersonation was validated when the request came in; the write only records it. An author
+  // that no longer resolves to a user is refused, never let through.
+  private static SubjectContext actorSubjectContext(final ChangeActor actor) {
+    try {
+      return SubjectContext.getSubjectContext(actor.userName(), actor.impersonatedBy());
+    } catch (EntityNotFoundException e) {
+      throw new AuthorizationException(notAdmin(actor.userName()));
+    }
+  }
+
   private void authorizeSubject(
       SubjectContext subjectContext,
       OperationContext operationContext,
@@ -162,15 +184,23 @@ public class DefaultAuthorizer implements Authorizer {
     }
 
     if (logic == AuthorizationLogic.ANY) {
+      // Every request is evaluated, not stopped at the first allow: an explicit Deny on any one of
+      // them refuses the whole thing, and that must hold whatever order the requests arrive in -
+      // otherwise [allowed, denied] would pass while [denied, allowed] is refused.
       boolean anySuccess = false;
+      PolicyDeniedException denied = null;
       for (AuthRequest req : requests) {
         try {
           PolicyEvaluator.hasPermission(
               subjectContext, req.resourceContext(), req.operationContext());
           anySuccess = true;
-          break;
+        } catch (PolicyDeniedException e) {
+          denied = e;
         } catch (AuthorizationException ignored) {
         }
+      }
+      if (denied != null) {
+        throw denied;
       }
       if (!anySuccess) {
         throw new AuthorizationException("User does not have ANY of the required permissions.");
@@ -302,19 +332,39 @@ public class DefaultAuthorizer implements Authorizer {
     return loggedInUser;
   }
 
+  // Reviewers vote on an assigned review through the task; changing ontology content, capturing a
+  // release and activating one need the matching edit right whether or not the user is listed.
+  private static final Set<String> EDIT_RIGHT_REQUIRED_RESOURCES =
+      Set.of(
+          Entity.ONTOLOGY,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_RELEASE,
+          Entity.ONTOLOGY_AXIOM,
+          Entity.ONTOLOGY_CHANGE_SET);
+
+  private boolean requiresEditRight(String resource) {
+    return resource != null && EDIT_RIGHT_REQUIRED_RESOURCES.contains(resource);
+  }
+
   private boolean isReviewer(
       ResourceContextInterface resourceContext, SubjectContext subjectContext) {
     // On CREATE the entity is caller-supplied and not yet persisted, so its fields (e.g. reviewers)
     // cannot be trusted to grant authorization. Only evaluate against already persisted entities.
-    if (resourceContext instanceof CreateResourceContext || resourceContext.getEntity() == null) {
+    if (resourceContext instanceof CreateResourceContext
+        || requiresEditRight(resourceContext.getResource())
+        || resourceContext.getEntity() == null) {
       return false;
     }
-    String updatedBy = subjectContext.user().getName();
+    // Match a user reviewer by id, never by name: a reviewer can be a team, and a user whose name
+    // equals a reviewer team's name would otherwise skip policy checks
+    // (ADR:2026-11-03-a-reviewer-is-matched-by-user-id).
+    UUID userId = subjectContext.user().getId();
     List<EntityReference> reviewers = resourceContext.getEntity().getReviewers();
-    return !nullOrEmpty(reviewers)
+    return userId != null
+        && !nullOrEmpty(reviewers)
         && reviewers.stream()
-            .anyMatch(
-                e -> updatedBy.equals(e.getName()) || updatedBy.equals(e.getFullyQualifiedName()));
+            .anyMatch(e -> Entity.USER.equals(e.getType()) && userId.equals(e.getId()));
   }
 
   private static void checkImpersonationAuthorization(SubjectContext subjectContext) {

@@ -115,20 +115,74 @@ def test_ignored_tags_do_not_publish_definitions_or_query_the_catalog(catalog_so
     source.metadata.get_by_name.assert_not_called()
 
 
-def test_grafana_only_attaches_existing_native_tags(catalog_source):
+@pytest.fixture
+def grafana_catalog_source(catalog_source):
     redash, catalog = catalog_source
     source = object.__new__(GrafanaSource)
     vars(source).update(vars(redash))
-    catalog.add("GrafanaTags.Existing")
-    details = SimpleNamespace(
-        dashboard=SimpleNamespace(
-            uid="my_dashboard", title="My dashboard", description=None, tags=["Existing", "Missing"]
-        ),
-        meta=SimpleNamespace(url="/d/my_dashboard", createdBy=None),
+    return source, catalog
+
+
+def grafana_dashboard(name, tags):
+    return SimpleNamespace(
+        dashboard=SimpleNamespace(uid=name, title="My dashboard", description=None, tags=tags),
+        meta=SimpleNamespace(url=f"/d/{name}", createdBy=None),
     )
+
+
+@pytest.mark.parametrize("existing", [False, True])
+def test_grafana_publishes_native_tags_before_attaching_labels(grafana_catalog_source, existing):
+    source, catalog = grafana_catalog_source
+    if existing:
+        catalog.add("GrafanaTags.Shared")
+    details = grafana_dashboard("my_dashboard", ["Shared", "New", "Shared"])
+    definitions = list(source.yield_tags(details) or [])
+    assert all(record.left is None for record in definitions)
+    assert [record.right.classification_request.name.root for record in definitions] == ["GrafanaTags", "GrafanaTags"]
+    assert [record.right.tag_request.name.root for record in definitions] == ["Shared", "New"]
+    for record in definitions:
+        catalog.add(f"GrafanaTags.{record.right.tag_request.name.root}")
+    record = next(source.yield_dashboard(details))
+    assert record.left is None
+    assert set(labels(record.right)) == {"GrafanaTags.Shared", "GrafanaTags.New"}
+    assert catalog == {"GrafanaTags.Shared", "GrafanaTags.New"}
+    assert source.tags_registry.stats()["pending"] == 0
+    assert source.tags_registry.stats()["live_entities"] == 0
+
+    other = grafana_dashboard("other_dashboard", ["Shared", "Other"])
+    definitions = list(source.yield_tags(other))
+    assert [record.right.tag_request.name.root for record in definitions] == ["Other"]
+    catalog.add("GrafanaTags.Other")
+    assert labels(next(source.yield_dashboard(other)).right) == ["GrafanaTags.Shared", "GrafanaTags.Other"]
+    assert list(source.yield_tags(details)) == []
+
+
+@pytest.mark.parametrize("enabled,tags", [(False, ["Disabled"]), (True, None), (True, []), (True, [" ", "bad>name"])])
+def test_grafana_ignored_tags_do_not_create_definitions_or_labels(grafana_catalog_source, enabled, tags):
+    source, catalog = grafana_catalog_source
+    source.source_config.includeTags = enabled
+    details = grafana_dashboard("my_dashboard", tags)
     assert list(source.yield_tags(details) or []) == []
     record = next(source.yield_dashboard(details))
     assert record.left is None
-    assert labels(record.right) == ["GrafanaTags.Existing"]
-    assert catalog == {"GrafanaTags.Existing"}
-    assert source.tags_registry.stats()["pending"] == 0
+    assert labels(record.right) == []
+    assert catalog == set()
+
+
+def test_grafana_invalid_tags_do_not_discard_valid_tags(grafana_catalog_source):
+    source, catalog = grafana_catalog_source
+    details = grafana_dashboard("my_dashboard", ["", " ", "bad>name", "my.tag"])
+    definitions = list(source.yield_tags(details) or [])
+    assert [record.right.tag_request.name.root for record in definitions] == ["my.tag"]
+    catalog.add('GrafanaTags."my.tag"')
+    assert labels(next(source.yield_dashboard(details)).right) == ['GrafanaTags."my.tag"']
+
+
+def test_grafana_failed_tag_publication_does_not_prevent_dashboard_creation(grafana_catalog_source):
+    source, _ = grafana_catalog_source
+    details = grafana_dashboard("my_dashboard", ["Missing"])
+    assert len(list(source.yield_tags(details) or [])) == 1
+    record = next(source.yield_dashboard(details))
+    assert record.left is None
+    assert record.right.name.root == "my_dashboard"
+    assert labels(record.right) == []

@@ -18,18 +18,17 @@ const renderDropdown = () =>
   );
 
 describe('Dropdown theme roles', () => {
-  it('renders the menu on the overlay surface with raised elevation', () => {
+  it('renders the menu on the raised surface, above drawer panels', () => {
     renderDropdown();
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
 
-    const surface = screen
-      .getByRole('menu')
-      .closest('.tw\\:bg-overlay-surface');
+    const surface = screen.getByRole('menu').closest('.tw\\:bg-floating');
 
     expect(surface).not.toBeNull();
-    expect(surface).toHaveClass('tw:bg-overlay-surface', 'tw:shadow-raised');
-    // Menus share the overlay surface with popovers and modals, not the page background.
+    expect(surface).toHaveClass('tw:bg-floating', 'tw:shadow-raised');
+    // Menus sit one step above modal/slideout panels so they stay visible over a drawer.
+    expect(surface).not.toHaveClass('tw:bg-overlay-surface');
     expect(surface).not.toHaveClass('tw:bg-primary');
   });
 

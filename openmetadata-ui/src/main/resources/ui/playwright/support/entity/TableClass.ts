@@ -24,7 +24,9 @@ import { ServiceTypes } from '../../constant/settings';
 import {
   createOrFetch,
   deleteFixtureEntity,
+  EntityIdentity,
   okJson,
+  requireEntityIdentity,
   withNotFoundRetry,
 } from '../../utils/apiResponse';
 import { fullUuid, uuid } from '../../utils/common';
@@ -63,6 +65,8 @@ export type TableClassOptions = {
   sharedInfraKey?: string;
 };
 
+type TableResponseData = Table & EntityIdentity;
+
 export class TableClass extends EntityClass {
   service: ServiceEntity;
   database: { name: string; service: string };
@@ -85,12 +89,12 @@ export class TableClass extends EntityClass {
     {} as ResponseDataWithServiceType;
   schemaResponseData: ResponseDataWithServiceType =
     {} as ResponseDataWithServiceType;
-  entityResponseData: Table = {} as Table;
+  entityResponseData: TableResponseData = {} as TableResponseData;
   testSuiteResponseData: ResponseDataType = {} as ResponseDataType;
   testSuitePipelineResponseData: ResponseDataType[] = [];
   testCasesResponseData: ResponseDataType[] = [];
   queryResponseData: ResponseDataType[] = [];
-  additionalEntityTableResponseData: ResponseDataType[] = [];
+  additionalEntityTableResponseData: TableResponseData[] = [];
 
   private readonly parentOverrides: Pick<
     TableClassOptions,
@@ -251,13 +255,21 @@ export class TableClass extends EntityClass {
     // Relationship fields on the 409 lookup: a bare fetch reports
     // `domains: null` on an entity that already has one, and a caller that
     // re-applies `add /domains/0` is then rejected with "Multiple Domains".
-    const entity = await createOrFetch<Table>(apiContext, {
-      label: 'TableClass.create',
-      createPath: '/api/v1/tables',
-      fqnSegments: [service.name, database.name, schema.name, this.entity.name],
-      data: this.entity,
-      fields: 'domains,owners,tags',
-    });
+    const entity = requireEntityIdentity(
+      await createOrFetch<Table>(apiContext, {
+        label: 'TableClass.create',
+        createPath: '/api/v1/tables',
+        fqnSegments: [
+          service.name,
+          database.name,
+          schema.name,
+          this.entity.name,
+        ],
+        data: this.entity,
+        fields: 'domains,owners,tags',
+      }),
+      'TableClass.create'
+    );
 
     this.serviceResponseData = service;
     this.databaseResponseData = database;
@@ -305,8 +317,8 @@ export class TableClass extends EntityClass {
         ...tableData,
       },
     });
-    const entity = await okJson(
-      entityResponse,
+    const entity = requireEntityIdentity(
+      await okJson<Table>(entityResponse, 'TableClass.createAdditionalTable'),
       'TableClass.createAdditionalTable'
     );
     this.additionalEntityTableResponseData = [
@@ -337,7 +349,10 @@ export class TableClass extends EntityClass {
     this.serviceResponseData = entityData.service;
     this.databaseResponseData = entityData.database;
     this.schemaResponseData = entityData.schema;
-    this.entityResponseData = entityData.entity;
+    this.entityResponseData = requireEntityIdentity(
+      entityData.entity,
+      'TableClass.set'
+    );
     this.ownedRootPath = entityData.ownedRootPath;
     this.entity.name = entityData.entity.name;
     this.bindParentNames(
@@ -362,7 +377,10 @@ export class TableClass extends EntityClass {
       );
 
       if (response.ok()) {
-        this.entityResponseData = await response.json();
+        this.entityResponseData = requireEntityIdentity(
+          await okJson<Table>(response, 'TableClass.visitEntityPage'),
+          'TableClass.visitEntityPage'
+        );
       }
     }
 
@@ -549,7 +567,10 @@ export class TableClass extends EntityClass {
       );
 
       if (tableResponse.ok()) {
-        this.entityResponseData = await tableResponse.json();
+        this.entityResponseData = requireEntityIdentity(
+          await okJson<Table>(tableResponse, 'TableClass.patch lookup'),
+          'TableClass.patch lookup'
+        );
       }
     }
 
@@ -584,7 +605,10 @@ export class TableClass extends EntityClass {
       )
     );
 
-    this.entityResponseData = await okJson(response, 'TableClass.patch');
+    this.entityResponseData = requireEntityIdentity(
+      await okJson<Table>(response, 'TableClass.patch'),
+      'TableClass.patch'
+    );
 
     return {
       entity: this.entityResponseData,

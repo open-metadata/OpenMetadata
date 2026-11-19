@@ -42,6 +42,7 @@ import {
   TeamType,
 } from '../../../../../../generated/api/teams/createTeam';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { createTeam, getTeamByName } from '../../../../../../rest/teamsAPI';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
 import { getTeamOptionsFromType } from '../../../../../../utils/TeamUtils';
@@ -52,6 +53,7 @@ import {
 import DomainSelect from '../../../../../common/DomainSelect/DomainSelect';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
 import { EditorContentRef } from '../../../../../common/RichTextEditor/RichTextEditor.interface';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { MembersAddTeamFormProps } from './Members.types';
 
 // The teamType SELECT stores the whole option object as its RHF value, so the
@@ -110,6 +112,12 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
       isJoinable: true,
     },
   });
+  // The description editor and the domain picker hold their values outside
+  // the form, so they count as edits too.
+  const [hasDescription, setHasDescription] = useState(false);
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(
+    form.formState.isDirty || hasDescription || selectedDomains.length > 0
+  );
   const { handleSubmit } = form;
 
   const teamTypeOptions = useMemo(
@@ -283,7 +291,10 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
           className="tw:flex-1 tw:overflow-y-auto tw:px-8 tw:pb-8"
           data-testid="add-team-container"
           direction="col">
-          <Box className="tw:max-w-[50%] tw:w-full" direction="col" gap={5}>
+          <Box
+            className="tw:max-w-[50%] tw:w-full tw:mx-auto"
+            direction="col"
+            gap={5}>
             <FormFields fields={nameFields} />
 
             <Box direction="col" gap={1}>
@@ -315,6 +326,9 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
                 data-testid="description"
                 placeHolder={t('message.write-your-description')}
                 ref={descEditorRef}
+                onTextChange={(value) =>
+                  setHasDescription(Boolean(value.trim()))
+                }
               />
             </Box>
           </Box>
@@ -327,9 +341,13 @@ const MembersAddTeamForm: React.FC<MembersAddTeamFormProps> = ({
         direction="row"
         gap={3}
         justify="end">
-        <Button color="tertiary" data-testid="cancel-btn" onPress={onCancel}>
+        <Button
+          color="tertiary"
+          data-testid="cancel-btn"
+          onPress={() => runGuarded(onCancel)}>
           {t('label.cancel')}
         </Button>
+        <UnsavedChangesPrompt {...promptProps} />
         <Button
           color="primary"
           data-testid="submit-btn"

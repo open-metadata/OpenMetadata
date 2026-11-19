@@ -12,7 +12,7 @@
  */
 
 import {
-  AlertTriangle,
+  Alert,
   CheckCircle,
   ClipboardCheck,
   IconProps,
@@ -22,7 +22,7 @@ import type { FC } from 'react';
 import { MyTaskBucket } from '../../../../utils/myTaskBuckets';
 import { TOPIC_BLUE_TILE_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 
-export const MY_TASKS_TONE = {
+export const MY_TASKS_TONE: Pick<MyTaskKindStyle, 'icon' | 'tile'> = {
   icon: ClipboardCheck,
   tile: TOPIC_BLUE_TILE_CLASSES,
 };
@@ -35,7 +35,7 @@ export interface MyTaskKindStyle {
 
 export const MY_TASK_KIND_STYLES: Record<MyTaskBucket, MyTaskKindStyle> = {
   [MyTaskBucket.INCIDENTS]: {
-    icon: AlertTriangle,
+    icon: Alert,
     labelKey: 'label.incident',
     tile: 'tw:bg-utility-error-50 tw:text-utility-error-600',
   },

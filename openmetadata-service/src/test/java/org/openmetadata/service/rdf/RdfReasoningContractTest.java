@@ -48,7 +48,9 @@ import org.openmetadata.schema.utils.JsonUtils;
  * because the store implements the protocol from the schemas, not from these classes.
  *
  * <p>The per-operation rules are recorded in
- * ADR:2026-10-11-rdf-reasoning-job-requests-carry-the-fields-their-operation-needs.
+ * ADR:2026-10-11-rdf-reasoning-job-requests-carry-the-fields-their-operation-needs, and which
+ * operations and limits a store reports in
+ * ADR:2026-10-14-rdf-reasoning-capabilities-list-each-operation-and-the-limits-it-enforces.
  */
 class RdfReasoningContractTest {
   private static final String SCHEMA_BASE = "https://open-metadata.org/schema/";
@@ -91,8 +93,10 @@ class RdfReasoningContractTest {
         Arguments.of("generation-mismatch-job", Contract.JOB),
         Arguments.of("cancel-requested-job", Contract.JOB),
         Arguments.of("interrupted-job", Contract.JOB),
+        Arguments.of("not-implemented-job", Contract.JOB),
         Arguments.of("ready-capabilities", Contract.CAPABILITIES),
         Arguments.of("not-ready-capabilities", Contract.CAPABILITIES),
+        Arguments.of("operations-not-implemented-capabilities", Contract.CAPABILITIES),
         Arguments.of("stale-snapshot", Contract.SNAPSHOT));
   }
 
@@ -237,7 +241,68 @@ class RdfReasoningContractTest {
             "ready-capabilities",
             Contract.CAPABILITIES,
             capabilities -> capabilities.put("protocolVersion", "v1"),
-            "pattern"));
+            "pattern"),
+        violation(
+            "an availability the protocol does not define",
+            "ready-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> operation(capabilities, "CHECK").put("availability", "PARTIAL"),
+            "enum"),
+        violation(
+            "an operation listed twice",
+            "ready-capabilities",
+            Contract.CAPABILITIES,
+            capabilities ->
+                ((ArrayNode) capabilities.get("operations"))
+                    .add(operation(capabilities, "QUERY").deepCopy()),
+            "maxContains"),
+        violation(
+            "an available CHECK without a closure limit",
+            "ready-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> object(capabilities, "limits").remove("maxClosureAxioms"),
+            "required"),
+        violation(
+            "an available REFRESH without a rule-pass limit",
+            "ready-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> object(capabilities, "limits").remove("maxRulePasses"),
+            "required"),
+        violation(
+            "an available QUERY without a query deadline",
+            "ready-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> object(capabilities, "limits").remove("maxQuerySeconds"),
+            "required"),
+        violation(
+            "an available RESULTS without a row limit",
+            "operations-not-implemented-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> operation(capabilities, "RESULTS").put("availability", "AVAILABLE"),
+            "required"),
+        violation(
+            "an available job operation without a job deadline",
+            "operations-not-implemented-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> operation(capabilities, "EXPLAIN").put("availability", "AVAILABLE"),
+            "required"));
+  }
+
+  @Test
+  void aStoreListsOnlyTheLimitsItEnforces() {
+    final ObjectNode capabilities = (ObjectNode) read("operations-not-implemented-capabilities");
+    capabilities.remove("limits");
+
+    assertEquals(List.of(), messages(Contract.CAPABILITIES.validate(capabilities)));
+  }
+
+  @Test
+  void anOperationNeedsOnlyItsOwnLimits() {
+    final ObjectNode capabilities = (ObjectNode) read("operations-not-implemented-capabilities");
+    operation(capabilities, "QUERY").put("availability", "AVAILABLE").remove("reason");
+    object(capabilities, "limits").put("maxQuerySeconds", 30).put("maxResultRows", 10000);
+
+    assertEquals(List.of(), messages(Contract.CAPABILITIES.validate(capabilities)));
   }
 
   @Test
@@ -279,6 +344,15 @@ class RdfReasoningContractTest {
 
   private static ObjectNode object(final ObjectNode parent, final String field) {
     return (ObjectNode) parent.get(field);
+  }
+
+  private static ObjectNode operation(final ObjectNode capabilities, final String name) {
+    for (final JsonNode support : capabilities.get("operations")) {
+      if (name.equals(support.get("operation").asText())) {
+        return (ObjectNode) support;
+      }
+    }
+    throw new IllegalArgumentException("No operation " + name);
   }
 
   private static JsonNode read(final String example) {

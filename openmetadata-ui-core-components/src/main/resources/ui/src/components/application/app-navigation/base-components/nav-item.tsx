@@ -1,5 +1,5 @@
 import type { FC, HTMLAttributes, MouseEventHandler, ReactNode } from 'react';
-import { ChevronDown, Share04 } from '../../../../icons';
+import { ChevronDown, LinkExternal01 } from '../../../../icons';
 import { Link as AriaLink } from 'react-aria-components';
 import { Badge } from '@/components/base/badges/badges';
 import { cx, sortCx } from '@/utils/cx';
@@ -48,6 +48,7 @@ const sizeStyles = sortCx({
     icon: 'tw:mr-2 tw:size-4',
     label: 'tw:text-sm tw:font-normal',
     labelCurrent: 'tw:font-semibold',
+    chevron: 'tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary',
   },
   md: {
     root: 'tw:px-3 tw:py-2',
@@ -55,6 +56,7 @@ const sizeStyles = sortCx({
     icon: 'tw:mr-2 tw:size-5',
     label: 'tw:text-md tw:font-semibold',
     labelCurrent: '',
+    chevron: 'tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary',
   },
   // Roomy primary navigation: 56px rows with 28px icons. Children keep their
   // icon and sit flush inside the open group.
@@ -64,6 +66,8 @@ const sizeStyles = sortCx({
     icon: 'tw:mr-2.5 tw:size-7',
     label: 'tw:text-sm tw:font-medium',
     labelCurrent: 'tw:font-semibold',
+    // A small dark caret, as on the release 2.0 primary navigation.
+    chevron: 'tw:size-2.5 tw:stroke-[3.5px] tw:text-fg-primary',
   },
 });
 
@@ -81,7 +85,9 @@ interface NavItemBaseProps {
   /** Type of the nav item. */
   type: 'link' | 'collapsible' | 'collapsible-child';
   /** Icon component to display. */
-  icon?: FC<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: FC<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Badge to display. */
   badge?: ReactNode;
   /** Whether the nav item is currently active. */
@@ -169,7 +175,7 @@ export const NavItemBase = ({
 
   const isExternal = href && href.startsWith('http');
   const externalIcon = isExternal && (
-    <Share04 className="tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary" />
+    <LinkExternal01 className="tw:size-4 tw:stroke-[2.5px] tw:text-fg-quaternary" />
   );
 
   if (type === 'collapsible') {
@@ -184,7 +190,8 @@ export const NavItemBase = ({
         <ChevronDown
           aria-hidden="true"
           className={cx(
-            'tw:ml-3 tw:size-4 tw:shrink-0 tw:stroke-[2.5px] tw:text-fg-quaternary tw:in-open:-scale-y-100',
+            'tw:ml-3 tw:shrink-0 tw:in-open:-scale-y-100',
+            sizeStyles[size].chevron,
             isSolid && current && solidStyles.iconSelected,
             isSolid && solidStyles.iconOpen
           )}

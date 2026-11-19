@@ -6,13 +6,16 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.apache.jena.vocabulary.OWL2;
 import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.api.data.OntologyConceptDeleteImpact;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyReleaseStructureReport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -20,6 +23,7 @@ import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.entity.data.OntologyRelease;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyProfileViolation;
 import org.openmetadata.schema.type.OntologyProfileViolationCode;
@@ -29,7 +33,6 @@ import org.openmetadata.schema.type.OntologyReferenceRole;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyReleaseStructureIssue;
-import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.OntologyValidationException;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
 
@@ -38,21 +41,30 @@ public final class OntologyStructureValidator {
   private static final int MAX_FINDINGS = 1000;
   private static final Set<String> INDIVIDUAL_IDENTITY =
       Set.of(OWL2.sameAs.getURI(), OWL2.differentFrom.getURI());
-  private static final Set<RelationshipCharacteristic> SIMPLE_ONLY =
-      Set.of(
-          RelationshipCharacteristic.FUNCTIONAL,
-          RelationshipCharacteristic.INVERSE_FUNCTIONAL,
-          RelationshipCharacteristic.ASYMMETRIC,
-          RelationshipCharacteristic.IRREFLEXIVE);
 
+  private final Set<String> concepts;
   private final Map<String, List<OntologyProperty>> properties;
   private final OntologyPropertyHierarchy propertyHierarchy;
   private final OntologyClassHierarchy hierarchy;
   private final List<OntologyReleaseStructureIssue> findings = new ArrayList<>();
+  private final Map<UUID, List<OntologyDisjointnessClashes.Clash>> clashesBySubject;
   private int violationCount;
 
-  private OntologyStructureValidator(final List<Definition> definitions) {
+  private OntologyStructureValidator(
+      final List<Definition> definitions, final boolean blockOnClashes) {
+    clashesBySubject =
+        blockOnClashes
+            ? OntologyDisjointnessClashes.find(definitions.stream().map(Definition::value).toList())
+                .stream()
+                .collect(Collectors.groupingBy(clash -> clash.subject().getId()))
+            : Map.of();
     hierarchy = new OntologyClassHierarchy(definitions.stream().map(Definition::value).toList());
+    concepts =
+        definitions.stream()
+            .map(Definition::value)
+            .filter(OntologyConcept.class::isInstance)
+            .map(concept -> ((OntologyConcept) concept).getIri().toString())
+            .collect(Collectors.toUnmodifiableSet());
     properties =
         definitions.stream()
             .map(Definition::value)
@@ -76,7 +88,7 @@ public final class OntologyStructureValidator {
                     .thenComparing(member -> member.getMemberId().toString()))
             .map(member -> new Definition(member, OntologyReleaseReader.definition(member)))
             .toList();
-    final var validator = new OntologyStructureValidator(definitions);
+    final var validator = new OntologyStructureValidator(definitions, true);
     definitions.forEach(validator::validate);
     return new OntologyReleaseStructureReport()
         .withReleaseId(release.getId())
@@ -107,6 +119,21 @@ public final class OntologyStructureValidator {
     }
   }
 
+  /**
+   * The first error each affected definition draws from the checks a save runs, by definition id.
+   * An import uses it to drop what applying would refuse before it writes the plan.
+   */
+  public static Map<UUID, String> workingErrors(
+      final List<OntologyDefinition> values, final Set<UUID> affected) {
+    final Map<UUID, String> errors = new LinkedHashMap<>();
+    validateWorkingDefinitions(values, affected).findings.stream()
+        .filter(
+            issue -> issue.getViolation().getSeverity() == OntologyProfileViolationSeverity.ERROR)
+        .forEach(
+            issue -> errors.putIfAbsent(issue.getMemberId(), issue.getViolation().getMessage()));
+    return errors;
+  }
+
   public static OntologyProfileReport validateWorking(final List<OntologyDefinition> values) {
     return validateWorking(
         values, values.stream().map(OntologyDefinition::getId).collect(Collectors.toSet()));
@@ -115,10 +142,46 @@ public final class OntologyStructureValidator {
   public static OntologyProfileReport validateWorking(
       final List<OntologyDefinition> values, final Set<UUID> affected) {
     final var validator = validateWorkingDefinitions(values, affected);
+    final var violations =
+        new ArrayList<>(
+            validator.findings.stream().map(OntologyReleaseStructureIssue::getViolation).toList());
+    OntologyDisjointnessClashes.find(values)
+        .forEach(
+            clash ->
+                violations.add(
+                    clashViolation(clash).withSeverity(OntologyProfileViolationSeverity.WARNING)));
     return new OntologyProfileReport()
         .withValid(validator.violationCount == 0)
-        .withViolations(
+        .withViolations(List.copyOf(violations));
+  }
+
+  /**
+   * Checks every definition of a working draft the way capture will, so a clash that a single
+   * save could not see (a new subclass edge above classes already under a disjoint pair) shows up
+   * before the release is captured. Clashes are errors here because capture rejects them.
+   */
+  public static OntologyProfileReport validateDraft(final List<OntologyDefinition> values) {
+    final var validator =
+        validateWorkingDefinitions(
+            values, values.stream().map(OntologyDefinition::getId).collect(Collectors.toSet()));
+    final var violations =
+        new ArrayList<>(
             validator.findings.stream().map(OntologyReleaseStructureIssue::getViolation).toList());
+    OntologyDisjointnessClashes.find(values)
+        .forEach(clash -> violations.add(clashViolation(clash)));
+    return new OntologyProfileReport()
+        .withValid(violations.isEmpty())
+        .withViolations(List.copyOf(violations));
+  }
+
+  private static OntologyProfileViolation clashViolation(
+      final OntologyDisjointnessClashes.Clash clash) {
+    return new OntologyProfileViolation()
+        .withCode(OntologyProfileViolationCode.DISJOINT_CLASH)
+        .withPath("/expressions")
+        .withMessage(clash.message())
+        .withConceptIds(clash.conceptIds())
+        .withSeverity(OntologyProfileViolationSeverity.ERROR);
   }
 
   private static OntologyStructureValidator validateWorkingDefinitions(
@@ -141,19 +204,128 @@ public final class OntologyStructureValidator {
                                 }),
                         value))
             .toList();
-    final var validator = new OntologyStructureValidator(definitions);
+    final var validator = new OntologyStructureValidator(definitions, false);
     definitions.stream()
         .filter(definition -> affected.contains(definition.value().getId()))
         .forEach(validator::validate);
     return validator;
   }
 
+  /**
+   * Classifies what deleting {@code concept} touches. {@code context} holds the definitions that
+   * name its IRI plus the concepts declared by the subjects of those axioms; anything else in it is
+   * ignored. Axioms are removed with the concept, so the caller deletes {@code relationships} and
+   * {@code rules} before the concept itself.
+   */
+  public static OntologyConceptDeleteImpact deletionImpact(
+      final OntologyConcept concept, final List<? extends OntologyDefinition> context) {
+    final String iri = concept.getIri().toString();
+    final var children = new ArrayList<EntityReference>();
+    final var relationships = new ArrayList<EntityReference>();
+    final var rules = new ArrayList<EntityReference>();
+    final var blockers = new ArrayList<EntityReference>();
+    final Map<String, List<OntologyConcept>> declared =
+        context.stream()
+            .filter(OntologyConcept.class::isInstance)
+            .map(OntologyConcept.class::cast)
+            .filter(other -> !other.getId().equals(concept.getId()))
+            .collect(Collectors.groupingBy(other -> other.getIri().toString()));
+    final var ordered =
+        context.stream()
+            .sorted(
+                Comparator.comparing(
+                    (OntologyDefinition value) -> String.valueOf(value.getName()),
+                    String.CASE_INSENSITIVE_ORDER))
+            .toList();
+    for (final OntologyDefinition value : ordered) {
+      if (value.getId().equals(concept.getId()) || Boolean.TRUE.equals(value.getDeleted())) {
+        continue;
+      }
+      switch (value) {
+        case OntologyAxiom axiom -> {
+          if (OntologyReferences.collect(axiom).stream()
+              .noneMatch(reference -> reference.getIri().toString().equals(iri))) {
+            break;
+          }
+          final boolean hierarchy = axiom.getAxiomType() == OntologyAxiomType.SUBCLASS_OF;
+          (hierarchy ? relationships : rules).add(axiom.getEntityReference());
+          if (hierarchy
+              && axiom.getSubjectIri() != null
+              && OntologyClassHierarchy.namedParents(axiom).stream()
+                  .anyMatch(parent -> parent.toString().equals(iri))) {
+            declared
+                .getOrDefault(axiom.getSubjectIri().toString(), List.of())
+                .forEach(child -> children.add(child.getEntityReference()));
+          }
+        }
+        case OntologyProperty property -> {
+          if (names(property.getDomain(), iri) || names(property.getRange(), iri)) {
+            blockers.add(property.getEntityReference());
+          }
+        }
+        case OntologyConcept other -> {
+          if (other.getReplacedBy() != null && other.getReplacedBy().toString().equals(iri)) {
+            blockers.add(other.getEntityReference());
+          }
+        }
+        default -> {}
+      }
+    }
+    return new OntologyConceptDeleteImpact()
+        .withConcept(concept.getEntityReference())
+        .withChildren(children.stream().distinct().toList())
+        .withRelationships(relationships)
+        .withRules(rules)
+        .withBlockers(blockers);
+  }
+
+  private static boolean names(final List<URI> iris, final String iri) {
+    return listOrEmpty(iris).stream().anyMatch(value -> value.toString().equals(iri));
+  }
+
   private void validate(final Definition definition) {
     hierarchy.validate(definition.value(), violation -> add(definition.member(), violation));
     switch (definition.value()) {
-      case OntologyProperty property -> validateProperty(definition.member(), property);
+      case OntologyConcept concept -> {
+        requireReplacement(
+            definition.member(),
+            concept.getIri(),
+            concept.getReplacedBy(),
+            concepts::contains,
+            OntologyProfileViolationCode.UNDECLARED_CLASS);
+        clashesBySubject
+            .getOrDefault(concept.getId(), List.of())
+            .forEach(clash -> add(definition.member(), clashViolation(clash)));
+      }
+      case OntologyProperty property -> {
+        validateProperty(definition.member(), property);
+        requireReplacement(
+            definition.member(),
+            property.getIri(),
+            property.getReplacedBy(),
+            properties::containsKey,
+            OntologyProfileViolationCode.UNDECLARED_PROPERTY);
+      }
       case OntologyAxiom axiom -> validateAxiom(definition.member(), axiom);
       default -> {}
+    }
+  }
+
+  private void requireReplacement(
+      final OntologyReleaseMember member,
+      final URI iri,
+      final URI replacement,
+      final Predicate<String> declared,
+      final OntologyProfileViolationCode code) {
+    if (replacement != null
+        && (replacement.toString().equals(iri.toString())
+            || !declared.test(replacement.toString()))) {
+      add(
+          member,
+          code,
+          "/replacedBy",
+          "A replacement must be another definition of the same kind in this ontology: "
+              + replacement);
     }
   }
 
@@ -207,22 +379,32 @@ public final class OntologyStructureValidator {
             iri -> requireProperty(member, iri, OntologyPropertyKind.OBJECT, "/propertyChain"));
     listOrEmpty(property.getDisjointWith())
         .forEach(iri -> requireProperty(member, iri, property.getKind(), "/disjointWith"));
+    listOrEmpty(property.getSuperProperties())
+        .forEach(iri -> requireProperty(member, iri, property.getKind(), "/superProperties"));
+    final boolean cyclic = propertyHierarchy.isCyclic(property.getIri());
+    if (cyclic) {
+      add(
+          member,
+          OntologyProfileViolationCode.SUBPROPERTY_CYCLE,
+          "/superProperties",
+          "Superproperty links must not form a cycle: " + property.getIri());
+    }
     validateSimplePropertyUse(member, property);
-    if (propertyHierarchy.isIrregular(property.getIri())) {
+    if (!cyclic && propertyHierarchy.isIrregular(property.getIri())) {
       add(
           member,
           OntologyProfileViolationCode.PROPERTY_CHAIN_REGULARITY,
-          "/propertyChain",
-          "Property chains and inverses do not admit a regular property order");
+          nullOrEmpty(property.getPropertyChain()) && !nullOrEmpty(property.getSuperProperties())
+              ? "/superProperties"
+              : "/propertyChain",
+          "Property chains, inverses and superproperties do not admit a regular property order");
     }
   }
 
   private void validateSimplePropertyUse(
       final OntologyReleaseMember member, final OntologyProperty property) {
     if (propertyHierarchy.isNonSimple(property.getIri())
-        && ((!nullOrEmpty(property.getCharacteristics())
-                && property.getCharacteristics().stream().anyMatch(SIMPLE_ONLY::contains))
-            || !listOrEmpty(property.getDisjointWith()).isEmpty())) {
+        && OntologyPropertyHierarchy.requiresSimplicity(property)) {
       add(
           member,
           OntologyProfileViolationCode.NON_SIMPLE_PROPERTY,
@@ -238,6 +420,16 @@ public final class OntologyStructureValidator {
                     OntologyProfileViolationCode.NON_SIMPLE_PROPERTY,
                     "/disjointWith",
                     "Property disjointness requires a simple object property: " + iri));
+    propertyHierarchy
+        .simpleOnlyAncestors(property)
+        .forEach(
+            iri ->
+                add(
+                    member,
+                    OntologyProfileViolationCode.NON_SIMPLE_PROPERTY,
+                    "/superProperties",
+                    "A non-simple object property cannot specialize a functional, inverse-functional, asymmetric, irreflexive or disjoint property: "
+                        + iri));
   }
 
   private void requireProperty(

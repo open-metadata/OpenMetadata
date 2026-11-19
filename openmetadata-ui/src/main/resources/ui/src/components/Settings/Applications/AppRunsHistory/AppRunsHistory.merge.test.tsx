@@ -112,10 +112,6 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
-  jest.fn().mockReturnValue(<div>ErrorPlaceHolder</div>)
-);
-
 type MockColumn = {
   key?: string;
   title?: ReactNode;
@@ -244,7 +240,7 @@ const mockProps = {
   appData: mockApplicationData,
   maxRecords: 10,
   showPagination: true,
-  jsonSchema: {},
+  jsonSchema: { properties: { batchSize: { type: 'number' as const } } },
 };
 
 const getSocketCallback = (eventName: string) =>

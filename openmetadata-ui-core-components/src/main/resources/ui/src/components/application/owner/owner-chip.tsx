@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import type { CSSProperties, ReactElement, ReactNode } from 'react';
+import { Link as AriaLink } from 'react-aria-components';
 import { User01 as OwnersIcon } from '../../../icons/User01';
 import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
 import { Avatar } from '../../base/avatar/avatar';
 import type { AvatarProps } from '../../base/avatar/avatar';
+import { OwnerInheritedBadge } from './owner-inherited-badge';
 import { getOwnerRenderer, resolveOwnerHref } from './owner-renderer';
 import type { OwnerChipProps } from './owner.types';
 
@@ -80,6 +82,11 @@ export const OwnerChip = ({
   const avatar = (
     <Avatar
       alt={typeof displayName === 'string' ? displayName : owner.name}
+      badge={
+        owner.inherited ? (
+          <OwnerInheritedBadge size={resolvedSize} />
+        ) : undefined
+      }
       className={isTeam ? undefined : USER_AVATAR_CLASSES}
       contrastBorder={!isTeam}
       initials={
@@ -123,13 +130,16 @@ export const OwnerChip = ({
           className
         )}>
         {avatar}
+        {/* AriaLink: a plain left click navigates through the app's
+            RouterProvider instead of the browser; modified clicks (new tab)
+            stay native. */}
         {href ? (
-          <a
+          <AriaLink
             className="tw:truncate tw:text-sm tw:text-primary tw:hover:underline"
             data-testid="owner-link"
             href={href}>
             {nameNode}
-          </a>
+          </AriaLink>
         ) : (
           <span
             className="tw:truncate tw:text-sm tw:text-primary"

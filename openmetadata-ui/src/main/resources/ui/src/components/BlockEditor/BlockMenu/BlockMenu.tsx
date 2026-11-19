@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Copy01, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useRef } from 'react';
 import tippy, { Instance } from 'tippy.js';
 
@@ -18,8 +19,6 @@ import type { Editor } from '@tiptap/react';
 import { NodeSelection } from '@tiptap/pm/state';
 import { isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import { ReactComponent as DuplicateIcon } from '../../../assets/svg/ic-duplicate.svg';
 import {
   nodeDOMAtCoords,
   nodePosAtDOM,
@@ -172,7 +171,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
         data-testid="delete-btn"
         onClick={handleDelete}>
         <div className="action-icon-container">
-          <DeleteIcon width={16} />
+          <Trash01 size={16} />
         </div>
         <div className="action-name">{t('label.delete')}</div>
       </button>
@@ -182,7 +181,7 @@ export const BlockMenu = (props: BlockMenuProps) => {
         data-testid="duplicate-btn"
         onClick={handleDuplicate}>
         <div className="action-icon-container">
-          <DuplicateIcon width={16} />
+          <Copy01 size={16} />
         </div>
         <div className="action-name">{t('label.duplicate')}</div>
       </button>

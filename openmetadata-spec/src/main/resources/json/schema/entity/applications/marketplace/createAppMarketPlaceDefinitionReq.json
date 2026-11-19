@@ -119,14 +119,6 @@
       "type": "boolean",
       "default": false
     },
-    "eventSubscriptions": {
-      "description": "Event subscriptions that will be created when the application is installed.",
-      "type": "array",
-      "default": [],
-      "items": {
-        "$ref": "../../../events/api/createEventSubscription.json"
-      }
-    },
     "enabled": {
       "description": "The app will be installable only if this flag is set to true.",
       "type": "boolean",

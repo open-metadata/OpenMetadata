@@ -60,10 +60,10 @@ const AvatarCarouselItem = ({
       <Box inline className="tw:relative m-r-xss">
         <Button
           className={classNames(
-            'avatar-item tw:size-7 tw:rounded-full tw:p-0! tw:before:rounded-full',
+            'avatar-item tw:size-7 tw:rounded-full tw:p-0!',
             { active: isActive }
           )}
-          color="secondary"
+          color="tertiary"
           data-testid={`avatar-carousel-item-${avatar.id}`}
           ref={buttonRef}
           size="xs"
@@ -72,9 +72,10 @@ const AvatarCarouselItem = ({
         </Button>
         {suggestionsCount > 0 && (
           <Badge
-            className="tw:pointer-events-none tw:absolute tw:-top-1.5 tw:-right-1.5"
+            className="tw:pointer-events-none tw:absolute tw:-top-3 tw:-right-1.5 tw:max-w-none"
             color="error"
-            size="sm">
+            size="xs"
+            variant="solid">
             {suggestionsCount > 99 ? '99+' : suggestionsCount}
           </Badge>
         )}

@@ -13,10 +13,9 @@
 import {
   Autocomplete,
   Box,
-  Button,
+  ButtonUtility,
   FormSelectItem,
   Select,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { XClose } from '@openmetadata/ui-core-components/icons';
@@ -162,20 +161,26 @@ export const ClassicTestCaseFilter = ({
     <Box align="center" className={className} gap={2}>
       <Typography
         as="span"
-        className="tw:shrink-0"
+        className="tw:shrink-0 tw:whitespace-nowrap"
         size="text-sm"
         weight="medium">
         {filter.label}:
       </Typography>
       {filter.controlType === 'date' ? (
         <DatePickerMenu
+          allowClear
           showSelectedCustomRange
           defaultDateRange={dateValue}
           handleDateRangeChange={filter.onChange}
+          // Without a placeholder an unset filter falls back to the menu's
+          // built-in default range, which is never sent to the API — the chip
+          // would display a filter that the requests do not carry.
+          placeholder={t('label.all-time')}
           size="small"
+          onClear={() => filter.onChange(undefined)}
         />
       ) : (
-        <Box align="center" className="tw:min-w-0 tw:flex-1" gap={1}>
+        <Box align="center" className="tw:min-w-24 tw:flex-1" gap={1}>
           {filter.controlType === 'multiselect' ? (
             <ClassicMultipleSelect
               filter={filter}
@@ -191,15 +196,13 @@ export const ClassicTestCaseFilter = ({
             />
           )}
           {selection.selectedValues.length > 0 && (
-            <Tooltip title={t('label.clear')}>
-              <Button
-                aria-label={t('label.clear') + ' ' + filter.label}
-                color="tertiary"
-                iconLeading={XClose}
-                size="xs"
-                onPress={() => filter.onChange(undefined)}
-              />
-            </Tooltip>
+            <ButtonUtility
+              aria-label={t('label.clear') + ' ' + filter.label}
+              icon={XClose}
+              size="xs"
+              tooltip={t('label.clear')}
+              onPress={() => filter.onChange(undefined)}
+            />
           )}
         </Box>
       )}

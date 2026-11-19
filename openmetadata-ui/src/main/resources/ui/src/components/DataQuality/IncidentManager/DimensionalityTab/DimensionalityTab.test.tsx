@@ -59,6 +59,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    EmptyPlaceholder: jest
+      .fn()
+      .mockImplementation(({ footer, ...props }) => (
+        <div data-testid={props['data-testid']}>{footer}</div>
+      )),
     Badge: jest
       .fn()
       .mockImplementation(({ children, ...props }) => (
@@ -150,10 +155,6 @@ jest.mock('../../../common/DateTimeDisplay/DateTimeDisplay', () =>
   jest.fn().mockImplementation(() => <span>Last run</span>)
 );
 
-jest.mock('../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew', () =>
-  jest.fn().mockImplementation(({ children }) => <div>{children}</div>)
-);
-
 jest.mock('./DimensionalityHeatmap/DimensionalityHeatmap.component', () =>
   jest.fn().mockImplementation(() => <div data-testid="heatmap" />)
 );
@@ -161,8 +162,12 @@ jest.mock('./DimensionalityHeatmap/DimensionalityHeatmap.component', () =>
 describe('DimensionalityTab', () => {
   it('preserves the origin when opening dimension details', async () => {
     mockGetTestCaseDimensionResultsByFqn.mockResolvedValueOnce({
+      paging: { total: 1 },
       data: [
         {
+          id: 'dimension-result-id',
+          testCaseResultId: 'test-case-result-id',
+          testCaseStatus: TestCaseStatus.Success,
           dimensionKey: 'country=US',
           dimensionValues: [{ name: 'country', value: 'US' }],
           timestamp: 1709576999999,

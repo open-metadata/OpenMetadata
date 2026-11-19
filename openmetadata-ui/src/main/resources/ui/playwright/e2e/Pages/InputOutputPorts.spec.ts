@@ -46,7 +46,7 @@ import {
 } from '../../utils/inputOutputPorts';
 import { sidebarClick } from '../../utils/sidebar';
 import {
-  waitForAntOverlayToOpen,
+  waitForOverlayToOpen,
   waitForResponseWithStatus,
 } from '../../utils/waitHelpers';
 
@@ -351,6 +351,67 @@ test.describe('Input Output Ports', () => {
 
       await test.step('Verify port was added', async () => {
         await expect(page.getByTestId('output-ports-list')).toBeVisible();
+      });
+    });
+
+    test('Output port picker hides assets that are already input ports', async ({
+      page,
+    }) => {
+      const dataProduct = new DataProduct([domain]);
+      const inputPortTable = tables[3];
+      const outputCandidate = tables[4];
+
+      await test.step('Setup', async () => {
+        const { apiContext } = await getApiContext(page);
+        await dataProduct.create(apiContext);
+
+        await dataProduct.addAssets(apiContext, [
+          createAssetRef(inputPortTable, 'table'),
+          createAssetRef(outputCandidate, 'table'),
+        ]);
+        await dataProduct.addInputPorts(apiContext, [
+          { id: inputPortTable.entityResponseData.id, type: 'table' },
+        ]);
+      });
+
+      await test.step('Navigate to ports tab', async () => {
+        await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+        await selectDataProduct(page, dataProduct.data);
+        await navigateToPortsTab(page);
+      });
+
+      await test.step('Open output port picker', async () => {
+        const inputPortsRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/inputPorts?') &&
+            res.request().method() === 'GET'
+        );
+        const searchRes = page.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/search/query') &&
+            res.request().method() === 'GET'
+        );
+        await page.getByTestId('add-output-port-button').click();
+        await inputPortsRes;
+        await searchRes;
+        await page.getByTestId('asset-selection-modal').waitFor({
+          state: 'visible',
+        });
+      });
+
+      await test.step('Only the non-input-port asset is offered', async () => {
+        const modal = page.getByTestId('asset-selection-modal');
+
+        await expect(
+          modal.getByTestId(
+            `table-data-card_${outputCandidate.entityResponseData.fullyQualifiedName}`
+          )
+        ).toBeVisible();
+        await expect(
+          modal.getByTestId(
+            `table-data-card_${inputPortTable.entityResponseData.fullyQualifiedName}`
+          )
+        ).toHaveCount(0);
       });
     });
 
@@ -1033,12 +1094,12 @@ test.describe('Input Output Ports', () => {
           name: 'Remove Port',
           exact: true,
         });
-        await waitForAntOverlayToOpen(dialog);
+        await waitForOverlayToOpen(dialog);
         await dialog
           .getByRole('button', { name: 'Cancel', exact: true })
           .click();
 
-        await expect(page.getByRole('dialog')).not.toBeVisible();
+        await expect(dialog).not.toBeVisible();
       });
 
       await test.step('Verify port still exists', async () => {
@@ -1566,13 +1627,44 @@ test.describe('Input Output Ports', () => {
       });
 
       await test.step('Enter fullscreen and exit with Escape', async () => {
-        await page.getByTestId('toggle-fullscreen-btn').click();
-
         const lineageView = page.getByTestId('ports-lineage-view');
+        // React Flow keeps the viewport transform across a container resize,
+        // so a graph that was not refit sits off-center (or outside) the pane.
+        const graphOffsetFromCenter = async () => {
+          const view = await lineageView.boundingBox();
+          const graph = await lineageView
+            .locator('.react-flow__node')
+            .evaluateAll((nodes) => {
+              const rects = nodes.map((node) => node.getBoundingClientRect());
+
+              return {
+                left: Math.min(...rects.map((r) => r.left)),
+                right: Math.max(...rects.map((r) => r.right)),
+                top: Math.min(...rects.map((r) => r.top)),
+                bottom: Math.max(...rects.map((r) => r.bottom)),
+              };
+            });
+          if (!view) {
+            return Number.POSITIVE_INFINITY;
+          }
+
+          return Math.max(
+            Math.abs(
+              (graph.left + graph.right) / 2 - (view.x + view.width / 2)
+            ),
+            Math.abs(
+              (graph.top + graph.bottom) / 2 - (view.y + view.height / 2)
+            )
+          );
+        };
+
+        await page.getByTestId('toggle-fullscreen-btn').click();
         await expect(lineageView).toHaveCSS('position', 'fixed');
+        await expect.poll(graphOffsetFromCenter).toBeLessThan(40);
 
         await page.keyboard.press('Escape');
         await expect(lineageView).toHaveCSS('position', 'relative');
+        await expect.poll(graphOffsetFromCenter).toBeLessThan(40);
       });
     });
 
@@ -1884,7 +1976,7 @@ test.describe('Input Output Ports', () => {
         ).toBeVisible();
 
         const dialog = page.getByRole('dialog');
-        await waitForAntOverlayToOpen(dialog);
+        await waitForOverlayToOpen(dialog);
         const removeRes = waitForResponseWithStatus(
           page,
           (res) =>

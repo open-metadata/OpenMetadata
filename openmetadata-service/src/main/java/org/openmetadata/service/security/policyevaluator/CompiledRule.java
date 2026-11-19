@@ -10,13 +10,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.Permission.Access;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
-import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.PolicyDeniedException;
 import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyContext;
 import org.springframework.expression.Expression;
 import org.springframework.expression.spel.SpelNode;
@@ -43,6 +44,21 @@ public class CompiledRule extends Rule {
       Set.of(MetadataOperation.EXECUTE_SPARQL_QUERY);
 
   @JsonIgnore private Expression expression;
+
+  /**
+   * The rules a policy enforces. A disabled policy grants and denies nothing
+   * (ADR:2026-11-03-a-disabled-policy-has-no-rules).
+   */
+  static List<CompiledRule> enforcedRules(Policy policy) {
+    List<CompiledRule> rules = new ArrayList<>();
+    if (Boolean.FALSE.equals(policy.getEnabled()) || policy.getRules() == null) {
+      return rules;
+    }
+    for (Rule rule : policy.getRules()) {
+      rules.add(new CompiledRule(rule));
+    }
+    return rules;
+  }
 
   public CompiledRule(Rule rule) {
     super();
@@ -160,8 +176,8 @@ public class CompiledRule extends Rule {
             policyContext.getRoleName(),
             policyContext.getPolicyName(),
             getName());
-        if (matchExpression(policyContext, subjectContext, resourceContext)) {
-          throw new AuthorizationException(
+        if (matchesDenyCondition(policyContext, subjectContext, resourceContext)) {
+          throw new PolicyDeniedException(
               permissionDenied(
                   subjectContext.user().getName(),
                   operation,
@@ -171,6 +187,21 @@ public class CompiledRule extends Rule {
         }
       }
     }
+  }
+
+  /**
+   * A request about an entity type has no asset to evaluate a condition against, so only an
+   * unconditional deny applies there (e.g. {@code !matchTeam()} would otherwise deny everyone).
+   * Conditional denies are still enforced on every asset read.
+   */
+  private boolean matchesDenyCondition(
+      PolicyContext policyContext,
+      SubjectContext subjectContext,
+      ResourceContextInterface resourceContext) {
+    if (resourceContext != null && resourceContext.isEntityTypeLevel()) {
+      return getCondition() == null;
+    }
+    return matchExpression(policyContext, subjectContext, resourceContext);
   }
 
   private Access getAccess() {

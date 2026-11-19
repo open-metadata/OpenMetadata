@@ -91,6 +91,8 @@ class SearchRankingHelperTest {
     assertEquals(List.of("name", "fullyQualifiedName"), calls.get(0).getIncludeSourceFields());
     assertEquals("_score", calls.get(0).getSortFieldParam());
     assertEquals("desc", calls.get(0).getSortOrder());
+    assertFalse(calls.get(0).getIncludeHighlights());
+    assertTrue(calls.get(1).getIncludeHighlights());
     assertFalse(calls.get(1).getFetchSource());
     assertEquals("name.keyword", calls.get(1).getSortFieldParam());
     assertEquals(15, calls.get(1).getSize());

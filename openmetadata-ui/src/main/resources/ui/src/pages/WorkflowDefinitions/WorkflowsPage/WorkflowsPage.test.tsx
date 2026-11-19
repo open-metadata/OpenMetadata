@@ -11,10 +11,15 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { getWorkflowDefinitions } from '../../../rest/workflowDefinitionsAPI';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
+import {
+  createWorkflowDefinition,
+  getWorkflowDefinitions,
+} from '../../../rest/workflowDefinitionsAPI';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import WorkflowsPage from './WorkflowsPage';
 
@@ -200,5 +205,193 @@ describe('WorkflowsPage on OSS', () => {
     expect(
       screen.queryByTestId('create-workflow-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('counts every workflow on the server, not just the loaded page, on an unfiltered tab', async () => {
+    mockGetWorkflowDefinitions.mockResolvedValue({
+      ...WORKFLOWS,
+      paging: { total: 26 },
+    });
+    jest
+      .spyOn(workflowClassBase, 'getWorkflowsPageTabs')
+      .mockReturnValue([{ id: 'all', labelKey: 'label.all' }]);
+
+    renderPage();
+
+    expect(await screen.findByTestId('workflow-count')).toHaveTextContent('26');
+  });
+
+  it.each([
+    [500, 'server.entity-fetch-error', true],
+    [403, 'label.access-denied', false],
+  ])(
+    'shows an error placeholder, not the empty state, when loading fails with %s',
+    async (status, text, canReload) => {
+      mockGetWorkflowDefinitions.mockRejectedValue({ response: { status } });
+
+      renderPage();
+
+      expect(await screen.findByText(text)).toBeInTheDocument();
+      expect(
+        Boolean(screen.queryByRole('button', { name: 'label.reload' }))
+      ).toBe(canReload);
+      expect(
+        screen.queryByText('message.put-your-data-operations-on-autopilot')
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  it('shows the empty state only after a successful empty load', async () => {
+    mockGetWorkflowDefinitions.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText('message.put-your-data-operations-on-autopilot')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('server.entity-fetch-error')
+    ).not.toBeInTheDocument();
+  });
+
+  it('reloads the list from the error placeholder', async () => {
+    mockGetWorkflowDefinitions.mockRejectedValueOnce({
+      response: { status: 500 },
+    });
+    mockGetWorkflowDefinitions.mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'label.reload' })
+    );
+
+    expect(
+      await screen.findByText('message.put-your-data-operations-on-autopilot')
+    ).toBeInTheDocument();
+  });
+
+  it('pages the workflow cards on the grid scale', async () => {
+    mockGetWorkflowDefinitions.mockResolvedValue({
+      data: [
+        {
+          id: 'w1',
+          name: 'pw-grid-workflow',
+          fullyQualifiedName: 'pw-grid-workflow',
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    renderPage();
+
+    expect(await screen.findByTestId('pw-grid-workflow')).toBeInTheDocument();
+    expect(mockGetWorkflowDefinitions).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 12 })
+    );
+    expect(NextPrevious).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        pageSize: 12,
+        pageSizeOptions: GRID_PAGE_SIZE_OPTIONS,
+      }),
+      expect.anything()
+    );
+  });
+});
+
+describe('WorkflowsPage create form', () => {
+  const openCreateForm = async () => {
+    jest.spyOn(workflowClassBase, 'getCapabilities').mockReturnValue({
+      ...workflowClassBase.getCapabilities(),
+      allowCreateWorkflow: true,
+    });
+    mockGetWorkflowDefinitions.mockResolvedValue(WORKFLOWS);
+    renderPage();
+    fireEvent.click(await screen.findByTestId('create-workflow-button'));
+  };
+
+  const textbox = (testId: string) =>
+    within(screen.getByTestId(testId)).getByRole('textbox');
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    (createWorkflowDefinition as jest.Mock).mockReset();
+    mockNavigate.mockReset();
+  });
+
+  it('sends the display name and the name exactly as typed', async () => {
+    (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
+    await openCreateForm();
+
+    fireEvent.change(textbox('workflow-display-name'), {
+      target: { value: 'Test lifecycle' },
+    });
+
+    expect(textbox('workflow-name')).toHaveValue('');
+
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'lifecycle_v2' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-workflow-button'));
+    });
+
+    expect(createWorkflowDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: 'Test lifecycle',
+        name: 'lifecycle_v2',
+      })
+    );
+  });
+
+  it('turns browser autocomplete off on the name fields', async () => {
+    await openCreateForm();
+
+    expect(textbox('workflow-name')).toHaveAttribute('autocomplete', 'off');
+    expect(textbox('workflow-display-name')).toHaveAttribute(
+      'autocomplete',
+      'off'
+    );
+  });
+
+  it('uses the name as the display name when none is given', async () => {
+    (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
+    await openCreateForm();
+
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'pw-workflow' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-workflow-button'));
+    });
+
+    expect(createWorkflowDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: 'pw-workflow',
+        name: 'pw-workflow',
+      })
+    );
+  });
+
+  it('still validates the name against the server rules', async () => {
+    await openCreateForm();
+
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'Test lifecycle' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-workflow-button'));
+    });
+
+    expect(
+      screen.getByText('message.workflow-name-invalid-characters')
+    ).toBeInTheDocument();
+    expect(createWorkflowDefinition).not.toHaveBeenCalled();
   });
 });

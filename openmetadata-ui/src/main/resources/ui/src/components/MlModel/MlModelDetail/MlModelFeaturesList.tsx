@@ -39,8 +39,8 @@ import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
@@ -379,9 +379,12 @@ const MlModelFeaturesList = () => {
     );
   } else {
     return (
-      <ErrorPlaceHolder
-        placeholderText={t('message.no-features-data-available')}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={t('message.no-features-data-available')}
+        />
+      </div>
     );
   }
 };

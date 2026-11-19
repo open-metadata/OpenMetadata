@@ -16,6 +16,7 @@
  */
 export interface CreateOntologyProperty {
     characteristics?: Characteristic[];
+    deprecated?:      boolean;
     description?:     string;
     disjointWith?:    string[];
     displayName?:     string;
@@ -33,12 +34,14 @@ export interface CreateOntologyProperty {
     /**
      * Fully qualified name of the owning ontology.
      */
-    ontology:       string;
-    owners?:        EntityReference[];
-    propertyChain?: string[];
-    provider?:      ProviderType;
-    range?:         string[];
-    unit?:          string;
+    ontology:         string;
+    owners?:          EntityReference[];
+    propertyChain?:   string[];
+    provider?:        ProviderType;
+    range?:           string[];
+    replacedBy?:      string;
+    superProperties?: string[];
+    unit?:            string;
 }
 
 export enum Characteristic {

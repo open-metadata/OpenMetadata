@@ -33,7 +33,7 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 )
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
+from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query, get_table_fqn_from_query_name
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.hex.warehouse_queries import (
     get_hex_query_template,
@@ -397,22 +397,27 @@ class HexQueryFetcher:
                 for source_table in source_tables:
                     # Parse the table name parts
                     table_str = str(source_table)
+                    _, schema_query, _ = get_table_fqn_from_query_name(table_str)
 
-                    # Use get_table_entities_from_query to resolve table entities
                     table_entities = get_table_entities_from_query(
                         metadata=self.metadata,
                         service_names=service_name,
                         database_name=database_name or "",
                         database_schema=schema_name or "",
                         table_name=table_str,
-                        schema_fallback=True,
+                        # Only a bare name falls back: a schema the query names is the table's,
+                        # and dropping it would match every same-named table in the database
+                        schema_fallback=not schema_query,
                     )
 
-                    if table_entities:
-                        # Filter based on prefix constraints if needed
-                        for table_entity in table_entities:
-                            if self._matches_prefix_constraints(table_entity, db_service_prefix):
-                                tables.append(table_entity)  # noqa: PERF401
+                    in_prefix = [
+                        table_entity
+                        for table_entity in table_entities or []
+                        if self._matches_prefix_constraints(table_entity, db_service_prefix)
+                    ]
+                    # A bare name matching several in-scope tables can't tell which one was read
+                    if schema_query or len(in_prefix) == 1:
+                        tables.extend(in_prefix)
 
             except Exception as parser_error:
                 hash_prefix = f"[{query_hash}] " if "query_hash" in locals() else ""

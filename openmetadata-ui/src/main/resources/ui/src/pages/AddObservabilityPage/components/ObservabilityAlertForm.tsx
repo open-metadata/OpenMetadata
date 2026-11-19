@@ -43,7 +43,6 @@ function ObservabilityAlertForm({
   breadcrumb,
   extraFormButtons,
   extraFormWidgets,
-  filterResources,
   form,
   handleCancel,
   handleSave,
@@ -119,7 +118,6 @@ function ObservabilityAlertForm({
                 <ObservabilityAlertFormFields
                   alert={alert}
                   extraFormWidgets={extraFormWidgets}
-                  filterResources={filterResources}
                   form={form}
                   isLoading={isLoading}
                   shouldShowActionsSection={shouldShowActionsSection}

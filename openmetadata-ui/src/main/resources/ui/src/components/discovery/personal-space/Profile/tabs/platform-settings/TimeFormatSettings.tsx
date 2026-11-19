@@ -38,7 +38,6 @@ const TimeFormatSettings = (props: PlatformSettingsPageProps) => {
       testId="time-format-settings"
       title={t('label.default-time-format')}>
       <ReadOnlyRow
-        isValueCompact
         description={t('message.default-time-format-description')}
         title={t('label.default-time-format')}>
         <SettingValue

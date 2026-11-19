@@ -18,7 +18,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.github.jknack.handlebars.Handlebars;
 import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -31,6 +30,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
+import org.openmetadata.service.alerting.content.template.sandbox.TemplateSandbox;
 
 class NotificationTemplateHelperCoreTest {
 
@@ -198,13 +198,10 @@ class NotificationTemplateHelperCoreTest {
         new FormatDateHelper());
   }
 
-  private static String render(String template, Object context, HandlebarsHelper... helpers)
+  private static String render(
+      String template, Map<String, Object> context, HandlebarsHelper... helpers)
       throws IOException {
-    Handlebars handlebars = new Handlebars();
-    for (HandlebarsHelper helper : helpers) {
-      helper.register(handlebars);
-    }
-    return handlebars.compileInline(template).apply(context);
+    return new TemplateSandbox(List.of(helpers)).render(template, context);
   }
 
   private static String compact(String text) {

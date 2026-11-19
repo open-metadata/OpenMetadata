@@ -27,6 +27,7 @@ export const AssetSelectionModal = ({
   type = AssetsOfEntity.GLOSSARY,
   queryFilter,
   emptyPlaceHolderText,
+  useQueryPost,
 }: AssetSelectionModalProps) => {
   const { t } = useTranslation();
 
@@ -38,6 +39,7 @@ export const AssetSelectionModal = ({
     type,
     variant: 'modal',
     queryFilter,
+    useQueryPost,
   });
 
   return (
@@ -54,6 +56,7 @@ export const AssetSelectionModal = ({
             <AssetSelectionContentBody
               aggregations={state.aggregations}
               assetJobResponse={state.assetJobResponse}
+              assetsFilter={state.assetsFilter}
               cancelDomainAssetMove={state.cancelDomainAssetMove}
               clearFilters={state.clearFilters}
               confirmDomainAssetMove={state.confirmDomainAssetMove}
@@ -83,7 +86,7 @@ export const AssetSelectionModal = ({
             <AssetSelectionFooter
               errorCount={state.failedStatus?.failedRequest?.length ?? 0}
               hasAssetJobResponse={!isUndefined(state.assetJobResponse)}
-              isLoading={state.isLoading}
+              isLoading={state.isLoading || isUndefined(state.activeEntity)}
               isSaveLoading={state.isSaveLoading}
               selectedCount={state.selectedItems?.size ?? 0}
               onCancel={onCancel}

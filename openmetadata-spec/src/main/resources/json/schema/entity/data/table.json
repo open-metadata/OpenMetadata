@@ -40,7 +40,8 @@
         "Transient",
         "Stream",
         "Stage",
-        "SemanticView"
+        "SemanticView",
+        "Sharded"
       ],
       "javaEnums": [
         {
@@ -87,6 +88,9 @@
         },
         {
           "name": "SemanticView"
+        },
+        {
+          "name": "Sharded"
         }
       ]
     },
@@ -474,6 +478,9 @@
             "description": "Data for a single row of the table within the same order as columns fields.",
             "type": "array"
           }
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "additionalProperties": false
@@ -669,6 +676,9 @@
         },
         "cardinalityDistribution": {
           "$ref": "#/definitions/cardinalityDistribution"
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "required": [
@@ -943,6 +953,9 @@
         },
         "profileSampleType": {
           "$ref": "#/definitions/profileSampleType"
+        },
+        "executionSource": {
+          "$ref": "../../type/tableExecutionSource.json"
         }
       },
       "required": [
@@ -1357,6 +1370,9 @@
     "entityStatus": {
       "description": "Status of the Table.",
       "$ref": "../../type/status.json"
+    },
+    "tableSharding": {
+      "$ref": "../../type/tableSharding.json"
     }
   },
   "required": [

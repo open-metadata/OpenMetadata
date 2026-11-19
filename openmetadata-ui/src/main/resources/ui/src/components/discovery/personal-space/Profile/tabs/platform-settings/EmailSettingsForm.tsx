@@ -25,6 +25,7 @@ import {
   TransportationStrategy,
 } from '../../../../../../generated/email/smtpSettings';
 import { SettingType } from '../../../../../../generated/settings/settings';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import {
   getSettingsConfigFromConfigType,
   updateSettingsConfig,
@@ -41,7 +42,6 @@ import SettingsFormLayout, {
   SettingsSkeleton,
 } from './SettingsFormLayout';
 import { useDeploymentManagedFields } from './useDeploymentManagedFields';
-import { useFormFieldDocs } from './useFormFieldDocs';
 import { useSettingsFetch } from './useSettingsFetch';
 
 interface SelectOption {
@@ -284,6 +284,7 @@ const EmailSettingsForm = ({
 
   return (
     <SettingsFormLayout
+      centered
       form={form}
       isSaveDisabled={isFullyManaged}
       isSaving={isSaving}

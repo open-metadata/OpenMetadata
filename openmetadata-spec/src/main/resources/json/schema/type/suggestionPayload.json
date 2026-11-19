@@ -12,7 +12,7 @@
       "enum": ["Description", "Tag", "Owner", "Tier", "Domain", "CustomProperty"]
     },
     "fieldPath": {
-      "description": "Path to the field being updated (e.g., 'columns.customer_id.description').",
+      "description": "Path to the property being updated. For a Description or Tag suggestion it is written as <container>.<name>[.<child name>...].<description|tags>, for example 'columns.customer_id.description', or 'description' / 'tags' alone for the entity itself.",
       "type": "string"
     },
     "currentValue": {

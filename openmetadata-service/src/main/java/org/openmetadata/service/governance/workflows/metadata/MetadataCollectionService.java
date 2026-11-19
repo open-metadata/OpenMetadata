@@ -28,6 +28,7 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataCompletionPayload;
+import org.openmetadata.schema.type.MetadataCompletionRevision;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -51,7 +52,10 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
  * Keeps one Metadata Completion task per asset and lifecycle stage: it lists the stage's required
  * fields that are still empty and says when the stage's conditions are not met, completes itself
  * once nothing is outstanding, and closes when the asset leaves the stage
- * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task).
+ * (ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task). After the stage's
+ * approval is rejected it also keeps one Revise and resubmit task, which carries the reviewer's
+ * comment and closes once the approval opens again
+ * (ADR:2026-10-21-a-rejected-lifecycle-approval-asks-for-a-revision-and-the-next-edit-resubmits-it).
  */
 @Slf4j
 public final class MetadataCollectionService {
@@ -67,6 +71,13 @@ public final class MetadataCollectionService {
   static final String CONDITIONS_NOT_MET = "The lifecycle conditions are not met.";
   static final String FILLED_IN = "Everything the stage needs is in place";
   static final String LEFT_STAGE = "The asset left %s";
+  static final String REVISION_TITLE = "Revise and resubmit";
+  static final String REVISION_DESCRIPTION =
+      "The approval to leave %s was rejected. Make the requested changes: the next edit to the"
+          + " asset resubmits it for approval.";
+  static final String RESUBMITTED = "Resubmitted for approval";
+  static final String REVISION_CLOSES_ON_EDIT =
+      "This task closes when the asset is edited; edit the asset to resubmit it for approval";
   private static final int MAX_STALE_TASKS = 50;
 
   static final List<TaskAvailableTransition> TRANSITIONS =
@@ -100,10 +111,64 @@ public final class MetadataCollectionService {
     if (outstanding.isNothing()) {
       existing.filter(MetadataCollectionService::isOpen).ifPresent(task -> finish(task, inStage));
     } else if (existing.isEmpty()) {
-      open(entity, configuration, workflow, node, id, outstanding);
+      open(entity, configuration, id, collection(configuration, workflow, node, outstanding));
     } else if (!Boolean.TRUE.equals(existing.get().getDeleted())) {
-      refresh(existing.get(), entity, configuration, workflow, node, outstanding);
+      refresh(
+          existing.get(),
+          entity,
+          configuration,
+          collection(configuration, workflow, node, outstanding));
     }
+  }
+
+  /**
+   * Asks the stage's assignees to revise the asset because its approval was rejected: opens the
+   * stage's Revise and resubmit task, or reopens it with the latest rejection.
+   */
+  public void requestRevision(
+      final EntityInterface<?> entity,
+      final MetadataCollectionConfiguration configuration,
+      final String workflow,
+      final String node,
+      final MetadataCompletionRevision revision) {
+    final UUID id = revisionTaskId(entity.getId(), workflow, configuration.getStage());
+    final TaskContent content = revision(configuration, workflow, node, revision);
+    final Optional<Task> existing = findTask(id);
+    if (existing.isEmpty()) {
+      open(entity, configuration, id, content);
+    } else if (!Boolean.TRUE.equals(existing.get().getDeleted())) {
+      refresh(existing.get(), entity, configuration, content);
+    }
+  }
+
+  /** The stage's approval opens again: its open Revise and resubmit task is done. */
+  public void resubmit(
+      final EntityInterface<?> entity,
+      final MetadataCollectionConfiguration configuration,
+      final String workflow) {
+    findTask(revisionTaskId(entity.getId(), workflow, configuration.getStage()))
+        .filter(MetadataCollectionService::isOpen)
+        .ifPresent(task -> resolve(task, TaskResolutionType.Completed, RESUBMITTED));
+  }
+
+  /**
+   * The workflow moved the asset to {@code stage}: a Revise and resubmit task of any other stage
+   * can no longer be resubmitted there, so it closes.
+   */
+  public void closeRevisionsOutside(final EntityInterface<?> entity, final String stage) {
+    repository
+        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
+        .stream()
+        .filter(task -> isRevisionOutside(task, stage))
+        .forEach(task -> finish(task, false));
+  }
+
+  private static boolean isRevisionOutside(final Task task, final String stage) {
+    final MetadataCompletionPayload payload =
+        JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
+    return payload.getRevision() != null
+        && payload.getStage() != null
+        && !payload.getStage().value().equals(stage);
   }
 
   /** Resolving the task only re-checks it: it completes once nothing is missing. */
@@ -114,6 +179,9 @@ public final class MetadataCollectionService {
   public static void requireFilledIn(final Task task) {
     final MetadataCompletionPayload payload =
         JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
+    if (payload.getRevision() != null) {
+      throw BadRequestException.of(REVISION_CLOSES_ON_EDIT);
+    }
     final EntityInterface<?> entity = Entity.getEntity(task.getAbout(), "*", Include.NON_DELETED);
     final Outstanding outstanding =
         isInStage(entity, payload.getStage())
@@ -139,6 +207,11 @@ public final class MetadataCollectionService {
   static UUID taskId(final UUID entityId, final String workflow, final String node) {
     return UUID.nameUUIDFromBytes(
         "%s:%s:%s".formatted(entityId, workflow, node).getBytes(StandardCharsets.UTF_8));
+  }
+
+  /** One Revise and resubmit task per asset, workflow and stage, whichever step asks or closes it. */
+  static UUID revisionTaskId(final UUID entityId, final String workflow, final EntityStatus stage) {
+    return taskId(entityId, workflow, "revision:" + stage.value());
   }
 
   /** The stage's fields that are still empty, and whether its conditions hold. */
@@ -215,33 +288,31 @@ public final class MetadataCollectionService {
   private void open(
       final EntityInterface<?> entity,
       final MetadataCollectionConfiguration configuration,
-      final String workflow,
-      final String node,
       final UUID id,
-      final Outstanding outstanding) {
+      final TaskContent content) {
     final List<EntityReference> assignees = assignees(entity, configuration);
     if (assignees.isEmpty()) {
       LOG.info(
           "[MetadataCompletion] {} has no {} and no admins to ask: {}",
           entity.getFullyQualifiedName(),
           configuration.getTaskAssignees().value(),
-          outstanding.describe());
+          content.title());
       return;
     }
     final long now = System.currentTimeMillis();
     final Task task =
         new Task()
             .withId(id)
-            .withDisplayName(TITLE)
-            .withDescription(String.format(DESCRIPTION, configuration.getStage().value()))
+            .withDisplayName(content.title())
+            .withDescription(content.description())
             .withCategory(TaskCategory.MetadataUpdate)
             .withType(TASK_TYPE)
             .withStatus(TaskEntityStatus.Open)
             .withPriority(TaskPriority.Medium)
             .withAbout(entity.getEntityReference())
             .withAssignees(assignees)
-            .withPayload(payload(configuration, workflow, node, outstanding))
-            .withAvailableTransitions(TRANSITIONS)
+            .withPayload(content.payload())
+            .withAvailableTransitions(content.transitions())
             .withCreatedBy(actor)
             .withCreatedAt(now)
             .withUpdatedBy(actor.getName())
@@ -264,25 +335,23 @@ public final class MetadataCollectionService {
       final Task existing,
       final EntityInterface<?> entity,
       final MetadataCollectionConfiguration configuration,
-      final String workflow,
-      final String node,
-      final Outstanding outstanding) {
+      final TaskContent content) {
     final Task task =
         isOpen(existing) ? existing : repository.reopenTask(existing, actor.getName());
     final List<EntityReference> assignees =
         refreshedAssignees(
             askedGroup(entity, configuration), task.getAssignees(), UserUtil::getAdmins);
-    final MetadataCompletionPayload payload = payload(configuration, workflow, node, outstanding);
     final boolean changed =
         !Objects.equals(
-                JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class), payload)
-            || !Objects.equals(task.getAvailableTransitions(), TRANSITIONS)
+                JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class),
+                content.payload())
+            || !Objects.equals(task.getAvailableTransitions(), content.transitions())
             || !sameAssignees(task.getAssignees(), assignees);
     if (changed) {
       final JsonPatch patch =
           Json.createPatchBuilder()
-              .add("/payload", JsonUtils.getJsonStructure(payload))
-              .add("/availableTransitions", JsonUtils.getJsonStructure(TRANSITIONS))
+              .add("/payload", JsonUtils.getJsonStructure(content.payload()))
+              .add("/availableTransitions", JsonUtils.getJsonStructure(content.transitions()))
               .add("/assignees", JsonUtils.getJsonStructure(assignees))
               .build();
       final PatchResponse<Task> response =
@@ -299,18 +368,42 @@ public final class MetadataCollectionService {
         wanted.stream().map(EntityReference::getId).toList());
   }
 
-  private static MetadataCompletionPayload payload(
+  private static TaskContent collection(
       final MetadataCollectionConfiguration configuration,
       final String workflow,
       final String node,
       final Outstanding outstanding) {
+    return new TaskContent(
+        TITLE,
+        String.format(DESCRIPTION, configuration.getStage().value()),
+        payload(configuration, workflow, node)
+            .withMissingFields(outstanding.missingFields())
+            .withConditionsMet(outstanding.conditionsMet()),
+        TRANSITIONS);
+  }
+
+  // A revision asks for no fields, so the task offers no Recheck: the next edit resubmits it.
+  private static TaskContent revision(
+      final MetadataCollectionConfiguration configuration,
+      final String workflow,
+      final String node,
+      final MetadataCompletionRevision revision) {
+    return new TaskContent(
+        REVISION_TITLE,
+        String.format(REVISION_DESCRIPTION, configuration.getStage().value()),
+        payload(configuration, workflow, node).withMissingFields(List.of()).withRevision(revision),
+        List.of());
+  }
+
+  private static MetadataCompletionPayload payload(
+      final MetadataCollectionConfiguration configuration,
+      final String workflow,
+      final String node) {
     return new MetadataCompletionPayload()
         .withWorkflow(workflow)
         .withNode(node)
         .withStage(configuration.getStage())
-        .withTargetStage(configuration.getTargetStage())
-        .withMissingFields(outstanding.missingFields())
-        .withConditionsMet(outstanding.conditionsMet());
+        .withTargetStage(configuration.getTargetStage());
   }
 
   private static List<EntityReference> assignees(
@@ -353,15 +446,28 @@ public final class MetadataCollectionService {
   private void finish(final Task task, final boolean complete) {
     final MetadataCompletionPayload payload =
         JsonUtils.convertValue(task.getPayload(), MetadataCompletionPayload.class);
+    resolve(
+        task,
+        complete ? TaskResolutionType.Completed : TaskResolutionType.Cancelled,
+        complete ? FILLED_IN : String.format(LEFT_STAGE, payload.getStage().value()));
+  }
+
+  private void resolve(final Task task, final TaskResolutionType type, final String comment) {
     final TaskResolution resolution =
         new TaskResolution()
-            .withType(complete ? TaskResolutionType.Completed : TaskResolutionType.Cancelled)
+            .withType(type)
             .withResolvedBy(actor)
             .withResolvedAt(System.currentTimeMillis())
-            .withComment(
-                complete ? FILLED_IN : String.format(LEFT_STAGE, payload.getStage().value()));
+            .withComment(comment);
     repository.resolveTask(task, resolution, actor.getName());
   }
+
+  /** What a task says and offers: a collection lists missing fields, a revision a comment. */
+  private record TaskContent(
+      String title,
+      String description,
+      MetadataCompletionPayload payload,
+      List<TaskAvailableTransition> transitions) {}
 
   /** What a stage still needs: its empty required fields, and whether its conditions hold. */
   record Outstanding(List<String> missingFields, boolean conditionsMet) {

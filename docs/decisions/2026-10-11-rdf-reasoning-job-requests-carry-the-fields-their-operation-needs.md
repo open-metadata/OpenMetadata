@@ -1,7 +1,8 @@
 # RDF reasoning job requests carry the fields their operation needs, enforced by the schema
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-11 (initial)
+- **Revisions:** v1 2026-10-11 (initial) · v2 2026-10-14 (a new operation is also listed in
+  capabilities)
 - **Deciders:** Sriharsha Chintalapani
 - **Guard:** `RdfReasoningContractTest#theContractRejects` and
   `RdfReasoningContractTest#aConsistencyCheckTakesNoExpression`; in open-metadata/jena,
@@ -39,3 +40,10 @@ fails validation on either side instead of reaching an engine. A new operation o
 add its rule here and to the schema in the same change, and the store's copy of the schema
 (`openmetadata/fuseki/extension/src/test/resources/openmetadata-contract/` in open-metadata/jena)
 must be refreshed.
+
+## Amendment
+
+v2 2026-10-14: capabilities now say which operations a store implements and which limits each
+needs (ADR:2026-10-14-rdf-reasoning-capabilities-list-each-operation-and-the-limits-it-enforces).
+A new job operation therefore also adds its value to the capabilities `operation` enum and its
+required limits to `rdfReasoningCapabilities.json` in the same change.

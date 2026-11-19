@@ -287,3 +287,68 @@ class SampleTest(TestCase):
         assert table_data.columns == []
         assert table_data.rows == []
         super_fetch.assert_not_called()
+
+    def test_geometry_columns_are_not_sampled(self, sampler_mock):
+        """Geometry maps to CustomGeometry, but pyodbc returns MSSQL's own binary
+        serialization (SRID + version + flags + points), not WKB. Keep the column out of
+        the sample like AzureSQL instead of showing OPENMETADATA_UNDETERMIND[...] bytes.
+        """
+        from metadata.profiler.orm.types.custom_geometry import CustomGeometry
+
+        geometry_col = Column("shape", CustomGeometry())
+
+        sampler = MssqlSampler(
+            service_connection_config=self.mssql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+        )
+
+        with (
+            patch(
+                "metadata.sampler.sqlalchemy.mssql.sampler.get_temporal_column_names",
+                return_value=frozenset(),
+            ),
+            patch.object(SQASampler, "fetch_sample_data") as super_fetch,
+        ):
+            table_data = sampler.fetch_sample_data(columns=[geometry_col])
+
+        assert table_data.columns == []
+        assert table_data.rows == []
+        super_fetch.assert_not_called()
+
+    def test_all_columns_unsupported_by_pyodbc_returns_no_sample(self, sampler_mock):
+        """A table of only pyodbc-unsupported columns must not un-filter back into the
+        'ODBC SQL type -151 is not yet supported' crash NOT_COMPUTE_PYODBC guards against.
+        """
+        from unittest.mock import MagicMock
+
+        geography_col = MagicMock()
+        geography_col.name = "shape"
+        geography_col.type.__class__.__name__ = "SQASGeography"
+
+        sampler = MssqlSampler(
+            service_connection_config=self.mssql_conn,
+            ometa_client=None,
+            entity=self.table_entity,
+        )
+
+        with (
+            patch(
+                "metadata.sampler.sqlalchemy.mssql.sampler.get_temporal_column_names",
+                return_value=frozenset(),
+            ),
+            patch.object(SQASampler, "fetch_sample_data") as super_fetch,
+        ):
+            table_data = sampler.fetch_sample_data(columns=[geography_col])
+
+        assert table_data.columns == []
+        assert table_data.rows == []
+        super_fetch.assert_not_called()
+
+    def test_pyodbc_unsupported_types_match_azuresql(self, sampler_mock):
+        """MSSQL and AzureSQL are both pyodbc-backed, so the excluded set is defined once
+        in tsql. A class attribute redefined on either sampler is how the dialects drift.
+        """
+        from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
+
+        assert MssqlSampler.NOT_COMPUTE_PYODBC == AzureSQLSampler.NOT_COMPUTE_PYODBC

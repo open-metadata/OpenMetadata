@@ -11,9 +11,15 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../context/PermissionProvider/PermissionProvider.interface';
 import { Access } from '../generated/entity/policies/accessControl/resourcePermission';
 import { Operation } from '../generated/entity/policies/policy';
-import { getOperationPermissions, getUIPermission } from './PermissionsUtils';
+import { getDerivedPermissionFlags } from './PermissionDerivation';
+import {
+  getOperationPermissions,
+  getUIPermission,
+  revokeEditPermissions,
+} from './PermissionsUtils';
 
 const resourcePermission = (access: Access) => ({
   resource: 'databaseService',
@@ -83,5 +89,27 @@ describe('conditionalAllow translation (#31783)', () => {
     );
 
     expect(ui.databaseService[Operation.ViewAll]).toBe(true);
+  });
+});
+
+describe('revokeEditPermissions', () => {
+  it('revokes field-level edits that derived flags prefer over EditAll', () => {
+    const permissions = {
+      EditAll: true,
+      EditDomains: true,
+      EditDescription: true,
+      EditOwners: true,
+      ViewAll: true,
+      Delete: true,
+    } as unknown as OperationPermission;
+
+    const flags = getDerivedPermissionFlags(revokeEditPermissions(permissions));
+
+    expect(flags.canEditAll).toBe(false);
+    expect(flags.canEditDomains).toBe(false);
+    expect(flags.canEditDescription).toBe(false);
+    expect(flags.canEditOwners).toBe(false);
+    expect(flags.canViewAll).toBe(true);
+    expect(flags.canDelete).toBe(true);
   });
 });

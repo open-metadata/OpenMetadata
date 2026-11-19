@@ -230,7 +230,9 @@ class DataContractPipelineTokenRefreshTest {
       IngestionPipeline pipeline) {
     mockedEntity
         .when(
-            () -> Entity.getEntity(referenceTo(testSuite), TEST_SUITE_FIELDS, Include.NON_DELETED))
+            () ->
+                Entity.getEntityOrNull(
+                    referenceTo(testSuite), TEST_SUITE_FIELDS, Include.NON_DELETED))
         .thenReturn(testSuite);
     mockedEntity
         .when(
@@ -311,10 +313,12 @@ class DataContractPipelineTokenRefreshTest {
   }
 
   private TestSuite testSuiteWith(IngestionPipeline pipeline) {
+    // A contract's suite is named after the contract's id.
+    String contractId = UUID.randomUUID().toString();
     return new TestSuite()
         .withId(UUID.randomUUID())
-        .withName("contract-test-suite")
-        .withFullyQualifiedName("contract-test-suite")
+        .withName(contractId)
+        .withFullyQualifiedName(contractId)
         .withPipelines(
             List.of(
                 new EntityReference()
@@ -324,7 +328,7 @@ class DataContractPipelineTokenRefreshTest {
 
   private DataContract dataContractFor(TestSuite testSuite) {
     return new DataContract()
-        .withId(UUID.randomUUID())
+        .withId(UUID.fromString(testSuite.getName()))
         .withName("contract")
         .withFullyQualifiedName("table.dataContract_contract")
         .withTestSuite(referenceTo(testSuite));

@@ -33,4 +33,16 @@ describe('SlideoutMenu', () => {
       screen.queryByRole('button', { name: /close/i })
     ).not.toBeInTheDocument();
   });
+
+  it('puts the given test id on the built-in close control', () => {
+    render(
+      <SlideoutMenu isOpen aria-label="Activity feed">
+        <SlideoutMenu.Header closeButtonTestId="closeDrawer">
+          Activity feed
+        </SlideoutMenu.Header>
+      </SlideoutMenu>
+    );
+
+    expect(screen.getByTestId('closeDrawer')).toHaveAccessibleName(/close/i);
+  });
 });

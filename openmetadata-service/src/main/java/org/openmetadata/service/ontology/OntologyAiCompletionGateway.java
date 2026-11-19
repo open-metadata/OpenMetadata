@@ -25,12 +25,6 @@ public interface OntologyAiCompletionGateway {
 
   Completion<DomainConceptCandidate> generateDomainDraft(DomainPrompt prompt);
 
-  Completion<MemoryTermCandidate> deriveTermsFromMemories(MemoryTermPrompt prompt);
-
-  default Completion<GlossaryMatchCandidate> matchGlossary(final GlossaryMatchPrompt prompt) {
-    throw new UnsupportedOperationException("Glossary matching is not available");
-  }
-
   record Completion<T>(String modelId, List<T> items) {
     public Completion {
       items = List.copyOf(items);
@@ -59,32 +53,11 @@ public interface OntologyAiCompletionGateway {
 
   record DomainPrompt(String glossary, String description, int maxConcepts) {}
 
-  record MemoryTermPrompt(
-      String glossary,
-      List<MemoryContext> memories,
-      List<TermContext> existingTerms,
-      int maxTerms) {}
-
-  record MemoryContext(UUID id, String question, String answer, String summary) {}
-
-  record GlossaryContext(
-      UUID id, String name, String description, List<TermContext> relevantTerms) {}
-
-  record GlossaryMatchPrompt(List<MemoryContext> memories, List<GlossaryContext> glossaries) {}
-
-  record GlossaryMatchCandidate(
-      UUID glossaryId,
-      String newGlossaryName,
-      String newGlossaryDisplayName,
-      String newGlossaryDescription,
-      double confidence,
-      String rationale) {}
-
   record RelationshipCandidate(
       UUID sourceTermId,
       UUID targetTermId,
       UUID relationshipTypeId,
-      double confidence,
+      Double confidence,
       String rationale) {}
 
   record MappingCandidate(
@@ -94,19 +67,16 @@ public interface OntologyAiCompletionGateway {
       String schemeIri,
       String source,
       String targetLabel,
-      double confidence,
+      Double confidence,
       String rationale) {}
 
   record SparqlCandidate(String query, String explanation) {}
 
   record DomainConceptCandidate(
-      String name, String displayName, String description, String parentName) {}
-
-  record MemoryTermCandidate(
-      UUID sourceMemoryId,
       String name,
       String displayName,
       String description,
-      double confidence,
+      String parentName,
+      Double confidence,
       String rationale) {}
 }

@@ -13,7 +13,7 @@
 
 import {
   Box,
-  EmptyPlaceholder,
+  Button,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -23,18 +23,26 @@ import {
   Inbox01,
 } from '@openmetadata/ui-core-components/icons';
 import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { debounce } from 'lodash';
+import { debounce, uniqBy } from 'lodash';
 import React, {
   ReactNode,
   RefObject,
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../../../../components/common/Loader/Loader';
+import { ClientErrors } from '../../../../../enums/Axios.enum';
+import { SORT_ORDER } from '../../../../../enums/common.enum';
+import { User } from '../../../../../generated/entity/teams/user';
+import { useViewedUserFirstName } from '../../../../../hooks/discovery/personal-space/useViewedUserFirstName';
 import { MY_TASKS_QUERY_KEY } from '../../../../../hooks/useMyTasks';
 import {
   listMyVisibleTasks,
@@ -42,6 +50,8 @@ import {
   Task,
   TaskStatusGroup,
 } from '../../../../../rest/tasksAPI';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import {
   INBOX_OPEN_TASK_COUNT_QUERY_KEY,
   TASK_LIST_QUERY_KEY,
@@ -61,9 +71,12 @@ import {
   filterTasksByStatus,
   filterTasksByTypes,
   groupTasksByType,
+  hasNothingToShow,
+  isWholeTabLoadFailed,
   TaskStatusBucket,
   TaskTypeGroup,
 } from '../taskList.utils';
+import { getTaskStatusLabel } from '../taskResolution.utils';
 import {
   filterTasksByTitleSearch,
   splitTaskTitleSearch,
@@ -72,12 +85,25 @@ import { useCurrentUserIds } from '../useCurrentUserIds';
 import { useInboxInfiniteList } from '../useInboxInfiniteList';
 import { useIsScrolled } from '../useIsScrolled';
 import { useLinkedTaskId } from '../useLinkedTaskId';
+import {
+  fetchUserTasksPage,
+  getUserTaskScope,
+  userTaskCountQuery,
+} from '../useUserTasks';
 
 const TASK_LIMIT = 25;
 // ponytail: Type and Status narrow the loaded pages client-side, so a narrowed
 // list scans at most this many tasks; a server-side type/status filter lifts it.
 const MAX_NARROWED_SCAN = 200;
 const SEARCH_DEBOUNCE_MS = 300;
+
+// Reading ahead stops at the server's last page, at the scan cap, or once a
+// page fails.
+const isReadAheadDone = (
+  hasMore: boolean,
+  loadedCount: number,
+  isLoadMoreError: boolean
+) => !hasMore || loadedCount >= MAX_NARROWED_SCAN || isLoadMoreError;
 // `resolution` so the panel's outcome rows render from the list row instead of
 // flashing empty until its own fetch lands.
 const TASK_FIELDS = 'assignees,createdBy,about,comments,payload,resolution';
@@ -91,14 +117,17 @@ const STATUS_FILTERS: { id: TaskStatusFilter; labelKey: string }[] = [
   { id: 'closed', labelKey: 'label.closed' },
 ];
 
-// Pulls the three per-status totals out of the useQueries results array.
+// Pulls the three per-status totals out of the useQueries results array. A
+// failed count shows no badge rather than a misleading 0.
 const getStatusCounts = (
-  countQueries: { data?: number }[]
-): Record<TaskStatusFilter, number> => ({
-  all: countQueries[0].data ?? 0,
-  open: countQueries[1].data ?? 0,
-  closed: countQueries[2].data ?? 0,
-});
+  countQueries: { data?: number; isError: boolean }[]
+): Record<TaskStatusFilter, number | undefined> => {
+  const [all, open, closed] = countQueries.map(({ data, isError }) =>
+    isError ? undefined : data ?? 0
+  );
+
+  return { all, open, closed };
+};
 
 // The Status options each tab can hold: Open splits into whose move it is,
 // Closed into the outcome. "Open" itself is the tab, so it is never an option.
@@ -120,42 +149,53 @@ const STATUS_GROUP: Record<TaskStatusFilter, TaskStatusGroup | undefined> = {
   closed: TaskStatusGroup.Closed,
 };
 
-// Nothing more is coming: matching rows may still sit in pages being scanned.
-const isListSettled = ({
-  isLoading,
-  isLoadingMore,
-  hasMore,
-  canLoadMore,
-  tasks,
-}: {
-  isLoading: boolean;
-  isLoadingMore: boolean;
-  hasMore: boolean;
-  canLoadMore: (loaded: Task[]) => boolean;
-  tasks: Task[];
-}) => !isLoading && !isLoadingMore && (!hasMore || !canLoadMore(tasks));
-
 interface TasksEmptyStateProps {
+  // The list failed to load; shown in place of any empty state.
+  error?: unknown;
   status: TaskStatusFilter;
   isNarrowed: boolean;
   // Set when a narrowed scan stopped at its cap with pages still unread, so
   // "no match" covers only the tasks scanned so far.
   scannedCount?: number;
+  // Set when the list is another user's, so the copy names them, not "you".
+  userFirstName?: string;
   onClearFilters: () => void;
   onLoadMore: () => void;
+  onRetry: () => void;
 }
 
 // A dedicated empty state per status: All = generic "nothing to do", Open =
 // "no open tasks", Closed = archival. A search or filter that matches nothing
 // says so instead, with a way back to the whole queue.
 const TasksEmptyState = ({
+  error,
   status,
   isNarrowed,
   scannedCount,
+  userFirstName,
   onClearFilters,
   onLoadMore,
+  onRetry,
 }: TasksEmptyStateProps) => {
   const { t } = useTranslation();
+
+  if (error) {
+    return (error as AxiosError)?.response?.status ===
+      ClientErrors.FORBIDDEN ? (
+      <PermissionPlaceholder
+        permissionValue={t('label.view-entity', {
+          entity: t('label.task-plural'),
+        })}
+      />
+    ) : (
+      <SomethingWentWrongPlaceholder
+        description={t('server.entity-fetch-error', {
+          entity: t('label.task-plural'),
+        })}
+        onReload={onRetry}
+      />
+    );
+  }
   const isScanCapped = scannedCount !== undefined;
   const clearAction = {
     key: 'clear-filters',
@@ -164,7 +204,7 @@ const TasksEmptyState = ({
   };
 
   const noMatch = (
-    <EmptyPlaceholder
+    <NoFilteredResultsPlaceholder
       actions={
         isScanCapped
           ? [
@@ -185,52 +225,120 @@ const TasksEmptyState = ({
           ? t('message.no-match-in-first-tasks', { count: scannedCount })
           : t('message.no-results-for-filters-description')
       }
-      icon={
-        <FilterFunnel01 className="tw:size-7 tw:text-utility-gray-blue-600" />
-      }
+      icon={<FilterFunnel01 className="tw:size-7" />}
       title={t('message.no-match-found')}
-      variant="blank"
     />
   );
 
   const emptyStateByStatus: Record<TaskStatusFilter, ReactNode> = {
     all: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-empty"
         description={t('message.tasks-empty-description')}
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-tasks-right-now')}
-        variant="blank"
       />
     ),
     open: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-open-empty"
         description={t('message.tasks-open-empty-description')}
         icon={<CheckCircle className="tw:size-7 tw:text-utility-success-600" />}
         title={t('label.no-open-tasks-yet')}
-        variant="blank"
       />
     ),
     closed: (
-      <EmptyPlaceholder
+      <NoDataPlaceholder
         data-testid="inbox-tasks-closed-empty"
         description={t('message.tasks-closed-empty-description')}
-        icon={<Inbox01 className="tw:size-7 tw:text-utility-gray-blue-600" />}
+        icon={<Inbox01 className="tw:size-7" />}
         title={t('label.no-closed-tasks-yet')}
-        variant="blank"
       />
     ),
   };
 
-  return <>{isNarrowed ? noMatch : emptyStateByStatus[status]}</>;
+  if (isNarrowed) {
+    return noMatch;
+  }
+
+  if (!userFirstName) {
+    return emptyStateByStatus[status];
+  }
+
+  // Another user's tab names them and keeps the status: their Closed tab must
+  // not say they have no tasks at all while Open has some. The viewer's own
+  // copy ("assigned to you") would misread here.
+  const userEmptyState: Record<
+    TaskStatusFilter,
+    { titleKey: string; descriptionKey: string; testId: string }
+  > = {
+    all: {
+      titleKey: 'label.no-tasks-yet',
+      descriptionKey: 'message.user-tasks-empty-description',
+      testId: 'inbox-tasks-user-empty',
+    },
+    open: {
+      titleKey: 'label.no-open-tasks-yet',
+      descriptionKey: 'message.user-open-tasks-empty-description',
+      testId: 'inbox-tasks-user-open-empty',
+    },
+    closed: {
+      titleKey: 'label.no-closed-tasks-yet',
+      descriptionKey: 'message.user-closed-tasks-empty-description',
+      testId: 'inbox-tasks-user-closed-empty',
+    },
+  };
+  const { titleKey, descriptionKey, testId } = userEmptyState[status];
+
+  return (
+    <NoDataPlaceholder
+      data-testid={testId}
+      description={t(descriptionKey, { name: userFirstName })}
+      icon={
+        status === 'closed' ? (
+          <Inbox01 className="tw:size-7" />
+        ) : (
+          <CheckCircle className="tw:size-7 tw:text-utility-success-600" />
+        )
+      }
+      title={t(titleKey)}
+    />
+  );
 };
+
+// The cache scope of the lists and counts: an entity, a user, or the viewer.
+const getTaskScope = (aboutEntity?: string, user?: User) =>
+  aboutEntity ?? (user ? getUserTaskScope(user.id) : 'me');
+
+const getTaskCountQuery = (
+  scope: string,
+  statusGroup: TaskStatusGroup | undefined,
+  aboutEntity?: string,
+  user?: User
+) =>
+  user && !aboutEntity
+    ? userTaskCountQuery(user, statusGroup)
+    : {
+        queryKey: [TASK_STATUS_COUNTS_QUERY_KEY, scope, statusGroup ?? 'all'],
+        queryFn: () =>
+          (aboutEntity ? listTasks : listMyVisibleTasks)({
+            statusGroup,
+            limit: 1,
+            ...(aboutEntity ? { aboutEntity } : {}),
+          }).then((res) => res.paging?.total ?? 0),
+        staleTime: TASK_COUNTS_STALE_TIME,
+      };
 
 export interface TasksTabProps {
   // When set, lists all tasks about this entity FQN (entity-page usage). Without
   // it the tab shows the current user's *visible* tasks (assigned to me/my teams
   // or about entities I own) — never every task in the system.
   aboutEntity?: string;
+  // Scopes the tab to the tasks assigned to or created by this user, read from
+  // their side (whose move "pending approval" means).
+  user?: User;
+  // Set for a list-only layout: no detail pane, and a row opens its task here.
+  onOpenTask?: (taskId: string) => void;
   className?: string;
   onCountChange?: (count: number) => void;
 }
@@ -238,42 +346,63 @@ export interface TasksTabProps {
 interface TasksTabBodyProps {
   // Status, search and filter controls, heading the list column.
   toolbar: ReactNode;
-  // Shown in place of the detail when no task matches.
+  // Shown when no task matches: in place of the detail, or in the list while a
+  // kept selection holds the detail pane.
   emptyState?: ReactNode;
+  // The empty state is a search or filter matching nothing, so it belongs
+  // beside the controls that cause it, in the list.
+  isNoMatch?: boolean;
+  // A failed load with nothing listed leaves nothing to filter, so the
+  // placeholder takes the whole tab.
+  isLoadFailed?: boolean;
   isLoading: boolean;
   isLoadingMore: boolean;
   tasks: Task[];
   // Set when grouped by type; the list renders these instead of `tasks`.
   groups?: TaskTypeGroup[];
+  // Pages are still unread, so a group's count is only a floor.
+  isPartial?: boolean;
+  // The last page failed. Neither the read-ahead nor a list too short to
+  // scroll would ask again, so the list offers its own retry.
+  isLoadMoreError?: boolean;
+  onRetryLoadMore: () => void;
   selectedTaskId?: string;
   scrollRef: RefObject<HTMLDivElement>;
   sentinelRef: RefObject<HTMLDivElement>;
   setSelectedTaskId: (id: string) => void;
+  onOpenTask?: (taskId: string) => void;
+  // Whose ids read an open task's status on its row (list-only layout).
+  statusUserIds: ReadonlySet<string>;
   handleCommentsChanged: (updated: Task) => void;
   handleResolved: (resolved: Task) => void;
   handleTaskUpdated: () => void;
+  handleTaskLoaded: (loaded: Task) => void;
 }
 
-// The two panes: the list column (its controls over the grouped rows) and the
-// selected task's detail, each scrolling on its own.
-const TasksTabBody: React.FC<TasksTabBodyProps> = ({
-  toolbar,
+type TasksDetailPaneProps = Pick<
+  TasksTabBodyProps,
+  | 'emptyState'
+  | 'isLoading'
+  | 'tasks'
+  | 'selectedTaskId'
+  | 'handleCommentsChanged'
+  | 'handleResolved'
+  | 'handleTaskUpdated'
+  | 'handleTaskLoaded'
+>;
+
+// The selected task beside the list, or why there is none.
+const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
   emptyState,
   isLoading,
-  isLoadingMore,
   tasks,
-  groups,
   selectedTaskId,
-  scrollRef,
-  sentinelRef,
-  setSelectedTaskId,
   handleCommentsChanged,
   handleResolved,
   handleTaskUpdated,
+  handleTaskLoaded,
 }) => {
   const { t } = useTranslation();
-  const { isScrolled: isListScrolled, onScroll: onListScroll } =
-    useIsScrolled();
 
   const detailContent = selectedTaskId ? (
     <TaskDetailPanel
@@ -281,6 +410,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
       key={selectedTaskId}
       taskId={selectedTaskId}
       onCommentsChanged={handleCommentsChanged}
+      onLoaded={handleTaskLoaded}
       onResolved={handleResolved}
       onTaskUpdated={handleTaskUpdated}
     />
@@ -292,17 +422,113 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
     </Box>
   );
 
-  const renderRow = (task: Task) => (
-    <InboxTaskListItem
-      isActive={selectedTaskId === task.id}
-      key={task.id}
-      task={task}
-      onClick={(selected) => setSelectedTaskId(selected.id)}
-    />
+  // A kept selection (e.g. a deep-linked task held past the loaded page) owns
+  // the detail pane, so the empty placeholder only shows here when no task is
+  // selected — the list column carries it otherwise.
+  let detailPane: ReactNode;
+  if (isLoading) {
+    detailPane = <TaskDetailSkeleton />;
+  } else if (selectedTaskId) {
+    detailPane = detailContent;
+  } else {
+    detailPane = emptyState;
+  }
+
+  return (
+    <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
+      {detailPane}
+    </Box>
   );
+};
+
+// Without a free detail pane — none in the list-only layout, or a kept
+// selection holding it — the list is where "nothing here" shows, so its
+// "Clear all", "Load more" and retry stay reachable. A no-match shows there
+// too, under the search and filters it answers.
+const getListEmptyState = (
+  emptyState: ReactNode,
+  onOpenTask: TasksTabBodyProps['onOpenTask'],
+  selectedTaskId: TasksTabBodyProps['selectedTaskId'],
+  isNoMatch: boolean
+): ReactNode =>
+  onOpenTask || selectedTaskId || isNoMatch ? emptyState : undefined;
+
+// A failed later page, with a way to ask for it again.
+const LoadMoreRetry = ({
+  isLoadMoreError,
+  isLoadingMore,
+  onRetry,
+}: {
+  isLoadMoreError?: boolean;
+  isLoadingMore: boolean;
+  onRetry: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return isLoadMoreError && !isLoadingMore ? (
+    <Box
+      align="center"
+      className="tw:justify-center tw:py-4"
+      data-testid="inbox-tasks-load-more-error"
+      gap={3}>
+      <Typography className="tw:text-tertiary" size="text-sm">
+        {t('server.entity-fetch-error', { entity: t('label.task-plural') })}
+      </Typography>
+      <Button color="secondary" size="xs" onClick={onRetry}>
+        {t('label.retry')}
+      </Button>
+    </Box>
+  ) : null;
+};
+
+// The two panes: the list column (its controls over the grouped rows) and the
+// selected task's detail, each scrolling on its own.
+const TasksTabBody: React.FC<TasksTabBodyProps> = ({
+  toolbar,
+  emptyState,
+  isNoMatch = false,
+  isLoadFailed = false,
+  isLoading,
+  isLoadingMore,
+  tasks,
+  groups,
+  isPartial = false,
+  isLoadMoreError,
+  onRetryLoadMore,
+  selectedTaskId,
+  scrollRef,
+  sentinelRef,
+  setSelectedTaskId,
+  onOpenTask,
+  statusUserIds,
+  handleCommentsChanged,
+  handleResolved,
+  handleTaskUpdated,
+  handleTaskLoaded,
+}) => {
+  const { t } = useTranslation();
+  const { isScrolled: isListScrolled, onScroll: onListScroll } =
+    useIsScrolled();
+
+  const renderRow = (task: Task) =>
+    onOpenTask ? (
+      <InboxTaskListItem
+        key={task.id}
+        statusBadge={getTaskStatusLabel(task, statusUserIds, t)}
+        task={task}
+        onClick={(selected) => onOpenTask(selected.id)}
+      />
+    ) : (
+      <InboxTaskListItem
+        isActive={selectedTaskId === task.id}
+        key={task.id}
+        task={task}
+        onClick={(selected) => setSelectedTaskId(selected.id)}
+      />
+    );
 
   // Grouping covers the pages loaded so far: the server paginates by cursor,
-  // not by type, so a later page can reopen a group that already appeared.
+  // not by type, so a grouped list reads on to its scan cap (see TasksTab).
   const groupedList = groups?.map((group) => {
     // Every task in a group reads the same, so its first one names it.
     const badge = getTaskTypeBadge(group.items[0], t);
@@ -327,61 +553,99 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
             {badge.label}
           </Typography>
           <Typography className="tw:text-tertiary" size="text-xs">
-            {group.count}
+            {isPartial ? `${group.count}+` : group.count}
           </Typography>
-          <span className="tw:h-px tw:flex-1 tw:bg-border-secondary" />
         </Box>
         {group.items.map(renderRow)}
       </Box>
     );
   });
 
+  const listColumn = (
+    <Box
+      className={classNames(
+        'tw:min-h-0',
+        onOpenTask ? 'tw:flex-1' : 'tw:border-r tw:border-secondary'
+      )}
+      direction="col">
+      {/* Lifts off the rows with a light shadow once they scroll under it. */}
+      <div
+        className={classNames(
+          'tw:relative tw:z-10 tw:transition-shadow',
+          isListScrolled && 'tw:shadow-sm'
+        )}>
+        {toolbar}
+      </div>
+      <div
+        className="tw:relative tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
+        data-testid="inbox-tasks-scroll"
+        ref={scrollRef}
+        onScroll={onListScroll}>
+        {isLoading ? (
+          <InboxTaskListSkeleton />
+        ) : (
+          <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
+            {getListEmptyState(
+              emptyState,
+              onOpenTask,
+              selectedTaskId,
+              isNoMatch
+            ) ||
+              (groupedList ?? tasks.map(renderRow))}
+          </div>
+        )}
+
+        <div ref={sentinelRef} />
+        {isLoadingMore && (
+          <div className="tw:flex tw:justify-center tw:py-4">
+            <Loader />
+          </div>
+        )}
+        <LoadMoreRetry
+          isLoadMoreError={isLoadMoreError}
+          isLoadingMore={isLoadingMore}
+          onRetry={onRetryLoadMore}
+        />
+      </div>
+    </Box>
+  );
+
+  if (isLoadFailed) {
+    return (
+      <Box className="tw:relative tw:min-h-0 tw:w-full tw:flex-1">
+        {emptyState}
+      </Box>
+    );
+  }
+
+  if (onOpenTask) {
+    return listColumn;
+  }
+
   // `minmax(0, …)`: a bare `fr` track never shrinks below its content, so one
   // long unbreakable title would widen the list and push the detail off-screen.
   return (
     <Box className="tw:grid tw:min-h-0 tw:flex-1 tw:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-      <Box
-        className="tw:min-h-0 tw:border-r tw:border-secondary"
-        direction="col">
-        {/* Lifts off the rows with a light shadow once they scroll under it. */}
-        <div
-          className={classNames(
-            'tw:relative tw:z-10 tw:transition-shadow',
-            isListScrolled && 'tw:shadow-sm'
-          )}>
-          {toolbar}
-        </div>
-        <div
-          className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto"
-          data-testid="inbox-tasks-scroll"
-          ref={scrollRef}
-          onScroll={onListScroll}>
-          {isLoading ? (
-            <InboxTaskListSkeleton />
-          ) : (
-            <div className="tw:flex tw:flex-col tw:gap-4 tw:px-3 tw:pb-3">
-              {groupedList ?? tasks.map(renderRow)}
-            </div>
-          )}
+      {listColumn}
 
-          <div ref={sentinelRef} />
-          {isLoadingMore && (
-            <div className="tw:flex tw:justify-center tw:py-4">
-              <Loader />
-            </div>
-          )}
-        </div>
-      </Box>
-
-      <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
-        {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
-      </Box>
+      <TasksDetailPane
+        emptyState={isNoMatch ? undefined : emptyState}
+        handleCommentsChanged={handleCommentsChanged}
+        handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
+        handleTaskUpdated={handleTaskUpdated}
+        isLoading={isLoading}
+        selectedTaskId={selectedTaskId}
+        tasks={tasks}
+      />
     </Box>
   );
 };
 
 const TasksTab: React.FC<TasksTabProps> = ({
   aboutEntity,
+  user,
+  onOpenTask,
   className,
   onCountChange,
 }) => {
@@ -394,6 +658,12 @@ const TasksTab: React.FC<TasksTabProps> = ({
   const [selectedTaskId, setSelectedTaskId] = useState<string | undefined>(
     linkedTaskId
   );
+  // A new link followed while the tab stays mounted opens its task too.
+  useEffect(() => {
+    if (linkedTaskId) {
+      setSelectedTaskId(linkedTaskId);
+    }
+  }, [linkedTaskId]);
   // Land on Open by default: it's the actionable set, and its total feeds the
   // Tasks tab count so the badge matches the sidebar's open-task red bubble.
   const [status, setStatus] = useState<TaskStatusFilter>('open');
@@ -402,11 +672,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // stays responsive while the request trails it.
   const [searchQuery, setSearchQuery] = useState('');
   const [grouping, setGrouping] = useState<InboxTaskGrouping>('type');
+  const [sortOrder, setSortOrder] = useState(SORT_ORDER.DESC);
   // Kinds as getTaskTypeKey names them, so types sharing a label filter as one.
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   // Narrows the active tab; nothing chosen shows all of it.
   const [statusFilter, setStatusFilter] = useState<TaskStatusBucket[]>([]);
-  const currentUserIds = useCurrentUserIds();
+  const currentUserIds = useCurrentUserIds(user);
+  const userFirstName = useViewedUserFirstName(user);
 
   // A new tab offers other statuses, so a choice made for the last one would
   // only hide rows; start the new tab unfiltered.
@@ -415,24 +687,34 @@ const TasksTab: React.FC<TasksTabProps> = ({
     setStatusFilter([]);
   }, []);
 
+  // A link to a closed task lands on the Closed tab, where its row is listed.
+  // Only each link's first load decides: the viewer may then move to any tab.
+  // ADR:2026-11-16-a-link-to-a-closed-inbox-task-opens-the-closed-tab
+  const settledLinkedTaskIdRef = useRef<string>();
+  const handleTaskLoaded = useCallback(
+    (loaded: Task) => {
+      const isFirstLinkedLoad =
+        loaded.id === linkedTaskId &&
+        settledLinkedTaskIdRef.current !== linkedTaskId;
+      if (isFirstLinkedLoad) {
+        settledLinkedTaskIdRef.current = linkedTaskId;
+        if (status === 'open' && !isTaskOpen(loaded)) {
+          handleStatusChange('closed');
+        }
+      }
+    },
+    [linkedTaskId, status, handleStatusChange]
+  );
+
   // Per-status totals for the All / Open / Closed badges, fetched cheaply
   // (limit=1, server paging.total) and cached by React Query keyed on the active
   // scope. A work queue has no date window: an open task never ages out. The
   // keyed cache dedupes the fetch across tab-switch remounts and StrictMode's
   // dev double-invoke; mutations invalidate the key.
-  const scope = aboutEntity ?? 'me';
+  const scope = getTaskScope(aboutEntity, user);
   const countQueries = useQueries({
     queries: [undefined, TaskStatusGroup.Open, TaskStatusGroup.Closed].map(
-      (statusGroup) => ({
-        queryKey: [TASK_STATUS_COUNTS_QUERY_KEY, scope, statusGroup ?? 'all'],
-        queryFn: () =>
-          (aboutEntity ? listTasks : listMyVisibleTasks)({
-            statusGroup,
-            limit: 1,
-            ...(aboutEntity ? { aboutEntity } : {}),
-          }).then((res) => res.paging?.total ?? 0),
-        staleTime: TASK_COUNTS_STALE_TIME,
-      })
+      (statusGroup) => getTaskCountQuery(scope, statusGroup, aboutEntity, user)
     ),
   });
   const statusCounts = getStatusCounts(countQueries);
@@ -479,15 +761,21 @@ const TasksTab: React.FC<TasksTabProps> = ({
         limit: TASK_LIMIT,
         after,
         q: titleSearch.text || undefined,
+        sortOrder,
       };
 
-      // aboutEntity = entity-page mode (all tasks about that entity); otherwise
-      // the personal inbox is scoped to the current user's visible tasks.
-      return aboutEntity
-        ? listTasks({ ...params, aboutEntity })
+      // aboutEntity = entity-page mode (all tasks about that entity); a user
+      // scopes it to theirs; otherwise the personal inbox is scoped to the
+      // current user's visible tasks.
+      if (aboutEntity) {
+        return listTasks({ ...params, aboutEntity });
+      }
+
+      return user
+        ? fetchUserTasksPage(user, params, after)
         : listMyVisibleTasks(params);
     },
-    [status, aboutEntity, titleSearch.text]
+    [status, aboutEntity, user, titleSearch.text, sortOrder]
   );
 
   // A short narrowed list keeps the scroll sentinel in view, which would page
@@ -522,20 +810,45 @@ const TasksTab: React.FC<TasksTabProps> = ({
   );
 
   const {
-    items: tasks,
+    items: loadedTasks,
     isLoading,
     isLoadingMore,
     hasMore,
     total,
+    error,
+    refetch,
     scrollRef,
     sentinelRef,
     setItems,
     setTotal,
+    loadMore,
+    isLoadMoreError,
   } = useInboxInfiniteList<Task>(
-    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text],
+    [TASK_LIST_QUERY_KEY, scope, status, titleSearch.text, sortOrder],
     fetchPage,
     canLoadMore
   );
+
+  // Pages are fetched at different times, so a task that changes in between
+  // (say, assigned to the user after it loaded as one they created) can land
+  // on two of them.
+  const tasks = useMemo(() => uniqBy(loadedTasks, 'id'), [loadedTasks]);
+
+  // Type groups sort by urgency, so one built from the newest page alone hides
+  // an older incident until the list is scrolled to its end. A grouped list
+  // reads on by itself, as far as a narrowed scan would
+  // (ADR:2026-11-16-a-grouped-inbox-task-list-reads-ahead-to-the-scan-cap). A
+  // failed page stops it; scrolling to the end retries.
+  const isGroupScanDone = isReadAheadDone(
+    hasMore,
+    tasks.length,
+    isLoadMoreError
+  );
+  useEffect(() => {
+    if (grouping === 'type' && !isGroupScanDone) {
+      loadMore();
+    }
+  }, [grouping, isGroupScanDone, loadMore]);
 
   useEffect(() => {
     onCountChange?.(total);
@@ -543,7 +856,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // Invalidate the cached badge totals so a task action re-fetches them.
   const refreshStatusCounts = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: [TASK_STATUS_COUNTS_QUERY_KEY],
     });
   }, [queryClient]);
@@ -554,7 +867,7 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // next visit.
   const invalidateTaskLists = useCallback(
     (refetch = false) => {
-      queryClient.invalidateQueries({
+      void queryClient.invalidateQueries({
         queryKey: [TASK_LIST_QUERY_KEY, scope],
         refetchType: refetch ? 'active' : 'none',
       });
@@ -584,8 +897,8 @@ const TasksTab: React.FC<TasksTabProps> = ({
     () => (grouping === 'type' ? groupTasksByType(visibleTasks) : undefined),
     [grouping, visibleTasks]
   );
-  // The top row as displayed; grouping reorders the server's newest-first
-  // list, so its first task can sit anywhere in the grouped view.
+  // The top row as displayed; grouping reorders the server's list, so its
+  // first task can sit anywhere in the grouped view.
   const firstTaskId = taskGroups
     ? taskGroups[0]?.items[0]?.id
     : visibleTasks[0]?.id;
@@ -607,10 +920,10 @@ const TasksTab: React.FC<TasksTabProps> = ({
   // refocus. The home page's My Tasks card caches the same open tasks, so a
   // return home within its TTL would still offer actions on a resolved one.
   const syncOpenTaskReaders = useCallback(() => {
-    queryClient.invalidateQueries({
+    void queryClient.invalidateQueries({
       queryKey: INBOX_OPEN_TASK_COUNT_QUERY_KEY,
     });
-    queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
+    void queryClient.invalidateQueries({ queryKey: MY_TASKS_QUERY_KEY });
   }, [queryClient]);
 
   const handleResolved = useCallback(
@@ -684,9 +997,31 @@ const TasksTab: React.FC<TasksTabProps> = ({
 
   // A search or filter that matches nothing must not read as an empty queue.
   const isNarrowed = Boolean(searchQuery) || isClientNarrowed;
-  const showEmptyState =
-    visibleTasks.length === 0 &&
-    isListSettled({ isLoading, isLoadingMore, hasMore, canLoadMore, tasks });
+  const showEmptyState = hasNothingToShow(error, visibleTasks, {
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    canLoadMore,
+    tasks,
+  });
+
+  const handleRetry = useCallback(() => {
+    refetch();
+    refreshStatusCounts();
+  }, [refetch, refreshStatusCounts]);
+
+  const emptyState = showEmptyState ? (
+    <TasksEmptyState
+      error={error}
+      isNarrowed={isNarrowed}
+      scannedCount={hasMore ? tasks.length : undefined}
+      status={status}
+      userFirstName={userFirstName}
+      onClearFilters={handleClearFilters}
+      onLoadMore={handleScanFurther}
+      onRetry={handleRetry}
+    />
+  ) : undefined;
 
   return (
     <Box
@@ -697,32 +1032,31 @@ const TasksTab: React.FC<TasksTabProps> = ({
       data-testid="inbox-tasks-tab"
       direction="col">
       <TasksTabBody
-        emptyState={
-          showEmptyState ? (
-            <TasksEmptyState
-              isNarrowed={isNarrowed}
-              scannedCount={hasMore ? tasks.length : undefined}
-              status={status}
-              onClearFilters={handleClearFilters}
-              onLoadMore={handleScanFurther}
-            />
-          ) : undefined
-        }
+        emptyState={emptyState}
         groups={taskGroups}
         handleCommentsChanged={handleCommentsChanged}
         handleResolved={handleResolved}
+        handleTaskLoaded={handleTaskLoaded}
         handleTaskUpdated={handleTaskUpdated}
+        isLoadFailed={isWholeTabLoadFailed(error, tasks, isNarrowed)}
+        isLoadMoreError={isLoadMoreError}
         isLoading={isLoading}
         isLoadingMore={isLoadingMore}
+        isNoMatch={showEmptyState && isNarrowed}
+        isPartial={hasMore}
         scrollRef={scrollRef}
         selectedTaskId={selectedTaskId}
         sentinelRef={sentinelRef}
         setSelectedTaskId={setSelectedTaskId}
+        statusUserIds={currentUserIds}
         tasks={visibleTasks}
         toolbar={
           <InboxTaskListToolbar
             grouping={grouping}
+            inline={Boolean(onOpenTask)}
+            isPartial={hasMore}
             search={search}
+            sortOrder={sortOrder}
             statusFilter={statusFilter}
             statusOptions={STATUS_OPTIONS_BY_TAB[status]}
             statusTabs={statusTabs}
@@ -730,10 +1064,13 @@ const TasksTab: React.FC<TasksTabProps> = ({
             typeFilter={typeFilter}
             onGroupingChange={setGrouping}
             onSearchChange={handleSearchChange}
+            onSortOrderChange={setSortOrder}
             onStatusFilterChange={setStatusFilter}
             onTypeFilterChange={setTypeFilter}
           />
         }
+        onOpenTask={onOpenTask}
+        onRetryLoadMore={loadMore}
       />
     </Box>
   );

@@ -48,6 +48,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.EntityFieldUtils;
 
 /**
@@ -343,7 +344,14 @@ class BatchModeNodesTest {
     certify.execute(execution);
 
     for (EntityInterface<?> table : entities.values()) {
-      verify(repository).patch(isNull(), eq(table.getId()), eq("governance-bot"), any());
+      verify(repository)
+          .patch(
+              isNull(),
+              eq(table.getId()),
+              eq("governance-bot"),
+              any(),
+              isNull(),
+              eq("governance-bot"));
     }
     assertNull(variables.get("global_failure"));
   }
@@ -413,20 +421,18 @@ class BatchModeNodesTest {
         .patch(
             isNull(),
             eq(first.getFullyQualifiedName()),
-            eq("governance-bot"),
+            eq(ChangeActor.system("governance-bot", "governance-bot")),
             any(JsonPatch.class),
             isNull(),
-            isNull(),
-            eq("governance-bot"));
+            isNull());
     verify(repository)
         .patch(
             isNull(),
             eq(second.getFullyQualifiedName()),
-            eq("governance-bot"),
+            eq(ChangeActor.system("governance-bot", "governance-bot")),
             any(JsonPatch.class),
             isNull(),
-            isNull(),
-            eq("governance-bot"));
+            isNull());
     assertFalse(variables.containsKey("rollbackAction"));
     assertNull(variables.get("global_failure"));
   }

@@ -50,6 +50,8 @@ export interface ProfileContentHeaderProps {
   meta?: React.ReactNode;
   /** Tab strip rendered flush with the header's bottom border. */
   tabs?: React.ReactNode;
+  /** Render only the breadcrumb row (a full-page detail that draws its own title). */
+  compact?: boolean;
 }
 
 /**
@@ -69,6 +71,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
   titleSuffix,
   meta,
   tabs,
+  compact,
 }) => {
   const defaultBreadcrumbs = useMemo<BreadcrumbItemType[]>(
     () => [
@@ -80,6 +83,29 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
 
   const resolvedBreadcrumbs = breadcrumbs ?? defaultBreadcrumbs;
 
+  const breadcrumbRow = (
+    <Breadcrumbs
+      autoCollapse
+      divider="chevron"
+      items={resolvedBreadcrumbs}
+      maxItemWidth={256}
+      size="xs"
+      type="text"
+      onAction={onBreadcrumbAction}
+    />
+  );
+
+  if (compact) {
+    return (
+      <Box
+        className="ai-profile-page__content-header tw:shrink-0 tw:px-6 tw:py-4"
+        data-testid="profile-content-header"
+        direction="col">
+        {breadcrumbRow}
+      </Box>
+    );
+  }
+
   return (
     <Box
       className={classNames(
@@ -89,13 +115,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
       data-testid="profile-content-header"
       direction="col"
       gap={5}>
-      <Breadcrumbs
-        divider="chevron"
-        items={resolvedBreadcrumbs}
-        size="xs"
-        type="text"
-        onAction={onBreadcrumbAction}
-      />
+      {breadcrumbRow}
       <Box align="center" direction="row" gap={3}>
         {iconNode ?? (
           <FeaturedIcon
@@ -107,12 +127,13 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
             theme="dark"
           />
         )}
-        <Box className="tw:flex-1" direction="col">
-          <Box align="center" direction="row" gap={1}>
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Box align="center" className="tw:min-w-0" direction="row" gap={1}>
             {titleInput ?? (
               <Typography
-                className="tw:text-primary"
+                className="tw:min-w-0 tw:text-primary"
                 data-testid="profile-content-header-title"
+                ellipsis={{ tooltip: true }}
                 size="text-lg"
                 weight="bold">
                 {title}
@@ -130,7 +151,7 @@ const ProfileContentHeader: React.FC<ProfileContentHeaderProps> = ({
         </Box>
         {actions && (
           <Box
-            className="tw:ml-auto tw:flex tw:items-center tw:gap-2"
+            className="tw:ml-auto tw:flex tw:shrink-0 tw:items-center tw:gap-2"
             direction="row">
             {actions}
           </Box>

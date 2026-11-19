@@ -227,7 +227,7 @@ describe('KnowledgeGraph', () => {
     await screen.findByTestId('edge-Customer-Places-Order');
 
     expect(
-      screen.queryByTestId('edge-Orders-Downstream-Customers')
+      screen.queryByTestId('edge-Orders-label.downstream-Customers')
     ).not.toBeInTheDocument();
     expect(api).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -239,7 +239,7 @@ describe('KnowledgeGraph', () => {
     );
 
     await press(screen.getByRole('tab', { name: 'label.knowledge-graph' }));
-    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    await screen.findByTestId('edge-Orders-label.downstream-Customers');
   });
 
   it('defaults to the direct neighborhood with exactly three level choices', async () => {
@@ -274,7 +274,7 @@ describe('KnowledgeGraph', () => {
       await openGraph();
       await waitFor(() =>
         expect(screen.getByTestId('knowledge-graph-edges').innerHTML).toContain(
-          'Downstream'
+          'label.downstream'
         )
       );
       await chooseLevel(level);
@@ -315,7 +315,7 @@ describe('KnowledgeGraph', () => {
       ],
     });
     await openGraph();
-    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    await screen.findByTestId('edge-Orders-label.downstream-Customers');
     const graph = (Graph as unknown as jest.Mock).mock.results[0]
       .value as Graph;
     await waitFor(() =>
@@ -326,10 +326,10 @@ describe('KnowledgeGraph', () => {
 
     await chooseLevel(1);
 
-    await screen.findByTestId('edge-Orders-Has owner-Analytics');
+    await screen.findByTestId('edge-Orders-label.has-owner-Analytics');
 
     expect(
-      screen.queryByTestId('edge-Orders-Downstream-Customers')
+      screen.queryByTestId('edge-Orders-label.downstream-Customers')
     ).not.toBeInTheDocument();
     expect(screen.getByTestId('graph-status')).toHaveTextContent(
       'label.kg-returned-counts'
@@ -351,14 +351,14 @@ describe('KnowledgeGraph', () => {
 
   it('explains an empty level 1 as a missing profile rather than a hidden graph', async () => {
     await openGraph();
-    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    await screen.findByTestId('edge-Orders-label.downstream-Customers');
 
     await chooseLevel(1);
 
     await screen.findByText('message.kg-root-only');
 
     expect(
-      screen.queryByTestId('edge-Orders-Downstream-Customers')
+      screen.queryByTestId('edge-Orders-label.downstream-Customers')
     ).not.toBeInTheDocument();
   });
 
@@ -400,7 +400,7 @@ describe('KnowledgeGraph', () => {
     expect(screen.getByTestId('level-chooser')).toBeVisible();
 
     await press(screen.getByRole('button', { name: 'label.retry' }));
-    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    await screen.findByTestId('edge-Orders-label.downstream-Customers');
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
@@ -414,7 +414,7 @@ describe('KnowledgeGraph', () => {
     await screen.findByRole('alert');
 
     expect(
-      screen.getByTestId('edge-Orders-Downstream-Customers')
+      screen.getByTestId('edge-Orders-label.downstream-Customers')
     ).toBeInTheDocument();
     expect(screen.getByTestId('graph-partial')).toBeVisible();
   });
@@ -429,7 +429,7 @@ describe('KnowledgeGraph', () => {
     // level selection survives the depth=2 refetch that the level change
     // triggers.
     await openGraph();
-    await screen.findByTestId('edge-Orders-Downstream-Customers');
+    await screen.findByTestId('edge-Orders-label.downstream-Customers');
     await chooseLevel(3);
     await waitFor(() =>
       expect(api).toHaveBeenLastCalledWith(

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { Checkbox, Typography } from '@openmetadata/ui-core-components';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +24,7 @@ import {
 import { getTaskTitle } from '../../../discovery/personal-space/InboxPage/taskTitle.utils';
 import TopicCard from '../Common/TopicWidget/TopicCard';
 import TopicFilterChips from '../Common/TopicWidget/TopicFilterChips';
+import { TOPIC_FILTERED_BODY_CLASSES } from '../Common/TopicWidget/topicRowStyles';
 import {
   TopicEmptyStateConfig,
   TopicKey,
@@ -74,8 +74,6 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
     () => visibleTasks.filter((task) => selectedIds.has(task.id)),
     [visibleTasks, selectedIds]
   );
-  const isAllSelected =
-    visibleTasks.length > 0 && selectedTasks.length === visibleTasks.length;
 
   const handleSelectedChange = useCallback(
     (taskId: string, isSelected: boolean) =>
@@ -91,11 +89,6 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
       }),
     []
   );
-
-  const handleSelectAll = (isSelected: boolean) =>
-    setSelectedIds(
-      isSelected ? new Set(visibleTasks.map((task) => task.id)) : new Set()
-    );
 
   const handleBucketChange = (next: string) => {
     setBucket(next as MyTaskBucket);
@@ -115,9 +108,10 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
     }
   };
 
-  // Categories are counted over the loaded page, so past it a category's
-  // count covers only that page; the page limit keeps that visible.
-  const isPartialCategory = bucket !== MyTaskBucket.ALL && tasks.length < total;
+  // The chips and the incident headline are counted over the loaded page, so
+  // past it the footer says how much of the total that page is.
+  // ADR:2026-10-16-landing-task-and-pipeline-cards-read-one-page
+  const isPartialPage = tasks.length < total;
 
   // An empty list is good news, not a setup gap — nothing to configure.
   const emptyState: TopicEmptyStateConfig | undefined =
@@ -143,12 +137,24 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
         label: t('label.open-task-plural'),
         onPress: () => navigate(tasksPath),
       }}
+      bodyClassName={TOPIC_FILTERED_BODY_CLASSES}
       emptyState={emptyState}
       handleRemoveWidget={handleRemoveWidget}
       isEditView={isEditView}
       isError={isError}
       isFetching={isFetching}
       isLoading={isLoading}
+      meta={
+        isPartialPage ? (
+          <span data-testid="my-tasks-page-limit">
+            {t('label.loaded-x-of-y-entity', {
+              entity: t('label.task-plural'),
+              loaded: tasks.length,
+              total,
+            })}
+          </span>
+        ) : undefined
+      }
       status={status}
       summary={summary}
       title={t('label.my-task-plural')}
@@ -191,40 +197,8 @@ const MyTasksWidget: React.FC<MyTasksWidgetProps> = ({
             onChange={handleBucketChange}
           />
 
-          <div className="tw:mt-3 tw:flex tw:items-center tw:gap-3 tw:border-y tw:border-secondary tw:bg-secondary tw:px-2 tw:py-2">
-            <Checkbox
-              aria-label={t('label.select-all')}
-              data-testid="my-tasks-select-all"
-              isDisabled={visibleTasks.length === 0}
-              isIndeterminate={selectedTasks.length > 0 && !isAllSelected}
-              isSelected={isAllSelected}
-              onChange={handleSelectAll}
-            />
-            <Typography
-              className="tw:text-text-tertiary!"
-              data-testid="my-tasks-showing"
-              size="text-xs">
-              {t('label.count-of-total-loaded', {
-                count: visibleTasks.length,
-                total: bucket === MyTaskBucket.ALL ? total : counts[bucket],
-              })}
-            </Typography>
-            {isPartialCategory && (
-              <Typography
-                className="tw:text-text-tertiary!"
-                data-testid="my-tasks-page-limit"
-                size="text-xs">
-                {t('label.loaded-x-of-y-entity', {
-                  entity: t('label.task-plural'),
-                  loaded: tasks.length,
-                  total,
-                })}
-              </Typography>
-            )}
-          </div>
-
           <ul
-            className="tw:flex tw:flex-col tw:gap-1 tw:py-1"
+            className="tw:mt-1 tw:flex tw:flex-col tw:gap-1 tw:py-1"
             data-testid="my-task-rows">
             {visibleTasks.map((task) => (
               <MyTaskRow

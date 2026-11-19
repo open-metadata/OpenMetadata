@@ -46,10 +46,6 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../ErrorWithPlaceholder/ErrorPlaceHolder', () => {
-  return jest.fn().mockReturnValue(<div>ErrorPlaceHolder.component</div>);
-});
-
 jest.mock('../EmptyPlaceholder/CreatePlaceholder', () => {
   return jest.fn().mockReturnValue(<div>CreatePlaceholder.component</div>);
 });
@@ -124,8 +120,8 @@ describe('Test CustomProperty Table Component', () => {
         />
       );
     });
-    const permissionPlaceholder = await screen.findByText(
-      'ErrorPlaceHolder.component'
+    const permissionPlaceholder = await screen.findByTestId(
+      /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
     );
 
     expect(permissionPlaceholder).toBeInTheDocument();
@@ -169,6 +165,55 @@ describe('Test CustomProperty Table Component', () => {
     );
     expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
     expect(screen.queryByTestId('add-value-button')).not.toBeInTheDocument();
+  });
+
+  it('Should render the right panel read-only and mark every property added in the version', async () => {
+    const numberProperty = (name: string) => ({
+      ...mockCustomProperties[0],
+      name,
+      propertyType: {
+        ...mockCustomProperties[0].propertyType,
+        name: 'integer',
+      },
+    });
+    (getTypeByFQN as jest.Mock).mockResolvedValueOnce({
+      customProperties: [numberProperty('cost'), numberProperty('rank')],
+    });
+    (useGenericContext as jest.Mock).mockReturnValue({
+      data: {
+        extension: { cost: 42, rank: 7 },
+        changeDescription: {
+          fieldsAdded: [
+            {
+              name: 'extension',
+              newValue: JSON.stringify([{ cost: 42 }, { rank: 7 }]),
+            },
+          ],
+          fieldsUpdated: [],
+          fieldsDeleted: [],
+        },
+      },
+      onUpdate: jest.fn(),
+      filterWidgets: jest.fn(),
+    });
+
+    await act(async () => {
+      renderWithQueryClient(
+        <CustomPropertyTable
+          {...mockProp}
+          isRenderedInRightPanel
+          isVersionView
+          entityType={EntityType.TABLE}
+        />
+      );
+    });
+
+    const cost = await screen.findByTestId('custom-property-cost-row');
+    const rank = screen.getByTestId('custom-property-rank-row');
+
+    expect(within(cost).getByText('42')).toHaveClass('diff-added');
+    expect(within(rank).getByText('7')).toHaveClass('diff-added');
+    expect(screen.queryByTestId('edit-icon')).not.toBeInTheDocument();
   });
 
   it('Should save an edited value as the merged entity extension', async () => {
@@ -230,7 +275,11 @@ describe('Test CustomProperty Table Component', () => {
       );
     });
 
-    expect(screen.queryByText('ErrorPlaceHolder.component')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        /(no-data|permission-error|search-error|create-error|assign-error)-placeholder/
+      )
+    ).toBeNull();
   });
 
   it('Loader should be shown while loading the custom properties', async () => {

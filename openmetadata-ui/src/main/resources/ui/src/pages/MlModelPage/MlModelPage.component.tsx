@@ -18,13 +18,13 @@ import { isUndefined, omitBy, toString } from 'lodash';
 import { useCallback, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { PageLoader } from '../../components/common/Loader/Loader';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
+import EntityDetailsPageSkeleton from '../../components/Entity/EntityDetailsPageSkeleton/EntityDetailsPageSkeleton';
 import MlModelDetailComponent from '../../components/MlModel/MlModelDetail/MlModelDetail.component';
 import { ROUTES } from '../../constants/constants';
 import { ClientErrors } from '../../enums/Axios.enum';
-import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType, TabSpecificField } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { Mlmodel } from '../../generated/entity/data/mlmodel';
@@ -377,31 +377,35 @@ const MlModelPage = () => {
   };
 
   if (permissionsLoading || mlModelLoading) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   if (mlModelError) {
     return (
-      <ErrorPlaceHolder className="mt-0-important">
-        {getEntityMissingError('mlModel', mlModelFqn)}
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder
+          data-testid="no-data-placeholder"
+          title={getEntityMissingError('mlModel', mlModelFqn)}
+        />
+      </div>
     );
   }
 
   if (!canViewMlModel) {
     return (
-      <ErrorPlaceHolder
-        className="border-none"
-        permissionValue={t('label.view-entity', {
-          entity: t('label.ml-model'),
-        })}
-        type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
-      />
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <PermissionPlaceholder
+          data-testid="permission-error-placeholder"
+          permissionValue={t('label.view-entity', {
+            entity: t('label.ml-model'),
+          })}
+        />
+      </div>
     );
   }
 
   if (!mlModelDetail) {
-    return <PageLoader />;
+    return <EntityDetailsPageSkeleton />;
   }
 
   return (

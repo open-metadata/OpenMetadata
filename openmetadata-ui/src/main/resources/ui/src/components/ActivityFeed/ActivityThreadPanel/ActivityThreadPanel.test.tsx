@@ -53,4 +53,23 @@ describe('ActivityThreadPanel', () => {
       screen.getByTestId('panel-conversations').closest('[data-inert]')
     ).toHaveAttribute('data-inert', 'true');
   });
+
+  it('closes from the slideout header', async () => {
+    const onCancel = jest.fn();
+    render(
+      <MemoryRouter>
+        <ActivityThreadPanel
+          open
+          threadLink="<#E::table::table>"
+          onCancel={onCancel}
+        />
+      </MemoryRouter>
+    );
+
+    expect(await screen.findByText('label.activity-feed')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('closeDrawer'));
+
+    expect(onCancel).toHaveBeenCalled();
+  });
 });

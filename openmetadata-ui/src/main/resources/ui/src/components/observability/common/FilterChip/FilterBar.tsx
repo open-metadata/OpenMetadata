@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
-import { PlusCircle, XCircle } from '@openmetadata/ui-core-components/icons';
+import { Plus, XCircle } from '@openmetadata/ui-core-components/icons';
 import { isString } from 'lodash';
 import { useCallback, useState } from 'react';
 import type { Selection } from 'react-aria-components';
@@ -113,7 +113,7 @@ export const FilterBar = ({
           <Button
             color="secondary"
             data-testid="advanced-filter"
-            iconLeading={PlusCircle}
+            iconLeading={Plus}
             size="md">
             {t('label.advanced')}
           </Button>
