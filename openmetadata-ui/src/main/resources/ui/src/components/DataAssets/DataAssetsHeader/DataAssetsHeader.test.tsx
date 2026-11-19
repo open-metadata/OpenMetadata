@@ -146,8 +146,9 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
-  isRecordedLifeCycleTimestamp: (timestamp?: number) =>
-    timestamp !== undefined && timestamp >= 0,
+  isRecordedLifeCycleTimestamp: jest.requireActual(
+    '../../../utils/DataAssetsHeader.utils'
+  ).isRecordedLifeCycleTimestamp,
   HeaderDotSeparator: jest
     .fn()
     .mockImplementation(() => <span data-testid="header-dot-separator" />),
@@ -462,6 +463,20 @@ describe('DataAssetsHeader component', () => {
     expect(
       screen.queryByText('label.updated-at-source')
     ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
+  });
+
+  it('hides the year-0001 placeholder older ingestion clients stored as the update time', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { updated: { timestamp: -62135596800000 } },
+        }}
+      />
+    );
+
     expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
   });
 
