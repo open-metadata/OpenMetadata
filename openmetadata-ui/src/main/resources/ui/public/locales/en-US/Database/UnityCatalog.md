@@ -172,11 +172,6 @@ Catalog of the data source. This is an optional parameter, if you would like to 
 $$
 
 $$section
-### Database Schema $(id="databaseSchema")
-Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.
-$$
-
-$$section
 ### Connection Timeout $(id="connectionTimeout")
 The maximum amount of time (in seconds) to wait for a successful connection to the data source. If the connection attempt takes longer than this timeout period, an error will be returned.
 

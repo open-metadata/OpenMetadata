@@ -152,17 +152,6 @@ class TestGetSchemas:
         client.schemas.list.assert_called_once_with(catalog_name="main")
         assert table_obj.schema_name == "bronze"
 
-    def test_validates_configured_schema(self):
-        client = _workspace_client()
-        client.schemas.get.return_value = _named_mock("configured_schema")
-        table_obj = DatabricksTable(catalog_name="main")
-
-        get_schemas(client, table_obj, schema_name="configured_schema")
-
-        client.schemas.get.assert_called_once_with("main.configured_schema")
-        client.schemas.list.assert_not_called()
-        assert table_obj.schema_name == "configured_schema"
-
     def test_raises_when_catalog_unresolved(self):
         client = _workspace_client()
         table_obj = DatabricksTable()

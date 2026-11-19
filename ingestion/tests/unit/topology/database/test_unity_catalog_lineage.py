@@ -56,7 +56,6 @@ MOCK_CONFIG = {
             "config": {
                 "type": "UnityCatalog",
                 "catalog": "demo-test-cat",
-                "databaseSchema": "test-schema",
                 "authType": {"token": "test_token"},
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/test",

@@ -5,7 +5,6 @@ source:
     config:
       type: UnityCatalog
       catalog: hive_metastore
-      databaseSchema: default
       authType:
         token: <databricks token>
         # clientId: databricks service principal client id
