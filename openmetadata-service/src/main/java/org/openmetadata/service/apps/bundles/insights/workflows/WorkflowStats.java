@@ -12,6 +12,10 @@ import lombok.Getter;
 import org.openmetadata.schema.system.StepStats;
 
 public class WorkflowStats {
+  /**
+   * Marks a diagnostic step, kept in entityStats but left out of every job and workflow total.
+   * ADR:2026-11-19-enricher-diagnostic-steps-are-excluded-from-data-insights-job-totals
+   */
   public static final String ENRICHER_STEP_PREFIX = "[Enricher] ";
 
   @Getter private final String name;
