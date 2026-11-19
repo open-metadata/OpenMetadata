@@ -3748,16 +3748,15 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
         filteredCounts.has(term3.getFullyQualifiedName()),
         "Should not contain terms from glossary2 when filtering by glossary1");
 
-    // Get counts without parent — should include all terms
-    String countsWithoutParent = getAssetCounts(client, null);
-    assertNotNull(countsWithoutParent);
-    JsonNode unfilteredCounts = mapper.readTree(countsWithoutParent);
+    // The unfiltered count spans every term on the shared server (get_assetsCountsWithNoParent);
+    // the other parent shows the filter keeps each glossary's terms apart.
+    JsonNode glossary2Counts =
+        mapper.readTree(getAssetCounts(client, glossary2.getFullyQualifiedName()));
     assertTrue(
-        unfilteredCounts.has(term1.getFullyQualifiedName()), "Unfiltered should contain term1");
-    assertTrue(
-        unfilteredCounts.has(term2.getFullyQualifiedName()), "Unfiltered should contain term2");
-    assertTrue(
-        unfilteredCounts.has(term3.getFullyQualifiedName()), "Unfiltered should contain term3");
+        glossary2Counts.has(term3.getFullyQualifiedName()), "Should contain term3 from glossary2");
+    assertFalse(
+        glossary2Counts.has(term1.getFullyQualifiedName()),
+        "Should not contain terms from glossary1 when filtering by glossary2");
   }
 
   @Test
@@ -5216,6 +5215,10 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                 .withParent(parent.getFullyQualifiedName())
                 .withDescription("Child that follows the rename"));
     Table table = createTableTaggedWithTerm(ns, child, "quoted_asset");
+    // The rename finds the assets whose cached tags it must drop through search, so the table has
+    // to be searchable under the child's old FQN first.
+    awaitTableGlossaryTag(
+        client, new ObjectMapper(), table.getId().toString(), child.getFullyQualifiedName());
 
     GlossaryTerm toRename = client.glossaryTerms().get(parent.getId().toString(), "tags");
     toRename.setName(ns.shortPrefix("renamed") + " it's fine");
