@@ -13,12 +13,14 @@
 package org.openmetadata.service.util;
 
 /**
- * The MySQL and Postgres images every test container runs, the same images OpenMetadata ships.
- * Bump them here by hand; {@code TestDatabaseImageGuardTest} lists every other line in the
- * repository that must change with them. The {@code MYSQL_IMAGE} and {@code POSTGRES_IMAGE}
- * environment variables replace them for a one-off run.
+ * The MySQL and Postgres images of the metadata store, OpenMetadata's own database: the same images
+ * OpenMetadata ships. Server, migration and integration tests run them. Databases that connector
+ * tests read as a source have their own versions, in the ingestion test utilities. Bump these by
+ * hand; {@code TestDatabaseImageGuardTest} lists every other line that must change with them. The
+ * {@code MYSQL_IMAGE} and {@code POSTGRES_IMAGE} environment variables replace them for a one-off
+ * run.
  *
- * <p>ADR:2026-11-19-test-database-images-are-one-constant
+ * <p>ADR:2026-11-19-test-database-images-have-a-store-and-a-source-version
  */
 public final class TestDatabaseImages {
   public static final String MYSQL = "mysql:8.4.13";

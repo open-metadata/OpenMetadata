@@ -18,7 +18,7 @@ from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_container_is_ready
 from testcontainers.mysql import MySqlContainer
 
-from _openmetadata_testutils.helpers.database_images import mysql_image
+from _openmetadata_testutils.helpers.database_images import mysql_source_image
 
 
 # ------------------------------------------------------------
@@ -28,7 +28,7 @@ from _openmetadata_testutils.helpers.database_images import mysql_image
 class MySqlContainerConfigs:
     """MySQL Configurations"""
 
-    image: str = field(default_factory=mysql_image)
+    image: str = field(default_factory=mysql_source_image)
     username: str = "user"
     password: str = "password"
     dbname: str = "db"

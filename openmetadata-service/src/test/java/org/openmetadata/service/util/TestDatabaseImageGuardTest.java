@@ -31,10 +31,10 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * Every MySQL and Postgres image tag in the repository must equal {@link TestDatabaseImages#MYSQL}
- * or {@link TestDatabaseImages#POSTGRES}.
+ * Every MySQL and Postgres image tag outside the connector source roots must equal {@link
+ * TestDatabaseImages#MYSQL} or {@link TestDatabaseImages#POSTGRES}, the metadata store we ship.
  *
- * <p>ADR:2026-11-19-test-database-images-are-one-constant
+ * <p>ADR:2026-11-19-test-database-images-have-a-store-and-a-source-version
  */
 class TestDatabaseImageGuardTest {
   /**
@@ -55,6 +55,13 @@ class TestDatabaseImageGuardTest {
           "bootstrap/sql/migrations/native/2.0.0/postgres/schemaChanges.sql",
           // Recorded outputs of past runs, which name the image each run used.
           "docs/artifacts/");
+
+  /**
+   * Connector tests, their shared fixtures and the SDK examples start databases our connectors
+   * read, so they follow the connector source versions in Python, not the store we ship.
+   */
+  private static final List<String> CONNECTOR_SOURCE_ROOTS =
+      List.of("ingestion/tests/", "ingestion/src/_openmetadata_testutils/", "examples/");
 
   private static final Set<String> PRUNED_DIRECTORIES =
       Set.of(
@@ -87,12 +94,12 @@ class TestDatabaseImageGuardTest {
   private static final Path REPOSITORY_ROOT = repositoryRoot();
 
   @Test
-  void everyDatabaseImageTagEqualsTheConstant() throws IOException {
+  void everyMetadataStoreImageTagEqualsTheConstant() throws IOException {
     final List<String> mismatches = new ArrayList<>();
     Files.walkFileTree(REPOSITORY_ROOT, new TagCollector(mismatches));
     assertTrue(
         mismatches.isEmpty(),
-        "Test databases run "
+        "The metadata store runs "
             + TestDatabaseImages.MYSQL
             + " and "
             + TestDatabaseImages.POSTGRES
@@ -170,7 +177,9 @@ class TestDatabaseImageGuardTest {
       final int dot = lower.lastIndexOf('.');
       final boolean skippedExtension =
           dot > lower.lastIndexOf('/') && SKIPPED_EXTENSIONS.contains(lower.substring(dot));
-      return !skippedExtension && HISTORY.stream().noneMatch(relative::startsWith);
+      return !skippedExtension
+          && HISTORY.stream().noneMatch(relative::startsWith)
+          && CONNECTOR_SOURCE_ROOTS.stream().noneMatch(relative::startsWith);
     }
 
     private static List<String> readLines(final Path file) {
