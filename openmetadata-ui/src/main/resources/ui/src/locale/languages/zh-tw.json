@@ -4662,7 +4662,7 @@
     "context-center-memories-empty-feature-context": "設定類型並連結相應的資料資產,使其在合適的時機顯示。",
     "context-center-memories-empty-feature-write": "用一句清楚的陳述——規則、定義或偏好——讓 AI 了解。",
     "context-center-memories-empty-subtitle": "記憶是關於組織運作方式的一些小事實——來自對話內容或直接新增。儲存後,後續所有回答都會將其納入考量。",
-    "context-center-memories-subtitle": "您的團隊在與 AskCollate 聊天時擷取的事實、定義和偏好",
+    "context-center-memories-subtitle": "您的團隊在聊天時擷取的事實、定義和偏好",
     "context-center-widget-description": "團隊的文章、詞彙表條目和執行手冊。",
     "context-memory-read-only-description": "只有 {{creatorName}}（建立者）或工作區管理員可以編輯或刪除此記憶體。您仍然可以在聊天中查看、複製或引用它。",
     "contract-detail-plural-description": "指定資料資產期望的合約。",

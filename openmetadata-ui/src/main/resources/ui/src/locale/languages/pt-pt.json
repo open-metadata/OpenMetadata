@@ -4662,7 +4662,7 @@
     "context-center-memories-empty-feature-context": "Defina o tipo e associe os ativos de dados a que se aplica, para que surja no momento certo.",
     "context-center-memories-empty-feature-write": "Uma afirmação clara — uma regra, uma definição ou uma preferência que a IA deva saber.",
     "context-center-memories-empty-subtitle": "As memórias são pequenos factos sobre o funcionamento da sua organização, captados de conversas ou adicionados diretamente. Depois de guardados, cada resposta futura tem-nos em conta.",
-    "context-center-memories-subtitle": "Factos, definições e preferências capturados pela sua equipa ao conversar com o AskCollate",
+    "context-center-memories-subtitle": "Factos, definições e preferências capturados pela sua equipa ao conversar",
     "context-center-widget-description": "Artigos, entradas de glossário e runbooks da sua equipa.",
     "context-memory-read-only-description": "Somente {{creatorName}} (o criador) ou um administrador do espaço de trabalho pode editar ou excluir esta memória. Você ainda pode visualizar, copiar ou fazer referência a ele em bate-papos.",
     "contract-detail-plural-description": "Um contrato que especifica expectativas para um ativo de dados.",

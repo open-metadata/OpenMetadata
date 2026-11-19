@@ -4662,7 +4662,7 @@
     "context-center-memories-empty-feature-context": "Legen Sie den Typ fest und verknüpfen Sie die Datenassets, auf die es sich bezieht, damit es zum richtigen Zeitpunkt erscheint.",
     "context-center-memories-empty-feature-write": "Eine klare Aussage — eine Regel, eine Definition, eine Präferenz, die die KI kennen sollte.",
     "context-center-memories-empty-subtitle": "Erinnerungen sind kleine Fakten darüber, wie Ihre Organisation arbeitet — erfasst aus Gesprächen oder direkt hinzugefügt. Einmal gespeichert, werden sie bei jeder zukünftigen Antwort berücksichtigt.",
-    "context-center-memories-subtitle": "Fakten, Definitionen und Präferenzen, die von Ihrem Team beim Chatten mit AskCollate erfasst wurden",
+    "context-center-memories-subtitle": "Fakten, Definitionen und Präferenzen, die von Ihrem Team beim Chatten erfasst wurden",
     "context-center-widget-description": "Artikel, Glossareinträge und Runbooks Ihres Teams.",
     "context-memory-read-only-description": "Nur {{creatorName}} (der Ersteller) oder ein Workspace-Administrator kann diesen Speicher bearbeiten oder löschen. Sie können es weiterhin in Chats anzeigen, kopieren oder darauf verweisen.",
     "contract-detail-plural-description": "Ein Vertrag, der Erwartungen für ein Datenobjekt spezifiziert.",

@@ -4662,7 +4662,7 @@
     "context-center-memories-empty-feature-context": "Ange typen och koppla de dataresurser det gäller, så att det dyker upp vid rätt tillfällen.",
     "context-center-memories-empty-feature-write": "Ett tydligt påstående — en regel, en definition, en preferens som AI:n bör känna till.",
     "context-center-memories-empty-subtitle": "Minnen är små fakta om hur din organisation fungerar — hämtade från konversationer eller tillagda direkt. När de väl är sparade tar alla framtida svar hänsyn till dem.",
-    "context-center-memories-subtitle": "Fakta, definitioner och preferenser som ditt team fångat upp medan de chattar med AskCollate",
+    "context-center-memories-subtitle": "Fakta, definitioner och preferenser som ditt team fångat upp medan de chattar",
     "context-center-widget-description": "Artiklar, ordlisteposter och runbooks från ditt team.",
     "context-memory-read-only-description": "Endast {{creatorName}} (skaparen) eller en arbetsyteadministratör kan redigera eller ta bort detta minne. Du kan fortfarande visa, kopiera eller referera till det i chattar.",
     "contract-detail-plural-description": "Ett kontrakt som specificerar förväntningar för en datatillgång.",

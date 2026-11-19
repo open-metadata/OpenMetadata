@@ -4662,7 +4662,7 @@
     "context-center-memories-empty-feature-context": "Stel het type in en koppel de data-assets waarop het van toepassing is, zodat het op het juiste moment naar voren komt.",
     "context-center-memories-empty-feature-write": "Eén duidelijke uitspraak — een regel, een definitie, een voorkeur die de AI moet kennen.",
     "context-center-memories-empty-subtitle": "Herinneringen zijn kleine feiten over hoe je organisatie werkt — vastgelegd uit gesprekken of rechtstreeks toegevoegd. Eenmaal opgeslagen, houdt elk toekomstig antwoord er rekening mee.",
-    "context-center-memories-subtitle": "Feiten, definities en voorkeuren vastgelegd door uw team tijdens het chatten met AskCollate",
+    "context-center-memories-subtitle": "Feiten, definities en voorkeuren vastgelegd door uw team tijdens het chatten",
     "context-center-widget-description": "Artikelen, woordenlijstitems en runbooks van je team.",
     "context-memory-read-only-description": "Alleen {{creatorName}} (de maker) of een werkruimtebeheerder kan dit geheugen bewerken of verwijderen. Je kunt het nog steeds bekijken, kopiëren of ernaar verwijzen in chats.",
     "contract-detail-plural-description": "Een contract dat verwachtingen specificeert voor een data-asset.",
