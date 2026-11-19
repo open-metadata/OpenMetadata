@@ -68,6 +68,17 @@ class ReflectionUtilCollectionKeysTest {
     assertEquals(keys.getFirst(), keys("named", "3").get(1));
   }
 
+  /** A name that looks like a hashed name is hashed too, so it never takes another's secret id. */
+  @Test
+  void keysANameThatLooksLikeAHashedNameByItsOwnHash() {
+    final String hashOfThree = keys("3").getFirst();
+    final List<String> keys = keys("3", hashOfThree);
+
+    assertEquals(hashOfThree, keys.getFirst());
+    assertNotEquals(hashOfThree, keys.get(1));
+    assertTrue(keys.get(1).matches("h[0-9a-f]{16}"));
+  }
+
   /** Restoring a masked secret matches the exact name, so distinct names keep their own keys. */
   @Test
   void identifiesDistinctNamesByNameAndEscapesAPositionLikeName() {

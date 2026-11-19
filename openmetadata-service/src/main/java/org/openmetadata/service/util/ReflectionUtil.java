@@ -40,6 +40,7 @@ public class ReflectionUtil {
   private static final Pattern DIGITS_ONLY = Pattern.compile("[0-9]*");
   private static final String HASHED_NAME_PREFIX = "h";
   private static final int HASHED_NAME_LENGTH = 16;
+  private static final Pattern HASHED_NAME = Pattern.compile("h[0-9a-f]{16}");
 
   private ReflectionUtil() {
     /* Hidden construction */
@@ -139,8 +140,9 @@ public class ReflectionUtil {
    *
    * <p>Every secrets manager lowercases a secret id and drops or replaces its other characters, so
    * {@code Prod} and {@code prod} would share one stored secret. A name is used as it is only where
-   * it is still unique when lowercased and reduced to letters and digits, and has a letter: a name
-   * like {@code #1} or {@code 3} could match a position key once cleaned. Any other unique name is
+   * it is still unique when lowercased and reduced to letters and digits, has a letter, and does not
+   * look like a hashed name: a name like {@code #1} or {@code 3} could match a position key once
+   * cleaned, and one like {@code h4e07408562bedb8b} another element's hashed name. Any other unique name is
    * named by a hash of its exact text, which stays distinct and stable. Only unnamed elements and
    * exact duplicates, which nothing tells apart, are named by position. Restoring a masked secret
    * does not use these keys - see {@link #getCollectionElementIdentities}.
@@ -163,9 +165,7 @@ public class ReflectionUtil {
       final Map<String, Integer> cleaned) {
     final boolean named = isUnique(name, name, exact);
     final boolean readable =
-        named
-            && isUnique(name, secretIdForm(name), cleaned)
-            && !DIGITS_ONLY.matcher(secretIdForm(name)).matches();
+        named && isUnique(name, secretIdForm(name), cleaned) && !looksGenerated(secretIdForm(name));
     String key = POSITION_KEY_PREFIX + index;
     if (readable) {
       key = name;
@@ -173,6 +173,11 @@ public class ReflectionUtil {
       key = HASHED_NAME_PREFIX + DigestUtils.sha256Hex(name).substring(0, HASHED_NAME_LENGTH);
     }
     return key;
+  }
+
+  /** A cleaned name that could equal a position key or a hashed name of another element. */
+  private static boolean looksGenerated(final String form) {
+    return DIGITS_ONLY.matcher(form).matches() || HASHED_NAME.matcher(form).matches();
   }
 
   private static boolean isUnique(
