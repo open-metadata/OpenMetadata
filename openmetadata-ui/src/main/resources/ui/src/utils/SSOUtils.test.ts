@@ -3015,6 +3015,21 @@ describe('parseSamlMetadataXml', () => {
   </IDPSSODescriptor>
 </EntityDescriptor>`;
 
+  it('imports all IdP signing certificates and excludes certificates from other roles', () => {
+    const metadata = `<EntityDescriptor xmlns="urn:oasis:names:tc:SAML:2.0:metadata" entityID="https://idp.example">
+      <RoleDescriptor><KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>WRONG_ROLE</X509Certificate></X509Data></KeyInfo></KeyDescriptor></RoleDescriptor>
+      <IDPSSODescriptor>
+        <KeyDescriptor use="signing"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>OLD</X509Certificate><X509Certificate>NEW</X509Certificate><X509Certificate>NEW</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <KeyDescriptor use="encryption"><KeyInfo xmlns="http://www.w3.org/2000/09/xmldsig#"><X509Data><X509Certificate>ENCRYPTION_ONLY</X509Certificate></X509Data></KeyInfo></KeyDescriptor>
+        <SingleSignOnService Binding="urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect" Location="https://idp.example/sso"/>
+      </IDPSSODescriptor>
+    </EntityDescriptor>`;
+
+    expect(parseSamlMetadataXml(metadata).idpX509Certificate).toBe(
+      '-----BEGIN CERTIFICATE-----\nOLD\n-----END CERTIFICATE-----\n-----BEGIN CERTIFICATE-----\nNEW\n-----END CERTIFICATE-----'
+    );
+  });
+
   it('should parse Azure AD metadata correctly', () => {
     const result = parseSamlMetadataXml(AZURE_AD_METADATA);
 

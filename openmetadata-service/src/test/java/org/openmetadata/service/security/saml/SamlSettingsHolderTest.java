@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.saml;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -21,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mockStatic;
 
 import com.onelogin.saml2.settings.Saml2Settings;
+import com.onelogin.saml2.authn.SamlResponse;
+import java.security.cert.CertificateException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -41,6 +44,44 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 class SamlSettingsHolderTest {
   private static final String KEYSTORE_PASSWORD = "changeit";
+
+  @Test
+  void rejectsMalformedAdditionalSigningCertificates() throws Exception {
+    String bundle =
+        resource("/saml/mock-idp.crt")
+            + "\n-----BEGIN CERTIFICATE-----\ninvalid\n-----END CERTIFICATE-----";
+    assertThrows(CertificateException.class, () -> SamlCertificates.parse(bundle));
+  }
+
+  @Test
+  void deduplicatesCertificatesAndAcceptsLegacyBase64() throws Exception {
+    String pem = resource("/saml/mock-idp.crt");
+    assertEquals(1, SamlCertificates.parse(pem + "\n" + pem).size());
+    String base64 =
+        pem.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "");
+    assertEquals(SamlCertificates.parse(pem), SamlCertificates.parse(base64));
+  }
+
+  @Test
+  void acceptsResponsesSignedByTheSecondMetadataCertificate() throws Exception {
+    MockSamlIdp idp = new MockSamlIdp("https://idp.example/metadata");
+    SamlSSOClientConfig config = samlConfig("https://idp.example.com/sso");
+    config
+        .getIdp()
+        .withEntityId(idp.idpEntityId())
+        .setIdpX509Certificate(resource("/saml/other-idp.crt") + "\n" + idp.idpCertificatePem());
+    Saml2Settings settings = SamlSettingsHolder.buildSettings(config);
+    String response =
+        idp.signedResponse(
+            "alice@example.com", config.getSp().getAcs(), config.getSp().getEntityId());
+    assertEquals(2, settings.getIdpx509certMulti().size());
+    assertTrue(new SamlResponse(settings, config.getSp().getAcs(), response).isValid());
+    config.getIdp().setIdpX509Certificate(resource("/saml/other-idp.crt"));
+    assertFalse(
+        new SamlResponse(
+                SamlSettingsHolder.buildSettings(config), config.getSp().getAcs(), response)
+            .isValid());
+  }
 
   @AfterEach
   void forgetInstalledSettings() {
