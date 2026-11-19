@@ -824,7 +824,7 @@ export const DataAssetsHeader = ({
     return (
       <>
         <div className="tw:flex tw:items-center tw:gap-1.5">
-          <Typography as="span" className="tw:text-tertiary" size="text-sm">
+          <Typography as="span" color="secondary" size="text-sm">
             {t('label.updated-at-source')}
           </Typography>
           <Tooltip
@@ -833,7 +833,6 @@ export const DataAssetsHeader = ({
             triggerClassName="tw:flex tw:cursor-default">
             <Typography
               as="span"
-              className="tw:text-primary"
               data-testid="source-updated-at"
               size="text-sm"
               weight="medium">
