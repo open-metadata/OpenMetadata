@@ -122,11 +122,12 @@ const MemoryRowSkeleton: FC = () => (
 );
 
 const MetaSeparator: FC = () => (
-  <span
+  <Typography
     aria-hidden
-    className="tw:text-utility-gray-400 tw:leading-none tw:select-none tw:text-xs">
+    className="tw:text-utility-gray-400 tw:leading-none tw:select-none"
+    size="text-xs">
     &middot;
-  </span>
+  </Typography>
 );
 
 /** The owner leads; whoever changed the memory last follows when that is someone else. */
