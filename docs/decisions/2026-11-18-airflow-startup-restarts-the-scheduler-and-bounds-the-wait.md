@@ -18,7 +18,8 @@ sat until its 60-minute step timeout. Two consecutive nightlies lost a connector
 - `ingestion_dependency.sh` restarts a scheduler that exits non-zero, 5 seconds apart, up to
   `SCHEDULER_MAX_ATTEMPTS` attempts in total (default 5). After the last one the script exits with
   the scheduler's status, so the container still stops on a persistent failure. A zero exit ends
-  the loop.
+  the loop. A `SCHEDULER_MAX_ATTEMPTS` that is not a positive integer stops the script before
+  Airflow starts, rather than leaving the restarts unbounded.
 - `run_local_docker_common.sh` waits at most `AIRFLOW_READY_TIMEOUT_SECONDS` (default 600) in total
   for the Airflow API and the `sample_data` DAG, fails at once when `openmetadata_ingestion` is not
   running, and prints that container's last 200 log lines either way. Each request in those loops
