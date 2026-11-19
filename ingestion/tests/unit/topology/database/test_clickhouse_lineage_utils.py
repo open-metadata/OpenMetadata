@@ -548,13 +548,17 @@ class TestDistributedTableLineage:
             *_, schema, name = (fqn.unquote_name(part) for part in fqn.split(fqn_search_string))
             return list(tables.get((schema, name), []))
 
-        def get_by_id(entity, entity_id, **kwargs):
+        def get_by_id(entity, entity_id, fields=None, **kwargs):
+            """Like the API, the definition comes back only when it is asked for"""
             if entity is not Table:
                 return None
-            return next(
+            table = next(
                 (table for found in tables.values() for table in found if str(table.id.root) == str(entity_id)),
                 None,
             )
+            if table is None or "schemaDefinition" in (fields or []):
+                return table
+            return table.model_copy(update={"schemaDefinition": None})
 
         def get_lineage_by_id(entity, entity_id, up_depth=1, down_depth=1):
             return {"upstreamEdges": [edge for edge in lineage if edge["toEntity"] == str(entity_id)]}
@@ -599,6 +603,7 @@ class TestDistributedTableLineage:
         name: str,
         table_type: TableType = TableType.Regular,
         service_name: str = SERVICE_NAME,
+        schema_definition: str | None = None,
     ) -> Table:
         table = Table(
             id=Uuid(root=uuid.uuid4()),
@@ -607,6 +612,7 @@ class TestDistributedTableLineage:
                 root=".".join(fqn.quote_name(part) for part in (service_name, "default", schema, name))
             ),
             tableType=table_type,
+            schemaDefinition=schema_definition,
             serviceType=DatabaseServiceType.Clickhouse,
             columns=[],
         )
@@ -736,7 +742,16 @@ class TestDistributedTableLineage:
 
         with caplog.at_level("WARNING"):
             assert self._run(metadata, system_tables) == []
-        assert "Local table [default.events] of Distributed table [default.events] not found" in caplog.text
+        assert "Distributed table [default.events] names itself" in caplog.text
+
+    def test_search_matching_the_distributed_table_itself_is_skipped(self, metadata, tables, system_tables, caplog):
+        distributed = self._add_table(tables, "default", "events")
+        tables[("default", "Events")] = [distributed]
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.Events] of Distributed table [default.events] not found" in caplog.text
 
     @pytest.mark.parametrize(
         "source_config",
@@ -880,7 +895,14 @@ class TestDistributedTableLineage:
             "old_local": self._add_table(tables, "default", "events_local"),
             "local": self._add_table(tables, "default", "events_local_v2"),
             "distributed": self._add_table(tables, "default", "events"),
-            "mv": self._add_table(tables, "default", "events_mv", TableType.MaterializedView),
+            "mv": self._add_table(
+                tables,
+                "default",
+                "events_mv",
+                TableType.MaterializedView,
+                schema_definition="CREATE MATERIALIZED VIEW default.events_mv TO default.events "
+                "AS SELECT id FROM default.raw_events",
+            ),
             "manual": self._add_table(tables, "default", "events_backfill"),
         }
         self._add_row(
@@ -934,7 +956,7 @@ class TestDistributedTableLineage:
         """Edges from another service, from entities that are not tables, or of another source stay"""
         local = self._add_table(tables, "default", "events_local")
         distributed = self._add_table(tables, "default", "events")
-        other_service = self._add_table(tables, "default", "events_local", service_name="other_service")
+        other_service = self._add_table(tables, "default", "events_local_v1", service_name="other_service")
         query_source = self._add_table(tables, "default", "raw_events")
         self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
         self._edge(lineage, other_service, distributed, LineageSource.ViewLineage)
@@ -1002,6 +1024,153 @@ class TestDistributedTableLineage:
 
         assert "Failed to remove the replaced lineage of Distributed table [default.events]" in error.left.error
         assert edge.right.edge.fromEntity.id == local.id
+
+    def test_override_keeps_the_edge_of_a_local_table_the_lookup_misses(self, metadata, tables, lineage, system_tables):
+        """The search does not tell a failed lookup from a missing table: only the name decides"""
+        local = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+        es_search = metadata.es_search_from_fqn
+
+        def failing_search(entity_type, fqn_search_string, **kwargs):
+            if fqn_search_string.endswith("events_local"):
+                raise ConnectionError("search unavailable")
+            return es_search(entity_type, fqn_search_string, **kwargs)
+
+        metadata.es_search_from_fqn = failing_search
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(local.id.root)}
+
+    def test_override_keeps_the_edges_of_an_ambiguous_local_table(self, metadata, tables, lineage, system_tables):
+        first = self._add_table(tables, "default", "events_local")
+        second = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        for upstream in (first, second, old_local):
+            self._edge(lineage, upstream, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(first.id.root), str(second.id.root)}
+
+    def test_override_keeps_the_edge_the_search_matches_in_another_case(self, metadata, tables, lineage, system_tables):
+        local = self._add_table(tables, "default", "events_local")
+        tables[("default", "Events_Local")] = [local]
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events_Local')")
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+
+        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert request.edge.fromEntity.id == local.id
+        metadata.delete_lineage_edge.assert_not_called()
+
+    @pytest.mark.parametrize(
+        "engine_full",
+        [
+            pytest.param("Distributed('{missing}', 'default', 'events_local')", id="undefined-macro"),
+            pytest.param("Distributed('c', '', 'events_local')", id="empty-database"),
+            pytest.param("Distributed('c', currentDatabase(), 'events_local')", id="unreadable-arguments"),
+        ],
+    )
+    def test_override_removes_nothing_when_the_definition_cannot_be_read(
+        self, metadata, tables, lineage, system_tables, engine_full
+    ):
+        local = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", engine_full)
+        self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == {str(local.id.root), str(old_local.id.root)}
+        metadata.get_lineage_by_id.assert_not_called()
+
+    def test_override_removes_the_edges_of_a_distributed_table_naming_itself(
+        self, metadata, tables, lineage, system_tables
+    ):
+        old_local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events')")
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == set()
+
+    @pytest.mark.parametrize(
+        "schema_definition,kept",
+        [
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg (`id` UInt64) ENGINE = MergeTree ORDER BY id "
+                "AS SELECT id FROM default.raw_events",
+                False,
+                id="storage-backed-view-the-table-read-from",
+            ),
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg TO default.events_totals "
+                "AS SELECT id FROM default.raw_events",
+                False,
+                id="view-writing-into-another-table",
+            ),
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg TO events AS SELECT id FROM default.raw_events",
+                True,
+                id="view-writing-into-the-distributed-table",
+            ),
+            pytest.param(
+                "CREATE MATERIALIZED VIEW default.events_agg TO other_db.events AS SELECT id FROM default.raw_events",
+                False,
+                id="view-writing-into-a-namesake-in-another-database",
+            ),
+            pytest.param(None, True, id="view-without-a-definition"),
+        ],
+    )
+    def test_override_keeps_materialized_views_writing_into_the_distributed_table(
+        self, metadata, tables, lineage, system_tables, schema_definition, kept
+    ):
+        """A materialized view without `TO` holds its own rows, and a Distributed table may read from it"""
+        local = self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        view = self._add_table(
+            tables, "default", "events_agg", TableType.MaterializedView, schema_definition=schema_definition
+        )
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, view, distributed, LineageSource.ViewLineage)
+
+        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert request.edge.fromEntity.id == local.id
+        assert (str(view.id.root) in self._upstream(lineage, distributed)) is kept
+
+    @pytest.mark.parametrize(
+        "schema_definition",
+        [
+            pytest.param("CREATE VIEW default.events_view AS SELECT id FROM default.raw_events", id="definition"),
+            pytest.param(None, id="no-definition"),
+        ],
+    )
+    def test_override_removes_the_edge_of_a_plain_view_the_table_read_from(
+        self, metadata, tables, lineage, system_tables, schema_definition
+    ):
+        """A plain view writes into no table, so its edge into a Distributed table is one this module built"""
+        self._add_table(tables, "default", "events_local")
+        distributed = self._add_table(tables, "default", "events")
+        view = self._add_table(tables, "default", "events_view", TableType.View, schema_definition=schema_definition)
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+        self._edge(lineage, view, distributed, LineageSource.ViewLineage)
+
+        self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+
+        assert str(view.id.root) not in self._upstream(lineage, distributed)
 
 
 def test_distributed_table_lineage_follows_the_view_lineage(monkeypatch):
