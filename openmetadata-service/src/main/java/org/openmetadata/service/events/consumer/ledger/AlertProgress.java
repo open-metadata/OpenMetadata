@@ -15,7 +15,8 @@ import org.openmetadata.service.events.consumer.ConsumerKind;
  * consumer that reads change events is counted by the rows its events leave, and the events after
  * its position are still to read. One that makes its own work is counted by what it reported, and
  * reads no change event: none is still to read, and it stands at the latest offset whatever its
- * position row says.
+ * position row says. So does an alert that is switched off, since switching it back on starts it
+ * from the latest offset (ADR:2026-11-19-a-disabled-alert-has-nothing-pending).
  */
 public sealed interface AlertProgress {
 
@@ -44,8 +45,24 @@ public sealed interface AlertProgress {
     EventSubscriptionOffset position = AlertRecord.positionOrLatest(alert.getId());
     long latest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
     return ConsumerKind.of(alert).readsChangeEvents()
-        ? new ReadsChangeEvents(alert, position, latest)
+        ? readerOf(alert, position, latest)
         : new MakesItsOwnWork(alert.getId(), position, latest);
+  }
+
+  private static AlertProgress readerOf(
+      EventSubscription alert, EventSubscriptionOffset position, long latest) {
+    return Boolean.FALSE.equals(alert.getEnabled())
+        ? new SwitchedOff(alert.getId(), position, latest)
+        : new ReadsChangeEvents(alert, position, latest);
+  }
+
+  private static Counts countedFromRows(UUID alertId) {
+    String id = alertId.toString();
+    long delivered = Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(id);
+    long failed = Entity.getCollectionDAO().changeEventDAO().countFailedEvents(id);
+    long countedTwice =
+        Entity.getCollectionDAO().eventSubscriptionDAO().countEventsBothDeliveredAndFailed(id);
+    return new Counts(delivered + failed - countedTwice, delivered, failed);
   }
 
   Counts counts();
@@ -74,13 +91,7 @@ public sealed interface AlertProgress {
 
     @Override
     public Counts counts() {
-      String id = alert.getId().toString();
-      long delivered =
-          Entity.getCollectionDAO().eventSubscriptionDAO().getSuccessfulRecordCount(id);
-      long failed = Entity.getCollectionDAO().changeEventDAO().countFailedEvents(id);
-      long countedTwice =
-          Entity.getCollectionDAO().eventSubscriptionDAO().countEventsBothDeliveredAndFailed(id);
-      return new Counts(delivered + failed - countedTwice, delivered, failed);
+      return countedFromRows(alert.getId());
     }
 
     @Override
@@ -114,6 +125,41 @@ public sealed interface AlertProgress {
 
     private Predicate<ChangeEvent> relevant(Relevance relevance) {
       return relevance.since(alert, position.getStartingTimestamp());
+    }
+  }
+
+  /** Keeps the rows of what it handled before it was switched off, and has nothing to read. */
+  record SwitchedOff(UUID alertId, EventSubscriptionOffset position, long latest)
+      implements AlertProgress {
+
+    @Override
+    public Counts counts() {
+      return countedFromRows(alertId);
+    }
+
+    @Override
+    public long currentOffset() {
+      return latest;
+    }
+
+    @Override
+    public long startingOffset() {
+      return position.getStartingOffset();
+    }
+
+    @Override
+    public long latestOffset() {
+      return latest;
+    }
+
+    @Override
+    public PendingCount relevantUnreadCount(Relevance relevance) {
+      return PendingCount.NONE;
+    }
+
+    @Override
+    public UnreadPage unreadPage(int limit, int pageOffset, Relevance relevance) {
+      return UnreadPage.EMPTY;
     }
   }
 
