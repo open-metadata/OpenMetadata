@@ -299,13 +299,6 @@ class MicroStrategyClient:
             try:
                 return self._sql_view(project_id, cube_id)
             except MicroStrategyApiError as exc:
-                if LIVE_CUBE in str(exc):
-                    logger.warning(
-                        "Dataset %s is a Live Intelligent Cube: MicroStrategy keeps no copy of its data and"
-                        " writes its SQL only when it queries the warehouse, so it has no lineage",
-                        cube_id,
-                    )
-                    return None
                 if NOT_A_CUBE not in str(exc):
                     raise
             source_cube = self.get_report_cube(project_id, cube_id)
@@ -329,7 +322,18 @@ class MicroStrategyClient:
         return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
 
     def _sql_view(self, project_id: str, cube_id: str) -> CubeSql | None:
-        response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
+        """A cube's SQL. A Live cube has none, whether it is a dataset or a report's source."""
+        try:
+            response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
+        except MicroStrategyApiError as exc:
+            if LIVE_CUBE not in str(exc):
+                raise
+            logger.warning(
+                "Cube %s is a Live Intelligent Cube: MicroStrategy keeps no copy of its data and"
+                " writes its SQL only when it queries the warehouse, so it has no lineage",
+                cube_id,
+            )
+            return None
         sql = strip_engine_steps(response.get("sqlStatement"))
         return CubeSql(cube=cube_id, sql=sql) if sql else None
 
