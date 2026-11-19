@@ -3,8 +3,8 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-19 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `AlertProgressTest`, `AlertDeliveryIT.alertSwitchedBackOnSendsOnlyWhatHappensFromThen`
-- **Related:** OM PR #24866 (position read from the database), OM PR #36279 and OM PR #38094 (pending count capped at 500)
+- **Guard:** `AlertProgressTest`, `AlertDeliveryIT.alertSwitchedBackOnSendsOnlyWhatHappensFromThen`, `AlertDeliveryIT.alertCreatedOffWithAPositionAnOlderReleaseWroteHasNothingPending`, `AlertStateIT.diagnosticsReadCreatesNoRow`
+- **Related:** OM PR #24866 (position read from the database), OM PR #32589 (2.0.2: a read saves a missing position), OM PR #36279 and OM PR #38094 (pending count capped at 500)
 
 ## Context
 
@@ -13,8 +13,14 @@ Re-enabling skips the backlog (`EventSubscriptionRepository.postUpdate` calls
 `AlertRecord.skipBacklog`), so what happens while the alert is off is never sent. Every reader of
 "what is unread" still counted from the frozen row, so a disabled alert reported a backlog that
 would never be sent: "500+" pending on its page, unread events in its diagnostics, and a lag that
-grew with every change event on the platform. A customer alert disabled for three weeks was 78k
-events behind, and loading its page ran the server out of memory before the 500 cap existed.
+grew with every change event on the platform.
+
+A disabled alert gets such a row in two ways. One that ran and was then switched off keeps the row
+where it stopped. One created switched off never runs, but releases 2.0.2 to 2.0.x saved a row at
+the latest offset the first time anything read its position (`AlertUtil.getStartingOffset`), so the
+first page view froze it there; an upgrade carries those rows over. A customer alert created
+switched off had such a row, 78k events behind, and loading its page ran the server out of memory
+before the 500 cap existed.
 
 Moving the row at disable time is not enough, because events keep arriving while the alert is off.
 Keeping the row at the latest offset would need a write for every change event, or a sweep, and
@@ -32,10 +38,17 @@ The position row itself is left as it is: it belongs to the alert's ticks, which
 is enabled, and `skipBacklog` on re-enable stays the one write that decides where the alert resumes.
 Code outside the ledger does not read the position row to describe an alert's progress.
 
+Reading never writes a position. Only these write one: scheduling an enabled alert
+(`AlertJobs` calls `AlertRecord.start`, which inserts only when absent), its ticks (compare and set,
+never an insert), and `skipBacklog`, called when an alert is switched on, by the `syncOffset`
+endpoint and command an admin runs, and by the 2.1.0 backlog migration, which skips disabled alerts.
+An alert created switched off has no row until it is first switched on.
+
 ## Consequences
 
 - Alerts that were already disabled before this rule report nothing pending with no migration,
-  because the rule is evaluated on every read from the alert's own row.
+  because the rule is evaluated on every read from the alert's own row, whichever way their row
+  was written. Switching one on still skips its row to the latest offset, so neither shape replays.
 - The rule holds on every replica: it reads only the alert row, bypassing the caches, and database
   rows, so no node needs in-memory state, which is why OM PR #24866 moved the position to the
   database.
