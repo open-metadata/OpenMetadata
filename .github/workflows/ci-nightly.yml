@@ -126,7 +126,7 @@ jobs:
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: true
+      collect-coverage: ${{ matrix.python == needs.plan.outputs.lowest }}
       run-meta-tests: ${{ matrix.python == needs.plan.outputs.highest }}
   integration:
     needs:
@@ -141,7 +141,7 @@ jobs:
     with:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
-      collect-coverage: true
+      collect-coverage: ${{ matrix.python == needs.plan.outputs.lowest }}
   cli-e2e:
     needs:
       - plan

@@ -20,6 +20,7 @@ on:
         type: string
         required: true
       collect-coverage:
+        description: Upload coverage from MySQL shards
         type: boolean
         required: false
         default: false
@@ -105,7 +106,7 @@ jobs:
         with:
           suite: integration
           nox-args: --standalone --durations=5 ${{ matrix.shard.nox-args }}
-          collect-coverage: ${{ inputs.collect-coverage }}
+          collect-coverage: ${{ inputs.collect-coverage && matrix.database.name == 'mysql' }}
           coverage-name: coverage-integration-${{ inputs.python-version }}-${{ matrix.database.name }}-${{ matrix.shard.name }}
       - name: Report test results
         if: ${{ always() }}
