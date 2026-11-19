@@ -16,7 +16,6 @@ package org.openmetadata.service.secrets.converter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
 import org.openmetadata.schema.auth.SSOAuthMechanism;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
@@ -92,9 +91,6 @@ import org.openmetadata.schema.services.connections.database.databricks.Personal
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
-import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreDbConnection;
-import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreFilePathConnection;
-import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreHostPortConnection;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -134,7 +130,13 @@ public final class ClassConverterFactory {
 
   @Getter private static final Map<Class<?>, ClassConverter> converterMap;
 
-  private static final Map<Class<?>, Boolean> SAMPLE_DATA_HOLDERS = new ConcurrentHashMap<>();
+  private static final ClassValue<Boolean> SAMPLE_DATA_HOLDERS =
+      new ClassValue<>() {
+        @Override
+        protected Boolean computeValue(Class<?> type) {
+          return SampleDataStorageConfigClassConverter.holdsSampleDataStorageConfig(type);
+        }
+      };
 
   /**
    * Connections whose {@code Object} properties -- the ones a JSON Schema {@code oneOf} produces --
@@ -143,20 +145,13 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
-          // Released 2.0 versions tried the metastore config first, so a storage config was saved
-          // as one, with its default appName: its S3 config is typed here, as the last candidate.
           Map.entry(
               MetastoreConfig.class,
               new NestedConfigClassConverter(
                   MetastoreConfig.class,
                   Map.of(
                       "connection",
-                      List.of(
-                          MetastoreHostPortConnection.class,
-                          MetastoreDbConnection.class,
-                          MetastoreFilePathConnection.class,
-                          org.openmetadata.schema.services.connections.database.datalake.S3Config
-                              .class)))),
+                      DeltaLakeConnectionClassConverter.METASTORE_CONNECTION_CLASSES))),
           Map.entry(
               SampleDataStorageConfig.class,
               new NestedConfigClassConverter(
@@ -414,8 +409,7 @@ public final class ClassConverterFactory {
   public static ClassConverter getConverter(Class<?> clazz) {
     ClassConverter converter =
         converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
-    return SAMPLE_DATA_HOLDERS.computeIfAbsent(
-            clazz, SampleDataStorageConfigClassConverter::holdsSampleDataStorageConfig)
+    return SAMPLE_DATA_HOLDERS.get(clazz)
         ? new SampleDataStorageConfigClassConverter(clazz, converter)
         : converter;
   }

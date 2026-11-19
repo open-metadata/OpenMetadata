@@ -15,8 +15,12 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.services.connections.database.DeltaLakeConnection;
+import org.openmetadata.schema.services.connections.database.datalake.S3Config;
 import org.openmetadata.schema.services.connections.database.deltalake.MetastoreConfig;
 import org.openmetadata.schema.services.connections.database.deltalake.StorageConfig;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreDbConnection;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreFilePathConnection;
+import org.openmetadata.schema.services.connections.database.deltalake.metastore.MetastoreHostPortConnection;
 import org.openmetadata.schema.utils.JsonUtils;
 
 /** Converter class to get an `DeltaLakeConnection` object. */
@@ -27,6 +31,18 @@ public class DeltaLakeConnectionClassConverter extends ClassConverter {
   // metastore one and leave its credentials untyped.
   private static final List<Class<?>> CONFIG_SOURCE_CLASSES =
       List.of(StorageConfig.class, MetastoreConfig.class);
+
+  /**
+   * The connections a metastore config can hold. Released 2.0 versions tried the metastore config
+   * first, so a storage config was saved as one, with its default appName: its S3 config is typed
+   * here, as the last candidate.
+   */
+  static final List<Class<?>> METASTORE_CONNECTION_CLASSES =
+      List.of(
+          MetastoreHostPortConnection.class,
+          MetastoreDbConnection.class,
+          MetastoreFilePathConnection.class,
+          S3Config.class);
 
   public DeltaLakeConnectionClassConverter() {
     super(DeltaLakeConnection.class);

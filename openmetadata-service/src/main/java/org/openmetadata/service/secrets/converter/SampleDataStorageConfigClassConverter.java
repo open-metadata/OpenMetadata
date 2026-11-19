@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.secrets.converter;
 
+import java.util.Arrays;
 import java.util.List;
 import org.openmetadata.schema.services.connections.database.SampleDataStorageConfig;
 
@@ -43,11 +44,10 @@ final class SampleDataStorageConfigClassConverter extends ClassConverter {
   }
 
   static boolean holdsSampleDataStorageConfig(Class<?> clazz) {
-    try {
-      return clazz.getMethod("getSampleDataStorageConfig").getReturnType()
-          == SampleDataStorageConfig.class;
-    } catch (NoSuchMethodException e) {
-      return false;
-    }
+    return Arrays.stream(clazz.getMethods())
+        .anyMatch(
+            method ->
+                "getSampleDataStorageConfig".equals(method.getName())
+                    && method.getReturnType() == SampleDataStorageConfig.class);
   }
 }
