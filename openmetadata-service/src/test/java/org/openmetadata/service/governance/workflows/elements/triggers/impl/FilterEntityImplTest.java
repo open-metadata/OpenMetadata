@@ -26,6 +26,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.service.governance.workflows.TriggeringChange;
 
 class FilterEntityImplTest {
 
@@ -324,14 +325,10 @@ class FilterEntityImplTest {
 
   // Only a create may carry no change to judge; an update that left none must not pass the filter.
   @Test
-  void testOnlyCreateOrUntypedRunMayCarryNoChange() throws Exception {
-    Method mayCarryNoChange =
-        FilterEntityImpl.class.getDeclaredMethod("mayCarryNoChange", Object.class);
-    mayCarryNoChange.setAccessible(true);
-
-    assertTrue((boolean) mayCarryNoChange.invoke(null, EventType.ENTITY_CREATED.value()));
-    assertFalse((boolean) mayCarryNoChange.invoke(null, EventType.ENTITY_UPDATED.value()));
-    assertTrue((boolean) mayCarryNoChange.invoke(null, (Object) null));
+  void testOnlyCreateOrUntypedRunMayCarryNoChange() {
+    assertTrue(TriggeringChange.mayCarryNoChange(EventType.ENTITY_CREATED.value()));
+    assertFalse(TriggeringChange.mayCarryNoChange(EventType.ENTITY_UPDATED.value()));
+    assertTrue(TriggeringChange.mayCarryNoChange(null));
   }
 
   @Test
