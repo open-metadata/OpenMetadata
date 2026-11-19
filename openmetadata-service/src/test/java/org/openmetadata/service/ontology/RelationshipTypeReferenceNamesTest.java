@@ -63,6 +63,12 @@ class RelationshipTypeReferenceNamesTest {
   }
 
   @Test
+  void unquotesTheFqnOfADottedName() {
+    assertEquals(
+        "has.part", RelationshipTypeReferenceNames.named(fqnOnly("\"has.part\"")).getName());
+  }
+
+  @Test
   void leavesNamedAndAbsentReferencesAlone() {
     final EntityReference named = fqnOnly("inverse").withName("inverse");
     final RelationshipType type = new RelationshipType().withName("forward").withInverse(named);

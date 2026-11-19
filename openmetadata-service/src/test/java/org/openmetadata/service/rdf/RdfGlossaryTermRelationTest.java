@@ -16,7 +16,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -175,14 +174,14 @@ class RdfGlossaryTermRelationTest {
     definitions.add(apiType(DANGLING, "urn:custom:dangling", "neverCreated"));
     final CollectionDAO.RelationshipTypeDAO types = mock(CollectionDAO.RelationshipTypeDAO.class);
     when(types.listActive()).thenReturn(definitions.stream().map(JsonUtils::pojoToJson).toList());
-    when(types.findEntityByName(anyString(), eq(Include.NON_DELETED)))
+    when(types.findEntityByName(anyString(), any(Include.class)))
         .thenAnswer(
             call ->
                 definitions.stream()
                     .filter(type -> type.getName().equals(call.getArgument(0)))
                     .findFirst()
                     .orElseThrow(() -> new EntityNotFoundException(call.getArgument(0))));
-    when(types.findEntityById(any(UUID.class), eq(Include.NON_DELETED)))
+    when(types.findEntityById(any(UUID.class), any(Include.class)))
         .thenAnswer(
             call ->
                 definitions.stream()

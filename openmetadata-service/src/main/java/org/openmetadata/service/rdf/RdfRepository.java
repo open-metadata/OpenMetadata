@@ -4123,7 +4123,7 @@ public class RdfRepository {
     final Set<String> predicateUris = new LinkedHashSet<>();
     predicateUris.add(type.getRdfPredicate().toString());
     resolver
-        .inverseOf(type)
+        .inverseOf(type, Include.ALL)
         .ifPresent(inverse -> predicateUris.add(inverse.getRdfPredicate().toString()));
     return predicateUris;
   }

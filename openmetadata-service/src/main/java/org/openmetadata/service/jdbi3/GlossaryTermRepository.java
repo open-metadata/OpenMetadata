@@ -1459,6 +1459,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return relationshipTypeResolver.inverseName(relationType);
   }
 
+  private String readableInverseType(String relationType) {
+    return relationshipTypeResolver
+        .inverseOf(relationshipTypeResolver.require(relationType))
+        .map(RelationshipType::getName)
+        .orElse(null);
+  }
+
   private boolean isEquivalentRelationType(String typeA, String typeB) {
     if (typeA.equals(typeB)) {
       return true;
@@ -2368,7 +2375,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         TermRelation relation = buildTermRelation(rec.getJson(), relatedRef, relationType);
         relatedTermsMap.computeIfAbsent(termId, k -> new ArrayList<>()).add(relation);
 
-        String inverseType = getInverseRelationType(relationType);
+        String inverseType = readableInverseType(relationType);
         String reverseType = inverseType != null ? inverseType : relationType;
         EntityReference termRef =
             Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, termId, Include.ALL);
@@ -2387,7 +2394,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               : relatedTermId + ":" + termId + ":" + relationType;
 
       if (processedPairs.add(pairKey)) {
-        String inverseType = getInverseRelationType(relationType);
+        String inverseType = readableInverseType(relationType);
         String termRelType = inverseType != null ? inverseType : relationType;
         EntityReference relatedRef =
             Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, relatedTermId, Include.ALL);

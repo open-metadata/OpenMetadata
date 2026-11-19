@@ -17,6 +17,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -25,6 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 public final class RelationshipTypeResolver {
   private final CollectionDAO.RelationshipTypeDAO relationshipTypeDAO;
@@ -64,45 +66,51 @@ public final class RelationshipTypeResolver {
     return relationshipType;
   }
 
+  /**
+   * The name of the inverse {@code name} declares, whether or not it is registered: the writes that
+   * pick a stored direction need the declared one, and refuse a missing type when they look it up.
+   */
   public String inverseName(final String name) {
-    return inverseOf(require(name)).map(RelationshipType::getName).orElse(null);
+    final RelationshipType relationshipType = require(name);
+    final String inverseName =
+        relationshipType.getInverse() == null ? null : relationshipType.getInverse().getName();
+    return inverseName;
   }
 
   /**
-   * The live type {@code relationshipType} names as its inverse. An inverse that names no live type
-   * reads as none, so a term read or an RDF delete never fails on it.
+   * The live type {@code relationshipType} names as its inverse, for reads: an inverse that names
+   * no live type reads as none rather than failing the read.
    */
   public Optional<RelationshipType> inverseOf(final RelationshipType relationshipType) {
-    return Optional.ofNullable(relationshipType.getInverse()).flatMap(this::findReferenced);
+    return inverseOf(relationshipType, Include.NON_DELETED);
   }
 
-  /** The live type a reference names: by id, else by name, which for this type is its FQN. */
-  public Optional<RelationshipType> findReferenced(final EntityReference reference) {
-    return findLiveById(reference.getId())
-        .or(() -> findLiveByName(RelationshipTypeReferenceNames.named(reference).getName()));
+  public Optional<RelationshipType> inverseOf(
+      final RelationshipType relationshipType, final Include include) {
+    return Optional.ofNullable(relationshipType.getInverse())
+        .flatMap(inverse -> findReferenced(inverse, include));
   }
 
-  private Optional<RelationshipType> findLiveById(final UUID id) {
+  /** The type a reference names: by id, else by name. */
+  public Optional<RelationshipType> findReferenced(
+      final EntityReference reference, final Include include) {
+    final EntityReference named = RelationshipTypeReferenceNames.named(reference);
+    return find(() -> relationshipTypeDAO.findEntityById(named.getId(), include), named.getId())
+        .or(
+            () ->
+                find(
+                    () ->
+                        relationshipTypeDAO.findEntityByName(
+                            FullyQualifiedName.quoteName(named.getName()), include),
+                    named.getName()));
+  }
+
+  private static Optional<RelationshipType> find(
+      final Supplier<RelationshipType> lookup, final Object key) {
     Optional<RelationshipType> found = Optional.empty();
-    if (id != null) {
+    if (key != null) {
       try {
-        found =
-            Optional.ofNullable(relationshipTypeDAO.findEntityById(id, Include.NON_DELETED))
-                .map(RelationshipTypeResolver::named);
-      } catch (EntityNotFoundException exception) {
-        found = Optional.empty();
-      }
-    }
-    return found;
-  }
-
-  private Optional<RelationshipType> findLiveByName(final String name) {
-    Optional<RelationshipType> found = Optional.empty();
-    if (name != null) {
-      try {
-        found =
-            Optional.ofNullable(relationshipTypeDAO.findEntityByName(name, Include.NON_DELETED))
-                .map(RelationshipTypeResolver::named);
+        found = Optional.ofNullable(lookup.get()).map(RelationshipTypeResolver::named);
       } catch (EntityNotFoundException exception) {
         found = Optional.empty();
       }

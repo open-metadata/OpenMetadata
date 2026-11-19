@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.RelationshipType;
@@ -35,6 +36,7 @@ import org.openmetadata.service.ontology.RelationshipTypeValidator;
 import org.openmetadata.service.resources.ontology.RelationshipTypeResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Repository
 public class RelationshipTypeRepository extends EntityRepository<RelationshipType> {
@@ -80,7 +82,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   @Override
   public void prepare(final RelationshipType entity, final boolean update) {
-    entity.setFullyQualifiedName(entity.getName());
+    entity.setFullyQualifiedName(FullyQualifiedName.quoteName(entity.getName()));
     applyDefaults(entity);
     hydrateReferences(entity);
     RelationshipTypeValidator.validate(entity);
@@ -142,33 +144,43 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   private EntityReference hydrate(final EntityReference reference, final RelationshipType self) {
-    final RelationshipType target = reference == null ? null : findTarget(reference, self);
-    return target == null
-        ? RelationshipTypeReferenceNames.named(reference)
-        : JsonUtils.deepCopy(reference, EntityReference.class)
-            .withId(target.getId())
-            .withName(target.getName())
-            .withFullyQualifiedName(target.getFullyQualifiedName());
+    final EntityReference named = RelationshipTypeReferenceNames.named(reference);
+    final RelationshipType target = named == null ? null : findTarget(named, self);
+    return target == null ? named : RelationshipTypeReferenceNames.referenceTo(target);
   }
 
   private RelationshipType findTarget(
       final EntityReference reference, final RelationshipType self) {
-    return refersTo(reference, self) ? self : findStoredTarget(reference);
+    final boolean isSelf =
+        (reference.getId() != null && reference.getId().equals(self.getId()))
+            || self.getName().equals(reference.getName());
+    final RelationshipType target = isSelf ? self : findStoredTarget(reference);
+    requireOneIdentity(reference, target);
+    return target;
   }
 
-  private static boolean refersTo(final EntityReference reference, final RelationshipType self) {
-    final boolean byId = reference.getId() != null && reference.getId().equals(self.getId());
-    final boolean byFqn =
-        reference.getFullyQualifiedName() != null
-            && reference.getFullyQualifiedName().equals(self.getFullyQualifiedName());
-    return byId || byFqn;
-  }
-
-  /** By id first, deleted or not; null when the reference names no type yet. */
+  /** By id, else by name, deleted or not; null when the reference names no type yet. */
   private RelationshipType findStoredTarget(final EntityReference reference) {
     final RelationshipType byId = reference.getId() == null ? null : findByIdOrNull(reference);
-    final String name = RelationshipTypeReferenceNames.named(reference).getName();
-    return byId == null && name != null ? findByNameOrNull(name, Include.ALL) : byId;
+    return byId != null || reference.getName() == null
+        ? byId
+        : findByNameOrNull(FullyQualifiedName.quoteName(reference.getName()), Include.ALL);
+  }
+
+  /** A reference whose id, name and FQN name different types is refused, not resolved by one. */
+  private static void requireOneIdentity(
+      final EntityReference reference, final RelationshipType target) {
+    final String fqnName =
+        reference.getFullyQualifiedName() == null
+            ? reference.getName()
+            : FullyQualifiedName.unquoteName(reference.getFullyQualifiedName());
+    final String targetName = target == null ? reference.getName() : target.getName();
+    if (!Objects.equals(targetName, reference.getName()) || !Objects.equals(targetName, fqnName)) {
+      throw new BadRequestException(
+          String.format(
+              "Relationship type reference %s names more than one relationship type",
+              JsonUtils.pojoToJson(reference)));
+    }
   }
 
   private RelationshipType findByIdOrNull(final EntityReference reference) {
