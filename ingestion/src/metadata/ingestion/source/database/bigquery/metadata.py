@@ -868,6 +868,28 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 else:
                     self._region_lifecycle_inflight[key] = (scan_lock, users - 1)
 
+    @staticmethod
+    def _region_error_http_status(error: BaseException) -> int | None:
+        """Find the original HTTP error beneath SQLAlchemy DBAPI wrappers."""
+        pending = [error]
+        visited = set()
+        while pending:
+            current = pending.pop()
+            if id(current) in visited:
+                continue
+            visited.add(id(current))
+            code = getattr(current, "code", None)
+            if isinstance(code, int) and 100 <= code < 600:
+                return code
+            for inner in (
+                getattr(current, "orig", None),
+                current.__cause__,
+                current.__context__,
+            ):
+                if isinstance(inner, BaseException):
+                    pending.append(inner)
+        return None
+
     def _read_region_lifecycle(
         self, database: str, region: str, schema_name: str
     ) -> dict[str, LifeCycleQueryByTable] | None:
@@ -934,9 +956,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                             (database, normalized_region),
                         )
                         attempts = 1 if state is None else state[1] + 1
-                        code = getattr(exc, "code", None)
+                        code = self._region_error_http_status(exc)
                         permanent = isinstance(exc, (sqlite3.Error, OSError)) or (
-                            isinstance(code, int) and 400 <= code < 500 and code != 429
+                            code is not None and 400 <= code < 500 and code != 429
                         )
                         next_status = "failed" if permanent or attempts >= 2 else "retry"
                         db.execute(
