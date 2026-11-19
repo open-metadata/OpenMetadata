@@ -72,6 +72,7 @@ export interface ExtensionOptions {
 }
 
 export interface BlockEditorProps {
+  ariaLabel?: string;
   content?: string;
   editable?: boolean;
   onFocus?: () => void;

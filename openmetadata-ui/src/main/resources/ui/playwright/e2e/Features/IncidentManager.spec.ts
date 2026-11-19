@@ -31,6 +31,7 @@ import {
   acknowledgeTask,
   addAssigneeFromPopoverWidget,
   assignIncident,
+  seedFailedIncidents,
   triggerTestSuitePipelineAndWaitForSuccess,
   verifyIncidentStatus,
   visitProfilerTab,
@@ -837,14 +838,19 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       await page.click(`[data-testid="${testCaseName}-status"]`);
       await page.getByTestId('status-item-Resolved').click();
       await page.click('[data-testid="reason-chip-MissingData"]');
-      await page.getByTestId('resolved-comment-textarea').click();
-      await page
-        .locator('[data-testid="resolved-comment-textarea"] textarea')
-        .first()
-        .fill('test');
+      const resolutionEditor = page
+        .getByTestId('resolved-comment-textarea')
+        .getByRole('textbox', { name: 'Comment' });
+      await resolutionEditor.fill('Fixed upstream, please verify ');
+      await resolutionEditor.pressSequentially(`@${user1.responseData.name}`);
+      await page.locator(`#mention-item-${user1.responseData.id}`).click();
       const updateTestCaseIncidentStatus = waitForTaskResolveResponse(page);
       await page.getByTestId('submit-resolved-popover-button').click();
-      await updateTestCaseIncidentStatus;
+      const resolutionResponse = await updateTestCaseIncidentStatus;
+      expect(resolutionResponse.status()).toBe(200);
+      expect(resolutionResponse.request().postDataJSON().comment).toContain(
+        `<#E::user::${user1.responseData.name}|`
+      );
     });
 
     /**
@@ -1299,3 +1305,112 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
     await expect(page.getByTestId('incident-clear-filters')).not.toBeVisible();
   });
 });
+
+test(
+  'Incident resolution mentions work in the status popover and details modal',
+  {
+    tag: '@observability',
+  },
+  async ({ browser }) => {
+    test.slow();
+    const { page, apiContext, afterAction } = await performAdminLogin(browser, {
+      navigate: true,
+    });
+    const mentionTable = new TableClass();
+    const mentionedUser = new UserClass();
+
+    try {
+      await mentionTable.create(apiContext);
+      await mentionedUser.create(apiContext);
+      await expect
+        .poll(async () => {
+          const response = await apiContext.get('/api/v1/search/query', {
+            params: {
+              q: mentionedUser.responseData.name,
+              index: 'user_search_index',
+            },
+          });
+          expect(response.ok()).toBeTruthy();
+          const results = await response.json();
+          return results.hits.hits.some(
+            (hit: { _id: string }) => hit._id === mentionedUser.responseData.id
+          );
+        })
+        .toBe(true);
+      const incidents = await seedFailedIncidents({
+        apiContext,
+        table: mentionTable,
+        count: 2,
+      });
+
+      for (const [index, entryPoint] of ['popover', 'modal'].entries()) {
+        await test.step(`Select and persist a mention from the ${entryPoint}`, async () => {
+          const testCase = incidents[index];
+          await page.goto(
+            `/test-case/${encodeURIComponent(
+              testCase.fullyQualifiedName
+            )}/test-case-results`
+          );
+          await waitForAllLoadersToDisappear(page);
+
+          if (entryPoint === 'popover') {
+            await page.getByTestId(`${testCase.name}-status`).click();
+            await page.getByTestId('status-item-Resolved').click();
+            await page.getByTestId('reason-chip-Other').click();
+          } else {
+            await page.getByTestId('edit-resolution-icon').click();
+            await page
+              .getByTestId('test-case-resolution-status-type')
+              .getByRole('button')
+              .click();
+            await page
+              .getByRole('option', { name: 'Resolved', exact: true })
+              .click();
+            await page
+              .getByTestId('test-case-failure-reason')
+              .getByRole('button')
+              .click();
+            await page
+              .getByRole('option', { name: 'Other', exact: true })
+              .click();
+          }
+
+          const editor = page.getByRole('textbox', {
+            name: 'Comment',
+            exact: true,
+          });
+          await editor.pressSequentially(`@${mentionedUser.responseData.name}`);
+          const suggestion = page.locator(
+            `#mention-item-${mentionedUser.responseData.id}`
+          );
+          await expect(suggestion).toBeVisible();
+          await suggestion.click();
+          const resolved = waitForTaskResolveResponse(page);
+          await page
+            .getByTestId(
+              entryPoint === 'popover'
+                ? 'submit-resolved-popover-button'
+                : 'update-status-button'
+            )
+            .click();
+          const response = await resolved;
+          expect(response.status()).toBe(200);
+          const mention = `<#E::user::${mentionedUser.responseData.name}|`;
+          expect(response.request().postDataJSON().comment).toContain(mention);
+          const task = await response.json();
+          const stored = await apiContext.get(
+            `/api/v1/tasks/${task.id}?fields=resolution`
+          );
+          expect(stored.ok()).toBeTruthy();
+          expect((await stored.json()).resolution.comment).toContain(mention);
+        });
+      }
+    } finally {
+      await Promise.allSettled([
+        mentionTable.delete(apiContext),
+        mentionedUser.delete(apiContext),
+      ]);
+      await afterAction();
+    }
+  }
+);

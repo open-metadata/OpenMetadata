@@ -35,6 +35,8 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEditor';
+import RichTextEditorPreviewerV1 from '../../../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { JsonSchemaObject } from '../../../rest/taskFormSchemasAPI';
 import { TaskPayload } from '../../../rest/tasksAPI';
@@ -136,21 +138,29 @@ type FieldWidgetKind =
   | 'number'
   | 'boolean'
   | 'textarea'
+  | 'richtext'
   | 'objectOrArray'
   | 'default';
+
+const EXPLICIT_FIELD_WIDGETS: ReadonlyMap<unknown, FieldWidgetKind> = new Map([
+  ['descriptionTabs', 'descriptionTabs'],
+  ['tagsTabs', 'tagsTabs'],
+  ['tagSelector', 'tagSelector'],
+  ['textarea', 'textarea'],
+  ['richtext', 'richtext'],
+]);
 
 function selectFieldWidgetKind(
   widget: unknown,
   fieldSchema?: JsonSchemaProperty
 ): FieldWidgetKind {
-  if (widget === 'descriptionTabs') {
-    return 'descriptionTabs';
-  }
-  if (widget === 'tagsTabs') {
-    return 'tagsTabs';
-  }
-  if (widget === 'tagSelector') {
-    return 'tagSelector';
+  const explicitKind = EXPLICIT_FIELD_WIDGETS.get(widget);
+  if (
+    explicitKind &&
+    explicitKind !== 'textarea' &&
+    explicitKind !== 'richtext'
+  ) {
+    return explicitKind;
   }
   if (fieldSchema?.enum?.length) {
     return 'enum';
@@ -161,8 +171,8 @@ function selectFieldWidgetKind(
   if (fieldSchema?.type === 'boolean') {
     return 'boolean';
   }
-  if (widget === 'textarea') {
-    return 'textarea';
+  if (explicitKind) {
+    return explicitKind;
   }
   if (fieldSchema?.type === 'object' || fieldSchema?.type === 'array') {
     return 'objectOrArray';
@@ -670,6 +680,37 @@ const TaskPayloadSchemaFields = ({
     );
   };
 
+  const renderRichTextField: FieldRenderer = (
+    fieldName,
+    _fieldSchema,
+    label,
+    description
+  ) => {
+    if (mode === 'read') {
+      return renderReadOnlyRow(
+        fieldName,
+        label,
+        <RichTextEditorPreviewerV1
+          markdown={String(getFieldValue(fieldName, '') ?? '')}
+        />,
+        icons?.[fieldName]
+      );
+    }
+
+    return (
+      <Box direction="col" gap={2} key={fieldName}>
+        <FormItemLabel label={label} required={requiredFields.has(fieldName)} />
+        <RichTextEditor
+          aria-label={label}
+          initialValue={String(getFieldValue(fieldName, '') ?? '')}
+          placeHolder={description}
+          showMenu={false}
+          onTextChange={(value) => updateField(fieldName, value)}
+        />
+      </Box>
+    );
+  };
+
   const renderObjectOrArrayField: FieldRenderer = (
     fieldName,
     fieldSchema,
@@ -756,6 +797,7 @@ const TaskPayloadSchemaFields = ({
     number: renderNumberField,
     boolean: renderBooleanField,
     textarea: renderTextareaField,
+    richtext: renderRichTextField,
     objectOrArray: renderObjectOrArrayField,
     default: renderDefaultField,
   };

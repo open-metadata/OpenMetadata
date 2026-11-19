@@ -18,7 +18,6 @@ import {
   Dropdown,
   Input,
   Label,
-  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
@@ -49,6 +48,7 @@ import { reopenResolvedIncident } from '../../../../utils/DataQuality/IncidentMa
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
+import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import { UserTag } from '../../../common/UserTag/UserTag.component';
 import { ChipTrigger } from './InlineIncidentStatus/ChipTrigger.component';
 import { FailureReasonChipGroup } from './InlineIncidentStatus/FailureReasonChipGroup.component';
@@ -553,16 +553,17 @@ const InlineTestCaseIncidentStatus = ({
           onSelect={setSelectedReason}
         />
         <Label isRequired>{t('label.comment')}</Label>
-        <TextArea
-          data-testid="resolved-comment-textarea"
-          placeholder={t('message.enter-a-field', {
-            field: t('label.comment-lowercase'),
-          })}
-          rows={4}
-          textAreaClassName="tw:text-xs"
-          value={comment}
-          onChange={(value) => setComment(String(value ?? ''))}
-        />
+        <Box data-testid="resolved-comment-textarea" direction="col">
+          <RichTextEditor
+            aria-label={t('label.comment')}
+            initialValue={comment}
+            placeHolder={t('message.enter-a-field', {
+              field: t('label.comment-lowercase'),
+            })}
+            showMenu={false}
+            onTextChange={setComment}
+          />
+        </Box>
       </Box>
     </>
   );

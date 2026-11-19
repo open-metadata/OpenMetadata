@@ -49,6 +49,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
   (
     {
       content = '',
+      ariaLabel,
       editable = true,
       menuType = 'bubble',
       autoFocus,
@@ -102,6 +103,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
         // not a text field, so it keeps the generic semantics it had on v2.
         attributes: () => ({
           class: 'om-block-editor',
+          ...(ariaLabel ? { 'aria-label': ariaLabel } : {}),
           ...(autoFocus ? { autofocus: 'true' } : {}),
           ...(editableRef.current ? {} : { role: 'presentation' }),
         }),
