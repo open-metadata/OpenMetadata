@@ -1062,6 +1062,34 @@ const getRuleValueType = (
   return fieldType ?? 'text';
 };
 
+// The operator and value a property rule's clause states: one clause per value under a `must`/`should` (Any in, Not
+// in, an enum's multiselect), or a single clause.
+const readCustomPropertyRule = (
+  clause: UnknownRecord,
+  drillLevels: number,
+  fieldType: string | undefined
+): { operator: string; value: unknown[] } | undefined => {
+  const multiValue = readMultiValueCustomProperty(
+    stripDrillWrappers(clause, drillLevels)
+  );
+  const multiValueOperator =
+    multiValue &&
+    getMultiValueOperator(
+      fieldType,
+      multiValue.occurrence,
+      multiValue.parsed.shape,
+      multiValue.parsed.negated
+    );
+
+  if (multiValueOperator) {
+    return { operator: multiValueOperator, value: [multiValue.values] };
+  }
+
+  const single = readCustomPropertyClause(clause);
+
+  return single ? toCustomPropertyRule(single, fieldType) : undefined;
+};
+
 const matchCustomProperty: QueryFilterBranchHandler = (
   curr,
   parentPath,
@@ -1100,27 +1128,7 @@ const matchCustomProperty: QueryFilterBranchHandler = (
     : [extension];
   const field = [...levels.slice(-1), found.key].join('.');
   const fieldType = resolveFieldType(fields, field);
-  const multiValue = readMultiValueCustomProperty(
-    stripDrillWrappers(clause, levels.length)
-  );
-  const multiValueOperator =
-    multiValue &&
-    getMultiValueOperator(
-      fieldType,
-      multiValue.occurrence,
-      multiValue.parsed.shape,
-      multiValue.parsed.negated
-    );
-  const single = multiValueOperator
-    ? undefined
-    : readCustomPropertyClause(clause);
-  let rule: { operator: string; value: unknown[] } | undefined;
-
-  if (multiValueOperator) {
-    rule = { operator: multiValueOperator, value: [multiValue.values] };
-  } else if (single) {
-    rule = toCustomPropertyRule(single, fieldType);
-  }
+  const rule = readCustomPropertyRule(clause, levels.length, fieldType);
 
   if (!rule) {
     return undefined;
