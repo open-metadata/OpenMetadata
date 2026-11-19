@@ -208,16 +208,20 @@ public final class McpResponseUtils {
   }
 
   /**
+   * Keeps the whole-entity reply this overload has always returned, because Collate extensions
+   * call it without a JSON Patch to project from. Only the spec-based overloads return the compact
+   * confirmation. ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
+   */
+  public static Map<String, Object> compactPatch(
+      final EntityInterface<?> entity, final EventType changeType) {
+    return fullPatch(entity, null, changeType);
+  }
+
+  /**
    * Projects a patched entity into a compact confirmation carrying identity fields, version,
    * updatedAt, operation, changed field names, and touched non-bulk metadata.
    * ADR:2026-11-17-mcp-patch-entity-returns-compact-confirmation
    */
-  public static Map<String, Object> compactPatch(
-      final EntityInterface<?> entity, final EventType changeType) {
-    // Used by Collate extensions and unit tests that invoke compactPatch without a JsonPatch.
-    return compactPatch(entity, changeType, PatchProjectionSpec.compact(null, Set.of()));
-  }
-
   public static Map<String, Object> compactPatch(
       final EntityInterface<?> entity,
       final String entityType,

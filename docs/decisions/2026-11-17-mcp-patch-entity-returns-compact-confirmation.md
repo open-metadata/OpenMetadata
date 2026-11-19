@@ -19,6 +19,7 @@
   - non-null values of top-level fields targeted by non-`test` JSON Patch `path`/`from` pointers (RFC 6901 unescaped) or recorded as non-dotted top-level changes, **excluding** heavy structural collections (`columns`, `tableConstraints`, `joins`, `schemaDefinition`, `viewDefinition`, `dataModel`, `tasks`, `features`, `mlFeatures`, `children`, `charts`, `dataModels`, `sampleData`, `tableProfilerConfig`, `customMetrics`, `fields`, `messageSchema`, `requestSchema`, `responseSchema`) and `NOISE_FIELDS`. When `/extension/<subkey>` is patched, only the touched custom property key(s) are echoed inside `extension`.
 - In `"full"` mode, the reply carries the full secret-masked, visibility-redacted entity minus `NOISE_FIELDS`, plus `entityType`, `version`, `updatedAt`, `_operation`, and `changed` (when non-empty and `changeType != ENTITY_NO_CHANGE`).
 - Both modes run `CommonUtils.enforceEntityVisibility`, `CommonUtils.withVisibleEvidence`, `McpResponseUtils.maskSecrets`, and `McpResponseUtils.markHeld` without mutating `response.entity()`.
+- The Java API `McpResponseUtils.compactPatch(entity, changeType)`, which takes no JSON Patch and is called by Collate extensions, keeps returning the whole masked entity minus `NOISE_FIELDS` (it delegates to `fullPatch`). Only the overloads that take touched fields or a `PatchProjectionSpec` return the compact shape, so a caller compiled against the old overload never silently loses fields.
 
 ## Consequences
 

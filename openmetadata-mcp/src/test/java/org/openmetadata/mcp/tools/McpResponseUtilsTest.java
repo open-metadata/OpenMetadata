@@ -130,11 +130,7 @@ class McpResponseUtilsTest {
 
   @Test
   void writeResponsesMaskWorkflowSinkSecrets() {
-    final WorkflowDefinition workflow =
-        GetEntityToolTest.gitSinkWorkflow("gitExport")
-            .withChangeDescription(
-                new ChangeDescription()
-                    .withFieldsUpdated(List.of(new FieldChange().withName("nodes"))));
+    final WorkflowDefinition workflow = GetEntityToolTest.gitSinkWorkflow("gitExport");
 
     final Map<String, Object> doc =
         McpResponseUtils.compactPatch(workflow, EventType.ENTITY_UPDATED);
@@ -420,6 +416,21 @@ class McpResponseUtilsTest {
 
     assertTrue(doc.containsKey("deleted"));
     assertEquals(Boolean.TRUE, doc.get("deleted"));
+  }
+
+  @Test
+  void compactPatchWithoutAJsonPatchKeepsTheWholeEntityForCollateCallers() {
+    final Table table = wideTable().withTags(List.of(new TagLabel().withTagFQN("PII.Sensitive")));
+
+    final Map<String, Object> doc = McpResponseUtils.compactPatch(table, EventType.ENTITY_UPDATED);
+
+    assertNotNull(doc.get("columns"));
+    assertNotNull(doc.get("tableConstraints"));
+    assertNotNull(doc.get("tags"));
+    assertEquals(0.2, doc.get("version"));
+    assertEquals("updated", doc.get("_operation"));
+    assertFalse(doc.containsKey("changeDescription"));
+    assertFalse(doc.containsKey("updatedBy"));
   }
 
   @Test
