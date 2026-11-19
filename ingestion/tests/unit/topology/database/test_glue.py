@@ -767,6 +767,7 @@ class TestGlueUnparseableColumnType:
         request = self._request(glue_source, [("dt", self.BAD_STRUCT)], partition_keys=[("dt", self.BAD_STRUCT)])
 
         assert [column.name.root for column in request.columns] == ["dt"]
+        assert len(glue_source.status.warnings) == 1
 
     def test_a_valid_struct_still_parses(self, glue_source):
         column = glue_source._get_column_object(

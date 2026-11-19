@@ -55,7 +55,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
@@ -469,11 +468,12 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         StorageDescriptor.Columns as well as in PartitionKeys, and Glue lower cases column names
         on write, so a column DT declared alongside a partition key dt arrives as dt twice.
         Either way the server rejects the whole table with "Column name <name> is repeated".
+        A repeat is skipped before parsing, so an unparseable type warns once per ingested column.
         """
         table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
         seen_column_names = set()
-        for column in self._iter_columns(column_data):
-            column_name = model_str(column.name)
+        for glue_column in self._iter_columns(column_data):
+            column_name = truncate_column_name(glue_column.Name)
             if column_name in seen_column_names:
                 logger.debug(
                     f"Table [{table_name}]: keeping the first [{column_name}]. Glue repeats a name when a "
@@ -481,9 +481,9 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                 )
                 continue
             seen_column_names.add(column_name)
-            yield column
+            yield self._get_column_object(glue_column)
 
-    def _iter_columns(self, column_data: StorageDetails) -> Iterable[Column]:
+    def _iter_columns(self, column_data: StorageDetails) -> Iterable[GlueColumn]:
         """
         Yield the raw Glue columns, regular ones first and partition keys last.
 
@@ -500,9 +500,8 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
             if is_iceberg and not column.is_current_iceberg_field():
                 logger.debug("Table [%s]: dropping retired Iceberg column [%s].", table.Name, column.Name)
                 continue
-            yield self._get_column_object(column)
-        for column in table.PartitionKeys or []:
-            yield self._get_column_object(column)
+            yield column
+        yield from table.PartitionKeys or []
 
     @staticmethod
     def _is_delta_table(parameters: TableParameters | None) -> bool:
