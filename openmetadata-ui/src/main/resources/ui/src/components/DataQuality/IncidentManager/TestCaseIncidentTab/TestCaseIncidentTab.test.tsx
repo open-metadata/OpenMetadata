@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MOCK_TASK_DATA } from '../../../../mocks/TestCase.mock';
+import { TaskEntityStatus, TaskEntityType } from '../../../../rest/tasksAPI';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import TestCaseIncidentTab from './TestCaseIncidentTab.component';
 
@@ -23,6 +30,16 @@ const mockUseActivityFeedProviderValue = {
   selectedTask: MOCK_TASK_DATA[0],
   setActiveTask: jest.fn(),
 };
+const mockTestCaseFqn =
+  'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between';
+const mockGetTaskById = jest.fn();
+const mockSearchParams = new URLSearchParams();
+
+jest.mock('../../../../rest/tasksAPI', () => ({
+  ...jest.requireActual('../../../../rest/tasksAPI'),
+  getTaskById: (...args: unknown[]) => mockGetTaskById(...args),
+  getTaskCounts: jest.fn().mockResolvedValue({}),
+}));
 
 jest.mock(
   '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store',
@@ -74,12 +91,50 @@ jest.mock(
   })
 );
 jest.mock('react-router-dom', () => ({
-  useParams: jest.fn().mockReturnValue({
-    fqn: 'sample_data.ecommerce_db.shopify.dim_address.table_column_count_between',
+  useParams: () => ({
+    fqn: mockTestCaseFqn,
   }),
+  useSearchParams: () => [mockSearchParams],
 }));
 
 describe('TestCaseIssueTab', () => {
+  beforeEach(() => {
+    mockSearchParams.delete('taskId');
+  });
+
+  it('opens the linked resolved incident in the closed view', async () => {
+    const task = {
+      ...MOCK_TASK_DATA[0],
+      id: 'resolved-incident',
+      type: TaskEntityType.TestCaseResolution,
+      status: TaskEntityStatus.Completed,
+      about: {
+        id: 'test-case',
+        type: 'testCase',
+        fullyQualifiedName: mockTestCaseFqn,
+      },
+    };
+    mockSearchParams.set('taskId', task.id);
+    mockGetTaskById.mockResolvedValue({ data: task });
+
+    render(<TestCaseIncidentTab />);
+
+    await waitFor(() => {
+      expect(
+        mockUseActivityFeedProviderValue.setActiveTask
+      ).toHaveBeenCalledWith(task);
+      expect(
+        mockUseActivityFeedProviderValue.getTaskData
+      ).toHaveBeenLastCalledWith(
+        undefined,
+        undefined,
+        'testCase',
+        mockTestCaseFqn,
+        'closed'
+      );
+    });
+  });
+
   it('Should render component', async () => {
     render(<TestCaseIncidentTab />);
 

@@ -1348,7 +1348,7 @@ test(
         count: 2,
       });
 
-      const resolvedTaskIds: string[] = [];
+      const resolvedTasks: { id: string; testCaseFqn: string }[] = [];
 
       for (const [index, entryPoint] of ['popover', 'modal'].entries()) {
         await test.step(`Select and persist a mention from the ${entryPoint}`, async () => {
@@ -1411,7 +1411,10 @@ test(
           const mention = `<#E::user::${mentionedUser.responseData.fullyQualifiedName}|`;
           expect(response.request().postDataJSON().comment).toContain(mention);
           const task = await response.json();
-          resolvedTaskIds.push(task.id);
+          resolvedTasks.push({
+            id: task.id,
+            testCaseFqn: testCase.fullyQualifiedName,
+          });
           const stored = await apiContext.get(
             `/api/v1/tasks/${task.id}?fields=resolution`
           );
@@ -1420,22 +1423,40 @@ test(
         });
       }
 
-      await test.step('Find both resolution mentions in the recipient Inbox', async () => {
+      await test.step('Open both incidents from the recipient Inbox', async () => {
         const recipient = await browser.newPage();
         try {
           await enableAiAppMode(recipient);
           await mentionedUser.signIn(recipient, undefined, undefined, {
             landingPath: '/inbox/activity?filter=mentions',
           });
-          for (const id of resolvedTaskIds) {
+          for (const { id, testCaseFqn } of resolvedTasks) {
+            const incidentPath = `/observability/test-case/${encodeURIComponent(
+              testCaseFqn
+            )}/issues?taskId=${id}`;
             const notification = recipient
               .getByTestId('task-mention-notification')
-              .and(recipient.locator(`[href="/tasks/${id}"]`));
+              .and(recipient.locator(`[href="${incidentPath}"]`));
             await expect(notification).toBeVisible();
             await expect(notification).toContainText('mentioned you');
+            await notification.click();
+            await expect(recipient).toHaveURL(
+              (url) => `${url.pathname}${url.search}` === incidentPath
+            );
+            await expect(
+              recipient
+                .getByTestId('issue-tab-container')
+                .getByTestId('right-container')
+            ).toContainText(
+              `@${
+                mentionedUser.responseData.displayName ||
+                mentionedUser.responseData.name
+              }`
+            );
+            await recipient.goBack();
           }
 
-          await recipient.goto(`/inbox/tasks?taskId=${resolvedTaskIds[0]}`);
+          await recipient.goto(`/inbox/tasks?taskId=${resolvedTasks[0].id}`);
           const resolutionComment = recipient
             .getByTestId('task-detail-summary')
             .getByTestId('task-detail-row-resolutionComment');

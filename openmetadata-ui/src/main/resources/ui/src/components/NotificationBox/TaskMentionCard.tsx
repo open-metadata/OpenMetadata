@@ -14,8 +14,11 @@
 import { Box, Typography } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { INCIDENT_TASK_TYPES } from '../../constants/Task.constant';
+import { EntityType } from '../../enums/entity.enum';
 import { getRelativeTime } from '../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import { TaskCommentMention } from '../../utils/tasks/TaskMentions.utils';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 
@@ -27,11 +30,19 @@ export const TaskMentionCard = ({
   const { t } = useTranslation();
   const { task, comment } = mention;
   const authorName = getEntityName(comment.author);
+  const { about } = task;
+  const path =
+    INCIDENT_TASK_TYPES.has(task.type) &&
+    about?.type === EntityType.TEST_CASE &&
+    about.fullyQualifiedName
+      ? observabilityRouterClassBase.getTestCaseIncidentPath(
+          about.fullyQualifiedName,
+          task.id
+        )
+      : `/tasks/${encodeURIComponent(task.id)}`;
 
   return (
-    <Link
-      data-testid="task-mention-notification"
-      to={`/tasks/${encodeURIComponent(task.id)}`}>
+    <Link data-testid="task-mention-notification" to={path}>
       <Box align="start" gap={3}>
         <ProfilePicture name={comment.author.name ?? ''} width="32" />
         <Box direction="col" gap={1}>

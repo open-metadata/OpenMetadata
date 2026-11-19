@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { NOTIFICATION_READ_TIMER } from '../../constants/constants';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import {
@@ -22,6 +23,7 @@ import {
 import { listConversations } from '../../rest/conversationsAPI';
 import { listMyAssignedTasks } from '../../rest/tasksAPI';
 import NotificationBox from './NotificationBox.component';
+import { TaskMentionCard } from './TaskMentionCard';
 
 const mockTask: Task[] = [
   {
@@ -87,11 +89,46 @@ jest.mock('./NotificationFeedCard.component', () => {
   return jest.fn().mockReturnValue(<p>NotificationFeedCard</p>);
 });
 
+jest.mock('../common/ProfilePicture/ProfilePicture', () => () => null);
+
 jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn().mockImplementation(() => mockShowErrorToast()),
 }));
 
 describe('Test NotificationBox Component', () => {
+  it('links a test case incident mention to that incident on the Issues tab', () => {
+    const task = {
+      ...mockTask[0],
+      type: TaskType.TestCaseResolution,
+      about: {
+        id: 'test-case',
+        type: 'testCase',
+        fullyQualifiedName: 'db.schema.table.case/1',
+      },
+    };
+
+    render(
+      <MemoryRouter>
+        <TaskMentionCard
+          mention={{
+            task,
+            comment: {
+              id: 'comment-id',
+              author: task.createdBy,
+              createdAt: 1,
+              message: 'Resolved',
+            },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('task-mention-notification')).toHaveAttribute(
+      'href',
+      `/test-case/db.schema.table.case%2F1/issues?taskId=${task.id}`
+    );
+  });
+
   beforeEach(() => {
     jest.mocked(listMyAssignedTasks).mockResolvedValue({
       data: mockTask,

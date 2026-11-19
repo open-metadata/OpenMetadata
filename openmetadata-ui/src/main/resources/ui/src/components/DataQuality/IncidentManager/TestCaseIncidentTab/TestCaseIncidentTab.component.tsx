@@ -27,16 +27,24 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import { observerOptions } from '../../../../constants/Mydata.constants';
+import {
+  INCIDENT_TASK_ID_PARAM,
+  INCIDENT_TASK_TYPES,
+} from '../../../../constants/Task.constant';
 import { EntityType } from '../../../../enums/entity.enum';
 import { useElementInView } from '../../../../hooks/useElementInView';
 import { useFqn } from '../../../../hooks/useFqn';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import {
+  getTaskById,
   getTaskCounts,
   Task,
   TaskStatusGroup,
 } from '../../../../rest/tasksAPI';
+import { isTaskTerminalStatus } from '../../../../utils/TaskNavigationUtils';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import TaskListV1 from '../../../ActivityFeed/ActivityFeedList/TaskListV1.component';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
@@ -56,6 +64,8 @@ const TaskTabNew = withSuspenseFallback(
 const TestCaseIncidentTab = () => {
   const { t } = useTranslation();
   const { fqn: decodedFqn } = useFqn();
+  const [searchParams] = useSearchParams();
+  const linkedTaskId = searchParams.get(INCIDENT_TASK_ID_PARAM);
   const { testCase } = useTestCaseStore();
 
   const owners = useMemo(() => testCase?.owners, [testCase]);
@@ -79,6 +89,42 @@ const TestCaseIncidentTab = () => {
 
   const statusGroup =
     taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
+
+  useEffect(() => {
+    if (!linkedTaskId || !decodedFqn) {
+      return;
+    }
+
+    let cancelled = false;
+    getTaskById(linkedTaskId, {
+      fields: 'assignees,createdBy,about,comments,payload',
+    })
+      .then(({ data: incident }) => {
+        if (
+          cancelled ||
+          !INCIDENT_TASK_TYPES.has(incident.type) ||
+          incident.about?.type !== EntityType.TEST_CASE ||
+          incident.about.fullyQualifiedName !== decodedFqn
+        ) {
+          return;
+        }
+
+        setTaskFilter(isTaskTerminalStatus(incident.status) ? 'close' : 'open');
+        setActiveTask(incident);
+      })
+      .catch((error) => {
+        if (!cancelled) {
+          showErrorToast(
+            error,
+            t('server.entity-fetch-error', { entity: t('label.incident') })
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [decodedFqn, linkedTaskId, setActiveTask, t]);
 
   const fetchCounts = useCallback(async () => {
     if (!decodedFqn) {

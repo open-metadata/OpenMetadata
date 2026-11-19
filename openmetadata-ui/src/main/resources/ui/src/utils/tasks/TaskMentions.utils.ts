@@ -18,7 +18,7 @@ import Fqn from '../Fqn';
 const TASK_MENTION_PAGE_SIZE = 100;
 
 export interface TaskCommentMention {
-  task: Pick<Task, 'id' | 'name' | 'about'>;
+  task: Pick<Task, 'id' | 'name' | 'about' | 'type'>;
   comment: TaskComment;
 }
 
@@ -57,8 +57,8 @@ export const getTaskCommentMentions = async (
       limit: TASK_MENTION_PAGE_SIZE,
       after,
     });
-    for (const { id, name: taskName, about, comments } of data) {
-      const task = { id, name: taskName, about };
+    for (const { id, name: taskName, about, type, comments } of data) {
+      const task = { id, name: taskName, about, type };
       for (const comment of comments ?? []) {
         if (
           comment.createdAt >= startTs &&
