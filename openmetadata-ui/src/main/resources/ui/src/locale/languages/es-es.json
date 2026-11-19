@@ -3177,7 +3177,7 @@
     "context-center-memories-empty-feature-context": "Define el tipo y vincula los activos de datos a los que se aplica, para que aparezca en el momento adecuado.",
     "context-center-memories-empty-feature-write": "Una afirmación clara: una regla, una definición o una preferencia que la IA deba conocer.",
     "context-center-memories-empty-subtitle": "Las memorias son pequeños datos sobre cómo funciona tu organización, capturados de conversaciones o añadidos directamente. Una vez guardados, cada respuesta futura los tiene en cuenta.",
-    "context-center-memories-subtitle": "Hechos, definiciones y preferencias capturados por su equipo mientras chatea con AskCollate",
+    "context-center-memories-subtitle": "Hechos, definiciones y preferencias capturados por su equipo mientras chatea",
     "context-memory-read-only-description": "Solo {{creatorName}} (el creador) o un administrador del espacio de trabajo pueden editar o eliminar esta memoria. Aún puedes verlo, copiarlo o hacer referencia a él en los chats.",
     "contract-detail-plural-description": "Expectativas esperadas de un contrato para un activo de datos.",
     "contract-execution-history-description": "Ver todos los resultados de ejecución de contratos a lo largo del tiempo",

@@ -3177,7 +3177,7 @@
     "context-center-memories-empty-feature-context": "Définissez le type et associez les actifs de données concernés, afin qu'il apparaisse au bon moment.",
     "context-center-memories-empty-feature-write": "Une déclaration claire — une règle, une définition, une préférence que l'IA doit connaître.",
     "context-center-memories-empty-subtitle": "Les souvenirs sont de petits faits sur le fonctionnement de votre organisation — capturés lors de conversations ou ajoutés directement. Une fois enregistrés, chaque réponse future en tient compte.",
-    "context-center-memories-subtitle": "Faits, définitions et préférences capturés par votre équipe lors de discussions avec AskCollate",
+    "context-center-memories-subtitle": "Faits, définitions et préférences capturés par votre équipe lors de discussions",
     "context-memory-read-only-description": "Seul {{creatorName}} (le créateur) ou un administrateur de l'espace de travail peut modifier ou supprimer cette mémoire. Vous pouvez toujours l'afficher, le copier ou le référencer dans les discussions.",
     "contract-detail-plural-description": "Un contrat spécifiant les attentes pour un actif de données.",
     "contract-execution-history-description": "Afficher tous les résultats d'exécution des contrats au fil du temps",

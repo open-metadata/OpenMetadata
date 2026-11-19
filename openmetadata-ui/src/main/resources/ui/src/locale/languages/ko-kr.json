@@ -3177,7 +3177,7 @@
     "context-center-memories-empty-feature-context": "유형을 설정하고 적용할 데이터 자산을 연결하여 적절한 시점에 표시되도록 하세요.",
     "context-center-memories-empty-feature-write": "규칙, 정의, 선호 사항 등 AI가 알아야 할 내용을 하나의 명확한 문장으로 작성하세요.",
     "context-center-memories-empty-subtitle": "메모리는 조직이 운영되는 방식에 관한 작은 사실들로, 대화에서 포착되거나 직접 추가됩니다. 저장되면 이후의 모든 답변에 반영됩니다.",
-    "context-center-memories-subtitle": "팀이 AskCollate와 채팅하는 동안 캡처한 사실, 정의 및 기본 설정",
+    "context-center-memories-subtitle": "팀이 채팅하는 동안 캡처한 사실, 정의 및 기본 설정",
     "context-memory-read-only-description": "{{creatorName}}(작성자) 또는 워크스페이스 관리자만 이 메모리를 편집하거나 삭제할 수 있습니다. 채팅에서는 계속해서 보거나 복사하거나 참조할 수 있습니다.",
     "contract-detail-plural-description": "데이터 자산에 대한 기대치를 명시하는 계약입니다.",
     "contract-execution-history-description": "시간에 따른 모든 계약 실행 결과 보기",

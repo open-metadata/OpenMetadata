@@ -3177,7 +3177,7 @@
     "context-center-memories-empty-feature-context": "Set the type and link the data assets it applies to, so it surfaces at the right moments.",
     "context-center-memories-empty-feature-write": "One clear statement — a rule, a definition, a preference the AI should know.",
     "context-center-memories-empty-subtitle": "Memories are small facts about how your organization works — captured from conversations or added directly. Once saved, every future answer takes them into account.",
-    "context-center-memories-subtitle": "Facts, definitions and preferences captured by your team while chatting with AskCollate",
+    "context-center-memories-subtitle": "Facts, definitions and preferences captured by your team while chatting",
     "context-memory-read-only-description": "Only {{creatorName}} (the creator) or a workspace admin can edit or delete this memory. You can still view, copy, or reference it in chats.",
     "contract-detail-plural-description": "A contract specifying expectations for a data asset.",
     "contract-execution-history-description": "View all the contract execution results over time",

@@ -486,7 +486,6 @@ const ContextCenterArticlesPage = () => {
 
           {/* middle */}
           <ReflexElement
-            propagateDimensions
             className={classNames('center-panel', {
               'has-sidebar': leftSidebar,
             })}
@@ -524,7 +523,6 @@ const ContextCenterArticlesPage = () => {
           </ReflexSplitter>
 
           <ReflexElement
-            propagateDimensions
             className={classNames('right-panel', {
               'right-panel-collapsed': !rightSidebar,
             })}
