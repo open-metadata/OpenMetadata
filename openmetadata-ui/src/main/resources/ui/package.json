@@ -20,7 +20,7 @@
     "test": "jest --passWithNoTests",
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
-    "test:cov-summary": "jest --passWithNoTests --coverage --coverageReporters json-summary",
+    "test:cov-summary": "node --test scripts/sso-dev-server.test.mjs && jest --passWithNoTests --coverage --coverageReporters json-summary",
     "build-check": "yarn run js-antlr && yarn run parse-schema",
     "commit-check": "yarn run pretty && yarn run build",
     "license-header-check": "license-check-and-add check -f .licenseheaderrc.json",

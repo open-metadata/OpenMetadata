@@ -514,8 +514,6 @@ export default defineConfig(async ({ mode }) => {
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'
       ),
-      'process.env.DEV_SERVER_TARGET': JSON.stringify(devServerTarget),
-      'process.env.SSO_SERVER_URL': JSON.stringify(env.VITE_SSO_SERVER_URL || ''),
       global: 'globalThis',
     },
   };

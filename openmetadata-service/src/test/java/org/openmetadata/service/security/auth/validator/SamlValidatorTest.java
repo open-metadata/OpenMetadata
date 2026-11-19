@@ -1143,7 +1143,6 @@ class SamlValidatorTest {
     }
   }
 
-
   @Test
   void validateX509CertificateTwoArgumentOverloadRejectsBrokenPem() {
     InvocationTargetException exception =
