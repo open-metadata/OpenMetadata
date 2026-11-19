@@ -87,12 +87,26 @@ class SamlSettingsHolderTest {
       SamlSSOClientConfig config = samlConfig();
       config.getIdp().setIdpX509Certificate(inactivePem + "\n" + resource("/saml/mock-idp.crt"));
       assertEquals(
-          SamlCertificates.parse(inactivePem + "\n" + resource("/saml/mock-idp.crt")),
+          SamlCertificates.parseUnexpiredIdpCertificates(
+              inactivePem + "\n" + resource("/saml/mock-idp.crt")),
           SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
       assertThrows(
           CertificateException.class,
           () -> SamlCertificates.parseValidIdpCertificates(inactivePem));
     }
+  }
+
+  @Test
+  void removesExpiredKeysAndRejectsAnEntirelyExpiredTrustStore() throws Exception {
+    SamlSSOClientConfig config = samlConfig();
+    String expired = resource("/saml/expired-idp.crt");
+    String active = resource("/saml/mock-idp.crt");
+    config.getIdp().setIdpX509Certificate(expired + "\n" + active);
+    Saml2Settings settings = SamlSettingsHolder.buildSettings(config);
+    assertEquals(SamlCertificates.parse(active), settings.getIdpx509certMulti());
+    assertEquals(SamlCertificates.parse(active).getFirst(), settings.getIdpx509cert());
+    config.getIdp().setIdpX509Certificate(expired);
+    assertThrows(CertificateException.class, () -> SamlSettingsHolder.buildSettings(config));
   }
 
   @Test
