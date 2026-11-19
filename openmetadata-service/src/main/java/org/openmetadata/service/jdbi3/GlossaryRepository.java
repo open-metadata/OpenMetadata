@@ -78,6 +78,7 @@ import org.openmetadata.schema.type.csv.CsvHeader;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.EntityCacheBypass;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipRecord;
@@ -88,6 +89,7 @@ import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -603,9 +605,7 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
     // all. The child terms go out as one bulk request, not N individual ES round-trips.
     searchRepository.updateEntity(updated.getEntityReference());
     searchRepository.deferIfFlushScopeActive(
-        () ->
-            searchRepository.updateEntitiesByReference(
-                getAllTerms(updated).stream().map(GlossaryTerm::getEntityReference).toList()),
+        () -> reindexTermsFromDatabase(updated),
         "updateEntitiesByReference",
         updated.getId().toString(),
         newFqn,
@@ -622,6 +622,19 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
         null,
         newFqn,
         GLOSSARY);
+  }
+
+  /**
+   * Runs after the rename commits. A reader that loaded the glossary while the rename was still
+   * open can leave the old row in the entity caches, and every term document copies the glossary's
+   * name from it, so the terms are rebuilt from the database.
+   */
+  private void reindexTermsFromDatabase(Glossary glossary) {
+    try (FreshReadScope.Handle ignored = FreshReadScope.enter();
+        EntityCacheBypass.Handle ignoredRedis = EntityCacheBypass.skip()) {
+      searchRepository.updateEntitiesByReference(
+          getAllTerms(glossary).stream().map(GlossaryTerm::getEntityReference).toList());
+    }
   }
 
   private void updateEntityLinksOnGlossaryRename(String oldFqn, String newFqn, Glossary updated) {
