@@ -21,6 +21,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from presidio_analyzer import AnalyzerEngine
 
 from metadata.generated.schema.entity.data.table import DataType
+from metadata.pii.algorithms.column_patterns import normalize_name
 from metadata.pii.algorithms.presidio_patches import PresidioRecognizerResultPatcher
 from metadata.pii.algorithms.tags import PIITag
 from metadata.pii.scanners.ner_scanner import SUPPORTED_LANG
@@ -119,10 +120,13 @@ def extract_pii_from_column_names(
     a set containing the PII tag PIITag.EMAIL_ADDRESS.
     """
     results: set[PIITag] = set()
+    # Also try the normalized name so separators such as "." or camelCase
+    # ("birth.date", "dateOfBirth") are handled like "_".
+    candidates = {column_name, normalize_name(column_name)}
 
     for pii_type, pii_type_patterns in patterns.items():
         for pattern in pii_type_patterns:
-            if pattern.match(column_name) is not None:
+            if any(pattern.match(candidate) is not None for candidate in candidates):
                 results.add(pii_type)
                 break  # No need to check other patterns for this PII type
 

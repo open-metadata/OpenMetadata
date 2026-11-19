@@ -1275,3 +1275,39 @@ def test_identifier_variants_keep_custom_tag_assignments_with_context(family, co
     )
     labels = processor.create_column_tag_labels(column, [value])
     assert [label.tagFQN.root for label in labels] == [f"{classification_name}.Identifier"]
+
+
+@pytest.mark.parametrize(
+    "column_name, value, expected_labels",
+    [
+        ("birth_date", "1990-04-12", ["PII.NonSensitive"]),
+        ("birth.date", "1990-04-12", ["PII.NonSensitive"]),
+        ("date.of.birth", "1990-04-12", ["PII.NonSensitive"]),
+        ("birth_timestamp", "1990-04-12", ["PII.NonSensitive"]),
+        ("birth_dt", "1990-04-12", ["PII.NonSensitive"]),
+        ("userDob", "1990-04-12", ["PII.NonSensitive"]),
+        ("notes", "date of birth: 1990-04-12", ["PII.NonSensitive"]),
+        ("notes", "1990-04-12", []),
+        ("event_timestamp", "1990-04-12", []),
+        ("event_start_date", "1990-04-12", []),
+        ("job_start_date", "1990-04-12", []),
+        ("adobe_timestamp", "1990-04-12", []),
+        ("created_at", "2024-01-01T10:30:45Z", []),
+        ("updated_at", "2024-01-01 10:30:45", []),
+        ("modified_date", "2024-01-01", []),
+        ("address_updated_at", "2024-01-01", []),
+        ("state_changed_date", "2024-01-01", []),
+    ],
+)
+def test_shipped_recognizers_tag_only_personal_dates(shipped_pii, column_name, value, expected_labels):
+    classification = _shipped_classification(shipped_pii)
+    tags = [_shipped_tag(shipped_pii, classification, tag_name) for tag_name in ("Sensitive", "NonSensitive")]
+    column = Column(
+        name=column_name,
+        fullyQualifiedName=f"db.schema.table.{column_name}",
+        dataType=DataType.VARCHAR,
+        tags=[],
+    )
+
+    processor = _processor(classification, tags, ClassificationLanguage.en)
+    assert [label.tagFQN.root for label in processor.create_column_tag_labels(column, [value])] == expected_labels

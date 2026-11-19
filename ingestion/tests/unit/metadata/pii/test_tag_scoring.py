@@ -438,12 +438,15 @@ class TestTagAnalyzer:
 
     @staticmethod
     def _pii_date_tag_analyzer(
-        pii_classification: Classification, column_name: str, column_name_regex: str | None = None
+        pii_classification: Classification,
+        column_name: str,
+        column_name_regex: str | None = None,
+        context: list[str] | None = None,
     ) -> TagAnalyzer:
         recognizers = [
             RecognizerFactory.create(
                 name="DateRecognizer",
-                recognizerConfig=PredefinedRecognizerFactory.create(name=Name.DateRecognizer),
+                recognizerConfig=PredefinedRecognizerFactory.create(name=Name.DateRecognizer, context=context or []),
                 target=Target.content,
             )
         ]
@@ -491,6 +494,30 @@ class TestTagAnalyzer:
 
         assert analysis.score > 0.0
         assert [r.entity_type for r in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    def test_pii_tag_keeps_date_content_when_configured_context_matches(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(pii_classification, "geburtsdatum", context=["geburtsdatum"]).analyze(
+            str_values=["1990-04-12"]
+        )
+
+        assert analysis.score > 0.0
+        assert [r.entity_type for r in analysis.recognizer_results] == [PIIEntity.DATE_TIME.value]
+
+    def test_pii_tag_ignores_generic_date_context(self, pii_classification: Classification):
+        analysis = self._pii_date_tag_analyzer(
+            pii_classification, "event_datetime", context=["date", "datetime", "timestamp"]
+        ).analyze(str_values=["1990-04-12"])
+
+        assert analysis.recognizer_results == []
+
+    def test_pii_tag_keeps_date_content_named_in_sampled_value(self, pii_classification: Classification):
+        analyzer = self._pii_date_tag_analyzer(pii_classification, "notes")
+
+        personal = analyzer.analyze(str_values=["date of birth: 1990-04-12"])
+        operational = analyzer.analyze(str_values=["2024-01-01"])
+
+        assert [r.entity_type for r in personal.recognizer_results] == [PIIEntity.DATE_TIME.value]
+        assert operational.recognizer_results == []
 
     @pytest.mark.parametrize(
         "values",
