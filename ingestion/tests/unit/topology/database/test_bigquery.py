@@ -17,7 +17,9 @@ bigquery unit tests
 import logging
 import threading
 import types
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from datetime import datetime
 from types import SimpleNamespace
 from typing import ClassVar
 from unittest import TestCase
@@ -821,6 +823,105 @@ class TestBigqueryRegionAwareQueries:
         mock_dataset.location = location
         self.bq_source.client.get_dataset.return_value = mock_dataset
         self.bq_source._dataset_obj_cache.clear()
+
+    # --- life cycle query cost regression (#38207) ---
+
+    def test_lifecycle_one_region_query_for_multiple_datasets(self):
+        self._set_dataset_location("EU")
+        row_a = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_a",
+            "table_name": "same_table",
+            "table_type": "BASE TABLE",
+            "created_at": datetime(2025, 1, 2),
+            "updated_at": datetime(2025, 1, 3),
+        })
+        row_b = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_b",
+            "table_name": "same_table",
+            "table_type": "BASE TABLE",
+            "created_at": datetime(2025, 2, 2),
+            "updated_at": datetime(2025, 2, 3),
+        })
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([row_a, row_b])
+        self.bq_source.engine = engine
+
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        result_a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_b"
+        result_b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+
+        assert result_a["same_table"].created_at == datetime(2025, 1, 2)
+        assert result_b["same_table"].updated_at == datetime(2025, 2, 3)
+        assert conn.execute.call_count == 1
+        sql = str(conn.execute.call_args.args[0])
+        assert "TABLE_STORAGE" in sql
+        assert "t.table_schema as table_schema" in sql
+        assert "where t.table_schema = 'dataset_a'" not in sql
+
+    def test_lifecycle_parallel_workers_share_one_region_query(self):
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([])
+        self.bq_source.engine = engine
+
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(
+                lambda _: self.bq_source._load_region_lifecycle(MOCK_DB_NAME, "EU"),
+                range(8),
+            ))
+
+        assert all(result == {} for result in results)
+        assert conn.execute.call_count == 1
+
+    def test_lifecycle_cache_separates_projects_and_regions(self):
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([])
+        self.bq_source.engine = engine
+
+        for project, region in [
+            ("project-a", "EU"),
+            ("project-a", "eu"),
+            ("project-a", "US"),
+            ("project-b", "EU"),
+        ]:
+            assert self.bq_source._load_region_lifecycle(project, region) == {}
+
+        assert conn.execute.call_count == 3
+
+    def test_lifecycle_region_failure_falls_back_to_dataset_queries(self):
+        self._set_dataset_location("EU")
+        engine, conn = self._make_engine_mock([])
+        statements = []
+
+        def execute(statement):
+            sql = str(statement)
+            statements.append(sql)
+            if "region-EU" in sql:
+                raise RuntimeError("TABLE_STORAGE permission denied")
+            rows = MagicMock()
+            rows.all.return_value = [
+                SimpleNamespace(_asdict=lambda: {
+                    "table_name": "alpha",
+                    "table_type": "BASE TABLE",
+                    "created_at": datetime(2025, 1, 1),
+                    "updated_at": None,
+                })
+            ]
+            return rows
+
+        conn.execute.side_effect = execute
+        self.bq_source.engine = engine
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        result_a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_b"
+        result_b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+
+        assert result_a["alpha"].created_at == datetime(2025, 1, 1)
+        assert result_b["alpha"].created_at == datetime(2025, 1, 1)
+        assert len([sql for sql in statements if "region-EU" in sql]) == 1
+        assert len(statements) == 3  # one failed region scan; two dataset fallbacks
 
     # --- get_stored_procedures ---
 
