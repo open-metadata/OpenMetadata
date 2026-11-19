@@ -1,6 +1,6 @@
 services:
   postgresql:
-    image: ${PW_DATABASE_IMAGE:?PW_DATABASE_IMAGE is required}
+    image: ${PW_DATABASE_IMAGE:-postgres:15}
     pull_policy: missing
     restart: "no"
     command:

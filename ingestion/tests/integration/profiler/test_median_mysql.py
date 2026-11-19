@@ -32,8 +32,9 @@ from metadata.profiler.orm.functions.median import MedianFn
 
 try:
     from testcontainers.core.wait_strategies import LogMessageWaitStrategy
+    from testcontainers.mysql import MySqlContainer
 
-    from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
+    from _openmetadata_testutils.helpers.database_images import mysql_image
 except ImportError:
     pytest.skip("testcontainers not installed", allow_module_level=True)
 

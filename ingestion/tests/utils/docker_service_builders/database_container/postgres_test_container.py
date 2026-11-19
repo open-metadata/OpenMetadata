@@ -12,7 +12,9 @@
 
 import json
 
-from _openmetadata_testutils.helpers.database_images import PostgresContainer, postgres_image
+from testcontainers.postgres import PostgresContainer
+
+from _openmetadata_testutils.helpers.database_images import postgres_image
 
 from .database_test_container import DataBaseTestContainer  # noqa: TID252
 

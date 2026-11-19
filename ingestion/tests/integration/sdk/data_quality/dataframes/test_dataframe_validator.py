@@ -8,8 +8,8 @@ from dirty_equals import HasAttributes, IsList, IsTuple
 from pandas import DataFrame
 from sqlalchemy import create_engine
 from sqlalchemy.sql.schema import Table as SQATable
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import PostgresContainer
 from metadata.generated.schema.api.tests.createTestCase import CreateTestCaseRequest
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.databaseService import DatabaseService

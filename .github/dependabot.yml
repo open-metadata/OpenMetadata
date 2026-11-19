@@ -68,38 +68,6 @@ updates:
           - "minor"
           - "patch"
 
-  # The shipped database images, and the ingestion images' mysqldump stage, which must
-  # match the MySQL one. Tests read their images from the shipped Dockerfiles, so one
-  # PR here moves everything. ADR:2026-11-19-test-database-images-come-from-the-shipped-image
-  - package-ecosystem: "docker"
-    directories:
-      - "/docker/mysql"
-      - "/docker/postgresql"
-      - "/ingestion"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 2
-    labels:
-      - "dependencies"
-    allow:
-      - dependency-name: "mysql"
-      - dependency-name: "postgres"
-    groups:
-      database-images:
-        patterns:
-          - "mysql"
-          - "postgres"
-    ignore:
-      # Stay on the 8.4 LTS line: ADR:2026-11-19-shipped-mysql-uses-the-8-4-lts-line.
-      - dependency-name: "mysql"
-        update-types:
-          - "version-update:semver-major"
-          - "version-update:semver-minor"
-      # A Postgres major is an upgrade decision for deployments, not a routine bump.
-      - dependency-name: "postgres"
-        update-types:
-          - "version-update:semver-major"
-
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

@@ -7,8 +7,9 @@ from subprocess import CalledProcessError
 
 import pytest
 from sqlalchemy import create_engine, text
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import PostgresContainer, postgres_image
+from _openmetadata_testutils.helpers.database_images import postgres_image
 from _openmetadata_testutils.helpers.docker import copy_dir_to_container, try_bind
 
 

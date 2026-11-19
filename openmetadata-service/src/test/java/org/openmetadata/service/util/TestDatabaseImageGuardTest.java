@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.util;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -32,36 +31,28 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.Test;
 
 /**
- * Keeps the shipped database Dockerfiles the only place a MySQL or Postgres image is named.
+ * Every MySQL and Postgres image tag in the repository must equal {@link TestDatabaseImages#MYSQL}
+ * or {@link TestDatabaseImages#POSTGRES}.
  *
- * <p>ADR:2026-11-19-test-database-images-come-from-the-shipped-image
+ * <p>ADR:2026-11-19-test-database-images-are-one-constant
  */
 class TestDatabaseImageGuardTest {
-  private static final String MYSQL_DOCKERFILE = "docker/mysql/Dockerfile_mysql";
-  private static final String POSTGRES_DOCKERFILE = "docker/postgresql/Dockerfile_postgres";
-
-  /** A tag has a one- or two-digit major version, which keeps out ports such as 3306 and 5432. */
+  /**
+   * {@code mysql:} or {@code postgres:} followed by a one- or two-digit major version, which keeps
+   * out ports such as 3306 and 5432, and any {@code mysql/mysql-server} image. A digest after
+   * {@code @} is not part of the match, so only the tag is compared.
+   */
   private static final Pattern IMAGE_TAG =
-      Pattern.compile("\\b(?:mysql|postgres):\\d{1,2}(?!\\d)|mysql/mysql-server");
+      Pattern.compile(
+          "\\b(?:mysql|postgres):\\d{1,2}(?!\\d)(?:[.-]\\w+)*|mysql/mysql-server(?::[\\w.-]+)?");
 
-  /** Dockerfiles cannot read another file, so their client stage is a copy Dependabot bumps. */
-  private static final Set<String> CLIENT_STAGE_DOCKERFILES =
-      Set.of("ingestion/Dockerfile", "ingestion/Dockerfile.ci");
-
-  private static final Pattern CLIENT_STAGE =
-      Pattern.compile("^FROM\\s+(\\S+)\\s+AS\\s+mysql\\s*$", Pattern.CASE_INSENSITIVE);
-
-  private static final Set<String> ALLOWED_FILES =
-      Set.of(
-          MYSQL_DOCKERFILE,
-          POSTGRES_DOCKERFILE,
+  /** History that must keep the version it recorded, so a bump must not rewrite it. */
+  private static final List<String> HISTORY =
+      List.of(
           // Applied migrations are append-only; this one cites the image a measurement ran on.
           "bootstrap/sql/migrations/native/2.0.0/postgres/schemaChanges.sql",
-          "openmetadata-service/src/test/java/org/openmetadata/service/util/"
-              + "TestDatabaseImageGuardTest.java");
-
-  /** Recorded outputs of past runs, which name the image each run used. */
-  private static final List<String> ALLOWED_DIRECTORIES = List.of("docs/artifacts/");
+          // Recorded outputs of past runs, which name the image each run used.
+          "docs/artifacts/");
 
   private static final Set<String> PRUNED_DIRECTORIES =
       Set.of(
@@ -81,7 +72,7 @@ class TestDatabaseImageGuardTest {
           ".pytest_cache",
           ".ruff_cache");
 
-  /** Prose may name a version; it starts no container. */
+  /** Prose may name any version; it starts no container. */
   private static final Set<String> SKIPPED_EXTENSIONS =
       Set.of(
           ".md", ".mdx", ".png", ".jpg", ".jpeg", ".gif", ".svg", ".ico", ".webp", ".woff",
@@ -92,54 +83,27 @@ class TestDatabaseImageGuardTest {
   private static final Path REPOSITORY_ROOT = repositoryRoot();
 
   @Test
-  void onlyTheShippedDockerfilesNameADatabaseImage() throws IOException {
-    final List<String> strays = new ArrayList<>();
-    Files.walkFileTree(REPOSITORY_ROOT, new StrayTagCollector(strays));
+  void everyDatabaseImageTagEqualsTheConstant() throws IOException {
+    final List<String> mismatches = new ArrayList<>();
+    Files.walkFileTree(REPOSITORY_ROOT, new TagCollector(mismatches));
     assertTrue(
-        strays.isEmpty(),
-        "MySQL and Postgres images come from "
-            + MYSQL_DOCKERFILE
+        mismatches.isEmpty(),
+        "Test databases run "
+            + TestDatabaseImages.MYSQL
             + " and "
-            + POSTGRES_DOCKERFILE
-            + ": use TestDatabaseImages in Java, mysql_image() or postgres_image() from"
-            + " ingestion/tests/integration/containers.py in Python, and build from or read the"
-            + " FROM line in Compose files and scripts. Found:\n"
-            + String.join("\n", strays));
+            + TestDatabaseImages.POSTGRES
+            + ", the constants in TestDatabaseImages. To bump a version, change those constants"
+            + " and every line listed here. These lines name a different image:\n"
+            + String.join("\n", mismatches));
   }
 
-  @Test
-  void dockerfileClientStagesMatchTheShippedMysqlImage() throws IOException {
-    final String shipped = shippedImage(MYSQL_DOCKERFILE);
-    for (final String dockerfile : CLIENT_STAGE_DOCKERFILES) {
-      final List<String> stages =
-          Files.readAllLines(REPOSITORY_ROOT.resolve(dockerfile)).stream()
-              .map(String::trim)
-              .map(CLIENT_STAGE::matcher)
-              .filter(Matcher::matches)
-              .map(matcher -> matcher.group(1))
-              .toList();
-      assertEquals(List.of(shipped), stages, dockerfile + " mysql client stage");
-    }
-  }
-
-  @Test
-  void testJarCarriesTheShippedImages() throws IOException {
-    assertEquals(
-        shippedImage(MYSQL_DOCKERFILE),
-        TestDatabaseImages.fromResource(TestDatabaseImages.MYSQL_DOCKERFILE));
-    assertEquals(
-        shippedImage(POSTGRES_DOCKERFILE),
-        TestDatabaseImages.fromResource(TestDatabaseImages.POSTGRES_DOCKERFILE));
-  }
-
-  private static String shippedImage(final String relativePath) throws IOException {
-    return TestDatabaseImages.baseImage(
-        Files.readString(REPOSITORY_ROOT.resolve(relativePath)), relativePath);
+  private static String expectedImage(final String tag) {
+    return tag.startsWith("postgres:") ? TestDatabaseImages.POSTGRES : TestDatabaseImages.MYSQL;
   }
 
   private static Path repositoryRoot() {
     Path current = Path.of("").toAbsolutePath();
-    while (current != null && !Files.exists(current.resolve(MYSQL_DOCKERFILE))) {
+    while (current != null && !isRepositoryRoot(current)) {
       current = current.getParent();
     }
     if (current == null) {
@@ -148,11 +112,16 @@ class TestDatabaseImageGuardTest {
     return current;
   }
 
-  private static final class StrayTagCollector extends SimpleFileVisitor<Path> {
-    private final List<String> strays;
+  private static boolean isRepositoryRoot(final Path directory) {
+    return Files.isDirectory(directory.resolve("openmetadata-service"))
+        && Files.isDirectory(directory.resolve("ingestion"));
+  }
 
-    private StrayTagCollector(final List<String> strays) {
-      this.strays = strays;
+  private static final class TagCollector extends SimpleFileVisitor<Path> {
+    private final List<String> mismatches;
+
+    private TagCollector(final List<String> mismatches) {
+      this.mismatches = mismatches;
     }
 
     @Override
@@ -167,20 +136,21 @@ class TestDatabaseImageGuardTest {
     public FileVisitResult visitFile(final Path file, final BasicFileAttributes attrs) {
       final String relative = REPOSITORY_ROOT.relativize(file).toString().replace('\\', '/');
       if (attrs.isRegularFile() && attrs.size() <= MAX_SCANNED_BYTES && isScanned(relative)) {
-        collect(relative, file);
+        collect(relative, readLines(file));
       }
       return FileVisitResult.CONTINUE;
     }
 
-    private void collect(final String relative, final Path file) {
-      final boolean clientStageFile = CLIENT_STAGE_DOCKERFILES.contains(relative);
-      final List<String> lines = readLines(file);
+    private void collect(final String relative, final List<String> lines) {
       for (int index = 0; index < lines.size(); index++) {
-        final String line = lines.get(index);
-        final boolean checkedClientStage =
-            clientStageFile && CLIENT_STAGE.matcher(line.trim()).matches();
-        if (!checkedClientStage && IMAGE_TAG.matcher(line).find()) {
-          strays.add(relative + ":" + (index + 1) + ": " + line.trim());
+        final Matcher matcher = IMAGE_TAG.matcher(lines.get(index));
+        while (matcher.find()) {
+          final String tag = matcher.group();
+          final String expected = expectedImage(tag);
+          if (!tag.equals(expected)) {
+            mismatches.add(
+                relative + ":" + (index + 1) + ": " + tag + " (expected " + expected + ")");
+          }
         }
       }
     }
@@ -190,9 +160,7 @@ class TestDatabaseImageGuardTest {
       final int dot = lower.lastIndexOf('.');
       final boolean skippedExtension =
           dot > lower.lastIndexOf('/') && SKIPPED_EXTENSIONS.contains(lower.substring(dot));
-      return !skippedExtension
-          && !ALLOWED_FILES.contains(relative)
-          && ALLOWED_DIRECTORIES.stream().noneMatch(relative::startsWith);
+      return !skippedExtension && HISTORY.stream().noneMatch(relative::startsWith);
     }
 
     private static List<String> readLines(final Path file) {

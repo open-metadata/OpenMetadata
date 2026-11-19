@@ -2,8 +2,9 @@ import uuid
 from typing import cast
 
 import pytest
+from testcontainers.mysql import MySqlContainer
 
-from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
+from _openmetadata_testutils.helpers.database_images import mysql_image
 from _openmetadata_testutils.postgres.conftest import postgres_container, try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (
     CreateDatabaseServiceRequest,

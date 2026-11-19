@@ -36,13 +36,10 @@ from sqlalchemy import (
     select,
 )
 from sqlalchemy.orm import DeclarativeBase
+from testcontainers.mysql import MySqlContainer
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import (
-    MySqlContainer,
-    PostgresContainer,
-    mysql_image,
-    postgres_image,
-)
+from _openmetadata_testutils.helpers.database_images import mysql_image, postgres_image
 from metadata.ingestion.connections.session import create_and_bind_session
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.types.custom_array import CustomArray

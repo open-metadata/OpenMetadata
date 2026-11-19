@@ -24,8 +24,9 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.engine import URL, Engine
 from sqlalchemy.exc import OperationalError
 from tenacity import Retrying, retry_if_exception_type, stop_after_delay, wait_fixed
+from testcontainers.mysql import MySqlContainer
 
-from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
+from _openmetadata_testutils.helpers.database_images import mysql_image
 
 from ..runtime.ci import mask_secrets
 from .baseline import build_mysql_baseline

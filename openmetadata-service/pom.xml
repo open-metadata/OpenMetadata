@@ -1272,42 +1272,6 @@
         </executions>
       </plugin>
       <plugin>
-        <!--
-          The shipped database Dockerfiles go into the test jar so that every module running
-          database containers reads its images from them through TestDatabaseImages.
-          ADR:2026-11-19-test-database-images-come-from-the-shipped-image
-        -->
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-resources-plugin</artifactId>
-        <executions>
-          <execution>
-            <id>copy-test-database-images</id>
-            <phase>process-test-resources</phase>
-            <goals>
-              <goal>copy-resources</goal>
-            </goals>
-            <configuration>
-              <skip>${maven.test.skip}</skip>
-              <outputDirectory>${project.build.testOutputDirectory}/test-database-images</outputDirectory>
-              <resources>
-                <resource>
-                  <directory>${project.basedir}/../docker/mysql</directory>
-                  <includes>
-                    <include>Dockerfile_mysql</include>
-                  </includes>
-                </resource>
-                <resource>
-                  <directory>${project.basedir}/../docker/postgresql</directory>
-                  <includes>
-                    <include>Dockerfile_postgres</include>
-                  </includes>
-                </resource>
-              </resources>
-            </configuration>
-          </execution>
-        </executions>
-      </plugin>
-      <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-jar-plugin</artifactId>
         <executions>

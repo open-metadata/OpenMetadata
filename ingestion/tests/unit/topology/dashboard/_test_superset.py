@@ -21,8 +21,9 @@ from unittest.mock import patch
 import sqlalchemy
 from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
 from testcontainers.core.generic import DockerContainer
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import PostgresContainer, postgres_image
+from _openmetadata_testutils.helpers.database_images import postgres_image
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest

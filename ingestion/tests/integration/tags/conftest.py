@@ -19,8 +19,9 @@ import requests
 from sqlalchemy import create_engine, text
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.waiting_utils import wait_for_logs
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import PostgresContainer, postgres_image
+from _openmetadata_testutils.helpers.database_images import postgres_image
 from metadata.generated.schema.api.policies.createPolicy import CreatePolicyRequest
 from metadata.generated.schema.api.teams.createRole import CreateRoleRequest
 from metadata.generated.schema.api.teams.createUser import CreateUserRequest

@@ -16,8 +16,9 @@ from minio import Minio
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_container_is_ready
+from testcontainers.mysql import MySqlContainer
 
-from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
+from _openmetadata_testutils.helpers.database_images import mysql_image
 
 
 # ------------------------------------------------------------

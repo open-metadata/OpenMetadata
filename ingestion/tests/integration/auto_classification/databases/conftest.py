@@ -2,8 +2,9 @@ import os
 import uuid
 
 import pytest
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import PostgresContainer, postgres_image
+from _openmetadata_testutils.helpers.database_images import postgres_image
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import CreateDatabaseServiceRequest
 from metadata.generated.schema.entity.services.connections.database.common.basicAuth import BasicAuth

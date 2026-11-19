@@ -48,7 +48,7 @@ fi
   "-DrdfContainerJvmArgs=-Xms${RDF_SCALE_FUSEKI_HEAP:-4g} -Xmx${RDF_SCALE_FUSEKI_HEAP:-4g}" \
   "-DrdfContainerMemoryBytes=${RDF_SCALE_FUSEKI_MEMORY_BYTES:-17179869184}" \
   "-DrdfContainerNanoCpus=${RDF_SCALE_FUSEKI_NANO_CPUS:-6000000000}" \
-  -DdatabaseType=postgres -DdbDurable=true -DdbContainerTmpfs=false \
+  -DdatabaseType=postgres -DdatabaseImage=postgres:15 -DdbDurable=true -DdbContainerTmpfs=false \
   -DdbContainerMemoryBytes=8589934592 -DdbContainerNanoCpus=2000000000 \
   -DsearchType=elasticsearch -Djunit.jupiter.execution.parallel.enabled=false \
   -cp "$rdf_scale_classpath" org.openmetadata.it.tests.RdfCatalogScaleIT \

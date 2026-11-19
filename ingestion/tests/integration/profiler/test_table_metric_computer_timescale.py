@@ -19,7 +19,7 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.orm import DeclarativeBase
-from testcontainers.postgres import PostgresContainer  # noqa: TID251 - TimescaleDB, not the shipped Postgres image
+from testcontainers.postgres import PostgresContainer
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.connections.session import create_and_bind_session

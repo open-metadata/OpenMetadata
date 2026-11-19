@@ -18,13 +18,10 @@ from sqlalchemy import Column, Integer, MetaData, Table, create_engine, select, 
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 from testcontainers.clickhouse import ClickHouseContainer
+from testcontainers.mysql import MySqlContainer
+from testcontainers.postgres import PostgresContainer
 
-from _openmetadata_testutils.helpers.database_images import (
-    MySqlContainer,
-    PostgresContainer,
-    mysql_image,
-    postgres_image,
-)
+from _openmetadata_testutils.helpers.database_images import mysql_image, postgres_image
 from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator,
 )

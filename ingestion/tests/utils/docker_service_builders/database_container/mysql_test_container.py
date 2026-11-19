@@ -12,7 +12,9 @@
 
 import json
 
-from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
+from testcontainers.mysql import MySqlContainer
+
+from _openmetadata_testutils.helpers.database_images import mysql_image
 
 from .database_test_container import DataBaseTestContainer  # noqa: TID252
 

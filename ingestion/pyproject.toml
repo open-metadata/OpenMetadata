@@ -429,8 +429,6 @@ ban-relative-imports = "all"
 "ingestion.src.metadata".msg     = "Use `metadata.` imports instead of `ingestion.src.metadata`."
 "ingestion.build.lib".msg        = "Don't import build artifacts; use `metadata.` directly."
 "testcontainers.cockroachdb.CockroachDBContainer".msg = "Use the shared cockroach_container fixture in tests/integration/cockroach/conftest.py."
-"testcontainers.mysql.MySqlContainer".msg = "Import it from `_openmetadata_testutils.helpers.database_images` and run `mysql_image()`, the image docker/mysql/Dockerfile_mysql ships."
-"testcontainers.postgres.PostgresContainer".msg = "Import it from `_openmetadata_testutils.helpers.database_images` and run `postgres_image()`, the image docker/postgresql/Dockerfile_postgres ships."
 
 [tool.basedpyright]
 include = ["src"]
