@@ -24,6 +24,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ServiceType;
@@ -95,7 +98,8 @@ public class ReflectionUtil {
   }
 
   /**
-   * Identifies each element of a collection for secret bookkeeping.
+   * Identifies each element of a collection, to restore a masked secret onto the element it was
+   * stored for.
    *
    * <p>Position is not a stable identity. Secrets are stored against the original configuration and
    * restored onto the updated one, so keying by index would restore a secret onto whichever element
@@ -104,35 +108,55 @@ public class ReflectionUtil {
    *
    * <p>A name is only an identity if it is unique. {@code mcpServerConfig} requires a name but does
    * not constrain it to be unique, and two elements sharing a key would overwrite one another in the
-   * password map and in the secret store. Names are therefore used only where they occur once in the
-   * collection; duplicates and unnamed elements fall back to position, which is the best available
-   * answer for elements that are genuinely indistinguishable.
+   * password map. Names are therefore used only where they occur once in the collection; duplicates
+   * and unnamed elements fall back to position, which is the best available answer for elements
+   * that are genuinely indistinguishable. A name starting with {@code #} gets one more {@code #}, so
+   * it never equals a position key.
+   */
+  public static List<String> getCollectionElementIdentities(Collection<?> collection) {
+    return elementKeys(collection, Function.identity(), ReflectionUtil::escapePositionPrefix);
+  }
+
+  /**
+   * Names each element of a collection inside its secret id in a secrets manager.
    *
-   * <p>Uniqueness is checked on the name lowercased and reduced to letters and digits, because every
-   * secrets manager lowercases a secret id and drops or replaces its other characters: {@code Prod}
-   * and {@code prod} would share one stored secret. A name with no letters (such as {@code #1} or
-   * {@code 3}) also falls back to position, since it could match a position key once cleaned.
+   * <p>Every secrets manager lowercases a secret id and drops or replaces its other characters, so
+   * {@code Prod} and {@code prod} would share one stored secret. A name is therefore used only where
+   * it is still unique when lowercased and reduced to letters and digits, and has a letter: a name like
+   * {@code #1} or {@code 3} could match a position key once cleaned. Any other element is named by
+   * position. Restoring a masked secret does not use these keys - see {@link
+   * #getCollectionElementIdentities}.
    */
   public static List<String> getCollectionElementKeys(Collection<?> collection) {
-    List<String> names = new ArrayList<>(collection.size());
+    return elementKeys(
+        collection,
+        ReflectionUtil::secretIdForm,
+        name -> DIGITS_ONLY.matcher(secretIdForm(name)).matches() ? null : name);
+  }
+
+  /**
+   * Keys each element by its name where {@code form} of the name occurs once and {@code key} gives
+   * one, and by position otherwise.
+   */
+  private static List<String> elementKeys(
+      Collection<?> collection, Function<String, String> form, UnaryOperator<String> key) {
+    List<String> names = collection.stream().map(ReflectionUtil::readName).toList();
     Map<String, Integer> occurrences = new HashMap<>();
-    for (Object element : collection) {
-      String name = readName(element);
-      names.add(name);
-      if (name != null) {
-        occurrences.merge(secretIdForm(name), 1, Integer::sum);
-      }
-    }
+    names.stream()
+        .filter(Objects::nonNull)
+        .forEach(name -> occurrences.merge(form.apply(name), 1, Integer::sum));
     List<String> keys = new ArrayList<>(names.size());
     for (int index = 0; index < names.size(); index++) {
       String name = names.get(index);
-      boolean usable =
-          name != null
-              && !DIGITS_ONLY.matcher(secretIdForm(name)).matches()
-              && occurrences.get(secretIdForm(name)) == 1;
-      keys.add(usable ? name : POSITION_KEY_PREFIX + index);
+      String nameKey =
+          name != null && occurrences.get(form.apply(name)) == 1 ? key.apply(name) : null;
+      keys.add(nameKey != null ? nameKey : POSITION_KEY_PREFIX + index);
     }
     return keys;
+  }
+
+  private static String escapePositionPrefix(String name) {
+    return name.startsWith(POSITION_KEY_PREFIX) ? POSITION_KEY_PREFIX + name : name;
   }
 
   /** A name as any secrets manager could clean it into a secret id: lowercase letters and digits. */

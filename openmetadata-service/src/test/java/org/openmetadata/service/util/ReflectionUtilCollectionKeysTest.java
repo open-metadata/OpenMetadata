@@ -20,6 +20,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 
+/** Secret ids of list elements stay distinct; masked secrets follow the element they belong to. */
 class ReflectionUtilCollectionKeysTest {
 
   @Test
@@ -50,8 +51,22 @@ class ReflectionUtilCollectionKeysTest {
     assertEquals(List.of("#0", "#1", "named"), keys("3", "##", "named"));
   }
 
+  /** Restoring a masked secret matches the exact name, so distinct names keep their own keys. */
+  @Test
+  void identifiesDistinctNamesByNameAndEscapesAPositionLikeName() {
+    assertEquals(List.of("Prod", "prod", "3"), identities("Prod", "prod", "3"));
+    assertEquals(List.of("##1", "#1", "#2"), identities("#1", "dup", "dup"));
+  }
+
+  private static List<String> identities(String... names) {
+    return ReflectionUtil.getCollectionElementIdentities(servers(names));
+  }
+
+  private static List<McpServerConfig> servers(String... names) {
+    return Arrays.stream(names).map(name -> new McpServerConfig().withName(name)).toList();
+  }
+
   private static List<String> keys(String... names) {
-    return ReflectionUtil.getCollectionElementKeys(
-        Arrays.stream(names).map(name -> new McpServerConfig().withName(name)).toList());
+    return ReflectionUtil.getCollectionElementKeys(servers(names));
   }
 }
