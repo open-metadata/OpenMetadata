@@ -14,30 +14,10 @@
 @import (reference) '../../../styles/variables.less';
 
 .contract-semantic-form-container {
-  .expandable-card.expanded {
-    .expandable-card-header {
-      border-bottom-left-radius: 0;
-      border-bottom-right-radius: 0;
-    }
-  }
-
   .expandable-card {
     margin-top: var(--om-space-16);
-    border: 1px solid @border-color-7;
-    box-shadow: 0 1px 2px 0 @grey-27;
-
-    // @border-color-7 is a fixed near-white that glares on dark surfaces.
-    .dark-mode & {
-      border-color: var(--tw-color-border-secondary);
-    }
 
     .expandable-card-header {
-      background: var(--tw-color-bg-primary);
-      // Match the card's rounding so the opaque header doesn't paint square
-      // corners over the card's curved border.
-      border-radius: inherit;
-      border-bottom: 1px solid var(--tw-color-border-secondary);
-
       .semantic-form-item-title-container {
         display: flex;
         align-items: center;
@@ -88,6 +68,6 @@
     display: flex;
     justify-content: space-between;
     padding: var(--om-space-16) var(--om-space-24);
-    border-top: 1px solid var(--tw-color-border-secondary);
+    border-top: 1px solid var(--tw-border-color-secondary);
   }
 }
