@@ -17,6 +17,7 @@ import static org.openmetadata.service.jdbi3.CustomPropertyReferences.ENTITY_REF
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.BiFunction;
 import java.util.function.Predicate;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentStep;
@@ -83,13 +84,13 @@ public final class CustomPropertiesStep implements EnrichmentStep {
           entry("sqlQuery", IS_TEXT),
           entry("markdown", IS_TEXT));
 
-  private final BiFunction<String, String, String> propertyTypeLookup;
+  private final BiFunction<String, String, Optional<String>> propertyTypeLookup;
 
   public CustomPropertiesStep() {
-    this(SearchIndexUtils::getPropertyTypeSafe);
+    this(SearchIndexUtils::findPropertyType);
   }
 
-  CustomPropertiesStep(BiFunction<String, String, String> propertyTypeLookup) {
+  CustomPropertiesStep(final BiFunction<String, String, Optional<String>> propertyTypeLookup) {
     this.propertyTypeLookup = propertyTypeLookup;
   }
 
@@ -125,11 +126,14 @@ public final class CustomPropertiesStep implements EnrichmentStep {
     return twin;
   }
 
-  private boolean belongsInTwin(String entityType, String propertyName, Object value) {
-    String propertyType = propertyTypeLookup.apply(entityType, propertyName);
-    // User-created field types have no declared shape, so their values are copied as before.
-    return !SearchIndexUtils.UNKNOWN_PROPERTY_TYPE.equals(propertyType)
-        && TWIN_SHAPE_BY_TYPE.getOrDefault(propertyType, ANY_SHAPE).test(value);
+  private boolean belongsInTwin(
+      final String entityType, final String propertyName, final Object value) {
+    // A property that is no longer defined has no type. User-created field types have no declared
+    // shape, so their values are copied as before.
+    return propertyTypeLookup
+        .apply(entityType, propertyName)
+        .map(propertyType -> TWIN_SHAPE_BY_TYPE.getOrDefault(propertyType, ANY_SHAPE).test(value))
+        .orElse(false);
   }
 
   private static boolean isListOf(Object value, Predicate<Object> elementShape) {

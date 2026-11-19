@@ -25,8 +25,10 @@ current built-in type: an object for `entityReference`, `timeInterval`, `hyperli
 `table-cp`; a list of objects for `entityReferenceList`; text or a list of text for `enum`; a number
 for `integer`, `number` and `timestamp`; text for the other built-in types. Built-in types declare
 their shape in `TWIN_SHAPE_BY_TYPE`. A user-created field type (created through `/v1/metadata/types`)
-has no declared shape, so its values are copied as before. Values of properties that are no longer
-defined are left out. The raw `extension` and `customPropertiesTyped` are unchanged, and field paths
+has no declared shape, so its values are copied as before, whatever the type is called. Values of
+properties that are no longer defined are left out; a missing property is told apart from a defined
+one by the lookup coming back empty (`SearchIndexUtils.findPropertyType`), not by a reserved type
+name. The raw `extension` and `customPropertiesTyped` are unchanged, and field paths
 stay the same for valid values.
 
 ## Consequences

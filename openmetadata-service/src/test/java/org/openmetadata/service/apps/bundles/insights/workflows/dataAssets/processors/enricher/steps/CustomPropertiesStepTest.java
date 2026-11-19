@@ -16,11 +16,11 @@ import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.openmetadata.service.search.SearchIndexUtils.UNKNOWN_PROPERTY_TYPE;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -181,9 +181,21 @@ class CustomPropertiesStepTest {
   void twinDropsValuesOfPropertiesNoLongerDefined() {
     EnrichmentTarget target = targetWith("table", new HashMap<>(Map.of("removed", "purpose")));
 
-    new CustomPropertiesStep((entityType, name) -> UNKNOWN_PROPERTY_TYPE).apply(target);
+    new CustomPropertiesStep((entityType, name) -> Optional.empty()).apply(target);
 
     assertEquals(Map.of(), twinOf(target, "table"), "a deleted property has no current type");
+  }
+
+  @Test
+  void twinKeepsValuesOfAUserCreatedTypeNamedUnknown() {
+    EnrichmentTarget target = targetWith("table", new HashMap<>(Map.of("grade", "B")));
+
+    stepTyping("grade", "unknown").apply(target);
+
+    assertEquals(
+        "B",
+        twinOf(target, "table").get("grade"),
+        "a defined property whose type is called unknown is not a missing property");
   }
 
   @Test
@@ -214,7 +226,8 @@ class CustomPropertiesStepTest {
 
   private static CustomPropertiesStep stepTyping(String propertyName, String propertyType) {
     return new CustomPropertiesStep(
-        (entityType, name) -> propertyName.equals(name) ? propertyType : UNKNOWN_PROPERTY_TYPE);
+        (entityType, name) ->
+            propertyName.equals(name) ? Optional.of(propertyType) : Optional.empty());
   }
 
   private static Map<?, ?> twinOf(EnrichmentTarget target, String entityType) {

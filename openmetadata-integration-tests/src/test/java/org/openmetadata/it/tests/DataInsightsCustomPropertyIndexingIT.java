@@ -203,37 +203,42 @@ class DataInsightsCustomPropertyIndexingIT {
     return property;
   }
 
-  private static void deleteDashboardProperty(String property) {
+  private static void deleteDashboardProperty(final String property) {
     // Other tests edit the shared dashboard type, so guard the property index and retry if it
     // moves.
     Awaitility.await("delete custom property " + property)
         .atMost(Duration.ofSeconds(30))
         .ignoreException(InvalidRequestException.class)
-        .untilAsserted(
-            () -> {
-              OpenMetadataClient client = SdkClients.adminClient();
-              Type type = typeByName(client, DASHBOARD + "?fields=customProperties");
-              List<CustomProperty> properties = type.getCustomProperties();
-              for (int index = 0; index < properties.size(); index++) {
-                if (property.equals(properties.get(index).getName())) {
-                  JsonNode patch =
-                      JsonUtils.readTree(
-                          """
-                          [{"op":"test","path":"/customProperties/%1$d/name","value":"%2$s"},
-                           {"op":"remove","path":"/customProperties/%1$d"}]
-                          """
-                              .formatted(index, property));
-                  client
-                      .getHttpClient()
-                      .execute(
-                          HttpMethod.PATCH,
-                          "/v1/metadata/types/" + type.getId(),
-                          patch,
-                          Type.class);
-                  break;
-                }
-              }
-            });
+        .untilAsserted(() -> removeDashboardPropertyAtItsCurrentIndex(property));
+  }
+
+  private static void removeDashboardPropertyAtItsCurrentIndex(final String property)
+      throws Exception {
+    final OpenMetadataClient client = SdkClients.adminClient();
+    final Type type = typeByName(client, DASHBOARD + "?fields=customProperties");
+    final List<CustomProperty> properties = type.getCustomProperties();
+    for (int index = 0; index < properties.size(); index++) {
+      if (property.equals(properties.get(index).getName())) {
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.PATCH,
+                "/v1/metadata/types/" + type.getId(),
+                guardedRemoval(index, property),
+                Type.class);
+        return;
+      }
+    }
+  }
+
+  /** The test op makes the removal fail, and the await retry, if the property moved meanwhile. */
+  private static JsonNode guardedRemoval(final int index, final String property) {
+    return JsonUtils.readTree(
+        """
+        [{"op":"test","path":"/customProperties/%1$d/name","value":"%2$s"},
+         {"op":"remove","path":"/customProperties/%1$d"}]
+        """
+            .formatted(index, property));
   }
 
   private static Type typeByName(OpenMetadataClient client, String name) throws Exception {
@@ -323,28 +328,35 @@ class DataInsightsCustomPropertyIndexingIT {
     return enrich(dashboard, TimestampUtils.getStartOfDayTimestamp(yesterday), now);
   }
 
+  private static List<Map<String, Object>> enrich(
+      final Dashboard dashboard, final long start, final long end) throws SearchIndexException {
+    return enricher.enrichSingle(loadWithAllFields(dashboard), enrichmentContext(start, end));
+  }
+
   @SuppressWarnings("unchecked")
-  private static List<Map<String, Object>> enrich(Dashboard dashboard, long start, long end)
-      throws SearchIndexException {
-    EntityRepository<Dashboard> repository =
+  private static Dashboard loadWithAllFields(final Dashboard dashboard) {
+    final EntityRepository<Dashboard> repository =
         (EntityRepository<Dashboard>) Entity.getEntityRepository(DASHBOARD);
-    Dashboard loaded = repository.find(dashboard.getId(), Include.NON_DELETED, false);
+    final Dashboard loaded = repository.find(dashboard.getId(), Include.NON_DELETED, false);
     repository.setFieldsInBulk(repository.getFields("*"), List.of(loaded));
-    DataInsightsSearchInterface searchInterface = SnapshotStream.searchInterface();
-    List<String> fields =
+    return loaded;
+  }
+
+  private static Map<String, Object> enrichmentContext(final long start, final long end)
+      throws SearchIndexException {
+    final DataInsightsSearchInterface searchInterface = SnapshotStream.searchInterface();
+    final List<String> fields =
         searchInterface.getEntityAttributeFields(
             searchInterface.readDataInsightsSearchConfiguration(), DASHBOARD);
-    Map<String, Object> context =
-        Map.of(
-            ENTITY_TYPE_KEY,
-            DASHBOARD,
-            START_TIMESTAMP_KEY,
-            start,
-            END_TIMESTAMP_KEY,
-            TimestampUtils.getEndOfDayTimestamp(end),
-            ENTITY_TYPE_FIELDS_KEY,
-            new ArrayList<>(fields));
-    return enricher.enrichSingle(loaded, context);
+    return Map.of(
+        ENTITY_TYPE_KEY,
+        DASHBOARD,
+        START_TIMESTAMP_KEY,
+        start,
+        END_TIMESTAMP_KEY,
+        TimestampUtils.getEndOfDayTimestamp(end),
+        ENTITY_TYPE_FIELDS_KEY,
+        new ArrayList<>(fields));
   }
 
   /**

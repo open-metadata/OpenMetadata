@@ -66,9 +66,6 @@ public final class SearchIndexUtils {
           "collateaiapplicationbot",
           "collateaiqualityagentapplicationbot");
 
-  /** What {@link #getPropertyTypeSafe} returns for a custom property that is not defined. */
-  public static final String UNKNOWN_PROPERTY_TYPE = "unknown";
-
   private SearchIndexUtils() {}
 
   /**
@@ -1005,14 +1002,21 @@ public final class SearchIndexUtils {
     return typedProperties;
   }
 
-  /** The property's current type name, or {@link #UNKNOWN_PROPERTY_TYPE} when it is not defined. */
-  public static String getPropertyTypeSafe(String entityType, String propertyName) {
+  private static String getPropertyTypeSafe(String entityType, String propertyName) {
+    return findPropertyType(entityType, propertyName).orElse("unknown");
+  }
+
+  /**
+   * The property's current type name, or empty when it is not defined. Empty is kept apart from any
+   * name because a user-created field type may itself be called "unknown".
+   */
+  public static Optional<String> findPropertyType(
+      final String entityType, final String propertyName) {
     try {
-      return TypeRegistry.getCustomPropertyType(entityType, propertyName);
-    } catch (Exception e) {
-      LOG.debug(
-          "Could not find property type for {}.{}, using 'unknown'", entityType, propertyName);
-      return UNKNOWN_PROPERTY_TYPE;
+      return Optional.ofNullable(TypeRegistry.getCustomPropertyType(entityType, propertyName));
+    } catch (final Exception e) {
+      LOG.debug("Could not find property type for {}.{}", entityType, propertyName);
+      return Optional.empty();
     }
   }
 
