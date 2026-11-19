@@ -14,6 +14,8 @@ Bigquery source module
 """
 
 import os
+import sqlite3
+import tempfile
 import threading
 import traceback
 from collections import OrderedDict
@@ -138,6 +140,8 @@ from metadata.utils.sqlalchemy_utils import is_complex_type
 # being processed concurrently and must be keyed by the fully qualified name.
 DATASET_OBJ_CACHE_SIZE = 512
 TABLE_OBJ_CACHE_SIZE = 2048
+# 4 KiB SQLite pages x 65,536 pages: at most 256 MiB of temporary on-disk data.
+REGION_LIFECYCLE_MAX_PAGES = 65536
 
 # google-cloud-bigquery has no ExternalSourceFormat member for this and the REST reference
 # for externalDataConfiguration.sourceFormat omits it, so it has to be a literal.
@@ -301,13 +305,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
-        # Each project/region query can scan gigabytes. Do it once per ingestion run,
-        # sharing the result between schema workers instead of querying per dataset.
-        self._region_lifecycle_cache: dict[
-            tuple[str, str], dict[str, dict[str, LifeCycleQueryByTable]] | None
-        ] = {}
-        self._region_lifecycle_locks: dict[tuple[str, str], threading.Lock] = {}
-        self._region_lifecycle_locks_guard = threading.Lock()
+        # The region scan is billed once regardless of the number of datasets.
+        # A bounded temporary SQLite spool avoids holding the entire region
+        # (including filtered-out datasets) in the ingestion worker's RAM.
+        self._region_lifecycle_lock = threading.Lock()
+        self._region_lifecycle_db: sqlite3.Connection | None = None
+        self._region_lifecycle_dir: tempfile.TemporaryDirectory | None = None
 
         if self.service_connection.includePolicyTags:
             try:
@@ -789,59 +792,163 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             context.shard_lifecycle = summaries
         return context.shard_lifecycle
 
-    def _load_region_lifecycle(
-        self, database: str, region: str
-    ) -> dict[str, dict[str, LifeCycleQueryByTable]] | None:
-        """Run the costly region-wide scan only once per project and region.
+    def _get_region_lifecycle_db(self) -> sqlite3.Connection:
+        """Keep complete region results on bounded temporary disk, not in RAM."""
+        if self._region_lifecycle_db is None:
+            cache_dir = tempfile.TemporaryDirectory(prefix="openmetadata-bq-lifecycle-")
+            connection = None
+            try:
+                connection = sqlite3.connect(
+                    os.path.join(cache_dir.name, "region.sqlite3"),
+                    check_same_thread=False,
+                )
+                connection.execute("PRAGMA page_size = 4096")
+                connection.execute(f"PRAGMA max_page_count = {REGION_LIFECYCLE_MAX_PAGES}")
+                connection.executescript(
+                    """
+                    CREATE TABLE scans (
+                        project TEXT NOT NULL, region TEXT NOT NULL,
+                        status TEXT NOT NULL, attempts INTEGER NOT NULL,
+                        PRIMARY KEY (project, region)
+                    );
+                    CREATE TABLE rows (
+                        project TEXT NOT NULL, region TEXT NOT NULL,
+                        schema_name TEXT NOT NULL, table_name TEXT NOT NULL,
+                        payload TEXT NOT NULL,
+                        PRIMARY KEY (project, region, schema_name, table_name)
+                    );
+                    """
+                )
+            except Exception:
+                if connection is not None:
+                    connection.close()
+                cache_dir.cleanup()
+                raise
+            self._region_lifecycle_dir = cache_dir
+            self._region_lifecycle_db = connection
+        return self._region_lifecycle_db
 
-        None caches a failed region query, so all datasets fall back to a
-        dataset-scoped query without retrying the costly scan.
+    def _clear_region_lifecycle_cache(self) -> None:
+        with self._region_lifecycle_lock:
+            if self._region_lifecycle_db is not None:
+                self._region_lifecycle_db.close()
+                self._region_lifecycle_db = None
+            if self._region_lifecycle_dir is not None:
+                self._region_lifecycle_dir.cleanup()
+                self._region_lifecycle_dir = None
+
+    def _load_region_lifecycle(
+        self, database: str, region: str, schema_name: str
+    ) -> dict[str, LifeCycleQueryByTable] | None:
+        """Scan each project/region once; return only the requested dataset's rows.
+
+        An isolated bad row is skipped. A failed region query is retried at most
+        once on the next dataset, then the cheap created-only path is used.
         """
-        key = (database, region.casefold())
-        with self._region_lifecycle_locks_guard:
-            region_lock = self._region_lifecycle_locks.setdefault(key, threading.Lock())
-        with region_lock:
-            if key not in self._region_lifecycle_cache:
-                try:
-                    sql = BIGQUERY_LIFE_CYCLE_QUERY_ALL_IN_REGION.format(
-                        database_name=database, region=region
-                    )
-                    by_schema: dict[str, dict[str, LifeCycleQueryByTable]] = {}
-                    with self.engine.connect() as conn:
-                        for row in conn.execute(text(sql)):
-                            values = row._asdict()
-                            schema_name = values.pop("table_schema")
-                            lifecycle = LifeCycleQueryByTable.model_validate(values)
-                            by_schema.setdefault(schema_name, {})[lifecycle.table_name] = lifecycle
-                    self._region_lifecycle_cache[key] = by_schema
-                except Exception as exc:
-                    logger.warning(
-                        "BigQuery region-wide life cycle query failed for %s/%s; "
-                        "falling back to dataset-scoped queries: %s",
-                        database,
-                        region,
-                        exc,
-                    )
-                    self._region_lifecycle_cache[key] = None
-            return self._region_lifecycle_cache[key]
+        normalized_region = region.casefold()
+        # Serialize access to the SQLite connection and to the costly scan so
+        # concurrent schema workers cannot initiate duplicate billed queries.
+        with self._region_lifecycle_lock:
+            try:
+                db = self._get_region_lifecycle_db()
+                state = db.execute(
+                    "SELECT status, attempts FROM scans WHERE project = ? AND region = ?",
+                    (database, normalized_region),
+                ).fetchone()
+                if state is None or state[0] == "retry":
+                    try:
+                        sql = BIGQUERY_LIFE_CYCLE_QUERY_ALL_IN_REGION.format(
+                            database_name=database, region=region
+                        )
+                        with self.engine.connect() as conn:
+                            for row in conn.execute(text(sql)):
+                                try:
+                                    values = row._asdict()
+                                    row_schema = values.pop("table_schema")
+                                    lifecycle = LifeCycleQueryByTable.model_validate(values)
+                                except Exception as exc:
+                                    logger.warning(
+                                        "Ignoring malformed BigQuery life cycle row "
+                                        "in %s/%s: %s",
+                                        database,
+                                        region,
+                                        exc,
+                                    )
+                                    continue
+                                db.execute(
+                                    "INSERT OR REPLACE INTO rows "
+                                    "(project, region, schema_name, table_name, payload) "
+                                    "VALUES (?, ?, ?, ?, ?)",
+                                    (
+                                        database,
+                                        normalized_region,
+                                        row_schema,
+                                        lifecycle.table_name,
+                                        lifecycle.model_dump_json(),
+                                    ),
+                                )
+                        db.execute(
+                            "INSERT OR REPLACE INTO scans "
+                            "(project, region, status, attempts) VALUES (?, ?, 'ok', 0)",
+                            (database, normalized_region),
+                        )
+                        db.commit()
+                    except Exception as exc:
+                        # Never expose partial region results after a failed scan.
+                        db.rollback()
+                        attempts = 1 if state is None else state[1] + 1
+                        next_status = "retry" if attempts < 2 else "failed"
+                        db.execute(
+                            "INSERT OR REPLACE INTO scans "
+                            "(project, region, status, attempts) VALUES (?, ?, ?, ?)",
+                            (database, normalized_region, next_status, attempts),
+                        )
+                        db.commit()
+                        logger.warning(
+                            "BigQuery life cycle scan failed for %s/%s "
+                            "(attempt %s/2); using dataset-scoped created-only query: %s",
+                            database,
+                            region,
+                            attempts,
+                            exc,
+                        )
+                        return None
+                elif state[0] == "failed":
+                    return None
+
+                records = db.execute(
+                    "SELECT table_name, payload FROM rows "
+                    "WHERE project = ? AND region = ? AND schema_name = ?",
+                    (database, normalized_region, schema_name),
+                )
+                return {
+                    table_name: LifeCycleQueryByTable.model_validate_json(payload)
+                    for table_name, payload in records
+                }
+            except sqlite3.Error as exc:
+                logger.warning(
+                    "BigQuery life cycle temporary cache unavailable for %s/%s: %s",
+                    database,
+                    region,
+                    exc,
+                )
+                return None
 
     def _cached_region_lifecycle(self, query: str) -> dict[str, LifeCycleQueryByTable]:
         context = self.context.get()
         database, schema_name = context.database, context.database_schema
         region = self._get_schema_region(schema_name)
-        # Retain the original behavior for unresolvable locations and any
-        # caller-supplied/custom query that is not the known region query.
         if region is None or query != BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
             database_name=database, schema_name=schema_name, region=region
         ):
             return super().life_cycle_query_dict(query)
-        region_data = self._load_region_lifecycle(database, region)
-        if region_data is None:
+        schema_data = self._load_region_lifecycle(database, region, schema_name)
+        if schema_data is None:
             dataset_query = BIGQUERY_LIFE_CYCLE_QUERY.format(
                 database_name=database, schema_name=schema_name
             )
             return super().life_cycle_query_dict(dataset_query)
-        return region_data.get(schema_name, {})
+        return schema_data
 
     def _get_schema_region(self, schema_name: str) -> str | None:
         """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
@@ -1567,6 +1674,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return raw_data_type.replace(", ", ",").replace(" ", ":").lower()
 
     def close(self):
+        self._clear_region_lifecycle_cache()
         super().close()
 
         if self._policy_tag_client:
