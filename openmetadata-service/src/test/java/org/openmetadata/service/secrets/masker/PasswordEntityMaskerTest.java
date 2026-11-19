@@ -538,6 +538,29 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
     assertEquals(getMaskedPassword(), s3.getSecurityConfig().getAwsSecretAccessKey());
   }
 
+  /** Released 2.0 versions typed a storage config as a metastore config and added its appName. */
+  @Test
+  void testDeltaLakeStorageS3KeySavedAsMetastoreConfigIsMasked() {
+    Map<String, Object> serialized =
+        Map.of(
+            "type",
+            "DeltaLake",
+            "configSource",
+            Map.of(
+                "appName",
+                "OpenMetadata",
+                "connection",
+                Map.of(
+                    "securityConfig",
+                    Map.of("awsRegion", "us-east-1", "awsSecretAccessKey", NESTED_SECRET))));
+
+    DeltaLakeConnection masked =
+        (DeltaLakeConnection) mask(serialized, "DeltaLake", ServiceType.DATABASE);
+
+    S3Config s3 = (S3Config) ((MetastoreConfig) masked.getConfigSource()).getConnection();
+    assertEquals(getMaskedPassword(), s3.getSecurityConfig().getAwsSecretAccessKey());
+  }
+
   private Object mask(
       Map<String, Object> serialized, String connectionType, ServiceType serviceType) {
     return EntityMaskerFactory.createEntityMasker()

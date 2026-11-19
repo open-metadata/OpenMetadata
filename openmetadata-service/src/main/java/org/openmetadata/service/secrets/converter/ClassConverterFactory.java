@@ -143,6 +143,8 @@ public final class ClassConverterFactory {
    */
   private static final Map<Class<?>, ClassConverter> NESTED_CONFIG_CONVERTERS =
       Map.ofEntries(
+          // Released 2.0 versions tried the metastore config first, so a storage config was saved
+          // as one, with its default appName: its S3 config is typed here, as the last candidate.
           Map.entry(
               MetastoreConfig.class,
               new NestedConfigClassConverter(
@@ -152,7 +154,9 @@ public final class ClassConverterFactory {
                       List.of(
                           MetastoreHostPortConnection.class,
                           MetastoreDbConnection.class,
-                          MetastoreFilePathConnection.class)))),
+                          MetastoreFilePathConnection.class,
+                          org.openmetadata.schema.services.connections.database.datalake.S3Config
+                              .class)))),
           Map.entry(
               SampleDataStorageConfig.class,
               new NestedConfigClassConverter(
