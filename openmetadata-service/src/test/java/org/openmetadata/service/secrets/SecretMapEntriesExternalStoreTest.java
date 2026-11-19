@@ -354,6 +354,144 @@ class SecretMapEntriesExternalStoreTest {
     assertEquals("replaced-key", storedKey(updated, "prod"));
   }
 
+  /**
+   * A server renamed without touching its key keeps its reference until the next save, which moves
+   * the key to the id of its new name: a server later added under the old name then gets an id that
+   * no other server still reads.
+   */
+  @Test
+  void aRenamedServerKeepsItsKeyWhenItsOldNameIsReusedLater() {
+    final McpConnection created = encryptMcp(List.of(mcpServer("alpha", "alpha-key")), null);
+    final McpConnection renamed =
+        encryptMcp(List.of(copy(created.getServers().getFirst()).withName("beta")), created);
+
+    final McpConnection reused =
+        encryptMcp(
+            List.of(copy(renamed.getServers().getFirst()), mcpServer("alpha", "new-alpha-key")),
+            renamed);
+
+    assertEquals("alpha-key", storedKey(reused, "beta"));
+    assertEquals("new-alpha-key", storedKey(reused, "alpha"));
+  }
+
+  /** The secret a renamed server leaves under its old name goes when the service is hard-deleted. */
+  @Test
+  void aRenamedServerLeavesNoSecretBehindWhenTheServiceIsHardDeleted() {
+    final McpConnection created = encryptMcp(List.of(mcpServer("alpha", "alpha-key")), null);
+    final McpConnection renamed =
+        encryptMcp(List.of(copy(created.getServers().getFirst()).withName("beta")), created);
+
+    ownership.removeOwner(owner, secretsManager.secretInventory(renamed, mcpRoot()));
+    ownership.clean(mcpRoot());
+
+    assertTrue(secretsManager.getSecretsMap().isEmpty());
+  }
+
+  @Test
+  void aRenamedServerKeepsItsKeyWhenItsOldNameIsReusedInTheSameSave() {
+    final McpConnection created = encryptMcp(List.of(mcpServer("alpha", "alpha-key")), null);
+
+    final McpConnection updated =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().getFirst()).withName("beta"),
+                mcpServer("alpha", "new-alpha-key")),
+            created);
+
+    assertEquals("alpha-key", storedKey(updated, "beta"));
+    assertEquals("new-alpha-key", storedKey(updated, "alpha"));
+  }
+
+  /** Swapping two names moves both keys before either is written, then an edit hits only one. */
+  @Test
+  void swappingServerNamesThenReplacingOneKeyKeepsTheOther() {
+    final McpConnection created =
+        encryptMcp(List.of(mcpServer("alpha", "alpha-key"), mcpServer("beta", "beta-key")), null);
+    final McpConnection swapped =
+        encryptMcp(
+            List.of(
+                copy(created.getServers().getFirst()).withName("beta"),
+                copy(created.getServers().get(1)).withName("alpha")),
+            created);
+
+    final McpConnection edited =
+        encryptMcp(
+            List.of(
+                copy(swapped.getServers().getFirst()),
+                copy(swapped.getServers().get(1)).withApiKey("replaced-key")),
+            swapped);
+
+    assertEquals("alpha-key", storedKey(edited, "beta"));
+    assertEquals("replaced-key", storedKey(edited, "alpha"));
+  }
+
+  /** Servers keyed by position keep their own keys through a reorder and a later edit. */
+  @Test
+  void reorderingServersKeyedByPositionThenReplacingOneKeyKeepsTheOther() {
+    final McpServerConfig first = mcpServer("dup", "first-key").withUrl("https://first/mcp");
+    final McpServerConfig second = mcpServer("dup", "second-key").withUrl("https://second/mcp");
+    final McpConnection created = encryptMcp(List.of(first, second), null);
+    final McpConnection reordered =
+        encryptMcp(
+            List.of(copy(created.getServers().get(1)), copy(created.getServers().getFirst())),
+            created);
+
+    final McpConnection edited =
+        encryptMcp(
+            List.of(
+                copy(reordered.getServers().getFirst()).withApiKey("replaced-key"),
+                copy(reordered.getServers().get(1))),
+            reordered);
+
+    assertEquals("replaced-key", storedKeyAt(edited, "https://second/mcp"));
+    assertEquals("first-key", storedKeyAt(edited, "https://first/mcp"));
+  }
+
+  /** A reference a user gave to a secret outside the service is kept as it is. */
+  @Test
+  void aReferenceOutsideTheServiceIsNotMoved() {
+    secretsManager.getSecretsMap().put("/shared/team/key", "shared-key");
+
+    final McpConnection stored =
+        encryptMcp(List.of(mcpServer("alpha", "secret:/shared/team/key")), null);
+
+    assertEquals("secret:/shared/team/key", reference(stored.getServers().getFirst()));
+    assertEquals("shared-key", storedKey(stored, "alpha"));
+  }
+
+  /** Preparing a change for approval moves nothing in the vault. */
+  @Test
+  void preparingARenameLeavesTheVaultUntouched() {
+    final McpConnection created = encryptMcp(List.of(mcpServer("alpha", "alpha-key")), null);
+    final Map<String, String> before = new HashMap<>(secretsManager.getSecretsMap());
+
+    secretsManager.prepareServiceConnectionConfig(
+        new McpConnection()
+            .withServers(
+                List.of(
+                    copy(created.getServers().getFirst()).withName("beta"),
+                    mcpServer("alpha", "new-alpha-key"))),
+        "Mcp",
+        SERVICE,
+        ServiceType.MCP);
+
+    assertEquals(before, secretsManager.getSecretsMap());
+  }
+
+  private String storedKeyAt(final McpConnection connection, final String url) {
+    return secretsManager.getSecretValue(
+        reference(
+            connection.getServers().stream()
+                .filter(server -> url.equals(server.getUrl()))
+                .findFirst()
+                .orElseThrow()));
+  }
+
+  private static String reference(final McpServerConfig server) {
+    final String apiKey = server.getApiKey();
+    return Fernet.isTokenized(apiKey) ? Fernet.getInstance().decrypt(apiKey) : apiKey;
+  }
+
   private String storedKey(final McpConnection connection, final String name) {
     final String apiKey =
         connection.getServers().stream()

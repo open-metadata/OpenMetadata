@@ -147,6 +147,11 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   @Override
+  protected boolean storesSecretsByReference() {
+    return true;
+  }
+
+  @Override
   protected Optional<String> findSecretValue(String reference) {
     Optional<String> secretValue = Optional.empty();
     try {

@@ -163,16 +163,17 @@ public class ReflectionUtil {
       final int index,
       final Map<String, Integer> exact,
       final Map<String, Integer> cleaned) {
-    final boolean named = isUnique(name, name, exact);
-    final boolean readable =
-        named && isUnique(name, secretIdForm(name), cleaned) && !looksGenerated(secretIdForm(name));
-    String key = POSITION_KEY_PREFIX + index;
-    if (readable) {
-      key = name;
-    } else if (named) {
-      key = HASHED_NAME_PREFIX + DigestUtils.sha256Hex(name).substring(0, HASHED_NAME_LENGTH);
-    }
-    return key;
+    final boolean isNamed = isUnique(name, name, exact);
+    final boolean isReadable =
+        isNamed
+            && isUnique(name, secretIdForm(name), cleaned)
+            && !looksGenerated(secretIdForm(name));
+    final String unreadableKey = isNamed ? hashedName(name) : POSITION_KEY_PREFIX + index;
+    return isReadable ? name : unreadableKey;
+  }
+
+  private static String hashedName(final String name) {
+    return HASHED_NAME_PREFIX + DigestUtils.sha256Hex(name).substring(0, HASHED_NAME_LENGTH);
   }
 
   /** A cleaned name that could equal a position key or a hashed name of another element. */

@@ -1,9 +1,9 @@
 # MCP service server names are unique, and a masked value is kept only where a stored value exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned)
+- **Revisions:** v1 2026-11-11 (initial); v2 2026-11-14 (checked on any server change, order included); v3 2026-11-19 (secret ids of list elements stay distinct once cleaned); v4 2026-11-19 (a stored reference follows its element)
 - **Deciders:** backend
-- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
+- **Guard:** `PasswordEntityMaskerTest.testMaskedSecretWithNoStoredValueIsRejected`, `PasswordEntityMaskerTest.testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered`; `ReflectionUtilCollectionKeysTest`, `SecretMapEntriesExternalStoreTest.reorderingServersThatShareACleanedNameThenReplacingOneKeyKeepsTheOther`, `SecretMapEntriesExternalStoreTest.aRenamedServerKeepsItsKeyWhenItsOldNameIsReusedLater`; `McpServiceResourceIT.post_mcpServiceWithDuplicateServerNames_400`, `McpServiceResourceIT.put_renamedServerWithMaskedApiKey_400_keepsStoredKey`, `McpServiceResourceIT.put_reorderedStoredServersWithSameName_400_otherEditsStillSave`
 - **Related:** open-metadata/openmetadata-collate#7962, ADR:2026-10-24-a-masked-connection-secret-is-kept-only-while-the-endpoint-is-unchanged
 
 ## Context
@@ -52,3 +52,24 @@ deleted from, the id computed for the element on that save. With position ids, s
 and then editing one key overwrote, or deleted, the secret the other server still referenced.
 Server names are still only refused when they repeat exactly: `Prod` and `prod` are accepted, keep
 their own keys through a reorder, and get distinct, stable secret ids.
+
+## Amendment (v4, 2026-11-19)
+
+After a save to an external secrets manager, every list element's secret reference is the id
+computed for that element on that save. A save used to keep an existing `secret:` reference as it
+was, so a server renamed from `alpha` to `beta` (or one keyed by position and moved) still read
+`alpha`'s secret, and a server later saved as `alpha` overwrote it.
+
+- Before anything in a list is written, a reference to the same field of another element of the
+  list is read back into its value; the save then writes it under the element's own id. All reads
+  come first, so two elements that swap ids keep their own values.
+- A reference outside the list was given by the user and is kept, as is one whose secret no longer
+  exists or cannot be read (a server that may write secrets but not read them): the save then
+  succeeds with the reference unchanged. Lists nested inside an element are covered too.
+- Whether a reference is another element's is read from its id: inside the list's id, ending like
+  the field's own. Where the provider's separator (`-`, `_`) can also appear in names, a reference a
+  user typed to a secret whose id happens to start like this list's ids is treated as the list's.
+- Preparing a change for approval moves nothing, and the database secrets manager, which holds no
+  references, is unaffected.
+- The secret left under the old id still belongs to the service and goes when the service is
+  hard-deleted.
