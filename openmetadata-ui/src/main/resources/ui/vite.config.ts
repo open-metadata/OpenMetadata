@@ -204,8 +204,11 @@ export default defineConfig(async ({ mode }) => {
         },
         '/callback': {
           target: devServerTarget,
-          changeOrigin: true,
-          bypass: (req) => (isTestLoginCallback(req.url) ? undefined : req.url),
+          changeOrigin: false,
+          bypass: (req) =>
+            req.method === 'POST' || isTestLoginCallback(req.url)
+              ? undefined
+              : req.url,
         },
       },
       watch: {
