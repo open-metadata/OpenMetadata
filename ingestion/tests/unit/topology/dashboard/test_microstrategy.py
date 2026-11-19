@@ -476,7 +476,10 @@ class TestClient:
         assert len(server.requests_to("/v2/reports/R1")) == 1
         assert len(server.requests_to("/v2/cubes/C9/sqlView")) == 1
 
-    def test_a_live_cube_has_no_sql_and_says_why(self, server, client, caplog):
+    # A Live cube is a dataset of its own, or the source of a report dataset.
+    @pytest.mark.parametrize("dataset_id", ["L1", "R1"])
+    def test_a_live_cube_has_no_sql_and_says_why(self, server, client, caplog, dataset_id):
+        _report_route(server, "R1", source="L1")
         server.overrides["/v2/cubes/L1/sqlView"] = lambda: (
             400,
             {
@@ -485,12 +488,13 @@ class TestClient:
             },
         )
 
-        assert client.get_cube_sql_details(TUTORIAL["id"], "L1") is None
-        assert client.get_cube_sql_details(TUTORIAL["id"], "L1") is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], dataset_id) is None
+        assert client.get_cube_sql_details(TUTORIAL["id"], dataset_id) is None
 
         assert len(server.requests_to("/v2/cubes/L1")) == 1
-        assert server.requests_to("/v2/reports/") == []
-        assert "Dataset L1 is a Live Intelligent Cube" in caplog.text
+        assert len(server.requests_to("/v2/reports/")) == (dataset_id == "R1")
+        assert "Cube L1 is a Live Intelligent Cube" in caplog.text
+        assert "Could not read" not in caplog.text
 
     def test_a_report_whose_source_cannot_be_read_has_no_sql(self, server, client, caplog):
         _report_route(server, "R1", source=None)
