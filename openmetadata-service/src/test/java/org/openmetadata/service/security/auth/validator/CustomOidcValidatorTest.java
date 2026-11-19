@@ -100,6 +100,26 @@ class CustomOidcValidatorTest {
   }
 
   @Test
+  void validateCustomOidcPublicClientWithoutOidcConfigurationUsesTheAuthority() {
+    // The SSO form sends no oidcConfiguration for a public client; validation must not fail on
+    // its absence (it threw a NullPointerException) and finds discovery from the authority.
+    AuthenticationConfiguration authConfig = publicAuthConfig();
+
+    try (MockedStatic<ValidationHttpUtil> http = mockStatic(ValidationHttpUtil.class)) {
+      http.when(() -> ValidationHttpUtil.safeGet(DISCOVERY_URI))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, DISCOVERY_RESPONSE));
+      http.when(() -> ValidationHttpUtil.safeGet(JWKS_URI))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(200, JWKS_RESPONSE));
+      http.when(() -> ValidationHttpUtil.getNoRedirect(expectedAuthorizationValidationUrl()))
+          .thenReturn(new ValidationHttpUtil.HttpResponseData(302, ""));
+
+      FieldError error = validator.validateCustomOidcConfiguration(authConfig, null);
+
+      assertNull(error);
+    }
+  }
+
+  @Test
   void validateCustomOidcPublicClientRejectsMismatchedPublicKeyUrls() {
     AuthenticationConfiguration authConfig = publicAuthConfig();
     authConfig.setPublicKeyUrls(List.of("https://other.example/keys"));
@@ -375,15 +395,6 @@ class CustomOidcValidatorTest {
       assertEquals(ValidationErrorBuilder.FieldPaths.OIDC_DISCOVERY_URI, error.getField());
       assertTrue(error.getError().contains("Authorization endpoint is required"));
     }
-  }
-
-  @Test
-  void validateCustomOidcPublicClientWrapsUnexpectedPublicClientExceptions() {
-    FieldError error = validator.validateCustomOidcConfiguration(publicAuthConfig(), null);
-
-    assertNotNull(error);
-    assertEquals("authenticationConfiguration", error.getField());
-    assertTrue(error.getError().contains("Custom OIDC public client validation failed"));
   }
 
   @Test

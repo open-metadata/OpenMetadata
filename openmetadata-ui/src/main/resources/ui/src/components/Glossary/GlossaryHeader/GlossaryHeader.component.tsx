@@ -18,13 +18,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
-  Brush01,
   ChangeHierarchy02,
   ChevronDown,
   Download01,
   Edit01,
   Glossary as GlossaryIcon,
   GlossaryTerm as GlossaryTermIcon,
+  ImageBrush,
   RefreshCcw01,
   Trash01,
   Upload01,
@@ -232,7 +232,7 @@ const buildManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.glossary-term'),
               })}
-              icon={Brush01}
+              icon={ImageBrush}
               id="edit-style-button"
               name={t('label.style')}
             />

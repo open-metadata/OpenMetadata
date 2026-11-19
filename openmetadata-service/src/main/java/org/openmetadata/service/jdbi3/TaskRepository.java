@@ -24,6 +24,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
@@ -85,6 +86,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.TaskResourceContext;
 import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext;
+import org.openmetadata.service.tasks.IncidentWorkflowStages;
 import org.openmetadata.service.tasks.TaskFieldTarget;
 import org.openmetadata.service.tasks.TaskFieldValidator;
 import org.openmetadata.service.tasks.TaskFormExecutionResolver;
@@ -285,9 +287,7 @@ public class TaskRepository extends EntityRepository<Task> {
 
     if (requestedDomainId != null) {
       String effectiveDomainId =
-          domainAccessControl && domainId != null
-              ? intersectDomainIds(requestedDomainId, domainId)
-              : requestedDomainId;
+          domainId != null ? intersectDomainIds(requestedDomainId, domainId) : requestedDomainId;
       filter.addQueryParam("domainId", effectiveDomainId);
       domainId = effectiveDomainId;
     }
@@ -959,9 +959,59 @@ public class TaskRepository extends EntityRepository<Task> {
       ChangeRequestReview review) {
     TaskFieldValidator.validateResolutionPayloadAgainstFormSchema(
         task, transitionId, resolvedPayload, newValue);
-    return TaskWorkflowHandler.getInstance()
-        .resolveTask(
-            task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
+    boolean clearingIncidentAssignment =
+        task.getType() == TaskEntityType.TestCaseResolution
+            && (IncidentWorkflowStages.NEW_TRANSITION_ID.equals(transitionId)
+                || (IncidentWorkflowStages.ACK_TRANSITION_ID.equals(transitionId)
+                    && IncidentWorkflowStages.ASSIGNED_STAGE_ID.equals(task.getWorkflowStageId())));
+    List<EntityReference> previousAssignees = List.of();
+    if (clearingIncidentAssignment) {
+      Task current = get(null, task.getId(), getFields("*"));
+      requireIncidentReturnTransition(current, transitionId);
+      previousAssignees = listOrEmpty(current.getAssignees());
+      ObjectNode payload =
+          resolvedPayload == null
+              ? JsonUtils.getObjectMapper().createObjectNode()
+              : (ObjectNode) JsonUtils.valueToTree(resolvedPayload);
+      payload.putArray("assignees");
+      resolvedPayload = payload;
+      task = current;
+    }
+    try {
+      return TaskWorkflowHandler.getInstance()
+          .resolveTask(
+              task, transitionId, resolutionType, newValue, resolvedPayload, comment, user, review);
+    } catch (RuntimeException failure) {
+      // The stage callback clears assignment in the same write as the stage change. If it never
+      // commits, restore only the process variables; the persisted assignment is still intact.
+      if (clearingIncidentAssignment) {
+        Task current = get(null, task.getId(), getFields("*"));
+        if (Objects.equals(current.getWorkflowStageId(), task.getWorkflowStageId())) {
+          WorkflowHandler handler = WorkflowHandler.getInstance();
+          handler.setProcessVariable(
+              task.getId(),
+              WorkflowStartVariables.TASK_ASSIGNEES,
+              JsonUtils.pojoToJson(previousAssignees));
+          handler.setProcessVariable(
+              task.getId(),
+              WorkflowStartVariables.INCIDENT_ASSIGNEES_CLEARED,
+              previousAssignees.isEmpty());
+        }
+      }
+      throw failure;
+    }
+  }
+
+  private static void requireIncidentReturnTransition(Task task, String transitionId) {
+    if (isTerminalStatus(task.getStatus())) {
+      rejectReopeningIncident(task);
+    }
+    if (TaskWorkflowLifecycleResolver.findTransition(task, transitionId) == null) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incident task %s cannot transition to %s from its current stage; its workflow does not support this transition",
+              task.getId(), transitionId));
+    }
   }
 
   /**
@@ -973,10 +1023,21 @@ public class TaskRepository extends EntityRepository<Task> {
       return task;
     }
     Task original = get(null, task.getId(), getFields("*"));
+    rejectReopeningIncident(original);
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setStatus(TaskEntityStatus.Open);
     updated.setResolution(null);
     return persistLifecycleChange(original, updated, user);
+  }
+
+  // A resolved incident is final: a later failure of the same test case opens a new incident task.
+  private static void rejectReopeningIncident(Task task) {
+    if (task.getType() == TaskEntityType.TestCaseResolution) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incident task %s is resolved and cannot be reopened; a new test failure opens a new incident",
+              task.getId()));
+    }
   }
 
   /**
@@ -1845,6 +1906,9 @@ public class TaskRepository extends EntityRepository<Task> {
           WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
       variables.put(
           WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.AUTO_ASSIGN_OWNERS,
+          TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(workflowDefinition));
 
       WorkflowHandler.getInstance()
           .triggerByKey(
@@ -2086,6 +2150,9 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
+        if (isTerminalStatus(original.getStatus()) && !isTerminalStatus(updated.getStatus())) {
+          rejectReopeningIncident(original);
+        }
         // Only stamp a fallback Completed resolution when the task is actually moving to a
         // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
         // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)

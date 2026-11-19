@@ -25,6 +25,7 @@ from metadata.data_quality.validations.base_test_handler import (
     TestEvaluation,
 )
 from metadata.generated.schema.tests.basic import (
+    TestCaseAppliedThreshold,
     TestCaseResult,
     TestCaseStatus,
     TestResultValue,
@@ -44,6 +45,13 @@ class BaseColumnValuesToBeInSetValidator(BaseTestValidator):
 
     ALLOWED_VALUES = "allowedValues"
     MATCH_ENUM = "matchEnum"
+
+    def result_applied_threshold(self, status: TestCaseStatus | None) -> TestCaseAppliedThreshold | None:
+        if status is not TestCaseStatus.Aborted and not utils.get_bool_test_case_param(
+            self.test_case.parameterValues or [], self.MATCH_ENUM
+        ):
+            return TestCaseAppliedThreshold(applied=False)
+        return super().result_applied_threshold(status)
 
     def _run_validation(self) -> TestCaseResult:
         """Execute the specific test validation logic
