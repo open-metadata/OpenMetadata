@@ -15,6 +15,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.search.PreviewSearchRequest;
+import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.AuthorizationException;
@@ -61,6 +62,27 @@ class SearchResourceTest {
           assertThrows(
               BadRequestException.class,
               () -> resource.previewSearch(mock(SecurityContext.class), request));
+
+      assertEquals(rejectedField + " must be greater than or equal to 0", error.getMessage());
+      verifyNoInteractions(searchRepository);
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"-25, 25, from", "0, -1, size", ", -1, size"})
+  void searchPostRejectsNegativePaginationWithoutSearching(
+      final Integer from, final Integer size, final String rejectedField) {
+    final SearchRepository searchRepository = mock(SearchRepository.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      final SearchResource resource = new SearchResource(mock(Authorizer.class));
+      final SearchRequest request =
+          new SearchRequest().withQuery("*").withIndex("table").withFrom(from).withSize(size);
+
+      final BadRequestException error =
+          assertThrows(
+              BadRequestException.class,
+              () -> resource.searchPost(mock(SecurityContext.class), request));
 
       assertEquals(rejectedField + " must be greater than or equal to 0", error.getMessage());
       verifyNoInteractions(searchRepository);

@@ -184,6 +184,7 @@ public class PipelineBuilder {
    * Set extension properties.
    */
   public PipelineBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

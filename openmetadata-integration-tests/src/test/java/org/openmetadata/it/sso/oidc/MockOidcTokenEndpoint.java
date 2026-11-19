@@ -80,11 +80,16 @@ final class MockOidcTokenEndpoint implements HttpHandler {
   public void handle(HttpExchange exchange) throws IOException {
     Map<String, String> form = MockHttp.formParameters(exchange);
     journal.record(exchange, form);
-    Optional.ofNullable(pendingGates.poll()).ifPresent(MockResponseGate::holdResponse);
-    if (isRegisteredClient(exchange, form)) {
-      respondToGrant(exchange, form);
-    } else {
-      respondError(exchange, UNAUTHORIZED, INVALID_CLIENT);
+    Optional<MockResponseGate> gate = Optional.ofNullable(pendingGates.poll());
+    gate.ifPresent(MockResponseGate::holdResponse);
+    try {
+      if (isRegisteredClient(exchange, form)) {
+        respondToGrant(exchange, form);
+      } else {
+        respondError(exchange, UNAUTHORIZED, INVALID_CLIENT);
+      }
+    } finally {
+      gate.ifPresent(MockResponseGate::complete);
     }
   }
 
