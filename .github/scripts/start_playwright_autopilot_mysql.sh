@@ -4,6 +4,7 @@ set -euo pipefail
 
 workspace_root=${GITHUB_WORKSPACE:-$(pwd)}
 container_name=${PW_AUTOPILOT_MYSQL_CONTAINER:?PW_AUTOPILOT_MYSQL_CONTAINER is required}
+mysql_image=${PW_AUTOPILOT_MYSQL_IMAGE:-$(sed -n 's/^FROM[[:space:]]\{1,\}//p' "$workspace_root/docker/mysql/Dockerfile_mysql" | head -1)}
 
 # A per-shard source keeps AutoPilot's real ingestion coverage independent of
 # the shared connector database. It is reachable only on the Docker network.
@@ -15,7 +16,7 @@ docker run --detach \
   --log-driver local --log-opt max-size=5m --log-opt max-file=1 --log-opt compress=false \
   --env MYSQL_ROOT_PASSWORD=playwright-fixture-root \
   --volume "$workspace_root/docker/development/playwright-autopilot-mysql.sql:/docker-entrypoint-initdb.d/autopilot.sql:ro" \
-  "${PW_AUTOPILOT_MYSQL_IMAGE:-mysql:8.4.13}" \
+  "${mysql_image:?docker/mysql/Dockerfile_mysql names no image}" \
   --innodb-buffer-pool-size=64M --innodb-redo-log-capacity=32M \
   --max-connections=40 --performance-schema=OFF >/dev/null
 

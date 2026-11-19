@@ -23,7 +23,7 @@ from sqlalchemy.orm import DeclarativeBase, Session
 from metadata.profiler.source.database.mariadb.functions.median import MariaDBMedianFn
 
 try:
-    from testcontainers.mysql import MySqlContainer
+    from testcontainers.mysql import MySqlContainer  # noqa: TID251 - MariaDB, not the shipped MySQL image
 except ImportError:
     pytest.skip("testcontainers not installed", allow_module_level=True)
 

@@ -21,6 +21,7 @@ import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -39,7 +40,7 @@ class AuditLogEntityTypeIndexTest {
   @Test
   void addsTheIndexOnceOnMysql() {
     try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.3.0")
+        new GenericContainer<>(TestDatabaseImages.mysql())
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -96,7 +97,7 @@ class AuditLogEntityTypeIndexTest {
   @Test
   void addsTheIndexOnceAndRebuildsAnInvalidOneOnPostgres() {
     try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
+        new GenericContainer<>(TestDatabaseImages.postgres())
             .withEnv("POSTGRES_DB", DATABASE)
             .withEnv("POSTGRES_PASSWORD", PASSWORD)
             .withExposedPorts(5432)

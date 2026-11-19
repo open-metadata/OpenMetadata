@@ -21,6 +21,7 @@ import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -35,7 +36,7 @@ class FlowableCharsetMigrationMySqlTest {
 
   @Container
   static final GenericContainer<?> MYSQL =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
+      new GenericContainer<>(DockerImageName.parse(TestDatabaseImages.mysql()))
           .withEnv("MYSQL_DATABASE", DATABASE)
           .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
           .withExposedPorts(3306)

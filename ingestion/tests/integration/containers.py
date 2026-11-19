@@ -10,13 +10,14 @@
 #  limitations under the License.
 """Common containers for integration tests"""
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
 from minio import Minio
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_container_is_ready
-from testcontainers.mysql import MySqlContainer
+
+from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
 
 
 # ------------------------------------------------------------
@@ -26,7 +27,7 @@ from testcontainers.mysql import MySqlContainer
 class MySqlContainerConfigs:
     """MySQL Configurations"""
 
-    image: str = "mysql:8.4.13"
+    image: str = field(default_factory=mysql_image)
     username: str = "user"
     password: str = "password"
     dbname: str = "db"

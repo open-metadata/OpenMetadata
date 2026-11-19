@@ -26,7 +26,9 @@ networks:
 services:
   # Shared MySQL Database
   mysql:
-    image: mysql:8.4.13
+    build:
+      context: ../../..
+      dockerfile: docker/mysql/Dockerfile_mysql
     container_name: distributed_test_mysql
     restart: unless-stopped
     environment:
@@ -45,7 +47,8 @@ services:
       retries: 10
     volumes:
       - mysql-data:/var/lib/mysql
-      - ./config/mysql-init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      # Runs after the image's own mysql-script.sql, whose CREATE USER is not idempotent.
+      - ./config/mysql-init.sql:/docker-entrypoint-initdb.d/zz-distributed-test-init.sql:ro
 
   # Shared OpenSearch
   opensearch:

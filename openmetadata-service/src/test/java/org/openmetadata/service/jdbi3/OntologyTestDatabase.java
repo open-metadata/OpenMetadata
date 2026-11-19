@@ -26,6 +26,7 @@ import org.jdbi.v3.sqlobject.SqlObjects;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 
@@ -54,13 +55,13 @@ final class OntologyTestDatabase {
 
   private static GenericContainer<?> database(ConnectionType dialect) {
     return dialect == ConnectionType.MYSQL
-        ? new GenericContainer<>("mysql:8.4.13")
+        ? new GenericContainer<>(TestDatabaseImages.mysql())
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
             .withExposedPorts(3306)
             .waitingFor(Wait.forLogMessage(".*ready for connections.*port: 3306.*\\n", 1))
-        : new GenericContainer<>("postgres:15")
+        : new GenericContainer<>(TestDatabaseImages.postgres())
             .withEnv("POSTGRES_DB", DATABASE)
             .withEnv("POSTGRES_PASSWORD", PASSWORD)
             .withExposedPorts(5432)

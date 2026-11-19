@@ -32,7 +32,8 @@ from metadata.profiler.orm.functions.median import MedianFn
 
 try:
     from testcontainers.core.wait_strategies import LogMessageWaitStrategy
-    from testcontainers.mysql import MySqlContainer
+
+    from _openmetadata_testutils.helpers.database_images import MySqlContainer, mysql_image
 except ImportError:
     pytest.skip("testcontainers not installed", allow_module_level=True)
 
@@ -88,7 +89,7 @@ def mysql_engine():
     # for the single "ready for connections" log line from the main server
     # (the testcontainers default regex expects two occurrences which only
     # MariaDB emits — MySQL emits one).
-    container = MySqlContainer(image="mysql:8.4.13", dbname="test_db").waiting_for(
+    container = MySqlContainer(image=mysql_image(), dbname="test_db").waiting_for(
         LogMessageWaitStrategy("ready for connections").with_startup_timeout(120)
     )
     with container as container:

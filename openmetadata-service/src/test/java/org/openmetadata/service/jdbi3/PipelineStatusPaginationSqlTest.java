@@ -46,6 +46,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -62,7 +63,7 @@ class PipelineStatusPaginationSqlTest {
   @Test
   void filteredPagesOnMysql() {
     try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.4.13")
+        new GenericContainer<>(TestDatabaseImages.mysql())
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -83,7 +84,7 @@ class PipelineStatusPaginationSqlTest {
   @Test
   void filteredPagesOnPostgres() {
     try (GenericContainer<?> database =
-        new GenericContainer<>("postgres:15")
+        new GenericContainer<>(TestDatabaseImages.postgres())
             .withEnv("POSTGRES_DB", DATABASE)
             .withEnv("POSTGRES_PASSWORD", PASSWORD)
             .withExposedPorts(5432)

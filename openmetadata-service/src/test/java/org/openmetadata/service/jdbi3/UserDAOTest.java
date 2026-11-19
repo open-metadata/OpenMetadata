@@ -44,6 +44,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocato
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.TestDatabaseImages;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
@@ -61,7 +62,7 @@ class UserDAOTest {
 
   @Container
   static final GenericContainer<?> POSTGRES_CONTAINER =
-      new GenericContainer<>(DockerImageName.parse("postgres:15"))
+      new GenericContainer<>(DockerImageName.parse(TestDatabaseImages.postgres()))
           .withEnv("POSTGRES_DB", DATABASE)
           .withEnv("POSTGRES_PASSWORD", PASSWORD)
           .withExposedPorts(5432)
@@ -70,7 +71,7 @@ class UserDAOTest {
 
   @Container
   static final GenericContainer<?> MYSQL_CONTAINER =
-      new GenericContainer<>(DockerImageName.parse("mysql:8.4.13"))
+      new GenericContainer<>(DockerImageName.parse(TestDatabaseImages.mysql()))
           .withEnv("MYSQL_DATABASE", DATABASE)
           .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
           .withExposedPorts(3306)

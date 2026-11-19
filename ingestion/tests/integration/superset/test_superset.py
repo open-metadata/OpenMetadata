@@ -21,8 +21,8 @@ from unittest.mock import patch
 import sqlalchemy
 from collate_sqllineage.core.models import Column, Schema, SubQuery, Table
 from testcontainers.core.generic import DockerContainer
-from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import PostgresContainer, postgres_image
 from _openmetadata_testutils.postgres.conftest import postgres_container
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -372,7 +372,7 @@ def set_testcontainers():
     global INITIAL_SETUP, superset_container, postgres_container  # noqa: PLW0603
     if INITIAL_SETUP:
         # postgres test container
-        postgres_container = PostgresContainer("postgres:16-alpine")
+        postgres_container = PostgresContainer(postgres_image())
         postgres_container.start()
         setup_sample_data(postgres_container)
         # superset testcontainer

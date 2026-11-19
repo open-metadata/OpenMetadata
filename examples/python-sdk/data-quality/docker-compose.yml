@@ -14,10 +14,13 @@ services:
     ports:
       - "8888:8888"
   dwh:
-    image: postgres:15-alpine
+    build:
+      context: ../../..
+      dockerfile: docker/postgresql/Dockerfile_postgres
     container_name: dwh-postgres
     volumes:
       - dwh_data:/var/lib/postgresql/data
+      # Replaces the image's own init script, so only the warehouse schema is created.
       - "./pg_scripts:/docker-entrypoint-initdb.d"
     ports:
       - "5432:5432"

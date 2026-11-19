@@ -13,7 +13,7 @@ from sqlalchemy.exc import OperationalError
 from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
-from testcontainers.mysql import MySqlContainer
+from testcontainers.mysql import MySqlContainer  # noqa: TID251 - MariaDB metastore, not the shipped MySQL image
 
 from _openmetadata_testutils.helpers.docker import try_bind
 from metadata.generated.schema.api.services.createDatabaseService import (

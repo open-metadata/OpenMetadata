@@ -18,9 +18,13 @@ from sqlalchemy import Column, Integer, MetaData, Table, create_engine, select, 
 from sqlalchemy.engine import make_url
 from sqlalchemy.orm import Session
 from testcontainers.clickhouse import ClickHouseContainer
-from testcontainers.mysql import MySqlContainer
-from testcontainers.postgres import PostgresContainer
 
+from _openmetadata_testutils.helpers.database_images import (
+    MySqlContainer,
+    PostgresContainer,
+    mysql_image,
+    postgres_image,
+)
 from metadata.data_quality.validations.column.sqlalchemy.columnRuleLibrarySqlExpressionValidator import (
     ColumnRuleLibrarySqlExpressionValidator,
 )
@@ -40,8 +44,8 @@ from metadata.profiler.processor.runner import QueryRunner
 def source_engines(request):
     kind = request.param
     containers = {
-        "postgres": lambda: PostgresContainer("postgres:16", dbname="col7374_target"),
-        "mysql": lambda: MySqlContainer("mysql:8.4.13", username="root", dbname="col7374_target"),
+        "postgres": lambda: PostgresContainer(postgres_image(), dbname="col7374_target"),
+        "mysql": lambda: MySqlContainer(mysql_image(), username="root", dbname="col7374_target"),
         "clickhouse": lambda: ClickHouseContainer("clickhouse/clickhouse-server:24.8", dbname="col7374_target"),
     }
     with containers[kind]() as container:
