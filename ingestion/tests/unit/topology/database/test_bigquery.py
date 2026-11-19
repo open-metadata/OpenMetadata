@@ -16,6 +16,7 @@ bigquery unit tests
 # pylint: disable=line-too-long
 import logging
 import os
+import sqlite3
 import threading
 import types
 from concurrent.futures import ThreadPoolExecutor
@@ -1013,6 +1014,90 @@ class TestBigqueryRegionAwareQueries:
         self.bq_source._clear_region_lifecycle_cache()
         assert self.bq_source._region_lifecycle_db is None
         assert not os.path.exists(folder)
+
+    def test_lifecycle_parallel_regions_do_not_block_each_other(self):
+        started = threading.Event()
+        release = threading.Event()
+        engine, conn = self._make_engine_mock([])
+
+        def execute(sql):
+            if "region-EU" in str(sql):
+                started.set()
+                assert release.wait(timeout=5)
+            rows = MagicMock()
+            rows.__iter__.return_value = iter([])
+            return rows
+
+        conn.execute.side_effect = execute
+        self.bq_source.engine = engine
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            eu = pool.submit(
+                self.bq_source._load_region_lifecycle, MOCK_DB_NAME, "EU", "dataset_a"
+            )
+            assert started.wait(timeout=5)
+            us = pool.submit(
+                self.bq_source._load_region_lifecycle, MOCK_DB_NAME, "US", "dataset_a"
+            )
+            try:
+                assert us.result(timeout=3) == {}
+            finally:
+                release.set()
+            assert eu.result(timeout=5) == {}
+
+        assert conn.execute.call_count == 2
+        assert self.bq_source._region_lifecycle_inflight == {}
+
+    def test_lifecycle_forbidden_error_does_not_retry_costly_scan(self):
+        class ForbiddenError(Exception):
+            code = 403
+
+        engine, conn = self._make_engine_mock([])
+        conn.execute.side_effect = ForbiddenError("BQ permission denied")
+        self.bq_source.engine = engine
+        for _ in range(4):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+        assert conn.execute.call_count == 1
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute("SELECT status FROM scans").fetchone()[0] == "failed"
+
+    def test_lifecycle_spool_overflow_rolls_back_partial_region_and_stops_retry(self):
+        rows = [
+            SimpleNamespace(_asdict=lambda i=i: {
+                "table_schema": "dataset_a",
+                "table_name": f"table_{i}",
+                "created_at": datetime(2025, 1, 1),
+                "updated_at": None,
+            })
+            for i in range(101)
+        ]
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter(rows)
+        self.bq_source.engine = engine
+        write = self.bq_source._write_region_lifecycle_batch
+        count = 0
+
+        def capped_write(batch):
+            nonlocal count
+            count += 1
+            if count == 2:
+                raise sqlite3.OperationalError("database or disk is full")
+            return write(batch)
+
+        with patch.object(
+            self.bq_source, "_write_region_lifecycle_batch", side_effect=capped_write
+        ):
+            assert self.bq_source._load_region_lifecycle(
+                MOCK_DB_NAME, "EU", "dataset_a"
+            ) is None
+        assert count == 2
+        db = self.bq_source._region_lifecycle_db
+        assert db.execute("SELECT COUNT(*) FROM rows").fetchone()[0] == 0
+        assert self.bq_source._load_region_lifecycle(
+            MOCK_DB_NAME, "EU", "dataset_a"
+        ) is None
+        assert conn.execute.call_count == 1
 
     # --- get_stored_procedures ---
 
