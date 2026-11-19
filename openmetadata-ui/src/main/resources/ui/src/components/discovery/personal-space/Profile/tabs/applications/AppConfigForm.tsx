@@ -32,7 +32,7 @@ import {
 } from '@rjsf/utils';
 import validator from '@rjsf/validator-ajv8';
 import { isEqual } from 'lodash';
-import { FC, useMemo, useState } from 'react';
+import { FC, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
@@ -193,6 +193,15 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
   // Derived, not a flag: when a save updates the app, the baseline moves and
   // the form reads as clean again.
   const [currentFormData, setCurrentFormData] = useState<unknown>();
+  // RJSF prunes schema-unknown keys on submit (`omitExtraData`) but not on
+  // `onChange` (no `liveOmit`), so a save that drops a legacy key moves the
+  // baseline without re-firing `onChange`. Reset the stale live-form snapshot
+  // when the stored config changes (a save), so the form reads clean after it.
+  // Keyed on the stored config, not the schema: a schema that loads late (MCP
+  // tool names) must not drop an in-progress edit.
+  useEffect(() => {
+    setCurrentFormData(undefined);
+  }, [formData]);
   const isDirty = useMemo(
     () =>
       currentFormData !== undefined && !isEqual(currentFormData, savedFormData),

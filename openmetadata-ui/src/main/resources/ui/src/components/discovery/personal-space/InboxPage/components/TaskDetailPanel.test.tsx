@@ -61,6 +61,7 @@ jest.mock('constants/Task.constant', () => ({
 jest.mock('rest/tasksAPI', () => ({
   TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
     .TaskStatus,
+  TaskEntityType: jest.requireActual('generated/entity/tasks/task').TaskType,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
@@ -1898,7 +1899,14 @@ describe('TaskDetailPanel', () => {
 
       expect(mockGetResolvedTaskFormSchema).toHaveBeenCalledWith(
         'RequestApproval',
-        'Approval'
+        'Approval',
+        expect.objectContaining({
+          // The legacy approval mock carries no stamped schema id; the panel
+          // forwards `task?.taskFormSchemaId` (undefined here) and the raw
+          // payload so Suggestion variants would disambiguate by suggestionType.
+          taskFormSchemaId: undefined,
+          payload: LEGACY_APPROVAL_TASK.payload,
+        })
       );
     });
 

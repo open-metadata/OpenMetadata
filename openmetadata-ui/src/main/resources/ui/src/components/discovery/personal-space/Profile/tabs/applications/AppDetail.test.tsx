@@ -35,6 +35,7 @@ import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUt
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
 import AppSchedule from '../../../../../Settings/Applications/AppSchedule/AppSchedule.component';
+import type { AppConfigFormProps } from './AppConfigForm';
 import AppDetail from './AppDetail';
 import type { ApplicationsHeader } from './Applications.types';
 
@@ -460,6 +461,23 @@ describe('AppDetail', () => {
       expect.objectContaining({ isReadOnly: true }),
       expect.anything()
     );
+  });
+
+  it('returns to the applications list when the configuration is cancelled', async () => {
+    const configForm = jest.fn(() => <div data-testid="config-form" />);
+    jest
+      .spyOn(applicationsClassBase, 'getModalAppConfigurationComponent')
+      .mockReturnValue(configForm);
+    await renderDetail();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'label.configuration' }));
+    act(() => {
+      (
+        configForm.mock.calls.at(-1) as unknown as [AppConfigFormProps]
+      )[0].onCancel?.();
+    });
+
+    expect(onNavigate).toHaveBeenCalledWith({ type: 'list' });
   });
 
   it('opens a run configuration as a sub-page and returns to the tabs', async () => {

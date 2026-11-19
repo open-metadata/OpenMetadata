@@ -43,7 +43,7 @@ import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
-import { getCellByName } from '../../utils/scopedLocators';
+import { getCellByName, getRowByName } from '../../utils/scopedLocators';
 import { settingClick } from '../../utils/sidebar';
 import {
   addEmailTeam,
@@ -1145,17 +1145,16 @@ test.describe('Teams Page with EditUser Permission', () => {
     });
 
     await test.step('Remove user from Team', async () => {
-      await editOnlyUserPage
-        .getByRole('row', {
-          name: `${user.data.firstName.slice(0, 1).toUpperCase()} ${
-            user.data.firstName
-          }.`,
-        })
+      await getRowByName(editOnlyUserPage, userName)
         .getByTestId('remove-user-btn')
         .click();
 
-      const userResponse = editOnlyUserPage.waitForResponse(
-        '/api/v1/users?fields=**'
+      const userResponse = waitForResponseWithStatus(
+        editOnlyUserPage,
+        (response) =>
+          response.url().includes('/api/v1/users?fields=') &&
+          response.request().method() === 'GET',
+        200
       );
       await editOnlyUserPage.getByRole('button', { name: 'Confirm' }).click();
       await userResponse;
