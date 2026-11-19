@@ -27,8 +27,8 @@ from metadata.data_quality.validations.runtime_param_setter.param_setter import 
 from metadata.data_quality.validations.runtime_param_setter.param_setter_factory import (
     RuntimeParameterSetterFactory,
 )
-from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus
-from metadata.generated.schema.tests.testCase import TestCase, TestCaseParameterValue
+from metadata.generated.schema.tests.basic import TestCaseResult, TestCaseStatus, TestResultValue
+from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import EntityType, TestDefinition
 from metadata.generated.schema.type.entityReference import EntityReference
 
@@ -78,10 +78,10 @@ def _test_case() -> TestCase:
     )
 
 
-def _run(validator_class) -> TestCaseResult:
+def _run(validator_class, interface_class=_Interface) -> TestCaseResult:
     test_case = _test_case()
     validator = validator_class(MagicMock(), test_case, int(datetime.now().timestamp() * 1000))
-    interface = _Interface(validator)
+    interface = interface_class(validator)
     interface.sample_data_config = MagicMock(storeSampleData=False)
 
     return interface.run_test_case(test_case).testCaseResult
@@ -109,15 +109,15 @@ _FAILURE_MESSAGE = "Data diff is not supported for sharded tables yet"
 
 
 class _RaisingSetter(RuntimeParameterSetter):
-    """Mirrors ``TableDiffParamsSetter.get_parameters`` on a sharded table."""
-
     def get_parameters(self, test_case) -> BaseModel:
         raise ValueError(_FAILURE_MESSAGE)
 
 
 class _RaisingSetterFactory(RuntimeParameterSetterFactory):
+    setter: type[RuntimeParameterSetter] = _RaisingSetter
+
     def get_runtime_param_setters(self, name, ometa, service_connection_config, table_entity, sampler):
-        return {_RaisingSetter(ometa, service_connection_config, table_entity, sampler)}
+        return {self.setter(ometa, service_connection_config, table_entity, sampler)}
 
 
 class _OkParams(BaseModel):
@@ -129,9 +129,8 @@ class _OkSetter(RuntimeParameterSetter):
         return _OkParams()
 
 
-class _OkSetterFactory(RuntimeParameterSetterFactory):
-    def get_runtime_param_setters(self, name, ometa, service_connection_config, table_entity, sampler):
-        return {_OkSetter(ometa, service_connection_config, table_entity, sampler)}
+class _OkSetterFactory(_RaisingSetterFactory):
+    setter = _OkSetter
 
 
 class _RealValidatorBuilder(ValidatorBuilder):
@@ -143,32 +142,14 @@ class _RealValidatorBuilder(ValidatorBuilder):
 
 
 class _RealBuilderInterface(_Interface):
-    """Drive the real ``ValidatorBuilder.set_runtime_params`` so a raising ``get_parameters``
-    reaches the production code, not a mock of it. Regression guard for the bug introduced in
-    #23326: a setter exception must produce an Aborted result, not escape ``run_test_case``.
-    """
-
     runtime_params_setter_fact = _RaisingSetterFactory
 
     def _get_validator_builder(self, test_case, entity_type):
         return _RealValidatorBuilder(test_case, self._validator)
 
 
-def _run_with_real_builder(interface, validator_class) -> TestCaseResult:
-    test_case = _test_case()
-    validator = validator_class(MagicMock(), test_case, int(datetime.now().timestamp() * 1000))
-    runner = interface(validator)
-    runner.sample_data_config = MagicMock(storeSampleData=False)
-
-    return runner.run_test_case(test_case).testCaseResult
-
-
 def test_set_runtime_params_failure_is_aborted_with_duration_and_error_details():
-    """A setter ``get_parameters`` raising (e.g. sharded table, missing ``table2``) is recorded
-    as an Aborted result, not propagated out of ``run_test_case``. The setter runs through the
-    real ``ValidatorBuilder.set_runtime_params`` rather than a mock of it.
-    """
-    result = _run_with_real_builder(_RealBuilderInterface, _PassingValidator)
+    result = _run(_PassingValidator, _RealBuilderInterface)
 
     assert result.testCaseStatus is TestCaseStatus.Aborted
     assert result.result == f"Error executing customTest - {_FAILURE_MESSAGE}"
@@ -179,64 +160,20 @@ def test_set_runtime_params_failure_is_aborted_with_duration_and_error_details()
     assert result.errorDetails.stackTrace.rstrip().endswith(f"ValueError: {_FAILURE_MESSAGE}")
 
 
-class _RealBuilderOkInterface(_Interface):
+class _RealBuilderOkInterface(_RealBuilderInterface):
     runtime_params_setter_fact = _OkSetterFactory
 
-    def _get_validator_builder(self, test_case, entity_type):
-        return _RealValidatorBuilder(test_case, self._validator)
+
+class _ReadingValidator(_PassingValidator):
+    def _run_validation(self) -> TestCaseResult:
+        result = super()._run_validation()
+        result.testResultValue = [TestResultValue(name="parameter", value=self.get_runtime_parameters(_OkParams).value)]
+        return result
 
 
-def test_set_runtime_params_success_appends_parameters_and_runs_validation():
-    """Regression guard for the success path: the resolved parameters still land on
-    ``test_case.parameterValues`` and the validator still runs, so the fix does not break
-    the ``set_runtime_params`` -> ``run_validation`` happy path.
-    """
-    test_case = _test_case()
-    validator = _PassingValidator(MagicMock(), test_case, int(datetime.now().timestamp() * 1000))
-    interface = _RealBuilderOkInterface(validator)
-    interface.sample_data_config = MagicMock(storeSampleData=False)
-
-    result = interface.run_test_case(test_case).testCaseResult
+def test_set_runtime_params_success_is_consumed_by_validation():
+    result = _run(_ReadingValidator, _RealBuilderOkInterface)
 
     assert result.testCaseStatus is TestCaseStatus.Success
-    assert test_case.parameterValues is not None
-    assert len(test_case.parameterValues) == 1
-    assert isinstance(test_case.parameterValues[0], TestCaseParameterValue)
-    assert test_case.parameterValues[0].name == "_OkParams"
-
-
-def test_set_runtime_params_runs_before_run_validation():
-    """Regression guard against a reordering refactor: ``set_runtime_params`` must run before
-    ``run_validation`` so the validator can read the resolved parameters back via
-    ``get_runtime_parameters(...)``. Recorded through the real builder and a real validator.
-    """
-    call_order: list[str] = []
-
-    class _OrderingSetter(RuntimeParameterSetter):
-        def get_parameters(self, test_case) -> BaseModel:
-            call_order.append("set_runtime_params")
-            return _OkParams()
-
-    class _OrderingFactory(RuntimeParameterSetterFactory):
-        def get_runtime_param_setters(self, name, ometa, service_connection_config, table_entity, sampler):
-            return {_OrderingSetter(ometa, service_connection_config, table_entity, sampler)}
-
-    class _OrderingValidator(_PassingValidator):
-        def _run_validation(self) -> TestCaseResult:
-            call_order.append("run_validation")
-            return super()._run_validation()
-
-    class _OrderingInterface(_Interface):
-        runtime_params_setter_fact = _OrderingFactory
-
-        def _get_validator_builder(self, test_case, entity_type):
-            return _RealValidatorBuilder(test_case, self._validator)
-
-    test_case = _test_case()
-    validator = _OrderingValidator(MagicMock(), test_case, int(datetime.now().timestamp() * 1000))
-    interface = _OrderingInterface(validator)
-    interface.sample_data_config = MagicMock(storeSampleData=False)
-
-    interface.run_test_case(test_case)
-
-    assert call_order == ["set_runtime_params", "run_validation"]
+    assert result.testResultValue is not None
+    assert result.testResultValue[0].value == "ok"
