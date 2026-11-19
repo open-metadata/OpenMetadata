@@ -200,7 +200,8 @@ jobs:
       # not run on h2: it starts a plain-HTTP Docker server.
       # The visual lane is off on every event. Its baselines went stale after
       # each rendering change, because it ran only after merge, and kept
-      # failing nightlies. Restore the previous expression to turn it back on.
+      # failing nightlies. Restore the previous expression to turn it back on
+      # (ADR:2026-11-19-the-playwright-visual-lane-is-off-until-baselines-are-checked-before-merge).
       visual: 'false'
       rdf: ${{ inputs.protocol != 'h2' && (contains(fromJSON('["workflow_dispatch","schedule"]'), github.event_name) && 'true' || steps.filter.outputs.rdf) || 'false' }}
     steps:
