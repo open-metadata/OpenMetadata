@@ -1,4 +1,5 @@
 import json
+import os
 import uuid
 from unittest import TestCase
 from unittest.mock import patch
@@ -6,6 +7,7 @@ from urllib.parse import quote_plus
 
 import pytest
 from botocore.stub import Stubber
+from kubernetes.client.exceptions import ApiException
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import SecretStr
 
@@ -1033,6 +1035,28 @@ class TestUnresolvableSecretReference:
             resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
 
         assert resolved == RESOLVED_EXTERNAL_SECRET
+
+    def test_aws_secret_stored_as_null_still_resolves_to_empty_string(self, aws_secrets_manager):
+        with Stubber(aws_secrets_manager.client) as aws:
+            aws.add_response("get_secret_value", {"SecretString": "null"}, {"SecretId": self.SECRET_ID})
+            resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == ""
+
+    def test_missing_kubernetes_secret_names_the_reference_and_the_provider(self):
+        reference = "secret:db-password"
+        with (
+            patch("metadata.utils.secrets.kubernetes_secrets_manager.config"),
+            patch("metadata.utils.secrets.kubernetes_secrets_manager.client") as kubernetes_client,
+            patch.dict(os.environ, {"KUBERNETES_NAMESPACE": "default"}),
+        ):
+            kubernetes_client.CoreV1Api.return_value.read_namespaced_secret.side_effect = ApiException(status=404)
+            SecretsManagerFactory(SecretsManagerProvider.kubernetes, SecretsManagerClientLoader.env)
+            with pytest.raises(SecretReferenceError) as error:
+                CustomSecretStr(reference).get_secret_value()
+
+        assert reference in str(error.value)
+        assert f"[{SecretsManagerProvider.kubernetes.value}]" in str(error.value)
 
     def test_connection_password_is_not_the_reference_when_the_read_fails(self):
         factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
