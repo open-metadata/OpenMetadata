@@ -29,6 +29,7 @@ import org.openmetadata.schema.ServiceEntityInterface;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -172,7 +173,7 @@ public class SecretsManagerUpdateService {
         connectionTypeRepositoriesMap.get(serviceEntityInterface.getConnection().getClass());
     try {
       ServiceEntityInterface service =
-          repository.getDao().findEntityById(serviceEntityInterface.getId());
+          repository.getDao().findEntityById(serviceEntityInterface.getId(), Include.ALL);
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       service
           .getConnection()
@@ -213,8 +214,8 @@ public class SecretsManagerUpdateService {
           .listAfter(
               null,
               EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              serviceEntityRepository.getDao().listCount(new ListFilter()),
+              new ListFilter(Include.ALL),
+              serviceEntityRepository.getDao().listCount(new ListFilter(Include.ALL)),
               null)
           .getData()
           .stream()
@@ -385,8 +386,8 @@ public class SecretsManagerUpdateService {
           .listAfter(
               null,
               EntityUtil.Fields.EMPTY_FIELDS,
-              new ListFilter(),
-              workflowRepository.getDao().listCount(new ListFilter()),
+              new ListFilter(Include.ALL),
+              workflowRepository.getDao().listCount(new ListFilter(Include.ALL)),
               null)
           .getData();
     } catch (Exception e) {
@@ -413,7 +414,8 @@ public class SecretsManagerUpdateService {
 
   private void updateWorkflow(Workflow workflow) {
     try {
-      Workflow workflowObject = workflowRepository.getDao().findEntityById(workflow.getId());
+      Workflow workflowObject =
+          workflowRepository.getDao().findEntityById(workflow.getId(), Include.ALL);
       // we have to decrypt using the old secrets manager and encrypt again with the new one
       workflowObject = oldSecretManager.decryptWorkflow(workflowObject);
       workflowObject = secretManager.encryptWorkflow(workflowObject);

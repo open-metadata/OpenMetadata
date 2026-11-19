@@ -46,10 +46,7 @@ class NestedSecretConverterCoverageTest {
    * no converter can be written until the branch is extracted into its own schema file. Shrink this
    * set; never grow it. An entry also stops the payload descending into that property where it is
    * nested in another connection, so the other branches there stay checked.
-   *
-   * <p>{@code SampleDataStorageConfig.config} is a 2.0-only gap: the typed {@code
-   * sampleDataStorageConfig} on every database connection has no converter, so its S3 credentials
-   * are never typed. The property no longer exists on main.
+   * ADR:2026-11-19-secret-bearing-oneof-branches-live-in-their-own-schema-files
    */
   private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of();
 
