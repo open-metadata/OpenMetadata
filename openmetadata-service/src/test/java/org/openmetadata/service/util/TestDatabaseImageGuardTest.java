@@ -38,13 +38,15 @@ import org.junit.jupiter.api.Test;
  */
 class TestDatabaseImageGuardTest {
   /**
-   * {@code mysql:} or {@code postgres:} followed by a one- or two-digit major version, which keeps
-   * out ports such as 3306 and 5432, and any {@code mysql/mysql-server} image. A digest after
-   * {@code @} is not part of the match, so only the tag is compared.
+   * {@code mysql:} or {@code postgres:} followed by a one- or two-digit major version (which keeps
+   * out ports such as 3306 and 5432) or a floating tag, a tagless digest, or any {@code
+   * mysql/mysql-server} image. A digest after a tag is not part of the match, so only the tag is
+   * compared.
    */
   private static final Pattern IMAGE_TAG =
       Pattern.compile(
-          "\\b(?:mysql|postgres):\\d{1,2}(?!\\d)(?:[.-]\\w+)*|mysql/mysql-server(?::[\\w.-]+)?");
+          "\\b(?:mysql|postgres)(?::(?:\\d{1,2}(?!\\d)|latest|lts|alpine)(?:[.-]\\w+)*|@sha256:\\w+)"
+              + "|mysql/mysql-server(?::[\\w.-]+)?");
 
   /** History that must keep the version it recorded, so a bump must not rewrite it. */
   private static final List<String> HISTORY =
@@ -57,6 +59,8 @@ class TestDatabaseImageGuardTest {
   private static final Set<String> PRUNED_DIRECTORIES =
       Set.of(
           ".git",
+          // Local database data mounted by the development Compose stacks.
+          "docker-volume",
           "node_modules",
           "target",
           "build",
@@ -130,6 +134,12 @@ class TestDatabaseImageGuardTest {
       return name != null && PRUNED_DIRECTORIES.contains(name.toString())
           ? FileVisitResult.SKIP_SUBTREE
           : FileVisitResult.CONTINUE;
+    }
+
+    /** Local files the user cannot read, such as a database container's data, are not source. */
+    @Override
+    public FileVisitResult visitFileFailed(final Path file, final IOException failure) {
+      return FileVisitResult.CONTINUE;
     }
 
     @Override
