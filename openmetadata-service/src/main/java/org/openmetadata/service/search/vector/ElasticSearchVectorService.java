@@ -24,6 +24,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -257,6 +258,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
       Response response = restClient.performRequest(request);
       int statusCode = response.getStatusCode();
       String responseBody = readEntityBody(response.getEntity());
+      if (SearchUtils.isVersionConflict(statusCode, responseBody)) {
+        throw new VersionConflictException(
+            "Elasticsearch request failed with status " + statusCode + ": " + responseBody);
+      }
       if (statusCode >= 400) {
         // 4xx path: Rest5Client returns these normally, so we surface the status
         // and body in the exception message — symmetric to the OS path.
@@ -488,8 +493,7 @@ public class ElasticSearchVectorService implements VectorIndexService {
       executeGenericRequest(
           "POST", "/" + indexName + "/_update/" + entityId + "?retry_on_conflict=3", updateBody);
     } catch (Exception e) {
-      LOG.error(
-          "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
+      logEmbeddingWriteFailure("partial update", indexName, entityId, e);
     }
   }
 
@@ -508,12 +512,36 @@ public class ElasticSearchVectorService implements VectorIndexService {
           "/" + entityIndexName + "/_update/" + entityId + "?retry_on_conflict=3",
           updateBody);
     } catch (Exception e) {
-      LOG.error(
-          "Failed to clear embedding for entity {} in {}: {}",
+      logEmbeddingWriteFailure("clear embedding", entityIndexName, entityId, e);
+    }
+  }
+
+  private static final class VersionConflictException extends RuntimeException {
+    private VersionConflictException(String message) {
+      super(message);
+    }
+  }
+
+  // The retry rebuilds the whole document, embedding included, so a conflict is queued and is a
+  // warning (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+  private static void logEmbeddingWriteFailure(
+      String operation, String indexName, String entityId, Exception failure) {
+    if (failure instanceof VersionConflictException) {
+      SearchIndexRetryQueue.enqueue(
+          entityId, null, SearchIndexRetryQueue.failureReason(operation, failure));
+      LOG.warn(
+          "Concurrent writes held entity {} in {} during {}; queued for retry",
           entityId,
-          entityIndexName,
-          e.getMessage(),
-          e);
+          indexName,
+          operation);
+    } else {
+      LOG.error(
+          "Failed to {} for entity {} in {}: {}",
+          operation,
+          entityId,
+          indexName,
+          failure.getMessage(),
+          failure);
     }
   }
 

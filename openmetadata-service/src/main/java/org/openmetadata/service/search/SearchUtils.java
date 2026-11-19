@@ -65,8 +65,46 @@ public final class SearchUtils {
   private static final String PREFIX_AGG_SUFFIX = "__prefix";
   private static final String CONTAINS_AGG_SUFFIX = "__contains";
   private static final String STERMS_PREFIX = "sterms#";
+  private static final int CONFLICT_STATUS = 409;
+  private static final String VERSION_CONFLICT = "version_conflict_engine_exception";
 
   private SearchUtils() {}
+
+  /**
+   * True when a search write failed only because a concurrent write changed the same document,
+   * whichever client raised it (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+   */
+  public static boolean isVersionConflict(Throwable failure) {
+    boolean conflict = false;
+    for (Throwable cause = failure; cause != null && !conflict; cause = cause.getCause()) {
+      conflict = isVersionConflictItself(cause);
+    }
+    return conflict;
+  }
+
+  /** The same test for a raw response's status and body, e.g. from a generic request. */
+  public static boolean isVersionConflict(int status, String body) {
+    return status == CONFLICT_STATUS
+        && body != null
+        && body.contains("\"" + VERSION_CONFLICT + "\"");
+  }
+
+  /** The same test for a status and error type reported separately, e.g. by a bulk item. */
+  public static boolean isVersionConflictType(int status, String errorType) {
+    return status == CONFLICT_STATUS && VERSION_CONFLICT.equals(errorType);
+  }
+
+  private static boolean isVersionConflictItself(Throwable failure) {
+    return switch (failure) {
+      case os.org.opensearch.client.opensearch._types.OpenSearchException e -> e.error() != null
+          && isVersionConflictType(e.status(), e.error().type());
+      case es.co.elastic.clients.elasticsearch._types.ElasticsearchException e -> e.error() != null
+          && isVersionConflictType(e.status(), e.error().type());
+      case os.org.opensearch.client.transport.httpclient5.ResponseException e -> isVersionConflict(
+          e.status(), e.getMessage());
+      default -> false;
+    };
+  }
 
   /**
    * Stable search routing key so all of a user's queries hit the same shard copy. Without it,

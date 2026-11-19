@@ -1,7 +1,15 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 
 import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
@@ -25,7 +33,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.MockedStatic;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.search.IndexMapping;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.slf4j.LoggerFactory;
 
 public abstract class ScriptedDeleteRetryTestBase {
@@ -58,6 +73,28 @@ public abstract class ScriptedDeleteRetryTestBase {
     FQN_PREFIX,
     RANGE,
     RANGE_AND_TERM
+  }
+
+  /** How the engine answers single-document writes: as sent, or with a real 409 or 400. */
+  protected enum WriteFailure {
+    NONE,
+    CONFLICT,
+    REJECTED
+  }
+
+  protected enum SingleDocumentWrite {
+    CREATE,
+    CREATE_TIME_SERIES,
+    SOFT_DELETE
+  }
+
+  protected WriteFailure writeFailure = WriteFailure.NONE;
+  protected int failingWrites = Integer.MAX_VALUE;
+  protected int writeAttempts;
+
+  protected boolean failThisWrite() {
+    writeAttempts++;
+    return writeFailure != WriteFailure.NONE && failingWrites-- > 0;
   }
 
   @BeforeEach
@@ -222,6 +259,160 @@ public abstract class ScriptedDeleteRetryTestBase {
     System.out.printf(
         "SCRIPT_DELETE_TIMING %s baseline_ms=%s clean_ms=%s conflict_ms=%s%n",
         getClass().getSimpleName(), baseline, clean, retried);
+  }
+
+  @ParameterizedTest
+  @EnumSource(SingleDocumentWrite.class)
+  void aSingleDocumentWriteThatKeepsLosingIsRetriedThenSurfacesAsAConflict(
+      SingleDocumentWrite write) {
+    writeFailure = WriteFailure.CONFLICT;
+    assertTrue(SearchUtils.isVersionConflict(assertThrows(Exception.class, () -> write(write))));
+    assertEquals(4, writeAttempts);
+  }
+
+  @ParameterizedTest
+  @EnumSource(SingleDocumentWrite.class)
+  void aRejectedSingleDocumentWriteIsNeitherRetriedNorAConflict(SingleDocumentWrite write) {
+    writeFailure = WriteFailure.REJECTED;
+    assertFalse(SearchUtils.isVersionConflict(assertThrows(Exception.class, () -> write(write))));
+    assertEquals(1, writeAttempts);
+  }
+
+  @Test
+  void aConflictThatClearsIsRetriedAndWritten() throws Exception {
+    writeFailure = WriteFailure.CONFLICT;
+    failingWrites = 1;
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          logsOf(() -> manager().updateEntity(index, "held", Map.of(), "ctx._source.value = 3"));
+
+      assertEquals(2, writeAttempts);
+      assertEquals(
+          3, request("GET", index + "/_doc/held", "").path("_source").path("value").asInt());
+      queue.verifyNoInteractions();
+      assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.WARN)));
+    }
+  }
+
+  @Test
+  void aConflictedEntityUpdateIsQueuedAndLoggedAsAWarning() throws Exception {
+    writeFailure = WriteFailure.CONFLICT;
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          logsOf(() -> manager().updateEntity(index, "held", Map.of(), "ctx._source.value = 3"));
+
+      assertEquals(4, writeAttempts);
+      queue.verify(() -> SearchIndexRetryQueue.enqueue(eq("held"), isNull(), any()));
+      assertNoErrors(logged);
+    }
+  }
+
+  @Test
+  void aRejectedEntityUpdateIsStillLoggedAsAnError() throws Exception {
+    writeFailure = WriteFailure.REJECTED;
+    try (MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          logsOf(() -> manager().updateEntity(index, "held", Map.of(), "ctx._source.value = 3"));
+
+      assertEquals(1, writeAttempts);
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  @Test
+  void aConflictedReindexIsQueuedAndLoggedAsAWarning() throws Exception {
+    writeFailure = WriteFailure.CONFLICT;
+    EntityReference table = reindexableTable();
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      resolveForReindex(entities, table);
+
+      List<ILoggingEvent> logged = logsOf(() -> manager().reindexEntities(List.of(table)));
+
+      queue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(table.getId().toString()),
+                  eq(table.getFullyQualifiedName()),
+                  eq(Entity.TABLE),
+                  any()));
+      assertNoErrors(logged);
+    }
+  }
+
+  @Test
+  void aRejectedReindexIsStillLoggedAsAnError() throws Exception {
+    writeFailure = WriteFailure.REJECTED;
+    EntityReference table = reindexableTable();
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class);
+        MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
+      resolveForReindex(entities, table);
+
+      List<ILoggingEvent> logged = logsOf(() -> manager().reindexEntities(List.of(table)));
+
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  private void write(SingleDocumentWrite write) throws Exception {
+    EntityManagementClient manager = manager();
+    switch (write) {
+      case CREATE -> manager.createEntity(index, "held", matchingDocument(4));
+      case CREATE_TIME_SERIES -> manager.createTimeSeriesEntity(index, "held", matchingDocument(4));
+      case SOFT_DELETE -> manager.softDeleteOrRestoreEntity(
+          index, "held", "ctx._source.deleted = true");
+    }
+  }
+
+  private EntityReference reindexableTable() throws Exception {
+    UUID id = UUID.randomUUID();
+    request("PUT", index + "/_doc/" + id + "?refresh=true", matchingDocument(1));
+    return new EntityReference()
+        .withId(id)
+        .withType(Entity.TABLE)
+        .withFullyQualifiedName("svc.db.schema.orders");
+  }
+
+  private void resolveForReindex(MockedStatic<Entity> entities, EntityReference table) {
+    EntityInterface<?> entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(table.getId());
+    entities
+        .when(() -> Entity.getEntity(any(EntityReference.class), eq("*"), eq(Include.ALL)))
+        .thenReturn(entity);
+    SearchRepository repository = mock(SearchRepository.class);
+    IndexMapping mapping = mock(IndexMapping.class);
+    when(repository.getIndexMapping(Entity.TABLE)).thenReturn(mapping);
+    when(repository.getClusterAlias()).thenReturn("");
+    when(mapping.getIndexName("")).thenReturn(index);
+    entities.when(Entity::getSearchRepository).thenReturn(repository);
+    SearchIndex searchIndex = mock(SearchIndex.class);
+    when(searchIndex.buildSearchIndexDoc()).thenReturn(Map.of("value", 4));
+    entities.when(() -> Entity.buildSearchIndex(Entity.TABLE, entity)).thenReturn(searchIndex);
+  }
+
+  private List<ILoggingEvent> logsOf(ThrowingRunnable action) throws Exception {
+    Logger managerLog = (Logger) LoggerFactory.getLogger(manager().getClass());
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    managerLog.addAppender(logged);
+    try {
+      action.run();
+    } finally {
+      managerLog.detachAppender(logged);
+    }
+    return logged.list;
+  }
+
+  private static void assertNoErrors(List<ILoggingEvent> logged) {
+    assertTrue(
+        logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)),
+        () -> logged.stream().map(ILoggingEvent::getFormattedMessage).toList().toString());
+    assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.WARN));
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws Exception;
   }
 
   protected void rewriteWithoutRefresh() throws Exception {

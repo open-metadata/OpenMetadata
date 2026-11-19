@@ -40,6 +40,7 @@ import es.co.elastic.clients.elasticsearch.core.UpdateByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
+import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
 import es.co.elastic.clients.elasticsearch.tasks.GetTasksResponse;
 import es.co.elastic.clients.json.JsonData;
@@ -373,18 +374,20 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    client.update(
-        u ->
-            u.index(indexName)
-                .id(docId)
-                .refresh(Refresh.True)
-                .retryOnConflict(3)
-                .script(
-                    s ->
-                        s.source(ss -> ss.scriptString(scriptTxt))
-                            .lang(ScriptLanguage.Painless)
-                            .params(Map.of())),
-        Map.class);
+    SearchRetryUtil.executeWithRetry(
+        () ->
+            client.update(
+                u ->
+                    u.index(indexName)
+                        .id(docId)
+                        .refresh(Refresh.True)
+                        .retryOnConflict(3)
+                        .script(
+                            s ->
+                                s.source(ss -> ss.scriptString(scriptTxt))
+                                    .lang(ScriptLanguage.Painless)
+                                    .params(Map.of())),
+                Map.class));
     LOG.info(
         "Successfully soft deleted/restored entity in ElasticSearch for index: {}, docId: {}",
         indexName,
@@ -451,19 +454,29 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
             indexName,
             docId);
       } else {
-        SearchIndexRetryQueue.enqueue(
-            docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
-        LOG.error(
-            "Failed to update entity in ElasticSearch for index: {}, docId: {}",
-            indexName,
-            docId,
-            e);
+        queueFailedUpdate(indexName, docId, e);
       }
     } catch (IOException e) {
-      SearchIndexRetryQueue.enqueue(
-          docId, null, SearchIndexRetryQueue.failureReason("updateEntity", e));
+      queueFailedUpdate(indexName, docId, e);
+    }
+  }
+
+  // The queued retry rebuilds the document, so a conflict that outlasted every retry is a warning
+  // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+  private static void queueFailedUpdate(String indexName, String docId, Exception failure) {
+    SearchIndexRetryQueue.enqueue(
+        docId, null, SearchIndexRetryQueue.failureReason("updateEntity", failure));
+    if (SearchUtils.isVersionConflict(failure)) {
+      LOG.warn(
+          "Concurrent writes held the document for index: {}, docId: {}; queued for retry",
+          indexName,
+          docId);
+    } else {
       LOG.error(
-          "Failed to update entity in ElasticSearch for index: {}, docId: {}", indexName, docId, e);
+          "Failed to update entity in ElasticSearch for index: {}, docId: {}",
+          indexName,
+          docId,
+          failure);
     }
   }
 
@@ -1607,18 +1620,42 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
     BulkResponse response = client.bulk(b -> b.operations(operations).refresh(Refresh.True));
 
     if (response.errors()) {
-      LOG.error(
-          "Bulk reindex encountered errors. Total: {}, Failed: {}",
-          entities.size(),
-          response.items().stream().filter(item -> item.error() != null).count());
-
-      response.items().stream()
-          .filter(item -> item.error() != null)
-          .forEach(
-              item -> LOG.error("Reindex failed for ID {}: {}", item.id(), item.error().reason()));
+      reportReindexFailures(entities, response.items());
     } else {
       LOG.info("Successfully reindexed {} entities in ElasticSearch", entities.size());
     }
+  }
+
+  // A conflicted item is queued so the retry rebuilds it; any other failure is an error.
+  private static void reportReindexFailures(
+      List<EntityReference> entities, List<BulkResponseItem> items) {
+    Map<String, EntityReference> byId = new HashMap<>();
+    entities.forEach(entity -> byId.put(entity.getId().toString(), entity));
+    List<BulkResponseItem> failed = items.stream().filter(item -> item.error() != null).toList();
+    List<BulkResponseItem> conflicted =
+        failed.stream()
+            .filter(item -> SearchUtils.isVersionConflictType(item.status(), item.error().type()))
+            .toList();
+    conflicted.forEach(item -> queueConflictedReindex(byId.get(item.id()), item));
+    List<BulkResponseItem> rejected =
+        failed.stream().filter(item -> !conflicted.contains(item)).toList();
+    if (!rejected.isEmpty()) {
+      LOG.error(
+          "Bulk reindex encountered errors. Total: {}, Failed: {}",
+          entities.size(),
+          rejected.size());
+      rejected.forEach(
+          item -> LOG.error("Reindex failed for ID {}: {}", item.id(), item.error().reason()));
+    }
+  }
+
+  private static void queueConflictedReindex(EntityReference entity, BulkResponseItem item) {
+    SearchIndexRetryQueue.enqueue(
+        item.id(),
+        entity == null ? null : entity.getFullyQualifiedName(),
+        entity == null ? "" : entity.getType(),
+        "reindexEntities: " + item.error().reason());
+    LOG.warn("Concurrent writes held reindexed ID {}; queued for retry", item.id());
   }
 
   @Override

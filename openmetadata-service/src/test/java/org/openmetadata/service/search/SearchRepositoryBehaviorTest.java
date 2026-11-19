@@ -19,6 +19,7 @@ import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -31,6 +32,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import jakarta.ws.rs.core.Response;
@@ -131,8 +136,12 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.slf4j.LoggerFactory;
+import os.org.opensearch.client.opensearch._types.ErrorResponse;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 class SearchRepositoryBehaviorTest {
+  private static final String VERSION_CONFLICT = "version_conflict_engine_exception";
 
   private static final IndexMapping TABLE_MAPPING =
       IndexMapping.builder()
@@ -3687,6 +3696,126 @@ class SearchRepositoryBehaviorTest {
                 new org.apache.commons.lang3.tuple.ImmutablePair<>(
                     SearchClient.REMOVE_TEST_SUITE_CHILDREN_SCRIPT,
                     Map.of("suiteId", entityReference.getId().toString()))));
+  }
+
+  @Test
+  void aConflictedCreateIsQueuedAndLoggedAsAWarning() throws Exception {
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
+        .thenReturn(new MapBackedSearchIndex(entity, Map.of("name", "orders")));
+    doThrow(searchFailure(409, VERSION_CONFLICT))
+        .when(searchClient)
+        .createEntity(anyString(), anyString(), anyString());
+
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged = repositoryLogsOf(() -> repository.createEntityIndex(entity));
+
+      queue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(entity.getId().toString()), anyString(), eq(Entity.TABLE), any()));
+      assertWarnedWithoutErrors(logged);
+    }
+  }
+
+  @Test
+  void aRejectedCreateIsStillLoggedAsAnError() throws Exception {
+    EntityInterface<?> entity = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
+    when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
+        .thenReturn(new MapBackedSearchIndex(entity, Map.of("name", "orders")));
+    doThrow(searchFailure(400, "mapper_parsing_exception"))
+        .when(searchClient)
+        .createEntity(anyString(), anyString(), anyString());
+
+    try (MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged = repositoryLogsOf(() -> repository.createEntityIndex(entity));
+
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  @Test
+  void aConflictedTimeSeriesCreateIsQueuedAndLoggedAsAWarning() throws Exception {
+    EntityTimeSeriesInterface entity =
+        mockTimeSeriesEntity(Entity.TABLE, UUID.randomUUID(), "orders_ts");
+    when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
+        .thenReturn(new MapBackedSearchIndex(entity, Map.of("timestamp", 42)));
+    doThrow(searchFailure(409, VERSION_CONFLICT))
+        .when(searchClient)
+        .createTimeSeriesEntity(anyString(), anyString(), anyString());
+
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          repositoryLogsOf(() -> repository.createTimeSeriesEntity(entity));
+
+      queue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(entity.getId().toString()), any(), eq(Entity.TABLE), any()));
+      assertWarnedWithoutErrors(logged);
+    }
+  }
+
+  @Test
+  void aConflictedSoftDeleteIsQueuedAndLoggedAsAWarning() throws Exception {
+    EntityInterface<?> service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
+    doThrow(searchFailure(409, VERSION_CONFLICT))
+        .when(searchClient)
+        .softDeleteOrRestoreEntity(anyString(), anyString(), anyString());
+
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          repositoryLogsOf(() -> repository.softDeleteOrRestoreEntityIndex(service, true));
+
+      queue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(service.getId().toString()), anyString(), nullable(String.class)));
+      assertWarnedWithoutErrors(logged);
+    }
+  }
+
+  @Test
+  void aRejectedSoftDeleteIsStillLoggedAsAnError() throws Exception {
+    EntityInterface<?> service = mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "service");
+    doThrow(searchFailure(400, "illegal_argument_exception"))
+        .when(searchClient)
+        .softDeleteOrRestoreEntity(anyString(), anyString(), anyString());
+
+    try (MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged =
+          repositoryLogsOf(() -> repository.softDeleteOrRestoreEntityIndex(service, true));
+
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  private static OpenSearchException searchFailure(int status, String type) {
+    return new OpenSearchException(
+        ErrorResponse.of(r -> r.status(status).error(e -> e.type(type).reason("held"))));
+  }
+
+  private static List<ILoggingEvent> repositoryLogsOf(Runnable write) {
+    Logger log = (Logger) LoggerFactory.getLogger(SearchRepository.class);
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    log.addAppender(logged);
+    try {
+      write.run();
+    } finally {
+      log.detachAppender(logged);
+    }
+    return logged.list;
+  }
+
+  private static void assertWarnedWithoutErrors(List<ILoggingEvent> logged) {
+    assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)));
+    assertTrue(
+        logged.stream()
+            .anyMatch(
+                e ->
+                    e.getLevel() == Level.WARN
+                        && e.getFormattedMessage().contains("queued for retry")));
   }
 
   @Test

@@ -13,7 +13,9 @@ public final class SearchRetryUtil {
       RetryConfig.custom()
           .maxAttempts(4)
           .intervalFunction(IntervalFunction.ofExponentialBackoff(100, 2))
-          .retryOnException(SearchRetryUtil::isTooManyRequestsError)
+          // A version-conflicted update changed nothing, so resending it is safe: it is the
+          // engine's own retry_on_conflict after a pause (e.g. two writers hitting one document).
+          .retryOnException(e -> isTooManyRequestsError(e) || SearchUtils.isVersionConflict(e))
           .build();
 
   private static final Retry RETRY = Retry.of("search-upsert", RETRY_CONFIG);

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.spy;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.service.search.EntityManagementClient;
@@ -15,9 +16,17 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
+import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.BulkByScrollFailure;
+import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch._types.Script;
+import os.org.opensearch.client.opensearch.core.BulkRequest;
+import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryRequest;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
+import os.org.opensearch.client.opensearch.core.UpdateRequest;
+import os.org.opensearch.client.opensearch.core.UpdateResponse;
+import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 @Isolated
 @Testcontainers
@@ -32,6 +41,15 @@ class OpenSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRetry
           .withExposedPorts(9200)
           .waitingFor(Wait.forHttp("/_cluster/health").forStatusCode(200))
           .withStartupTimeout(Duration.ofMinutes(3));
+
+  private static final long STALE_SEQ_NO = 1_000_000L;
+  private static final Script BROKEN_SCRIPT =
+      Script.of(
+          s ->
+              s.inline(
+                  i ->
+                      i.lang(l -> l.builtin(BuiltinScriptLanguage.Painless))
+                          .source("ctx._source.")));
 
   private OpenSearchClient connection;
   private os.org.opensearch.client.opensearch.OpenSearchClient client;
@@ -68,8 +86,55 @@ class OpenSearchEntityManagerDeleteByScriptRetryTest extends ScriptedDeleteRetry
             }
             return response;
           }
+
+          @Override
+          @SuppressWarnings("unchecked")
+          public <T, P> UpdateResponse<T> update(UpdateRequest<T, P> request, Class<T> type)
+              throws IOException {
+            return !failThisWrite()
+                ? super.update(request, type)
+                : super.update((UpdateRequest<T, P>) failing(request.index(), request.id()), type);
+          }
+
+          @Override
+          public BulkResponse bulk(BulkRequest request) throws IOException {
+            return !failThisWrite()
+                ? super.bulk(request)
+                : super.bulk(
+                    BulkRequest.of(
+                        b ->
+                            b.refresh(Refresh.True)
+                                .operations(
+                                    request.operations().stream()
+                                        .map(
+                                            op ->
+                                                failingBulk(op.update().index(), op.update().id()))
+                                        .toList())));
+          }
         };
     manager = new OpenSearchEntityManager(client);
+  }
+
+  private UpdateRequest<Map<String, Object>, Map<String, Object>> failing(String index, String id) {
+    return UpdateRequest.of(
+        u -> {
+          u.index(index).id(id);
+          return writeFailure == WriteFailure.CONFLICT
+              ? u.ifSeqNo(STALE_SEQ_NO).ifPrimaryTerm(1L).doc(Map.of("value", 0))
+              : u.script(BROKEN_SCRIPT);
+        });
+  }
+
+  private BulkOperation failingBulk(String index, String id) {
+    return BulkOperation.of(
+        o ->
+            o.update(
+                u -> {
+                  u.index(index).id(id);
+                  return writeFailure == WriteFailure.CONFLICT
+                      ? u.ifSeqNo(STALE_SEQ_NO).ifPrimaryTerm(1L).document(Map.of("value", 0))
+                      : u.script(BROKEN_SCRIPT);
+                }));
   }
 
   @Override

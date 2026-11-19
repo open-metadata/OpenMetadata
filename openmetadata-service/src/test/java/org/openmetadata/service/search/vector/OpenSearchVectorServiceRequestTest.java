@@ -6,20 +6,32 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.mockito.MockedStatic;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
+import org.slf4j.LoggerFactory;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
 import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
@@ -31,6 +43,12 @@ class OpenSearchVectorServiceRequestTest {
   private static final String UPDATE_BODY = "{\"doc\":{\"embedding\":[0.1,0.2]}}";
   private static final String CLOSED_SEGMENT =
       "{\"error\":{\"type\":\"already_closed_exception\"}}";
+  private static final String VERSION_CONFLICT =
+      "{\"error\":{\"root_cause\":[{\"type\":\"version_conflict_engine_exception\","
+          + "\"reason\":\"[test]: version conflict, required seqNo [5], primary term [1]. current"
+          + " document has seqNo [6] and primary term [1]\"}],\"type\":"
+          + "\"version_conflict_engine_exception\",\"reason\":\"[test]: version conflict\"},"
+          + "\"status\":409}";
 
   private OpenSearchGenericClient genericClient;
   private OpenSearchVectorService service;
@@ -188,6 +206,47 @@ class OpenSearchVectorServiceRequestTest {
         "OpenSearch request failed with status 500: no body", error.getCause().getMessage());
     verify(genericClient).execute(any());
     verify(failure).close();
+  }
+
+  @Test
+  void aConflictedEmbeddingWriteIsQueuedAndLoggedAsAWarning() throws IOException {
+    when(genericClient.execute(any())).thenAnswer(call -> response(409, VERSION_CONFLICT));
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged = writeEmbeddings();
+
+      queue.verify(() -> SearchIndexRetryQueue.enqueue(eq("test"), isNull(), any()), times(2));
+      assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)));
+      assertEquals(2, logged.stream().filter(e -> e.getLevel() == Level.WARN).count());
+    }
+  }
+
+  @Test
+  void aRejectedEmbeddingWriteIsStillLoggedAsAnError() throws IOException {
+    when(genericClient.execute(any()))
+        .thenAnswer(
+            call ->
+                response(
+                    400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}"));
+    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+      List<ILoggingEvent> logged = writeEmbeddings();
+
+      queue.verifyNoInteractions();
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+    }
+  }
+
+  private List<ILoggingEvent> writeEmbeddings() {
+    Logger log = (Logger) LoggerFactory.getLogger(OpenSearchVectorService.class);
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    log.addAppender(logged);
+    try {
+      service.partialUpdateEntity("test_case_search_index", "test", Map.of("fingerprint", "f"));
+      service.clearEntityEmbedding("test_case_search_index", "test");
+    } finally {
+      log.detachAppender(logged);
+    }
+    return logged.list;
   }
 
   private static Response response(int status, String json) throws IOException {
