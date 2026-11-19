@@ -1178,7 +1178,7 @@ const resolveX509Certificates = (
     }
   }
 
-  return [...new Set(signing.length ? signing : fallback)];
+  return [...new Set([...signing, ...fallback])];
 };
 
 export const parseSamlMetadataXml = (xmlString: string): SamlIdpMetadata => {
