@@ -15,6 +15,7 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 import logging
+import threading
 import types
 from copy import deepcopy
 from types import SimpleNamespace
@@ -912,8 +913,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        dataset_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}"
-        assert self.bq_source._table_ddl_cache.get(dataset_key) == {"my_table": "CREATE TABLE my_table (id INT64)"}
+        assert self.bq_source._ddl_local.ddls == {"my_table": "CREATE TABLE my_table (id INT64)"}
         query_str = str(mock_conn.execute.call_args[0][0])
         assert "region-EU" in query_str
 
@@ -928,8 +928,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        dataset_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}"
-        assert self.bq_source._table_ddl_cache.get(dataset_key) == {"my_table": "CREATE TABLE my_table (id INT64)"}
+        assert self.bq_source._ddl_local.ddls == {"my_table": "CREATE TABLE my_table (id INT64)"}
         query_str = str(mock_conn.execute.call_args[0][0])
         assert "region-" not in query_str
         assert MOCK_DATABASE_SCHEMA.name.root in query_str
@@ -941,7 +940,7 @@ class TestBigqueryRegionAwareQueries:
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
         self.bq_source.client.get_dataset.assert_not_called()
-        assert len(self.bq_source._table_ddl_cache) == 0
+        assert not hasattr(self.bq_source._ddl_local, "ddls")
 
     def test_prefetch_table_ddls_falls_back_when_location_unavailable(self):
         """When client.get_dataset raises, falls back to dataset-scoped query and populates cache."""
@@ -955,8 +954,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        dataset_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}"
-        assert self.bq_source._table_ddl_cache.get(dataset_key) == {"my_table": "CREATE TABLE my_table (id INT64)"}
+        assert self.bq_source._ddl_local.ddls == {"my_table": "CREATE TABLE my_table (id INT64)"}
         query_str = str(mock_conn.execute.call_args[0][0])
         assert "region-" not in query_str
 
@@ -973,8 +971,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        dataset_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}"
-        assert self.bq_source._table_ddl_cache.get(dataset_key) == {}
+        assert self.bq_source._ddl_local.ddls == {}
 
     def test_prefetch_table_ddls_cache_empty_when_query_fails(self):
         """When SQL execution raises, the dataset caches no DDLs and no exception propagates."""
@@ -988,8 +985,7 @@ class TestBigqueryRegionAwareQueries:
 
         self.bq_source._prefetch_table_ddls(MOCK_DATABASE_SCHEMA.name.root)
 
-        dataset_key = f"{MOCK_DB_NAME}.{MOCK_DATABASE_SCHEMA.name.root}"
-        assert self.bq_source._table_ddl_cache.get(dataset_key) == {}
+        assert self.bq_source._ddl_local.ddls == {}
 
     # --- get_life_cycle_query ---
 
@@ -1305,21 +1301,6 @@ class TestBigqueryPerSchemaCaching:
         ddl = self.bq_source.get_schema_definition(TableType.Regular, "nonexistent", "clean_mac", None)
         assert ddl is None
 
-    def test_ddl_refetched_when_dataset_entry_evicted_before_read(self):
-        """
-        LRUCache locks each operation separately, so a concurrent put that triggers
-        eviction can drop the dataset after the lookup but before the read. The DDLs
-        must be re-fetched rather than reported as missing.
-        """
-        self.bq_source.engine = self._make_ddl_engine(
-            {"clean_mac": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC")]}
-        )
-        self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
-        self.bq_source._table_ddl_cache = _EvictedOnReadCache(capacity=8)
-
-        ddl = self.bq_source.get_schema_definition(TableType.Regular, "orders", "clean_mac", None)
-        assert ddl == "CREATE TABLE orders (id INT64) MAC"
-
     def test_dataset_larger_than_old_table_cap_keeps_every_ddl(self):
         """A dataset with thousands of tables keeps all of its DDLs, not just the last few thousand."""
         rows = [self._ddl_row(f"t{i}", f"CREATE TABLE t{i} (id INT64)") for i in range(5000)]
@@ -1334,23 +1315,56 @@ class TestBigqueryPerSchemaCaching:
             "CREATE TABLE t4999 (id INT64)"
         )
 
-    def test_more_datasets_in_flight_than_cache_capacity_still_get_ddls(self):
-        """A dataset evicted by others prefetched after it re-fetches its own DDLs on read."""
-        self.bq_source._table_ddl_cache = LRUCache(capacity=1)
+    def test_read_for_a_dataset_this_thread_does_not_hold_fetches_it(self):
+        """A thread whose current dataset is another one fetches the DDLs instead of returning None."""
         self.bq_source.engine = self._make_ddl_engine(
             {
                 "clean_mac": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC")],
                 "clean_recon": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) RECON")],
             }
         )
-        for schema in ("clean_mac", "clean_recon"):
-            self.bq_source.context.get().__dict__["database_schema"] = schema
-            self.bq_source._prefetch_table_ddls(schema)
+        self.bq_source.context.get().__dict__["database_schema"] = "clean_recon"
+        self.bq_source._prefetch_table_ddls("clean_recon")
 
         self.bq_source.context.get().__dict__["database_schema"] = "clean_mac"
         assert self.bq_source.get_schema_definition(TableType.Regular, "orders", "clean_mac", None) == (
             "CREATE TABLE orders (id INT64) MAC"
         )
+
+    def test_concurrent_threads_keep_their_own_dataset_ddls(self):
+        """
+        Two schema workers prefetch same-named tables at the same time, then read. Each
+        reads its own dataset's DDL from its own prefetch, with no extra query.
+        """
+        self.bq_source.engine = self._make_ddl_engine(
+            {
+                "clean_mac": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) MAC")],
+                "clean_recon": [self._ddl_row("orders", "CREATE TABLE orders (id INT64) RECON")],
+            }
+        )
+        conn = self.bq_source.engine.connect.return_value.__enter__.return_value
+        main_thread = self.bq_source.context.get_current_thread_id()
+        both_prefetched = threading.Barrier(2)
+        results = {}
+
+        def worker(schema):
+            self.bq_source.context.copy_from(main_thread)
+            self.bq_source.context.get().__dict__["database_schema"] = schema
+            self.bq_source._prefetch_table_ddls(schema)
+            both_prefetched.wait(timeout=10)
+            results[schema] = self.bq_source.get_schema_definition(TableType.Regular, "orders", schema, None)
+
+        workers = [threading.Thread(target=worker, args=(schema,)) for schema in ("clean_mac", "clean_recon")]
+        for thread in workers:
+            thread.start()
+        for thread in workers:
+            thread.join(timeout=10)
+
+        assert results == {
+            "clean_mac": "CREATE TABLE orders (id INT64) MAC",
+            "clean_recon": "CREATE TABLE orders (id INT64) RECON",
+        }
+        assert conn.execute.call_count == 2
 
 
 class TestBigqueryDeltaLakeDetection:

@@ -137,9 +137,6 @@ from metadata.utils.sqlalchemy_utils import is_complex_type
 # being processed concurrently and must be keyed by the fully qualified name.
 DATASET_OBJ_CACHE_SIZE = 512
 TABLE_OBJ_CACHE_SIZE = 2048
-# One entry per dataset holding every table's DDL. Keep it well above the schema thread
-# count; an evicted dataset is re-fetched on the next read, never served as missing.
-DATASET_DDL_CACHE_SIZE = 64
 
 # google-cloud-bigquery has no ExternalSourceFormat member for this and the REST reference
 # for externalDataConfiguration.sourceFormat omits it, so it has to be a literal.
@@ -296,7 +293,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_cache = {}
         self._taxonomy_cache = {}
         self._taxonomy_to_tags = {}
-        self._table_ddl_cache: LRUCache = LRUCache(capacity=DATASET_DDL_CACHE_SIZE)
+        # Each schema worker thread ingests one dataset at a time and reads each table's DDL
+        # once, so it holds only its current dataset's DDLs: memory is threads x one dataset,
+        # and concurrent datasets never share (or clear) each other's entries.
+        self._ddl_local = threading.local()
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
@@ -881,20 +881,21 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         """Pre-fetch all table DDLs at schema level using INFORMATION_SCHEMA"""
         if not self.source_config.includeDDL:
             return
-        database = self.context.get().database
-        # Keyed by project.dataset: the databaseSchema node runs multi-threaded on one
-        # shared source instance, so each dataset's DDLs must live under their own key.
-        self._table_ddl_cache.put(f"{database}.{schema_name}", self._fetch_table_ddls(database, schema_name))
+        self._load_table_ddls(self.context.get().database, schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+
+    def _load_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
+        """Fetch the dataset's DDLs and make them this thread's current dataset."""
+        ddls = self._fetch_table_ddls(database, schema_name)
+        self._ddl_local.dataset_key = f"{database}.{schema_name}"
+        self._ddl_local.ddls = ddls
+        return ddls
 
     def _get_table_ddls(self, schema_name: str) -> dict[str, str]:
-        """Return the dataset's DDLs, re-fetching them if the entry was evicted."""
+        """Return the dataset's DDLs, fetching them if this thread holds another dataset."""
         database = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
-        try:
-            return self._table_ddl_cache.get(f"{database}.{schema_name}")
-        except KeyError:
-            ddls = self._fetch_table_ddls(database, schema_name)
-            self._table_ddl_cache.put(f"{database}.{schema_name}", ddls)
-            return ddls
+        if getattr(self._ddl_local, "dataset_key", None) == f"{database}.{schema_name}":
+            return self._ddl_local.ddls
+        return self._load_table_ddls(database, schema_name)
 
     def _fetch_table_ddls(self, database: str, schema_name: str) -> dict[str, str]:
         """Fetch every table's DDL in the dataset; an empty dict when the query fails."""
