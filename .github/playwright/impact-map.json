@@ -1673,7 +1673,7 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataAssets/DataAssetsHeader/*.test.tsx"
       ],
-      "projects": ["Basic"],
+      "projects": ["chromium"],
       "specs": [
         "playwright/e2e/Pages/SourceUpdatedTime.spec.ts",
         "playwright/e2e/Pages/TableCreationTime.spec.ts"
