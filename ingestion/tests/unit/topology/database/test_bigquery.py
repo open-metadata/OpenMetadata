@@ -15,6 +15,7 @@ bigquery unit tests
 
 # pylint: disable=line-too-long
 import logging
+import os
 import threading
 import types
 from concurrent.futures import ThreadPoolExecutor
@@ -867,7 +868,7 @@ class TestBigqueryRegionAwareQueries:
 
         with ThreadPoolExecutor(max_workers=4) as pool:
             results = list(pool.map(
-                lambda _: self.bq_source._load_region_lifecycle(MOCK_DB_NAME, "EU"),
+                lambda _: self.bq_source._load_region_lifecycle(MOCK_DB_NAME, "EU", "dataset_a"),
                 range(8),
             ))
 
@@ -885,7 +886,7 @@ class TestBigqueryRegionAwareQueries:
             ("project-a", "US"),
             ("project-b", "EU"),
         ]:
-            assert self.bq_source._load_region_lifecycle(project, region) == {}
+            assert self.bq_source._load_region_lifecycle(project, region, "dataset_a") == {}
 
         assert conn.execute.call_count == 3
 
@@ -917,11 +918,101 @@ class TestBigqueryRegionAwareQueries:
         result_a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
         context.database_schema = "dataset_b"
         result_b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_c"
+        result_c = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
 
         assert result_a["alpha"].created_at == datetime(2025, 1, 1)
         assert result_b["alpha"].created_at == datetime(2025, 1, 1)
-        assert len([sql for sql in statements if "region-EU" in sql]) == 1
-        assert len(statements) == 3  # one failed region scan; two dataset fallbacks
+        assert result_c["alpha"].created_at == datetime(2025, 1, 1)
+        assert len([sql for sql in statements if "region-EU" in sql]) == 2
+        assert len(statements) == 5  # two bounded region attempts; three cheap fallbacks
+
+
+    def test_lifecycle_invalid_row_keeps_other_tables_and_schemas(self):
+        self._set_dataset_location("EU")
+        invalid = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_a",
+            "table_name": "invalid",
+            "created_at": "not-a-datetime",
+        })
+        valid_a = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_a",
+            "table_name": "valid",
+            "created_at": datetime(2025, 3, 1),
+            "updated_at": datetime(2025, 3, 2),
+        })
+        valid_b = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_b",
+            "table_name": "other",
+            "created_at": datetime(2025, 3, 3),
+            "updated_at": datetime(2025, 3, 4),
+        })
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([invalid, valid_a, valid_b])
+        self.bq_source.engine = engine
+
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        a = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        context.database_schema = "dataset_b"
+        b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+
+        assert set(a) == {"valid"}
+        assert a["valid"].updated_at == datetime(2025, 3, 2)
+        assert b["other"].created_at == datetime(2025, 3, 3)
+        assert conn.execute.call_count == 1
+
+    def test_lifecycle_transient_region_error_recovers_updated_timestamp(self):
+        self._set_dataset_location("EU")
+        engine, conn = self._make_engine_mock([])
+        sqls = []
+        successful_row = SimpleNamespace(_asdict=lambda: {
+            "table_schema": "dataset_b",
+            "table_name": "recovered",
+            "created_at": datetime(2025, 4, 1),
+            "updated_at": datetime(2025, 4, 2),
+        })
+
+        def execute(statement):
+            sql = str(statement)
+            sqls.append(sql)
+            rows = MagicMock()
+            if "region-EU" in sql:
+                if len([s for s in sqls if "region-EU" in s]) == 1:
+                    raise RuntimeError("transient timeout")
+                rows.__iter__.return_value = iter([successful_row])
+            else:
+                rows.all.return_value = []
+            return rows
+
+        conn.execute.side_effect = execute
+        self.bq_source.engine = engine
+        context = self.bq_source.context.get()
+        context.database_schema = "dataset_a"
+        assert self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query()) == {}
+        context.database_schema = "dataset_b"
+        b = self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query())
+        assert b["recovered"].updated_at == datetime(2025, 4, 2)
+
+        context.database_schema = "dataset_c"
+        assert self.bq_source.life_cycle_query_dict(self.bq_source.get_life_cycle_query()) == {}
+        assert len([s for s in sqls if "region-EU" in s]) == 2
+
+    def test_lifecycle_disk_cache_has_size_limit_and_explicit_cleanup(self):
+        engine, conn = self._make_engine_mock([])
+        conn.execute.return_value.__iter__.return_value = iter([])
+        self.bq_source.engine = engine
+        assert self.bq_source._load_region_lifecycle(MOCK_DB_NAME, "EU", "dataset_a") == {}
+
+        db = self.bq_source._region_lifecycle_db
+        folder = self.bq_source._region_lifecycle_dir.name
+        assert os.path.isdir(folder)
+        assert db.execute("PRAGMA page_size").fetchone()[0] == 4096
+        assert db.execute("PRAGMA max_page_count").fetchone()[0] == 65536
+
+        self.bq_source._clear_region_lifecycle_cache()
+        assert self.bq_source._region_lifecycle_db is None
+        assert not os.path.exists(folder)
 
     # --- get_stored_procedures ---
 
