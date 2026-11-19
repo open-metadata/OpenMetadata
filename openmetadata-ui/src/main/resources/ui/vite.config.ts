@@ -503,6 +503,7 @@ export default defineConfig(async ({ mode }) => {
     define: {
       'import.meta.env.PW_E2E_BUILD': JSON.stringify(isPlaywrightBuild),
       'process.env.NODE_ENV': JSON.stringify(mode),
+      'process.env.DEV_SERVER_TARGET': JSON.stringify(devServerTarget),
       'process.env.BRAND_NAME': JSON.stringify(
         env.BRAND_NAME || 'OpenMetadata'
       ),
