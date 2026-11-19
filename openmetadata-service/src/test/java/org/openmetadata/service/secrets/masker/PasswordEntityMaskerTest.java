@@ -60,6 +60,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   private static final String CUSTOM_SECRET = "plugin-secret";
   private static final String TOKEN = "openmetadata-token";
   private static final String ALPHA_KEY = "alpha-api-key";
+  private static final String GAMMA_KEY = "gamma-key";
   private static final String BETA_KEY = "beta-api-key";
   private static final String SFTP_PASSWORD = "openmetadata-sftp-secret";
   private static final String NESTED_SECRET = "openmetadata-nested-secret";
@@ -249,6 +250,63 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
     assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
     assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  /**
+   * Names that share one secret id once cleaned (case, punctuation) are still distinct servers: a
+   * masked key follows its own server through a reorder.
+   */
+  @Test
+  void testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered() {
+    McpConnection restored =
+        unmaskServers(
+            List.of(server("Prod", ALPHA_KEY), server("prod", BETA_KEY)),
+            List.of(server("prod", getMaskedPassword()), server("Prod", getMaskedPassword())));
+
+    assertEquals(BETA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
+  }
+
+  /** Deleting server "1" must not hand its key to server "2", which then sits in slot 0. */
+  @Test
+  void testDigitOnlyNamesKeepTheirOwnKeysWhenOneIsDeleted() {
+    McpConnection restored =
+        unmaskServers(
+            List.of(server("1", ALPHA_KEY), server("2", BETA_KEY)),
+            List.of(server("2", getMaskedPassword())));
+
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
+  }
+
+  /** A server named like a position key must not take the key of the server in that position. */
+  @Test
+  void testANameLikeAPositionKeyKeepsItsOwnKey() {
+    McpConnection restored =
+        unmaskServers(
+            List.of(server("#1", ALPHA_KEY), server("dup", BETA_KEY), server("dup", GAMMA_KEY)),
+            List.of(
+                server("#1", getMaskedPassword()),
+                server("dup", getMaskedPassword()),
+                server("dup", getMaskedPassword())));
+
+    assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
+    assertEquals(GAMMA_KEY, restored.getServers().get(2).getApiKey());
+  }
+
+  private static McpServerConfig server(String name, String apiKey) {
+    return new McpServerConfig().withName(name).withApiKey(apiKey);
+  }
+
+  private static McpConnection unmaskServers(
+      List<McpServerConfig> original, List<McpServerConfig> edited) {
+    return (McpConnection)
+        EntityMaskerFactory.createEntityMasker()
+            .unmaskServiceConnectionConfig(
+                new McpConnection().withServers(edited),
+                new McpConnection().withServers(original),
+                "Mcp",
+                ServiceType.MCP);
   }
 
   /**
