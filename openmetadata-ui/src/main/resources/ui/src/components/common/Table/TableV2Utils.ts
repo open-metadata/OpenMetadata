@@ -225,30 +225,10 @@ export function getTableLayoutClasses(
   };
 }
 
-/**
- * A percentage `scroll.y` sizes the body to its parent rather than capping it
- * at a pixel height. With no rows a cap lets the body collapse to the empty
- * placeholder, leaving a blank band under it inside the parent; filling the
- * parent keeps the placeholder centred in the space the table owns.
- */
-export function fillsParentWhenEmpty(
-  scrollY: string | number | undefined,
-  isEmpty: boolean
-): boolean {
-  return isEmpty && typeof scrollY === 'string' && scrollY.endsWith('%');
-}
-
 export function getTableContainerStyle(
-  scrollY: string | number | undefined,
-  fillParent = false
+  scrollY: string | number | undefined
 ): React.CSSProperties | undefined {
-  if (!scrollY) {
-    return undefined;
-  }
-
-  return fillParent
-    ? { height: scrollY, overflowY: 'auto' }
-    : { maxHeight: scrollY, overflowY: 'auto' };
+  return scrollY ? { maxHeight: scrollY, overflowY: 'auto' } : undefined;
 }
 
 export function getTableWidthStyle(

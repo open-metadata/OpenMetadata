@@ -12,10 +12,8 @@
  */
 import type { ColumnType } from './Table.interface';
 import {
-  fillsParentWhenEmpty,
   getColumnStickyStyle,
   getStickyBodyCellClass,
-  getTableContainerStyle,
   resolveCellValue,
 } from './TableV2Utils';
 
@@ -66,30 +64,5 @@ describe('sticky column background', () => {
     expect(
       getColumnStickyStyle('right', 2, 'var(--om-color-bg-secondary)')
     ).toMatchObject({ background: 'var(--om-color-bg-secondary)' });
-  });
-});
-
-describe('empty body height', () => {
-  it('fills a percentage-sized parent only while there are no rows', () => {
-    expect(fillsParentWhenEmpty('100%', true)).toBe(true);
-    expect(fillsParentWhenEmpty('100%', false)).toBe(false);
-  });
-
-  it('keeps a pixel cap compact when empty', () => {
-    expect(fillsParentWhenEmpty(400, true)).toBe(false);
-    expect(fillsParentWhenEmpty('400px', true)).toBe(false);
-    expect(fillsParentWhenEmpty(undefined, true)).toBe(false);
-  });
-
-  it('sizes the scroll container to the parent instead of capping it', () => {
-    expect(getTableContainerStyle('100%', true)).toEqual({
-      height: '100%',
-      overflowY: 'auto',
-    });
-    expect(getTableContainerStyle('100%')).toEqual({
-      maxHeight: '100%',
-      overflowY: 'auto',
-    });
-    expect(getTableContainerStyle(undefined, true)).toBeUndefined();
   });
 });
