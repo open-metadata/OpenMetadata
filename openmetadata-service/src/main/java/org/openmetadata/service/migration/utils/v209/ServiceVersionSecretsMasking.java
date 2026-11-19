@@ -117,12 +117,12 @@ public final class ServiceVersionSecretsMasking {
       final Handle handle, final ConnectionType connectionType, final VersionKey key) {
     final JsonNode version = JsonUtils.readTree(readJson(handle, key));
     final Connection connection = connection(key.entityType(), version);
-    final boolean masked =
+    final boolean isMasked =
         connection != null && maskSecrets(connection.config(), connection.paths());
-    if (masked) {
+    if (isMasked) {
       update(handle, connectionType, key, JsonUtils.pojoToJson(version));
     }
-    return masked;
+    return isMasked;
   }
 
   /**
@@ -131,12 +131,12 @@ public final class ServiceVersionSecretsMasking {
    * the same schema, while the service type can name a different one.
    */
   private static Connection connection(final String entityType, final JsonNode version) {
-    final boolean workflow = WORKFLOW.equals(entityType);
-    final JsonNode holder = workflow ? version.path("request") : version;
+    final boolean isWorkflow = WORKFLOW.equals(entityType);
+    final JsonNode holder = isWorkflow ? version.path("request") : version;
     final String serviceEntity =
-        workflow ? SERVICE_ENTITY_BY_TYPE.get(holder.path("serviceType").asText()) : entityType;
+        isWorkflow ? SERVICE_ENTITY_BY_TYPE.get(holder.path("serviceType").asText()) : entityType;
     final JsonNode config = holder.path("connection").path("config");
-    final String fallbackType = holder.path(workflow ? "connectionType" : "serviceType").asText();
+    final String fallbackType = holder.path(isWorkflow ? "connectionType" : "serviceType").asText();
     final String type = config.path("type").asText(fallbackType);
     // Only Test Connection requests name a service type; any other workflow (e.g. a query runner
     // request) or an unknown type has no listed paths, so it is left as it is.
@@ -157,20 +157,20 @@ public final class ServiceVersionSecretsMasking {
 
   /** Masks every listed secret of one stored connection config that is still plain text. */
   static boolean maskSecrets(final JsonNode config, final List<String> paths) {
-    boolean changed = false;
+    boolean isChanged = false;
     for (final String path : paths) {
-      changed |= maskPath(config, path.split("/"), 0);
+      isChanged |= maskPath(config, path.split("/"), 0);
     }
-    return changed;
+    return isChanged;
   }
 
   private static boolean maskPath(final JsonNode node, final String[] segments, final int index) {
-    boolean changed = false;
-    final boolean leaf = index == segments.length - 1;
+    boolean isChanged = false;
+    final boolean isLeaf = index == segments.length - 1;
     for (final Child child : children(node, segments[index])) {
-      changed |= leaf ? child.maskIfPlainText() : maskPath(child.value(), segments, index + 1);
+      isChanged |= isLeaf ? child.maskIfPlainText() : maskPath(child.value(), segments, index + 1);
     }
-    return changed;
+    return isChanged;
   }
 
   /** The values a path segment names below {@code node}, each with the container holding it. */
@@ -199,13 +199,13 @@ public final class ServiceVersionSecretsMasking {
     }
 
     boolean maskIfPlainText() {
-      final boolean plainText = isPlainText(value());
-      if (plainText && field != null) {
+      final boolean isPlain = isPlainText(value());
+      if (isPlain && field != null) {
         ((ObjectNode) container).put(field, MASK);
-      } else if (plainText) {
+      } else if (isPlain) {
         ((ArrayNode) container).set(index, MASK);
       }
-      return plainText;
+      return isPlain;
     }
   }
 
