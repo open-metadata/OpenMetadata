@@ -156,9 +156,11 @@ class TestCaseSnapshotStoreTest {
   }
 
   @Test
-  void conflictsThatOutlastEveryAttemptDoNotFailTheCapture() throws IOException {
+  void aCheckpointThatOutlastsEveryAttemptFailsBeforeSnapshotsAreDeleted() throws IOException {
     final List<String> calls = new ArrayList<>();
-    new TestCaseSnapshotStore(deleteAnswering(calls, 1, 1, 1), "").clearCheckpoints();
+    final TestCaseSnapshotStore store =
+        new TestCaseSnapshotStore(deleteAnswering(calls, 1, 1, 1), "");
+    assertThrows(IOException.class, store::deleteSnapshots);
     assertEquals(
         List.of(
             "HEAD",
@@ -167,7 +169,17 @@ class TestCaseSnapshotStoreTest {
             "delete conflicts=proceed",
             "refresh",
             "delete conflicts=proceed"),
-        calls);
+        calls,
+        "A checkpoint that survives must stop the capture before the snapshots go");
+  }
+
+  @Test
+  void snapshotConflictsThatOutlastEveryAttemptDoNotFailTheCapture() throws IOException {
+    final List<String> calls = new ArrayList<>();
+    // Day checkpoints clear, the day's snapshots keep conflicting, then both expiry deletes clear.
+    new TestCaseSnapshotStore(deleteAnswering(calls, 0, 1, 1, 1, 0, 0), "")
+        .beginCapture(System.currentTimeMillis(), null, 30);
+    assertEquals(6, calls.stream().filter("delete conflicts=proceed"::equals).count());
   }
 
   /** Answers each delete-by-query with the next conflict count and records the calls made. */

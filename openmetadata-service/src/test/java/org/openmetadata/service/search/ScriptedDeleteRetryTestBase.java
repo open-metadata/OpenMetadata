@@ -154,18 +154,10 @@ public abstract class ScriptedDeleteRetryTestBase {
   @ParameterizedTest
   @EnumSource(DeletePath.class)
   void persistentConflictsAreNotLoggedAsErrors(DeletePath path) throws Exception {
-    Logger managerLog = (Logger) LoggerFactory.getLogger(manager().getClass());
-    ListAppender<ILoggingEvent> logged = new ListAppender<>();
-    logged.start();
-    managerLog.addAppender(logged);
-    try {
-      keepConflicting = true;
-      delete(path);
-    } finally {
-      managerLog.detachAppender(logged);
-    }
+    keepConflicting = true;
+    List<ILoggingEvent> logged = logsOf(() -> delete(path));
     assertEquals(List.of(1L, 1L, 1L), conflicts);
-    assertTrue(logged.list.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)));
+    assertNoErrors(logged);
   }
 
   @Test
@@ -390,15 +382,19 @@ public abstract class ScriptedDeleteRetryTestBase {
     entities.when(() -> Entity.buildSearchIndex(Entity.TABLE, entity)).thenReturn(searchIndex);
   }
 
+  /** Captures the manager's own log and the shared search helpers it logs through. */
   private List<ILoggingEvent> logsOf(ThrowingRunnable action) throws Exception {
-    Logger managerLog = (Logger) LoggerFactory.getLogger(manager().getClass());
+    List<Logger> logs =
+        List.of(
+            (Logger) LoggerFactory.getLogger(manager().getClass()),
+            (Logger) LoggerFactory.getLogger(SearchUtils.class));
     ListAppender<ILoggingEvent> logged = new ListAppender<>();
     logged.start();
-    managerLog.addAppender(logged);
+    logs.forEach(log -> log.addAppender(logged));
     try {
       action.run();
     } finally {
-      managerLog.detachAppender(logged);
+      logs.forEach(log -> log.detachAppender(logged));
     }
     return logged.list;
   }

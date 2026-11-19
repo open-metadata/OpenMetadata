@@ -89,7 +89,6 @@ import os.org.opensearch.client.opensearch.core.UpdateByQueryRequest;
 import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
-import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
 import os.org.opensearch.client.opensearch.core.search.Hit;
 import os.org.opensearch.client.opensearch.tasks.GetTasksResponse;
 
@@ -327,30 +326,16 @@ public class OpenSearchEntityManager implements EntityManagementClient {
           response.deleted(),
           response.versionConflicts(),
           response.failures().size());
-      if (isFinalDeleteAttempt(request, response, attempt)) {
+      if (SearchUtils.isFinalDeleteAttempt(
+          request.index(),
+          response.failures(),
+          Boolean.TRUE.equals(response.timedOut()),
+          zeroIfNull(response.versionConflicts()),
+          attempt,
+          MAX_DELETE_ATTEMPTS)) {
         break;
       }
     }
-  }
-
-  private static boolean isFinalDeleteAttempt(
-      DeleteByQueryRequest request, DeleteByQueryResponse response, int attempt) {
-    boolean failed = !response.failures().isEmpty() || Boolean.TRUE.equals(response.timedOut());
-    boolean conflicted = zeroIfNull(response.versionConflicts()) > 0;
-    if (failed) {
-      LOG.error(
-          "DeleteByQuery on {} failed: {}, timed out: {}",
-          request.index(),
-          response.failures(),
-          response.timedOut());
-    } else if (conflicted && attempt == MAX_DELETE_ATTEMPTS) {
-      LOG.warn(
-          "DeleteByQuery on {} left {} version conflict(s) after {} attempts",
-          request.index(),
-          response.versionConflicts(),
-          attempt);
-    }
-    return failed || !conflicted || attempt == MAX_DELETE_ATTEMPTS;
   }
 
   DeleteByQueryRequest buildDeleteByScriptRequest(
@@ -477,29 +462,10 @@ public class OpenSearchEntityManager implements EntityManagementClient {
             indexName,
             docId);
       } else {
-        queueFailedUpdate(indexName, docId, e);
+        SearchUtils.queueFailedUpdate("OpenSearch", indexName, docId, e);
       }
     } catch (IOException e) {
-      queueFailedUpdate(indexName, docId, e);
-    }
-  }
-
-  // The queued retry rebuilds the document, so a conflict that outlasted every retry is a warning
-  // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
-  private static void queueFailedUpdate(String indexName, String docId, Exception failure) {
-    SearchIndexRetryQueue.enqueue(
-        docId, null, SearchIndexRetryQueue.failureReason("updateEntity", failure));
-    if (SearchUtils.isVersionConflict(failure)) {
-      LOG.warn(
-          "Concurrent writes held the document for index: {}, docId: {}; queued for retry",
-          indexName,
-          docId);
-    } else {
-      LOG.error(
-          "Failed to update entity in OpenSearch for index: {}, docId: {}",
-          indexName,
-          docId,
-          failure);
+      SearchUtils.queueFailedUpdate("OpenSearch", indexName, docId, e);
     }
   }
 
@@ -1713,42 +1679,18 @@ public class OpenSearchEntityManager implements EntityManagementClient {
     BulkResponse response = client.bulk(b -> b.operations(operations).refresh(Refresh.True));
 
     if (response.errors()) {
-      reportReindexFailures(entities, response.items());
+      SearchUtils.reportReindexFailures(
+          entities,
+          response.items().stream()
+              .filter(item -> item.error() != null)
+              .map(
+                  item ->
+                      new SearchUtils.BulkItemFailure(
+                          item.id(), item.status(), item.error().type(), item.error().reason()))
+              .toList());
     } else {
       LOG.info("Successfully reindexed {} entities in OpenSearch", entities.size());
     }
-  }
-
-  // A conflicted item is queued so the retry rebuilds it; any other failure is an error.
-  private static void reportReindexFailures(
-      List<EntityReference> entities, List<BulkResponseItem> items) {
-    Map<String, EntityReference> byId = new HashMap<>();
-    entities.forEach(entity -> byId.put(entity.getId().toString(), entity));
-    List<BulkResponseItem> failed = items.stream().filter(item -> item.error() != null).toList();
-    List<BulkResponseItem> conflicted =
-        failed.stream()
-            .filter(item -> SearchUtils.isVersionConflictType(item.status(), item.error().type()))
-            .toList();
-    conflicted.forEach(item -> queueConflictedReindex(byId.get(item.id()), item));
-    List<BulkResponseItem> rejected =
-        failed.stream().filter(item -> !conflicted.contains(item)).toList();
-    if (!rejected.isEmpty()) {
-      LOG.error(
-          "Bulk reindex encountered errors. Total: {}, Failed: {}",
-          entities.size(),
-          rejected.size());
-      rejected.forEach(
-          item -> LOG.error("Reindex failed for ID {}: {}", item.id(), item.error().reason()));
-    }
-  }
-
-  private static void queueConflictedReindex(EntityReference entity, BulkResponseItem item) {
-    SearchIndexRetryQueue.enqueue(
-        item.id(),
-        entity == null ? null : entity.getFullyQualifiedName(),
-        entity == null ? "" : entity.getType(),
-        "reindexEntities: " + item.error().reason());
-    LOG.warn("Concurrent writes held reindexed ID {}; queued for retry", item.id());
   }
 
   private void upsertDocument(String indexName, String docId, String doc, String operation)

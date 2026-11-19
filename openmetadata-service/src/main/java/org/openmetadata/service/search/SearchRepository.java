@@ -2029,11 +2029,11 @@ public class SearchRepository {
                 : null,
             entityType,
             SearchIndexRetryQueue.failureReason("createTimeSeriesEntity", ie));
-        logQueuedWriteFailure(
-            ie,
+        LOG.error(
             "Issue creating new search document for entity [{}] and entityType [{}]",
             entityId,
-            entityType);
+            entityType,
+            ie);
       } finally {
         RequestLatencyContext.endSearchOperation(searchSample);
       }

@@ -1,7 +1,8 @@
 # A single-document version conflict is retried, then queued and logged as a warning
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-19 (initial)
+- **Revisions:** v1 2026-11-19 (initial); v2 2026-11-19 (vector and time-series conflicts stay
+  errors: the retry queue does not rebuild them)
 - **Deciders:** Sonika Shah
 - **Guard:** `ElasticSearchEntityManagerDeleteByScriptRetryTest`;
   `OpenSearchEntityManagerDeleteByScriptRetryTest` (shared `ScriptedDeleteRetryTestBase`);
@@ -26,12 +27,17 @@ every busy document paged as a server fault even though the write is queued and 
   No other status or error type is treated as one.
 - A conflicted update changed nothing, so resending it is safe: `SearchRetryUtil` resends single
   document updates and upserts on a conflict, as it does on a 429, at most 4 attempts with backoff.
-- A conflict left after that is a **warning** where the failed write is queued in
-  `SearchIndexRetryQueue`, whose retry rebuilds the whole document from the entity (embedding
-  included). `reindexEntities` and the vector embedding writes queue a conflicted entity for that
-  reason. Every other failure stays an error.
-- A writer that queues nothing (pipeline status and execution documents, the admin reindex
-  endpoint) keeps its error: once every retry has lost, nothing will repair the document.
+  The vector embedding update and clear resend through their generic-request retry, at most 3
+  attempts.
+- A conflict left after that is a **warning** only where `SearchIndexRetryQueue` rebuilds the
+  document from its entity: `updateEntity`, entity create, soft delete, and the items of
+  `reindexEntities` (which now queues them). Every other failure stays an error.
+- The queue's rebuild is a document merge without embedding fields, and it cannot load a
+  time-series record (it removes that id instead). So a conflict that outlasts the retries on a
+  vector embedding write or a time-series create stays an **error**, as do writers that queue
+  nothing (pipeline status and execution documents, the admin reindex endpoint).
+- The engine-neutral decisions and their logging live in `SearchUtils` (`isFinalDeleteAttempt`,
+  `queueFailedUpdate`, `reportReindexFailures`); each manager keeps only its client calls.
 
 ## Consequences
 

@@ -237,6 +237,12 @@ public final class TestCaseSnapshotStore {
       request("POST", "/" + index + "/_refresh", null);
       conflicts = deleteOnce(index, query);
     }
+    // A surviving checkpoint would mark the day complete after its snapshots are gone.
+    if (conflicts > 0 && checkpoints.equals(index)) {
+      throw new IOException(
+          "Could not invalidate test case checkpoints in %s: %d version conflict(s) after %d attempts"
+              .formatted(index, conflicts, MAX_DELETE_ATTEMPTS));
+    }
     if (conflicts > 0) {
       LOG.warn(
           "DeleteByQuery on {} left {} version conflict(s) after {} attempts",

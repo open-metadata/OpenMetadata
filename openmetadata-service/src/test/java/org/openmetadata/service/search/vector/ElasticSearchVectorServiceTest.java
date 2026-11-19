@@ -7,10 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -40,11 +37,9 @@ import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -617,27 +612,48 @@ class ElasticSearchVectorServiceTest {
   }
 
   @Test
-  void aConflictedEmbeddingWriteIsQueuedAndLoggedAsAWarning() throws Exception {
-    mockRestClientResponse(409, VERSION_CONFLICT_BODY);
-    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
-      List<ILoggingEvent> logged = writeEmbeddings();
+  void aConflictThatClearsIsResentAndLogsNothing() throws Exception {
+    Response conflict = restResponse(409, VERSION_CONFLICT_BODY);
+    Response updated = restResponse(200, "{\"result\":\"updated\"}");
+    AtomicInteger attempts = new AtomicInteger();
+    when(mockRestClient.performRequest(any(Request.class)))
+        .thenAnswer(call -> attempts.getAndIncrement() % 2 == 0 ? conflict : updated);
 
-      queue.verify(() -> SearchIndexRetryQueue.enqueue(eq("t1"), isNull(), any()), times(2));
-      assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)));
-      assertEquals(2, logged.stream().filter(e -> e.getLevel() == Level.WARN).count());
-    }
+    List<ILoggingEvent> logged = writeEmbeddings();
+
+    assertEquals(4, attempts.get());
+    assertTrue(logged.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.WARN)));
   }
 
   @Test
-  void aRejectedEmbeddingWriteIsStillLoggedAsAnError() throws Exception {
+  void aConflictThatNeverClearsIsAnErrorAfterThreeAttempts() throws Exception {
+    mockRestClientResponse(409, VERSION_CONFLICT_BODY);
+
+    List<ILoggingEvent> logged = writeEmbeddings();
+
+    verify(mockRestClient, times(6)).performRequest(any(Request.class));
+    assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+  }
+
+  @Test
+  void aRejectedEmbeddingWriteIsAnErrorWithoutBeingResent() throws Exception {
     mockRestClientResponse(
         400, "{\"error\":{\"type\":\"mapper_parsing_exception\"},\"status\":400}");
-    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
-      List<ILoggingEvent> logged = writeEmbeddings();
 
-      queue.verifyNoInteractions();
-      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
-    }
+    List<ILoggingEvent> logged = writeEmbeddings();
+
+    verify(mockRestClient, times(2)).performRequest(any(Request.class));
+    assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
+  }
+
+  private static Response restResponse(int status, String json) throws Exception {
+    Response response = mock(Response.class);
+    HttpEntity entity = mock(HttpEntity.class);
+    when(response.getStatusCode()).thenReturn(status);
+    when(response.getEntity()).thenReturn(entity);
+    when(entity.getContent())
+        .thenAnswer(inv -> new ByteArrayInputStream(json.getBytes(StandardCharsets.UTF_8)));
+    return response;
   }
 
   private static final String VERSION_CONFLICT_BODY =

@@ -3735,7 +3735,8 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void aConflictedTimeSeriesCreateIsQueuedAndLoggedAsAWarning() throws Exception {
+  void aTimeSeriesConflictThatOutlastsTheRetryStaysAnError() throws Exception {
+    // The retry queue cannot rebuild a time-series record, so nothing repairs it.
     EntityTimeSeriesInterface entity =
         mockTimeSeriesEntity(Entity.TABLE, UUID.randomUUID(), "orders_ts");
     when(searchIndexFactory.buildIndex(Entity.TABLE, entity))
@@ -3744,15 +3745,11 @@ class SearchRepositoryBehaviorTest {
         .when(searchClient)
         .createTimeSeriesEntity(anyString(), anyString(), anyString());
 
-    try (MockedStatic<SearchIndexRetryQueue> queue = mockStatic(SearchIndexRetryQueue.class)) {
+    try (MockedStatic<SearchIndexRetryQueue> ignored = mockStatic(SearchIndexRetryQueue.class)) {
       List<ILoggingEvent> logged =
           repositoryLogsOf(() -> repository.createTimeSeriesEntity(entity));
 
-      queue.verify(
-          () ->
-              SearchIndexRetryQueue.enqueue(
-                  eq(entity.getId().toString()), any(), eq(Entity.TABLE), any()));
-      assertWarnedWithoutErrors(logged);
+      assertTrue(logged.stream().anyMatch(e -> e.getLevel() == Level.ERROR));
     }
   }
 

@@ -28,12 +28,10 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -64,10 +62,13 @@ public class OpenSearchVectorService implements VectorIndexService {
           RetryConfig.custom()
               .maxAttempts(3)
               .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
+              // A version-conflicted update changed nothing, so it is resent like a closed segment
+              // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
               .retryOnException(
                   error ->
                       error instanceof UncheckedIOException
-                          && error.getCause() instanceof ClosedSegmentException)
+                          && (error.getCause() instanceof ClosedSegmentException
+                              || error.getCause() instanceof VersionConflictException))
               .build());
   private static final int OVER_FETCH_MULTIPLIER = 2;
   public static final String HYBRID_PIPELINE_NAME = "hybrid-rrf";
@@ -1917,7 +1918,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       executeGenericRequest(
           "POST", "/" + indexName + "/_update/" + entityId + "?retry_on_conflict=3", updateBody);
     } catch (Exception e) {
-      logEmbeddingWriteFailure("partial update", indexName, entityId, e);
+      LOG.error(
+          "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
     }
   }
 
@@ -1936,7 +1938,12 @@ public class OpenSearchVectorService implements VectorIndexService {
           "/" + entityIndexName + "/_update/" + entityId + "?retry_on_conflict=3",
           updateBody);
     } catch (Exception e) {
-      logEmbeddingWriteFailure("clear embedding", entityIndexName, entityId, e);
+      LOG.error(
+          "Failed to clear embedding for entity {} in {}: {}",
+          entityId,
+          entityIndexName,
+          e.getMessage(),
+          e);
     }
   }
 
@@ -1947,9 +1954,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           () -> executeGenericRequestAttempt(method, endpoint, body));
     } catch (RuntimeException e) {
       Throwable cause = e instanceof UncheckedIOException ? e.getCause() : e;
-      if (!(cause instanceof VersionConflictException)) {
-        LOG.error("Generic request failed: {} {}", method, endpoint, cause);
-      }
+      LOG.error("Generic request failed: {} {}", method, endpoint, cause);
       throw new RuntimeException("OpenSearch generic request failed", cause);
     }
   }
@@ -2000,33 +2005,6 @@ public class OpenSearchVectorService implements VectorIndexService {
   private static final class VersionConflictException extends IOException {
     private VersionConflictException(String message) {
       super(message);
-    }
-  }
-
-  private static boolean isVersionConflict(Exception failure) {
-    return ExceptionUtils.indexOfThrowable(failure, VersionConflictException.class) >= 0;
-  }
-
-  // The retry rebuilds the whole document, embedding included, so a conflict is queued and is a
-  // warning (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
-  private static void logEmbeddingWriteFailure(
-      String operation, String indexName, String entityId, Exception failure) {
-    if (isVersionConflict(failure)) {
-      SearchIndexRetryQueue.enqueue(
-          entityId, null, SearchIndexRetryQueue.failureReason(operation, failure));
-      LOG.warn(
-          "Concurrent writes held entity {} in {} during {}; queued for retry",
-          entityId,
-          indexName,
-          operation);
-    } else {
-      LOG.error(
-          "Failed to {} for entity {} in {}: {}",
-          operation,
-          entityId,
-          indexName,
-          failure.getMessage(),
-          failure);
     }
   }
 }

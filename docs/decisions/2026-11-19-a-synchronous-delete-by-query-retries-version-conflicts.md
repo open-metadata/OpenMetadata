@@ -23,7 +23,8 @@ scripted delete only; deletes by fields, by FQN prefix and by range still aborte
 - Every delete-by-query the server waits for, in `ElasticSearchEntityManager` and
   `OpenSearchEntityManager`, runs with `conflicts=proceed` through the manager's `deleteWithRetry`.
   A raw `_delete_by_query` sent through `rawSearchRequest` (`TestCaseSnapshotStore`) follows the
-  same rule in its own loop.
+  same rule in its own loop, except that conflicts left on its checkpoint index fail the capture:
+  a surviving checkpoint would mark a day complete after its snapshots are deleted.
 - After an attempt with version conflicts and no failure or timeout, the target indices are
   refreshed and the delete runs again, **at most 3 attempts** in total, the budget update-by-query
   already uses. A delete is always safe to repeat: a document already deleted no longer matches.

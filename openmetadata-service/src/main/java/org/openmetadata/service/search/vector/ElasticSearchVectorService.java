@@ -9,6 +9,9 @@ import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.ResponseException;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import io.github.resilience4j.core.IntervalFunction;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -24,7 +27,6 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
-import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.MeteredElasticsearchTransport;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -35,6 +37,16 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ElasticSearchVectorService implements VectorIndexService {
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final int OVER_FETCH_MULTIPLIER = 2;
+  // A version-conflicted update changed nothing, so it is resent after a pause
+  // (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
+  private static final Retry CONFLICT_RETRY =
+      Retry.of(
+          "elasticsearch-vector-request",
+          RetryConfig.custom()
+              .maxAttempts(3)
+              .intervalFunction(IntervalFunction.ofExponentialBackoff(200, 2))
+              .retryOnException(VersionConflictException.class::isInstance)
+              .build());
 
   private static volatile ElasticSearchVectorService instance;
 
@@ -247,6 +259,11 @@ public class ElasticSearchVectorService implements VectorIndexService {
 
   @Override
   public String executeGenericRequest(String method, String endpoint, String body) {
+    return CONFLICT_RETRY.executeSupplier(
+        () -> executeGenericRequestAttempt(method, endpoint, body));
+  }
+
+  private String executeGenericRequestAttempt(String method, String endpoint, String body) {
     try {
       Request request = new Request(method, endpoint);
       if (body != null) {
@@ -493,7 +510,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
       executeGenericRequest(
           "POST", "/" + indexName + "/_update/" + entityId + "?retry_on_conflict=3", updateBody);
     } catch (Exception e) {
-      logEmbeddingWriteFailure("partial update", indexName, entityId, e);
+      LOG.error(
+          "Failed to partial update entity {} in {}: {}", entityId, indexName, e.getMessage(), e);
     }
   }
 
@@ -512,36 +530,18 @@ public class ElasticSearchVectorService implements VectorIndexService {
           "/" + entityIndexName + "/_update/" + entityId + "?retry_on_conflict=3",
           updateBody);
     } catch (Exception e) {
-      logEmbeddingWriteFailure("clear embedding", entityIndexName, entityId, e);
+      LOG.error(
+          "Failed to clear embedding for entity {} in {}: {}",
+          entityId,
+          entityIndexName,
+          e.getMessage(),
+          e);
     }
   }
 
   private static final class VersionConflictException extends RuntimeException {
     private VersionConflictException(String message) {
       super(message);
-    }
-  }
-
-  // The retry rebuilds the whole document, embedding included, so a conflict is queued and is a
-  // warning (ADR:2026-11-19-a-single-document-version-conflict-is-queued-and-logged-as-a-warning).
-  private static void logEmbeddingWriteFailure(
-      String operation, String indexName, String entityId, Exception failure) {
-    if (failure instanceof VersionConflictException) {
-      SearchIndexRetryQueue.enqueue(
-          entityId, null, SearchIndexRetryQueue.failureReason(operation, failure));
-      LOG.warn(
-          "Concurrent writes held entity {} in {} during {}; queued for retry",
-          entityId,
-          indexName,
-          operation);
-    } else {
-      LOG.error(
-          "Failed to {} for entity {} in {}: {}",
-          operation,
-          entityId,
-          indexName,
-          failure.getMessage(),
-          failure);
     }
   }
 
