@@ -2,7 +2,8 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-17 (held edits are checked when staged;
-  only newly applied terms are looked up)
+  only newly applied terms are looked up) · v3 2026-11-19 (a term that is not Approved is kept as
+  pending instead of refused, and shown when it is approved)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `GlossaryTermApprovedTaggingIT`, `ChangeRequestUnapprovedTermIT`,
   `ApprovedGlossaryTermGuardTest`
@@ -63,3 +64,32 @@ with that reason (`ChangeRequestService.flagConflicts`).
 A request still runs the check once: a held edit is staged instead of written. Terms a target
 already holds are now dropped before the lookup, so a write or held edit that applies no new
 glossary term reads nothing, and one that does looks up only the new terms, in one batch.
+
+## Amendment — a term that is not Approved is kept as pending, and shown once it is approved
+
+This replaces the refusal in the initial decision and in v2. Customers that sync glossary terms
+onto assets from their own systems apply a term as soon as they create it, before a reviewer
+approves it. A 400 broke those syncs, and nothing applied the term once it was approved, so each
+sync would have had to watch for approvals and run again.
+
+A write that newly applies a term that is not Approved now succeeds. The term is taken out of the
+write, so it is not in the entity's answer, its change description, its search document or its
+cache, and it is stored in `tag_usage` with the new `state` value `Pending` (2). Every tag read
+leaves pending rows out (`TagUsageDAO.NOT_PENDING`): entity and column reads, the list API's tag
+filter, tag and term usage counts, ontology and knowledge center reads. No table or join is added.
+Because a pending row is an ordinary `tag_usage` row, renames, moves and deletes of the asset, its
+fields or the term already carry it. Writes that clear an asset's tags to write them again (CSV
+import, data model, bulk re-store) keep pending rows; a client never sees a pending term, so it
+cannot remove one.
+
+When the term moves to Approved, `GlossaryTermPendingLabels` flips its pending rows in batches of
+500, after the approval commits: an automated label, as ingestion sends, comes back Suggested and
+any other comes back Confirmed. Each batch then evicts and reindexes the entities holding those
+targets, found by FQN hash in the taggable entity tables. The asset gets no new version or change
+event for the term. A target where the term would be mutually exclusive with a term it shows keeps
+the label pending. When the term is rejected, its pending rows are deleted.
+
+The approval gate no longer refuses such an edit when it is staged (v2): the edit is reviewed like
+any other, and when it is published the term is held back as above. dbt no longer skips a term
+that is not Approved (#37256); the server holds it. CSV import keeps its per-row refusal. Labels a
+term already had before this change are left as they are.

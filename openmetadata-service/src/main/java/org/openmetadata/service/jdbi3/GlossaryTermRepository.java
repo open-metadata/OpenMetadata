@@ -154,6 +154,7 @@ import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -2598,6 +2599,22 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
       restrictAutomationProviderChange();
+      settlePendingLabels();
+    }
+
+    // Labels applied while the term waited for approval are shown once it is approved, after the
+    // approval commits, and dropped once it is rejected.
+    private void settlePendingLabels() {
+      EntityStatus to = updated.getEntityStatus();
+      if (to != null && to != original.getEntityStatus()) {
+        if (to == EntityStatus.APPROVED) {
+          GlossaryTerm approved = updated;
+          PostCommitActionQueue.runOrDefer(
+              () -> GlossaryTermPendingLabels.showWhenApproved(approved));
+        } else if (to == EntityStatus.REJECTED) {
+          GlossaryTermPendingLabels.dropRejected(updated);
+        }
+      }
     }
 
     /**

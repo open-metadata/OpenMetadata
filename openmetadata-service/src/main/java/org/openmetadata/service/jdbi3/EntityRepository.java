@@ -262,6 +262,8 @@ import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.HeldTerm;
+import org.openmetadata.service.jdbi3.ApprovedGlossaryTermGuard.TaggedEntity;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityVersionPair;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.ExtensionRecord;
@@ -1022,7 +1024,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     if (supportsTags) {
       List<String> fqns = entities.stream().map(EntityInterface<?>::getFullyQualifiedName).toList();
-      daoCollection.tagUsageDAO().deleteTagsByTargets(fqns);
+      daoCollection.tagUsageDAO().deleteShownTagsByTargets(fqns);
     }
     if (supportsOwners) {
       deleteToMany(ids, entityType, Relationship.OWNS, null);
@@ -6475,33 +6477,42 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createNewEntityFlush(T entity) {
-    checkAppliedGlossaryTermsApproved(entity);
+    List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms(null, entity);
     assignInitialEntityStatus(entity);
-    flushInOneTransaction(List.of(entity), () -> createNewEntityFlushBody(entity));
+    flushInOneTransaction(
+        List.of(entity),
+        () -> {
+          createNewEntityFlushBody(entity);
+          storePendingGlossaryTerms(heldTerms);
+        });
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
   }
 
-  final void checkAppliedGlossaryTermsApproved(T entity) {
-    ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
+  /**
+   * Takes out of {@code entity} each glossary term that is not Approved and that it newly applies
+   * to the entity or one of its fields, for {@link #storePendingGlossaryTerms} to keep as pending
+   * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). {@code stored}
+   * is the entity as stored, or null for a create.
+   */
+  final List<HeldTerm> holdUnapprovedGlossaryTerms(T stored, T entity) {
+    return ApprovedGlossaryTermGuard.holdNewlyApplied(
+        new TaggedEntity(entity, taggedFieldContainers(entity)),
+        stored == null ? null : new TaggedEntity(stored, taggedFieldContainers(stored)));
   }
 
-  /**
-   * Rejects a glossary term that is not Approved and that {@code updated} newly applies to the
-   * entity or one of its fields. Edits an approval workflow holds are checked when they are staged,
-   * so a term is rejected before a change request is opened for it, not when the request is
-   * approved.
-   */
-  public final void checkNewlyAppliedGlossaryTermsApproved(
-      final EntityInterface original, final EntityInterface updated) {
-    final T stored = entityClass.cast(original);
-    final T edited = entityClass.cast(updated);
-    ApprovedGlossaryTermGuard.checkNewlyApplied(
-        ApprovedGlossaryTermGuard.tagsByStoredTarget(
-            new ApprovedGlossaryTermGuard.TaggedEntity(edited, taggedFieldContainers(edited)),
-            new ApprovedGlossaryTermGuard.TaggedEntity(stored, taggedFieldContainers(stored))),
-        glossaryTagsByTarget(stored));
+  /** Stores held terms as pending labels, which no tag read returns until the term is approved. */
+  final void storePendingGlossaryTerms(List<HeldTerm> heldTerms) {
+    if (!heldTerms.isEmpty()) {
+      Map<String, List<TagLabel>> labelsByTarget = new HashMap<>();
+      heldTerms.forEach(
+          held ->
+              labelsByTarget
+                  .computeIfAbsent(held.targetFqn(), target -> new ArrayList<>())
+                  .add(ApprovedGlossaryTermGuard.pendingLabel(held.label())));
+      daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(labelsByTarget);
+    }
   }
 
   /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
@@ -6852,12 +6863,21 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
-    entities.forEach(this::checkAppliedGlossaryTermsApproved);
+    // Each chunk commits on its own, so each stores its own held terms with its entities.
+    List<List<HeldTerm>> heldTerms = new ArrayList<>();
+    entities.forEach(entity -> heldTerms.add(holdUnapprovedGlossaryTerms(null, entity)));
     entities.forEach(this::assignInitialEntityStatus);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
-      flushInOneTransaction(chunk, () -> createManyEntitiesFlushBody(chunk));
+      List<HeldTerm> chunkHeldTerms =
+          heldTerms.subList(start, end).stream().flatMap(List::stream).toList();
+      flushInOneTransaction(
+          chunk,
+          () -> {
+            createManyEntitiesFlushBody(chunk);
+            storePendingGlossaryTerms(chunkHeldTerms);
+          });
     }
     try (var ignored = phase("setInheritedFields")) {
       setInheritedFields(entities, new Fields(allowedFields));
@@ -8121,7 +8141,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   protected void deleteTagsPreservingCertification(String entityFQN) {
     String certClassification = getCertificationClassification();
     if (certClassification == null) {
-      daoCollection.tagUsageDAO().deleteTagsByTarget(entityFQN);
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(entityFQN);
     } else {
       daoCollection
           .tagUsageDAO()
@@ -11108,6 +11128,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository.TableUpdater::entitySpecificUpdate() for example.
    */
   public class EntityUpdater {
+    // Glossary terms updateWithDeferredStore held back, stored once the caller writes the entity.
+    private List<HeldTerm> heldTerms = List.of();
+
     private static volatile long sessionTimeoutMillis = 10L * 60 * 1000; // 10 minutes
     protected T previous;
     protected T original;
@@ -11321,7 +11344,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      * unchanged caller POJOs avoid a redundant restore.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
-      checkNewlyAppliedGlossaryTermsApproved();
+      List<HeldTerm> heldTerms = holdUnapprovedGlossaryTerms();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       boolean[] firstAttempt = {true};
       flushInOneTransaction(
@@ -11330,6 +11353,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             restoreUpdaterState(snapshot, !firstAttempt[0]);
             firstAttempt[0] = false;
             flushUpdateBody(useOptimisticStore || useOptimisticLocking, importMode);
+            storePendingGlossaryTerms(heldTerms);
           });
       if (entityStored) {
         try (var ignored = phase("entityUpdateCacheEvict")) {
@@ -11339,9 +11363,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
 
     // Runs before any write, and before consolidation rebases `original` onto the pre-session
-    // version, so the baseline is the stored entity this request changes.
-    private void checkNewlyAppliedGlossaryTermsApproved() {
-      EntityRepository.this.checkNewlyAppliedGlossaryTermsApproved(original, updated);
+    // version, so the baseline is the stored entity this request changes. A held term leaves
+    // `updated`, so it is not in the diff, the change description, the response or search.
+    private List<HeldTerm> holdUnapprovedGlossaryTerms() {
+      return EntityRepository.this.holdUnapprovedGlossaryTerms(original, updated);
+    }
+
+    /**
+     * Stores the terms {@link #updateWithDeferredStore} held back, once the caller has written the
+     * entity: a write that fails must not leave a pending label for its approval to show later.
+     */
+    public final void storeHeldGlossaryTerms() {
+      storePendingGlossaryTerms(heldTerms);
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
@@ -11550,7 +11583,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
      */
     @Transaction
     public final void updateWithDeferredStore() {
-      checkNewlyAppliedGlossaryTermsApproved();
+      heldTerms = holdUnapprovedGlossaryTerms();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();
@@ -12116,7 +12149,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
       // Remove current entity tags in the database. It will be added back later from the merged tag
       // list.
-      daoCollection.tagUsageDAO().deleteTagsByTarget(fqn);
+      daoCollection.tagUsageDAO().deleteShownTagsByTarget(fqn);
 
       List<TagLabel> addedTags = new ArrayList<>();
       List<TagLabel> deletedTags = new ArrayList<>();
@@ -15565,6 +15598,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (!entitiesToStore.isEmpty()) {
           updateMany(entitiesToStore);
         }
+        updaters.forEach(EntityUpdater::storeHeldGlossaryTerms);
       }
 
       List<T> changedEntities = changedUpdaters.stream().map(EntityUpdater::getUpdated).toList();
@@ -15609,6 +15643,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             updater.storeUpdate();
             invalidate(updater.getUpdated());
           }
+          updater.storeHeldGlossaryTerms();
           succeededUpdaters.add(updater);
         } catch (Exception e) {
           failedRequests.add(

@@ -681,7 +681,9 @@ export interface TagLabel {
     source: TagSource;
     /**
      * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
-     * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+     * entity must confirm the suggested labels before it is marked as 'Confirmed'. 'Pending' is
+     * a glossary term applied before the term is Approved: it is kept but not shown on the
+     * asset until the term is approved.
      */
     state:  TagState;
     style?: Style;
@@ -786,10 +788,13 @@ export enum TagSource {
 
 /**
  * 'Suggested' state is used when a tag label is suggested by users or tools. Owner of the
- * entity must confirm the suggested labels before it is marked as 'Confirmed'.
+ * entity must confirm the suggested labels before it is marked as 'Confirmed'. 'Pending' is
+ * a glossary term applied before the term is Approved: it is kept but not shown on the
+ * asset until the term is approved.
  */
 export enum TagState {
     Confirmed = "Confirmed",
+    Pending = "Pending",
     Suggested = "Suggested",
 }
 
