@@ -32,6 +32,7 @@ from google.api_core.exceptions import Forbidden
 from google.cloud.bigquery.table import Table as BQTable
 from google.cloud.bigquery.table import TableListItem
 from sqlalchemy import Integer, String
+from sqlalchemy.exc import DatabaseError
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -1047,12 +1048,12 @@ class TestBigqueryRegionAwareQueries:
         assert conn.execute.call_count == 2
         assert self.bq_source._region_lifecycle_inflight == {}
 
-    def test_lifecycle_forbidden_error_does_not_retry_costly_scan(self):
-        class ForbiddenError(Exception):
-            code = 403
-
+    def test_lifecycle_wrapped_forbidden_does_not_retry_costly_scan(self):
+        # SQLAlchemy wraps a Google 403, and its own error code is a string.
         engine, conn = self._make_engine_mock([])
-        conn.execute.side_effect = ForbiddenError("BQ permission denied")
+        wrapped = DatabaseError("SELECT region", (), Forbidden("BQ permission denied"))
+        assert not isinstance(wrapped.code, int)
+        conn.execute.side_effect = wrapped
         self.bq_source.engine = engine
         for _ in range(4):
             assert self.bq_source._load_region_lifecycle(
