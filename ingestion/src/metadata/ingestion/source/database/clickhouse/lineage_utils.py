@@ -18,7 +18,9 @@ the DDL to build the downstream edge.
 
 A Distributed table holds no data either: it reads from and writes into a local table on
 each shard, named by its engine arguments. No query against it says so, so that edge is
-read off `system.tables` as well.
+read off `system.tables` as well. The edge is only built when this server holds a replica
+of the cluster the Distributed table spreads over: a local table of the same name on a
+server outside that cluster is a different table.
 
 The materialized view edge is plugged into the generic view lineage through
 `LineageSource.get_view_lineage_extension`; the Distributed table edges follow the view
@@ -38,7 +40,7 @@ from sqlglot import expressions as exp
 
 from metadata.entity_resolution.table_search import search_table_entities
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.databaseServiceQueryLineagePipeline import (
     DatabaseServiceQueryLineagePipeline,
@@ -57,7 +59,11 @@ from metadata.ingestion.lineage.sql_lineage import (
 from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.database.clickhouse.queries import CLICKHOUSE_DISTRIBUTED_TABLES
+from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_DISTRIBUTED_TABLES,
+    CLICKHOUSE_LOCAL_CLUSTERS,
+    CLICKHOUSE_MACROS,
+)
 from metadata.ingestion.source.models import TableView
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
@@ -83,6 +89,11 @@ MATERIALIZED_VIEW_HEADER_PATTERN = re.compile(r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)
 
 DISTRIBUTED_ENGINE_PATTERN = re.compile(r"^\s*Distributed\s*\(")
 
+# `{name}` in a cluster name stands for the `name` macro of the server config. Clickhouse
+# expands a substitution that holds macros again, and gives up after ten levels.
+MACRO_PATTERN = re.compile(r"\{([^{}]*)\}")
+MAX_MACRO_EXPANSION_DEPTH = 10
+
 # `TO INNER UUID '<uuid>'` points at the implicit inner table of a replicated
 # materialized view, which is not ingested as an entity.
 INNER_TARGET = "INNER"
@@ -98,8 +109,9 @@ class MaterializedViewTarget(NamedTuple):
 
 
 class DistributedLocalTable(NamedTuple):
-    """Table a Distributed table reads from and writes into on each shard"""
+    """Table a Distributed table reads from and writes into on each shard of its cluster"""
 
+    cluster_name: str
     schema_name: str
     table_name: str
 
@@ -256,12 +268,15 @@ def get_mv_target_lineage(
 
 def get_distributed_local_table(engine_full: str | None) -> DistributedLocalTable | None:
     """
-    Return the local table named by `Distributed(cluster, database, table[, sharding_key[, policy]])`.
+    Return the cluster and local table named by
+    `Distributed(cluster, database, table[, sharding_key[, policy]])`.
 
     Clickhouse evaluates the database and table arguments when the table is created and stores
     them as string literals, so `currentDatabase()` or a bare identifier is read back as a quoted
     name. An empty database stands for the default database of each shard, which the Distributed
-    table does not record, so no local table is returned for it.
+    table does not record, so no local table is returned for it. The cluster name is returned as
+    stored, with macros such as `{cluster}` unexpanded: Clickhouse expands them when it loads the
+    table.
     """
     if not engine_full:
         return None
@@ -274,12 +289,29 @@ def get_distributed_local_table(engine_full: str | None) -> DistributedLocalTabl
     if len(tokens) < 6 or tokens[1] != "," or tokens[3] != "," or tokens[5] not in (",", ")"):
         return None
 
+    cluster_name = _identifier(tokens[0])
     schema_name = _identifier(tokens[2])
     table_name = _identifier(tokens[4])
-    if not schema_name or not table_name:
+    if not cluster_name or not schema_name or not table_name:
         return None
 
-    return DistributedLocalTable(schema_name=schema_name, table_name=table_name)
+    return DistributedLocalTable(cluster_name=cluster_name, schema_name=schema_name, table_name=table_name)
+
+
+def expand_macros(name: str, macros: dict[str, str]) -> str | None:
+    """
+    Expand the `{macro}` placeholders of a cluster name the way Clickhouse does.
+
+    Returns None when a macro is not defined on this server or the expansion does not settle.
+    """
+    for _ in range(MAX_MACRO_EXPANSION_DEPTH):
+        macro_names = MACRO_PATTERN.findall(name)
+        if not macro_names:
+            return name
+        if any(macro_name not in macros for macro_name in macro_names):
+            return None
+        name = MACRO_PATTERN.sub(lambda match: macros[match.group(1)], name)
+    return None
 
 
 def _get_single_table(metadata: OpenMetadata, service_name: str, schema_name: str, table_name: str) -> Table | None:
@@ -302,6 +334,102 @@ def _get_single_table(metadata: OpenMetadata, service_name: str, schema_name: st
     return tables[0] if tables else None
 
 
+class LocalClusters(NamedTuple):
+    """Clusters this server holds a replica of, and the macros a cluster name may use"""
+
+    names: frozenset[str]
+    macros: dict[str, str]
+
+
+def _find_local_entity(
+    metadata: OpenMetadata,
+    service_name: str,
+    distributed_name: str,
+    distributed_entity: Table,
+    engine_full: str | None,
+    local_clusters: LocalClusters,
+) -> Table | None:
+    """The local table of a Distributed table, or None, with a warning, when it cannot be told"""
+    local_table = get_distributed_local_table(engine_full)
+    if local_table is None:
+        logger.warning(
+            "Cannot read the local table of Distributed table [%s] from [%s], skipping its lineage",
+            distributed_name,
+            engine_full,
+        )
+        return None
+
+    cluster_name = expand_macros(local_table.cluster_name, local_clusters.macros)
+    if cluster_name is None:
+        logger.warning(
+            "Cannot expand the macros of cluster [%s] of Distributed table [%s], skipping its lineage",
+            local_table.cluster_name,
+            distributed_name,
+        )
+        return None
+    # On a server outside the cluster, a table of the same name is not one of its shards
+    if cluster_name not in local_clusters.names:
+        logger.warning(
+            "This server holds no replica of cluster [%s] of Distributed table [%s], skipping its lineage",
+            cluster_name,
+            distributed_name,
+        )
+        return None
+
+    local_entity = _get_single_table(metadata, service_name, local_table.schema_name, local_table.table_name)
+    # A Distributed table may name itself when its local tables live only on the other servers
+    if local_entity is None or local_entity.id == distributed_entity.id:
+        logger.warning(
+            "Local table [%s.%s] of Distributed table [%s] not found, skipping its lineage",
+            local_table.schema_name,
+            local_table.table_name,
+            distributed_name,
+        )
+        return None
+    return local_entity
+
+
+def _remove_replaced_edges(
+    metadata: OpenMetadata,
+    service_name: str,
+    distributed_entity: Table,
+    local_entity: Table | None,
+) -> None:
+    """
+    Delete the view lineage edges into a Distributed table that its definition no longer gives.
+
+    Only the edges this module builds are deleted: view lineage edges from another table of the
+    service. A materialized view writing `TO` the Distributed table leaves a view lineage edge
+    into it as well, which is kept, as are the edges of every other source, manual ones included.
+    """
+    distributed_id = model_str(distributed_entity.id)
+    current_id = model_str(local_entity.id) if local_entity else None
+    lineage = metadata.get_lineage_by_id(Table, distributed_id, up_depth=1, down_depth=0) or {}
+    for edge in lineage.get("upstreamEdges") or []:
+        upstream_id = edge.get("fromEntity")
+        if not upstream_id or upstream_id == current_id or edge.get("toEntity") != distributed_id:
+            continue
+        if (edge.get("lineageDetails") or {}).get("source") != LineageSource.ViewLineage.value:
+            continue
+        upstream = metadata.get_by_id(Table, upstream_id)
+        if upstream is None or upstream.tableType == TableType.MaterializedView:
+            continue
+        upstream_fqn = model_str(upstream.fullyQualifiedName)
+        if fqn.unquote_name(fqn.split(upstream_fqn)[0]) != service_name:
+            continue
+        logger.info(
+            "Removing lineage edge [%s] -> [%s]: the Distributed table no longer reads from it",
+            upstream_fqn,
+            model_str(distributed_entity.fullyQualifiedName),
+        )
+        metadata.delete_lineage_edge(
+            EntitiesEdge(
+                fromEntity=EntityReference(id=upstream.id, type="table"),
+                toEntity=EntityReference(id=distributed_entity.id, type="table"),
+            )
+        )
+
+
 def get_distributed_table_lineage(
     metadata: OpenMetadata,
     engine: Engine,
@@ -311,20 +439,27 @@ def get_distributed_table_lineage(
     """
     Build the local table -> Distributed table edge of every Distributed table of the service.
 
-    The local table is looked up in the same service by its database and name; the cluster
-    argument plays no part in it. The filter patterns apply to the Distributed table, as they
-    apply to the view in the view lineage.
+    The local table is looked up in the same service by its database and name, once the cluster
+    of the Distributed table is known to have a replica on this server. The filter patterns apply
+    to the Distributed table, as they apply to the view in the view lineage.
+
+    With `overrideViewLineage`, the edges that a previous definition of the Distributed table gave
+    are removed, including when its current local table cannot be told.
     """
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(CLICKHOUSE_DISTRIBUTED_TABLES)).fetchall()
+            local_clusters = LocalClusters(
+                names=frozenset(row.cluster for row in conn.execute(text(CLICKHOUSE_LOCAL_CLUSTERS))),
+                macros={row.macro: row.substitution for row in conn.execute(text(CLICKHOUSE_MACROS))},
+            )
     # Broad on purpose: the default `clickhouse+http` driver raises its own `DatabaseException`
     # for any server-side error, and SQLAlchemy does not wrap it
     except Exception as exc:
         yield Either(
             left=StackTraceError(
                 name="Distributed table lineage",
-                error=f"Failed to fetch the Clickhouse Distributed tables, skipping their lineage: {exc}",
+                error=f"Failed to fetch the Clickhouse Distributed tables and clusters, skipping their lineage: {exc}",
                 stackTrace=traceback.format_exc(),
             ),
             right=None,
@@ -345,31 +480,29 @@ def get_distributed_table_lineage(
         if filter_by_database(source_config.databaseFilterPattern, database_name):
             continue
 
-        local_table = get_distributed_local_table(engine_full)
-        if local_table is None:
-            logger.warning(
-                "Cannot read the local table of Distributed table [%s.%s] from [%s], skipping its lineage",
-                schema_name,
-                table_name,
-                engine_full,
-            )
+        local_entity = _find_local_entity(
+            metadata, service_name, f"{schema_name}.{table_name}", distributed_entity, engine_full, local_clusters
+        )
+
+        # Not done by marking the edge to override: that deletes every view lineage edge into the
+        # Distributed table, the one of a materialized view writing `TO` it included
+        if source_config.overrideViewLineage:
+            try:
+                _remove_replaced_edges(metadata, service_name, distributed_entity, local_entity)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name="Distributed table lineage",
+                        error=f"Failed to remove the replaced lineage of Distributed table "
+                        f"[{schema_name}.{table_name}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
+
+        if local_entity is None:
             continue
 
-        local_entity = _get_single_table(metadata, service_name, local_table.schema_name, local_table.table_name)
-        # A server that holds no shard of the cluster may name the Distributed table itself: its
-        # local tables then live only on the other servers, which this service does not ingest
-        if local_entity is None or local_entity.id == distributed_entity.id:
-            logger.warning(
-                "Local table [%s.%s] of Distributed table [%s.%s] not found, skipping its lineage",
-                local_table.schema_name,
-                local_table.table_name,
-                schema_name,
-                table_name,
-            )
-            continue
-
-        # Not marked to override: a materialized view writing `TO` the Distributed table leaves
-        # a view lineage edge into it as well, which overriding would delete
         yield Either(
             left=None,
             right=AddLineageRequest(

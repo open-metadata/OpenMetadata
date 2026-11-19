@@ -70,6 +70,21 @@ SELECT
 """
 )
 
+CLICKHOUSE_LOCAL_CLUSTERS = textwrap.dedent(
+    """
+SELECT DISTINCT cluster
+  FROM system.clusters
+ WHERE is_local = 1
+"""
+)
+
+CLICKHOUSE_MACROS = textwrap.dedent(
+    """
+SELECT macro, substitution
+  FROM system.macros
+"""
+)
+
 CLICKHOUSE_VIEW_DEFINITIONS = textwrap.dedent(
     """
 select
