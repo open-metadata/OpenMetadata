@@ -325,3 +325,44 @@ describe('Explore query filter round trip', () => {
     });
   });
 });
+
+describe('custom properties of an entity type', () => {
+  const { modal, provider } = getExploreConfigs(SearchIndex.DATA_ASSET);
+  const tableRule: RuleSpec = {
+    field: 'extension.table.strCP.keyword',
+    operator: 'like',
+    value: ['gold'],
+  };
+  const tableFilter = toQueryFilter(
+    buildTree(modal, 'AND', [{ conjunction: 'AND', rules: [tableRule] }]),
+    provider
+  ) as QueryFilterInterface;
+
+  it('reads a rule under the entity type its filter names, not the first that declares the property', () => {
+    expect(
+      describeGroups(readInExplore(tableFilter, provider).tree)[0].rules
+    ).toEqual([tableRule]);
+  });
+
+  it("drops a rule whose entity type no longer declares the property, rather than reading another entity type's", () => {
+    const extension = provider.fields.extension as {
+      subfields: Record<string, unknown>;
+    };
+    const dashboardOnly = {
+      ...provider,
+      fields: {
+        ...provider.fields,
+        extension: {
+          ...extension,
+          subfields: { dashboard: extension.subfields.dashboard },
+        },
+      },
+    } as unknown as typeof provider;
+
+    expect(
+      describeGroups(readInExplore(tableFilter, dashboardOnly).tree).flatMap(
+        (group) => group.rules
+      )
+    ).toEqual([]);
+  });
+});
