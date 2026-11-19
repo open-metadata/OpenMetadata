@@ -39,14 +39,14 @@ import org.junit.jupiter.api.Test;
 class TestDatabaseImageGuardTest {
   /**
    * {@code mysql:} or {@code postgres:} followed by a one- or two-digit major version (which keeps
-   * out ports such as 3306 and 5432) or a floating tag, a tagless digest, or any {@code
-   * mysql/mysql-server} image. A digest after a tag is not part of the match, so only the tag is
-   * compared.
+   * out ports such as 3306 and 5432), a floating tag or a digest, and Oracle's legacy MySQL Server
+   * image. A digest after a tag is not part of the match, so only the tag is compared. The escaped
+   * hyphen keeps this file from matching its own pattern.
    */
   private static final Pattern IMAGE_TAG =
       Pattern.compile(
           "\\b(?:mysql|postgres)(?::(?:\\d{1,2}(?!\\d)|latest|lts|alpine)(?:[.-]\\w+)*|@sha256:\\w+)"
-              + "|mysql/mysql-server(?::[\\w.-]+)?");
+              + "|mysql/mysql\\-server(?::[\\w.-]+)?");
 
   /** History that must keep the version it recorded, so a bump must not rewrite it. */
   private static final List<String> HISTORY =
