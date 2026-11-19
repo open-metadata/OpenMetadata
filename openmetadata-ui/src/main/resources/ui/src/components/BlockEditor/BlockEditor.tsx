@@ -50,6 +50,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     {
       content = '',
       ariaLabel,
+      variant = 'document',
       editable = true,
       menuType = 'bubble',
       autoFocus,
@@ -293,6 +294,7 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
     return (
       <div
         className={classNames('block-editor-wrapper', {
+          'block-editor-wrapper--comment': variant === 'comment',
           'block-editor-wrapper--bar-menu': menuType === 'bar',
           'block-editor-wrapper--bubble-menu': menuType === 'bubble',
         })}

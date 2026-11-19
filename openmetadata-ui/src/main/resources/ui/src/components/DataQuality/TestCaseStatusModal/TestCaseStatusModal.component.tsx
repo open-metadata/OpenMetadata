@@ -385,6 +385,7 @@ export const TestCaseStatusModal = ({
                     placeHolder={t('message.write-your-text', {
                       text: t('label.comment'),
                     })}
+                    variant="comment"
                     onTextChange={field.onChange}
                   />
                   {fieldState.error && (

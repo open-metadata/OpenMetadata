@@ -73,6 +73,7 @@ export interface ExtensionOptions {
 
 export interface BlockEditorProps {
   ariaLabel?: string;
+  variant?: 'document' | 'comment';
   content?: string;
   editable?: boolean;
   onFocus?: () => void;

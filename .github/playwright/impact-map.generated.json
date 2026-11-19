@@ -6917,7 +6917,8 @@
         "openmetadata-ui/src/main/resources/ui/src/components/DataQuality/TestCaseStatusModal/TestCaseStatusModal.component.tsx"
       ],
       "specs": [
-        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts"
+        "playwright/e2e/Features/DataQuality/DataQualityDashboard.spec.ts",
+        "playwright/e2e/Features/IncidentManager.spec.ts"
       ]
     },
     {

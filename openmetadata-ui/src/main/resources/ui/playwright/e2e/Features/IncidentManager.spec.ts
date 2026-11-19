@@ -849,7 +849,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       const resolutionResponse = await updateTestCaseIncidentStatus;
       expect(resolutionResponse.status()).toBe(200);
       expect(resolutionResponse.request().postDataJSON().comment).toContain(
-        `<#E::user::${user1.responseData.name}|`
+        `<#E::user::${user1.responseData.fullyQualifiedName}|`
       );
     });
 
@@ -1316,6 +1316,7 @@ test(
     const { page, apiContext, afterAction } = await performAdminLogin(browser, {
       navigate: true,
     });
+    page.setDefaultTimeout(ACTION_TIMEOUT);
     const mentionTable = new TableClass();
     const mentionedUser = new UserClass();
 
@@ -1354,11 +1355,17 @@ test(
           await waitForAllLoadersToDisappear(page);
 
           if (entryPoint === 'popover') {
+            await sidebarClick(page, SidebarItem.INCIDENT_MANAGER);
+            await expect(
+              page.getByTestId(`test-case-${testCase.name}`)
+            ).toBeVisible();
             await page.getByTestId(`${testCase.name}-status`).click();
             await page.getByTestId('status-item-Resolved').click();
             await page.getByTestId('reason-chip-Other').click();
           } else {
-            await page.getByTestId('edit-resolution-icon').click();
+            await page
+              .getByRole('button', { name: 'Edit Status', exact: true })
+              .click();
             await page
               .getByTestId('test-case-resolution-status-type')
               .getByRole('button')
@@ -1386,16 +1393,16 @@ test(
           await expect(suggestion).toBeVisible();
           await suggestion.click();
           const resolved = waitForTaskResolveResponse(page);
-          await page
-            .getByTestId(
-              entryPoint === 'popover'
-                ? 'submit-resolved-popover-button'
-                : 'update-status-button'
-            )
-            .click();
+          const saveButton =
+            entryPoint === 'popover'
+              ? page.getByTestId('submit-resolved-popover-button')
+              : page
+                  .getByRole('dialog', { name: 'Update Status' })
+                  .getByRole('button', { name: 'Save', exact: true });
+          await saveButton.click();
           const response = await resolved;
           expect(response.status()).toBe(200);
-          const mention = `<#E::user::${mentionedUser.responseData.name}|`;
+          const mention = `<#E::user::${mentionedUser.responseData.fullyQualifiedName}|`;
           expect(response.request().postDataJSON().comment).toContain(mention);
           const task = await response.json();
           const stored = await apiContext.get(

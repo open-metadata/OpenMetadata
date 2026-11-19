@@ -32,6 +32,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
     {
       autofocus = false,
       'aria-label': ariaLabel,
+      variant,
       initialValue = '',
       readonly,
       className,
@@ -72,6 +73,7 @@ const RichTextEditor = forwardRef<EditorContentRef, RichTextEditorProp>(
       <div className={classNames(className)} style={style} data-testid="editor">
         <BlockEditor
           ariaLabel={ariaLabel}
+          variant={variant}
           extensionOptions={extensionOptions}
           placeholder={placeHolder}
           ref={editorRef}

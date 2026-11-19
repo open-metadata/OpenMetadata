@@ -705,6 +705,7 @@ const TaskPayloadSchemaFields = ({
           initialValue={String(getFieldValue(fieldName, '') ?? '')}
           placeHolder={description}
           showMenu={false}
+          variant="comment"
           onTextChange={(value) => updateField(fieldName, value)}
         />
       </Box>

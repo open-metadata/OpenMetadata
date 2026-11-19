@@ -561,6 +561,7 @@ const InlineTestCaseIncidentStatus = ({
               field: t('label.comment-lowercase'),
             })}
             showMenu={false}
+            variant="comment"
             onTextChange={setComment}
           />
         </Box>

@@ -201,6 +201,7 @@ const TaskCommentField = ({
         placeHolder={t('label.enter-entity', { entity: resolvedLabel })}
         readonly={isLoading}
         showMenu={false}
+        variant="comment"
         onTextChange={onChange}
       />
       {hint && <HintText isInvalid>{hint}</HintText>}
