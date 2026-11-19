@@ -636,13 +636,15 @@ public class TestCaseResolutionStatusRepository
   }
 
   private static EntityReference extractAssignee(TestCaseResolutionStatus recordEntity) {
-    if (recordEntity.getTestCaseResolutionStatusType() != TestCaseResolutionStatusTypes.Assigned
-        || recordEntity.getTestCaseResolutionStatusDetails() == null) {
+    Object details = recordEntity.getTestCaseResolutionStatusDetails();
+    if (details == null) {
       return null;
     }
-    Assigned assigned =
-        JsonUtils.convertValue(recordEntity.getTestCaseResolutionStatusDetails(), Assigned.class);
-    return assigned != null ? assigned.getAssignee() : null;
+    return switch (recordEntity.getTestCaseResolutionStatusType()) {
+      case Assigned -> JsonUtils.convertValue(details, Assigned.class).getAssignee();
+      case Resolved -> JsonUtils.convertValue(details, Resolved.class).getAssignee();
+      default -> null;
+    };
   }
 
   @Override

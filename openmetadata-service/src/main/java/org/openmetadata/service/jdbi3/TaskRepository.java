@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskPriority;
@@ -1576,7 +1578,31 @@ public class TaskRepository extends EntityRepository<Task> {
                   resolution.getResolvedAt())));
     }
     applyTransitionTarget(updated, transition, resolution.getResolvedBy());
-    return persistLifecycleChange(original, updated, updatedBy);
+    Task resolved = persistLifecycleChange(original, updated, updatedBy);
+    return addIncidentResolutionComment(original, resolved, resolution, updatedBy);
+  }
+
+  private Task addIncidentResolutionComment(
+      Task original, Task resolved, TaskResolution resolution, String updatedBy) {
+    if (resolved.getType() != TaskEntityType.TestCaseResolution
+        || nullOrEmpty(resolution.getComment())
+        || (original.getResolution() != null
+            && Objects.equals(original.getResolution().getComment(), resolution.getComment()))) {
+      return resolved;
+    }
+    Task commented =
+        addComment(
+            resolved,
+            new TaskComment()
+                .withId(UUID.randomUUID())
+                .withMessage(resolution.getComment())
+                .withAuthor(resolution.getResolvedBy())
+                .withCreatedAt(resolution.getResolvedAt()));
+    // Resolution has no response-header event: publish the normal comment delta for mentions.
+    if (!WorkflowHandler.isMigrationContext()) {
+      storeChangeEventForAsyncOperation(commented, EventType.ENTITY_UPDATED, false, updatedBy);
+    }
+    return commented;
   }
 
   /** Project durable workflow votes, retrying when a concurrent task update wins. */

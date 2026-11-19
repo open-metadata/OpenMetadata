@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.service.tasks.IncidentWorkflowStages.RESOLVED_STAGE_ID;
@@ -54,6 +55,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
+import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.Severity;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
@@ -188,7 +190,27 @@ public class IncidentTaskIntegrationIT {
     Task completedTask =
         awaitIncidentTask(client, stateId, TaskEntityStatus.Completed, "resolved", null);
     assertNotNull(completedTask.getResolution());
-    assertLatestTcrsEventually(client, stateId, TestCaseResolutionStatusTypes.Resolved, null);
+    assertEquals(
+        assignedTask.getAssignees().stream().map(EntityReference::getId).toList(),
+        completedTask.getAssignees().stream().map(EntityReference::getId).toList());
+    assertEquals(List.of(shared.USER1.getName()), assignedAssigneeNames(client, stateId));
+    await()
+        .atMost(TASK_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              TestCaseResolutionStatus latest = tcrsTimeline(client, stateId).getLast();
+              assertEquals(
+                  TestCaseResolutionStatusTypes.Resolved, latest.getTestCaseResolutionStatusType());
+              Resolved details =
+                  JsonUtils.convertValue(latest.getTestCaseResolutionStatusDetails(), Resolved.class);
+              assertEquals(shared.USER1.getId(), details.getAssignee().getId());
+              assertEquals(
+                  completedTask.getResolution().getResolvedBy().getId(),
+                  details.getResolvedBy().getId());
+            });
+    Task withComments = client.tasks().get(stateId.toString(), "comments");
+    assertEquals(1, withComments.getComments().size());
+    assertEquals("Resolved via integration test", withComments.getComments().getFirst().getMessage());
   }
 
   @Test
@@ -351,7 +373,15 @@ public class IncidentTaskIntegrationIT {
     Task completedTask =
         awaitIncidentTask(client, task.getId(), TaskEntityStatus.Completed, "resolved", null);
     assertEquals(task.getId(), completedTask.getId());
+    assertTrue(completedTask.getAssignees() == null || completedTask.getAssignees().isEmpty());
     assertLatestTcrsEventually(client, task.getId(), TestCaseResolutionStatusTypes.Resolved, null);
+    Resolved details =
+        JsonUtils.convertValue(
+            tcrsTimeline(client, task.getId()).getLast().getTestCaseResolutionStatusDetails(),
+            Resolved.class);
+    assertNull(details.getAssignee());
+    assertNotNull(details.getResolvedBy());
+    assertTrue(assignedAssigneeNames(client, task.getId()).isEmpty());
   }
 
   @Test

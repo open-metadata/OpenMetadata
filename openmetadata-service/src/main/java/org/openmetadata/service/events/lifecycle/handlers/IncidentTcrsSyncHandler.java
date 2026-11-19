@@ -63,8 +63,8 @@ import org.openmetadata.service.tasks.IncidentWorkflowStages;
  *       definition. Keeps the dependency simple; costs a code edit if a new workflow stage
  *       is ever added.
  *   <li><b>Driven by the mirrored projection, not by the trigger</b>. The mirrored view of a
- *       task is its status plus, in the {@code assigned} stage, its assignee. Every task
- *       lifecycle event runs the handler, and a record is appended only when that projection
+ *       task is its status plus, in the {@code assigned} and {@code resolved} stages, its assignee.
+ *       Every task lifecycle event runs the handler, and a record is appended only when that projection
  *       differs from the latest one already stored for the {@code stateId}. Comment adds and
  *       watcher changes therefore write nothing, while a re-assignment does — even though it
  *       leaves {@code workflowStageId} on {@code assigned}, because the workflow models it as
@@ -212,13 +212,16 @@ public final class IncidentTcrsSyncHandler {
    * incidental fields a stored {@link EntityReference} picks up when it is read back.
    */
   private static UUID mirroredAssigneeId(TestCaseResolutionStatusTypes type, Object details) {
-    if (type != TestCaseResolutionStatusTypes.Assigned || details == null) {
+    if (details == null) {
       return null;
     }
-    Assigned assigned = JsonUtils.convertValue(details, Assigned.class);
-    return assigned != null && assigned.getAssignee() != null
-        ? assigned.getAssignee().getId()
-        : null;
+    EntityReference assignee =
+        switch (type) {
+          case Assigned -> JsonUtils.convertValue(details, Assigned.class).getAssignee();
+          case Resolved -> JsonUtils.convertValue(details, Resolved.class).getAssignee();
+          default -> null;
+        };
+    return assignee != null ? assignee.getId() : null;
   }
 
   private static Object buildDetailsForStage(TestCaseResolutionStatusTypes type, Task task) {
@@ -237,12 +240,14 @@ public final class IncidentTcrsSyncHandler {
 
   @SuppressWarnings("unchecked")
   private static Resolved buildResolvedDetails(Task task) {
+    Resolved resolved = new Resolved();
+    if (!nullOrEmpty(task.getAssignees())) {
+      resolved.withAssignee(task.getAssignees().getFirst());
+    }
     TaskResolution resolution = task.getResolution();
     if (resolution == null) {
-      return new Resolved();
+      return resolved;
     }
-
-    Resolved resolved = new Resolved();
 
     if (resolution.getResolvedBy() != null) {
       resolved.withResolvedBy(resolution.getResolvedBy());
