@@ -12,7 +12,13 @@
 
 from unittest.mock import MagicMock, patch
 
+import pytest
+
+from metadata.generated.schema.security.secrets.secretsManagerProvider import (
+    SecretsManagerProvider,
+)
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.models.custom_pydantic import SecretReferenceError
 from metadata.ingestion.source.messaging.kafka.connection import KafkaConnection
 
 CONNECTION_MODULE = "metadata.ingestion.source.messaging.kafka.connection"
@@ -175,3 +181,42 @@ def test_literal_secret_prefixed_values_pass_through_under_the_default_db_provid
 
     admin_config = mock_admin.call_args.args[0]
     assert admin_config["ssl.key.password"] == "secret:passphrase"
+
+
+SECRET_REFERENCE = "secret:/om/messaging/prod/key"
+
+
+def _connect_with_secrets_manager(secrets_manager):
+    from metadata.ingestion.source.messaging.kafka.connection import get_connection
+
+    config = _kafka_config(consumerConfig={"ssl.key.password": SECRET_REFERENCE})
+    with (
+        patch(f"{CONNECTION_MODULE}.AdminClient"),
+        patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
+    ):
+        mock_factory.return_value.get_secrets_manager.return_value = secrets_manager
+        mock_factory.return_value.secrets_manager_provider = SecretsManagerProvider.aws
+        get_connection(config)
+
+
+def test_unreadable_secret_reference_in_config_map_names_the_reference_and_the_provider():
+    secrets_manager = MagicMock()
+    secrets_manager.get_string_value.side_effect = KeyError("no secret named /om/messaging/prod/key")
+
+    with pytest.raises(SecretReferenceError) as error:
+        _connect_with_secrets_manager(secrets_manager)
+
+    assert SECRET_REFERENCE in str(error.value)
+    assert f"[{SecretsManagerProvider.aws.value}]" in str(error.value)
+    assert isinstance(error.value.__cause__, KeyError)
+
+
+def test_secret_reference_in_config_map_without_a_value_names_the_reference_and_the_provider():
+    secrets_manager = MagicMock()
+    secrets_manager.get_string_value.return_value = None
+
+    with pytest.raises(SecretReferenceError) as error:
+        _connect_with_secrets_manager(secrets_manager)
+
+    assert SECRET_REFERENCE in str(error.value)
+    assert f"[{SecretsManagerProvider.aws.value}]" in str(error.value)

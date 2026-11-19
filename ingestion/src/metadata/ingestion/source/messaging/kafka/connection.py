@@ -32,12 +32,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.models.custom_pydantic import SECRET
+from metadata.ingestion.models.custom_pydantic import SECRET, SecretReferenceError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.logger import ingestion_logger
-
-logger = ingestion_logger()
 
 
 class InvalidKafkaCreds(Exception):  # noqa: N818
@@ -62,7 +59,8 @@ CONSUMER_ONLY_CONFIG_KEYS = ("group.id", "enable.auto.commit", "auto.offset.rese
 def _resolve_secret_value(value: str) -> str:
     """Resolve a `secret:` reference against the configured secrets manager.
 
-    Imported lazily, as in custom_pydantic, to avoid a circular import.
+    A reference the secrets manager cannot return, or returns no value for, raises
+    `SecretReferenceError`. Imported lazily, as in custom_pydantic, to avoid a circular import.
     """
     from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
         DBSecretsManager,
@@ -71,22 +69,25 @@ def _resolve_secret_value(value: str) -> str:
         SecretsManagerFactory,
     )
 
-    secrets_manager = SecretsManagerFactory().get_secrets_manager()
+    factory = SecretsManagerFactory()
+    secrets_manager = factory.get_secrets_manager()
     # The server only hands out references with an external store; under the default DB
     # provider a value starting with `secret:` is the literal setting and must reach the client.
     if not secrets_manager or isinstance(secrets_manager, DBSecretsManager):
         return value
+    provider = getattr(factory.secrets_manager_provider, "value", factory.secrets_manager_provider)
     secret_id = value.replace(SECRET, "", 1)
     try:
         resolved = secrets_manager.get_string_value(secret_id)
-    except Exception as exc:  # pylint: disable=broad-except
-        logger.error(
-            "Secret value [%s] not present in the configured secrets manager: %s",
-            secret_id,
-            exc,
+    except Exception as exc:
+        raise SecretReferenceError(
+            f"Cannot resolve the secret reference [{value}] with the [{provider}] secrets manager: {exc}"
+        ) from exc
+    if resolved is None:
+        raise SecretReferenceError(
+            f"Cannot resolve the secret reference [{value}] with the [{provider}] secrets manager: no value returned."
         )
-        return value
-    return resolved if resolved is not None else value
+    return resolved
 
 
 def client_config(config: BaseModel | None) -> dict:
