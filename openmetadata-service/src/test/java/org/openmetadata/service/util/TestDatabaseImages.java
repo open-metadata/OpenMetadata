@@ -18,8 +18,6 @@ package org.openmetadata.service.util;
  * repository that must change with them. The {@code MYSQL_IMAGE} and {@code POSTGRES_IMAGE}
  * environment variables replace them for a one-off run.
  *
- * <p>Collate's tests call {@link #mysql()} and {@link #postgres()} too.
- *
  * <p>ADR:2026-11-19-test-database-images-are-one-constant
  */
 public final class TestDatabaseImages {
