@@ -20,6 +20,7 @@ still ends with COMPLETE.
 
 import copy
 import json
+from itertools import zip_longest
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 from uuid import NAMESPACE_URL, UUID, uuid5
@@ -31,7 +32,8 @@ from metadata.generated.schema.entity.data.pipeline import Pipeline, PipelineSta
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.type.basic import Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
-from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource
+from metadata.ingestion.source.pipeline.openlineage import metadata as openlineage_metadata
+from metadata.ingestion.source.pipeline.openlineage.metadata import OpenlineageSource, known_pipeline_weight
 from metadata.ingestion.source.pipeline.openlineage.run_status import RUN_KEY_WINDOW_MS
 from metadata.ingestion.source.pipeline.openlineage.utils import (
     message_to_open_lineage_event,
@@ -849,3 +851,19 @@ def test_dag_pipeline_written_by_this_ingestion_is_found_before_search_indexes_i
     [(from_id, to_id, _)] = pipeline_links(source, server, started_by_transform(0))
 
     assert (from_id, to_id) == (pipeline_id(AIRFLOW_PIPELINE), pipeline_id(FAILED_PIPELINE))
+
+
+@pytest.mark.parametrize("cap", [3, 1], ids=["holds_one_pipeline", "holds_none"])
+def test_pipeline_dropped_from_the_task_cache_keeps_all_its_tasks(source, server, monkeypatch, cap):
+    """Two DAGs of two tasks each, their events interleaved, through a cache capped by task count."""
+    monkeypatch.setattr(openlineage_metadata, "KNOWN_TASKS_CACHE_MAXSIZE", cap)
+    source.prepare()
+    runs = zip_longest(whole_run("retried_task"), whole_run("default_task_info"))
+
+    ingest(source, server, [ol_event for pair in runs for ol_event in pair if ol_event])
+
+    assert {fqn: sorted(task.name for task in tasks) for fqn, tasks in server.pipeline_tasks.items()} == {
+        "airflow_openlineage.airflow-nightly_retry": ["nightly_retry.flaky", "nightly_retry.load"],
+        AIRFLOW_PIPELINE: ["nightly_sales.extract", "nightly_sales.transform"],
+    }
+    assert sum(known_pipeline_weight(known) for known in source._known_pipelines.values()) <= cap

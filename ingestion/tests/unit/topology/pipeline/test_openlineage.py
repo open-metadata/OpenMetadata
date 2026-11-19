@@ -52,12 +52,13 @@ from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.source.pipeline.openlineage.metadata import (
-    KNOWN_PIPELINES_CACHE_MAXSIZE,
+    KNOWN_TASKS_CACHE_MAXSIZE,
     KPL_AGGREGATED_MAGIC,
     MISSING_ENTITY_CACHE_TTL_SECONDS,
     RESOLUTION_CACHE_MAXSIZE,
     OpenlineageSource,
     deaggregate_kinesis_record,
+    known_pipeline_weight,
 )
 from metadata.ingestion.source.pipeline.openlineage.models import (
     EntityDetails,
@@ -231,7 +232,7 @@ class OpenLineageUnitTest(unittest.TestCase):
                 source.context.get().pipeline_service = MOCK_PIPELINE_SERVICE.name.root
                 source.source_config.lineageInformation = LineageInformation(dbServiceNames=["demo_db"])
                 source._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
-                source._known_pipelines = LRUCache(maxsize=KNOWN_PIPELINES_CACHE_MAXSIZE)
+                source._known_pipelines = LRUCache(maxsize=KNOWN_TASKS_CACHE_MAXSIZE, getsizeof=known_pipeline_weight)
             yield
 
     def setup_mock_consumer_with_kafka_event(self, event):

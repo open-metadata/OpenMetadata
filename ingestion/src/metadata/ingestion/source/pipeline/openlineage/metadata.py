@@ -133,9 +133,16 @@ PROCESSED_EVENT_TYPES = [EventType.START, EventType.RUNNING, EventType.COMPLETE,
 FAILED_EVENT_TYPES = [EventType.FAIL, EventType.ABORT]
 
 # Every pipeline write replaces its task list and start date, while each event names one
-# job and only some carry Airflow's dates, so what a pipeline holds is read once per
-# ingestion and kept here.
-KNOWN_PIPELINES_CACHE_MAXSIZE = 1000
+# job and only some carry Airflow's dates, so what a pipeline holds is read once and kept.
+# The cache is capped by task count, about 1 KB a task: one pipeline can hold any number of
+# tasks. A pipeline dropped from it is read again from the server, which holds every task.
+KNOWN_TASKS_CACHE_MAXSIZE = 50_000
+
+
+def known_pipeline_weight(known: KnownPipeline) -> int:
+    """A pipeline's size in the known pipelines cache: its tasks, and one for the pipeline itself."""
+    return len(known.tasks) + 1
+
 
 # Pipeline links already written by this ingestion: the pipeline of a run started from another
 # system, and the task that started it. Every event of the run would otherwise search again.
@@ -254,7 +261,7 @@ class OpenlineageSource(PipelineServiceSource):
         )
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
-        self._known_pipelines: LRUCache = LRUCache(maxsize=KNOWN_PIPELINES_CACHE_MAXSIZE)
+        self._known_pipelines: LRUCache = LRUCache(maxsize=KNOWN_TASKS_CACHE_MAXSIZE, getsizeof=known_pipeline_weight)
         self._launch_links: LRUCache = LRUCache(maxsize=LAUNCH_LINKS_CACHE_MAXSIZE)
         self._db_service_type_map: dict[str, str] = self._build_db_service_type_map()
 
@@ -1000,7 +1007,6 @@ class OpenlineageSource(PipelineServiceSource):
                 tasks={task.name: task for task in (pipeline.tasks if pipeline else None) or []},
                 start_date=pipeline.startDate if pipeline else None,
             )
-            self._known_pipelines[pipeline_fqn] = known
         known.start_date = pipeline_start_date(pipeline_details) or known.start_date
         for task in pipeline_tasks(pipeline_details):
             stored = known.tasks.get(task.name)
@@ -1011,6 +1017,12 @@ class OpenlineageSource(PipelineServiceSource):
                 known.tasks[task.name] = stored.model_copy(
                     update={"startDate": task.startDate, "endDate": task.endDate}
                 )
+        if known_pipeline_weight(known) <= KNOWN_TASKS_CACHE_MAXSIZE:
+            # Stored after every event, so the cache weighs the tasks it added.
+            self._known_pipelines[pipeline_fqn] = known
+        else:
+            # A pipeline bigger than the whole cache is read from the server on every event.
+            self._known_pipelines.pop(pipeline_fqn, None)
         return known
 
     def _has_annotated_pipeline_edge(
