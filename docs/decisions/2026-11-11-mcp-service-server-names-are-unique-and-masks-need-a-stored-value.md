@@ -63,6 +63,10 @@ was, so a server renamed from `alpha` to `beta` (or one keyed by position and mo
 - Before anything in a list is written, a reference to the same field of another element of the
   list is read back into its value; the save then writes it under the element's own id. All reads
   come first, so two elements that swap ids keep their own values.
+- A move never overwrites a secret it could not put back: the value at the element's own id is
+  read too, and a save that fails part way writes it back (or removes what the move created). If
+  that id cannot be read, the reference is kept. A secret store is not transactional, so a server
+  dropped in the same failed save can still be left with a moved value.
 - A reference outside the list was given by the user and is kept, as is one whose secret no longer
   exists or cannot be read (a server that may write secrets but not read them): the save then
   succeeds with the reference unchanged. Lists nested inside an element are covered too.

@@ -18,6 +18,7 @@ import static java.util.Objects.isNull;
 import com.google.common.annotations.VisibleForTesting;
 import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -483,75 +484,131 @@ public abstract class SecretsManager {
    * anything is written, so two elements that swap ids keep their own values. A reference outside
    * the collection was given by the user and is kept, as is one whose secret no longer exists.
    */
-  private void resolveReferencesInCollection(
+  /**
+   * Encrypts each element of {@code obj} when it is a collection. Saving to an external secrets
+   * manager first moves references to other elements' secrets, and puts back what the moves
+   * overwrote if the save then fails part way.
+   */
+  private void encryptCollection(
+      final Object obj, final CollectionSecretId collection, final boolean store) {
+    final boolean isMovable = obj instanceof Collection<?> && store && storesSecretsByReference();
+    final List<MovedSecret> moves =
+        isMovable
+            ? resolveReferencesInCollection(obj, collection.secretId(), collection.field())
+            : List.of();
+    try {
+      forEachTraversableElement(
+          obj,
+          (element, elementKey) ->
+              encryptPasswordFields(
+                  element,
+                  buildSecretId(false, collection.secretId(), collection.field(), elementKey),
+                  store));
+    } catch (RuntimeException e) {
+      restoreMovedSecrets(moves);
+      throw e;
+    }
+  }
+
+  private List<MovedSecret> resolveReferencesInCollection(
       final Object collection, final String secretId, final String collectionField) {
     final String collectionSecretId = buildSecretId(false, secretId, collectionField);
+    final List<MovedSecret> moves = new ArrayList<>();
     forEachTraversableElement(
         collection,
         (element, elementKey) -> {
           final String elementSecretId =
               buildSecretId(false, secretId, collectionField, elementKey);
-          resolveReferencesInObject(
-              element, new ElementSecretIds(collectionSecretId, elementSecretId), elementSecretId);
+          final ElementSecretIds ids = new ElementSecretIds(collectionSecretId, elementSecretId);
+          resolveReferencesInObject(element, new MovePass(ids, moves), elementSecretId);
         });
+    return List.copyOf(moves);
   }
 
   /** Walks the fields, nested objects and nested lists of one element, as encryption does. */
   private void resolveReferencesInObject(
-      final Object holder, final ElementSecretIds ids, final String secretId) {
+      final Object holder, final MovePass pass, final String secretId) {
     if (!DO_NOT_ENCRYPT_CLASSES.contains(holder.getClass())) {
       Arrays.stream(holder.getClass().getMethods())
           .filter(ReflectionUtil::isGetMethodOfObject)
-          .forEach(method -> resolveReferencesInField(holder, method, ids, secretId));
+          .forEach(method -> resolveReferencesInField(holder, method, pass, secretId));
     }
   }
 
   private void resolveReferencesInField(
-      final Object holder, final Method method, final ElementSecretIds ids, final String secretId) {
+      final Object holder, final Method method, final MovePass pass, final String secretId) {
     final Object value = ReflectionUtil.getObjectFromMethod(method, holder);
     final String field = method.getName().replaceFirst("get", "").toLowerCase(Locale.ROOT);
     final String fieldSecretId = buildSecretId(false, secretId, field);
     if (Boolean.TRUE.equals(CommonUtil.isOpenMetadataObject(value))) {
-      resolveReferencesInObject(value, ids, fieldSecretId);
+      resolveReferencesInObject(value, pass, fieldSecretId);
     }
     if (value instanceof String text && method.getAnnotation(PasswordField.class) != null) {
-      resolvePasswordField(holder, method, text, new FieldSecretIds(ids, fieldSecretId));
+      resolvePasswordField(holder, method, text, pass, fieldSecretId);
     }
     forEachTraversableElement(
         value,
         (element, elementKey) ->
             resolveReferencesInObject(
-                element, ids, buildSecretId(false, secretId, field, elementKey)));
+                element, pass, buildSecretId(false, secretId, field, elementKey)));
   }
 
   private void resolvePasswordField(
-      final Object holder, final Method method, final String value, final FieldSecretIds ids) {
+      final Object holder,
+      final Method method,
+      final String value,
+      final MovePass pass,
+      final String fieldSecretId) {
     final String fieldName = method.getName().replaceFirst("get", "");
-    otherElementReference(value, ids.element(), ids.field())
-        .flatMap(this::readMovedSecret)
+    otherElementReference(value, pass.ids(), fieldSecretId)
+        .flatMap(reference -> readMove(reference, fieldSecretId))
         .ifPresent(
-            resolved ->
-                ReflectionUtil.setValueInMethod(
-                    holder, resolved, ReflectionUtil.getToSetMethod(holder, value, fieldName)));
+            move -> {
+              pass.moves().add(move.restore());
+              ReflectionUtil.setValueInMethod(
+                  holder, move.value(), ReflectionUtil.getToSetMethod(holder, value, fieldName));
+            });
   }
 
   /**
-   * The value of a secret to move, or empty when it is missing or cannot be read - for instance
-   * when the server may write secrets but not read them. The reference is then kept as it is.
+   * The value to move under {@code fieldSecretId}, with what that id holds now so a failed save
+   * can put it back. Empty when either secret cannot be read - for instance when the server may
+   * write secrets but not read them - and the reference is then kept as it is.
    */
-  private Optional<String> readMovedSecret(final String reference) {
-    Optional<String> value = Optional.empty();
+  private Optional<Move> readMove(final String reference, final String fieldSecretId) {
+    Optional<Move> move = Optional.empty();
     try {
-      value = findSecretValue(SECRET_FIELD_PREFIX + reference);
+      final Optional<String> previous = findSecretValue(SECRET_FIELD_PREFIX + fieldSecretId);
+      move =
+          findSecretValue(SECRET_FIELD_PREFIX + reference)
+              .map(value -> new Move(value, new MovedSecret(fieldSecretId, previous)));
     } catch (SecretsManagerException e) {
       LOG.warn(
-          "Keeping the reference to secret [{}]: it could not be read to move it under its "
-              + "element's own id: {}",
+          "Keeping the reference to secret [{}]: it could not be moved under [{}]: {}",
           reference,
+          fieldSecretId,
           e.getMessage());
     }
-    return value;
+    return move;
   }
+
+  /** Puts back what each move overwrote, after a save that failed part way. */
+  private void restoreMovedSecrets(final List<MovedSecret> moves) {
+    moves.forEach(
+        moved -> {
+          try {
+            restoreMovedSecret(moved);
+          } catch (RuntimeException e) {
+            LOG.error(
+                "Could not restore secret [{}] after a failed save: {}",
+                moved.secretId(),
+                e.getMessage());
+          }
+        });
+  }
+
+  /** Writes back, or removes, a secret a move overwrote. Only managers holding references move. */
+  protected void restoreMovedSecret(final MovedSecret moved) {}
 
   /**
    * The secret {@code fieldValue} references when it is the same field of another element of the
@@ -573,8 +630,17 @@ public abstract class SecretsManager {
   /** The secret ids of a collection and of the element being walked inside it. */
   private record ElementSecretIds(String collection, String element) {}
 
-  /** The ids of an element and of one of its password fields. */
-  private record FieldSecretIds(ElementSecretIds element, String field) {}
+  /** The secret id of the object holding a collection, and the collection's field name. */
+  private record CollectionSecretId(String secretId, String field) {}
+
+  /** The ids of the element being walked and the moves found so far in its collection. */
+  private record MovePass(ElementSecretIds ids, List<MovedSecret> moves) {}
+
+  /** A value read from another element's secret, and what writing it overwrites. */
+  private record Move(String value, MovedSecret restore) {}
+
+  /** A secret a move writes over, with the value it held before; empty when it did not exist. */
+  record MovedSecret(String secretId, Optional<String> previous) {}
 
   private Object encryptPasswordFields(Object toEncryptObject, String secretId, boolean store) {
     try {
@@ -609,17 +675,10 @@ public abstract class SecretsManager {
                             : store ? fernet.encrypt(newFieldValue) : newFieldValue,
                         toSet);
                   } else {
-                    final String collectionField = fieldName.toLowerCase(Locale.ROOT);
-                    if (obj instanceof Collection<?> && store && storesSecretsByReference()) {
-                      resolveReferencesInCollection(obj, secretId, collectionField);
-                    }
-                    forEachTraversableElement(
+                    encryptCollection(
                         obj,
-                        (element, elementKey) ->
-                            encryptPasswordFields(
-                                element,
-                                buildSecretId(false, secretId, collectionField, elementKey),
-                                store));
+                        new CollectionSecretId(secretId, fieldName.toLowerCase(Locale.ROOT)),
+                        store);
                   }
                 });
       }
