@@ -13,11 +13,13 @@
 
 package org.openmetadata.service.migration.mysql.v209;
 
+import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v209.MicroStrategyChartRename;
+import org.openmetadata.service.migration.utils.v209.ServiceVersionSecretsMasking;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -32,5 +34,12 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         MicroStrategyChartRename.STEP_NAME,
         () -> MicroStrategyChartRename.renameAll(handle, collectionDAO));
+    // Secrets below some oneOf branches were stored unencrypted; migrate re-saves the current
+    // services, and this masks the plain text copies left in their version history.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ServiceVersionSecretsMasking.STEP_NAME,
+        () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, MYSQL));
   }
 }
