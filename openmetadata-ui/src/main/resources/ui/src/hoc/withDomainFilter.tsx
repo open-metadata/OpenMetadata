@@ -201,6 +201,22 @@ const scopeSearchFilter = (
   return JSON.stringify(filter);
 };
 
+/**
+ * Scopes a search filter to the navbar domain, as the interceptor does for a search. For requests
+ * the interceptor leaves alone, such as a POSTed aggregation. Returns the filter unchanged when no
+ * domain is selected.
+ */
+export const scopeSearchFilterToActiveDomain = (
+  index: string | string[] | undefined,
+  queryFilter: string | undefined
+): string | undefined => {
+  const activeDomain = getRequestDomain();
+
+  return activeDomain
+    ? scopeSearchFilter(index, queryFilter, activeDomain)
+    : queryFilter;
+};
+
 const withDomainOnSearch = (
   config: InternalAxiosRequestConfig,
   activeDomain: string
