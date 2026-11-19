@@ -36,6 +36,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.BatchV1Api;
@@ -52,6 +53,7 @@ import io.kubernetes.client.openapi.models.V1JobStatus;
 import io.kubernetes.client.openapi.models.V1ObjectMeta;
 import io.kubernetes.client.openapi.models.V1PodList;
 import io.kubernetes.client.openapi.models.V1PodSpec;
+import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Status;
 import java.io.IOException;
@@ -75,6 +77,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
@@ -716,14 +720,11 @@ class K8sPipelineClientTest {
     assertEquals(1000L, podSpec.getSecurityContext().getRunAsUser());
     assertEquals(1000L, podSpec.getSecurityContext().getRunAsGroup());
     assertEquals(1000L, podSpec.getSecurityContext().getFsGroup());
-    // PodSecurity "restricted" requires a seccomp profile (issue #28858)
-    assertEquals("RuntimeDefault", podSpec.getSecurityContext().getSeccompProfile().getType());
+    assertNull(podSpec.getSecurityContext().getSeccompProfile());
 
     // Verify container security context
-    assertEquals(
-        "RuntimeDefault",
-        podSpec.getContainers().get(0).getSecurityContext().getSeccompProfile().getType());
     assertNotNull(podSpec.getContainers().get(0).getSecurityContext());
+    assertNull(podSpec.getContainers().get(0).getSecurityContext().getSeccompProfile());
     assertTrue(podSpec.getContainers().get(0).getSecurityContext().getRunAsNonRoot());
     assertFalse(podSpec.getContainers().get(0).getSecurityContext().getAllowPrivilegeEscalation());
     assertNotNull(podSpec.getContainers().get(0).getSecurityContext().getCapabilities());
@@ -735,6 +736,51 @@ class K8sPipelineClientTest {
             .getCapabilities()
             .getDrop()
             .contains("ALL"));
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      value = {
+        "null||",
+        "{type: RuntimeDefault}|RuntimeDefault|",
+        "{type: Unconfined}|Unconfined|",
+        "{type: Localhost, localhostProfile: profiles/ingestion.json}|Localhost|profiles/ingestion.json"
+      },
+      delimiter = '|')
+  void testSeccompConfigurationFromYamlIsSetOnJob(
+      String seccompYaml, String type, String localhostProfile) throws Exception {
+    String yaml =
+        """
+        enabled: true
+        metadataApiEndpoint: http://localhost:8585/api
+        parameters:
+          namespace: openmetadata-pipelines
+          skipInit: true
+          seccomp: %s
+        """
+            .formatted(seccompYaml);
+    PipelineServiceClientConfiguration config =
+        new ObjectMapper(new YAMLFactory())
+            .readValue(yaml, PipelineServiceClientConfiguration.class);
+    client = new K8sPipelineClient(config);
+    client.setBatchApi(batchApi);
+    when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
+    when(createJobRequest.execute()).thenReturn(new V1Job());
+
+    client.runPipeline(createTestPipeline("test-pipeline", null), testService);
+
+    ArgumentCaptor<V1Job> jobCaptor = ArgumentCaptor.forClass(V1Job.class);
+    verify(batchApi).createNamespacedJob(eq(NAMESPACE), jobCaptor.capture());
+    V1PodSpec podSpec = jobCaptor.getValue().getSpec().getTemplate().getSpec();
+    V1SeccompProfile expected =
+        type == null ? null : new V1SeccompProfile().type(type).localhostProfile(localhostProfile);
+    assertEquals(expected, podSpec.getSecurityContext().getSeccompProfile());
+    assertEquals(expected, podSpec.getContainers().get(0).getSecurityContext().getSeccompProfile());
+
+    CronOMJob cronOMJob = client.buildCronOMJob(createTestPipeline("test-pipeline", "0 * * * *"));
+    OMJob.OMJobSpec omJobSpec = cronOMJob.getSpec().getOmJobSpec();
+    assertEquals(expected, omJobSpec.getMainPodSpec().getSecurityContext().getSeccompProfile());
+    assertEquals(expected, omJobSpec.getExitHandlerSpec().getSecurityContext().getSeccompProfile());
   }
 
   @Test

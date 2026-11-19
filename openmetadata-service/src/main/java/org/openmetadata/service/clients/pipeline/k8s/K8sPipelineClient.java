@@ -42,7 +42,6 @@ import io.kubernetes.client.openapi.models.V1PodSecurityContext;
 import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1PodTemplateSpec;
 import io.kubernetes.client.openapi.models.V1ResourceRequirements;
-import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1SecurityContext;
 import io.kubernetes.client.util.ClientBuilder;
@@ -1721,8 +1720,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
     if (k8sConfig.getFsGroup() != null) {
       context.setFsGroup(k8sConfig.getFsGroup());
     }
-    // Required by the PodSecurity "restricted" profile
-    context.setSeccompProfile(new V1SeccompProfile().type("RuntimeDefault"));
+    context.setSeccompProfile(k8sConfig.getSeccomp());
     return context;
   }
 
@@ -1731,7 +1729,7 @@ public class K8sPipelineClient extends PipelineServiceClient {
         .runAsNonRoot(k8sConfig.isRunAsNonRoot())
         .runAsUser(k8sConfig.getRunAsUser())
         .allowPrivilegeEscalation(false)
-        .seccompProfile(new V1SeccompProfile().type("RuntimeDefault"))
+        .seccompProfile(k8sConfig.getSeccomp())
         .readOnlyRootFilesystem(false) // Ingestion may need to write temp files
         .capabilities(new V1Capabilities().drop(List.of("ALL")));
   }
