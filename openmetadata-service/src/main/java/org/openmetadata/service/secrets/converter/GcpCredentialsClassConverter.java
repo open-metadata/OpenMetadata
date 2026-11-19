@@ -15,6 +15,7 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.security.credentials.GCPCredentials;
+import org.openmetadata.schema.security.credentials.GCPCredentialsPath;
 import org.openmetadata.schema.security.credentials.GCPExternalAccount;
 import org.openmetadata.schema.security.credentials.GCPValues;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -23,7 +24,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 public class GcpCredentialsClassConverter extends ClassConverter {
 
   private static final List<Class<?>> CONNECTION_CLASSES =
-      List.of(GCPValues.class, GCPExternalAccount.class, UntypedOption.class);
+      List.of(GCPValues.class, GCPCredentialsPath.class, GCPExternalAccount.class);
 
   public GcpCredentialsClassConverter() {
     super(GCPCredentials.class);

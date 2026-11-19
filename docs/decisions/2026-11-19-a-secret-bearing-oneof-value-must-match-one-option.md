@@ -6,7 +6,8 @@
 - **Guard:** `UnmatchedOptionSecretsTest`, `UnmatchedOptionsTest`,
   `PasswordEntityMaskerTest#testEveryLeafOfAValueThatMatchesNoOptionIsMasked`,
   `NestedSecretConverterCoverageTest#everyOptionOfASecretBearingOneOfIsAcceptedWhenSaving`,
-  `PipelineServiceResourceIT#post_databricksServiceWithAuthTypeMatchingNoOption_400`
+  `PipelineServiceResourceIT#post_databricksServiceWithAuthTypeMatchingNoOption_400`,
+  `LocalPathOptionSecretsTest`, `GcpCredentialsPathSecretsTest`
 - **Related:** ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage
 
 ## Context
@@ -45,8 +46,7 @@ when saving refuses one.
   the connection is corrected. `SecretsManagerUpdateService` logs and skips such a row on migrate.
 - Masking every leaf also hides fields that are not secrets in such a value. That only affects
   values that are already invalid.
-- An option needs a generated class to be listed as a candidate. An inline option gets a schema
-  file of its own with a `javaType`; until then its candidate list names `UntypedOption`, which
-  keeps any value of that property that matches no other option.
+- An option needs a generated class to be listed as a candidate, so an inline option gets a
+  schema file of its own with a `javaType`. Each candidate list names one class per option.
 - Test Connection workflows and ingestion pipelines convert through their own entry points and are
   not covered by this record.

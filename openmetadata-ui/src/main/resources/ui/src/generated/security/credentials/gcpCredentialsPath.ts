@@ -1,5 +1,5 @@
 /*
- *  Copyright 2026 Collate
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,14 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-package org.openmetadata.service.secrets.converter;
-
 /**
- * Stands in a candidate list for a {@code oneOf} option that has no generated class, such as an
- * inline definition. A value that matches no other candidate may be that option, so it is kept as
- * it is. Remove it once the option has a schema file of its own and its class is listed instead.
+ * Pass the path of file containing the GCP credentials info
  */
-public final class UntypedOption {
-  private UntypedOption() {}
+export interface GcpCredentialsPath {
+    /**
+     * Path of the file containing the GCP credentials info
+     */
+    path?: string;
+    /**
+     * GCP Project ID to parse metadata from
+     */
+    projectId?: string[] | string;
+    /**
+     * Google Cloud Platform account type.
+     */
+    type?: string;
 }

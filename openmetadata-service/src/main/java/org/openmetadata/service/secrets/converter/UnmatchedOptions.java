@@ -121,7 +121,6 @@ public final class UnmatchedOptions {
   private static boolean isSecretBearing(Object value, List<Class<?>> options) {
     return value instanceof Map<?, ?> map
         && !map.isEmpty()
-        && !options.contains(UntypedOption.class)
         && options.stream().anyMatch(UnmatchedOptions::canHoldSecret);
   }
 

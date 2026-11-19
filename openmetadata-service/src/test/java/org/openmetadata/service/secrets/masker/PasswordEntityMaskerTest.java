@@ -184,6 +184,27 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void testEveryLeafOfAGcpConfigThatMatchesNoOptionIsMasked() {
+    Map<String, Object> gcpConfig =
+        Map.of("type", "service_account", "privateKey", TOKEN, "path", "/keys/sa.json");
+
+    Object bigQuery =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                Map.of("credentials", Map.of("gcpConfig", gcpConfig)),
+                "BigQuery",
+                ServiceType.DATABASE);
+
+    String mask = getMaskedPassword();
+    Map<String, Object> credentials =
+        (Map<String, Object>)
+            JsonUtils.readValue(JsonUtils.pojoToJson(bigQuery), Map.class).get("credentials");
+    assertEquals(
+        Map.of("type", mask, "privateKey", mask, "path", mask), credentials.get("gcpConfig"));
+  }
+
+  @Test
   void testLookerDisplayUrlIsAcceptedWhenRestoringSecrets() {
     Map<String, Object> updated =
         Map.of(
