@@ -30,11 +30,11 @@ import {
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import {
-  TimelineRowProps,
-  StageTimelineProps,
   ResolvedIdentityProps,
   SsoTestLoginContentProps,
   SsoTestLoginModalProps,
+  StageTimelineProps,
+  TimelineRowProps,
 } from './SsoTestLogin.interface';
 import {
   isTestLoginSettled,
