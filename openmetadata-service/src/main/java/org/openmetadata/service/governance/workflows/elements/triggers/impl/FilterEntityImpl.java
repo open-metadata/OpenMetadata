@@ -18,7 +18,6 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -94,7 +93,7 @@ public class FilterEntityImpl implements JavaDelegate {
               excludedFilter,
               includeFields,
               filterLogic,
-              mayCarryNoChange(
+              TriggeringChange.mayCarryNoChange(
                   varHandler.getNamespacedVariable(
                       GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE)));
     }
@@ -211,17 +210,6 @@ public class FilterEntityImpl implements JavaDelegate {
     }
 
     return feedback.getTagFQN().equals(entityLink.getEntityFQN());
-  }
-
-  /**
-   * Only a create carries no change: an update that leaves none (an edit undone within its session
-   * reverts the entity to a version without one, and a follow never stores one) has nothing for
-   * include/exclude to judge. A run started before the event type was recorded keeps treating a
-   * missing change as a create.
-   */
-  private static boolean mayCarryNoChange(Object triggeringEventType) {
-    return triggeringEventType == null
-        || EventType.ENTITY_CREATED.value().equals(triggeringEventType);
   }
 
   private boolean passesExcludedFilter(

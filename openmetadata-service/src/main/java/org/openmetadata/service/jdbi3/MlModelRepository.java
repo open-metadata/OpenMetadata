@@ -643,4 +643,9 @@ public class MlModelRepository extends EntityRepository<MlModel> {
                         feature.getName(), feature.getFullyQualifiedName(), feature.getTags()))
             .toList());
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }

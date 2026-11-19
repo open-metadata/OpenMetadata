@@ -88,7 +88,7 @@ def mysql_engine():
     # for the single "ready for connections" log line from the main server
     # (the testcontainers default regex expects two occurrences which only
     # MariaDB emits — MySQL emits one).
-    container = MySqlContainer(image="mysql:8.0", dbname="test_db").waiting_for(
+    container = MySqlContainer(image="mysql:8.4.13", dbname="test_db").waiting_for(
         LogMessageWaitStrategy("ready for connections").with_startup_timeout(120)
     )
     with container as container:

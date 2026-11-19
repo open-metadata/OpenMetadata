@@ -1431,19 +1431,27 @@ const ServiceDetailsPage: FunctionComponent = () => {
     }
   }, [serviceCategory, serviceDetails, handleToggleDelete]);
 
-  const isTestingDisabled = useMemo(
-    () =>
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  // Wait for the extra info, or a test started meanwhile goes out without the service's runner.
+  const isTestingDisabled = useMemo(() => {
+    const isOpenMetadataService =
+      isMetadataService && decodedServiceFQN === OPEN_METADATA;
+
+    return (
+      !isExtraInfoLoaded ||
       !servicePermission.EditAll ||
-      (isMetadataService && decodedServiceFQN === OPEN_METADATA) ||
-      isUndefined(connectionDetails),
-    [
-      servicePermission,
-      serviceCategory,
-      decodedServiceFQN,
-      connectionDetails,
-      isMetadataService,
-    ]
-  );
+      isOpenMetadataService ||
+      isUndefined(connectionDetails)
+    );
+  }, [
+    isExtraInfoLoaded,
+    servicePermission,
+    serviceCategory,
+    decodedServiceFQN,
+    connectionDetails,
+    isMetadataService,
+  ]);
 
   const { disableRunAgentsButton, disableRunAgentsButtonMessage } =
     useMemo(() => {
@@ -1732,9 +1740,12 @@ const ServiceDetailsPage: FunctionComponent = () => {
     ]
   );
 
+  // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
   const extraInfoData = useMemo(() => {
-    return serviceUtilClassBase.getServiceExtraInfo(serviceDetails);
-  }, [serviceDetails]);
+    return isExtraInfoLoaded
+      ? serviceUtilClassBase.getServiceExtraInfo(serviceDetails)
+      : null;
+  }, [serviceDetails, isExtraInfoLoaded]);
 
   const testConnectionTab = useMemo(() => {
     return (
@@ -2026,7 +2037,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
 
   useEffect(() => {
-    serviceUtilClassBase.getExtraInfo();
+    serviceUtilClassBase
+      .getExtraInfo()
+      .finally(() => setIsExtraInfoLoaded(true));
   }, []);
 
   const isCustomService = useMemo(

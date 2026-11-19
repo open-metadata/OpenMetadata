@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_VERSION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.Workflow.getFlowableElementId;
@@ -213,6 +214,14 @@ public class EventBasedEntityTrigger implements TriggerInterface {
       triggeringVersionParam.setTarget(
           getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_VERSION_VARIABLE));
       inputParameters.add(triggeringVersionParam);
+    }
+    if (!triggerOutputs.contains(TRIGGERING_EVENT_TYPE_VARIABLE)) {
+      IOParameter triggeringEventTypeParam = new IOParameter();
+      triggeringEventTypeParam.setSource(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE));
+      triggeringEventTypeParam.setTarget(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, TRIGGERING_EVENT_TYPE_VARIABLE));
+      inputParameters.add(triggeringEventTypeParam);
     }
 
     // Dynamically add any additional outputs declared in trigger - Eg updatedBy in
