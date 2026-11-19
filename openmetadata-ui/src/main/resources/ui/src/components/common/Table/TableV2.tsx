@@ -105,6 +105,7 @@ import type {
   TableV2ExtensionProps,
 } from './TableV2.interface';
 import {
+  fillsParentWhenEmpty,
   flattenTreeRows,
   getCellWidthStyle,
   getColumnHeaderStyle,
@@ -1811,6 +1812,10 @@ const TableV2 = <T extends object>(
             rest.tableLayout,
             sizeByContent
           );
+          const fillParent = fillsParentWhenEmpty(
+            scroll?.y as string | number | undefined,
+            flatRows.length === 0
+          );
           const tableContent = (
             <UntitledTable
               aria-label={ariaLabel}
@@ -1830,10 +1835,13 @@ const TableV2 = <T extends object>(
                 // own widths and swallows the drag.
                 'tw:table-fixed': tableLayoutClasses.fixed,
                 'tw:table-auto': tableLayoutClasses.auto,
+                // The extra height goes to the empty body row, not the header.
+                'tw:h-full': fillParent,
               })}
               containerClassName={rest.scrollContainerClassName}
               containerStyle={getTableContainerStyle(
-                scroll?.y as string | number | undefined
+                scroll?.y as string | number | undefined,
+                fillParent
               )}
               disabledBehavior="selection"
               disabledKeys={disabledRowKeys}
@@ -2034,7 +2042,10 @@ const TableV2 = <T extends object>(
                     // room and belongs to whatever fills the slot.
                     <div
                       className={classNames(
-                        'tw:relative tw:min-h-40 tw:text-center tw:text-sm tw:text-fg-tertiary',
+                        // `h-full` only resolves when the table fills a
+                        // bounded parent (see fillsParentWhenEmpty); otherwise
+                        // it is auto and `min-h-40` sizes the slot.
+                        'tw:relative tw:h-full tw:min-h-40 tw:text-center tw:text-sm tw:text-fg-tertiary',
                         { 'tw:py-8': paddedEmptyState }
                       )}>
                       {
