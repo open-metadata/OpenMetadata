@@ -20,6 +20,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v209.MicroStrategyChartRename;
 import org.openmetadata.service.migration.utils.v209.ServiceVersionSecretsMasking;
+import org.openmetadata.service.migration.utils.v209.WorkflowEventTypeRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
 
@@ -41,5 +42,14 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ServiceVersionSecretsMasking.STEP_NAME,
         () -> ServiceVersionSecretsMasking.maskPlainTextSecrets(handle, MYSQL));
+    // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WorkflowEventTypeRedeployMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          WorkflowEventTypeRedeployMigration.redeploy();
+        });
   }
 }
