@@ -4058,6 +4058,7 @@
     "update-sample-query": "更新示例查询",
     "updated": "已更新",
     "updated-at": "更新于",
+    "updated-at-source": "源端更新于",
     "updated-by": "更新者",
     "updated-by-user-time-ago": "由 {{user}} 于 {{time}} 更新",
     "updated-field-for-lowercase": "已更新{{field}}",

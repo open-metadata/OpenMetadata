@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { AUTO_PILOT_APP_NAME } from '../../../constants/Applications.constant';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -145,6 +146,8 @@ jest.mock('../../../utils/DataAssetsHeader.utils', () => ({
   })),
   getEntityExtraInfoLength: jest.fn().mockImplementation(() => 0),
   isDataAssetsWithServiceField: jest.fn().mockImplementation(() => true),
+  isRecordedLifeCycleTimestamp: (timestamp?: number) =>
+    timestamp !== undefined && timestamp >= 0,
   HeaderDotSeparator: jest
     .fn()
     .mockImplementation(() => <span data-testid="header-dot-separator" />),
@@ -415,6 +418,51 @@ describe('DataAssetsHeader component', () => {
     );
 
     expect(screen.queryByTestId('metric-header-info')).not.toBeInTheDocument();
+  });
+
+  it('shows when the asset was last updated at its source', async () => {
+    const twoHoursAgo = Date.now() - 2 * 60 * 60 * 1000;
+
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { updated: { timestamp: twoHoursAgo } },
+        }}
+      />
+    );
+
+    expect(screen.getByText('label.updated-at-source')).toBeInTheDocument();
+    expect(screen.getByTestId('source-updated-at')).toHaveTextContent(
+      '2 hours ago'
+    );
+
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    // react-aria opens hover tooltips only after it has seen a pointer move.
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByTestId('source-updated-at'));
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      String(new Date(twoHoursAgo).getFullYear())
+    );
+  });
+
+  it('hides the source update time when the source never reported one', () => {
+    render(
+      <DataAssetsHeader
+        {...mockProps}
+        dataAsset={{
+          ...mockProps.dataAsset,
+          lifeCycle: { created: { timestamp: 1743724800000 } },
+        }}
+      />
+    );
+
+    expect(
+      screen.queryByText('label.updated-at-source')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('source-updated-at')).not.toBeInTheDocument();
   });
 
   it('should render an explicitly supplied breadcrumb trail', () => {

@@ -4058,6 +4058,7 @@
     "update-sample-query": "به‌روزرسانی پرسمان نمونه",
     "updated": "به‌روزرسانی شده",
     "updated-at": "به‌روز شده در",
+    "updated-at-source": "به‌روز شده در منبع",
     "updated-by": "به‌روزرسانی شده توسط",
     "updated-by-user-time-ago": "به‌روزرسانی شده توسط {{user}} {{time}}",
     "updated-field-for-lowercase": "{{field}} را به‌روزرسانی کرد",

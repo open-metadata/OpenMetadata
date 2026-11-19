@@ -14,6 +14,7 @@ import {
   Button,
   ButtonUtility,
   ClassificationTag,
+  Divider,
   FeaturedIcon,
   Owner,
   Tooltip,
@@ -69,6 +70,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { LifeCycle } from '../../../generated/type/lifeCycle';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -86,7 +88,12 @@ import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
+  isRecordedLifeCycleTimestamp,
 } from '../../../utils/DataAssetsHeader.utils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -801,11 +808,49 @@ export const DataAssetsHeader = ({
     );
   };
 
+  // lifeCycle.updated is when the asset last changed at its source, read by
+  // metadata ingestion; it is not when the entity was edited in OpenMetadata.
+  // triggerClassName makes Tooltip wrap Typography in a focusable trigger; a
+  // bare component child never opens the tooltip.
+  const renderSourceUpdatedAt = () => {
+    const sourceUpdatedAt = (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle
+      ?.updated?.timestamp;
+
+    if (!isRecordedLifeCycleTimestamp(sourceUpdatedAt)) {
+      return null;
+    }
+
+    return (
+      <>
+        <div className="tw:flex tw:items-center tw:gap-1.5">
+          <Typography as="span" className="tw:text-tertiary" size="text-sm">
+            {t('label.updated-at-source')}
+          </Typography>
+          <Tooltip
+            placement="bottom"
+            title={formatDateTime(sourceUpdatedAt)}
+            triggerClassName="tw:flex tw:cursor-default">
+            <Typography
+              as="span"
+              className="tw:text-primary"
+              data-testid="source-updated-at"
+              size="text-sm"
+              weight="medium">
+              {getRelativeTime(sourceUpdatedAt)}
+            </Typography>
+          </Tooltip>
+        </div>
+        <Divider className="tw:h-5" orientation="vertical" />
+      </>
+    );
+  };
+
   const renderFollowAndVoteStats = () => {
     const followLabel = t(`label.${isFollowing ? 'un-follow' : 'follow'}`);
 
     return (
       <div className="tw:flex tw:items-center tw:gap-4">
+        {renderSourceUpdatedAt()}
         {canShowFollowStat && onFollowClick && (
           <StatItem
             iconNode={<FollowStarIcon selected={isFollowing} />}

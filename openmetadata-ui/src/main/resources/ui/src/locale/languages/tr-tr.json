@@ -4058,6 +4058,7 @@
     "update-sample-query": "Örnek sorguyu güncelle",
     "updated": "Güncellendi",
     "updated-at": "Güncelleme tarihi",
+    "updated-at-source": "Kaynakta güncellendi",
     "updated-by": "Güncelleyen",
     "updated-by-user-time-ago": "{{user}} tarafından {{time}} güncellendi",
     "updated-field-for-lowercase": "güncellendi {{field}}",
