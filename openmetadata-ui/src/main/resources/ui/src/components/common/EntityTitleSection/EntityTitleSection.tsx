@@ -19,6 +19,7 @@ import {
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { twMerge } from 'tailwind-merge';
 import { Operation } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
@@ -157,7 +158,7 @@ export const EntityTitleSection = ({
 
   return (
     <div
-      className={classNames(
+      className={twMerge(
         'tw:sticky tw:p-1 tw:z-999 tw:top-0 tw:bg-primary',
         className
       )}>
