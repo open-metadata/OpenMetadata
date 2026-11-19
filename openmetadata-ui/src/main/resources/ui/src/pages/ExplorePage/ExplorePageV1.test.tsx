@@ -461,11 +461,13 @@ describe('ExplorePageV1', () => {
       expect.objectContaining({ sortValue: '_score', sortOrder: 'desc' }),
       expect.anything()
     );
+
     await waitFor(() =>
       expect(searchQuery).toHaveBeenCalledWith(
         expect.objectContaining({ sortField: '_score', sortOrder: 'desc' })
       )
     );
+
     expect(searchQuery).not.toHaveBeenCalledWith(
       expect.objectContaining({ sortOrder: 'asc' })
     );
