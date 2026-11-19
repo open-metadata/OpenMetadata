@@ -39,7 +39,7 @@ class NestedSecretConverterCoverageTest {
   /**
    * Secret-bearing {@code oneOf} branches that jsonschema2pojo never materialised into a class, so
    * no converter can be written until the branch is extracted into its own schema file. Shrink this
-   * set; never grow it.
+   * set; never grow it. ADR:2026-11-19-secret-bearing-oneof-branches-live-in-their-own-schema-files
    */
   private static final Set<String> KNOWN_UNCONVERTIBLE = Set.of();
 
