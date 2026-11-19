@@ -292,6 +292,42 @@ def test_nightly_artifact_names_are_unique_across_invocations():
     assert len(names) == len(set(names))
 
 
+@pytest.mark.parametrize("wrong_override", [False, True])
+def test_ci_uv_selection_exports_only_a_validated_executable(tmp_path, wrong_override):
+    action = yaml.safe_load((ROOT / ".github/actions/setup-uv/action.yml").read_text())
+    script = next(step["run"] for step in action["runs"]["steps"] if "run" in step)
+    scripts = tmp_path / "scripts"
+    scripts.mkdir()
+    shutil.copy2(ROOT / "scripts/python_tools.py", scripts)
+    (tmp_path / "ingestion").mkdir()
+    (tmp_path / "ingestion/pyproject.toml").write_text('[tool.uv]\nrequired-version = "==0.13.4"\n')
+    uv = run(sys.executable, ROOT / "scripts/python_tools.py", "uv-path")
+    assert uv.returncode == 0, uv.stderr
+    executable = Path(uv.stdout.strip())
+    if wrong_override:
+        executable = tmp_path / "wrong-uv"
+        executable.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+        executable.chmod(0o755)
+    output = tmp_path / "github-env"
+    environment = {
+        **os.environ,
+        "GITHUB_ACTIONS": "true",
+        "GITHUB_ENV": str(output),
+        "OM_UV_EXECUTABLE": str(executable),
+    }
+    for _ in range(2):
+        result = run("bash", "-eo", "pipefail", "-c", script, cwd=tmp_path, env=environment)
+        if wrong_override:
+            assert result.returncode != 0
+            assert "must point to uv 0.13.4" in result.stderr
+            assert not output.exists()
+        else:
+            assert result.returncode == 0, result.stderr
+    if not wrong_override:
+        assert output.read_text().splitlines() == [f"OM_UV_EXECUTABLE={executable}"] * 2
+    assert not (tmp_path / "ingestion/.nox").exists()
+
+
 @pytest.mark.parametrize(
     "filename, job, exit_file",
     [

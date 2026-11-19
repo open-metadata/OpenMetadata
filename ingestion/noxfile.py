@@ -16,8 +16,7 @@ import argparse
 import fcntl
 import json
 import os
-import re
-import shutil
+import runpy
 import subprocess
 import sys
 from contextlib import contextmanager, nullcontext
@@ -58,6 +57,9 @@ INGESTION_ROOT = Path(__file__).resolve().parent
 nox.options.envdir = str(INGESTION_ROOT / ".nox")
 ROOT = INGESTION_ROOT.parent
 PROFILES = ("runtime", "all", "dev", "test", "test-classification", "style", "generation", "coverage")
+UV = runpy.run_path(str(ROOT / "scripts/python_tools.py"))["ensure_uv"]()
+os.environ["OM_UV_EXECUTABLE"] = str(UV)
+os.environ["PATH"] = str(UV.parent) + os.pathsep + os.environ["PATH"]
 
 
 # ADR:2026-10-27-local-python-environments-use-locked-profiles
@@ -78,39 +80,19 @@ def default_environment(profile):
     return INGESTION_ROOT / ".nox" / profile
 
 
-def pinned_uv(session, python, environment):
-    """Locate or install the project's exact uv version in the selected environment."""
-    pins = re.findall(
-        r'^required-version\s*=\s*"==([^"]+)"\s*$',
-        (INGESTION_ROOT / "pyproject.toml").read_text(),
-        re.MULTILINE,
-    )
-    if len(pins) != 1:
-        session.error("Expected one exact tool.uv.required-version pin")
-    for candidate in (python.parent / "uv", Path(sys.executable).parent / "uv", shutil.which("uv")):
-        if candidate and Path(candidate).is_file():
-            version = session.run(str(candidate), "--version", silent=True, external=True)
-            if version.split()[1] == pins[0]:
-                return str(candidate)
-    session.run(str(python), "-I", "-m", "ensurepip", "--upgrade", env=environment, external=True)
-    session.run(str(python), "-I", "-m", "pip", "install", f"uv=={pins[0]}", env=environment, external=True)
-    return str(python.parent / "uv")
-
-
 def synchronize(session, profile, path, interpreter):
     """Synchronize and validate a locked application or tool selection."""
     python = path / "bin/python"
     if path.exists() and any(path.iterdir()) and not (path / "pyvenv.cfg").is_file():
         session.error(f"Refusing to synchronize a non-venv path: {path}")
     if not python.exists():
-        session.run(str(interpreter), "-m", "venv", str(path), external=True)
+        session.run(str(UV), "venv", "--python", str(interpreter), str(path), external=True)
     environment = {
         "VIRTUAL_ENV": str(path),
         "UV_PROJECT_ENVIRONMENT": str(path),
         "PATH": str(path / "bin") + os.pathsep + os.environ["PATH"],
     }
-    uv = pinned_uv(session, python, environment)
-    command = [uv, "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
+    command = [str(UV), "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
     parser_check = "try:\n import tomllib\nexcept ImportError:\n import tomli"
     if subprocess.run([str(python), "-I", "-c", parser_check], capture_output=True, check=False).returncode:
         session.run(*command, "--only-group", "bootstrap", "--inexact", env=environment, external=True)
@@ -261,6 +243,7 @@ def lint(session):
             "update_version.py",
             "prepare_classification_models.py",
             "python_ci.py",
+            "python_tools.py",
         )
     )
     sources.extend(str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py",))

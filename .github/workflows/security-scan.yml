@@ -197,6 +197,8 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: "3.10"
+      - name: Install uv
+        uses: ./.github/actions/setup-uv
 
       - name: Set up JDK 21
         uses: actions/setup-java@v5

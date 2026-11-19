@@ -51,6 +51,9 @@ runs:
       run: |
         sudo apt-get install -y python3-venv
 
+    - name: Install uv
+      if: inputs.is_ingestion == true
+      uses: ./.github/actions/setup-uv
     - name: Install open-metadata dependencies
       if: inputs.is_ingestion == true
       shell: bash

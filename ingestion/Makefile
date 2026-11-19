@@ -13,7 +13,6 @@ PYTHON ?= python3
 INGESTION_ABS := $(abspath $(INGESTION_DIR))
 NOX_BOOTSTRAP := $(INGESTION_ABS)/.nox/bootstrap
 NOX = "$(NOX_BOOTSTRAP)/bin/nox" -f "$(INGESTION_ABS)/noxfile.py"
-PYTHON_UV_VERSION := $(shell sed -n 's/^required-version *= *"==\([^"]*\)" *$$/\1/p' "$(INGESTION_ABS)/pyproject.toml")
 export OM_VENV_DIR
 
 PYTHON_TEST_PROFILE ?= test-classification
@@ -24,13 +23,7 @@ install: python_tools  ## Install the ingestion module to the current environmen
 
 .PHONY: python_tools
 python_tools:  ## Bootstrap the locked Nox tools without installing the application
-	@test -n "$(PYTHON_UV_VERSION)"
-	@if [ ! -f "$(NOX_BOOTSTRAP)/pyvenv.cfg" ]; then $(PYTHON) -m venv "$(NOX_BOOTSTRAP)"; fi
-	@case "$$("$(NOX_BOOTSTRAP)/bin/uv" --version 2>/dev/null)" in \
-		"uv $(PYTHON_UV_VERSION) "*) ;; \
-		*) "$(NOX_BOOTSTRAP)/bin/python" -I -m pip install "uv==$(PYTHON_UV_VERSION)" ;; \
-	esac
-	@VIRTUAL_ENV="$(NOX_BOOTSTRAP)" UV_PROJECT_ENVIRONMENT="$(NOX_BOOTSTRAP)" "$(NOX_BOOTSTRAP)/bin/uv" sync --locked --inexact --project "$(INGESTION_ABS)" --only-group nox --python "$(NOX_BOOTSTRAP)/bin/python"
+	@$(PYTHON) "$(INGESTION_ABS)/../scripts/python_tools.py" bootstrap
 
 .PHONY: install_dev_env
 install_dev_env: install_test  ## Install the locked development and test environment

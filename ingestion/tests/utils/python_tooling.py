@@ -27,6 +27,7 @@ def prepare_locked_tooling(root, monkeypatch):
     for name in [
         "OM_PYTHON_ENVIRONMENT",
         "OM_VENV_DIR",
+        "OM_UV_EXECUTABLE",
         "UV_PROJECT_ENVIRONMENT",
         "ARGS",
         "MAKEFLAGS",
@@ -35,6 +36,14 @@ def prepare_locked_tooling(root, monkeypatch):
         "MAKELEVEL",
     ]:
         monkeypatch.delenv(name, raising=False)
+    selected_uv = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/python_tools.py"), "uv-path"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert selected_uv.returncode == 0, selected_uv.stdout + selected_uv.stderr
+    monkeypatch.setenv("PATH", str(Path(selected_uv.stdout.strip()).parent) + os.pathsep + os.environ["PATH"])
     project = root / "ingestion"
     config = project / "pyproject.toml"
     sections = re.split(r"(?m)(?=^\[)", config.read_text())
@@ -68,7 +77,7 @@ where = ["src"]
 required-version = "==0.13.4"
 default-groups = []
 [dependency-groups]
-bootstrap = ["pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
+bootstrap = ["pip", "tomli>=2; python_version < '3.11'"]
 nox = [{include-group = "bootstrap"}, "nox"]
 generation = [{include-group = "bootstrap"}]
 style = [{include-group = "bootstrap"}, "'''
@@ -99,6 +108,7 @@ install-project = {str(name in ("runtime", "dev", "test", "test-classification")
         "scripts/generate_ingestion_models.py",
         "scripts/datamodel_generation.py",
         "scripts/prepare_classification_models.py",
+        "scripts/python_tools.py",
         "openmetadata-spec/scripts/prepare_model_schemas.py",
     ]:
         target = root / name

@@ -11,6 +11,8 @@ runs:
       uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
       with:
         python-version: ${{ inputs.python-version }}
+    - name: Install uv
+      uses: ./.github/actions/setup-uv
     - name: Install coverage dependencies
       run: |
         make python_tools

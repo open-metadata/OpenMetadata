@@ -401,6 +401,7 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
     "changed",
     [
         "scripts/generate_ingestion_models.py",
+        "scripts/python_tools.py",
         "openmetadata-spec/scripts/prepare_model_schemas.py",
         "ingestion/uv.lock",
         "ingestion/pyproject.toml",
@@ -489,7 +490,15 @@ def test_direct_nox_session_installs_locked_profile(nox_repo: Path, directory: s
     assert environment.parent == nox_repo / "ingestion/.nox"
     assert (environment / "pyvenv.cfg").is_file()
     assert not (nox_repo / ".nox").exists()
-    assert_success(run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage, uv", cwd=nox_repo))
+    assert_success(
+        run(
+            str(environment / "bin/python"),
+            "-I",
+            "-c",
+            "import pytest, coverage; import importlib.util; assert importlib.util.find_spec('uv') is None",
+            cwd=nox_repo,
+        )
+    )
 
 
 def test_nox_rejects_stale_lock_before_executing(nox_repo: Path) -> None:
@@ -560,14 +569,30 @@ def test_relative_application_environment(nox_repo: Path, directory: str, monkey
     assert not (nox_repo / "ingestion/custom-application").exists()
 
 
-def test_empty_environment_bootstraps_pinned_uv_without_uv_on_path(nox_repo: Path, monkeypatch) -> None:
-    monkeypatch.setenv("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
-    assert shutil.which("uv") is None
+@pytest.mark.parametrize("wrong_uv", [False, True])
+def test_local_bootstrap_installs_and_reuses_pinned_uv(nox_repo: Path, monkeypatch, wrong_uv: bool) -> None:
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("CI", raising=False)
+    binaries = nox_repo / "bin"
+    binaries.mkdir()
+    wrong = binaries / "uv"
+    if wrong_uv:
+        wrong.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+        wrong.chmod(0o755)
+    monkeypatch.setenv("PATH", str(binaries) + ":/usr/bin:/bin:/usr/sbin:/sbin")
+    assert bool(shutil.which("uv")) == wrong_uv
     assert shutil.which("nox") is None
     assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
     result = run(str(nox_repo / "ingestion/.nox/bootstrap/bin/uv"), "--version", cwd=nox_repo)
     assert_success(result)
     assert result.stdout.startswith("uv 0.13.4 ")
+    managed = nox_repo / "ingestion/.nox/bootstrap/bin/uv"
+    installed = managed.stat().st_mtime_ns
+    assert_success(run("make", "install_test", f"PYTHON={sys.executable}", cwd=nox_repo))
+    assert managed.stat().st_mtime_ns == installed
+    if wrong_uv:
+        assert_success(run(str(wrong), "--version", cwd=nox_repo))
+        assert run(str(wrong), "--version", cwd=nox_repo).stdout.strip() == "uv 0.0.0"
     assert_success(
         run(
             str(nox_repo / "env/bin/python"),
@@ -576,6 +601,96 @@ def test_empty_environment_bootstraps_pinned_uv_without_uv_on_path(nox_repo: Pat
             cwd=nox_repo,
         )
     )
+
+
+@pytest.mark.parametrize("wrong_uv", [False, True])
+def test_ci_bootstrap_rejects_missing_or_wrong_uv_without_installing(
+    tooling_repo: Path, monkeypatch, wrong_uv: bool
+) -> None:
+    binaries = tooling_repo / "bin"
+    binaries.mkdir()
+    if wrong_uv:
+        executable = binaries / "uv"
+        executable.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+        executable.chmod(0o755)
+    make = shutil.which("make")
+    assert make
+    monkeypatch.setenv("PATH", str(binaries))
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    result = run(make, "python_tools", f"PYTHON={sys.executable}", cwd=tooling_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "Expected uv 0.13.4" in result.stderr
+    assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
+
+
+def test_ci_profiles_reuse_external_uv_without_installing_environment_copies(nox_repo: Path, monkeypatch) -> None:
+    uv = Path(shutil.which("uv")).resolve()
+    installed = uv.stat().st_mtime_ns
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+    monkeypatch.setenv("OM_UV_EXECUTABLE", str(uv))
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    nox = nox_repo / "ingestion/.nox/bootstrap/bin/nox"
+    for profile in ("style", "coverage"):
+        assert_success(run(str(nox), "-f", "ingestion/noxfile.py", "-s", "install", "--", profile, cwd=nox_repo))
+    for path in [
+        nox_repo / "env",
+        *[nox_repo / "ingestion/.nox" / name for name in ("bootstrap", "generation", "style", "coverage")],
+    ]:
+        assert not (path / "bin/uv").exists()
+        assert_success(
+            run(
+                str(path / "bin/python"),
+                "-I",
+                "-c",
+                "from importlib.metadata import distributions; assert not any(d.metadata['Name'].lower() == 'uv' for d in distributions())",
+                cwd=nox_repo,
+            )
+        )
+    assert uv.stat().st_mtime_ns == installed
+
+
+def test_explicit_uv_version_is_checked_before_nox_bootstrap(tooling_repo: Path, monkeypatch) -> None:
+    executable = tooling_repo / "wrong-uv"
+    executable.write_text(f'#!{sys.executable}\nprint("uv 0.0.0")\n')
+    executable.chmod(0o755)
+    monkeypatch.setenv("OM_UV_EXECUTABLE", str(executable))
+
+    result = run("make", "python_tools", cwd=tooling_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "OM_UV_EXECUTABLE must point to uv 0.13.4" in result.stderr
+    assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
+
+
+def test_changed_uv_pin_rejects_the_previous_executable(tooling_repo: Path, monkeypatch) -> None:
+    config = tooling_repo / "ingestion/pyproject.toml"
+    config.write_text(config.read_text().replace('required-version = "==0.13.4"', 'required-version = "==0.0.0"'))
+    monkeypatch.setenv("OM_UV_EXECUTABLE", shutil.which("uv"))
+    monkeypatch.setenv("GITHUB_ACTIONS", "true")
+
+    result = run("make", "python_tools", cwd=tooling_repo)
+
+    assert result.returncode != 0, result.stdout + result.stderr
+    assert "must point to uv 0.0.0" in result.stderr
+    assert not (tooling_repo / "ingestion/.nox/bootstrap").exists()
+
+
+def test_application_environment_uv_is_not_selected_for_exact_sync(nox_repo: Path, monkeypatch) -> None:
+    environment = nox_repo / "env"
+    assert_success(run(sys.executable, "-m", "venv", str(environment), cwd=nox_repo))
+    sentinel = nox_repo / "application-uv-used"
+    executable = environment / "bin/uv"
+    executable.write_text(
+        f"#!{sys.executable}\nfrom pathlib import Path\nPath({str(sentinel)!r}).touch()\nprint('uv 0.13.4')\n"
+    )
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(environment / "bin") + os.pathsep + os.environ["PATH"])
+
+    assert_success(run("make", "install_test", cwd=nox_repo))
+
+    assert not sentinel.exists()
 
 
 def test_tool_profile_does_not_prune_application_dependencies(nox_repo: Path, monkeypatch) -> None:

@@ -90,7 +90,7 @@ generation = [
 
 coverage = [{ include-group = "bootstrap" }, "coverage[toml]"]
 
-bootstrap = ["pip", "uv==0.13.4", "tomli>=2; python_version < '3.11'"]
+bootstrap = ["pip", "tomli>=2; python_version < '3.11'"]
 
 dialect-compat = ["sqlalchemy-ibmi==0.9.3"]
 

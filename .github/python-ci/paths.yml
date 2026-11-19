@@ -21,7 +21,9 @@ python:
   - .github/actions/build-backend/**
   - .github/actions/python-*/**
   - .github/actions/report-test-results/**
+  - .github/actions/setup-uv/**
   - scripts/python_ci.py
+  - scripts/python_tools.py
   - .github/scripts/python_ci_diagnostics.sh
   - .github/scripts/classify_test_outcome.py
   - .github/scripts/tests/test_python_ci.py

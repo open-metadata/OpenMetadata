@@ -205,8 +205,9 @@ def test_fixture_fingerprint_ignores_consumer_setup_but_tracks_seeding(
     write(tmp_path, config, "export default { retries: 2, grepInvert: /@quarantine/ };")
     assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
 
-    write(tmp_path, python_setup, "name: Prepare Python test environment\n")
-    assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
+    for path in (python_setup, ".github/actions/setup-uv/action.yml", "scripts/python_tools.py"):
+        write(tmp_path, path, "changed Python preparation\n")
+        assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
 
     write(tmp_path, setup, "const adminFile = 'playwright/.auth/root.json';")
     assert fingerprints.fingerprint("fixture", root=tmp_path) != initial

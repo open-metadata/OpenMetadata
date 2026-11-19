@@ -34,6 +34,9 @@ runs:
     - name: Build backend
       if: inputs.is_ingestion == 'false'
       uses: ./.github/actions/build-backend
+    - name: Install uv
+      if: inputs.is_ingestion == 'true'
+      uses: ./.github/actions/setup-uv
     - name: Install OpenMetadata Ingestion Dependencies
       if: inputs.is_ingestion == 'true'
       shell: bash
