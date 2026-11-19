@@ -1,11 +1,13 @@
 # An event-triggered workflow run judges the change its event made
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-05 (the redeploy runs in the 2.0.8 migration)
+- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-05 (the redeploy runs in the 2.0.8 migration) · v3 2026-11-19 (the node judges a missing change by the event type)
 - **Deciders:** yan-3005
 - **Guard:** `FilterEntityImplTest#eventPath_judgesTheChangeOfTheVersionTheEventProduced`,
-  `WorkflowRedeployEntryPointTest`
-- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v208)
+  `WorkflowRedeployEntryPointTest`,
+  `CheckChangeDescriptionTaskImplTest#updateThatLeftNoChange_evaluatesFalse`
+- **Related:** `TriggeringChange`, `WorkflowRedeployMigration` (v208),
+  `WorkflowEventTypeRedeployMigration` (v209)
 
 ## Context
 
@@ -46,3 +48,16 @@ previous release train for SQL only. Their workflows keep their deployment until
 again, and the trigger filter uses the event's version meanwhile. The step reads workflow
 definitions and deploys to Flowable, and touches nothing the 2.1.0 schema changes add. A workflow
 that fails to redeploy is logged at error and keeps its deployment until it is saved again.
+
+v3 2026-11-19: the trigger filter treats a missing change as a create only for a `Created` event
+or a run that carries no event type (`global_triggeringEventType`), but the
+`checkChangeDescription` node still treated every missing change as a create. The filter can read
+the entity at the version an edit produced, and the node, once the edit is undone within its
+session, reads the reverted entity with no change and no history for that version. The node then
+routed true, a tag-gated approval opened a task, and the run waited on it.
+
+The trigger now passes the event type to the main workflow as well, and the node applies the
+filter's rule (`TriggeringChange.mayCarryNoChange`). The node's BPMN changes, so the 2.0.9 migration
+redeploys every governance workflow once more (`WorkflowEventTypeRedeployMigration`), the same step
+on `main` and `2.0`. An upgrade from 2.0.7 or earlier redeploys twice, once in 2.0.8 and once in
+2.0.9; each pass redeploys a few tens of definitions.
