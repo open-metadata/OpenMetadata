@@ -509,10 +509,25 @@ public class TagLabelUtil {
    * while glossary tag propagation is off, so a write accepted then stays valid when it is back on.
    */
   public static void checkMutuallyExclusiveForUserAppliedTags(List<TagLabel> tagLabels) {
+    checkMutuallyExclusiveForUserAppliedTags(tagLabels, fetchImpliedTags(tagLabels));
+  }
+
+  /**
+   * As {@link #checkMutuallyExclusiveForUserAppliedTags(List)}, with the implied tags fetched once,
+   * by {@link #fetchImpliedTags}, for many label lists.
+   */
+  public static void checkMutuallyExclusiveForUserAppliedTags(
+      List<TagLabel> tagLabels, Map<String, List<TagLabel>> impliedTags) {
     List<TagLabel> userApplied =
         listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList();
-    checkMutuallyExclusive(
-        addDerivedTagsWithPreFetched(userApplied, batchFetchDerivedTags(userApplied, true)));
+    checkMutuallyExclusive(addDerivedTagsWithPreFetched(userApplied, impliedTags));
+  }
+
+  /** The tags the glossary terms among {@code tagLabels} imply, whatever the propagation setting. */
+  public static Map<String, List<TagLabel>> fetchImpliedTags(List<TagLabel> tagLabels) {
+    List<TagLabel> userApplied =
+        listOrEmpty(tagLabels).stream().filter(tag -> !isSystemGenerated(tag)).toList();
+    return batchFetchDerivedTags(userApplied, true);
   }
 
   public static void checkMutuallyExclusive(List<TagLabel> tagLabels) {

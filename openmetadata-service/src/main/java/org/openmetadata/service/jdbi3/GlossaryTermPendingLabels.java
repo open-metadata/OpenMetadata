@@ -14,6 +14,7 @@ package org.openmetadata.service.jdbi3;
 
 import static java.util.stream.Collectors.joining;
 
+import io.dropwizard.lifecycle.Managed;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,9 +22,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.service.Entity;
@@ -37,30 +41,38 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * Shows a glossary term's pending labels once the term is approved
  * (ADR:2026-11-06-only-approved-glossary-terms-can-be-newly-applied-to-an-asset). A label is
  * pending when a write applied the term before it was Approved. Approval flips the term's pending
- * labels to Confirmed in batches, then refreshes the cache and the search document of every entity
- * holding one of their targets. Each batch commits on its own, so a crash leaves only the rest of
- * the labels pending, and {@link #applyApproved} picks them up again.
+ * labels in batches, then refreshes the cache and the search document of every entity holding one
+ * of their targets.
+ *
+ * <p>Pending labels of an Approved term are shown again whenever they are found: a batch that
+ * fails is retried, a write that held the term while its approval committed checks the term once
+ * it commits, and the server sweeps for them when it starts, so neither a restart nor that race
+ * leaves a label hidden.
  */
 @Slf4j
-public final class GlossaryTermPendingLabels {
+public final class GlossaryTermPendingLabels implements Managed {
   static final int BATCH_SIZE = 500;
+  static final int MAX_ATTEMPTS = 3;
+  static final long RETRY_DELAY_SECONDS = 60;
+  static final int SWEEP_LIMIT = 10_000;
+  // Bounds hashes x probed tables, which become bind variables of one query.
+  static final int MAX_PROBE_BINDINGS = 20_000;
   private static final int GLOSSARY = TagLabel.TagSource.GLOSSARY.ordinal();
 
-  private GlossaryTermPendingLabels() {}
+  /** Sweeps for pending labels of Approved terms once the server is up. */
+  @Override
+  public void start() {
+    AsyncService.getInstance().getExecutorService().submit(GlossaryTermPendingLabels::sweep);
+  }
 
-  /** Shows the term's pending labels in the background, after the approval commits. */
+  @Override
+  public void stop() {
+    // The sweep runs once on the shared executor, which the server stops.
+  }
+
+  /** Shows the term's pending labels in the background, retrying batches that fail. */
   public static void showWhenApproved(GlossaryTerm term) {
-    String termFqn = term.getFullyQualifiedName();
-    AsyncService.getInstance()
-        .getExecutorService()
-        .submit(
-            () -> {
-              try {
-                applyApproved(termFqn);
-              } catch (RuntimeException e) {
-                LOG.error("Could not show the pending labels of glossary term {}", termFqn, e);
-              }
-            });
+    schedule(term.getFullyQualifiedName(), 1, 0);
   }
 
   /** Drops the term's pending labels: a rejected term is never shown on them. */
@@ -71,43 +83,103 @@ public final class GlossaryTermPendingLabels {
   }
 
   /**
-   * Shows every pending label of the term, batch by batch, and returns how many it showed. A label
-   * that would be mutually exclusive with a term its target already shows stays pending.
+   * Shows the pending labels of any of {@code termFqns} that is Approved by now. A write calls this
+   * after it commits the labels it held, so a term approved while the write ran is not missed.
    */
-  public static int applyApproved(String termFqn) {
+  public static void showIfApproved(Set<String> termFqns) {
+    if (!termFqns.isEmpty()) {
+      TagLabelUtil.getGlossaryTerms(List.copyOf(termFqns)).stream()
+          .filter(term -> term.getEntityStatus() == EntityStatus.APPROVED)
+          .forEach(GlossaryTermPendingLabels::showWhenApproved);
+    }
+  }
+
+  /** Shows the pending labels of every Approved term that still has some. */
+  static void sweep() {
+    try {
+      List<String> termFqns = dao().listPendingTermFqns(GLOSSARY, SWEEP_LIMIT);
+      showIfApproved(new HashSet<>(termFqns));
+      LOG.info("Checked {} glossary terms with pending labels", termFqns.size());
+    } catch (RuntimeException e) {
+      LOG.error("Could not sweep pending glossary term labels", e);
+    }
+  }
+
+  private static void schedule(String termFqn, int attempt, long delaySeconds) {
+    CompletableFuture.runAsync(
+        () -> apply(termFqn, attempt),
+        CompletableFuture.delayedExecutor(
+            delaySeconds, TimeUnit.SECONDS, AsyncService.getInstance().getExecutorService()));
+  }
+
+  private static void apply(String termFqn, int attempt) {
+    boolean complete;
+    try {
+      complete = applyApproved(termFqn).complete();
+    } catch (RuntimeException e) {
+      LOG.error("Could not show the pending labels of glossary term {}", termFqn, e);
+      complete = false;
+    }
+    if (!complete && attempt < MAX_ATTEMPTS) {
+      schedule(termFqn, attempt + 1, RETRY_DELAY_SECONDS);
+    }
+  }
+
+  /** How many pending labels a pass showed, and whether every batch went through. */
+  public record Outcome(int shown, boolean complete) {}
+
+  /**
+   * Shows every pending label of the term, batch by batch. A batch that fails is left pending for a
+   * retry; a label that would be mutually exclusive with a term its target already shows stays
+   * pending.
+   */
+  public static Outcome applyApproved(String termFqn) {
     TagLabel label = termLabel(termFqn);
     String termHash = FullyQualifiedName.buildHash(termFqn);
     int shown = 0;
+    boolean complete = true;
     String after = "";
     List<String> targets = dao().listPendingTargetHashes(GLOSSARY, termHash, after, BATCH_SIZE);
     while (!targets.isEmpty()) {
-      shown += showBatch(termHash, label, targets);
+      try {
+        shown += showBatch(termHash, label, targets);
+      } catch (RuntimeException e) {
+        complete = false;
+        LOG.warn("Could not show a batch of glossary term {}; it stays pending", termFqn, e);
+      }
       after = targets.getLast();
       targets = dao().listPendingTargetHashes(GLOSSARY, termHash, after, BATCH_SIZE);
     }
     LOG.info("Showed {} pending labels of approved glossary term {}", shown, termFqn);
-    return shown;
+    return new Outcome(shown, complete);
   }
 
+  // Holders are resolved before the flip, so a batch whose holders cannot be found stays pending
+  // rather than showing labels on entities whose cache and search document are not refreshed.
   private static int showBatch(String termHash, TagLabel label, List<String> targets) {
     List<String> showable = withoutExclusiveConflicts(label, targets);
+    Set<TargetHolder> holders = showable.isEmpty() ? Set.of() : holders(showable);
     int shown = showable.isEmpty() ? 0 : dao().confirmPending(GLOSSARY, termHash, showable);
     if (shown > 0) {
-      refreshHolders(showable);
+      refreshHolders(holders);
     }
     return shown;
   }
 
-  // The term joins the labels each target already shows; a target where they would be mutually
-  // exclusive keeps the label pending, as a write applying it there would be refused.
+  // The term joins the labels each target already shows, with the tags those terms imply, as a
+  // write applying it would be checked; a target where they would be mutually exclusive keeps the
+  // label pending. Implied tags are fetched once for the batch.
   private static List<String> withoutExclusiveConflicts(TagLabel label, List<String> targets) {
     Map<String, List<TagLabel>> shownByTarget = dao().getTagsByTargetFQNHashes(targets);
+    List<TagLabel> allLabels = new ArrayList<>(List.of(label));
+    shownByTarget.values().forEach(allLabels::addAll);
+    Map<String, List<TagLabel>> implied = TagLabelUtil.fetchImpliedTags(allLabels);
     List<String> showable = new ArrayList<>();
     for (String target : targets) {
       List<TagLabel> labels = new ArrayList<>(shownByTarget.getOrDefault(target, List.of()));
       labels.add(label);
       try {
-        TagLabelUtil.checkMutuallyExclusive(labels);
+        TagLabelUtil.checkMutuallyExclusiveForUserAppliedTags(labels, implied);
         showable.add(target);
       } catch (IllegalArgumentException conflict) {
         LOG.warn("Kept glossary term {} pending on {}: {}", label.getTagFQN(), target, conflict);
@@ -118,8 +190,8 @@ public final class GlossaryTermPendingLabels {
 
   // Entities are cached, and indexed for search, with their labels, so each one holding a target
   // that now shows the term is evicted and indexed again.
-  private static void refreshHolders(List<String> targetHashes) {
-    for (TargetHolder holder : holders(targetHashes)) {
+  private static void refreshHolders(Set<TargetHolder> holders) {
+    for (TargetHolder holder : holders) {
       try {
         EntityReference ref =
             Entity.getEntityReferenceById(holder.entityType(), holder.id(), Include.ALL);
@@ -134,7 +206,8 @@ public final class GlossaryTermPendingLabels {
 
   /**
    * The entities whose FQN hash is a target's hash or one of its prefixes: the entity a label is on,
-   * or the one whose field it is on. Two entity types can share an FQN; both are refreshed.
+   * or the one whose field it is on. Two entity types can share an FQN; both are refreshed. The
+   * hashes are probed in chunks, so a query never binds more than {@link #MAX_PROBE_BINDINGS}.
    */
   static Set<TargetHolder> holders(List<String> targetHashes) {
     Set<String> hashes = new HashSet<>();
@@ -143,11 +216,24 @@ public final class GlossaryTermPendingLabels {
           hashes.add(hash);
           hashes.addAll(FqnKeyedRowCleanup.properPrefixes(hash));
         });
+    Map<HolderTable, String> tables = holderTables();
+    Set<TargetHolder> holders = new HashSet<>();
+    if (!tables.isEmpty()) {
+      int chunkSize = Math.max(1, MAX_PROBE_BINDINGS / tables.size());
+      List<String> all = List.copyOf(hashes);
+      for (int start = 0; start < all.size(); start += chunkSize) {
+        holders.addAll(probe(tables, all.subList(start, Math.min(start + chunkSize, all.size()))));
+      }
+    }
+    return holders;
+  }
+
+  private static List<TargetHolder> probe(Map<HolderTable, String> tables, List<String> hashes) {
     Map<String, String> bindings = new LinkedHashMap<>();
     hashes.forEach(hash -> bindings.put("h" + bindings.size(), hash));
     String inList = bindings.keySet().stream().map(name -> ":" + name).collect(joining(", "));
     String probes =
-        holderTables().entrySet().stream()
+        tables.entrySet().stream()
             .map(
                 table ->
                     "(SELECT '%s' AS entityType, id, %s AS hash FROM %s WHERE %s IN (%s))"
@@ -158,7 +244,7 @@ public final class GlossaryTermPendingLabels {
                             table.getKey().hashColumn(),
                             inList))
             .collect(joining(" UNION ALL "));
-    return probes.isEmpty() ? Set.of() : new HashSet<>(dao().listTargetHolders(probes, bindings));
+    return dao().listTargetHolders(probes, bindings);
   }
 
   private record HolderTable(String name, String hashColumn) {}

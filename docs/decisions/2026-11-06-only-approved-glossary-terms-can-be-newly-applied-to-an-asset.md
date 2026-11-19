@@ -83,13 +83,21 @@ import, data model, bulk re-store) keep pending rows; a client never sees a pend
 cannot remove one.
 
 When the term moves to Approved, `GlossaryTermPendingLabels` flips its pending rows in batches of
-500, after the approval commits: an automated label, as ingestion sends, comes back Suggested and
-any other comes back Confirmed. Each batch then evicts and reindexes the entities holding those
-targets, found by FQN hash in the taggable entity tables. The asset gets no new version or change
-event for the term. A target where the term would be mutually exclusive with a term it shows keeps
-the label pending. When the term is rejected, its pending rows are deleted.
+500, after the term is stored (`GlossaryTermRepository.postUpdate`, so a bulk update's status
+change is acted on only once it is saved): an automated label, as ingestion sends, comes back
+Suggested and any other comes back Confirmed. Each batch first finds the entities holding its
+targets, by FQN hash in the taggable entity tables in bounded chunks, then flips the rows and
+evicts and reindexes those entities. The asset gets no new version or change event for the term.
+A target where the term would be mutually exclusive with a term it shows, counting the tags those
+terms imply, keeps the label pending. When the term is rejected, its pending rows are deleted.
+
+Pending labels of an Approved term are shown again whenever they are found. A batch that fails is
+retried, up to three times. A write that held a term checks the term once the write commits, so a
+term approved while the write ran is not missed. The server sweeps for them when it starts, so a
+restart does not leave them hidden.
 
 The approval gate no longer refuses such an edit when it is staged (v2): the edit is reviewed like
 any other, and when it is published the term is held back as above. dbt no longer skips a term
-that is not Approved (#37256); the server holds it. CSV import keeps its per-row refusal. Labels a
+that is not Approved (#37256); the server holds it. CSV import, of entities and of columns, keeps
+its per-row refusal. Labels a
 term already had before this change are left as they are.

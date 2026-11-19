@@ -6502,7 +6502,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         stored == null ? null : new TaggedEntity(stored, taggedFieldContainers(stored)));
   }
 
-  /** Stores held terms as pending labels, which no tag read returns until the term is approved. */
+  /**
+   * Stores held terms as pending labels, which no tag read returns until the term is approved. Once
+   * the write commits, a term approved while it ran is shown: its approval may have finished before
+   * these labels existed.
+   */
   final void storePendingGlossaryTerms(List<HeldTerm> heldTerms) {
     if (!heldTerms.isEmpty()) {
       Map<String, List<TagLabel>> labelsByTarget = new HashMap<>();
@@ -6512,6 +6516,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   .computeIfAbsent(held.targetFqn(), target -> new ArrayList<>())
                   .add(ApprovedGlossaryTermGuard.pendingLabel(held.label())));
       daoCollection.tagUsageDAO().applyTagsBatchMultiTarget(labelsByTarget);
+      Set<String> termFqns = new HashSet<>();
+      heldTerms.forEach(held -> termFqns.add(held.label().getTagFQN()));
+      PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showIfApproved(termFqns));
     }
   }
 

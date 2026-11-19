@@ -709,6 +709,13 @@ public interface ClassificationTagDAOs {
         @Bind("tagFQNHash") String tagFQNHash,
         @BindList("targetFQNHashes") List<String> targetFQNHashes);
 
+    /** The terms that have pending labels, up to {@code limit}. */
+    @SqlQuery(
+        "SELECT DISTINCT tagFQN FROM tag_usage WHERE source = :source AND state = "
+            + PENDING_STATE
+            + " LIMIT :limit")
+    List<String> listPendingTermFqns(@Bind("source") int source, @Bind("limit") int limit);
+
     /** Drops a term's pending labels, when the term is rejected. */
     @SqlUpdate(
         "DELETE FROM tag_usage WHERE source = :source AND tagFQNHash = :tagFQNHash AND state = "

@@ -2141,6 +2141,24 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     super.postCreate(entity);
   }
 
+  /**
+   * Labels applied while the term waited for approval are shown once it is approved and dropped
+   * once it is rejected. This runs after the term is stored, on every update path, bulk included,
+   * so neither happens for a status change that was never saved.
+   */
+  @Override
+  protected void postUpdate(GlossaryTerm original, GlossaryTerm updated) {
+    super.postUpdate(original, updated);
+    EntityStatus to = updated.getEntityStatus();
+    if (to != null && to != original.getEntityStatus()) {
+      if (to == EntityStatus.APPROVED) {
+        PostCommitActionQueue.runOrDefer(() -> GlossaryTermPendingLabels.showWhenApproved(updated));
+      } else if (to == EntityStatus.REJECTED) {
+        GlossaryTermPendingLabels.dropRejected(updated);
+      }
+    }
+  }
+
   @Override
   protected void postDelete(GlossaryTerm entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
@@ -2599,22 +2617,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
       restrictAutomationProviderChange();
-      settlePendingLabels();
-    }
-
-    // Labels applied while the term waited for approval are shown once it is approved, after the
-    // approval commits, and dropped once it is rejected.
-    private void settlePendingLabels() {
-      EntityStatus to = updated.getEntityStatus();
-      if (to != null && to != original.getEntityStatus()) {
-        if (to == EntityStatus.APPROVED) {
-          GlossaryTerm approved = updated;
-          PostCommitActionQueue.runOrDefer(
-              () -> GlossaryTermPendingLabels.showWhenApproved(approved));
-        } else if (to == EntityStatus.REJECTED) {
-          GlossaryTermPendingLabels.dropRejected(updated);
-        }
-      }
     }
 
     /**

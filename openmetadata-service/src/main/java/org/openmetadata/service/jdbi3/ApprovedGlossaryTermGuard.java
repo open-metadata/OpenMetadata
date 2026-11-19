@@ -127,10 +127,12 @@ public final class ApprovedGlossaryTermGuard {
     return JsonUtils.deepCopy(label, TagLabel.class).withState(TagLabel.State.PENDING);
   }
 
-  private static boolean appliesAnyOf(List<TagLabel> tags, Set<String> termHashes) {
-    return TagLabelUtil.appliedGlossaryTermFqns(tags).stream()
-        .map(ApprovedGlossaryTermGuard::termHash)
-        .anyMatch(termHashes::contains);
+  /** Whether {@code tags} apply any of the terms {@code termHashes} names. */
+  public static boolean appliesAnyOf(List<TagLabel> tags, Set<String> termHashes) {
+    return termHashes != null
+        && TagLabelUtil.appliedGlossaryTermFqns(tags).stream()
+            .map(ApprovedGlossaryTermGuard::termHash)
+            .anyMatch(termHashes::contains);
   }
 
   // A target's labels are replaced through its holder, so a list the holder exposes read-only is
