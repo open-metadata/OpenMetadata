@@ -29,6 +29,8 @@ jobs:
   py-integration-tests:
     name: Integration Tests (${{ matrix.database.name }}, ${{ matrix.shard.name }}, ${{ inputs.python-version }})
     timeout-minutes: 180
+    env:
+      PYTHON_VERSIONS: ${{ inputs.python-version }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -100,7 +102,7 @@ jobs:
           TESTCONTAINERS_RYUK_DISABLED: 'true'
         with:
           suite: integration
-          nox-args: ${{ matrix.shard.nox-args }}
+          nox-args: --standalone --durations=5 ${{ matrix.shard.nox-args }}
           test-profile: ${{ matrix.database.test-profile }}
           artifact-name: py-${{ matrix.database.name }}-integration-test-results-${{ matrix.shard.name }}-${{ inputs.python-version }}
           collect-coverage: ${{ inputs.collect-coverage }}

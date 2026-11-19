@@ -1,11 +1,11 @@
-name: Run a Nox suite and upload its classified results
-description: Run a Nox suite and upload its classified results
+name: Python tests
+description: Run a Nox test suite, retain its exit code, and upload results.
 inputs:
   suite:
     description: suite
     required: true
   nox-args:
-    description: nox-args
+    description: Whitespace-separated pytest arguments forwarded to Nox.
     default: ''
   test-profile:
     description: test-profile
@@ -30,7 +30,12 @@ runs:
       run: |
         source env/bin/activate
         cd ingestion
-        python ../.github/scripts/run_python_suite.py "$SUITE" --nox-args="$NOX_ARGS"
+        read -r -a args <<< "$NOX_ARGS"
+        set +e
+        nox --no-venv -s "${SUITE}-tests" -- "${args[@]}" 2>&1 | tee "${SUITE}-test-run.log"
+        test_exit_code=${PIPESTATUS[0]}
+        echo "$test_exit_code" > "${SUITE}-test-exit-code.txt"
+        exit "$test_exit_code"
       shell: bash
     - name: Classify Python suite outcome
       if: ${{ always() }}

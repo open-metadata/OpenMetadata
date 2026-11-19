@@ -263,7 +263,7 @@ def lint(session):
             "python_ci.py",
         )
     )
-    sources.extend(str(ROOT / ".github/scripts" / name) for name in ("run_python_suite.py", "tests/test_python_ci.py"))
+    sources.extend(str(ROOT / ".github/scripts" / name) for name in ("tests/test_python_ci.py",))
     session.run(
         str(python.parent / "ruff"),
         "check",
@@ -406,6 +406,61 @@ def integration_tests(session):
     pytest_args.extend(args)
 
     session.run(str(python.parent / "pytest"), *pytest_args)
+
+
+@nox.session(name="cli-e2e", python=False, default=False)
+def cli_e2e(session):
+    """Run one connector's CLI tests with parent and subprocess coverage."""
+    if len(session.posargs) != 1:
+        session.error("Pass one connector name after --")
+    connector = session.posargs[0]
+    test = INGESTION_ROOT / "tests/cli_e2e" / f"test_cli_{connector}.py"
+    if not test.is_file():
+        session.error(f"Unknown CLI E2E connector: {connector}")
+    python = prepare(session, "test-classification")
+    site_packages = session.run(
+        str(python), "-c", "import site; print(site.getsitepackages()[0])", silent=True, external=True
+    ).strip()
+    startup = Path(site_packages) / "sitecustomize.py"
+    hook = '\nimport os\nif os.environ.get("COVERAGE_PROCESS_START"):\n    import coverage\n    coverage.process_startup()\n'
+    existing = startup.read_text() if startup.exists() else ""
+    if hook not in existing:
+        startup.write_text(existing + hook)
+    environment = {name: value for name, value in {**os.environ, **session.env}.items() if value is not None}
+    coverage_environment = {
+        **environment,
+        "COVERAGE_PROCESS_START": str(INGESTION_ROOT / "pyproject.toml"),
+        "COVERAGE_FILE": str(INGESTION_ROOT / f".coverage.{connector}"),
+    }
+    result = subprocess.run(
+        [
+            str(python),
+            "-m",
+            "coverage",
+            "run",
+            "--rcfile=pyproject.toml",
+            "--branch",
+            "-m",
+            "pytest",
+            "-c",
+            "pyproject.toml",
+            f"--junitxml=junit/test-results-{connector}.xml",
+            str(test),
+        ],
+        cwd=INGESTION_ROOT,
+        env=coverage_environment,
+        check=False,
+    )
+    (INGESTION_ROOT / "cli-e2e-test-exit-code.txt").write_text(f"{result.returncode}\n")
+    for command in ("combine", "report"):
+        subprocess.run(
+            [str(python), "-m", "coverage", command, f"--data-file=.coverage.{connector}", "--rcfile=pyproject.toml"],
+            cwd=INGESTION_ROOT,
+            env=environment,
+            check=False,
+        )
+    if result.returncode:
+        session.error(f"CLI E2E tests exited with code {result.returncode}")
 
 
 # ---------------------------------------------------------------------------

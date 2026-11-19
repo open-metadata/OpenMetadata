@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-"""Select Python CI workloads and verify their aggregate job results."""
+"""Read Python CI inputs and verify the job results declared by the caller."""
 
 import argparse
 import json
@@ -17,75 +17,45 @@ import os
 import sys
 from pathlib import Path
 
-from prepare_classification_models import test_matrix
-
-DEFAULT_CONNECTORS = (
-    "bigquery",
-    "dbt_redshift",
-    "metabase",
-    "mssql",
-    "mysql",
-    "redash",
-    "snowflake",
-    "tableau",
-    "redshift",
-    "quicksight",
-    "datalake_s3",
-    "postgres",
-    "oracle",
-    "athena",
-    "bigquery_multiple_project",
-    "exasol",
-    "powerbi",
-)
-EVENTS = {"pr": "pull_request", "merge-queue": "merge_group", "nightly": "schedule"}
+from prepare_classification_models import python_matrix
 
 
-def plan(
-    project: Path,
-    flow: str,
-    python_changed: bool,
-    static_changed: bool,
-    connectors: str,
-) -> dict:
-    """Resolve the selected workload and interpreter matrix."""
-    selection = test_matrix(project, EVENTS[flow])
-    selected = list(DEFAULT_CONNECTORS) if not connectors else json.loads(connectors)
-    if (
-        not isinstance(selected, list)
-        or not selected
-        or any(not isinstance(name, str) or name not in DEFAULT_CONNECTORS for name in selected)
-        or len(selected) != len(set(selected))
-    ):
-        raise ValueError("Connectors must be a nonempty, distinct subset of the nightly connector list")
+def versions(project: Path) -> dict:
+    """Read supported interpreters and their numeric boundaries."""
+    matrix = python_matrix(project)
+    supported = matrix["python-versions"]
     return {
-        **selection,
-        "python": python_changed,
-        "static": python_changed or static_changed,
-        "connectors": selected if flow == "nightly" else [],
+        "versions": supported,
+        "lowest": min(supported, key=lambda v: tuple(map(int, v.split(".")))),
+        "highest": matrix["discovery-python"],
     }
 
 
-def verify(flow: str, needs: dict) -> None:
-    """Require successful selected work and explicit skips for unselected work."""
-    if needs.get("plan", {}).get("result") != "success":
-        raise ValueError("Python workload selection did not succeed")
-    outputs = needs["plan"]["outputs"]
-    if outputs.get("python") not in ("true", "false") or outputs.get("static") not in (
-        "true",
-        "false",
-    ):
-        raise ValueError("Python workload selection produced invalid outputs")
-    selected = outputs["python"] == "true"
-    expected = {"models": selected, "unit": selected}
-    if flow != "pr":
-        expected.update(backend=selected, integration=selected)
-    if flow == "nightly":
-        expected["cli-e2e"] = selected
-    expected["py-checkstyle"] = True
-    for job, required in expected.items():
-        result = needs.get(job, {}).get("result")
-        wanted = "success" if required else "skipped"
+def connectors(defaults: str, selected: str) -> dict:
+    """Validate a distinct subset of the caller's connector list."""
+    available = json.loads(defaults)
+    chosen = json.loads(selected) if selected else available
+    for names in (available, chosen):
+        if (
+            not isinstance(names, list)
+            or not names
+            or any(not isinstance(name, str) or not name for name in names)
+            or len(names) != len(set(names))
+        ):
+            raise ValueError("Connectors must be a nonempty list of distinct names")
+    if not set(chosen).issubset(available):
+        raise ValueError("Selected connectors must be a subset of the default list")
+    return {"connectors": chosen}
+
+
+def verify(needs: dict, expected: dict) -> None:
+    """Require exactly the job results declared by the caller."""
+    if not expected or set(needs) != set(expected):
+        raise ValueError("Expected results must cover every dependency exactly")
+    for job, wanted in expected.items():
+        if wanted not in ("success", "skipped"):
+            raise ValueError(f"Invalid expected result for {job}: {wanted}")
+        result = needs[job].get("result")
         if result != wanted:
             raise ValueError(f"Expected {job}={wanted}, received {result}")
 
@@ -93,34 +63,29 @@ def verify(flow: str, needs: dict) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    planning = commands.add_parser("plan")
-    planning.add_argument("--flow", choices=EVENTS, required=True)
-    planning.add_argument("--project", type=Path, default=Path("ingestion"))
-    planning.add_argument("--python-changed", choices=("true", "false"), required=True)
-    planning.add_argument("--static-changed", choices=("true", "false"), required=True)
-    planning.add_argument("--connectors", default="")
-    planning.add_argument("--output", type=Path)
-    verification = commands.add_parser("verify")
-    verification.add_argument("--flow", choices=EVENTS, required=True)
+    interpreters = commands.add_parser("versions")
+    interpreters.add_argument("--project", type=Path, default=Path("ingestion"))
+    interpreters.add_argument("--output", type=Path)
+    selection = commands.add_parser("connectors")
+    selection.add_argument("--output", type=Path)
+    commands.add_parser("verify")
     args = parser.parse_args()
     try:
         if args.command == "verify":
-            verify(args.flow, json.loads(os.environ["NEEDS_JSON"]))
+            verify(json.loads(os.environ["NEEDS_JSON"]), json.loads(os.environ["EXPECTED_RESULTS"]))
+            return
+        selected = (
+            versions(args.project)
+            if args.command == "versions"
+            else connectors(os.environ["DEFAULT_CONNECTORS"], os.environ.get("SELECTED_CONNECTORS", ""))
+        )
+        if args.output:
+            with args.output.open("a") as stream:
+                for key, value in selected.items():
+                    rendered = value if isinstance(value, str) else json.dumps(value, separators=(",", ":"))
+                    stream.write(f"{key}={rendered}\n")
         else:
-            selected = plan(
-                args.project,
-                args.flow,
-                args.python_changed == "true",
-                args.static_changed == "true",
-                args.connectors,
-            )
-            if args.output:
-                with args.output.open("a") as stream:
-                    for key, value in selected.items():
-                        rendered = value if isinstance(value, str) else json.dumps(value, separators=(",", ":"))
-                        stream.write(f"{key}={rendered}\n")
-            else:
-                sys.stdout.write(json.dumps(selected) + "\n")
+            sys.stdout.write(json.dumps(selected) + "\n")
     except (ValueError, KeyError) as error:
         parser.exit(1, f"{error}\n")
 

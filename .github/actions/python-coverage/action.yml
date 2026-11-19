@@ -1,4 +1,4 @@
-name: Collect and normalize nightly Python coverage and JUnit reports
+name: Python coverage
 description: Collect and normalize nightly Python coverage and JUnit reports
 inputs:
   python-version:

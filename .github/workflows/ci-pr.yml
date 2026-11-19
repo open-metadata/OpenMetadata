@@ -28,38 +28,29 @@ jobs:
   plan:
     name: Select Python workloads
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
     outputs:
-      python: ${{ steps.plan.outputs.python }}
-      static: ${{ steps.plan.outputs.static }}
-      versions: ${{ steps.plan.outputs.versions }}
-      static-version: ${{ steps.plan.outputs.static-version }}
-      latest-version: ${{ steps.plan.outputs.latest-version }}
-      connectors: ${{ steps.plan.outputs.connectors }}
+      versions: ${{ steps.versions.outputs.versions }}
+      lowest: ${{ steps.versions.outputs.lowest }}
+      highest: ${{ steps.versions.outputs.highest }}
       ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      python: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' }}
+      static: ${{ github.event_name == 'workflow_dispatch' || steps.filter.outputs.python == 'true' || steps.filter.outputs.static == 'true' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
-          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          fetch-depth: 1
           filter: blob:none
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: filter
-        if: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
+        if: ${{ github.event_name == 'pull_request' }}
         with:
-          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: .github/python-ci/paths.yml
-      - name: Select Python workloads
-        id: plan
-        env:
-          PYTHON_CHANGED: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.python }}
-          STATIC_CHANGED: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.static }}
-          CONNECTORS: ''
-        run: |
-          python3 scripts/python_ci.py plan --flow pr \
-            --python-changed "$PYTHON_CHANGED" --static-changed "$STATIC_CHANGED" \
-            --connectors "$CONNECTORS" --output "$GITHUB_OUTPUT"
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+    if: ${{ !github.event.pull_request.draft }}
   py-checkstyle:
     name: py-checkstyle
     needs: plan
@@ -71,14 +62,29 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      - name: Run static checks
+      - name: Run formatting and lint
         if: ${{ needs.plan.outputs.static == 'true' }}
-        uses: ./.github/actions/python-static-checks
+        uses: ./.github/actions/python-lint
         with:
-          python-version: ${{ needs.plan.outputs.static-version }}
+          python-version: ${{ needs.plan.outputs.highest }}
       - name: Report skipped work
         if: ${{ needs.plan.outputs.static == 'false' }}
         run: echo "No relevant Python changes; static checks skipped." >> "$GITHUB_STEP_SUMMARY"
+  type-checks:
+    name: Python type checks
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - name: Run type checks
+        uses: ./.github/actions/python-static-checks
+        with:
+          python-version: ${{ needs.plan.outputs.lowest }}
+    if: ${{ needs.plan.outputs.python == 'true' }}
   models:
     needs: plan
     if: ${{ needs.plan.outputs.python == 'true' }}
@@ -98,7 +104,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python: ${{ fromJSON(needs.plan.outputs.versions) }}
+        python:
+          - ${{ needs.plan.outputs.highest }}
     uses: ./.github/workflows/py-unit.yml
     with:
       python-version: ${{ matrix.python }}
@@ -109,6 +116,7 @@ jobs:
     needs:
       - plan
       - py-checkstyle
+      - type-checks
       - models
       - unit
     if: ${{ always() && !github.event.pull_request.draft }}
@@ -121,4 +129,12 @@ jobs:
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python3 scripts/python_ci.py verify --flow pr
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "py-checkstyle": "success",
+              "type-checks": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "models": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}",
+              "unit": "${{ needs.plan.outputs.python == 'true' && 'success' || 'skipped' }}"
+            }
+        run: python3 scripts/python_ci.py verify

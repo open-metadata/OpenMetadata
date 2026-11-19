@@ -1,4 +1,4 @@
-name: Collect runner diagnostics and stop the test stack
+name: Diagnostics
 description: Collect runner diagnostics and stop the test stack
 inputs:
   artifact-name:

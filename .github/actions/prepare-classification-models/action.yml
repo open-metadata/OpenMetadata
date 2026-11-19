@@ -1,4 +1,4 @@
-name: Prepare classification models
+name: Classification models
 description: Sequentially restore or prepare all four declared model cache archives
 inputs:
   project:

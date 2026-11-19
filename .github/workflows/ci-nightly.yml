@@ -18,71 +18,69 @@ on:
       connectors:
         description: CLI E2E connectors as a JSON array (subset of the default list)
         type: string
-        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]'
+        default: &default-connectors '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]'
+env:
+  DEFAULT_CONNECTORS: *default-connectors
 permissions:
   contents: read
-  pull-requests: read
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 jobs:
   plan:
     name: Select Python workloads
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
     outputs:
-      python: ${{ steps.plan.outputs.python }}
-      static: ${{ steps.plan.outputs.static }}
-      versions: ${{ steps.plan.outputs.versions }}
-      static-version: ${{ steps.plan.outputs.static-version }}
-      latest-version: ${{ steps.plan.outputs.latest-version }}
-      connectors: ${{ steps.plan.outputs.connectors }}
-      ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      versions: ${{ steps.versions.outputs.versions }}
+      lowest: ${{ steps.versions.outputs.lowest }}
+      highest: ${{ steps.versions.outputs.highest }}
+      ref: ${{ github.sha }}
+      connectors: ${{ steps.connectors.outputs.connectors }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
-          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          fetch-depth: 1
           filter: blob:none
-      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
-        id: filter
-        if: ${{ github.event_name != 'workflow_dispatch' && github.event_name != 'schedule' }}
-        with:
-          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
-          filters: .github/python-ci/paths.yml
-      - name: Select Python workloads
-        id: plan
+      - name: Read Python versions
+        id: versions
+        run: python3 scripts/python_ci.py versions --output "$GITHUB_OUTPUT"
+      - name: Select connectors
+        id: connectors
         env:
-          PYTHON_CHANGED: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.python }}
-          STATIC_CHANGED: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.static }}
-          CONNECTORS: ${{ inputs.connectors }}
-        run: |
-          python3 scripts/python_ci.py plan --flow nightly \
-            --python-changed "$PYTHON_CHANGED" --static-changed "$STATIC_CHANGED" \
-            --connectors "$CONNECTORS" --output "$GITHUB_OUTPUT"
+          SELECTED_CONNECTORS: ${{ inputs.connectors }}
+        run: python3 scripts/python_ci.py connectors --output "$GITHUB_OUTPUT"
   py-checkstyle:
     name: py-checkstyle
     needs: plan
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
-      - if: ${{ needs.plan.outputs.static == 'true' }}
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      - name: Run static checks
-        if: ${{ needs.plan.outputs.static == 'true' }}
+      - name: Run formatting and lint
+        uses: ./.github/actions/python-lint
+        with:
+          python-version: ${{ needs.plan.outputs.highest }}
+  type-checks:
+    name: Python type checks
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ needs.plan.outputs.ref }}
+          persist-credentials: false
+      - name: Run type checks
         uses: ./.github/actions/python-static-checks
         with:
-          python-version: ${{ needs.plan.outputs.static-version }}
-      - name: Report skipped work
-        if: ${{ needs.plan.outputs.static == 'false' }}
-        run: echo "No relevant Python changes; static checks skipped." >> "$GITHUB_STEP_SUMMARY"
+          python-version: ${{ needs.plan.outputs.lowest }}
   models:
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -94,7 +92,6 @@ jobs:
   backend:
     name: Build Backend Distribution
     needs: plan
-    if: ${{ needs.plan.outputs.python == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -102,12 +99,21 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
-      - uses: ./.github/actions/python-backend
+      - uses: ./.github/actions/build-backend
+        with:
+          maven-args: -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
+      - name: Upload backend distribution
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
   unit:
     needs:
       - plan
       - models
-    if: ${{ needs.plan.outputs.python == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -117,13 +123,12 @@ jobs:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
       collect-coverage: true
-      run-e2e-meta: ${{ matrix.python == needs.plan.outputs.latest-version }}
+      run-e2e-meta: ${{ matrix.python == needs.plan.outputs.highest }}
   integration:
     needs:
       - plan
       - models
       - backend
-    if: ${{ needs.plan.outputs.python == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -144,7 +149,7 @@ jobs:
     uses: ./.github/workflows/py-cli-e2e-tests.yml
     secrets: inherit
     with:
-      python-version: ${{ needs.plan.outputs.latest-version }}
+      python-version: ${{ needs.plan.outputs.highest }}
       ref: ${{ needs.plan.outputs.ref }}
       connectors: ${{ needs.plan.outputs.connectors }}
   py-tests-status:
@@ -152,22 +157,34 @@ jobs:
     needs:
       - plan
       - py-checkstyle
+      - type-checks
       - models
       - backend
       - unit
       - integration
       - cli-e2e
-    if: ${{ always() && !github.event.pull_request.draft }}
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
-        run: python3 scripts/python_ci.py verify --flow nightly
+          EXPECTED_RESULTS: |
+            {
+              "plan": "success",
+              "py-checkstyle": "success",
+              "type-checks": "success",
+              "models": "success",
+              "backend": "success",
+              "unit": "success",
+              "integration": "success",
+              "cli-e2e": "success"
+            }
+        run: python3 scripts/python_ci.py verify
   sonar-cloud-coverage-upload:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -186,7 +203,7 @@ jobs:
       - name: Collect Python reports
         uses: ./.github/actions/python-coverage
         with:
-          python-version: ${{ needs.plan.outputs.latest-version }}
+          python-version: ${{ needs.plan.outputs.highest }}
       - name: Push Results to Sonar
         id: push-to-sonar
         continue-on-error: true
@@ -212,6 +229,7 @@ jobs:
     needs:
       - plan
       - py-checkstyle
+      - type-checks
       - models
       - backend
       - unit
@@ -233,5 +251,5 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; static: ${{ needs.py-checkstyle.result }}; models: ${{ needs.models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.unit.result }}; integrations: ${{ needs.integration.result }}; CLI E2E: ${{ needs.cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> Python CI nightly failed on `${{ github.ref_name }}`.\nSelection: ${{ needs.plan.result }}; lint: ${{ needs.py-checkstyle.result }}; types: ${{ needs.type-checks.result }}; models: ${{ needs.models.result }}; backend: ${{ needs.backend.result }}; units: ${{ needs.unit.result }}; integrations: ${{ needs.integration.result }}; CLI E2E: ${{ needs.cli-e2e.result }}; Sonar: ${{ needs.sonar-cloud-coverage-upload.result }}.\n${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }

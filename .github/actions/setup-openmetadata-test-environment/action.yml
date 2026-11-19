@@ -1,4 +1,4 @@
-name: Setup OpenMetadata Test Environment
+name: Test environment
 description: Steps needed to have a coherent test environment
 
 inputs:

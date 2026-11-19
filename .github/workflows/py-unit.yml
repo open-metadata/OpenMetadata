@@ -33,6 +33,8 @@ jobs:
   py-unit-tests:
     name: Unit Tests (${{ inputs.python-version }})
     timeout-minutes: 60
+    env:
+      PYTHON_VERSIONS: ${{ inputs.python-version }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

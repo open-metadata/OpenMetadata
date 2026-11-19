@@ -1,5 +1,5 @@
-name: Run connector E2E tests and collect subprocess coverage
-description: Run connector E2E tests and collect subprocess coverage
+name: Connector E2E
+description: Run a connector through Nox and upload its results and subprocess coverage.
 inputs:
   connector:
     description: connector
@@ -10,19 +10,23 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Run CLI E2E Python Tests & record coverage
+    - name: Run connector tests
       id: e2e-test
       shell: bash
       env:
         E2E_TEST: ${{ inputs.connector }}
-      run: bash .github/scripts/run_cli_e2e.sh
+      run: |
+        set -o pipefail
+        source env/bin/activate
+        cd ingestion
+        nox --no-venv -s cli-e2e -- "$E2E_TEST" 2>&1 | tee cli-e2e-test-run.log
     - name: Upload coverage artifact for CLI E2E tests
       if: ${{ !cancelled() }}
       continue-on-error: true
       uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
       with:
         name: cli-coverage-${{ inputs.python-version }}-${{ inputs.connector }}
-        path: .coverage.${{ inputs.connector }}
+        path: ingestion/.coverage.${{ inputs.connector }}
         include-hidden-files: true
     - name: Classify Python CLI E2E test outcome
       if: ${{ always() }}

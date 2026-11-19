@@ -98,6 +98,33 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
+@pytest.mark.parametrize("exit_code", [0, 1, 5])
+def test_cli_e2e_preserves_pytest_outcome_and_subprocess_coverage(nox_repo: Path, exit_code: int) -> None:
+    tests = nox_repo / "ingestion/tests/cli_e2e"
+    tests.mkdir()
+    (tests / "test_cli_demo.py").write_text(
+        "import subprocess, sys\nfrom metadata.sample import classify\n"
+        "def test_connector():\n"
+        "    assert classify(1) == 'positive'\n"
+        "    subprocess.run([sys.executable, '-c', "
+        "\"from metadata.sample import classify; assert classify(-1) == 'other'\"], check=True)\n"
+        f"    assert {exit_code != 1}\n"
+        if exit_code != 5
+        else "value = 1\n"
+    )
+    result = run("nox", "--no-venv", "-s", "cli-e2e", "--", "demo", cwd=nox_repo / "ingestion")
+    assert (result.returncode == 0) == (exit_code == 0), result.stdout + result.stderr
+    assert (nox_repo / "ingestion/cli-e2e-test-exit-code.txt").read_text().strip() == str(exit_code)
+    assert (nox_repo / "ingestion/junit/test-results-demo.xml").is_file()
+    if exit_code != 5:
+        from coverage import CoverageData
+
+        coverage = CoverageData(str(nox_repo / "ingestion/.coverage.demo"))
+        coverage.read()
+        assert coverage.lines("src/metadata/sample.py") == [1, 2, 3, 4]
+        assert reported_test_names(nox_repo, "demo") == ["test_connector"]
+
+
 @pytest.mark.parametrize("entrypoint", ["make", "nox"])
 @pytest.mark.parametrize("workers", [None, "2", "0", "auto"], ids=["default", "two", "serial", "auto"])
 def test_unit_worker_count_defaults_to_four_and_respects_overrides(

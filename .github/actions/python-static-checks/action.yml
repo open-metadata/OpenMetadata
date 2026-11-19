@@ -1,5 +1,5 @@
-name: Run model-free Python static checks
-description: Run model-free Python static checks
+name: Python type checks
+description: Run basedpyright and CI contract tests without classification models or a backend.
 inputs:
   python-version:
     description: python-version
@@ -11,12 +11,9 @@ runs:
       with:
         python-version: ${{ inputs.python-version }}
         install-server: 'false'
-    - name: Check Python formatting and lint
-      run: |
-        source env/bin/activate
-        make py_format_check
-      shell: bash
     - name: Run Static Checks
+      env:
+        PYTHON_VERSIONS: ${{ inputs.python-version }}
       run: |
         set -o pipefail
         source env/bin/activate
