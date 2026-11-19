@@ -1767,7 +1767,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   }
 
   private Map<String, JsonData> convertToJsonDataMap(Map<String, Object> map) {
-    List<String> fieldsToRemove = new ArrayList<>();
+    List<String> fieldsToRemove = new ArrayList<>(SearchIndexUtils.listedFieldsToRemove(map));
 
     Map<String, JsonData> result =
         JsonUtils.getMap(map).entrySet().stream()

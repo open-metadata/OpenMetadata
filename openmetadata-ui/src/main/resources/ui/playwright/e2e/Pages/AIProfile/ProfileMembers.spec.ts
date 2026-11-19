@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { Page } from '@playwright/test';
 import { PolicyClass } from '../../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../../support/access-control/RolesClass';
 import { TeamClass } from '../../../support/team/TeamClass';
@@ -125,6 +126,31 @@ test.describe('AI Profile Members - navigation & basics', () => {
     await expect(page.getByTestId('add-team-container')).toBeVisible();
 
     await page.getByTestId('cancel-btn').click();
+    await expect(page.getByTestId('team-detail')).toBeVisible();
+  });
+
+  test('Should ask before a breadcrumb or Cancel drops a typed team', async ({
+    page,
+  }) => {
+    await navigateToMembersPanel(page);
+    await openOrganizationTeams(page);
+    await page.getByTestId('add-team').click();
+    const nameInput = page.getByTestId('name').locator('input');
+    await nameInput.fill(`pw-unsaved-team-${uuid()}`);
+
+    const prompt = page.getByTestId('unsaved-changes-popover');
+    await page
+      .getByTestId('profile-content-header')
+      .getByRole('link', { name: 'Members' })
+      .click();
+    await expect(prompt).toBeVisible();
+    await prompt.getByTestId('unsaved-changes-popover-cancel').click();
+    await expect(prompt).toBeHidden();
+    await expect(nameInput).not.toHaveValue('');
+
+    await page.getByTestId('cancel-btn').click();
+    await expect(prompt).toBeVisible();
+    await prompt.getByTestId('unsaved-changes-popover-confirm').click();
     await expect(page.getByTestId('team-detail')).toBeVisible();
   });
 
@@ -458,9 +484,8 @@ test.describe('AI Profile Members - admin paging', () => {
     await openAdminsPanel(page);
 
     const usersList = page.getByTestId('users-list-container');
-    const pageIndicator = usersList.getByTestId('page-indicator');
 
-    await expect(pageIndicator).toContainText('Page 1');
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
     await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
 
     const nextResponse = page.waitForResponse((response) => {
@@ -474,21 +499,118 @@ test.describe('AI Profile Members - admin paging', () => {
     await clickIgnoringToasts(usersList.getByTestId('next'));
     await nextResponse;
 
-    await expect(pageIndicator).toContainText('Page 2');
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
     await expect(getRowByName(page, secondPageAdmin)).toBeVisible();
 
+    // Page 1 needs no cursor: it reloads the list from the start.
     const previousResponse = page.waitForResponse((response) => {
       const url = new URL(response.url());
 
       return (
         isAdminListRequest(url) &&
-        url.searchParams.get('before') === 'pw-cursor-before'
+        !url.searchParams.has('after') &&
+        !url.searchParams.has('before')
       );
     });
     await clickIgnoringToasts(usersList.getByTestId('previous'));
     await previousResponse;
 
-    await expect(pageIndicator).toContainText('Page 1');
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
     await expect(getRowByName(page, firstPageAdmin)).toBeVisible();
+  });
+});
+
+test.describe('AI Profile Members - Users pagination', () => {
+  // Enough users for three pages at the smallest page size, whatever else the
+  // tenant holds.
+  const pagedUsers: UserClass[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    pagedUsers.length = 0;
+    pagedUsers.push(...Array.from({ length: 31 }, () => new UserClass()));
+    await Promise.all(pagedUsers.map((user) => user.create(apiContext)));
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+    await Promise.all(
+      pagedUsers.map((user) => user.delete(apiContext).catch(() => undefined))
+    );
+    await afterAction();
+  });
+
+  // A page size saved by another spec would change how many pages 31 users
+  // span, so each test picks the smallest one itself.
+  const openUsersAtSmallestPageSize = async (page: Page) => {
+    await navigateToMembersPanel(page);
+    await openUsersPanel(page);
+    const usersList = page.getByTestId('users-list-container');
+    await expect(usersList.getByText(/^Page 1 of/)).toBeVisible();
+    const sizePicker = usersList.getByTestId('rows-per-page-dropdown');
+    // Paging before the page-size reload lands would step from the old
+    // size's cursors; a size already at 15 starts no reload. Read the
+    // trigger, not the Select root, whose text also carries hidden content.
+    const currentSize = await sizePicker.getByRole('button').textContent();
+    if (currentSize?.trim() !== '15') {
+      const reloaded = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith('/api/v1/users') &&
+          url.searchParams.get('limit') === '15' &&
+          !url.searchParams.has('after')
+        );
+      });
+      await sizePicker.click();
+      await page.getByTestId('rows-per-page-option-15').click();
+      await reloaded;
+    }
+    await expect(
+      usersList.getByText(/^Page 1 of ([3-9]|\d{2,})$/)
+    ).toBeVisible();
+  };
+
+  test('Should go back a page with the before cursor of the page shown', async ({
+    page,
+  }) => {
+    await openUsersAtSmallestPageSize(page);
+    const usersList = page.getByTestId('users-list-container');
+
+    const isUsersPage = (response: { url: () => string }) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/users') && url.searchParams.has('after')
+      );
+    };
+    // Page 2 must land first, or its response could pass for page 3's.
+    const pageTwoLoaded = page.waitForResponse(isUsersPage);
+    await usersList.getByTestId('next').click();
+    await pageTwoLoaded;
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
+    const pageThreeResponse = page.waitForResponse(isUsersPage);
+    await usersList.getByTestId('next').click();
+    const pageThree = (await (await pageThreeResponse).json()) as {
+      paging: { before: string };
+    };
+    await expect(usersList.getByText(/^Page 3 of/)).toBeVisible();
+
+    const pageTwoResponse = page.waitForResponse((response) => {
+      const url = new URL(response.url());
+
+      return (
+        url.pathname.endsWith('/api/v1/users') &&
+        url.searchParams.get('before') === pageThree.paging.before
+      );
+    });
+    await usersList.getByTestId('previous').click();
+    const pageTwo = (await (await pageTwoResponse).json()) as {
+      data: { name: string }[];
+    };
+
+    await expect(usersList.getByText(/^Page 2 of/)).toBeVisible();
+    await expect(getRowByName(page, pageTwo.data[0].name)).toBeVisible();
   });
 });

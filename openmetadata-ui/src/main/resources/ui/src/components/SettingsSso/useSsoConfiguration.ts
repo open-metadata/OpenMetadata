@@ -1174,6 +1174,7 @@ export const useSsoConfiguration = ({
     isInitializing,
     internalData,
     savedData,
+    comparableFormData,
     currentProvider,
     showProviderSelector,
     hasExistingConfig,

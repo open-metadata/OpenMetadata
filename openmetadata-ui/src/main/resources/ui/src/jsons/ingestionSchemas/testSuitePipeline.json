@@ -1215,6 +1215,42 @@
                                 "personalAccessTokenSecret"
                               ],
                               "additionalProperties": false
+                            },
+                            {
+                              "title": "TableauConnectedAppAuth",
+                              "description": "Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT with the secret and signs in as the given Tableau user.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.security.credentials.TableauConnectedAppAuth",
+                              "properties": {
+                                "clientId": {
+                                  "title": "Client ID",
+                                  "description": "Client ID of the Tableau connected app.",
+                                  "type": "string"
+                                },
+                                "secretId": {
+                                  "title": "Secret ID",
+                                  "description": "ID of the connected app secret.",
+                                  "type": "string"
+                                },
+                                "secretValue": {
+                                  "title": "Secret Value",
+                                  "description": "Value of the connected app secret.",
+                                  "type": "string",
+                                  "format": "password"
+                                },
+                                "username": {
+                                  "title": "Username",
+                                  "description": "Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud this is the user's email address.",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "clientId",
+                                "secretId",
+                                "secretValue",
+                                "username"
+                              ],
+                              "additionalProperties": false
                             }
                           ]
                         },
@@ -7233,6 +7269,13 @@
                           "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
                           "type": "string"
                         },
+                        "csvEscapeChar": {
+                          "title": "CSV Escape Character",
+                          "description": "Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for files that use doubled quotes and literal backslashes.",
+                          "type": "string",
+                          "maxLength": 1,
+                          "default": "\\"
+                        },
                         "connectionOptions": {
                           "title": "Connection Options",
                           "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/4/properties/config/oneOf/3/properties/connectionOptions"
@@ -11146,10 +11189,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -11178,10 +11221,10 @@
                                   "description": "GCP Project ID to parse metadata from",
                                   "oneOf": [
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                     },
                                     {
-                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                      "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                     }
                                   ],
                                   "default": null
@@ -11243,10 +11286,10 @@
                                       "description": "Project ID",
                                       "oneOf": [
                                         {
-                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
+                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/singleProjectId"
                                         },
                                         {
-                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/credentials/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
+                                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/3/properties/config/oneOf/4/properties/gcpConfig/properties/gcpConfig/oneOf/0/definitions/multipleProjectId"
                                         }
                                       ]
                                     },
@@ -14631,11 +14674,16 @@
                         },
                         "supportsLineageExtraction": {
                           "title": "Supports Lineage Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsLineageExtraction"
+                          "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
+                          "description": "Supports Lineage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         },
                         "supportsUsageExtraction": {
                           "title": "Supports Operational data Extraction",
-                          "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/2/properties/config/oneOf/0/properties/supportsUsageExtraction"
+                          "description": "Supports Usage Extraction.",
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "additionalProperties": false,
@@ -14746,6 +14794,9 @@
                             },
                             {
                               "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/1"
+                            },
+                            {
+                              "$ref": "#/definitions/serviceConnections/properties/serviceConnection/oneOf/1/properties/config/oneOf/6/properties/authType/oneOf/2"
                             }
                           ]
                         },

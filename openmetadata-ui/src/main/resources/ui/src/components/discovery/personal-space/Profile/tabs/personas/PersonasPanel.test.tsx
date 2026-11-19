@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { guardBreadcrumbAction } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
@@ -100,7 +101,7 @@ jest.mock('./PersonaDetail', () => {
   return { __esModule: true, default: MockPersonaDetail };
 });
 
-const mockEditorSave = jest.fn();
+const mockEditorSave = jest.fn().mockResolvedValue(true);
 
 jest.mock('./customize/PersonaCustomizeView', () => ({
   __esModule: true,
@@ -110,7 +111,7 @@ jest.mock('./customize/PersonaCustomizeView', () => ({
     onBack: () => void;
     onEditorActionsChange?: (actions: {
       canSave: boolean;
-      onSave: () => void;
+      onSave: () => Promise<boolean>;
       onReset: () => void;
     }) => void;
   }) => (
@@ -157,7 +158,10 @@ const Host = () => {
         <button
           data-testid={`crumb-${crumb.id}`}
           key={crumb.id}
-          onClick={() => header.onBreadcrumbAction?.(crumb.id)}>
+          onClick={() =>
+            // ProfilePage guards every panel's crumbs the same way.
+            guardBreadcrumbAction(header.onBreadcrumbAction)?.(crumb.id)
+          }>
           {crumb.label}
         </button>
       ))}
@@ -453,6 +457,21 @@ describe('PersonasPanel', () => {
 
       expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
       expect(mockEditorSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays in the editor when save fails', async () => {
+      mockEditorSave.mockResolvedValueOnce(false);
+      await openDirtyEditor();
+
+      fireEvent.click(screen.getByTestId('persona-customize-view'));
+      fireEvent.click(
+        await screen.findByTestId('unsaved-changes-popover-confirm')
+      );
+
+      await waitFor(() => expect(mockEditorSave).toHaveBeenCalledTimes(1));
+
+      expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
+      expect(screen.queryByTestId('persona-detail')).not.toBeInTheDocument();
     });
 
     it('stays in the editor when the prompt is dismissed with Escape', async () => {

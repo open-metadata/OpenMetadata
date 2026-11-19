@@ -2311,7 +2311,8 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Enable it for pipelines deployed in the server
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3
+     * (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
      */
     enabled?: boolean;
     /**
@@ -2896,6 +2897,11 @@ export interface SavedSparqlQuery {
      * Display name for the saved query.
      */
     name: string;
+    /**
+     * Ontology the query was saved in. Ontology Studio lists a query only in its own ontology;
+     * absent for a query saved outside one.
+     */
+    ontologyId?: string;
     /**
      * SPARQL query body.
      */

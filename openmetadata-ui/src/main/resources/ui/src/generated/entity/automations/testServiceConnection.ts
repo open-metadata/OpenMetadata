@@ -1559,6 +1559,11 @@ export interface AirflowConnectionObject {
      */
     configSource?: DataLakeConfigurationSource;
     /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
+    /**
      * Prefix of the data source.
      */
     prefix?: string;
@@ -2815,6 +2820,9 @@ export enum AuthProvider {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -2897,6 +2905,8 @@ export interface AuthenticationType {
      * Service Principal Application ID created in your Databricks Account Console for OAuth
      * Machine-to-Machine authentication.
      *
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
@@ -2966,6 +2976,9 @@ export interface AuthenticationType {
      *
      * Username to access the service.
      *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
+     *
      * Username to authenticate with SAP S/4HANA.
      *
      * Username for NATS authentication.
@@ -3005,6 +3018,14 @@ export interface AuthenticationType {
      * Personal Access Token Secret.
      */
     personalAccessTokenSecret?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
     /**
      * Authentication type identifier.
      */

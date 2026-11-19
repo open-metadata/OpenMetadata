@@ -48,13 +48,6 @@ public class TestDefinitionBuilder {
   }
 
   /**
-   * Set custom extension data.
-   */
-  public TestDefinitionBuilder extension(Object extension) {
-    return this;
-  }
-
-  /**
    * Build the CreateTestDefinition request without executing it.
    */
   public CreateTestDefinition build() {

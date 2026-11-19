@@ -19,6 +19,7 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../components/common/CustomPropertyTable/CustomPropertyTable.interface';
 import type { TabProps } from '../../components/common/TabsLabel/TabsLabel.interface';
+import { COMMON_RESIZABLE_PANEL_CONFIG } from '../../constants/ResizablePanel.constants';
 import { EntityTabs, EntityType } from '../../enums/entity.enum';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
@@ -213,10 +214,10 @@ export const getGlossaryTermDetailPageTabs = (
               panelPath="glossary-term-assets-tab"
             />
           ),
+          ...COMMON_RESIZABLE_PANEL_CONFIG.ENTITY_SUMMARY_PANEL,
           className:
             'entity-summary-resizable-right-panel-container glossary-term-resizable-panel-container',
           flex: 0.3,
-          minWidth: 400,
           wrapInCard: false,
         }}
       />

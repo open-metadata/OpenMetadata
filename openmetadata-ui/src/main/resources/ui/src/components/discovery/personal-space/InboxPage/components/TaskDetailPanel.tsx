@@ -26,6 +26,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
+import Loader from '../../../../../components/common/Loader/Loader';
 import ProfilePicture from '../../../../../components/common/ProfilePicture/ProfilePicture';
 import { INCIDENT_TASK_TYPES } from '../../../../../constants/Task.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
@@ -376,10 +377,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   const [task, setTask] = useState<Task | undefined>(fallbackTask);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<AxiosError>();
-  // A failed first load renders its own placeholder; only a failed reload of a
-  // task already on screen needs the toast.
-  const hasTaskRef = useRef(Boolean(fallbackTask));
-  hasTaskRef.current = Boolean(task);
   const [readyReviewTask, setReadyReviewTask] = useState<string>();
   const handleReviewReady = useCallback(
     (ready: boolean) => {
@@ -391,6 +388,10 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
   // lacks availableTransitions, so actions wait for it — but only the first
   // time: a reload after a comment keeps the buttons and status steady.
   const [loadedTaskId, setLoadedTaskId] = useState<string>();
+  // A failed first load renders its own placeholder, even over the list row;
+  // only a failed reload of a fully loaded task needs the toast.
+  const hasTaskRef = useRef(false);
+  hasTaskRef.current = loadedTaskId === taskId;
   // Gates approve/reject/resolve on the server's ResolveTask verdict (assignee,
   // reviewer, owner; self-approval denied). Fail closed: undefined until the
   // permission resolves so the buttons never flash for a user who can't act.
@@ -481,7 +482,14 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       return undefined;
     }
 
-    getResolvedTaskFormSchema(taskType, taskCategory)
+    getResolvedTaskFormSchema(taskType, taskCategory, {
+      // Suggestion tasks share one taskType+taskCategory binding across two
+      // seeded schemas; pass the stamped id (and payload for fallback
+      // disambiguation) so a tag-suggestion legacy task does not render the
+      // DescriptionSuggestion form. See TaskFormSchemaUtils.
+      taskFormSchemaId: task?.taskFormSchemaId,
+      payload: task?.payload,
+    })
       .then((schema) => active && setFormSchema(schema))
       // Without a schema the per-type defaults still produce a correct body.
       .catch(() => active && setFormSchema(undefined));
@@ -489,7 +497,13 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     return () => {
       active = false;
     };
-  }, [isLegacyTask, taskType, taskCategory]);
+  }, [
+    isLegacyTask,
+    taskType,
+    taskCategory,
+    task?.taskFormSchemaId,
+    task?.payload,
+  ]);
 
   // A plugin can refine how a task type it owns renders — its summary rows, its
   // stat tiles — without owning the pane. The first matching contribution wins.
@@ -789,7 +803,9 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   }
 
-  const statusBadge = getTaskStatusLabel(task, currentUserIds, t);
+  // The list row has no assignees, so its badge would read "Unassigned".
+  const getStatusBadge = () =>
+    hasFullTask ? getTaskStatusLabel(task, currentUserIds, t) : undefined;
   // Titleless tasks (governance workflows) carry the taskId as their name, so
   // getTaskTitleParts composes a title from the task type and the entity it is about
   // instead of repeating the id.
@@ -834,6 +850,31 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
     );
   };
 
+  // The list row carries only what the header needs; the details and timeline
+  // read fields (payload, assignees, ontologyReview) only the full task has.
+  const renderBody = () => {
+    if (!hasFullTask) {
+      return isLoading ? (
+        <Loader size="small" />
+      ) : (
+        <TaskUnavailable error={loadError} onRetry={loadTask} />
+      );
+    }
+
+    return (
+      <>
+        {renderDetails()}
+
+        <TaskActivityTimeline
+          createdEvent={descriptor.createdEvent}
+          incidentStatuses={about?.incidentStatuses}
+          task={task}
+          onCommentChanged={handleCommentMutated}
+        />
+      </>
+    );
+  };
+
   return (
     <Box
       className="tw:h-full tw:w-full tw:min-h-0"
@@ -849,7 +890,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         <TaskDetailHeader
           actions={actions}
           loadingTransitionId={loadingTransitionId}
-          statusBadge={statusBadge}
+          statusBadge={getStatusBadge()}
           task={task}
           typeBadge={descriptor.typeBadge}
           onAssigneeUpdate={handleAssigneeTransition}
@@ -875,14 +916,7 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         direction="col"
         gap={6}
         onScroll={onBodyScroll}>
-        {renderDetails()}
-
-        <TaskActivityTimeline
-          createdEvent={descriptor.createdEvent}
-          incidentStatuses={about?.incidentStatuses}
-          task={task}
-          onCommentChanged={handleCommentMutated}
-        />
+        {renderBody()}
       </Box>
 
       <Box

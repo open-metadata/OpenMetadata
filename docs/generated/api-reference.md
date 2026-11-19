@@ -13,7 +13,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 - Source is the annotations, **not** `openapi.yml` (a config stub with no endpoints; the
   full spec is assembled at runtime by Dropwizard).
 
-**2008 endpoints** across 75 resource packages · 1998 carry a summary.
+**2012 endpoints** across 75 resource packages · 2002 carry a summary.
 
 ## (root)
 
@@ -1270,6 +1270,9 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 
 | Method | Path | Purpose |
 |---|---|---|
+| `GET` | `/v1/mcp/clients` | List MCP clients without credentials (admin only) |
+| `DELETE` | `/v1/mcp/clients/{clientId}` | Remove an MCP client and revoke all its grants (admin only) |
+| `DELETE` | `/v1/mcp/clients/{clientId}/tokens` | Revoke a client's tokens and pending grants without removing its registration (admin only) |
 | `GET` | `/v1/mcp/usage/breakdown/tools` | Per-tool call counts with errors + latency |
 | `GET` | `/v1/mcp/usage/breakdown/users` | Per-user call counts with client name |
 | `GET` | `/v1/mcp/usage/history` | Daily MCP usage counts |
@@ -2343,6 +2346,7 @@ hand-edit; run `make generate-api-reference` (or `make generate-reference-docs`)
 | `GET` | `/v1/topics/name/{fqn}` | Get a topic by fully qualified name |
 | `PATCH` | `/v1/topics/name/{fqn}` | Update a topic using name. |
 | `GET` | `/v1/topics/name/{fqn}/columns` | Get paginated schema fields of a topic by fully qualified name |
+| `GET` | `/v1/topics/name/{fqn}/columns/search` | Search schema fields of a topic by fully qualified name |
 | `PUT` | `/v1/topics/restore` | Restore a soft deleted topic |
 | `DELETE` | `/v1/topics/{id}` | Delete a topic by id |
 | `GET` | `/v1/topics/{id}` | Get a topic by id |

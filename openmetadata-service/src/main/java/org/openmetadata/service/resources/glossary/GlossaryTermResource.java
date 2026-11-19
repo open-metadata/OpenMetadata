@@ -605,7 +605,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContext());
-    java.util.Map<String, Integer> result = repository.getAllGlossaryTermsWithAssetsCount(parent);
+    java.util.Map<String, Integer> result =
+        repository.getAllGlossaryTermsWithAssetsCount(
+            parent, DefaultAuthorizer.getSubjectContext(securityContext));
     return Response.ok(result).build();
   }
 
@@ -1104,7 +1106,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
                 new OperationContext(entityType, MetadataOperation.EDIT_GLOSSARY_TERMS),
                 termContext)),
         AuthorizationLogic.ANY);
-    return Response.ok().entity(repository.validateGlossaryTagsAddition(id, request)).build();
+    BulkOperationResult result = repository.validateGlossaryTagsAddition(id, request);
+    return Response.ok()
+        .entity(repository.viewableRowsOnly(securityContext, viewPermissionFilter, result))
+        .build();
   }
 
   @PUT
