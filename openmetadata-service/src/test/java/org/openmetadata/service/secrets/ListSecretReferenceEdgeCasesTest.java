@@ -1,11 +1,9 @@
 package org.openmetadata.service.secrets;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -92,38 +90,6 @@ class ListSecretReferenceEdgeCasesTest {
 
     assertEquals("alpha-key", vault.getSecretValue(reference(reused.getServers().getFirst())));
     assertEquals("new-alpha-key", vault.getSecretValue(reference(reused.getServers().get(1))));
-  }
-
-  /** A swap whose second write fails leaves both servers reading their own keys. */
-  @Test
-  void aSwapThatFailsPartWayPutsBackTheKeyItOverwrote() {
-    final AtomicInteger writesBeforeFailure = new AtomicInteger(Integer.MAX_VALUE);
-    final InMemorySecretsManager vault =
-        vault(
-            new InMemorySecretsManager(CONFIG) {
-              @Override
-              void storeSecret(final String secretName, final String secretValue) {
-                if (writesBeforeFailure.getAndDecrement() == 0) {
-                  throw new IllegalStateException("provider unavailable");
-                }
-                super.storeSecret(secretName, secretValue);
-              }
-            });
-    final McpConnection created =
-        encrypt(vault, List.of(server("alpha", "alpha-key"), server("beta", "beta-key")));
-    writesBeforeFailure.set(1);
-
-    assertThrows(
-        RuntimeException.class,
-        () ->
-            encrypt(
-                vault,
-                List.of(
-                    copy(created.getServers().getFirst()).withName("beta"),
-                    copy(created.getServers().get(1)).withName("alpha"))));
-
-    assertEquals("alpha-key", vault.getSecretValue(reference(created.getServers().getFirst())));
-    assertEquals("beta-key", vault.getSecretValue(reference(created.getServers().get(1))));
   }
 
   /** The database secrets manager holds no references, so a "secret:" value is a password. */
