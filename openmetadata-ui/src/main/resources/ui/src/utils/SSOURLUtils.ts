@@ -14,8 +14,11 @@ import { isDev } from './EnvironmentUtils';
 
 export const getServerUrl = (): string => {
   if (isDev()) {
-    return new URL(process.env.DEV_SERVER_TARGET || 'http://localhost:8585/')
-      .origin;
+    return new URL(
+      process.env.SSO_SERVER_URL ||
+        process.env.DEV_SERVER_TARGET ||
+        'http://localhost:8585/'
+    ).origin;
   }
 
   return globalThis.location.origin;

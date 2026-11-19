@@ -146,6 +146,23 @@ class AuthCallbackServletTest {
   }
 
   @Test
+  void doPost_testLoginRelayState_doesNotReachTheLiveHandler() throws IOException {
+    StringWriter body = new StringWriter();
+    when(request.getParameter("RelayState")).thenReturn("omtest:saml-test");
+    when(response.getWriter()).thenReturn(new PrintWriter(body));
+    TestLoginRoundTrip roundTrip = mock(TestLoginRoundTrip.class);
+    try (MockedStatic<AuthServeletHandlerRegistry> registry =
+            mockStatic(AuthServeletHandlerRegistry.class);
+        MockedStatic<TestLoginRoundTrip> roundTripMock = mockStatic(TestLoginRoundTrip.class)) {
+      roundTripMock.when(TestLoginRoundTrip::getInstance).thenReturn(roundTrip);
+      servlet.doPost(request, response);
+      registry.verifyNoInteractions();
+      verify(roundTrip).completeSamlCallback("saml-test", request, response);
+    }
+    assertEquals(TestLoginCallbackPage.HTML, body.toString());
+  }
+
+  @Test
   void doPost_delegatesToHandler() {
     try (MockedStatic<AuthServeletHandlerRegistry> registryMock =
         mockStatic(AuthServeletHandlerRegistry.class)) {

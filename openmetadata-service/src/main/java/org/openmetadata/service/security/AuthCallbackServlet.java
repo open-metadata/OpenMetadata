@@ -58,6 +58,13 @@ public class AuthCallbackServlet extends HttpServlet {
 
   @Override
   protected void doPost(HttpServletRequest req, HttpServletResponse resp) {
+    Optional<String> testSessionId =
+        TestLoginSessions.sessionIdFromMarker(req.getParameter("RelayState"));
+    if (testSessionId.isPresent()) {
+      TestLoginRoundTrip.getInstance().completeSamlCallback(testSessionId.get(), req, resp);
+      TestLoginCallbackPage.render(resp);
+      return;
+    }
     // SAML uses POST for callback with SAMLResponse
     AuthServeletHandler handler = AuthServeletHandlerRegistry.getHandler(req.getServletContext());
     handler.handleCallback(req, resp);
