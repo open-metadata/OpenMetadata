@@ -15332,12 +15332,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return false;
   }
 
-  private EntityUpdater atomicBulkUpdate(T entity, String userName, boolean overrideMetadata) {
-    if (lockManager != null) {
-      lockManager.checkModificationAllowed(entity);
-    }
-    T original = findByName(entity.getFullyQualifiedName(), ALL, false);
-    setFieldsInternal(original, putFields);
+  private EntityUpdater prepareBulkPutUpdater(
+      T original, T entity, String userName, boolean overrideMetadata) {
     entity.setUpdatedBy(userName);
     entity.setUpdatedAt(System.currentTimeMillis());
     ChangeActor actor = ChangeActor.recorded(userName, null);
@@ -15349,6 +15345,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
     updater.setOverrideMetadata(overrideMetadata);
+    return updater;
+  }
+
+  private EntityUpdater atomicBulkUpdate(T entity, String userName, boolean overrideMetadata) {
+    if (lockManager != null) {
+      lockManager.checkModificationAllowed(entity);
+    }
+    T original = findByName(entity.getFullyQualifiedName(), ALL, false);
+    setFieldsInternal(original, putFields);
+    EntityUpdater updater = prepareBulkPutUpdater(original, entity, userName, overrideMetadata);
     updater.update();
     setInheritedFields(entity, getBulkUpdateInheritanceFields());
     return updater;
@@ -15511,19 +15517,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               updateFrequencyByFqn.getOrDefault(fqn, 0) > 1
                   ? JsonUtils.deepCopy(hydratedOriginal, entityClass)
                   : hydratedOriginal;
-          entity.setUpdatedBy(userName);
-          entity.setUpdatedAt(System.currentTimeMillis());
-          final ChangeActor actor = ChangeActor.recorded(userName, null);
-          authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
-          authorizeUserWrite(original, entity, actor, Edit.bulkPut(overrideMetadata));
-
-          evaluatePutRulesDeferredUntilInherited(original, entity);
-          if (Boolean.TRUE.equals(original.getDeleted())) {
-            restoreEntity(entity.getUpdatedBy(), original.getId());
-          }
-
-          EntityUpdater updater = getUpdater(original, entity, Operation.PUT, null);
-          updater.setOverrideMetadata(overrideMetadata);
+          EntityUpdater updater =
+              prepareBulkPutUpdater(original, entity, userName, overrideMetadata);
           updater.updateWithDeferredStore();
           updaters.add(updater);
         } catch (AuthorizationException e) {

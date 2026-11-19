@@ -154,6 +154,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   public static final String FIELD_RELATION_COLUMN_TYPE = "table.columns.column";
   public static final String FIELD_RELATION_TABLE_TYPE = "table";
+  public static final String FAILED_ROWS_COLUMN_REMOVALS_EXTENSION =
+      "table.failedRowsColumnRemovals";
   public static final String TABLE_SAMPLE_DATA_EXTENSION = "table.sampleData";
   public static final String TABLE_PROFILER_CONFIG_EXTENSION = "table.tableProfilerConfig";
   public static final String TABLE_PIPELINE_OBSERVABILITY_EXTENSION = "table.pipelineObservability";
@@ -177,6 +179,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   protected void flushInOneTransaction(Runnable work) {
+    // Retain the SQL-object root so removal evidence, tag mutations and schema writes share
+    // one handle; the generic flush transaction alone does not bind every child DAO.
     executeInTransaction(
         () -> {
           super.flushInOneTransaction(work);
@@ -186,9 +190,8 @@ public class TableRepository extends EntityRepository<Table> {
 
   @Override
   protected boolean requiresAtomicBulkUpdate(Table original, Table updated) {
-    return original != null
-        && (FailedRowsSamplePolicy.hasRemovals(original, updated)
-            || FailedRowsSamplePolicy.hasRemovals(updated, original));
+    // Additions also route the whole FQN group atomically: a later request may remove them.
+    return original != null && FailedRowsSamplePolicy.changesColumnPaths(original, updated);
   }
 
   public TableRepository() {

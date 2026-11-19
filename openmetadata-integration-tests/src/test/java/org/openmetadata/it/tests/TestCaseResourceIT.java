@@ -5077,7 +5077,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     String json =
         Entity.getCollectionDAO()
             .entityExtensionDAO()
-            .getExtension(table.getId(), "table.failedRowsColumnRemovals");
+            .getExtension(table.getId(), TableRepository.FAILED_ROWS_COLUMN_REMOVALS_EXTENSION);
     return json == null
         ? FailedRowsSamplePolicy.emptyRecord()
         : JsonUtils.readValue(json, FailedRowsSamplePolicy.RemovalRecord.class);

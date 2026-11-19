@@ -18,11 +18,11 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.jdbi3.ColumnUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Private failed-row storage and classification policy; no database or authorization operations. */
 public final class FailedRowsSamplePolicy {
+  private static final int LEGACY_FORMAT = 0;
   public static final int FORMAT_VERSION = 1;
   public static final int MAX_PATH_FACTS = 1000;
   public static final int MAX_RECORD_BYTES = 1024 * 1024;
@@ -73,13 +73,17 @@ public final class FailedRowsSamplePolicy {
           || bindings == null) {
         throw new IllegalArgumentException("Invalid failed-row sample record");
       }
-      if (formatVersion != 0
+      if (formatVersion != LEGACY_FORMAT
           && (formatVersion != FORMAT_VERSION
               || tableId == null
               || bindings.size() != data.getColumns().size())) {
         throw new IllegalArgumentException("Unsupported failed-row sample format");
       }
       bindings = List.copyOf(bindings);
+    }
+
+    private boolean isLegacy() {
+      return formatVersion == LEGACY_FORMAT;
     }
   }
 
@@ -177,9 +181,11 @@ public final class FailedRowsSamplePolicy {
         .toList();
   }
 
-  public static boolean hasRemovals(Table original, Table updated) {
+  public static boolean changesColumnPaths(Table original, Table updated) {
+    List<ColumnState> before = columns(original);
     List<ColumnState> after = columns(updated);
-    return columns(original).stream().anyMatch(before -> find(after, before.path()) == null);
+    return before.stream().anyMatch(column -> find(after, column.path()) == null)
+        || after.stream().anyMatch(column -> find(before, column.path()) == null);
   }
 
   public static RemovalRecord append(RemovalRecord record, Table original, Table updated) {
@@ -227,7 +233,8 @@ public final class FailedRowsSamplePolicy {
     if (!node.has("columns") || !node.has("rows")) {
       throw new IllegalArgumentException("Unrecognized failed-row sample format");
     }
-    return new SampleRecord(0, JsonUtils.readValue(json, TableData.class), null, 0L, List.of());
+    return new SampleRecord(
+        LEGACY_FORMAT, JsonUtils.readValue(json, TableData.class), null, 0L, List.of());
   }
 
   public static RemovalRecord decodeRemovalRecord(String json) {
@@ -247,7 +254,7 @@ public final class FailedRowsSamplePolicy {
   }
 
   public static TableData mask(SampleRecord sample, Table table, RemovalRecord record) {
-    if (sample.formatVersion() == 0 && record.coverageThrough() > 0) {
+    if (sample.isLegacy() && record.coverageThrough() > 0) {
       throw new IllegalStateException(
           "Legacy failed-row sample requires replacement because removal evidence is incomplete");
     }
@@ -258,9 +265,6 @@ public final class FailedRowsSamplePolicy {
       String name = masked.getColumns().get(position);
       boolean sensitive =
           directSensitive(table.getTags())
-              || ((sample.formatVersion() == 0
-                      || sample.bindings().get(position).association() == Association.ADDITIONAL)
-                  && currentAdditionalPolicy(name, table))
               || masksPosition(sample, position, name, table, columns, record);
       positions.add(sensitive);
       if (sensitive) {
@@ -278,20 +282,21 @@ public final class FailedRowsSamplePolicy {
       Table table,
       List<ColumnState> columns,
       RemovalRecord record) {
-    if (sample.formatVersion() == 0) {
-      return record.batches().stream()
-          .flatMap(batch -> batch.facts().stream())
-          .anyMatch(fact -> fact.sensitive() && legacyMatches(name, fact.path()));
+    if (sample.isLegacy()) {
+      return currentAdditionalPolicy(name, table)
+          || record.batches().stream()
+              .flatMap(batch -> batch.facts().stream())
+              .anyMatch(fact -> fact.sensitive() && legacyMatches(name, fact.path()));
     }
     Binding binding = sample.bindings().get(position);
-    if (binding.association() == Association.ADDITIONAL) {
-      return false;
-    }
-    return binding.association() == Association.AMBIGUOUS
-        || !table.getId().equals(sample.tableId())
-        || sample.observedSequence() > record.sequence()
-        || sample.observedSequence() < record.coverageThrough()
-        || masksSource(binding.paths().getFirst(), sample.observedSequence(), columns, record);
+    return switch (binding.association()) {
+      case ADDITIONAL -> currentAdditionalPolicy(name, table);
+      case AMBIGUOUS -> true;
+      case SOURCE -> !table.getId().equals(sample.tableId())
+          || sample.observedSequence() > record.sequence()
+          || sample.observedSequence() < record.coverageThrough()
+          || masksSource(binding.paths().getFirst(), sample.observedSequence(), columns, record);
+    };
   }
 
   private static boolean masksSource(
@@ -331,8 +336,7 @@ public final class FailedRowsSamplePolicy {
     return listOrEmpty(table.getColumns()).stream()
         .anyMatch(
             column ->
-                column.getName().equalsIgnoreCase(name)
-                    && ColumnUtil.getAllTags(column).contains(PIIMasker.SENSITIVE_PII_TAG));
+                column.getName().equalsIgnoreCase(name) && PIIMasker.hasPiiSensitiveTag(column));
   }
 
   private static boolean legacyMatches(String name, List<String> path) {
@@ -393,8 +397,7 @@ public final class FailedRowsSamplePolicy {
   }
 
   private static boolean sensitive(ColumnState state) {
-    return state.inheritedSensitive()
-        || ColumnUtil.getAllTags(state.column()).contains(PIIMasker.SENSITIVE_PII_TAG);
+    return state.inheritedSensitive() || PIIMasker.hasPiiSensitiveTag(state.column());
   }
 
   private static boolean directSensitive(List<TagLabel> tags) {

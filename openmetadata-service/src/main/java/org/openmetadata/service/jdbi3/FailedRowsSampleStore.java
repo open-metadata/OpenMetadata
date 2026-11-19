@@ -3,6 +3,7 @@ package org.openmetadata.service.jdbi3;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.TABLE;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
+import static org.openmetadata.service.jdbi3.TableRepository.FAILED_ROWS_COLUMN_REMOVALS_EXTENSION;
 
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.Table;
@@ -15,7 +16,6 @@ import org.openmetadata.service.security.mask.FailedRowsSamplePolicy.RemovalReco
 
 /** Transaction-local persistence for failed-row source associations and removal evidence. */
 final class FailedRowsSampleStore {
-  static final String REMOVALS_EXTENSION = "table.failedRowsColumnRemovals";
   private final CollectionDAO dao;
 
   FailedRowsSampleStore(CollectionDAO dao) {
@@ -34,7 +34,8 @@ final class FailedRowsSampleStore {
   }
 
   RemovalRecord readRemovals(UUID id) {
-    String json = dao.entityExtensionDAO().getExtensionForUpdate(id, REMOVALS_EXTENSION);
+    String json =
+        dao.entityExtensionDAO().getExtensionForUpdate(id, FAILED_ROWS_COLUMN_REMOVALS_EXTENSION);
     return json == null
         ? FailedRowsSamplePolicy.emptyRecord()
         : FailedRowsSamplePolicy.decodeRemovalRecord(json);
@@ -52,8 +53,8 @@ final class FailedRowsSampleStore {
       dao.entityExtensionDAO()
           .insert(
               current.getId(),
-              REMOVALS_EXTENSION,
-              REMOVALS_EXTENSION,
+              FAILED_ROWS_COLUMN_REMOVALS_EXTENSION,
+              FAILED_ROWS_COLUMN_REMOVALS_EXTENSION,
               JsonUtils.pojoToJson(appended));
     }
   }
