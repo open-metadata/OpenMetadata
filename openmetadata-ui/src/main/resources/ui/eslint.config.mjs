@@ -185,6 +185,9 @@ export default [
         },
       ],
       'jest/no-disabled-tests': 'error',
+      // A committed `.only` silently shrinks a suite to one test. Measured
+      // backlog: 0 -> error.
+      'jest/no-focused-tests': 'error',
       'jest-formatting/padding-around-all': 'error',
 
       // TypeScript rules

@@ -298,6 +298,8 @@ describe('SsoPanel', () => {
 
     expect(lastHeader().tabs).toBeUndefined();
     expect(lastHeader().actions).toBeUndefined();
+    // Back to the form is not leaving it, so the unsaved-changes guard stays out.
+    expect(lastHeader().inEditorBreadcrumbIds).toEqual(['provider']);
 
     lastHeader().onBreadcrumbAction?.('provider');
 

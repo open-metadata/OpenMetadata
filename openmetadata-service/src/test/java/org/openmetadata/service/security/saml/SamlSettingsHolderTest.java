@@ -13,10 +13,12 @@
 
 package org.openmetadata.service.security.saml;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.settings.Saml2Settings;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -26,6 +28,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.util.Base64;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
@@ -81,6 +85,37 @@ class SamlSettingsHolderTest {
 
     samlConfig.getSecurity().setKeyStorePassword("not-the-password");
     assertThrows(IOException.class, () -> SamlSettingsHolder.buildSettings(samlConfig));
+  }
+
+  /**
+   * Keycloak's default role mapper sends one Attribute element per role, all named "Role". They
+   * must merge into one multi-valued attribute instead of failing the sign-in with "Found an
+   * Attribute element with duplicated Name".
+   */
+  @Test
+  void buildSettingsMergesRepeatedAttributeNames() throws Exception {
+    String response =
+        "<samlp:Response xmlns:samlp=\"urn:oasis:names:tc:SAML:2.0:protocol\""
+            + " xmlns:saml=\"urn:oasis:names:tc:SAML:2.0:assertion\" ID=\"_r\" Version=\"2.0\""
+            + " IssueInstant=\"2026-11-18T00:00:00Z\">"
+            + "<saml:Assertion ID=\"_a\" Version=\"2.0\" IssueInstant=\"2026-11-18T00:00:00Z\">"
+            + "<saml:AttributeStatement>"
+            + "<saml:Attribute Name=\"email\"><saml:AttributeValue>user@example.com"
+            + "</saml:AttributeValue></saml:Attribute>"
+            + "<saml:Attribute Name=\"Role\"><saml:AttributeValue>offline_access"
+            + "</saml:AttributeValue></saml:Attribute>"
+            + "<saml:Attribute Name=\"Role\"><saml:AttributeValue>uma_authorization"
+            + "</saml:AttributeValue></saml:Attribute>"
+            + "</saml:AttributeStatement></saml:Assertion></samlp:Response>";
+
+    SamlResponse samlResponse =
+        new SamlResponse(
+            SamlSettingsHolder.buildSettings(samlConfig()),
+            "https://sp.example.com/api/v1/saml/acs",
+            Base64.getEncoder().encodeToString(response.getBytes(StandardCharsets.UTF_8)));
+
+    assertEquals(
+        List.of("offline_access", "uma_authorization"), samlResponse.getAttributes().get("Role"));
   }
 
   private static SamlSSOClientConfig samlConfig() {

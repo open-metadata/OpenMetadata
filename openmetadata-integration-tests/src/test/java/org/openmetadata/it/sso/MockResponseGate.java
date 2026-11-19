@@ -14,6 +14,7 @@ public final class MockResponseGate {
 
   private final CountDownLatch arrived = new CountDownLatch(1);
   private final CountDownLatch released = new CountDownLatch(1);
+  private final CountDownLatch completed = new CountDownLatch(1);
 
   /** Blocks the mock's handler thread until {@link #release()}, or {@link #MAX_HOLD} passes. */
   public void holdResponse() {
@@ -28,6 +29,19 @@ public final class MockResponseGate {
 
   public void release() {
     released.countDown();
+  }
+
+  /** Called by the mock once the held request has been answered. */
+  public void complete() {
+    completed.countDown();
+  }
+
+  /**
+   * Waits until the held request has been answered, so a test that releases it cannot have that
+   * late answer land in the next test.
+   */
+  public boolean awaitCompletion(Duration timeout) {
+    return awaitQuietly(completed, timeout);
   }
 
   private static boolean awaitQuietly(CountDownLatch latch, Duration timeout) {
