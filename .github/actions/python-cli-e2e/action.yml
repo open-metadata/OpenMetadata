@@ -1,5 +1,5 @@
 name: Run connector E2E
-description: Run a connector through Nox and upload its results and subprocess coverage.
+description: Run a connector through Nox and upload its subprocess coverage.
 inputs:
   connector:
     description: connector
@@ -28,31 +28,3 @@ runs:
         name: cli-coverage-${{ inputs.python-version }}-${{ inputs.connector }}
         path: ingestion/.coverage.${{ inputs.connector }}
         include-hidden-files: true
-    - name: Classify Python CLI E2E test outcome
-      if: ${{ always() }}
-      env:
-        CLI_E2E_OUTCOME: ${{ steps.e2e-test.outcome }}
-        E2E_TEST: ${{ inputs.connector }}
-        TEST_PROFILE: python-cli-e2e
-        TEST_LANE: ${{ inputs.connector }}
-      run: |
-        python3 .github/scripts/classify_test_outcome.py \
-          --exit-code "$(cat ingestion/cli-e2e-test-exit-code.txt 2>/dev/null || true)" \
-          --step-outcome "$CLI_E2E_OUTCOME" \
-          --report-glob 'ingestion/junit/test-results-*.xml' \
-          --diagnostic-glob 'ingestion/*-test-run.log' \
-          --output ingestion/ci-diagnostics/outcome.json
-      shell: bash
-    - name: Upload tests artifact
-      if: ${{ always() }}
-      continue-on-error: true
-      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      with:
-        name: tests-${{ inputs.python-version }}-${{ inputs.connector }}
-        path: |
-          ingestion/junit/test-results-*.xml
-          ingestion/ci-diagnostics/outcome.json
-          ingestion/*-test-run.log
-        if-no-files-found: warn
-        retention-days: 14
-        compression-level: 1

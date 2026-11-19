@@ -90,6 +90,7 @@ jobs:
           } 2>&1 | tee "${RUNNER_TEMP}/exasol-disk-reclaim.log"
         shell: bash
       - name: Run connector E2E
+        id: tests
         uses: ./.github/actions/python-cli-e2e
         with:
           connector: ${{ matrix.e2e-test }}
@@ -155,6 +156,14 @@ jobs:
           E2E_ATHENA_REGION: ${{ secrets.E2E_AWS_REGION }}
           E2E_ATHENA_S3STAGINGDIR: ${{ secrets.E2E_ATHENA_S3STAGINGDIR }}
           E2E_ATHENA_WORKGROUP: ${{ secrets.E2E_ATHENA_WORKGROUP }}
+      - name: Report test results
+        if: ${{ always() }}
+        uses: ./.github/actions/report-test-results
+        with:
+          step-outcome: ${{ steps.tests.outcome }}
+          exit-code-file: ingestion/cli-e2e-test-exit-code.txt
+          test-profile: python-cli-e2e
+          artifact-name: tests-${{ inputs.python-version }}-${{ matrix.e2e-test }}
       - name: Diagnostics and cleanup
         if: ${{ always() }}
         uses: ./.github/actions/python-diagnostics

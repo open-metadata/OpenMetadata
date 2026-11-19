@@ -1,5 +1,5 @@
 name: Run Python tests
-description: Run a Nox test suite, retain its exit code, and upload results.
+description: Run a Nox test suite, retain its exit code, and optionally upload coverage.
 inputs:
   suite:
     description: suite
@@ -7,12 +7,6 @@ inputs:
   nox-args:
     description: Whitespace-separated pytest arguments forwarded to Nox.
     default: ''
-  test-profile:
-    description: test-profile
-    required: true
-  artifact-name:
-    description: artifact-name
-    required: true
   collect-coverage:
     description: collect-coverage
     default: 'false'
@@ -37,38 +31,6 @@ runs:
         echo "$test_exit_code" > "${SUITE}-test-exit-code.txt"
         exit "$test_exit_code"
       shell: bash
-    - name: Classify Python suite outcome
-      if: ${{ always() }}
-      env:
-        TEST_LANE: ${{ inputs.artifact-name }}
-        TEST_PROFILE: ${{ inputs.test-profile }}
-        TEST_STEP_OUTCOME: ${{ steps.tests.outcome }}
-        SUITE: ${{ inputs.suite }}
-      run: |
-        test_exit_code=""
-        if [[ -s "ingestion/${SUITE}-test-exit-code.txt" ]]; then
-          read -r test_exit_code < "ingestion/${SUITE}-test-exit-code.txt"
-        fi
-        python3 .github/scripts/classify_test_outcome.py \
-          --step-outcome "$TEST_STEP_OUTCOME" --exit-code "$test_exit_code" \
-          --report-glob 'ingestion/junit/test-results-*.xml' \
-          --diagnostic-glob 'ingestion/*-test-run.log' \
-          --output ingestion/ci-diagnostics/outcome.json
-      shell: bash
-    - name: Upload test results
-      if: ${{ always() }}
-      continue-on-error: true
-      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-      with:
-        name: ${{ inputs.artifact-name }}
-        path: |
-          ingestion/junit/
-          ingestion/ci-diagnostics/outcome.json
-          ingestion/*-test-run.log
-          ingestion/*-test-exit-code.txt
-        if-no-files-found: warn
-        retention-days: 14
-        compression-level: 1
     - name: Upload coverage artifact
       if: ${{ inputs.collect-coverage == 'true' && !cancelled() }}
       continue-on-error: true

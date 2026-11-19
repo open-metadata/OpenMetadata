@@ -14,6 +14,7 @@
 import itertools
 import json
 import os
+import shutil
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -257,9 +258,22 @@ def test_backend_build_forwards_the_callers_arguments_and_exit(tmp_path, caller,
 
 
 def test_nightly_artifact_names_are_unique_across_invocations():
-    unit = workflow("py-unit.yml")["jobs"]["py-unit-tests"]["steps"][-1]["with"]
+    unit_steps = workflow("py-unit.yml")["jobs"]["py-unit-tests"]["steps"]
+    unit = {
+        key: value
+        for step in unit_steps
+        if step.get("uses") in {"./.github/actions/python-suite", "./.github/actions/report-test-results"}
+        for key, value in step.get("with", {}).items()
+        if key in {"artifact-name", "coverage-name"}
+    }
     integration = workflow("py-integration.yml")["jobs"]["py-integration-tests"]
-    execution = next(s["with"] for s in integration["steps"] if s.get("uses", "").endswith("/python-suite"))
+    results = {
+        key: value
+        for step in integration["steps"]
+        if step.get("uses") in {"./.github/actions/python-suite", "./.github/actions/report-test-results"}
+        for key, value in step.get("with", {}).items()
+        if key in {"artifact-name", "coverage-name"}
+    }
     names = []
     for version in ["3.9", "3.13"]:
         names.extend(
@@ -269,13 +283,84 @@ def test_nightly_artifact_names_are_unique_across_invocations():
             integration["strategy"]["matrix"]["database"], integration["strategy"]["matrix"]["shard"]
         ):
             names.extend(
-                execution[key]
+                results[key]
                 .replace("${{ inputs.python-version }}", version)
                 .replace("${{ matrix.database.name }}", database["name"])
                 .replace("${{ matrix.shard.name }}", shard["name"])
                 for key in ["artifact-name", "coverage-name"]
             )
     assert len(names) == len(set(names))
+
+
+@pytest.mark.parametrize(
+    "filename, job, exit_file",
+    [
+        ("py-unit.yml", "py-unit-tests", "unit-test-exit-code.txt"),
+        ("py-integration.yml", "py-integration-tests", "integration-test-exit-code.txt"),
+        ("py-cli-e2e-tests.yml", "py-cli-e2e-tests", "cli-e2e-test-exit-code.txt"),
+    ],
+)
+@pytest.mark.parametrize(
+    "step_outcome, job_status, exit_code, report, classification, expected_exit",
+    [
+        ("skipped", "failure", None, None, "setup_failure", 0),
+        ("success", "success", 0, "<testcase name='passes'/>", "passed", 0),
+        ("failure", "failure", 1, "<testcase name='fails'><failure/></testcase>", "test_failure", 0),
+        ("failure", "failure", 124, None, "hung_test", 0),
+        ("success", "success", 0, None, "missing_results", 1),
+        ("success", "success", 0, "<testcase name='fails'><failure/></testcase>", "test_failure", 1),
+        ("skipped", "cancelled", None, None, "cancelled", 0),
+    ],
+)
+def test_reporting_survives_skipped_execution_and_rejects_false_passes(
+    tmp_path, filename, job, exit_file, step_outcome, job_status, exit_code, report, classification, expected_exit
+):
+    steps = workflow(filename)["jobs"][job]["steps"]
+    execution = next(step for step in steps if step.get("id") == "tests")
+    reporting = next(step for step in steps if step.get("uses") == "./.github/actions/report-test-results")
+    assert "if" not in execution
+    assert steps.index(execution) < steps.index(reporting)
+    assert reporting["if"] == "${{ always() }}"
+    assert reporting["with"]["step-outcome"] == "${{ steps.tests.outcome }}"
+    assert reporting["with"]["exit-code-file"] == f"ingestion/{exit_file}"
+
+    project = tmp_path / "ingestion"
+    project.mkdir()
+    if exit_code is not None:
+        (project / exit_file).write_text(f"{exit_code}\n")
+    if report:
+        (project / "junit").mkdir()
+        (project / "junit/test-results-fixture.xml").write_text(f"<testsuite>{report}</testsuite>")
+    scripts = tmp_path / ".github/scripts"
+    scripts.mkdir(parents=True)
+    shutil.copy2(ROOT / ".github/scripts/classify_test_outcome.py", scripts)
+    action = yaml.safe_load((ROOT / ".github/actions/report-test-results/action.yml").read_text())
+    classify, upload = action["runs"]["steps"]
+    inputs = reporting["with"]
+    replacements = {f"${{{{ inputs.{key} }}}}": value for key, value in inputs.items()}
+    replacements["${{ job.status == 'cancelled' && 'cancelled' || inputs.step-outcome }}"] = (
+        "cancelled" if job_status == "cancelled" else step_outcome
+    )
+    environment = {key: replacements[value] for key, value in classify["env"].items()}
+    summary = tmp_path / "summary.md"
+    result = run(
+        "bash",
+        "-eo",
+        "pipefail",
+        "-c",
+        classify["run"],
+        cwd=tmp_path,
+        env={**os.environ, **environment, "GITHUB_STEP_SUMMARY": str(summary)},
+    )
+    assert result.returncode == expected_exit, result.stderr
+    outcome = project / "ci-diagnostics/outcome.json"
+    data = json.loads(outcome.read_text())
+    assert data["classification"] == classification
+    assert data["exitCode"] == exit_code
+    assert data["context"]["lane"] == inputs["artifact-name"]
+    assert classification in summary.read_text()
+    assert classify["if"] == upload["if"] == "${{ always() }}"
+    assert any(outcome in tmp_path.glob(pattern) for pattern in upload["with"]["path"].splitlines())
 
 
 def test_coverage_collection_keeps_colliding_junit_names_and_combines_real_data(
