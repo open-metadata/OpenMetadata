@@ -55,4 +55,4 @@ an interface in `rest/` that mirrors a schema. One `defaultFields` mechanism, no
 openmetadata-collate imports this repo's sources through a generated mirror. Before deleting or
 renaming an exported symbol knip calls unused, grep openmetadata-collate too — `knip.jsonc`'s ignore
 list documents the known Collate-consumed keeps (`rest/index.ts`, `styles/index.ts`,
-`NodeSuggestions`, `DataInsightProvider`, `useLogStream`, `AnnouncementsWidget` props type).
+`DataInsightProvider`, `useLogStream`, …).
