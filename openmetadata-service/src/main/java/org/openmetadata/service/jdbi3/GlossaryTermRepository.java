@@ -870,12 +870,13 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void applyInverse(TermRelation relation) {
-    String inverseName = relationshipTypeResolver.inverseName(relation.getRelationType());
-    if (inverseName != null) {
-      RelationshipType inverse = relationshipTypeResolver.require(inverseName);
-      relation.setRelationType(inverseName);
-      relation.setRelationshipType(inverse.getEntityReference());
-    }
+    relationshipTypeResolver
+        .inverseOf(relationshipTypeResolver.require(relation.getRelationType()))
+        .ifPresent(
+            inverse -> {
+              relation.setRelationType(inverse.getName());
+              relation.setRelationshipType(inverse.getEntityReference());
+            });
   }
 
   private void populateTermRelations(

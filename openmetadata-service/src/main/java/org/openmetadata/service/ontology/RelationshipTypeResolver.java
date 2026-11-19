@@ -15,8 +15,10 @@ package org.openmetadata.service.ontology;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.openmetadata.schema.entity.data.RelationshipType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -34,7 +36,7 @@ public final class RelationshipTypeResolver {
   public RelationshipType require(final String name) {
     final RelationshipType relationshipType;
     try {
-      relationshipType = relationshipTypeDAO.findEntityByName(name, Include.NON_DELETED);
+      relationshipType = named(relationshipTypeDAO.findEntityByName(name, Include.NON_DELETED));
     } catch (EntityNotFoundException exception) {
       throw new BadRequestException("Relationship type '" + name + "' is not registered");
     }
@@ -44,7 +46,7 @@ public final class RelationshipTypeResolver {
   public RelationshipType require(final UUID id) {
     final RelationshipType relationshipType;
     try {
-      relationshipType = relationshipTypeDAO.findEntityById(id, Include.NON_DELETED);
+      relationshipType = named(relationshipTypeDAO.findEntityById(id, Include.NON_DELETED));
     } catch (EntityNotFoundException exception) {
       throw new BadRequestException("Relationship type '" + id + "' is not registered");
     }
@@ -63,23 +65,62 @@ public final class RelationshipTypeResolver {
   }
 
   public String inverseName(final String name) {
-    final RelationshipType relationshipType = require(name);
-    final String inverseName =
-        relationshipType.getInverse() == null ? null : relationshipType.getInverse().getName();
-    return inverseName;
+    return inverseOf(require(name)).map(RelationshipType::getName).orElse(null);
+  }
+
+  /**
+   * The live type {@code relationshipType} names as its inverse. An inverse that names no live type
+   * reads as none, so a term read or an RDF delete never fails on it.
+   */
+  public Optional<RelationshipType> inverseOf(final RelationshipType relationshipType) {
+    return Optional.ofNullable(relationshipType.getInverse()).flatMap(this::findReferenced);
+  }
+
+  /** The live type a reference names: by id, else by name, which for this type is its FQN. */
+  public Optional<RelationshipType> findReferenced(final EntityReference reference) {
+    return findLiveById(reference.getId())
+        .or(() -> findLiveByName(RelationshipTypeReferenceNames.named(reference).getName()));
+  }
+
+  private Optional<RelationshipType> findLiveById(final UUID id) {
+    Optional<RelationshipType> found = Optional.empty();
+    if (id != null) {
+      try {
+        found =
+            Optional.ofNullable(relationshipTypeDAO.findEntityById(id, Include.NON_DELETED))
+                .map(RelationshipTypeResolver::named);
+      } catch (EntityNotFoundException exception) {
+        found = Optional.empty();
+      }
+    }
+    return found;
+  }
+
+  private Optional<RelationshipType> findLiveByName(final String name) {
+    Optional<RelationshipType> found = Optional.empty();
+    if (name != null) {
+      try {
+        found =
+            Optional.ofNullable(relationshipTypeDAO.findEntityByName(name, Include.NON_DELETED))
+                .map(RelationshipTypeResolver::named);
+      } catch (EntityNotFoundException exception) {
+        found = Optional.empty();
+      }
+    }
+    return found;
   }
 
   public RelationshipType findByPredicate(final URI predicate) {
     final String json =
         predicate == null ? null : relationshipTypeDAO.findByPredicate(predicate.toString());
     final RelationshipType relationshipType =
-        json == null ? null : JsonUtils.readValue(json, RelationshipType.class);
+        json == null ? null : named(JsonUtils.readValue(json, RelationshipType.class));
     return relationshipType;
   }
 
   public List<RelationshipType> list() {
     return relationshipTypeDAO.listActive().stream()
-        .map(json -> JsonUtils.readValue(json, RelationshipType.class))
+        .map(json -> named(JsonUtils.readValue(json, RelationshipType.class)))
         .toList();
   }
 
@@ -102,6 +143,13 @@ public final class RelationshipTypeResolver {
                 && (relationshipType.getPropertyChain() == null
                     || relationshipType.getPropertyChain().isEmpty()));
     return isSimple;
+  }
+
+  /** Types stored before their references carried a name are read with one. */
+  private static RelationshipType named(final RelationshipType relationshipType) {
+    return relationshipType == null
+        ? null
+        : RelationshipTypeReferenceNames.withNamedReferences(relationshipType);
   }
 
   private static boolean hasCharacteristic(

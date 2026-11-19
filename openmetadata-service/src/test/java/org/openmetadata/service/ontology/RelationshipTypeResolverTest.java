@@ -123,8 +123,65 @@ class RelationshipTypeResolverTest {
     RelationshipType broader =
         type("broader").withInverse(new EntityReference().withName("narrower"));
     when(relationshipTypeDAO.findEntityByName("broader", Include.NON_DELETED)).thenReturn(broader);
+    when(relationshipTypeDAO.findEntityByName("narrower", Include.NON_DELETED))
+        .thenReturn(type("narrower"));
 
     assertEquals("narrower", resolver().inverseName("broader"));
+  }
+
+  @Test
+  void inverseNameResolvesAReferenceStoredWithoutAName() {
+    UUID inverseId = UUID.randomUUID();
+    RelationshipType forward = type("forward").withInverse(apiReference(inverseId, "inverse"));
+    when(relationshipTypeDAO.findEntityByName("forward", Include.NON_DELETED)).thenReturn(forward);
+    when(relationshipTypeDAO.findEntityById(inverseId, Include.NON_DELETED))
+        .thenReturn(type("inverse").withId(inverseId));
+
+    assertEquals("inverse", resolver().inverseName("forward"));
+  }
+
+  @Test
+  void inverseOfFallsBackToTheFqnWhenTheIdNamesNoLiveType() {
+    UUID staleId = UUID.randomUUID();
+    RelationshipType forward = type("forward").withInverse(apiReference(staleId, "inverse"));
+    when(relationshipTypeDAO.findEntityById(staleId, Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("missing"));
+    when(relationshipTypeDAO.findEntityByName("inverse", Include.NON_DELETED))
+        .thenReturn(type("inverse"));
+
+    assertEquals("inverse", resolver().inverseOf(forward).orElseThrow().getName());
+  }
+
+  @Test
+  void inverseOfIsEmptyWhenTheInverseNamesNoLiveType() {
+    RelationshipType forward =
+        type("forward")
+            .withInverse(
+                new EntityReference().withType("relationshipType").withFullyQualifiedName("gone"));
+    when(relationshipTypeDAO.findEntityByName("gone", Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("missing"));
+
+    assertTrue(resolver().inverseOf(forward).isEmpty());
+  }
+
+  @Test
+  void requireReturnsReferencesWithTheirNames() {
+    RelationshipType forward =
+        type("forward")
+            .withInverse(apiReference(UUID.randomUUID(), "inverse"))
+            .withDisjointWith(Set.of(apiReference(UUID.randomUUID(), "other")));
+    when(relationshipTypeDAO.findEntityByName("forward", Include.NON_DELETED)).thenReturn(forward);
+
+    RelationshipType read = resolver().require("forward");
+    assertEquals("inverse", read.getInverse().getName());
+    assertEquals("other", read.getDisjointWith().iterator().next().getName());
+  }
+
+  private static EntityReference apiReference(final UUID id, final String fqn) {
+    return new EntityReference()
+        .withId(id)
+        .withType("relationshipType")
+        .withFullyQualifiedName(fqn);
   }
 
   @Test

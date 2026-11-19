@@ -4122,9 +4122,9 @@ public class RdfRepository {
         resolver.requireIgnoreCase(relationType == null ? "relatedTo" : relationType);
     final Set<String> predicateUris = new LinkedHashSet<>();
     predicateUris.add(type.getRdfPredicate().toString());
-    if (type.getInverse() != null && !type.getName().equals(type.getInverse().getName())) {
-      predicateUris.add(resolver.require(type.getInverse().getName()).getRdfPredicate().toString());
-    }
+    resolver
+        .inverseOf(type)
+        .ifPresent(inverse -> predicateUris.add(inverse.getRdfPredicate().toString()));
     return predicateUris;
   }
 

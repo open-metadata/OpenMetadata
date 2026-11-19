@@ -16,7 +16,6 @@ package org.openmetadata.service.jdbi3;
 import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
@@ -25,9 +24,12 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.ontology.OntologyChangeEventPublisher;
 import org.openmetadata.service.ontology.RelationshipTypeGraphValidator;
+import org.openmetadata.service.ontology.RelationshipTypeReferenceNames;
 import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.ontology.RelationshipTypeValidator;
 import org.openmetadata.service.resources.ontology.RelationshipTypeResource;
@@ -63,9 +65,15 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
 
   @Override
   public void setFields(
-      final RelationshipType entity,
-      final Fields fields,
-      final RelationIncludes relationIncludes) {}
+      final RelationshipType entity, final Fields fields, final RelationIncludes relationIncludes) {
+    RelationshipTypeReferenceNames.withNamedReferences(entity);
+  }
+
+  @Override
+  public void setFieldsInBulk(final Fields fields, final List<RelationshipType> entities) {
+    super.setFieldsInBulk(fields, entities);
+    entities.forEach(RelationshipTypeReferenceNames::withNamedReferences);
+  }
 
   @Override
   public void clearFields(final RelationshipType entity, final Fields fields) {}
@@ -111,52 +119,66 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   }
 
   /**
-   * Resolve FQN→id for {@code inverse}, {@code replacedBy}, {@code propertyChain}, and {@code
-   * disjointWith} references. The public REST API ({@link
-   * org.openmetadata.service.resources.ontology.RelationshipTypeMapper}) builds these references
-   * with only {@code type} + {@code fullyQualifiedName} set ({@code id == null}), because a client
-   * supplies FQN strings, not ids. Without this hydration the id-based checks in {@link
-   * RelationshipTypeValidator} and downstream consumers (e.g. the RDF glossary exporter) break for
-   * every client-supplied reference. Self-references (where the reference FQN equals the entity's
-   * own FQN) are hydrated from the entity's own id, which is already set before {@code prepare}
-   * runs.
+   * Completes the {@code inverse}, {@code replacedBy}, {@code propertyChain} and {@code
+   * disjointWith} references, which a client supplies by FQN and a PATCH may carry over with no
+   * name, so every stored reference carries its name and, once its target exists, its id
+   * (ADR:2026-11-19-relationship-type-references-carry-their-name). A self-reference resolves to the
+   * entity itself, whose id is set before {@code prepare} runs.
    */
   private void hydrateReferences(final RelationshipType entity) {
-    final String selfFqn = entity.getFullyQualifiedName();
-    final UUID selfId = entity.getId();
-    entity.setInverse(hydrate(entity.getInverse(), selfFqn, selfId));
-    entity.setReplacedBy(hydrate(entity.getReplacedBy(), selfFqn, selfId));
+    entity.setInverse(hydrate(entity.getInverse(), entity));
+    entity.setReplacedBy(hydrate(entity.getReplacedBy(), entity));
     final List<EntityReference> propertyChain = entity.getPropertyChain();
     if (propertyChain != null) {
-      entity.setPropertyChain(
-          propertyChain.stream().map(ref -> hydrate(ref, selfFqn, selfId)).toList());
+      entity.setPropertyChain(propertyChain.stream().map(ref -> hydrate(ref, entity)).toList());
     }
     final Set<EntityReference> disjointWith = entity.getDisjointWith();
     if (disjointWith != null) {
       entity.setDisjointWith(
           disjointWith.stream()
-              .map(ref -> hydrate(ref, selfFqn, selfId))
+              .map(ref -> hydrate(ref, entity))
               .collect(Collectors.toUnmodifiableSet()));
     }
   }
 
-  private EntityReference hydrate(
-      final EntityReference reference, final String selfFqn, final UUID selfId) {
-    if (reference == null || reference.getId() != null) {
-      return reference;
+  private EntityReference hydrate(final EntityReference reference, final RelationshipType self) {
+    final RelationshipType target = reference == null ? null : findTarget(reference, self);
+    return target == null
+        ? RelationshipTypeReferenceNames.named(reference)
+        : JsonUtils.deepCopy(reference, EntityReference.class)
+            .withId(target.getId())
+            .withName(target.getName())
+            .withFullyQualifiedName(target.getFullyQualifiedName());
+  }
+
+  private RelationshipType findTarget(
+      final EntityReference reference, final RelationshipType self) {
+    return refersTo(reference, self) ? self : findStoredTarget(reference);
+  }
+
+  private static boolean refersTo(final EntityReference reference, final RelationshipType self) {
+    final boolean byId = reference.getId() != null && reference.getId().equals(self.getId());
+    final boolean byFqn =
+        reference.getFullyQualifiedName() != null
+            && reference.getFullyQualifiedName().equals(self.getFullyQualifiedName());
+    return byId || byFqn;
+  }
+
+  /** By id first, deleted or not; null when the reference names no type yet. */
+  private RelationshipType findStoredTarget(final EntityReference reference) {
+    final RelationshipType byId = reference.getId() == null ? null : findByIdOrNull(reference);
+    final String name = RelationshipTypeReferenceNames.named(reference).getName();
+    return byId == null && name != null ? findByNameOrNull(name, Include.ALL) : byId;
+  }
+
+  private RelationshipType findByIdOrNull(final EntityReference reference) {
+    RelationshipType found;
+    try {
+      found = find(reference.getId(), Include.ALL);
+    } catch (EntityNotFoundException exception) {
+      found = null;
     }
-    final String fqn = reference.getFullyQualifiedName();
-    if (fqn == null) {
-      return reference;
-    }
-    if (fqn.equals(selfFqn)) {
-      return reference.withId(selfId);
-    }
-    final RelationshipType resolved = findByNameOrNull(fqn, Include.ALL);
-    if (resolved != null) {
-      return reference.withId(resolved.getId());
-    }
-    return reference;
+    return found;
   }
 
   @Override
