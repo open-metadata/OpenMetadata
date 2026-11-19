@@ -101,6 +101,12 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
+  /** A context file outside a folder has its bare name, dots included, as its FQN. */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
   @Override
   public void setFullyQualifiedName(ContextFile file) {
     if (file.getFolder() == null) {

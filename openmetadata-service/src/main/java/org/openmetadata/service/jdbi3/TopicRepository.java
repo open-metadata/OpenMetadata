@@ -833,4 +833,9 @@ public class TopicRepository extends EntityRepository<Topic> {
             ? List.of()
             : listOrEmpty(topic.getMessageSchema().getSchemaFields()));
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }

@@ -833,4 +833,9 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
             ? List.of()
             : listOrEmpty(endpoint.getResponseSchema().getSchemaFields()));
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }
