@@ -71,6 +71,19 @@ class RelationshipTypeResolverTest {
   }
 
   @Test
+  void requireNamesASoftDeletedTypeAsOneToRestore() {
+    when(relationshipTypeDAO.findEntityByName("retired", Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("missing"));
+    when(relationshipTypeDAO.findEntityByName("retired", Include.ALL))
+        .thenReturn(type("retired").withDeleted(true));
+
+    BadRequestException exception =
+        assertThrows(BadRequestException.class, () -> resolver().require("retired"));
+    assertEquals(
+        "Relationship type 'retired' is deleted; restore it first", exception.getMessage());
+  }
+
+  @Test
   void requireByIdReturnsTypeFromDao() {
     UUID id = UUID.randomUUID();
     RelationshipType broader = type("broader");

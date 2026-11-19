@@ -40,7 +40,7 @@ public final class RelationshipTypeResolver {
     try {
       relationshipType = named(relationshipTypeDAO.findEntityByName(name, Include.NON_DELETED));
     } catch (EntityNotFoundException exception) {
-      throw new BadRequestException("Relationship type '" + name + "' is not registered");
+      throw unavailable(name, () -> relationshipTypeDAO.findEntityByName(name, Include.ALL));
     }
     return relationshipType;
   }
@@ -50,9 +50,27 @@ public final class RelationshipTypeResolver {
     try {
       relationshipType = named(relationshipTypeDAO.findEntityById(id, Include.NON_DELETED));
     } catch (EntityNotFoundException exception) {
-      throw new BadRequestException("Relationship type '" + id + "' is not registered");
+      throw unavailable(id.toString(), () -> relationshipTypeDAO.findEntityById(id, Include.ALL));
     }
     return relationshipType;
+  }
+
+  /**
+   * Names a soft-deleted type as one to restore, the same message a relationship type write gives
+   * for a reference to it, and any other type as unknown.
+   */
+  private static BadRequestException unavailable(
+      final String key, final Supplier<RelationshipType> includingDeleted) {
+    RelationshipType stored;
+    try {
+      stored = includingDeleted.get();
+    } catch (EntityNotFoundException notStored) {
+      stored = null;
+    }
+    return new BadRequestException(
+        stored == null
+            ? "Relationship type '" + key + "' is not registered"
+            : "Relationship type '" + stored.getName() + "' is deleted; restore it first");
   }
 
   public RelationshipType requireIgnoreCase(final String name) {
