@@ -94,6 +94,86 @@ class NestedSecretConverterCoverageTest {
   }
 
   /**
+   * Saving refuses a secret-bearing value that matches none of its options, so every option of such
+   * a {@code oneOf}, with or without a secret, must still convert while saving.
+   */
+  @Test
+  void everyOptionOfASecretBearingOneOfIsAcceptedWhenSaving() {
+    JsonSchemas schemas = JsonSchemas.load();
+    List<String> refused = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : schemas.all().entrySet()) {
+      String path = entry.getKey();
+      if (path.endsWith("serviceConnection.json")) {
+        continue;
+      }
+      JsonNode schema = entry.getValue();
+      Class<?> connectionClass = javaClass(schema);
+      JsonNode properties = schema.path("properties");
+      for (String property : iterable(properties.fieldNames())) {
+        Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
+        if (connectionClass == null
+            || oneOf == null
+            || !containsPasswordFormat(oneOf.node(), oneOf.path(), schemas)) {
+          continue;
+        }
+        for (Ref branch : branches(oneOf.node(), oneOf.path(), schemas)) {
+          Map<String, Object> payload = new LinkedHashMap<>();
+          payload.put(property, secretPayload(branch.node(), branch.path(), schemas));
+          if (isRefusedWhenSaving(connectionClass, payload)) {
+            refused.add(simpleJavaName(schema, path) + "." + property + " " + branch.path());
+          }
+        }
+      }
+    }
+
+    assertTrue(
+        refused.isEmpty(),
+        "These options are refused when saving, so their converter is missing a candidate class: "
+            + refused);
+  }
+
+  /** Refused only when the conversion that keeps an unmatched value succeeds. */
+  private boolean isRefusedWhenSaving(Class<?> connectionClass, Map<String, Object> payload) {
+    ClassConverter converter = ClassConverterFactory.getConverter(connectionClass);
+    boolean convertsToday;
+    try {
+      converter.convert(JsonUtils.deepCopy(payload, Map.class));
+      convertsToday = true;
+    } catch (RuntimeException e) {
+      convertsToday = false;
+    }
+    boolean refused;
+    try {
+      UnmatchedOptions.during(UnmatchedOptions.refuse(), () -> converter.convert(payload));
+      refused = false;
+    } catch (RuntimeException e) {
+      refused = true;
+    }
+    return convertsToday && refused;
+  }
+
+  private static Class<?> javaClass(JsonNode schema) {
+    try {
+      return Class.forName(schema.path("javaType").asText(""));
+    } catch (ClassNotFoundException e) {
+      return null;
+    }
+  }
+
+  private List<Ref> branches(JsonNode oneOf, String path, JsonSchemas schemas) {
+    JsonNode options = oneOf.has("oneOf") ? oneOf.get("oneOf") : oneOf.get("anyOf");
+    List<Ref> resolved = new ArrayList<>();
+    for (JsonNode option : options) {
+      String ref = option.path("$ref").asText("");
+      Ref branch = ref.isEmpty() ? new Ref(option, path) : schemas.resolve(ref, path);
+      if (branch != null) {
+        resolved.add(branch);
+      }
+    }
+    return resolved;
+  }
+
+  /**
    * Runs the registered converter over a payload built from each secret-bearing branch and reports
    * whether any secret is still held somewhere the password walkers skip, at any depth below the
    * property.

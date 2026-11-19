@@ -92,7 +92,7 @@ public abstract class ClassConverter {
       Method getter = target.getClass().getMethod("get" + accessorSuffix);
       Object value = getter.invoke(target);
       Optional<Object> converted =
-          isEmptyMap(value) ? Optional.empty() : tryToConvert(value, candidates);
+          isEmptyMap(value) ? Optional.empty() : tryToConvert(property, value, candidates);
       converted.ifPresent(
           typed -> {
             try {
@@ -122,6 +122,12 @@ public abstract class ClassConverter {
   }
 
   protected Optional<Object> tryToConvert(Object object, List<Class<?>> candidateClasses) {
+    return tryToConvert(null, object, candidateClasses);
+  }
+
+  /** A value no candidate accepts is handed to {@link UnmatchedOptions}, which may refuse it. */
+  private Optional<Object> tryToConvert(
+      String property, Object object, List<Class<?>> candidateClasses) {
     if (object != null) {
       Optional<Object> converted =
           candidateClasses.stream()
@@ -134,6 +140,8 @@ public abstract class ClassConverter {
                 .convert(converted.get()));
       }
     }
-    return object == null ? Optional.empty() : Optional.of(object);
+    return object == null
+        ? Optional.empty()
+        : Optional.of(UnmatchedOptions.resolve(property, object, candidateClasses));
   }
 }

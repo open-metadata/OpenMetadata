@@ -45,6 +45,7 @@ import org.openmetadata.schema.services.connections.messaging.KafkaConnection;
 import org.openmetadata.schema.services.connections.messaging.RedpandaConnection;
 import org.openmetadata.schema.services.connections.messaging.SchemaRegistryConfig;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.EntityMaskException;
 
 public class PasswordEntityMaskerTest extends TestEntityMasker {
@@ -112,6 +113,47 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 .unmaskServiceConnectionConfig(
                     masked, original, "DomoDashboard", ServiceType.DASHBOARD);
     assertEquals(TOKEN, restored.getAccessToken());
+  }
+
+  @Test
+  void testEveryLeafOfAValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> stored =
+        Map.of(
+            "type",
+            "DatabricksPipeline",
+            "hostPort",
+            "databricks.example:443",
+            "authType",
+            Map.of(
+                "token",
+                TOKEN,
+                "clientId",
+                "client",
+                "clientSecret",
+                OAUTH_CLIENT_SECRET,
+                "scopes",
+                List.of("all-apis"),
+                "retries",
+                3));
+
+    Object masked =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(stored, "DatabricksPipeline", ServiceType.PIPELINE);
+
+    String mask = getMaskedPassword();
+    assertEquals(
+        Map.of(
+            "token",
+            mask,
+            "clientId",
+            mask,
+            "clientSecret",
+            mask,
+            "scopes",
+            List.of(mask),
+            "retries",
+            mask),
+        JsonUtils.readValue(JsonUtils.pojoToJson(masked), Map.class).get("authType"));
   }
 
   @Test

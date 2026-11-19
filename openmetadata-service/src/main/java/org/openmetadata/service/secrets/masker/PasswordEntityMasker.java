@@ -30,6 +30,7 @@ import org.openmetadata.service.exception.EntityMaskException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.UnmatchedOptions;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -46,7 +47,12 @@ public class PasswordEntityMasker extends EntityMasker {
     if (connectionConfig != null) {
       try {
         Object convertedConnectionConfig =
-            SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+            SecretsUtil.convert(
+                connectionConfig,
+                connectionType,
+                null,
+                serviceType,
+                UnmatchedOptions.replaceLeaves(leaf -> PASSWORD_MASK));
         maskPasswordFields(convertedConnectionConfig);
         return convertedConnectionConfig;
       } catch (Exception e) {

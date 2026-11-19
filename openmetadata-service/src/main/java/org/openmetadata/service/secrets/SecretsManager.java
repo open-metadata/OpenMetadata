@@ -53,6 +53,7 @@ import org.openmetadata.service.exception.InvalidServiceConnectionException;
 import org.openmetadata.service.exception.SecretsManagerException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.converter.ClassConverterFactory;
+import org.openmetadata.service.secrets.converter.UnmatchedOptions;
 import org.openmetadata.service.util.AuthenticationMechanismBuilder;
 import org.openmetadata.service.util.IngestionPipelineBuilder;
 import org.openmetadata.service.util.ReflectionUtil;
@@ -134,7 +135,12 @@ public abstract class SecretsManager {
       boolean persistExternalSecrets) {
     try {
       Object newConnectionConfig =
-          SecretsUtil.convert(connectionConfig, connectionType, connectionName, serviceType);
+          SecretsUtil.convert(
+              connectionConfig,
+              connectionType,
+              connectionName,
+              serviceType,
+              UnmatchedOptions.refuse());
       return encryptPasswordFields(
           newConnectionConfig,
           buildSecretId(true, serviceType.value(), connectionName),
@@ -168,7 +174,12 @@ public abstract class SecretsManager {
       Object connectionConfig, String connectionType, ServiceType serviceType) {
     try {
       Object newConnectionConfig =
-          SecretsUtil.convert(connectionConfig, connectionType, null, serviceType);
+          SecretsUtil.convert(
+              connectionConfig,
+              connectionType,
+              null,
+              serviceType,
+              UnmatchedOptions.replaceLeaves(this::decryptIfTokenized));
       return decryptPasswordFields(newConnectionConfig);
     } catch (Exception e) {
       String message =
@@ -182,6 +193,10 @@ public abstract class SecretsManager {
               "Failed to decrypt connection instance of %s. Did the Fernet Key change?",
               connectionType));
     }
+  }
+
+  private Object decryptIfTokenized(Object leaf) {
+    return leaf instanceof String value && Fernet.isTokenized(value) ? fernet.decrypt(value) : leaf;
   }
 
   public Object encryptAuthenticationMechanism(

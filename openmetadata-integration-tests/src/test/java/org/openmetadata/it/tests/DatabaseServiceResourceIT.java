@@ -353,7 +353,7 @@ public class DatabaseServiceResourceIT
     OpenMetadataException e =
         assertThrows(OpenMetadataException.class, () -> createEntity(request));
     assertEquals(400, e.getStatusCode());
-    assertTrue(e.getMessage().contains("unrecognized field 'sslMode'"), e.getMessage());
+    assertTrue(e.getMessage().contains("[sslMode]"), e.getMessage());
   }
 
   @Test

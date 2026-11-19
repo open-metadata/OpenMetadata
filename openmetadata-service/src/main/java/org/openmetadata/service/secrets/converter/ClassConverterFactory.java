@@ -215,7 +215,7 @@ public final class ClassConverterFactory {
               MicrosoftAccessConnection.class,
               new NestedConfigClassConverter(
                   MicrosoftAccessConnection.class,
-                  Map.of("connection", List.of(S3Connection.class)))),
+                  Map.of("connection", List.of(S3Connection.class, UntypedOption.class)))),
           Map.entry(
               MicroStrategyConnection.class,
               new NestedConfigClassConverter(
@@ -258,7 +258,8 @@ public final class ClassConverterFactory {
                           AzureConfig.class,
                           org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig
                               .class,
-                          S3Config.class)))),
+                          S3Config.class,
+                          UntypedOption.class)))),
           Map.entry(
               QuestDBConnection.class,
               new NestedConfigClassConverter(
