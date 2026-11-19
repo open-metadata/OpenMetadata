@@ -14,13 +14,15 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Arrays;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 
-/** Secret ids of list elements stay distinct; masked secrets follow the element they belong to. */
+/** Secret ids of list elements stay distinct and stable; masked secrets follow their element. */
 class ReflectionUtilCollectionKeysTest {
 
   @Test
@@ -28,6 +30,7 @@ class ReflectionUtilCollectionKeysTest {
     assertEquals(List.of("alpha", "beta"), keys("alpha", "beta"));
   }
 
+  /** Exact duplicates and unnamed elements have nothing but their position to tell them apart. */
   @Test
   void keysRepeatedAndMissingNamesByPosition() {
     assertEquals(List.of("#0", "#1", "#2", "solo"), keys("dup", "dup", null, "solo"));
@@ -35,20 +38,34 @@ class ReflectionUtilCollectionKeysTest {
 
   @Test
   void neverKeysANameThatLooksLikeAPosition() {
-    assertEquals(List.of("#0", "#1", "#2"), keys("#1", "dup", "dup"));
+    assertEquals("#1", keys("#1", "dup", "dup").get(1));
+    assertNotEquals("#1", keys("#1", "dup", "dup").getFirst());
   }
 
-  /** Secret ids are lowercased and stripped of other characters, so these share one secret. */
+  /**
+   * Secret ids are lowercased and stripped of other characters, so names that would share one are
+   * keyed by a hash of their exact text, which does not move when the list is reordered.
+   */
   @Test
-  void keysNamesThatShareASecretIdByPosition() {
-    assertEquals(List.of("#0", "#1", "other"), keys("Prod", "prod", "other"));
-    assertEquals(List.of("#0", "#1"), keys("prod-1", "prod_1"));
+  void keysNamesThatShareASecretIdByAStableHash() {
+    final List<String> keys = keys("Prod", "prod", "other");
+    final List<String> reordered = keys("prod", "other", "Prod");
+
+    assertTrue(keys.getFirst().matches("h[0-9a-f]{16}"));
+    assertNotEquals(keys.getFirst(), keys.get(1));
+    assertEquals(List.of(keys.get(1), "other", keys.getFirst()), reordered);
+    assertNotEquals(keys("prod-1", "prod_1").getFirst(), keys("prod-1", "prod_1").get(1));
   }
 
   /** A name made only of digits would share a secret id with a position once "#" is removed. */
   @Test
-  void keysNamesWithoutLettersByPosition() {
-    assertEquals(List.of("#0", "#1", "named"), keys("3", "##", "named"));
+  void keysNamesWithoutLettersByAStableHash() {
+    final List<String> keys = keys("3", "##", "named");
+
+    assertTrue(keys.getFirst().matches("h[0-9a-f]{16}"));
+    assertTrue(keys.get(1).matches("h[0-9a-f]{16}"));
+    assertEquals("named", keys.get(2));
+    assertEquals(keys.getFirst(), keys("named", "3").get(1));
   }
 
   /** Restoring a masked secret matches the exact name, so distinct names keep their own keys. */

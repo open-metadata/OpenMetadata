@@ -26,9 +26,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
-import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.ReflectionException;
 
@@ -38,6 +38,8 @@ public class ReflectionUtil {
   private static final String POSITION_KEY_PREFIX = "#";
   private static final Pattern NOT_LETTER_OR_DIGIT = Pattern.compile("[^a-z0-9]");
   private static final Pattern DIGITS_ONLY = Pattern.compile("[0-9]*");
+  private static final String HASHED_NAME_PREFIX = "h";
+  private static final int HASHED_NAME_LENGTH = 16;
 
   private ReflectionUtil() {
     /* Hidden construction */
@@ -113,54 +115,90 @@ public class ReflectionUtil {
    * that are genuinely indistinguishable. A name starting with {@code #} gets one more {@code #}, so
    * it never equals a position key.
    */
-  public static List<String> getCollectionElementIdentities(Collection<?> collection) {
-    return elementKeys(collection, Function.identity(), ReflectionUtil::escapePositionPrefix);
+  public static List<String> getCollectionElementIdentities(final Collection<?> collection) {
+    final List<String> names = readNames(collection);
+    final Map<String, Integer> occurrences = countBy(names, Function.identity());
+    final List<String> identities = new ArrayList<>(names.size());
+    for (int index = 0; index < names.size(); index++) {
+      final String name = names.get(index);
+      identities.add(
+          isUnique(name, name, occurrences)
+              ? escapePositionPrefix(name)
+              : POSITION_KEY_PREFIX + index);
+    }
+    return List.copyOf(identities);
   }
 
   /**
    * Names each element of a collection inside its secret id in a secrets manager.
    *
+   * <p>A secret id must not move when the collection is reordered or edited: a new value is written
+   * to the id computed for the element, so an id taken from position would overwrite the secret
+   * another element still references once the two swap places. Every element with a unique name
+   * therefore gets an id from that name.
+   *
    * <p>Every secrets manager lowercases a secret id and drops or replaces its other characters, so
-   * {@code Prod} and {@code prod} would share one stored secret. A name is therefore used only where
-   * it is still unique when lowercased and reduced to letters and digits, and has a letter: a name like
-   * {@code #1} or {@code 3} could match a position key once cleaned. Any other element is named by
-   * position. Restoring a masked secret does not use these keys - see {@link
-   * #getCollectionElementIdentities}.
+   * {@code Prod} and {@code prod} would share one stored secret. A name is used as it is only where
+   * it is still unique when lowercased and reduced to letters and digits, and has a letter: a name
+   * like {@code #1} or {@code 3} could match a position key once cleaned. Any other unique name is
+   * named by a hash of its exact text, which stays distinct and stable. Only unnamed elements and
+   * exact duplicates, which nothing tells apart, are named by position. Restoring a masked secret
+   * does not use these keys - see {@link #getCollectionElementIdentities}.
    */
-  public static List<String> getCollectionElementKeys(Collection<?> collection) {
-    return elementKeys(
-        collection,
-        ReflectionUtil::secretIdForm,
-        name -> DIGITS_ONLY.matcher(secretIdForm(name)).matches() ? null : name);
+  public static List<String> getCollectionElementKeys(final Collection<?> collection) {
+    final List<String> names = readNames(collection);
+    final Map<String, Integer> exact = countBy(names, Function.identity());
+    final Map<String, Integer> cleaned = countBy(names, ReflectionUtil::secretIdForm);
+    final List<String> keys = new ArrayList<>(names.size());
+    for (int index = 0; index < names.size(); index++) {
+      keys.add(secretKey(names.get(index), index, exact, cleaned));
+    }
+    return List.copyOf(keys);
   }
 
-  /**
-   * Keys each element by its name where {@code form} of the name occurs once and {@code key} gives
-   * one, and by position otherwise.
-   */
-  private static List<String> elementKeys(
-      Collection<?> collection, Function<String, String> form, UnaryOperator<String> key) {
-    List<String> names = collection.stream().map(ReflectionUtil::readName).toList();
-    Map<String, Integer> occurrences = new HashMap<>();
+  private static String secretKey(
+      final String name,
+      final int index,
+      final Map<String, Integer> exact,
+      final Map<String, Integer> cleaned) {
+    final boolean named = isUnique(name, name, exact);
+    final boolean readable =
+        named
+            && isUnique(name, secretIdForm(name), cleaned)
+            && !DIGITS_ONLY.matcher(secretIdForm(name)).matches();
+    String key = POSITION_KEY_PREFIX + index;
+    if (readable) {
+      key = name;
+    } else if (named) {
+      key = HASHED_NAME_PREFIX + DigestUtils.sha256Hex(name).substring(0, HASHED_NAME_LENGTH);
+    }
+    return key;
+  }
+
+  private static boolean isUnique(
+      final String name, final String form, final Map<String, Integer> occurrences) {
+    return name != null && occurrences.get(form) == 1;
+  }
+
+  private static List<String> readNames(final Collection<?> collection) {
+    return collection.stream().map(ReflectionUtil::readName).toList();
+  }
+
+  private static Map<String, Integer> countBy(
+      final List<String> names, final Function<String, String> form) {
+    final Map<String, Integer> occurrences = new HashMap<>();
     names.stream()
         .filter(Objects::nonNull)
         .forEach(name -> occurrences.merge(form.apply(name), 1, Integer::sum));
-    List<String> keys = new ArrayList<>(names.size());
-    for (int index = 0; index < names.size(); index++) {
-      String name = names.get(index);
-      String nameKey =
-          name != null && occurrences.get(form.apply(name)) == 1 ? key.apply(name) : null;
-      keys.add(nameKey != null ? nameKey : POSITION_KEY_PREFIX + index);
-    }
-    return keys;
+    return occurrences;
   }
 
-  private static String escapePositionPrefix(String name) {
+  private static String escapePositionPrefix(final String name) {
     return name.startsWith(POSITION_KEY_PREFIX) ? POSITION_KEY_PREFIX + name : name;
   }
 
   /** A name as any secrets manager could clean it into a secret id: lowercase letters and digits. */
-  private static String secretIdForm(String name) {
+  private static String secretIdForm(final String name) {
     return NOT_LETTER_OR_DIGIT.matcher(name.toLowerCase(Locale.ROOT)).replaceAll("");
   }
 
