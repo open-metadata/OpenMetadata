@@ -62,8 +62,8 @@ from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.clickhouse.queries import (
+    CLICKHOUSE_CLUSTERS,
     CLICKHOUSE_DISTRIBUTED_TABLES,
-    CLICKHOUSE_LOCAL_CLUSTERS,
     CLICKHOUSE_MACROS,
 )
 from metadata.ingestion.source.models import TableView
@@ -92,7 +92,7 @@ MATERIALIZED_VIEW_HEADER_PATTERN = re.compile(r"^\s*CREATE\s+(?:OR\s+REPLACE\s+)
 DISTRIBUTED_ENGINE_PATTERN = re.compile(r"^\s*Distributed\s*\(")
 
 # `{name}` in a cluster name stands for the `name` macro of the server config. Clickhouse
-# expands a substitution that holds macros again, and gives up after ten levels.
+# expands a substitution that holds macros again, ten times at most (`Macros::expand`).
 MACRO_PATTERN = re.compile(r"\{([^{}]*)\}")
 MAX_MACRO_EXPANSION_DEPTH = 10
 
@@ -306,7 +306,8 @@ def expand_macros(name: str, macros: dict[str, str]) -> str | None:
 
     Returns None when a macro is not defined on this server or the expansion does not settle.
     """
-    for _ in range(MAX_MACRO_EXPANSION_DEPTH):
+    # A name still holding macros after the last substitution does not settle
+    for _ in range(MAX_MACRO_EXPANSION_DEPTH + 1):
         macro_names = MACRO_PATTERN.findall(name)
         if not macro_names:
             return name
@@ -316,7 +317,16 @@ def expand_macros(name: str, macros: dict[str, str]) -> str | None:
     return None
 
 
-def _get_single_table(metadata: OpenMetadata, service_name: str, schema_name: str, table_name: str) -> Table | None:
+def _schema_and_name(table: Table) -> tuple[str, str]:
+    *_, schema_name, table_name = (fqn.unquote_name(part) for part in fqn.split(model_str(table.fullyQualifiedName)))
+    return schema_name, table_name
+
+
+def _find_tables(metadata: OpenMetadata, service_name: str, schema_name: str, table_name: str) -> list[Table]:
+    """
+    The tables of the service named exactly so. The search matches names regardless of case, while
+    Clickhouse names are case-sensitive.
+    """
     tables = search_table_entities(
         metadata=metadata,
         service_names=service_name,
@@ -324,22 +334,14 @@ def _get_single_table(metadata: OpenMetadata, service_name: str, schema_name: st
         database_schema=schema_name,
         table=table_name,
     )
-    if tables and len(tables) > 1:
-        logger.warning(
-            "Table [%s.%s] matches %d tables in service [%s], skipping Distributed table lineage",
-            schema_name,
-            table_name,
-            len(tables),
-            service_name,
-        )
-        return None
-    return tables[0] if tables else None
+    return [table for table in tables or [] if _schema_and_name(table) == (schema_name, table_name)]
 
 
-class LocalClusters(NamedTuple):
-    """Clusters this server holds a replica of, and the macros a cluster name may use"""
+class Clusters(NamedTuple):
+    """The clusters `system.clusters` lists, those this server holds a replica of, and the macros"""
 
-    names: frozenset[str]
+    listed: frozenset[str]
+    local: frozenset[str]
     macros: dict[str, str]
 
 
@@ -366,9 +368,8 @@ def _find_local_table(
     metadata: OpenMetadata,
     service_name: str,
     distributed_name: tuple[str, str],
-    distributed_entity: Table,
     engine_full: str | None,
-    local_clusters: LocalClusters,
+    clusters: Clusters,
 ) -> LocalTableLookup:
     """The local table of a Distributed table, with a warning when it gets no edge"""
     local_table = get_distributed_local_table(engine_full)
@@ -380,7 +381,7 @@ def _find_local_table(
         )
         return INCONCLUSIVE
 
-    cluster_name = expand_macros(local_table.cluster_name, local_clusters.macros)
+    cluster_name = expand_macros(local_table.cluster_name, clusters.macros)
     if cluster_name is None:
         logger.warning(
             "Cannot expand the macros of cluster [%s] of Distributed table [%s.%s], skipping its lineage",
@@ -388,8 +389,16 @@ def _find_local_table(
             *distributed_name,
         )
         return INCONCLUSIVE
+    # A cluster missing from the server config tells nothing about where its shards are
+    if cluster_name not in clusters.listed:
+        logger.warning(
+            "Cluster [%s] of Distributed table [%s.%s] is not in system.clusters, skipping its lineage",
+            cluster_name,
+            *distributed_name,
+        )
+        return INCONCLUSIVE
     # On a server outside the cluster, a table of the same name is not one of its shards
-    if cluster_name not in local_clusters.names:
+    if cluster_name not in clusters.local:
         logger.warning(
             "This server holds no replica of cluster [%s] of Distributed table [%s.%s], skipping its lineage",
             cluster_name,
@@ -402,20 +411,24 @@ def _find_local_table(
         logger.warning("Distributed table [%s.%s] names itself, skipping its lineage", *distributed_name)
         return NO_LOCAL_TABLE
 
-    local_entity = _get_single_table(metadata, service_name, *name)
-    if local_entity is None or local_entity.id == distributed_entity.id:
+    local_entities = _find_tables(metadata, service_name, *name)
+    if len(local_entities) == 1:
+        return LocalTableLookup(conclusive=True, name=name, entity=local_entities[0])
+    if local_entities:
+        logger.warning(
+            "Local table [%s.%s] of Distributed table [%s.%s] matches %d tables in service [%s], skipping its lineage",
+            *name,
+            *distributed_name,
+            len(local_entities),
+            service_name,
+        )
+    else:
         logger.warning(
             "Local table [%s.%s] of Distributed table [%s.%s] not found, skipping its lineage",
             *name,
             *distributed_name,
         )
-        return LocalTableLookup(conclusive=True, name=name)
-    return LocalTableLookup(conclusive=True, name=name, entity=local_entity)
-
-
-def _schema_and_name(table: Table) -> tuple[str, str]:
-    *_, schema_name, table_name = (fqn.unquote_name(part) for part in fqn.split(model_str(table.fullyQualifiedName)))
-    return schema_name, table_name
+    return LocalTableLookup(conclusive=True, name=name)
 
 
 def _writes_into(upstream: Table, distributed_name: tuple[str, str]) -> bool:
@@ -451,11 +464,10 @@ def _remove_replaced_edges(
     of every other source, manual ones included.
     """
     distributed_id = model_str(distributed_entity.id)
-    current_id = model_str(local_table.entity.id) if local_table.entity else None
     lineage = metadata.get_lineage_by_id(Table, distributed_id, up_depth=1, down_depth=0) or {}
     for edge in lineage.get("upstreamEdges") or []:
         upstream_id = edge.get("fromEntity")
-        if not upstream_id or upstream_id == current_id or edge.get("toEntity") != distributed_id:
+        if not upstream_id or edge.get("toEntity") != distributed_id:
             continue
         if (edge.get("lineageDetails") or {}).get("source") != LineageSource.ViewLineage.value:
             continue
@@ -500,8 +512,10 @@ def get_distributed_table_lineage(
     try:
         with engine.connect() as conn:
             rows = conn.execute(text(CLICKHOUSE_DISTRIBUTED_TABLES)).fetchall()
-            local_clusters = LocalClusters(
-                names=frozenset(row.cluster for row in conn.execute(text(CLICKHOUSE_LOCAL_CLUSTERS))),
+            cluster_rows = conn.execute(text(CLICKHOUSE_CLUSTERS)).fetchall()
+            clusters = Clusters(
+                listed=frozenset(row.cluster for row in cluster_rows),
+                local=frozenset(row.cluster for row in cluster_rows if row.is_local),
                 macros={row.macro: row.substitution for row in conn.execute(text(CLICKHOUSE_MACROS))},
             )
     # Broad on purpose: the default `clickhouse+http` driver raises its own `DatabaseException`
@@ -523,17 +537,25 @@ def get_distributed_table_lineage(
         ):
             continue
 
-        distributed_entity = _get_single_table(metadata, service_name, schema_name, table_name)
-        if distributed_entity is None:
-            logger.debug("Distributed table [%s.%s] not found, skipping its lineage", schema_name, table_name)
+        distributed_entities = _find_tables(metadata, service_name, schema_name, table_name)
+        if len(distributed_entities) != 1:
+            if distributed_entities:
+                logger.warning(
+                    "Distributed table [%s.%s] matches %d tables in service [%s], skipping its lineage",
+                    schema_name,
+                    table_name,
+                    len(distributed_entities),
+                    service_name,
+                )
+            else:
+                logger.debug("Distributed table [%s.%s] not found, skipping its lineage", schema_name, table_name)
             continue
+        distributed_entity = distributed_entities[0]
         database_name = fqn.unquote_name(fqn.split(model_str(distributed_entity.fullyQualifiedName))[1])
         if filter_by_database(source_config.databaseFilterPattern, database_name):
             continue
 
-        local_table = _find_local_table(
-            metadata, service_name, (schema_name, table_name), distributed_entity, engine_full, local_clusters
-        )
+        local_table = _find_local_table(metadata, service_name, (schema_name, table_name), engine_full, clusters)
 
         # Not done by marking the edge to override: that deletes every view lineage edge into the
         # Distributed table, the one of a materialized view writing `TO` it included
@@ -560,8 +582,16 @@ def get_distributed_table_lineage(
             left=None,
             right=AddLineageRequest(
                 edge=EntitiesEdge(
-                    fromEntity=EntityReference(id=local_table.entity.id, type="table"),
-                    toEntity=EntityReference(id=distributed_entity.id, type="table"),
+                    fromEntity=EntityReference(
+                        id=local_table.entity.id,
+                        type="table",
+                        fullyQualifiedName=model_str(local_table.entity.fullyQualifiedName),
+                    ),
+                    toEntity=EntityReference(
+                        id=distributed_entity.id,
+                        type="table",
+                        fullyQualifiedName=model_str(distributed_entity.fullyQualifiedName),
+                    ),
                     lineageDetails=LineageDetails(source=LineageSource.ViewLineage),
                 )
             ),

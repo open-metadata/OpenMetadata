@@ -70,11 +70,11 @@ SELECT
 """
 )
 
-CLICKHOUSE_LOCAL_CLUSTERS = textwrap.dedent(
+CLICKHOUSE_CLUSTERS = textwrap.dedent(
     """
-SELECT DISTINCT cluster
+SELECT cluster, max(is_local) AS is_local
   FROM system.clusters
- WHERE is_local = 1
+ GROUP BY cluster
 """
 )
 

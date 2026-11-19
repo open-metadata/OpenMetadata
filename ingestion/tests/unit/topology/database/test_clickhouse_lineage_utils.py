@@ -499,7 +499,16 @@ class TestDistributedLocalTable:
         assert get_distributed_local_table(engine_full) is None
 
 
-MACROS = {"cluster": "main", "layer": "eu", "nested": "{layer}_main", "loop": "{loop}"}
+MACROS = {
+    "cluster": "main",
+    "layer": "eu",
+    "nested": "{layer}_main",
+    "loop": "{loop}",
+    # `{level_0}` takes ten substitutions to settle, `{level_x}` eleven
+    **{f"level_{level}": f"{{level_{level + 1}}}" for level in range(9)},
+    "level_9": "deep",
+    "level_x": "{level_0}",
+}
 
 
 class TestExpandMacros:
@@ -513,6 +522,8 @@ class TestExpandMacros:
             pytest.param("{missing}", None, id="undefined-macro"),
             pytest.param("{cluster}_{missing}", None, id="one-undefined-macro"),
             pytest.param("{loop}", None, id="expansion-does-not-settle"),
+            pytest.param("{level_0}", "deep", id="ten-substitutions"),
+            pytest.param("{level_x}", None, id="eleven-substitutions"),
         ],
     )
     def test_cluster_name_is_expanded(self, name, expected):
@@ -543,10 +554,16 @@ class TestDistributedTableLineage:
     @pytest.fixture
     def metadata(self, tables, lineage):
         def es_search_from_fqn(entity_type, fqn_search_string, **kwargs):
+            """Like the index, which normalizes `fullyQualifiedName` to lower case"""
             if entity_type is not Table:
                 return []
-            *_, schema, name = (fqn.unquote_name(part) for part in fqn.split(fqn_search_string))
-            return list(tables.get((schema, name), []))
+            *_, schema, name = (fqn.unquote_name(part).lower() for part in fqn.split(fqn_search_string))
+            return [
+                table
+                for key, found in tables.items()
+                if len(key) == 2 and (key[0].lower(), key[1].lower()) == (schema, name)
+                for table in found
+            ]
 
         def get_by_id(entity, entity_id, fields=None, **kwargs):
             """Like the API, the definition comes back only when it is asked for"""
@@ -691,6 +708,8 @@ class TestDistributedTableLineage:
         assert isinstance(request, AddLineageRequest)
         assert request.edge.fromEntity.id == local.id
         assert request.edge.toEntity.id == distributed.id
+        assert request.edge.fromEntity.fullyQualifiedName == local.fullyQualifiedName.root
+        assert request.edge.toEntity.fullyQualifiedName == distributed.fullyQualifiedName.root
         assert request.edge.lineageDetails.source == LineageSource.ViewLineage
 
     def test_local_table_in_another_database(self, metadata, tables, system_tables):
@@ -728,13 +747,18 @@ class TestDistributedTableLineage:
             assert self._run(metadata, system_tables) == []
         assert "Cannot read the local table of Distributed table [default.events]" in caplog.text
 
-    def test_ambiguous_local_table_is_skipped(self, metadata, tables, system_tables):
+    def test_ambiguous_local_table_is_skipped_with_one_warning(self, metadata, tables, system_tables, caplog):
         self._add_table(tables, "default", "events_local")
         self._add_table(tables, "default", "events_local")
         self._add_table(tables, "default", "events")
         self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
 
-        assert self._run(metadata, system_tables) == []
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert [record.getMessage() for record in caplog.records if record.levelname == "WARNING"] == [
+            "Local table [default.events_local] of Distributed table [default.events] matches 2 tables in "
+            "service [clickhouse_service], skipping its lineage"
+        ]
 
     def test_distributed_table_naming_itself_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
         self._add_table(tables, "default", "events")
@@ -744,14 +768,66 @@ class TestDistributedTableLineage:
             assert self._run(metadata, system_tables) == []
         assert "Distributed table [default.events] names itself" in caplog.text
 
-    def test_search_matching_the_distributed_table_itself_is_skipped(self, metadata, tables, system_tables, caplog):
-        distributed = self._add_table(tables, "default", "events")
-        tables[("default", "Events")] = [distributed]
+    def test_local_table_named_like_the_distributed_table_in_another_case_is_not_found(
+        self, metadata, tables, system_tables, caplog
+    ):
+        """The search ignores case, so it returns the Distributed table itself for `Events`"""
+        self._add_table(tables, "default", "events")
         self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events')")
 
         with caplog.at_level("WARNING"):
             assert self._run(metadata, system_tables) == []
         assert "Local table [default.Events] of Distributed table [default.events] not found" in caplog.text
+
+    def test_local_table_named_in_another_case_is_not_linked(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events_Local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Local table [default.Events_Local] of Distributed table [default.events] not found" in caplog.text
+
+    def test_exact_name_wins_over_names_in_another_case(self, metadata, tables, system_tables):
+        local = self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "Events_Local")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        (request,) = self._run(metadata, system_tables)
+
+        assert request.edge.fromEntity.id == local.id
+        assert request.edge.toEntity.id == distributed.id
+
+    def test_distributed_table_not_ingested_is_not_matched_in_another_case(
+        self, metadata, tables, lineage, system_tables
+    ):
+        """`Events` is not ingested: the search returns its local table `events`, which is no Distributed table"""
+        events = self._add_table(tables, "default", "events")
+        mv = self._add_table(
+            tables,
+            "default",
+            "events_mv",
+            TableType.MaterializedView,
+            schema_definition="CREATE MATERIALIZED VIEW default.events_mv TO default.events AS SELECT 1",
+        )
+        self._add_row(system_tables, "default", "Events", "Distributed", "Distributed('c', 'default', 'events')")
+        self._edge(lineage, mv, events, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, events) == {str(mv.id.root)}
+        metadata.get_lineage_by_id.assert_not_called()
+
+    def test_ambiguous_distributed_table_is_skipped_with_a_warning(self, metadata, tables, system_tables, caplog):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_table(tables, "default", "events")
+        self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'events_local')")
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Distributed table [default.events] matches 2 tables in service [clickhouse_service]" in caplog.text
 
     @pytest.mark.parametrize(
         "source_config",
@@ -830,7 +906,6 @@ class TestDistributedTableLineage:
         "cluster",
         [
             pytest.param("remote_only", id="cluster-without-a-local-replica"),
-            pytest.param("unknown", id="cluster-unknown-to-this-server"),
         ],
     )
     def test_cluster_without_a_local_replica_is_skipped_with_a_warning(
@@ -849,6 +924,19 @@ class TestDistributedTableLineage:
         assert f"This server holds no replica of cluster [{cluster}] of Distributed table [default.events]" in (
             caplog.text
         )
+
+    def test_cluster_missing_from_system_clusters_is_skipped_with_a_warning(
+        self, metadata, tables, system_tables, caplog
+    ):
+        self._add_table(tables, "default", "events_local")
+        self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('unknown', 'default', 'events_local')"
+        )
+
+        with caplog.at_level("WARNING"):
+            assert self._run(metadata, system_tables) == []
+        assert "Cluster [unknown] of Distributed table [default.events] is not in system.clusters" in caplog.text
 
     def test_cluster_macro_is_expanded(self, metadata, tables, system_tables):
         local = self._add_table(tables, "default", "events_local")
@@ -1059,17 +1147,33 @@ class TestDistributedTableLineage:
 
         assert self._upstream(lineage, distributed) == {str(first.id.root), str(second.id.root)}
 
-    def test_override_keeps_the_edge_the_search_matches_in_another_case(self, metadata, tables, lineage, system_tables):
-        local = self._add_table(tables, "default", "events_local")
-        tables[("default", "Events_Local")] = [local]
+    def test_override_removes_the_edge_of_a_namesake_in_another_case(self, metadata, tables, lineage, system_tables):
+        """Clickhouse names are case-sensitive: `events_local` is not the `Events_Local` the definition names"""
+        namesake = self._add_table(tables, "default", "events_local")
         distributed = self._add_table(tables, "default", "events")
         self._add_row(system_tables, "default", "events", "Distributed", "Distributed('c', 'default', 'Events_Local')")
+        self._edge(lineage, namesake, distributed, LineageSource.ViewLineage)
+
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
+
+        assert self._upstream(lineage, distributed) == set()
+
+    def test_override_removes_nothing_for_a_cluster_missing_from_system_clusters(
+        self, metadata, tables, lineage, system_tables
+    ):
+        local = self._add_table(tables, "default", "events_local")
+        old_local = self._add_table(tables, "default", "events_local_v1")
+        distributed = self._add_table(tables, "default", "events")
+        self._add_row(
+            system_tables, "default", "events", "Distributed", "Distributed('unknown', 'default', 'events_local')"
+        )
         self._edge(lineage, local, distributed, LineageSource.ViewLineage)
+        self._edge(lineage, old_local, distributed, LineageSource.ViewLineage)
 
-        (request,) = self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True))
+        assert self._run(metadata, system_tables, DatabaseServiceQueryLineagePipeline(overrideViewLineage=True)) == []
 
-        assert request.edge.fromEntity.id == local.id
-        metadata.delete_lineage_edge.assert_not_called()
+        assert self._upstream(lineage, distributed) == {str(local.id.root), str(old_local.id.root)}
+        metadata.get_lineage_by_id.assert_not_called()
 
     @pytest.mark.parametrize(
         "engine_full",
