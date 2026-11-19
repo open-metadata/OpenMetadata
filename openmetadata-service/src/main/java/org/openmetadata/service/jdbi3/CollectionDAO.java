@@ -5259,17 +5259,45 @@ public interface CollectionDAO {
      * them; an entity of another type that shares the name leaves them alone.
      */
     default void deleteAllByPrefix(String fqn, String entityType) {
-      String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String typeCondition =
-          Entity.TYPE.equals(entityType)
-              ? " AND fromType = :typeRow AND toType = :typeRow"
-              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      Map<String, String> bindMap = prefixBindings(fqn);
       String condition =
-          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
-      Map<String, String> bindMap = new HashMap<>();
-      bindMap.put("prefix", prefix);
-      bindMap.put("typeRow", Entity.TYPE);
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition(entityType);
       deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    /**
+     * {@link #deleteAllByPrefix} except the rows at and under the kept subtrees, which belong to
+     * entities a hard delete leaves in place.
+     */
+    default void deleteAllByPrefixOutside(
+        String fqn, String entityType, List<String> keptSubtreeHashes) {
+      Map<String, String> bindMap = prefixBindings(fqn);
+      String toOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("toFQNHash", keptSubtreeHashes, bindMap);
+      String fromOutside =
+          FqnKeyedRowCleanup.outsideKeptSubtrees("fromFQNHash", keptSubtreeHashes, bindMap);
+      String condition =
+          "WHERE ((toFQNHash LIKE :prefix"
+              + toOutside
+              + ") OR (fromFQNHash LIKE :prefix"
+              + fromOutside
+              + "))"
+              + typeCondition(entityType);
+      deleteAllByPrefixInternal(condition, bindMap);
+    }
+
+    private static Map<String, String> prefixBindings(String fqn) {
+      Map<String, String> bindMap = new HashMap<>();
+      bindMap.put(
+          "prefix", String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR));
+      bindMap.put("typeRow", Entity.TYPE);
+      return bindMap;
+    }
+
+    private static String typeCondition(String entityType) {
+      return Entity.TYPE.equals(entityType)
+          ? " AND fromType = :typeRow AND toType = :typeRow"
+          : " AND fromType <> :typeRow AND toType <> :typeRow";
     }
 
     default void deleteAllByPrefixes(List<String> threadIds) {
@@ -7295,6 +7323,40 @@ public interface CollectionDAO {
                 parts = {":targetFQNHashPrefix", ".%"},
                 hash = true)
             String targetFQNHashPrefix);
+
+    /**
+     * {@link #deleteTagLabelsByTargetPrefix} except the labels at and under the kept subtrees,
+     * which belong to entities a hard delete leaves in place.
+     */
+    default void deleteTagLabelsByTargetPrefixOutside(
+        String targetFQN, List<String> keptSubtreeHashes) {
+      String targetHash = FullyQualifiedName.buildHash(targetFQN);
+      Map<String, String> bindings = new HashMap<>();
+      bindings.put("targetHash", targetHash);
+      bindings.put("underTarget", targetHash + Entity.SEPARATOR + "%");
+      deleteTagLabelsWhere(
+          "(targetFQNHash = :targetHash OR targetFQNHash LIKE :underTarget)"
+              + FqnKeyedRowCleanup.outsideKeptSubtrees(
+                  "targetFQNHash", keptSubtreeHashes, bindings),
+          bindings);
+    }
+
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM tag_usage WHERE <condition> ORDER BY tagFQN",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value = "DELETE FROM tag_usage WHERE <condition>",
+        connectionType = POSTGRES)
+    void deleteTagLabelsWhere(
+        @Define("condition") String condition, @BindMap Map<String, String> bindings);
+
+    /**
+     * Runs the probes {@link FqnKeyedRowCleanup} builds over entity tables, each selecting FQN
+     * hashes as {@code hash}.
+     */
+    @SqlQuery("SELECT probe.hash FROM (<probes>) probe")
+    List<String> listEntityFqnHashes(
+        @Define("probes") String probes, @BindMap Map<String, String> bindings);
 
     @Deprecated(since = "Release 1.1")
     @ConnectionAwareSqlUpdate(

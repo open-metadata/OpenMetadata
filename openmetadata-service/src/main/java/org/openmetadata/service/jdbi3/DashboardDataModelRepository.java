@@ -77,6 +77,18 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     fieldFetchers.put(FIELD_TAGS, this::fetchAndSetColumnTags);
   }
 
+  /** A data model's FQN puts "model" after its service's: the FQN of a chart named "model". */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
+  /** A data model is a descendant of the dashboard service whose FQN it extends. */
+  @Override
+  protected String fqnParentType() {
+    return Entity.DASHBOARD_SERVICE;
+  }
+
   @Override
   public void setFullyQualifiedName(DashboardDataModel dashboardDataModel) {
     // Use getFullyQualifiedName() instead of getName() to properly handle service names with dots
@@ -510,5 +522,10 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(
       DashboardDataModel dataModel) {
     return Map.of("columns", listOrEmpty(dataModel.getColumns()));
+  }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
   }
 }

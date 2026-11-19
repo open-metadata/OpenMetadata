@@ -684,4 +684,9 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
       SearchIndex searchIndex) {
     return Map.of("fields", listOrEmpty(searchIndex.getFields()));
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }

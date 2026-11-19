@@ -580,4 +580,9 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
   protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Worksheet worksheet) {
     return Map.of("columns", listOrEmpty(worksheet.getColumns()));
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }
