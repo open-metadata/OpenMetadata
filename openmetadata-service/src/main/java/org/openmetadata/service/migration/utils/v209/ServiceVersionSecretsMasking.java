@@ -37,10 +37,14 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * Connection workflow.
  *
  * <p>It reads only those version rows of {@code entity_extension}, by extension prefix, and changes
- * only a listed secret ({@link ServiceSecretPaths}) that is still plain text: encrypted values,
- * secret manager references and masked values stay as they are, so running it again changes
- * nothing. Old versions cannot be restored, so a masked secret loses nothing; the version endpoints
- * mask these fields anyway.
+ * only a listed secret ({@link ServiceSecretPaths}) that is still plain text: encrypted and masked
+ * values stay as they are, so running it again changes nothing. A {@code secret:} value is masked
+ * too: the database secrets manager reads it as part of a password, and a secret manager reference
+ * in an old version is never resolved. Old versions cannot be restored, so a masked secret loses
+ * nothing; the version endpoints mask these fields anyway.
+ *
+ * <p>It runs from 2.0.9 and again from 2.1.0, because a database that recorded 2.1.0 before this
+ * step existed never runs the 2.0.9 data migration again.
  */
 @Slf4j
 public final class ServiceVersionSecretsMasking {
@@ -48,7 +52,6 @@ public final class ServiceVersionSecretsMasking {
 
   static final String MASK = "*********";
   private static final String FERNET_PREFIX = "fernet:";
-  private static final String SECRET_REFERENCE_PREFIX = "secret:";
   private static final String VERSION_INFIX = ".version.";
   private static final String WORKFLOW = "workflow";
   private static final String EVERY_ELEMENT = "[]";
@@ -208,10 +211,7 @@ public final class ServiceVersionSecretsMasking {
 
   static boolean isPlainText(JsonNode value) {
     String text = value != null && value.isTextual() ? value.asText() : "";
-    return !text.isEmpty()
-        && !MASK.equals(text)
-        && !text.startsWith(FERNET_PREFIX)
-        && !text.startsWith(SECRET_REFERENCE_PREFIX);
+    return !text.isEmpty() && !MASK.equals(text) && !text.startsWith(FERNET_PREFIX);
   }
 
   private static void update(

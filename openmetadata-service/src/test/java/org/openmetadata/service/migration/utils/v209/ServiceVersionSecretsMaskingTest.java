@@ -47,7 +47,7 @@ class ServiceVersionSecretsMaskingTest {
   private static final String POSTGRES_DIALECT = "postgres";
   private static final String PLAIN = "plain-text-secret";
   private static final String FERNET = "fernet:gAAAAABencrypted";
-  private static final String REFERENCE = "secret:/openmetadata/pipeline/x/token";
+  private static final String REFERENCE = "secret:prod-password";
 
   @Container
   static final GenericContainer<?> MYSQL =
@@ -117,7 +117,13 @@ class ServiceVersionSecretsMaskingTest {
             databricks("azureClientSecret", PLAIN),
             databricks("azureClientSecret", MASK)),
         unchanged(id, "pipelineService.version.0.4", databricks("token", FERNET)),
-        unchanged(id, "pipelineService.version.0.5", databricks("token", REFERENCE)),
+        // The database secrets manager reads "secret:" as part of a password, not as a reference;
+        // a reference in an old version is masked too, which loses nothing.
+        version(
+            id,
+            "pipelineService.version.0.5",
+            databricks("token", REFERENCE),
+            databricks("token", MASK)),
         unchanged(id, "pipelineService.version.0.6", databricks("token", "")),
         unchanged(
             id,
