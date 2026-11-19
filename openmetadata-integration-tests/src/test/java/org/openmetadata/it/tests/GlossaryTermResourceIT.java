@@ -5216,9 +5216,11 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
                 .withDescription("Child that follows the rename"));
     Table table = createTableTaggedWithTerm(ns, child, "quoted_asset");
     // The rename finds the assets whose cached tags it must drop through search, so the table has
-    // to be searchable under the child's old FQN first.
+    // to be searchable under the child's old FQN first. Reading it then caches the old label: a
+    // rename that fails to evict it leaves that label for the read below.
     awaitTableGlossaryTag(
         client, new ObjectMapper(), table.getId().toString(), child.getFullyQualifiedName());
+    assertTrue(tableHasTag(client, table.getId(), child.getFullyQualifiedName()));
 
     GlossaryTerm toRename = client.glossaryTerms().get(parent.getId().toString(), "tags");
     toRename.setName(ns.shortPrefix("renamed") + " it's fine");
