@@ -9,11 +9,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
@@ -143,6 +145,51 @@ class TestCaseSnapshotStoreTest {
     assertThrows(
         IOException.class, () -> new TestCaseSnapshotStore(client, "").completeCapture(0, null));
     assertFalse(checkpointExists.get());
+  }
+
+  @Test
+  void aConflictedDeleteIsRetriedAgainstARefreshedIndex() throws IOException {
+    final List<String> calls = new ArrayList<>();
+    new TestCaseSnapshotStore(deleteAnswering(calls, 1, 0), "").clearCheckpoints();
+    assertEquals(
+        List.of("HEAD", "delete conflicts=proceed", "refresh", "delete conflicts=proceed"), calls);
+  }
+
+  @Test
+  void conflictsThatOutlastEveryAttemptDoNotFailTheCapture() throws IOException {
+    final List<String> calls = new ArrayList<>();
+    new TestCaseSnapshotStore(deleteAnswering(calls, 1, 1, 1), "").clearCheckpoints();
+    assertEquals(
+        List.of(
+            "HEAD",
+            "delete conflicts=proceed",
+            "refresh",
+            "delete conflicts=proceed",
+            "refresh",
+            "delete conflicts=proceed"),
+        calls);
+  }
+
+  /** Answers each delete-by-query with the next conflict count and records the calls made. */
+  private static SearchClient deleteAnswering(List<String> calls, long... conflicts)
+      throws IOException {
+    final AtomicInteger deletes = new AtomicInteger();
+    final SearchClient client = mock(SearchClient.class);
+    when(client.rawSearchRequest(any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              final String path = call.getArgument(1);
+              String body = "{}";
+              if (path.contains("/_delete_by_query")) {
+                calls.add(
+                    path.contains("conflicts=proceed") ? "delete conflicts=proceed" : "delete");
+                body = "{\"version_conflicts\":" + conflicts[deletes.getAndIncrement()] + "}";
+              } else {
+                calls.add(path.endsWith("/_refresh") ? "refresh" : call.getArgument(0));
+              }
+              return new SearchClient.RawSearchResponse(200, body);
+            });
+    return client;
   }
 
   /** OpenSearch and Elasticsearch answer {@code _mget} on a missing or closed index per document. */

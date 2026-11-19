@@ -4,8 +4,8 @@
 - **Revisions:** v1 2026-11-19 (initial)
 - **Deciders:** Sonika Shah
 - **Guard:** `ElasticSearchEntityManagerDeleteByScriptRetryTest`;
-  `OpenSearchEntityManagerDeleteByScriptRetryTest` (shared `ScriptedDeleteRetryTestBase`); reviewer
-  for delete helpers added later
+  `OpenSearchEntityManagerDeleteByScriptRetryTest` (shared `ScriptedDeleteRetryTestBase`);
+  `TestCaseSnapshotStoreTest`; reviewer for delete helpers added later
 - **Related:** #36292 (scripted delete retry);
   ADR:2026-10-09-synchronous-update-by-query-retries-version-conflicts
 
@@ -22,6 +22,8 @@ scripted delete only; deletes by fields, by FQN prefix and by range still aborte
 
 - Every delete-by-query the server waits for, in `ElasticSearchEntityManager` and
   `OpenSearchEntityManager`, runs with `conflicts=proceed` through the manager's `deleteWithRetry`.
+  A raw `_delete_by_query` sent through `rawSearchRequest` (`TestCaseSnapshotStore`) follows the
+  same rule in its own loop.
 - After an attempt with version conflicts and no failure or timeout, the target indices are
   refreshed and the delete runs again, **at most 3 attempts** in total, the budget update-by-query
   already uses. A delete is always safe to repeat: a document already deleted no longer matches.
