@@ -4,6 +4,7 @@ from unittest import TestCase
 from urllib.parse import quote_plus
 
 import pytest
+from botocore.stub import Stubber
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import SecretStr
 
@@ -46,7 +47,11 @@ from metadata.generated.schema.type.basic import (
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.builders import get_password_secret
-from metadata.ingestion.models.custom_pydantic import BaseModel, CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import (
+    BaseModel,
+    CustomSecretStr,
+    SecretReferenceError,
+)
 from metadata.utils.secrets.secrets_manager import SecretsManager
 from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
 from metadata.utils.singleton import Singleton
@@ -974,6 +979,88 @@ class TestNullSecretResolution:
         resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
 
         assert quote_plus(resolved) == ""
+
+
+class _UnreadableSecretsManager(SecretsManager):
+    """Test double for a secrets manager that cannot return the referenced secret."""
+
+    def get_string_value(self, secret_id: str) -> str:
+        raise KeyError(f"no secret named {secret_id}")
+
+
+class TestUnresolvableSecretReference:
+    """A ``secret:`` reference the secrets manager cannot return must stop the caller with an
+    error naming the reference and the provider, never come back as the credential itself."""
+
+    EXTERNAL_SECRET_REFERENCE = "secret:/external/path/to/db/password"
+    SECRET_ID = "/external/path/to/db/password"
+
+    @pytest.fixture(autouse=True)
+    def clean_singletons(self):
+        Singleton.clear_all()
+        yield
+        Singleton.clear_all()
+
+    @pytest.fixture
+    def aws_secrets_manager(self, monkeypatch):
+        monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+        monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+        monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+        monkeypatch.delenv("AWS_SESSION_TOKEN", raising=False)
+        return SecretsManagerFactory(SecretsManagerProvider.aws, SecretsManagerClientLoader.env).get_secrets_manager()
+
+    def test_failed_read_names_the_reference_and_the_provider(self, aws_secrets_manager):
+        with Stubber(aws_secrets_manager.client) as aws:
+            aws.add_client_error(
+                "get_secret_value",
+                service_error_code="ResourceNotFoundException",
+                expected_params={"SecretId": self.SECRET_ID},
+            )
+            with pytest.raises(SecretReferenceError) as error:
+                CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert self.EXTERNAL_SECRET_REFERENCE in str(error.value)
+        assert f"[{SecretsManagerProvider.aws.value}]" in str(error.value)
+
+    def test_readable_reference_still_resolves(self, aws_secrets_manager):
+        with Stubber(aws_secrets_manager.client) as aws:
+            aws.add_response(
+                "get_secret_value",
+                {"SecretString": RESOLVED_EXTERNAL_SECRET},
+                {"SecretId": self.SECRET_ID},
+            )
+            resolved = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert resolved == RESOLVED_EXTERNAL_SECRET
+
+    def test_connection_password_is_not_the_reference_when_the_read_fails(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _UnreadableSecretsManager()
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.EXTERNAL_SECRET_REFERENCE),
+            hostPort="localhost:3306",
+        )
+
+        with pytest.raises(SecretReferenceError, match="no secret named"):
+            get_password_secret(connection).get_secret_value()
+
+    def test_reference_without_a_secrets_manager_raises(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = None
+
+        with pytest.raises(SecretReferenceError) as error:
+            CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
+
+        assert self.EXTERNAL_SECRET_REFERENCE in str(error.value)
+
+    def test_skipping_the_secrets_manager_keeps_the_reference(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _UnreadableSecretsManager()
+
+        raw = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value(skip_secret_manager=True)
+
+        assert raw == self.EXTERNAL_SECRET_REFERENCE
 
 
 class DashboardDataModelTransformationTest(TestCase):
