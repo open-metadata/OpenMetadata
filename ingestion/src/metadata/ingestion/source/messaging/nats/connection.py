@@ -26,10 +26,14 @@ from metadata.core.connections.test_connection.check import ChecksProvider, Step
 from metadata.core.connections.test_connection.classifier import ErrorPack, Matchers, when
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.core.connections.test_connection.records import Evidence
-from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
-    BasicAuth,
-    NkeyAuth,
-    TokenAuth,
+from metadata.generated.schema.entity.services.connections.messaging.nats.basicAuth import (
+    UsernameAndPassword as BasicAuth,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.nkeyAuth import (
+    NkeySeed as NkeyAuth,
+)
+from metadata.generated.schema.entity.services.connections.messaging.nats.tokenAuth import (
+    Token as TokenAuth,
 )
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     NatsConnection as NatsConnectionConfig,

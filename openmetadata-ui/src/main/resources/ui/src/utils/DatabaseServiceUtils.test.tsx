@@ -13,6 +13,7 @@
 import { useNavigate } from 'react-router-dom';
 import bigQueryConnection from '../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json';
 import customDatabaseConnection from '../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json';
+import datalakeConnection from '../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json';
 import mysqlConnection from '../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json';
 import postgresConnection from '../../public/jsons/connectionSchemas/connections/database/postgresConnection.json';
 import snowflakeConnection from '../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json';
@@ -29,6 +30,7 @@ jest.mock('./loadConnectionSchema', () => {
   const schemas: Record<string, unknown> = {
     'connections/database/bigQueryConnection.json': require('../../public/jsons/connectionSchemas/connections/database/bigQueryConnection.json'),
     'connections/database/customDatabaseConnection.json': require('../../public/jsons/connectionSchemas/connections/database/customDatabaseConnection.json'),
+    'connections/database/datalakeConnection.json': require('../../public/jsons/connectionSchemas/connections/database/datalakeConnection.json'),
     'connections/database/mysqlConnection.json': require('../../public/jsons/connectionSchemas/connections/database/mysqlConnection.json'),
     'connections/database/postgresConnection.json': require('../../public/jsons/connectionSchemas/connections/database/postgresConnection.json'),
     'connections/database/snowflakeConnection.json': require('../../public/jsons/connectionSchemas/connections/database/snowflakeConnection.json'),
@@ -217,6 +219,16 @@ describe('getDatabaseConfig', () => {
     expect(result).toHaveProperty('uiSchema');
     expect(result.schema).toStrictEqual(customDatabaseConnection);
     expect(result.uiSchema).toEqual(COMMON_UI_SCHEMA);
+  });
+
+  it('should keep an empty CSV escape character for Datalake', async () => {
+    const result = await getDatabaseConfig(DatabaseServiceType.Datalake);
+
+    expect(result.schema).toStrictEqual(datalakeConnection);
+    expect(result.uiSchema).toEqual({
+      ...COMMON_UI_SCHEMA,
+      csvEscapeChar: { 'ui:emptyValue': '' },
+    });
   });
 
   it('should return empty schema and default UI schema for unknown database type', async () => {

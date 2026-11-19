@@ -64,56 +64,63 @@ export const styles = sortCx({
       'tw:disabled:not-data-loading:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
       'tw:*:data-icon:pointer-events-none tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
+      // Smaller frames scale the 20-grid glyph down; keep its drawn line weight.
+      // `**` reaches shapes nested in `<g>`, which does not inherit vector-effect.
+      'tw:*:data-icon:**:[vector-effect:non-scaling-stroke]',
     ].join(' '),
     focusOutline:
       'tw:outline-brand tw:focus-visible:outline-2 tw:focus-visible:outline-offset-2',
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   // Heights and icon frames follow the Figma "Icons in buttons" spec
-  // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec). The
-  // visible icon→label gap is `gap-*` plus the label's `px-0.5`; unboxed links
-  // drop that padding, so `linkRoot` is one 2px step wider. Icons draw in
-  // the middle 16 of 20 units, so the spec's fixed 2px frame padding needs
-  // svg padding on smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
+  // (ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec).
+  // Leading and trailing icons share one frame per height: 16 at xs, 18 at
+  // sm–lg, 20 at xl. At xs–lg the icon-only padding (also inside an
+  // InputGroup) is 1px wider than text padding so the smaller frame keeps the
+  // button height. The visible icon→label gap is 6px at every size, also
+  // inside an InputGroup: `gap-1` plus the label's `px-0.5`; unboxed links
+  // drop that padding, so `linkRoot` is `gap-1.5`. Icons draw in the middle 16
+  // of 20 units, so the spec's fixed 2px frame padding needs svg padding on
+  // smaller frames: 18 → 0.25px (14px glyph), 16 → 0.5px (12px).
   sizes: {
-    // Compact — 28px; 18px leading / 16px trailing icon frame.
+    // Compact — 28px; 16px icon frame.
     xs: {
       root: [
-        'tw:gap-0 tw:rounded-md tw:px-2 tw:py-1.25 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.25',
-        'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.5',
-        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px] tw:*:data-[icon=trailing]:size-4 tw:*:data-[icon=trailing]:p-[0.5px]',
-      ].join(' '),
-      linkRoot: 'tw:gap-0.5',
-    },
-    // X-Small — 32px.
-    sm: {
-      root: [
-        'tw:gap-0.5 tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-1.5',
-        'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
-      ].join(' '),
-      linkRoot: 'tw:gap-1',
-    },
-    // Small — 36px.
-    md: {
-      root: [
-        'tw:gap-0.5 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2',
-        'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.5',
-        'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
-      ].join(' '),
-      linkRoot: 'tw:gap-1',
-    },
-    // Medium — 40px.
-    lg: {
-      root: [
-        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.5',
-        'tw:in-data-input-wrapper:gap-1.5 tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3',
-        'tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
+        'tw:gap-1 tw:rounded-md tw:px-2 tw:py-1.25 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
+        'tw:in-data-input-wrapper:px-2.5 tw:in-data-input-wrapper:py-1.5 tw:in-data-input-wrapper:data-icon-only:p-1.75',
+        'tw:*:data-icon:size-4 tw:*:data-icon:p-[0.5px]',
       ].join(' '),
       linkRoot: 'tw:gap-1.5',
     },
-    // Large — 44px.
+    // X-Small — 32px; 18px icon frame.
+    sm: {
+      root: [
+        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-1.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-1.75',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-1.5',
+    },
+    // Small — 36px; 18px icon frame.
+    md: {
+      root: [
+        'tw:gap-1 tw:rounded-lg tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.25',
+        'tw:in-data-input-wrapper:px-3.5 tw:in-data-input-wrapper:py-2.5 tw:in-data-input-wrapper:data-icon-only:p-2.75',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-1.5',
+    },
+    // Medium — 40px; 18px icon frame.
+    lg: {
+      root: [
+        'tw:gap-1 tw:rounded-lg tw:px-3.5 tw:py-2.5 tw:text-sm tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-2.75',
+        'tw:in-data-input-wrapper:px-4 tw:in-data-input-wrapper:text-md tw:in-data-input-wrapper:data-icon-only:p-3.25',
+        'tw:*:data-icon:size-4.5 tw:*:data-icon:p-[0.25px]',
+      ].join(' '),
+      linkRoot: 'tw:gap-1.5',
+    },
+    // Large — 44px; 20px icon frame.
     xl: {
-      root: 'tw:gap-1 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3 tw:*:data-[icon=trailing]:size-4.5 tw:*:data-[icon=trailing]:p-[0.25px]',
+      root: 'tw:gap-1 tw:rounded-lg tw:px-4 tw:py-2.5 tw:text-md tw:font-medium tw:before:rounded-[7px] tw:data-icon-only:p-3',
       linkRoot: 'tw:gap-1.5',
     },
   },
@@ -427,6 +434,13 @@ export const Button = forwardRef<HTMLButtonElement | HTMLAnchorElement, Props>(
           hideFocusOutline ? 'tw:outline-none' : styles.common.focusOutline,
           styles.sizes[size].root,
           styles.colors[color].root,
+          // link-color keeps its 18px leading frame at xs, where the size's
+          // icon-only padding is sized for a 16px frame; this keeps it 28px
+          // (30px inside an InputGroup). A trailing-only icon stays 16px.
+          color === 'link-color' &&
+            size === 'xs' &&
+            IconLeading &&
+            'tw:data-icon-only:p-1.25 tw:in-data-input-wrapper:data-icon-only:p-1.5',
           isUnboxedLink && styles.common.linkUnboxed,
           isUnboxedLink && styles.sizes[size].linkRoot,
           ellipsis && 'tw:min-w-0',
