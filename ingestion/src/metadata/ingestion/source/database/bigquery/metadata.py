@@ -925,7 +925,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     table_name: LifeCycleQueryByTable.model_validate_json(payload)
                     for table_name, payload in records
                 }
-            except sqlite3.Error as exc:
+            except (OSError, sqlite3.Error) as exc:
                 logger.warning(
                     "BigQuery life cycle temporary cache unavailable for %s/%s: %s",
                     database,
