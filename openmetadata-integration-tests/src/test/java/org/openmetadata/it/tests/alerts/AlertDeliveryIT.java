@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory.EXTERNAL;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
@@ -26,6 +27,7 @@ import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
 import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.EventSubscriptionOffset;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.feed.Conversation;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -156,6 +158,33 @@ class AlertDeliveryIT {
     }
   }
 
+  // An alert created switched off never runs, and reading it writes no position. Releases 2.0.2
+  // to 2.0.x wrote one the first time its page was read, and an upgrade carries that row over.
+  @Test
+  void alertCreatedOffWithAPositionAnOlderReleaseWroteHasNothingPending(TestNamespace ns)
+      throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      EventSubscription alert = createdSwitchedOff(ns, "created_off", receiver);
+      assertNothingPending(alert);
+      assertNull(AlertFixtures.position(alert.getId()), "a read writes no position");
+
+      writePositionAtTheLatestOffset(alert);
+      FixtureEvents.insert(List.of(sampleEvent("table created")));
+      assertNothingPending(alert);
+
+      SdkClients.adminClient()
+          .eventSubscriptions()
+          .patch(alert.getId(), JsonUtils.readTree(SWITCH_ON));
+      QuietAlert.awaitScheduledTickIsOver(alert);
+      DirectTick.run(alert);
+      assertEquals(0, receiver.received().size(), "nothing from before it was switched on");
+
+      FixtureEvents.insert(List.of(sampleEvent("table columns changed")));
+      DirectTick.run(alert);
+      assertEquals(1, receiver.received().size(), "and what happens once it is on");
+    }
+  }
+
   @Test
   void editOfAnAlertThatStaysOnKeepsWhatItHasNotSentYet(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
@@ -201,6 +230,38 @@ class AlertDeliveryIT {
             ALERTS_PATH + "/" + alert.getId() + "/processedEvents",
             null,
             Boolean.class));
+  }
+
+  private static EventSubscription createdSwitchedOff(
+      TestNamespace ns, String name, RecordingReceiver receiver) {
+    CreateEventSubscription request =
+        new CreateEventSubscription()
+            .withName(ns.prefix(name))
+            .withAlertType(AlertType.NOTIFICATION)
+            .withResources(List.of(Entity.TABLE))
+            .withEnabled(false)
+            .withBatchSize(100)
+            .withPollInterval(ONE_DAY_SECONDS)
+            .withDestinations(List.of(AlertFixtures.external(WEBHOOK, receiver.url("/webhook"))));
+    return AlertFixtures.stored(
+        SdkClients.adminClient().eventSubscriptions().create(request).getId());
+  }
+
+  private static void writePositionAtTheLatestOffset(EventSubscription alert) {
+    long latest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    long now = System.currentTimeMillis();
+    EventSubscriptionOffset position =
+        new EventSubscriptionOffset()
+            .withCurrentOffset(latest)
+            .withStartingOffset(latest)
+            .withStartingTimestamp(now)
+            .withTimestamp(now);
+    AlertFixtures.dao()
+        .upsertSubscriberExtension(
+            alert.getId().toString(),
+            LedgerKeys.POSITION,
+            "eventSubscriptionOffset",
+            JsonUtils.pojoToJson(position));
   }
 
   private static EventSubscription webhookTableAlert(
