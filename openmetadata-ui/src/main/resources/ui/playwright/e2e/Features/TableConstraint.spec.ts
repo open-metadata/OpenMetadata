@@ -333,7 +333,7 @@ test.describe('Table Constraints', {}, () => {
       await expect(compositeTooltip).toContainText(
         'individual column values may repeat'
       );
-      await page.keyboard.press('Escape');
+      await compositeTrigger.blur();
       await expect(compositeTooltip).not.toBeVisible();
 
       // Verify Sort Key

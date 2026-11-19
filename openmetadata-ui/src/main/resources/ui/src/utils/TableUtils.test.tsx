@@ -2703,6 +2703,7 @@ describe('prepareConstraintIcon composite unique constraints', () => {
   });
 
   it('lists the group columns in the tooltip', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
     render(
       <>
         {prepareConstraintIcon({
@@ -2712,9 +2713,7 @@ describe('prepareConstraintIcon composite unique constraints', () => {
       </>
     );
 
-    await userEvent.hover(
-      screen.getByRole('button', { name: /constraint A/ })
-    );
+    await user.hover(screen.getByRole('button', { name: /constraint A/ }));
 
     expect(
       await screen.findByText('warehouse_id + item_code')
