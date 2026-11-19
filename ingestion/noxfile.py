@@ -14,7 +14,6 @@ Nox sessions for testing and formatting checks.
 
 import argparse
 import fcntl
-import json
 import os
 import runpy
 import subprocess
@@ -93,24 +92,7 @@ def synchronize(session, profile, path, interpreter):
         "PATH": str(path / "bin") + os.pathsep + os.environ["PATH"],
     }
     command = [str(UV), "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
-    parser_check = "try:\n import tomllib\nexcept ImportError:\n import tomli"
-    if subprocess.run([str(python), "-I", "-c", parser_check], capture_output=True, check=False).returncode:
-        session.run(*command, "--only-group", "bootstrap", "--inexact", env=environment, external=True)
-    policy = json.loads(
-        session.run(
-            str(python),
-            "-I",
-            "-c",
-            "import json,sys\ntry:\n import tomllib\nexcept ImportError:\n import tomli as tomllib\n"
-            "with open(sys.argv[1], 'rb') as stream:\n"
-            " print(json.dumps(tomllib.load(stream)['tool']['openmetadata']['python-environments']))",
-            str(INGESTION_ROOT / "pyproject.toml"),
-            env=environment,
-            silent=True,
-            external=True,
-        )
-    )
-    selected = policy["profiles"][profile]
+    selected = PYTHON_ENVIRONMENTS["profiles"][profile]
     with generation_lock() if selected["install-project"] else nullcontext():
         if selected["install-project"]:
             generation_python, generation_environment = synchronize(
