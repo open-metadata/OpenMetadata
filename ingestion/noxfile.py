@@ -38,9 +38,9 @@ except ImportError:
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
 with (Path(__file__).resolve().parent / "pyproject.toml").open("rb") as configuration:
-    SUPPORTED_PYTHON_VERSIONS = tomllib.load(configuration)["tool"]["openmetadata"]["python-environments"][
-        "supported-python"
-    ]
+    PYTHON_ENVIRONMENTS = tomllib.load(configuration)["tool"]["openmetadata"]["python-environments"]
+
+SUPPORTED_PYTHON_VERSIONS = PYTHON_ENVIRONMENTS["supported-python"]
 
 
 def get_python_versions():
@@ -56,7 +56,7 @@ def get_python_versions():
 INGESTION_ROOT = Path(__file__).resolve().parent
 nox.options.envdir = str(INGESTION_ROOT / ".nox")
 ROOT = INGESTION_ROOT.parent
-PROFILES = ("runtime", "all", "dev", "test", "test-classification", "style", "generation", "coverage")
+PROFILES = tuple(PYTHON_ENVIRONMENTS["profiles"])
 UV = runpy.run_path(str(ROOT / "scripts/python_tools.py"))["ensure_uv"]()
 os.environ["OM_UV_EXECUTABLE"] = str(UV)
 os.environ["PATH"] = str(UV.parent) + os.pathsep + os.environ["PATH"]
@@ -276,7 +276,7 @@ def lint(session):
     python=get_python_versions(),
 )
 def static_checks(session):
-    python = prepare(session, "test")
+    python = prepare(session, "types")
     # `--baselinemode=discard` fails the run on any *new* error not in the
     # baseline (early-return path in basedpyright's BaselineHandler.write)
     # while tolerating baseline entries that don't fire on the current

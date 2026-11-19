@@ -16,10 +16,11 @@ NOX = "$(NOX_BOOTSTRAP)/bin/nox" -f "$(INGESTION_ABS)/noxfile.py"
 export OM_VENV_DIR
 
 PYTHON_TEST_PROFILE ?= test-classification
+PYTHON_PROFILE ?= runtime
 
 .PHONY: install
-install: python_tools  ## Install the ingestion module to the current environment
-	$(NOX) -s install -- runtime
+install: python_tools  ## Install a locked Python profile
+	$(NOX) -s install -- $(PYTHON_PROFILE)
 
 .PHONY: python_tools
 python_tools:  ## Bootstrap the locked Nox tools without installing the application

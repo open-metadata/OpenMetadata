@@ -10100,6 +10100,20 @@ test = [
     { name = "types-requests" },
     { name = "uvloop" },
 ]
+typing = [
+    { name = "basedpyright" },
+    { name = "boto3-stubs" },
+    { name = "google-api-python-client-stubs" },
+    { name = "google-auth-stubs" },
+    { name = "mypy-boto3-glue" },
+    { name = "pandas-stubs" },
+    { name = "pip" },
+    { name = "scipy-stubs", version = "1.15.3.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy-stubs", version = "1.17.1.5", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version == '3.11.*'" },
+    { name = "scipy-stubs", version = "1.18.1.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
+    { name = "tomli", marker = "python_full_version < '3.11'" },
+    { name = "types-requests" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -11187,6 +11201,18 @@ test = [
     { name = "twine" },
     { name = "types-requests" },
     { name = "uvloop", specifier = "==0.21.0" },
+]
+typing = [
+    { name = "basedpyright", specifier = "==1.39.3" },
+    { name = "boto3-stubs" },
+    { name = "google-api-python-client-stubs" },
+    { name = "google-auth-stubs" },
+    { name = "mypy-boto3-glue" },
+    { name = "pandas-stubs", specifier = "~=2.2" },
+    { name = "pip" },
+    { name = "scipy-stubs" },
+    { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
+    { name = "types-requests" },
 ]
 
 [[package]]

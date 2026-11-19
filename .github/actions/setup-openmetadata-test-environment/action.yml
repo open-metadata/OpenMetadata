@@ -83,8 +83,7 @@ runs:
       uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-        classification-models: ${{ inputs.classification-models }}
-        install-test-dependencies: ${{ inputs.install-test-dependencies }}
+        profile: ${{ inputs.install-test-dependencies != 'true' && 'dev' || inputs.classification-models == 'true' && 'test-classification' || 'test' }}
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Configure Test Session Limit

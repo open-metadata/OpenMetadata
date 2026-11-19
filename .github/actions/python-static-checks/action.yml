@@ -1,5 +1,5 @@
 name: Check Python types
-description: Run basedpyright and CI contract tests without classification models or a backend.
+description: Run basedpyright with the locked typing profile.
 inputs:
   python-version:
     description: python-version
@@ -10,14 +10,13 @@ runs:
     - uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-    - name: Run Static Checks
+        profile: types
+    - name: Check types
       env:
         PYTHON_VERSIONS: ${{ inputs.python-version }}
       run: |
         set -o pipefail
-        source env/bin/activate
-        cd ingestion
-        nox --no-venv -s static-checks 2>&1 | tee static-checks-run.log
+        make static-checks 2>&1 | tee ingestion/static-checks-run.log
       shell: bash
     - name: Upload static check log
       if: ${{ always() }}
@@ -27,8 +26,3 @@ runs:
         path: ingestion/static-checks-run.log
         if-no-files-found: warn
         retention-days: 14
-    - name: Test Python CI
-      env:
-        PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
-      run: env/bin/python -m pytest -q --noconftest .github/scripts/tests/test_python_ci.py
-      shell: bash

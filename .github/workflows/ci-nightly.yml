@@ -127,7 +127,7 @@ jobs:
       python-version: ${{ matrix.python }}
       ref: ${{ needs.plan.outputs.ref }}
       collect-coverage: true
-      run-e2e-meta: ${{ matrix.python == needs.plan.outputs.highest }}
+      run-meta-tests: ${{ matrix.python == needs.plan.outputs.highest }}
   integration:
     needs:
       - plan

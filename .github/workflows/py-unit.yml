@@ -23,7 +23,8 @@ on:
         type: boolean
         required: false
         default: false
-      run-e2e-meta:
+      run-meta-tests:
+        description: Run CI helper and offline E2E framework tests in the selected nightly lane
         type: boolean
         required: false
         default: false
@@ -46,9 +47,15 @@ jobs:
         uses: ./.github/actions/prepare-python-environment
         with:
           python-version: ${{ inputs.python-version }}
-          classification-models: 'true'
+          profile: test-classification
+      - name: Test CI helpers
+        if: ${{ inputs.run-meta-tests }}
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+        run: env/bin/python -m pytest -q --noconftest .github/scripts/tests/test_python_ci.py .github/scripts/test_classify_test_outcome.py
+        shell: bash
       - name: Run offline E2E framework tests
-        if: ${{ inputs.run-e2e-meta }}
+        if: ${{ inputs.run-meta-tests }}
         run: |
           source env/bin/activate
           cd ingestion

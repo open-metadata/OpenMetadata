@@ -28,9 +28,8 @@ style = [
     "ruff~=0.15.12",
 ]
 
-dev = [
-    { include-group = "style" },
-    { include-group = "generation" },
+typing = [
+    { include-group = "bootstrap" },
     "boto3-stubs",
     "mypy-boto3-glue",
     "google-api-python-client-stubs",
@@ -38,9 +37,15 @@ dev = [
     "types-requests",
     "pandas-stubs~=2.2",
     "scipy-stubs",
+    "basedpyright==1.39.3",
+]
+
+dev = [
+    { include-group = "style" },
+    { include-group = "generation" },
+    { include-group = "typing" },
     "nox",
     "pre-commit",
-    "basedpyright==1.39.3",
     "import-linter~=2.13",
     "twine",
     "build",
@@ -162,6 +167,11 @@ install-project = true
 
 [tool.openmetadata.python-environments.profiles.test]
 groups = ["test"]
+extras = ["all", "airflow", "great-expectations"]
+install-project = true
+
+[tool.openmetadata.python-environments.profiles.types]
+groups = ["typing", "dialect-compat"]
 extras = ["all", "airflow", "great-expectations"]
 install-project = true
 
@@ -435,6 +445,7 @@ include = ["src"]
 stubPath = "stubs"
 exclude = [
   "**/__pycache__",
+  "src/_openmetadata_testutils/**",
   "src/metadata/generated/*",
   "src/metadata/__version__.py",
 ]

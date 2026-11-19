@@ -72,7 +72,7 @@ def nox_repo(tooling_repo: Path, monkeypatch) -> Path:
     package = tooling_repo / "ingestion/src/metadata"
     (package / "__init__.py").touch()
     (package / "sample.py").write_text(
-        "def classify(value):\n    if value > 0:\n        return 'positive'\n    return 'other'\n"
+        "def classify(value: int) -> str:\n    if value > 0:\n        return 'positive'\n    return 'other'\n"
     )
     for suite in ("unit", "integration"):
         tests = tooling_repo / f"ingestion/tests/{suite}"
@@ -99,14 +99,12 @@ def reported_test_names(repo: Path, suite: str) -> list[str]:
     return [case.attrib["name"] for case in report.findall(".//testcase")]
 
 
-@pytest.mark.parametrize("test_dependencies", [False, True])
-def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypatch, test_dependencies: bool) -> None:
+@pytest.mark.parametrize("profile", ["dev", "test", "types"])
+def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypatch, profile: str) -> None:
     action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())
     install = next(step["run"] for step in action["runs"]["steps"] if step.get("name") == "Install Python dependencies")
-    environment = nox_repo / "env"
-    assert_success(run(sys.executable, "-m", "venv", str(environment), cwd=nox_repo))
-    monkeypatch.setenv("INSTALL_TEST_DEPENDENCIES", str(test_dependencies).lower())
-    monkeypatch.setenv("CLASSIFICATION_MODELS", "false")
+    environment = nox_repo / ("ingestion/.nox/types" if profile == "types" else "env")
+    monkeypatch.setenv("PYTHON_PROFILE", profile)
     lock = (nox_repo / "ingestion/uv.lock").read_bytes()
 
     assert_success(run("bash", "-eo", "pipefail", "-c", install, cwd=nox_repo))
@@ -121,8 +119,52 @@ def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypa
         )
     )
     probe = run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage", cwd=nox_repo)
-    assert (probe.returncode == 0) == test_dependencies, probe.stdout + probe.stderr
+    assert (probe.returncode == 0) == (profile == "test"), probe.stdout + probe.stderr
     assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
+
+
+@pytest.mark.parametrize("package", ["metadata", "airflow_provider_openmetadata"])
+def test_static_checks_isolate_dependencies_and_catch_application_errors(nox_repo: Path, package: str) -> None:
+    assert_success(run("make", "install_test", cwd=nox_repo))
+    application = nox_repo / "env/bin/python"
+    snapshot = (
+        "import importlib.metadata as m; print(sorted((d.metadata['Name'], d.version) for d in m.distributions()))"
+    )
+    before = run(str(application), "-I", "-c", snapshot, cwd=nox_repo)
+    assert_success(before)
+    project = nox_repo / "ingestion"
+    helper = project / "src/_openmetadata_testutils/example.py"
+    helper.parent.mkdir()
+    helper.write_text("def helper() -> str:\n    return 1\n")
+    baseline = project / ".basedpyright/baseline.json"
+    original_baseline = baseline.read_bytes()
+
+    assert_success(run("make", "static-checks", cwd=nox_repo))
+
+    after = run(str(application), "-I", "-c", snapshot, cwd=nox_repo)
+    assert_success(after)
+    assert after.stdout == before.stdout
+    checker = project / ".nox/types/bin/python"
+    assert_success(
+        run(
+            str(checker),
+            "-I",
+            "-c",
+            "import importlib.util as u; import basedpyright; "
+            "assert all(u.find_spec(n) is None for n in ['pytest', 'coverage', 'xdist'])",
+            cwd=nox_repo,
+        )
+    )
+    source = project / f"src/{package}/example.py"
+    source.parent.mkdir(exist_ok=True)
+    source.write_text("def application() -> str:\n    return 1\n")
+
+    result = run("make", "static-checks", cwd=nox_repo)
+
+    assert result.returncode != 0
+    assert "reportReturnType" in result.stdout + result.stderr
+    assert str(source) in result.stdout + result.stderr
+    assert baseline.read_bytes() == original_baseline
 
 
 def test_ci_server_setup_restores_test_dependencies_after_application_setup(nox_repo: Path, monkeypatch) -> None:
