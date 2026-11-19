@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { runUnderExitGuard } from '../../../../../../hooks/discovery/personal-space/useUnsavedExitGuard';
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
@@ -30,6 +31,7 @@ import {
   patchSecurityConfiguration,
   SecurityConfiguration,
 } from '../../../../../../rest/securityConfigAPI';
+import { settingsHashOptions } from '../../../../../../utils/SettingsHistory.utils';
 import {
   getProviderDisplayName,
   getProviderIcon,
@@ -52,6 +54,9 @@ import {
 import SsoProviderGrid from './SsoProviderGrid';
 
 const CRUMB_PROVIDER = 'provider';
+// The provider crumb (shown only on a sub page) returns to the form, as Back
+// does, so it is not an exit the unsaved-changes guard should hold.
+const IN_EDITOR_CRUMBS = [CRUMB_PROVIDER];
 
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
@@ -150,8 +155,14 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
   );
 
   const onNavigate = useCallback(
-    (next: SsoView) => setHash(SSO_HASH_TAB, viewToSubPath(next)),
-    [setHash]
+    (next: SsoView) =>
+      setHash(
+        SSO_HASH_TAB,
+        viewToSubPath(next),
+        undefined,
+        settingsHashOptions(view, next)
+      ),
+    [setHash, view]
   );
 
   const fetchConfig = useCallback(async () => {
@@ -176,14 +187,16 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     onNavigate({ type: 'overview' });
   }, [fetchConfig, onNavigate]);
 
+  // Tabs and Change provider leave an edited form, so they ask first.
   const handleTabChange = useCallback(
-    (key: Key) => {
-      if (key === 'overview') {
-        // A save on the Configure tab may have changed self signup.
-        void fetchConfig();
-      }
-      onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
-    },
+    (key: Key) =>
+      runUnderExitGuard(() => {
+        if (key === 'overview') {
+          // A save on the Configure tab may have changed self signup.
+          void fetchConfig();
+        }
+        onNavigate({ type: key === 'configure' ? 'configure' : 'overview' });
+      }),
     [fetchConfig, onNavigate]
   );
 
@@ -269,7 +282,9 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
             color="secondary"
             data-testid="change-provider-button"
             size="xs"
-            onPress={() => onNavigate({ type: 'providers' })}>
+            onPress={() =>
+              runUnderExitGuard(() => onNavigate({ type: 'providers' }))
+            }>
             {t('label.change-provider')}
           </Button>
         )}
@@ -284,6 +299,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
       iconNode: headerProvider ? (
         <ProviderLogo provider={headerProvider} />
       ) : undefined,
+      inEditorBreadcrumbIds: IN_EDITOR_CRUMBS,
       onBreadcrumbAction: (id: Key) => {
         if (id === SSO_HASH_TAB) {
           onNavigate({ type: 'overview' });

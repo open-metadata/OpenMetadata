@@ -4,30 +4,44 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.BulkColumnUpdateRequest;
 import org.openmetadata.schema.api.data.ColumnOccurrence;
 import org.openmetadata.schema.api.data.ColumnUpdate;
 import org.openmetadata.schema.api.data.GroupedColumnsResponse;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * The CSV import must cost one catalog walk per request no matter how many rows the file has, and
@@ -36,6 +50,13 @@ import org.openmetadata.service.security.Authorizer;
  * whole REST API) for minutes.
  */
 class ColumnRepositoryImportTest {
+
+  private static final String HELD_COLUMN = "svc.db.schema.t1.col_c";
+  private static final String NEW_COLUMN = "svc.db.schema.t2.col_c";
+  private static final GlossaryTerm DEPRECATED =
+      new GlossaryTerm()
+          .withFullyQualifiedName("Glossary.Revenue")
+          .withEntityStatus(EntityStatus.DEPRECATED);
 
   private ColumnRepository repository;
 
@@ -307,6 +328,133 @@ class ColumnRepositoryImportTest {
             .toList());
     assertEquals(
         "d", ((ColumnUpdate) result.getSuccessRequest().get(0).getRequest()).getDescription());
+  }
+
+  /**
+   * A dry run applies nothing, so it runs the write's glossary-term check itself: a row passes when
+   * one of its columns can take the term, here the column that already holds it.
+   */
+  @Test
+  void csvDryRunFailsARowNoColumnCanTakeAnUnapprovedTermOn() {
+    doReturn(termCatalog())
+        .when(repository)
+        .searchColumns(any(), any(), any(), any(), any(), any(), any());
+    try (MockedStatic<Entity> ignored = deprecatedTermHeldOn(HELD_COLUMN)) {
+      CsvImportResult result =
+          repository.importColumnsCSV(
+              null,
+              null,
+              "column,displayName,description,tags,glossaryTerms\n"
+                  + "col_c,,,,%s\n".formatted(DEPRECATED.getFullyQualifiedName())
+                  + "col_d,,,,%s".formatted(DEPRECATED.getFullyQualifiedName()),
+              true,
+              null,
+              null,
+              null,
+              null,
+              null);
+
+      assertEquals(1, result.getNumberOfRowsPassed());
+      assertEquals(1, result.getNumberOfRowsFailed());
+    }
+  }
+
+  /**
+   * A dry run judges the whole file in one guard call: one term lookup however many rows carry
+   * terms, and rows naming the same column are still judged by their own terms.
+   */
+  @Test
+  void csvDryRunLooksTermsUpOnceAndJudgesEachRowByItsOwnTerms() {
+    doReturn(termCatalog())
+        .when(repository)
+        .searchColumns(any(), any(), any(), any(), any(), any(), any());
+    try (MockedStatic<Entity> entity = deprecatedTermHeldOn(HELD_COLUMN)) {
+      CsvImportResult result =
+          repository.importColumnsCSV(
+              null,
+              null,
+              "column,displayName,description,tags,glossaryTerms\n"
+                  + "col_d,,,,%s\n".formatted(DEPRECATED.getFullyQualifiedName())
+                  + "col_d,,,,\n"
+                  + "col_d,,,,%s".formatted(DEPRECATED.getFullyQualifiedName()),
+              true,
+              null,
+              null,
+              null,
+              null,
+              null);
+
+      assertEquals(1, result.getNumberOfRowsPassed());
+      assertEquals(2, result.getNumberOfRowsFailed());
+      entity.verify(
+          () ->
+              Entity.getEntityByNames(
+                  eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)),
+          times(1));
+    }
+  }
+
+  @Test
+  void searchDryRunReportsTheColumnsAnUnapprovedTermWouldBeRejectedOn() {
+    doReturn(termCatalog().subList(0, 1))
+        .when(repository)
+        .searchColumns(any(), any(), any(), any(), any(), any(), any());
+    try (MockedStatic<Entity> ignored = deprecatedTermHeldOn(HELD_COLUMN)) {
+      BulkOperationResult result =
+          repository.bulkUpdateColumns(
+              null,
+              null,
+              new BulkColumnUpdateRequest()
+                  .withColumnName("col_c")
+                  .withTags(List.of(deprecatedLabel()))
+                  .withDryRun(true));
+
+      assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+      assertEquals(1, result.getNumberOfRowsPassed());
+      assertEquals(1, result.getNumberOfRowsFailed());
+      assertEquals(
+          "Failed to update column %s: %s"
+              .formatted(
+                  NEW_COLUMN,
+                  CatalogExceptionMessage.glossaryTermNotApproved(
+                      DEPRECATED.getFullyQualifiedName(), EntityStatus.DEPRECATED)),
+          result.getFailedRequest().getFirst().getMessage());
+    }
+  }
+
+  private static List<GroupedColumnsResponse> termCatalog() {
+    return List.of(
+        group("col_c", occurrence(HELD_COLUMN, "table"), occurrence(NEW_COLUMN, "table")),
+        group("col_d", occurrence("svc.db.schema.t1.col_d", "table")));
+  }
+
+  private static TagLabel deprecatedLabel() {
+    return new TagLabel()
+        .withTagFQN(DEPRECATED.getFullyQualifiedName())
+        .withSource(TagLabel.TagSource.GLOSSARY);
+  }
+
+  // The term lookup and tag_usage are the boundaries; the stored state has the term on one column.
+  private static MockedStatic<Entity> deprecatedTermHeldOn(String columnFqn) {
+    String hash = FullyQualifiedName.buildHash(columnFqn);
+    CollectionDAO.TagUsageDAO tagUsageDAO = mock(CollectionDAO.TagUsageDAO.class);
+    when(tagUsageDAO.getTagsByTargetFQNHashes(anyList()))
+        .thenAnswer(
+            invocation ->
+                invocation.<List<String>>getArgument(0).contains(hash)
+                    ? Map.of(hash, List.of(deprecatedLabel()))
+                    : Map.of());
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.tagUsageDAO()).thenReturn(tagUsageDAO);
+    MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS);
+    entity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+    entity
+        .when(
+            () ->
+                Entity.getEntityByNames(
+                    eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)))
+        .thenReturn(List.of(DEPRECATED));
+    return entity;
   }
 
   private static List<GroupedColumnsResponse> catalog() {

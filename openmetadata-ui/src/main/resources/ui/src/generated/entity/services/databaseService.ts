@@ -1123,6 +1123,10 @@ export interface Connection {
     salesforceApiVersion?: string;
     /**
      * Domain of Salesforce instance
+     *
+     * Your org's My Domain, without `.salesforce.com`, e.g. `mycompany.my` for
+     * `mycompany.my.salesforce.com`. The client-credentials flow works only on My Domain:
+     * Salesforce rejects `login` and `test`.
      */
     salesforceDomain?: string;
     /**
@@ -1266,6 +1270,11 @@ export interface Connection {
      * Available sources to fetch files.
      */
     configSource?: DataLakeConfigurationSource;
+    /**
+     * Escape character for CSV and TSV files. Defaults to backslash. Set to an empty string for
+     * files that use doubled quotes and literal backslashes.
+     */
+    csvEscapeChar?: string;
     /**
      * Prefix of the data source.
      */

@@ -1102,14 +1102,14 @@ public class TableRepository extends EntityRepository<Table> {
           String storedSystemProfile =
               daoCollection
                   .profilerDataTimeSeriesDao()
-                  .getExtensionAtTimestampWithOperation(
+                  .getSystemProfileAtTimestamp(
                       table.getFullyQualifiedName(),
                       SYSTEM_PROFILE_EXTENSION,
                       systemProfile.getTimestamp(),
                       systemProfile.getOperation().value());
           daoCollection
               .profilerDataTimeSeriesDao()
-              .storeTimeSeriesWithOperation(
+              .storeSystemProfile(
                   table.getFullyQualifiedName(),
                   SYSTEM_PROFILE_EXTENSION,
                   "systemProfile",
@@ -1395,6 +1395,22 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  // The labels a data model applies, keyed by the table or matching stored column they land on.
+  private static Map<String, List<TagLabel>> modelTagsByTarget(Table table, DataModel dataModel) {
+    Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
+    tagsByTarget.put(table.getFullyQualifiedName(), listOrEmpty(dataModel.getTags()));
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+      listOrEmpty(table.getColumns()).stream()
+          .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
+          .findAny()
+          .ifPresent(
+              column ->
+                  tagsByTarget.put(
+                      column.getFullyQualifiedName(), listOrEmpty(modelColumn.getTags())));
+    }
+    return tagsByTarget;
+  }
+
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
@@ -1404,6 +1420,8 @@ public class TableRepository extends EntityRepository<Table> {
             getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -3267,11 +3285,16 @@ public class TableRepository extends EntityRepository<Table> {
             .relationshipDAO()
             .findToBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal(), TEST_SUITE);
 
+    // ALL, like getTestSuite: a recursive soft delete flips a table's basic suite before it
+    // re-indexes the table.
     for (CollectionDAO.EntityRelationshipObject relRecord : records) {
       UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference testSuiteRef =
-          getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      testSuiteMap.put(tableId, testSuiteRef);
+      try {
+        testSuiteMap.put(
+            tableId, getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), ALL));
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Skipping missing test suite {} of table {}", relRecord.getToId(), tableId);
+      }
     }
 
     return testSuiteMap;

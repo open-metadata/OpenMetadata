@@ -341,6 +341,57 @@ describe('TaskPayloadSchemaFields', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 
+  describe('tagSelector on a string field (TagSuggestion seed)', () => {
+    const TAG_SUGGESTION_SCHEMA: JsonSchemaObject = {
+      type: 'object',
+      properties: {
+        suggestedValue: { title: 'Suggested Tags (JSON)', type: 'string' },
+      },
+    };
+    const TAG_SUGGESTION_UI_SCHEMA: JsonSchemaObject = {
+      suggestedValue: { 'ui:widget': 'tagSelector' },
+    };
+
+    it('reads the JSON string as tags', () => {
+      render(
+        <TaskPayloadSchemaFields
+          mode="read"
+          payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
+        />
+      );
+
+      expect(screen.getByText(PERSONAL_TAG.tagFQN)).toBeInTheDocument();
+    });
+
+    it('writes edited tags back as a JSON string', () => {
+      const onChange = jest.fn();
+
+      render(
+        <TaskPayloadSchemaFields
+          payload={{ suggestedValue: JSON.stringify([PERSONAL_TAG]) }}
+          schema={TAG_SUGGESTION_SCHEMA}
+          uiSchema={TAG_SUGGESTION_UI_SCHEMA}
+          onChange={onChange}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('tag-selector'));
+
+      expect(onChange).toHaveBeenCalledWith({
+        suggestedValue: JSON.stringify([
+          {
+            labelType: LabelType.Manual,
+            source: TagSource.Classification,
+            state: State.Confirmed,
+            tagFQN: 'Tier.Tier1',
+          },
+        ]),
+      });
+    });
+  });
+
   describe('ClampedText in read mode', () => {
     const STRING_SCHEMA: JsonSchemaObject = {
       type: 'object',

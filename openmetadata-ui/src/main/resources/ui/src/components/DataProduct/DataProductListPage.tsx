@@ -20,7 +20,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   DataProduct as DataProductIcon,
-  Globe01,
   NoSearch,
   Plus,
 } from '@openmetadata/ui-core-components/icons';
@@ -35,7 +34,7 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { NO_DATA, ROUTES } from '../../constants/constants';
+import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { VIEW_MODE_PAGE } from '../../constants/platform/personaAppLayout.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -54,12 +53,12 @@ import { renderBreakableTooltip } from '../../utils/TooltipUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import {
   CLIPPED_NAME_CLASS,
-  COMPACT_CELL_CLIP_CLASS,
   NAME_CELL_CLIP_CLASS,
   renderDomainClassificationTagsCell,
   renderDomainExpertsCell,
   renderDomainGlossaryTagsCell,
   renderDomainOwnersCell,
+  renderDomainsCell,
 } from '../common/atoms/domain/ui/domainFieldRenderers';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
@@ -121,32 +120,6 @@ const renderDataProductNameCell = (
           </Typography>
         )}
       </Box>
-    </Box>
-  );
-};
-
-const renderDataProductDomainCell = (entity: DataProduct): ReactNode => {
-  const domains = entity.domains;
-  if (!domains?.length) {
-    return <Typography size="text-sm">{NO_DATA}</Typography>;
-  }
-  const domain = domains[0];
-
-  return (
-    <Box
-      align="center"
-      className={COMPACT_CELL_CLIP_CLASS}
-      direction="row"
-      gap={1}>
-      <Globe01 size={16} style={{ flexShrink: 0 }} />
-      <Typography
-        className={CLIPPED_NAME_CLASS}
-        ellipsis={{
-          tooltip: renderBreakableTooltip(domain.displayName || domain.name),
-        }}
-        size="text-sm">
-        {domain.displayName || domain.name}
-      </Typography>
     </Box>
   );
 };
@@ -295,7 +268,7 @@ const DataProductListPage = ({
         case 'glossaryTerms':
           return renderDomainGlossaryTagsCell(entity);
         case 'domains':
-          return renderDataProductDomainCell(entity);
+          return renderDomainsCell(entity);
         case 'tags':
           return renderDomainClassificationTagsCell(entity);
         case 'experts':

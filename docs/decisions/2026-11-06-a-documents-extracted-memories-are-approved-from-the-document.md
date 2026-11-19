@@ -1,11 +1,11 @@
 # A document's extracted memories are approved from the document, by admins or its owners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial)
+- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-09 (a hold from another document needs an admin)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryReconcilerTest`,
   `ContextMemoryRepositoryTest#aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt`,
-  `ContextMemoryExtractedApprovalIT`, the Jest tests of `CreateMemoryModal`,
+  `ContextMemoryExtractedApprovalIT`, `ContextMemoryExtractionIT`, the Jest tests of `CreateMemoryModal`,
   `ContextCenterMemoriesPage` and `ExtractedMemoriesCard`, and the Playwright specs
   `ContextCenterMemoryLifecycle` and `ContextCenterDocument`
 - **Related:** ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values,
@@ -85,3 +85,23 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
 - The panel offers Approve and Reject to admins only, as a distribution that requires review
   refuses an owner's own approval. An owner who is not an admin grounds a memory under review only
   through the document action, when approval takes it, or through its conflict review.
+
+## Amendment
+
+v2 (2026-11-09): one memory, one review. A memory several documents share (an identical copy, or a
+fact two documents state) is approved from any of them by that document's owners, and one that a
+linked document leaves for a decision stays pending from every other, so approving from one
+document never bypasses another's hold. A value held because of a decision in another document
+needs an admin exactly as a same-document hold does: preview and approval re-read the memory index
+for decided memories that hold each pending value stating a number, by the rule the duplicate check
+holds it with
+(ADR:2026-09-29-context-file-memory-reuse, v3), and leave it pending for the document's owners.
+Only a decision in a document the value is not linked to holds it that way; a decision in a
+document the value is linked to keeps the rule above, so beside a figure an admin rejected in the
+document, the other figure it states is its owner's to approve. Preview and approval therefore
+depend on the memory search index: when it cannot be read they answer 503 and approve nothing,
+rather than approve without the check. Rejecting stays with admins
+(ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3). Another
+user's private copy never blocks an owner's approval, which is written as that owner: a restricted
+copy is linked by its source edge alone, and only to a memory whose shown source everyone may
+read, so it is never named on the memory, its source included.

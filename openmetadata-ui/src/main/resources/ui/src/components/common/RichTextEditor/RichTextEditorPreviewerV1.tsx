@@ -17,9 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
   formatClientContent,
+  getTrimmedHtmlContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
-import { getTrimmedContent } from '../../../utils/StringUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -46,23 +47,17 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 
   const handleReadMoreToggle = () => setReadMore((pre) => !pre);
 
-  // whether has read more content or not
-  const hasReadMore = useMemo(
-    () => enableSeeMoreVariant && markdown.length > maxLength,
-    [enableSeeMoreVariant, markdown, maxLength]
+  const trimmedContent = useMemo(
+    () =>
+      enableSeeMoreVariant
+        ? getTrimmedHtmlContent(content, maxLength)
+        : content,
+    [enableSeeMoreVariant, content, maxLength]
   );
 
-  /**
-   * if hasReadMore is true then value will be based on read more state
-   * else value will be content
-   */
-  const viewerValue = useMemo(() => {
-    if (hasReadMore) {
-      return readMore ? content : `${getTrimmedContent(content, maxLength)}...`;
-    }
+  const hasReadMore = trimmedContent !== content;
 
-    return content;
-  }, [hasReadMore, readMore, maxLength, content]);
+  const viewerValue = readMore ? content : trimmedContent;
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));
@@ -76,10 +71,10 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
-        'text-right': i18n.dir() === 'rtl',
+        'text-right': getLanguageDirection(i18n) === 'rtl',
       })}
       data-testid="viewer-container"
-      dir={i18n.dir()}>
+      dir={getLanguageDirection(i18n)}>
       <div
         className={classNames(
           'markdown-parser',

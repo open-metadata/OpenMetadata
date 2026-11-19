@@ -126,6 +126,8 @@ public class OmAppJobListener implements JobListener {
               jobExecutionContext.getMergedJobDataMap().getWrappedMap().get(APP_CONFIG_KEY),
               ApplicationConfig.class);
       if (overrideConfig != null) {
+        // An app without stored configuration runs on the trigger's payload alone.
+        appConfig = appConfig == null ? new ApplicationConfig() : appConfig;
         appConfig.getAdditionalProperties().putAll(overrideConfig.getAdditionalProperties());
       }
 

@@ -1,7 +1,7 @@
 # MCP read-only mode hides every tool not annotated readOnlyHint, for every caller including admins
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-05 (single tools can be disabled)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-05 (single tools can be disabled) · v3 2026-11-06 (tools/list follows the setting without a restart)
 - **Deciders:** Vishnu Jain
 - **Guard:** `McpReadOnlyModeTest`
 - **Related:** #36577, #33323, #36579
@@ -38,3 +38,11 @@ out: nobody asked to hide individual read tools, and a name list goes stale on u
 **v2 2026-11-05.** Admins asked to turn off single tools (#37161), so the per-tool list left out above now
 exists as a denylist of tool names, applied the same two ways. See
 ADR:2026-11-05-mcp-admins-can-disable-single-tools. Read-only mode is unchanged.
+
+**v3 2026-11-06.** MCP Java SDK 2.x filters `tools/list` per request (#37248), so every tool is now
+registered at startup and a filter hides the refused ones from the setting as it is at that moment.
+Turning the mode on or off changes `tools/list` without a restart, on each server as it reloads the
+setting. A stateless server cannot send `notifications/tools/list_changed`, so it advertises
+`listChanged: false`, and a client that cached the list sees the change when it lists tools again;
+until then the 403 on every call, unchanged, is what stops a cached write tool. This removes the
+restart in the Decision and the re-registration cost named in Consequences.

@@ -38,6 +38,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -386,20 +387,16 @@ public class OpenSearchBulkSink implements BulkSink {
                 ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
                 : null;
 
-        // Pre-fetch cached embeddings for entities whose state is unchanged so we can splice them
-        // into the staged doc instead of regenerating (avoids expensive embedding-provider calls).
-        // The service-layer two-step keeps large vector payloads off the wire for entities that
-        // will be re-embedded anyway, and uses the entity's `updatedAt` as a fast-path: when it
-        // matches the cached value the fingerprint supplier is never invoked.
+        // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
+        // them into the staged doc instead of regenerating (avoids expensive embedding-provider
+        // calls). The service-layer two-step keeps large vector payloads off the wire for entities
+        // that will be re-embedded anyway.
         Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
         if (embeddingsEnabled) {
-          Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById =
-              new HashMap<>(entityInterfaces.size());
+          Map<String, Supplier<String>> currentById = new HashMap<>(entityInterfaces.size());
           for (EntityInterface<?> e : entityInterfaces) {
             currentById.put(
-                e.getId().toString(),
-                new OpenSearchVectorService.EntityFingerprintInput(
-                    e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
+                e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
           }
           existingEmbeddingsById =
               fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
@@ -1197,8 +1194,8 @@ public class OpenSearchBulkSink implements BulkSink {
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
       if (canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
-        // service-layer pre-filter only admits entries whose state matches (same fingerprint or
-        // same updatedAt), and fingerprint covers the body text that determines chunk count.
+        // service-layer pre-filter only admits entries with the current fingerprint, and the
+        // fingerprint covers the body text that determines chunk count.
         doc.setAll((ObjectNode) cached);
         // Backfill: the entity content is unchanged, but the dedicated chunk index (issue #4789)
         // may not hold this entity's chunk docs yet (catalogs embedded before multi-chunk
@@ -1246,7 +1243,7 @@ public class OpenSearchBulkSink implements BulkSink {
    * client's dimension — and (d) have a textual non-blank {@code fingerprint}.
    *
    * <p>The dimension check is essential: the reuse pre-filter keys only on entity content
-   * (fingerprint / {@code updatedAt}), which does not change when the embedding model or dimension
+   * (the fingerprint), which does not change when the embedding model or dimension
    * changes. Without this guard, a recreate that switches model/dimension would splice an
    * old-dimension vector into a staged index built for the new dimension, and the document would be
    * rejected by the knn field — silently leaving the entity unembedded. When {@code
@@ -1279,7 +1276,7 @@ public class OpenSearchBulkSink implements BulkSink {
 
   private Map<String, JsonNode> fetchExistingEmbeddings(
       List<EntityInterface<?>> entities,
-      Map<String, OpenSearchVectorService.EntityFingerprintInput> currentById,
+      Map<String, Supplier<String>> currentById,
       String indexName,
       ReindexContext reindexContext) {
     try {

@@ -1,0 +1,10 @@
+# BuildKit reads this file instead of the root .dockerignore when building Dockerfile.ci,
+# so it repeats the root entries before adding its own.
+docker/development/docker-volume
+docker/docker-compose-quickstart/docker-volume
+**/.nox/
+
+# The image installs ingestion with pip and never reads the lockfile. Image scanners read it and
+# report its Python 3.10-only entries as installed packages.
+# ADR:2026-11-18-ingestion-dev-image-does-not-ship-uv-lock
+ingestion/uv.lock

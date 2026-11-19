@@ -17,7 +17,7 @@ import { OperationPermission } from '../../../../context/PermissionProvider/Perm
 import { AssetsOfEntity } from '../../../../enums/Assets.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { getMetricByFqn } from '../../../../rest/metricsAPI';
-import { searchQuery } from '../../../../rest/searchAPI';
+import { searchQuery, searchQueryPost } from '../../../../rest/searchAPI';
 import AssetsTabs from './AssetsTabs.component';
 
 const buildOperationPermission = (
@@ -48,6 +48,13 @@ const mockSearchResponse = {
 
 jest.mock('../../../../rest/searchAPI', () => ({
   searchQuery: jest.fn().mockResolvedValue({
+    hits: {
+      hits: [],
+      total: { value: 0 },
+    },
+    aggregations: {},
+  }),
+  searchQueryPost: jest.fn().mockResolvedValue({
     hits: {
       hits: [],
       total: { value: 0 },
@@ -181,6 +188,7 @@ describe('AssetsTabs queryParam logic', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (searchQuery as jest.Mock).mockResolvedValue(mockSearchResponse);
+    (searchQueryPost as jest.Mock).mockResolvedValue(mockSearchResponse);
   });
 
   describe('DOMAIN type', () => {
@@ -350,6 +358,66 @@ describe('AssetsTabs queryParam logic', () => {
           })
         );
       });
+    });
+
+    it('routes the search through POST /search/query when useQueryPost is set', async () => {
+      // A metric with hundreds of linked assets embeds every id in the `ids` filter,
+      // which overflows the GET request-line size limit. The POST-body variant carries
+      // the same filter in the body so the URL stays small.
+      const metricQueryFilter = {
+        query: {
+          bool: {
+            must: [
+              {
+                ids: {
+                  values: Array.from({ length: 300 }, (_, i) => `asset-${i}`),
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          useQueryPost
+          entityFqn="revenue"
+          queryFilter={metricQueryFilter}
+          type={AssetsOfEntity.METRIC}
+        />
+      );
+
+      await waitFor(() => {
+        expect(searchQueryPost).toHaveBeenCalledWith(
+          expect.objectContaining({ queryFilter: metricQueryFilter })
+        );
+      });
+
+      // The GET path must NOT be used when the caller opts into POST, otherwise the URL
+      // would still overflow the request-line size limit for big id lists.
+      expect(searchQuery).not.toHaveBeenCalled();
+    });
+
+    it('falls back to GET when useQueryPost is not set, even for METRIC type', async () => {
+      renderWithRouter(
+        <AssetsTabs
+          {...defaultProps}
+          entityFqn="revenue"
+          queryFilter={{
+            query: { bool: { must: [{ ids: { values: ['a'] } }] } },
+          }}
+          type={AssetsOfEntity.METRIC}
+        />
+      );
+
+      await waitFor(() => {
+        expect(searchQuery).toHaveBeenCalled();
+      });
+
+      // Existing METRIC callers that do not opt in must keep using the GET path — this is
+      // the no-regression guarantee for callers that have not been migrated to POST.
+      expect(searchQueryPost).not.toHaveBeenCalled();
     });
   });
 

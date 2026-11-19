@@ -20,8 +20,12 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.util.UserUtil;
 
-/** The account a losing first login falls back to when a concurrent one created it first. */
+/**
+ * The account a losing first login falls back to when a concurrent one created it first, for the
+ * OIDC and SAML sign-ins alike.
+ */
 class ConcurrentFirstOidcLoginTest {
   private static final String EMAIL = "erin@example.com";
   private static final UserCreationException DUPLICATE_EMAIL =
@@ -34,8 +38,7 @@ class ConcurrentFirstOidcLoginTest {
     User created = user("erin", EMAIL);
 
     User signedIn =
-        AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
-            () -> created, failIfLoaded(), EMAIL);
+        UserUtil.createOrAdoptConcurrentlyCreatedUser(() -> created, failIfLoaded(), EMAIL);
 
     assertSame(created, signedIn);
   }
@@ -45,7 +48,7 @@ class ConcurrentFirstOidcLoginTest {
     User createdByTheOtherLogin = user("erin", "Erin@Example.com");
 
     User signedIn =
-        AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
+        UserUtil.createOrAdoptConcurrentlyCreatedUser(
             () -> {
               throw DUPLICATE_EMAIL;
             },
@@ -63,7 +66,7 @@ class ConcurrentFirstOidcLoginTest {
         assertThrows(
             UserCreationException.class,
             () ->
-                AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
+                UserUtil.createOrAdoptConcurrentlyCreatedUser(
                     () -> {
                       throw DUPLICATE_EMAIL;
                     },
@@ -82,7 +85,7 @@ class ConcurrentFirstOidcLoginTest {
         assertThrows(
             UserCreationException.class,
             () ->
-                AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
+                UserUtil.createOrAdoptConcurrentlyCreatedUser(
                     () -> {
                       throw DUPLICATE_EMAIL;
                     },
@@ -98,7 +101,7 @@ class ConcurrentFirstOidcLoginTest {
         assertThrows(
             UserCreationException.class,
             () ->
-                AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
+                UserUtil.createOrAdoptConcurrentlyCreatedUser(
                     () -> {
                       throw DUPLICATE_EMAIL;
                     },
@@ -118,7 +121,7 @@ class ConcurrentFirstOidcLoginTest {
         assertThrows(
             UserCreationException.class,
             () ->
-                AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
+                UserUtil.createOrAdoptConcurrentlyCreatedUser(
                     () -> {
                       throw databaseDown;
                     },

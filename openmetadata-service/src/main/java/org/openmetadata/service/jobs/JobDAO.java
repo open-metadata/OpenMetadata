@@ -432,6 +432,63 @@ public interface JobDAO {
   BackgroundJob findOntologyBulkJobById(@Bind("id") long id);
 
   @SqlQuery(
+      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+          + "progress, total, result, error, message, cancelRequested, completedAt "
+          + "FROM background_jobs WHERE id = :id AND jobType = 'ONTOLOGY_PACK_INSTALL'")
+  @RegisterRowMapper(BackgroundJobMapper.class)
+  BackgroundJob findOntologyPackInstallJobById(@Bind("id") long id);
+
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'ONTOLOGY_PACK_INSTALL' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.ontologyId')) = :ontologyId "
+              + "ORDER BY id LIMIT 1",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id FROM background_jobs WHERE jobType = 'ONTOLOGY_PACK_INSTALL' "
+              + "AND status IN ('PENDING', 'RUNNING') "
+              + "AND jobArgs->>'ontologyId' = :ontologyId ORDER BY id LIMIT 1",
+      connectionType = POSTGRES)
+  Long findActiveOntologyPackInstallJobId(@Bind("ontologyId") String ontologyId);
+
+  /** The job that was already active for the ontology, or the id of the one this call inserted. */
+  record OntologyPackInstallEnqueue(long jobId, boolean inserted) {}
+
+  // Two starts for one ontology both read "no active job" and both insert unless they queue on a
+  // row they share. The ontology row is that row, and the lock releases when the transaction ends.
+  @Transaction
+  default OntologyPackInstallEnqueue enqueueOntologyPackInstall(
+      String ontologyId, String methodName, String jobArgs, String createdBy, String message) {
+    if (lockOntologyForPackInstall(ontologyId) == null) {
+      return null;
+    }
+    final Long active = findActiveOntologyPackInstallJobId(ontologyId);
+    if (active != null) {
+      return new OntologyPackInstallEnqueue(active, false);
+    }
+    return new OntologyPackInstallEnqueue(
+        insertTrackedJobInternal(
+            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+            methodName,
+            jobArgs,
+            createdBy,
+            null,
+            0,
+            0,
+            message),
+        true);
+  }
+
+  @SqlQuery("SELECT id FROM ontology_entity WHERE id = :ontologyId FOR UPDATE")
+  String lockOntologyForPackInstall(@Bind("ontologyId") String ontologyId);
+
+  @SqlUpdate("UPDATE background_jobs SET result = :result, updatedAt = :updatedAt WHERE id = :id")
+  void updateJobResult(
+      @Bind("id") long id, @Bind("result") String result, @Bind("updatedAt") long updatedAt);
+
+  @SqlQuery(
       "SELECT result FROM background_jobs WHERE id = :id "
           + "AND jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT')")
   String findCsvJobResultById(@Bind("id") long id);
@@ -507,7 +564,7 @@ public interface JobDAO {
       "UPDATE background_jobs SET status = 'FAILED', error = 'Job stopped responding and was marked failed.', "
           + "message = 'Job stopped responding and was marked failed.', updatedAt = :updatedAt, completedAt = :updatedAt "
           + "WHERE jobType IN ('CSV_IMPORT', 'CSV_EXPORT', 'AUDIT_EXPORT', 'ONTOLOGY_BULK', "
-          + "'MEMORY_GLOSSARY_DERIVATION') "
+          + "'ONTOLOGY_PACK_INSTALL', 'MEMORY_GLOSSARY_DERIVATION') "
           + "AND status = 'RUNNING' AND updatedAt < :staleBefore")
   int markStaleRunningJobsFailed(
       @Bind("updatedAt") long updatedAt, @Bind("staleBefore") long staleBefore);

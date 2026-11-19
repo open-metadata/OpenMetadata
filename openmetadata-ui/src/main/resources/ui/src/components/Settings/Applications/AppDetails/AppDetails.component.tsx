@@ -75,6 +75,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import McpClientsTable from '../../../platform/settings/mcp/McpClientsTable/McpClientsTable';
 import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../AppLiveIndexing/AppLiveIndexing.component';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -94,15 +95,8 @@ import applicationsClassBase from './ApplicationsClassBase';
 const getShowMcpConfigTab = (
   appData: App | undefined,
   isAdminUser: boolean | undefined,
-  jsonSchema: RJSFSchema | undefined,
-  isRuntimeDisabled: boolean
-) =>
-  Boolean(
-    isMcpApplication(appData?.name) &&
-      isAdminUser &&
-      jsonSchema &&
-      !isRuntimeDisabled
-  );
+  jsonSchema: RJSFSchema | undefined
+) => Boolean(isMcpApplication(appData?.name) && isAdminUser && jsonSchema);
 
 const getShowAppConfigTab = (
   appData: App | undefined,
@@ -425,8 +419,7 @@ const AppDetails = () => {
     const showMcpConfigTab = getShowMcpConfigTab(
       appData,
       isAdminUser,
-      jsonSchema,
-      isRuntimeDisabled
+      jsonSchema
     );
     const showAppConfigTab = getShowAppConfigTab(
       appData,
@@ -469,6 +462,25 @@ const AppDetails = () => {
               onConfigSave={onConfigSave}
             />
           ),
+        },
+      ];
+    };
+
+    const buildMcpClientsTab = () => {
+      if (!showMcpConfigTab) {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.REGISTERED_CLIENTS}
+              name={t('label.mcp-registered-clients')}
+            />
+          ),
+          key: ApplicationTabs.REGISTERED_CLIENTS,
+          children: <McpClientsTable />,
         },
       ];
     };
@@ -556,6 +568,7 @@ const AppDetails = () => {
     return [
       ...buildScheduleTab(),
       ...buildConfigurationTab(),
+      ...buildMcpClientsTab(),
       ...buildRecentRunsTab(),
       ...buildLiveIndexingTab(),
     ];
