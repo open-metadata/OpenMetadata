@@ -85,7 +85,7 @@ public class VectorSearchQueryBuilder {
             .append(parameters.from())
             .append(",\"_source\":{\"excludes\":[\"embedding\"]}")
             .append(",\"query\":");
-    appendKnnQuery(sb, vector, parameters, readableAnchorIds);
+    appendKnnQuery(sb, vector, parameters, readableAnchorIds, false);
     sb.append('}');
     return sb.toString();
   }
@@ -117,7 +117,17 @@ public class VectorSearchQueryBuilder {
   public static String buildQuery(
       float[] vector, VectorSearchParameters parameters, Set<String> readableAnchorIds) {
     StringBuilder sb = new StringBuilder(512);
-    appendKnnQuery(sb, vector, parameters, readableAnchorIds);
+    appendKnnQuery(sb, vector, parameters, readableAnchorIds, false);
+    return sb.toString();
+  }
+
+  /**
+   * The KNN leg of a hybrid query. A shard whose index has no embedding field, such as the column
+   * index, skips it ({@code ignore_unmapped}) instead of failing, so its word matches still count.
+   */
+  public static String buildHybridQuery(float[] vector, VectorSearchParameters parameters) {
+    StringBuilder sb = new StringBuilder(512);
+    appendKnnQuery(sb, vector, parameters, Set.of(), true);
     return sb.toString();
   }
 
@@ -125,8 +135,12 @@ public class VectorSearchQueryBuilder {
       StringBuilder sb,
       float[] vector,
       VectorSearchParameters parameters,
-      Set<String> readableAnchorIds) {
+      Set<String> readableAnchorIds,
+      boolean ignoreUnmapped) {
     sb.append("{\"knn\":{\"embedding\":{\"vector\":").append(Arrays.toString(vector));
+    if (ignoreUnmapped) {
+      sb.append(",\"ignore_unmapped\":true");
+    }
 
     // OpenSearch KNN supports either min_score or k, not both. When min_score is set,
     // it returns all neighbors above the threshold (unbounded count, capped by the outer

@@ -177,9 +177,14 @@ import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
+import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
 import org.openmetadata.service.search.security.PrivateSearchFields;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.HybridRanking;
+import org.openmetadata.service.search.vector.HybridSearchException;
+import org.openmetadata.service.search.vector.HybridSearchQuery;
+import org.openmetadata.service.search.vector.HybridSearchRequest;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
@@ -1047,14 +1052,112 @@ public class SearchRepository {
    * role is not allowed to write anyway.
    */
   public Optional<String> getHybridRrfPipelineDefinition() {
-    if (!isVectorEmbeddingEnabled()
-        || !vectorServiceInitialized
-        || !(vectorIndexService instanceof OpenSearchVectorService)) {
+    if (!canRunHybridSearch()) {
       return Optional.empty();
     }
     double[] weights = resolveHybridWeights();
     return Optional.of(
         OpenSearchVectorService.buildHybridRrfPipelineDefinition(weights[0], weights[1]));
+  }
+
+  private boolean canRunHybridSearch() {
+    return isVectorEmbeddingEnabled()
+        && vectorServiceInitialized
+        && vectorIndexService instanceof OpenSearchVectorService;
+  }
+
+  /**
+   * One hybrid search as the caller: the question by words (the data asset query the search
+   * settings build for the whole question or any of {@code words}) over the global alias, and by
+   * meaning over the embeddings alias, both held to {@link #hybridScope} and fused with the
+   * configured RRF weights. Empty when this server cannot run one (semantic search off, or an
+   * Elasticsearch backend), so the caller chooses its own fallback; a search that was attempted and
+   * failed throws {@link HybridSearchException}. The returned hits name their entity in {@code
+   * parentId}.
+   */
+  public Optional<List<Map<String, Object>>> hybridSearch(
+      final String question,
+      final List<String> words,
+      final List<String> entityTypes,
+      final int size,
+      final SubjectContext subjectContext) {
+    if (!canRunHybridSearch()) {
+      return Optional.empty();
+    }
+    final double[] weights = resolveHybridWeights();
+    return Optional.of(
+        ((OpenSearchVectorService) vectorIndexService)
+            .hybridSearch(
+                new HybridSearchRequest(
+                    question,
+                    wordQuery(question, words, size),
+                    getIndexOrAliasName(GLOBAL_SEARCH_ALIAS),
+                    vectorIndexService.getIndexAlias(),
+                    hybridScope(entityTypes, entityIndexMap),
+                    meaningOnlyScope(entityTypes),
+                    accessFilter(subjectContext),
+                    size,
+                    subjectContext),
+                new HybridRanking(
+                    weights[0], weights[1], OpenSearchVectorService.RRF_RANK_CONSTANT)));
+  }
+
+  /**
+   * The entity types a hybrid search covers: those the caller asked for, else the data asset types
+   * (the members of the {@code dataAsset} alias, which keyword search covers).
+   */
+  public static List<String> hybridScope(
+      final List<String> asked, final Map<String, IndexMapping> indexes) {
+    return asked.isEmpty()
+        ? indexes.entrySet().stream()
+            .filter(
+                entry ->
+                    listOrEmpty(entry.getValue().getParentAliases())
+                        .contains(SearchConstants.DATA_ASSET))
+            .map(Map.Entry::getKey)
+            .sorted()
+            .toList()
+        : List.copyOf(asked);
+  }
+
+  /**
+   * The types a hybrid search asks for by meaning alone: test cases when the caller names no types.
+   * A symptom ("the freshness check is failing") is answered by a test case, which its description
+   * matches; its name repeats the words of its table and columns, which those hits already carry.
+   */
+  public static List<String> meaningOnlyScope(final List<String> asked) {
+    return asked.isEmpty() ? List.of(Entity.TEST_CASE) : List.of();
+  }
+
+  private static String wordQuery(final String question, final List<String> words, final int size) {
+    return HybridSearchQuery.anyOf(
+        Stream.concat(Stream.of(question), words.stream())
+            .distinct()
+            .map(text -> dataAssetWordQuery(text, size))
+            .toList());
+  }
+
+  /**
+   * The caller's search access filter, exactly as keyword search builds it. A filter that cannot be
+   * built fails the hybrid search, so the caller falls back to keyword search instead of searching
+   * without it.
+   */
+  private String accessFilter(final SubjectContext subjectContext) {
+    try {
+      return searchClient.searchAccessFilter(subjectContext).orElse(null);
+    } catch (RuntimeException failed) {
+      throw new HybridSearchException(
+          "the caller's search access filter could not be built: " + failed.getMessage(), failed);
+    }
+  }
+
+  private static String dataAssetWordQuery(final String query, final int size) {
+    final SearchSettings settings =
+        SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
+    return new OpenSearchSourceBuilderFactory(settings)
+        .buildDataAssetSearchBuilderV2(SearchConstants.DATA_ASSET, query, 0, size, false, false)
+        .query()
+        .toJsonString();
   }
 
   /** Effective {keyword, semantic} weights: search settings when present, else config defaults. */

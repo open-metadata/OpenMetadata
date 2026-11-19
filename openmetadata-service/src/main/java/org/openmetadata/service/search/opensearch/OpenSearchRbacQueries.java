@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.opensearch;
 
+import java.util.Optional;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.opensearch.queries.OpenSearchQueryBuilder;
 import org.openmetadata.service.search.queries.OMQueryBuilder;
@@ -19,6 +20,13 @@ final class OpenSearchRbacQueries {
    * disabled) is left unfiltered. Bots are not exempt: they are policy-evaluated like any other
    * caller.
    */
+  /** The clause {@link #withAccessPolicies} adds for this caller, as JSON; none when it adds none. */
+  static Optional<String> accessFilter(
+      SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
+    return Optional.ofNullable(withAccessPolicies(null, subjectContext, rbacConditionEvaluator))
+        .map(Query::toJsonString);
+  }
+
   static Query withAccessPolicies(
       Query query, SubjectContext subjectContext, RBACConditionEvaluator rbacConditionEvaluator) {
     if (subjectContext == null

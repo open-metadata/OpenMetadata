@@ -884,6 +884,11 @@ public class OpenSearchClient implements SearchClient {
 
   /** */
   @Override
+  public Optional<String> searchAccessFilter(final SubjectContext subjectContext) {
+    return OpenSearchRbacQueries.accessFilter(subjectContext, rbacConditionEvaluator);
+  }
+
+  @Override
   public void close() {
     if (transport != null) {
       try {

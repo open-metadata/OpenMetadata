@@ -990,6 +990,14 @@ public interface SearchClient
         "rawSearchRequest is not supported by " + getClass().getSimpleName());
   }
 
+  /**
+   * The clause this client's search adds for the caller's search access policies, as JSON; empty
+   * when it adds none. Only OpenSearch builds it, for hybrid search.
+   */
+  default Optional<String> searchAccessFilter(SubjectContext subjectContext) {
+    throw new UnsupportedOperationException("Search access filters are built only for OpenSearch");
+  }
+
   default ExecutorService getAsyncExecutor() {
     return asyncExecutor;
   }
