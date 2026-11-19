@@ -37,6 +37,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
+import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.kubernetes.client.openapi.ApiClient;
 import io.kubernetes.client.openapi.ApiException;
 import io.kubernetes.client.openapi.apis.BatchV1Api;
@@ -56,11 +57,16 @@ import io.kubernetes.client.openapi.models.V1PodSpec;
 import io.kubernetes.client.openapi.models.V1SeccompProfile;
 import io.kubernetes.client.openapi.models.V1Secret;
 import io.kubernetes.client.openapi.models.V1Status;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.net.ConnectException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
@@ -74,6 +80,7 @@ import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringSubstitutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -741,14 +748,22 @@ class K8sPipelineClientTest {
   @ParameterizedTest
   @CsvSource(
       value = {
+        "||",
+        "''||",
         "null||",
-        "{type: RuntimeDefault}|RuntimeDefault|",
-        "{type: Unconfined}|Unconfined|",
-        "{type: Localhost, localhostProfile: profiles/ingestion.json}|Localhost|profiles/ingestion.json"
+        "{\"type\":\"RuntimeDefault\"}|RuntimeDefault|",
+        "{\"type\":\"Unconfined\"}|Unconfined|",
+        "{\"type\":\"Localhost\",\"localhostProfile\":\"profiles/ingestion.json\"}|Localhost|profiles/ingestion.json"
       },
       delimiter = '|')
   void testSeccompConfigurationFromYamlIsSetOnJob(
-      String seccompYaml, String type, String localhostProfile) throws Exception {
+      String seccompEnv, String type, String localhostProfile) throws Exception {
+    String seccompConfiguration =
+        Files.readAllLines(Path.of("..", "conf", "openmetadata.yaml")).stream()
+            .map(String::strip)
+            .filter(line -> line.startsWith("seccomp:"))
+            .findFirst()
+            .orElseThrow();
     String yaml =
         """
         enabled: true
@@ -756,12 +771,22 @@ class K8sPipelineClientTest {
         parameters:
           namespace: openmetadata-pipelines
           skipInit: true
-          seccomp: %s
+          %s
         """
-            .formatted(seccompYaml);
-    PipelineServiceClientConfiguration config =
-        new ObjectMapper(new YAMLFactory())
-            .readValue(yaml, PipelineServiceClientConfiguration.class);
+            .formatted(seccompConfiguration);
+    StringSubstitutor substitutor =
+        new StringSubstitutor(seccompEnv == null ? Map.of() : Map.of("K8S_SECCOMP", seccompEnv));
+    substitutor.setEnableSubstitutionInVariables(true);
+    SubstitutingSourceProvider sourceProvider =
+        new SubstitutingSourceProvider(
+            ignored -> new ByteArrayInputStream(yaml.getBytes(StandardCharsets.UTF_8)),
+            substitutor);
+    PipelineServiceClientConfiguration config;
+    try (InputStream input = sourceProvider.open("seccomp-config")) {
+      config =
+          new ObjectMapper(new YAMLFactory())
+              .readValue(input, PipelineServiceClientConfiguration.class);
+    }
     client = new K8sPipelineClient(config);
     client.setBatchApi(batchApi);
     when(batchApi.createNamespacedJob(eq(NAMESPACE), any())).thenReturn(createJobRequest);
