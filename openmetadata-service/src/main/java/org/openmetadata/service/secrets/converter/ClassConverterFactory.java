@@ -47,6 +47,7 @@ import org.openmetadata.schema.services.connections.dashboard.SupersetConnection
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.dashboard.ThoughtSpotConnection;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.AzureConfig;
+import org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig;
 import org.openmetadata.schema.services.connections.dashboard.powerbi.S3Config;
 import org.openmetadata.schema.services.connections.database.BigQueryConnection;
 import org.openmetadata.schema.services.connections.database.BigTableConnection;
@@ -84,6 +85,7 @@ import org.openmetadata.schema.services.connections.database.databricks.AzureADS
 import org.openmetadata.schema.services.connections.database.databricks.DatabricksOAuth;
 import org.openmetadata.schema.services.connections.database.databricks.PersonalAccessToken;
 import org.openmetadata.schema.services.connections.database.datalake.GCSConfig;
+import org.openmetadata.schema.services.connections.database.microsoftAccess.MicrosoftAccessLocalFilePath;
 import org.openmetadata.schema.services.connections.drive.GoogleDriveConnection;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
@@ -215,7 +217,9 @@ public final class ClassConverterFactory {
               MicrosoftAccessConnection.class,
               new NestedConfigClassConverter(
                   MicrosoftAccessConnection.class,
-                  Map.of("connection", List.of(S3Connection.class, UntypedOption.class)))),
+                  Map.of(
+                      "connection",
+                      List.of(MicrosoftAccessLocalFilePath.class, S3Connection.class)))),
           Map.entry(
               MicroStrategyConnection.class,
               new NestedConfigClassConverter(
@@ -255,11 +259,11 @@ public final class ClassConverterFactory {
                   Map.of(
                       "pbitFilesSource",
                       List.of(
+                          PowerBILocalConfig.class,
                           AzureConfig.class,
                           org.openmetadata.schema.services.connections.dasboard.powerbi.GCSConfig
                               .class,
-                          S3Config.class,
-                          UntypedOption.class)))),
+                          S3Config.class)))),
           Map.entry(
               QuestDBConnection.class,
               new NestedConfigClassConverter(

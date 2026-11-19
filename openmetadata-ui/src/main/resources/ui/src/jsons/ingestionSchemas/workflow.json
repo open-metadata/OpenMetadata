@@ -6118,33 +6118,6 @@
                             "PowerBI"
                           ],
                           "default": "PowerBI"
-                        },
-                        "localConfig": {
-                          "title": "Local Config",
-                          "description": "Local config source where no extra information needs to be sent.",
-                          "type": "object",
-                          "properties": {
-                            "pbitFileConfigType": {
-                              "description": "pbit File Configuration type",
-                              "type": "string",
-                              "enum": [
-                                "local"
-                              ],
-                              "default": "local"
-                            },
-                            "path": {
-                              "title": "Path",
-                              "description": "Directory path for the pbit files",
-                              "type": "string"
-                            },
-                            "pbitFilesExtractDir": {
-                              "title": "pbit Files Extraction Directory",
-                              "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
-                              "type": "string",
-                              "default": "/tmp/pbitFiles"
-                            }
-                          },
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -6224,7 +6197,32 @@
                           "description": "Source to get the .pbit files to extract lineage information",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/1/properties/config/oneOf/2/definitions/localConfig"
+                              "title": "Local Config",
+                              "description": "Local config source where no extra information needs to be sent.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
+                              "properties": {
+                                "pbitFileConfigType": {
+                                  "description": "pbit File Configuration type",
+                                  "type": "string",
+                                  "enum": [
+                                    "local"
+                                  ],
+                                  "default": "local"
+                                },
+                                "path": {
+                                  "title": "Path",
+                                  "description": "Directory path for the pbit files",
+                                  "type": "string"
+                                },
+                                "pbitFilesExtractDir": {
+                                  "title": "pbit Files Extraction Directory",
+                                  "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
+                                  "type": "string",
+                                  "default": "/tmp/pbitFiles"
+                                }
+                              },
+                              "additionalProperties": false
                             },
                             {
                               "title": "AzureConfig",
@@ -10446,22 +10444,6 @@
                             "MicrosoftAccess"
                           ],
                           "default": "MicrosoftAccess"
-                        },
-                        "localFilePath": {
-                          "title": "Local File Path",
-                          "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
-                          "type": "object",
-                          "properties": {
-                            "localFilePath": {
-                              "type": "string",
-                              "title": "Local File Path",
-                              "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
-                            }
-                          },
-                          "required": [
-                            "localFilePath"
-                          ],
-                          "additionalProperties": false
                         }
                       },
                       "properties": {
@@ -10476,7 +10458,21 @@
                           "description": "Choose between local file system path (object) or S3 bucket location (object) for Access database files.",
                           "oneOf": [
                             {
-                              "$ref": "#/definitions/source/properties/serviceConnection/oneOf/2/properties/config/oneOf/16/definitions/localFilePath"
+                              "title": "Local File Path",
+                              "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
+                              "type": "object",
+                              "javaType": "org.openmetadata.schema.services.connections.database.microsoftAccess.MicrosoftAccessLocalFilePath",
+                              "properties": {
+                                "localFilePath": {
+                                  "type": "string",
+                                  "title": "Local File Path",
+                                  "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
+                                }
+                              },
+                              "required": [
+                                "localFilePath"
+                              ],
+                              "additionalProperties": false
                             },
                             {
                               "$ref": "#/definitions/source/properties/serviceConnection/oneOf/7/properties/config/oneOf/0"

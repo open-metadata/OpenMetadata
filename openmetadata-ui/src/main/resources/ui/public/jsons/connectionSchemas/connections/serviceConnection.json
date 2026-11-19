@@ -847,33 +847,6 @@
                         "PowerBI"
                       ],
                       "default": "PowerBI"
-                    },
-                    "localConfig": {
-                      "title": "Local Config",
-                      "description": "Local config source where no extra information needs to be sent.",
-                      "type": "object",
-                      "properties": {
-                        "pbitFileConfigType": {
-                          "description": "pbit File Configuration type",
-                          "type": "string",
-                          "enum": [
-                            "local"
-                          ],
-                          "default": "local"
-                        },
-                        "path": {
-                          "title": "Path",
-                          "description": "Directory path for the pbit files",
-                          "type": "string"
-                        },
-                        "pbitFilesExtractDir": {
-                          "title": "pbit Files Extraction Directory",
-                          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
-                          "type": "string",
-                          "default": "/tmp/pbitFiles"
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -959,6 +932,7 @@
                           "title": "Local Config",
                           "description": "Local config source where no extra information needs to be sent.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
                           "properties": {
                             "pbitFileConfigType": {
                               "description": "pbit File Configuration type",
@@ -12619,22 +12593,6 @@
                         "MicrosoftAccess"
                       ],
                       "default": "MicrosoftAccess"
-                    },
-                    "localFilePath": {
-                      "title": "Local File Path",
-                      "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
-                      "type": "object",
-                      "properties": {
-                        "localFilePath": {
-                          "type": "string",
-                          "title": "Local File Path",
-                          "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
-                        }
-                      },
-                      "required": [
-                        "localFilePath"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -12655,6 +12613,7 @@
                           "title": "Local File Path",
                           "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.database.microsoftAccess.MicrosoftAccessLocalFilePath",
                           "properties": {
                             "localFilePath": {
                               "type": "string",
@@ -39314,33 +39273,6 @@
                         "PowerBI"
                       ],
                       "default": "PowerBI"
-                    },
-                    "localConfig": {
-                      "title": "Local Config",
-                      "description": "Local config source where no extra information needs to be sent.",
-                      "type": "object",
-                      "properties": {
-                        "pbitFileConfigType": {
-                          "description": "pbit File Configuration type",
-                          "type": "string",
-                          "enum": [
-                            "local"
-                          ],
-                          "default": "local"
-                        },
-                        "path": {
-                          "title": "Path",
-                          "description": "Directory path for the pbit files",
-                          "type": "string"
-                        },
-                        "pbitFilesExtractDir": {
-                          "title": "pbit Files Extraction Directory",
-                          "description": "Path of the folder where the .pbit files will be unzipped and datamodel schema will be extracted",
-                          "type": "string",
-                          "default": "/tmp/pbitFiles"
-                        }
-                      },
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -39426,6 +39358,7 @@
                           "title": "Local Config",
                           "description": "Local config source where no extra information needs to be sent.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.dashboard.powerbi.PowerBILocalConfig",
                           "properties": {
                             "pbitFileConfigType": {
                               "description": "pbit File Configuration type",
@@ -51086,22 +51019,6 @@
                         "MicrosoftAccess"
                       ],
                       "default": "MicrosoftAccess"
-                    },
-                    "localFilePath": {
-                      "title": "Local File Path",
-                      "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
-                      "type": "object",
-                      "properties": {
-                        "localFilePath": {
-                          "type": "string",
-                          "title": "Local File Path",
-                          "description": "Absolute path to the .accdb or .mdb file, or a directory. Supports ~ expansion (e.g. ~/data/sales.accdb). All .accdb and .mdb files found recursively in a directory will be ingested."
-                        }
-                      },
-                      "required": [
-                        "localFilePath"
-                      ],
-                      "additionalProperties": false
                     }
                   },
                   "properties": {
@@ -51122,6 +51039,7 @@
                           "title": "Local File Path",
                           "description": "Local filesystem path to a single Access database file or a directory containing Access files.",
                           "type": "object",
+                          "javaType": "org.openmetadata.schema.services.connections.database.microsoftAccess.MicrosoftAccessLocalFilePath",
                           "properties": {
                             "localFilePath": {
                               "type": "string",

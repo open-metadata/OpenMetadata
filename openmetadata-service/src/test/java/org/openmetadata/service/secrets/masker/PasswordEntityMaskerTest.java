@@ -157,6 +157,33 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
+  void testEveryLeafOfALocalPathOptionValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> aws = Map.of("awsAccessKeyId", "access-key", "awsSecretAccessKey", TOKEN);
+    String mask = getMaskedPassword();
+    Map<String, Object> maskedAws = Map.of("awsAccessKeyId", mask, "awsSecretAccessKey", mask);
+
+    Object powerBi =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                Map.of("pbitFilesSource", Map.of("path", "/data/pbit", "securityConfig", aws)),
+                "PowerBI",
+                ServiceType.DASHBOARD);
+    Object access =
+        EntityMaskerFactory.createEntityMasker()
+            .maskServiceConnectionConfig(
+                Map.of("connection", Map.of("localFilePath", "/data/a.accdb", "awsConfig", aws)),
+                "MicrosoftAccess",
+                ServiceType.DATABASE);
+
+    assertEquals(
+        Map.of("path", mask, "securityConfig", maskedAws),
+        JsonUtils.readValue(JsonUtils.pojoToJson(powerBi), Map.class).get("pbitFilesSource"));
+    assertEquals(
+        Map.of("localFilePath", mask, "awsConfig", maskedAws),
+        JsonUtils.readValue(JsonUtils.pojoToJson(access), Map.class).get("connection"));
+  }
+
+  @Test
   void testLookerDisplayUrlIsAcceptedWhenRestoringSecrets() {
     Map<String, Object> updated =
         Map.of(
