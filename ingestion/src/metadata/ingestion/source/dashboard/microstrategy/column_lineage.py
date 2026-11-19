@@ -45,10 +45,14 @@ SourceColumn = tuple[str, str]
 
 @dataclass(frozen=True)
 class ParsedCube:
-    """What a cube's SQL reads: its tables, and the warehouse columns each projection reads"""
+    """
+    What a cube's SQL reads: its tables, and the warehouse columns each projection reads. ``cube``
+    is the cube the SQL came from: a report dataset's source cube, else the dataset itself.
+    """
 
     tables: tuple[str, ...] = ()
     read_columns: frozenset[SourceColumn] = field(default_factory=frozenset)
+    cube: str | None = None
 
 
 def table_name_of(table: exp.Table) -> str:

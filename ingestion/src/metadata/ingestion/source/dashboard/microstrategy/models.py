@@ -50,6 +50,20 @@ class MstrProject(MstrModel):
     name: str
 
 
+class MstrReportSource(MstrModel):
+    """The Intelligent Cube a report is built on"""
+
+    id: str
+    name: str | None = None
+
+
+class MstrReport(MstrModel):
+    """A report's definition, as far as lineage needs it: the cube it reads, if any"""
+
+    name: str | None = None
+    source: MstrReportSource | None = None
+
+
 class MstrSearchResult(MstrModel):
     """
     Mstr Search Results model

@@ -20,7 +20,7 @@ from __future__ import annotations
 import traceback
 from collections import OrderedDict
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 from urllib.parse import quote
 
 import requests
@@ -30,6 +30,7 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import APIError, ClientConfig
 from metadata.ingestion.source.dashboard.microstrategy.models import (
     MstrProject,
+    MstrReport,
     MstrSearchPage,
     MstrSearchResult,
 )
@@ -63,6 +64,8 @@ LOGIN_TIMEOUT = (10, 60)
 ENGINE_STEPS_TRAILER = "[Analytical engine calculation steps:"
 # The sqlView endpoint's answer for a dataset that is a report rather than an Intelligent Cube
 NOT_A_CUBE = "Only cube is supported to get SQL view"
+# Its answer for a Live Intelligent Cube, which keeps no data and so has no stored SQL
+LIVE_CUBE = "Live Intelligent Cubes cannot be published"
 
 T = TypeVar("T")
 K = TypeVar("K", bound=Hashable)
@@ -93,6 +96,16 @@ def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None
     return value
 
 
+class CubeSql(NamedTuple):
+    """
+    The SQL a dataset reads, and the cube it was read from: the source cube of a report built on
+    one, else the dataset itself. Cached together, so the cube is known whenever the SQL is.
+    """
+
+    cube: str
+    sql: str
+
+
 class MicroStrategyApiError(Exception):
     """A MicroStrategy REST call failed or answered with an unexpected body"""
 
@@ -121,7 +134,8 @@ class MicroStrategyClient:
         library_path = (self.config.libraryPath or "").strip().strip("/") or DEFAULT_LIBRARY_PATH
         self.library_url = f"{self._base_url}/{library_path}"
         self._api_version = f"{library_path}/api"
-        self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
+        self._cube_sql: OrderedDict[str, CubeSql | None] = OrderedDict()
+        self._report_cubes: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
         self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
         self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
@@ -273,28 +287,82 @@ class MicroStrategyClient:
             raise MicroStrategyApiError(f"Unexpected definition of dossier {dashboard_id}: {str(response)[:200]}")
         return response
 
-    def get_cube_sql_details(self, project_id: str, cube_id: str) -> str | None:
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> CubeSql | None:
         """
-        Get the SQL of a cube, cached for the dossiers that share it. A cube whose SQL cannot be
-        read is cached as None too, so it is not requested again for every dossier using it.
+        Get the SQL of a dataset, cached for the dossiers that share it. A dataset that is a report
+        built on an Intelligent Cube reads that cube's SQL: the SQL view serves cubes only. A
+        dataset whose SQL cannot be read is cached as None too, so it is not requested again for
+        every dossier using it.
+        """
+
+        def fetch() -> CubeSql | None:
+            try:
+                return self._sql_view(project_id, cube_id)
+            except MicroStrategyApiError as exc:
+                if LIVE_CUBE in str(exc):
+                    logger.warning(
+                        "Dataset %s is a Live Intelligent Cube: MicroStrategy keeps no copy of its data and"
+                        " writes its SQL only when it queries the warehouse, so it has no lineage",
+                        cube_id,
+                    )
+                    return None
+                if NOT_A_CUBE not in str(exc):
+                    raise
+            source_cube = self.get_report_cube(project_id, cube_id)
+            if source_cube is None:
+                # Its definition could not be read, and that was logged.
+                return None
+            if source_cube and source_cube != cube_id:
+                logger.info(
+                    "Dataset %s is a report on Intelligent Cube %s: reading that cube's SQL", cube_id, source_cube
+                )
+                # The source is a cube: its SQL is read as is, never resolved as a report again.
+                return cached(
+                    self._cube_sql,
+                    source_cube,
+                    lambda: self._sql_view(project_id, source_cube),
+                    f"the SQL of cube {source_cube}",
+                )
+            self._warn_report_without_sql(project_id, cube_id)
+            return None
+
+        return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
+
+    def _sql_view(self, project_id: str, cube_id: str) -> CubeSql | None:
+        response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
+        sql = strip_engine_steps(response.get("sqlStatement"))
+        return CubeSql(cube=cube_id, sql=sql) if sql else None
+
+    def get_report_cube(self, project_id: str, report_id: str) -> str | None:
+        """
+        The Intelligent Cube a report is built on: an empty string for a report that queries the
+        warehouse, None when the report's definition cannot be read.
         """
 
         def fetch() -> str | None:
-            try:
-                response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
-            except MicroStrategyApiError as exc:
-                if NOT_A_CUBE not in str(exc):
-                    raise
-                # A dataset can be a report rather than an Intelligent Cube, and the SQL view
-                # serves cubes only.
-                logger.warning(
-                    "Dataset %s is a report, not an Intelligent Cube: its SQL cannot be read, so it has no lineage",
-                    cube_id,
-                )
-                return None
-            return strip_engine_steps(response.get("sqlStatement"))
+            report = MstrReport.model_validate(self._get(f"/v2/reports/{report_id}", project_id=project_id))
+            return report.source.id if report.source else ""
 
-        return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
+        return cached(self._report_cubes, report_id, fetch, f"the source of report {report_id}")
+
+    def _warn_report_without_sql(self, project_id: str, report_id: str) -> None:
+        """
+        A report that queries the warehouse has SQL only once it runs, and running it would query
+        the warehouse. A prompted one would also need its prompts answered.
+        """
+        try:
+            prompted = bool(self._get(f"/reports/{report_id}/prompts", project_id=project_id))
+        except MicroStrategyApiError:
+            logger.debug(traceback.format_exc())
+            prompted = False
+        kind = "a prompted report" if prompted else "a report"
+        logger.warning(
+            "Dataset %s is %s on warehouse tables, not on an Intelligent Cube: MicroStrategy writes its SQL"
+            " only when it runs%s, so it has no lineage",
+            report_id,
+            kind,
+            " with its prompts answered" if prompted else "",
+        )
 
     def get_dataset_subtype(self, project_id: str, dataset_id: str) -> int | None:
         """The subtype of the report object behind a dossier dataset, e.g. 776 for an Intelligent Cube"""
