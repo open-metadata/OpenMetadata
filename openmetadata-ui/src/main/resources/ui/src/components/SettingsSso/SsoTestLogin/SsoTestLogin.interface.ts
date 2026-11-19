@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { toConnectionStepState } from './SsoTestLogin.utils';
 import { StageStatus } from '../../../generated/system/testLoginResult';
 import {
   SecurityConfiguration,
   TestLoginResult,
 } from '../../../rest/securityConfigAPI';
+import { toConnectionStepState } from './SsoTestLogin.utils';
 
 /** What the checks a save runs said about a configuration, before Test Login signs in with it. */
 export interface ConfigurationCheckOutcome {
