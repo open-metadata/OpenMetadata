@@ -288,9 +288,10 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
 repeatedly add the following.
 
 - **Java migrations** (`migration/utils/vNNN`):
-  - Carry their own logic: rows and SQL, not repositories, `Entity` lookups, generated classes,
-    secrets, search or workflow code, which keep changing after the step ships. An unavoidable call
-    is a named exception in `MigrationArchitectureTest`.
+  - Carry their own logic: rows and SQL through the `Handle`, using only the classes
+    `MigrationArchitectureTest` allows, not `CollectionDAO`, repositories, `Entity` lookups or
+    generated classes, which keep changing after the step ships. An unavoidable call is a named
+    exception in that test.
     ADR:2026-11-11-a-data-migration-carries-its-own-logic
   - Compute a fixed point that is safe to re-run, never a subtractive delta.
   - Guard on the current shape, so an admin-customized row is left alone.

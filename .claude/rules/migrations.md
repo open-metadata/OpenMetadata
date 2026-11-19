@@ -35,13 +35,15 @@ A step under `migration/{mysql,postgres,utils}/vNNN` runs with the code of every
 it must not depend on code that keeps changing.
 ADR:2026-11-11-a-data-migration-carries-its-own-logic
 
-- **Work on rows.** Read and write with SQL through the JDBI `Handle` or plain table queries. Change
-  stored JSON as a tree, with the field names as constants of the step. Do not call a repository,
-  `Entity.getEntity*` / `getEntityRepository`, an entity DAO's entity methods, a secrets manager,
-  search, workflow code or the pipeline service client, and do not load a row into a generated
-  class to change it.
-- **Contracts are fine:** `FullyQualifiedName` (quoting and hashing), `Fernet`, `MessageParser`
-  (entity links) and `JsonUtils` as a parser.
+- **Work on rows.** Read and write with SQL through the JDBI `Handle`. Change stored JSON as a
+  `JsonNode` tree, with the field names as constants of the step. Do not load a row into a
+  generated class to change it.
+- **Use only what `MigrationArchitectureTest` allows:** the JDK, JDBI, Jackson, logging, Lombok and
+  the crypto libraries; the classes that run a step (`MigrationProcessImpl`, `MigrationFile`,
+  `ConnectionType`, `MigrationDAO`, `DataMigrationStep`, `IdBatches`, `MigrationTableUtil`); and
+  the contracts `FullyQualifiedName`, `Fernet`, `MessageParser`, `JsonUtils` (as a parser) and
+  `Relationship`. Everything else fails the test, including `CollectionDAO`, `Entity`,
+  repositories and generated classes.
 - **Work that must follow current code goes elsewhere.** Seeding runs in each resource's
   `initialize` on every start; deploying ingestion pipelines, reindexing and moving secrets are the
   `deploy-pipelines`, `reindex` and `migrate-secrets` commands.

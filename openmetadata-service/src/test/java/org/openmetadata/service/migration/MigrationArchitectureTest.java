@@ -1,15 +1,14 @@
 package org.openmetadata.service.migration;
 
+import static com.tngtech.archunit.base.DescribedPredicate.alwaysFalse;
 import static com.tngtech.archunit.base.DescribedPredicate.not;
 import static com.tngtech.archunit.core.domain.JavaCall.Predicates.target;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.assignableTo;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.belongToAnyOf;
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAPackage;
 import static com.tngtech.archunit.core.domain.JavaClass.Predicates.resideInAnyPackage;
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.simpleNameEndingWith;
-import static com.tngtech.archunit.core.domain.JavaClass.Predicates.type;
 import static com.tngtech.archunit.core.domain.properties.HasName.Predicates.nameMatching;
 import static com.tngtech.archunit.core.domain.properties.HasOwner.Predicates.With.owner;
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
 import com.tngtech.archunit.base.DescribedPredicate;
@@ -18,21 +17,24 @@ import com.tngtech.archunit.core.importer.ImportOption;
 import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
-import org.openmetadata.sdk.PipelineServiceClientInterface;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.migration.utils.v210.ConversationMigration;
-import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
-import org.openmetadata.service.migration.utils.v210.DataContractEntityReferenceMigration;
-import org.openmetadata.service.migration.utils.v210.DataQualityDimensionMigration;
-import org.openmetadata.service.migration.utils.v210.DeltaLakeRetirementMigration;
-import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
-import org.openmetadata.service.migration.utils.v210.MigrationUtil;
-import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
-import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
+import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.MigrationDAO;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationProcess;
+import org.openmetadata.service.migration.api.MigrationProcessImpl;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
+import org.openmetadata.service.migration.utils.IdBatches;
+import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
+import org.openmetadata.service.resources.feeds.MessageParser;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
- * A versioned migration carries its own logic: it reads and writes rows itself instead of calling
- * code that keeps changing after the migration ships. ADR:2026-11-11-a-data-migration-carries-its-own-logic
+ * A versioned migration carries its own logic: it may use only the classes listed here, so code
+ * added to the product later cannot slip into a step unnoticed.
+ * ADR:2026-11-11-a-data-migration-carries-its-own-logic
  */
 @AnalyzeClasses(
     packages = "org.openmetadata.service.migration",
@@ -40,83 +42,80 @@ import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemp
 class MigrationArchitectureTest {
 
   private static final String MIGRATION = "org.openmetadata.service.migration";
-  private static final String SERVICE = "org.openmetadata.service";
 
   /** The steps of one release: {@code mysql/vNNN}, {@code postgres/vNNN} and {@code utils/vNNN}. */
   private static final DescribedPredicate<JavaClass> VERSIONED_MIGRATIONS =
       resideInAnyPackage(
           MIGRATION + ".mysql.*..", MIGRATION + ".postgres.*..", MIGRATION + ".utils.*..");
 
-  /** The 1.x and 2.0.x releases shipped before this rule and are left as they are. */
-  private static final DescribedPredicate<JavaClass> SHIPPED_BEFORE_THE_RULE =
-      resideInAnyPackage(MIGRATION + ".*.v1*..", MIGRATION + ".*.V1*..", MIGRATION + ".*.v20*..");
+  /** The 1.x, 2.0.x and 2.1.0 steps were written before this rule and are left as they are. */
+  private static final DescribedPredicate<JavaClass> WRITTEN_BEFORE_THE_RULE =
+      resideInAnyPackage(
+          MIGRATION + ".*.v1*..",
+          MIGRATION + ".*.V1*..",
+          MIGRATION + ".*.v20*..",
+          MIGRATION + ".*.v210..");
 
   /**
-   * Steps that call platform code. Each line says what it calls. The 2.1.0 steps below were written
-   * before this rule; a new exception says why the work cannot be done with rows and SQL instead.
+   * Steps that may use more than the allowed classes. Each entry says what it uses and why the work
+   * cannot be done with rows and SQL instead.
    */
-  private static final DescribedPredicate<JavaClass> EXCEPTIONS =
+  private static final DescribedPredicate<JavaClass> EXCEPTIONS = alwaysFalse();
+
+  private static final DescribedPredicate<JavaClass> CHECKED_STEPS =
+      VERSIONED_MIGRATIONS.and(not(WRITTEN_BEFORE_THE_RULE)).and(not(EXCEPTIONS));
+
+  /** Libraries that do not follow the product: the JDK, JDBI, Jackson, logging and crypto. */
+  private static final DescribedPredicate<JavaClass> LIBRARIES =
+      resideInAnyPackage(
+          "java..",
+          "org.jdbi..",
+          "com.fasterxml.jackson..",
+          "org.slf4j..",
+          "lombok..",
+          "com.macasaet.fernet..",
+          "org.bouncycastle..");
+
+  /** What runs a step: its base class, its file, its dialect and the run-once log. */
+  private static final DescribedPredicate<JavaClass> FRAMEWORK =
       belongToAnyOf(
-          // 2.1.0: resolves entity references by name through the entity registry.
-          ConversationMigration.class,
-          // 2.1.0: reaches the entity tables through each repository's DAO.
-          CustomPropertyReferenceMigration.class,
-          // 2.1.0: resolves entity references by id through the entity registry.
-          DataContractEntityReferenceMigration.class,
-          // 2.1.0: seeds the system dimensions from the current resource files.
-          DataQualityDimensionMigration.class,
-          // 2.1.0: deletes Delta Lake pipelines through the repository, which also removes them
-          // from the pipeline service.
-          // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
-          DeltaLakeRetirementMigration.class,
-          // 2.1.0: seeds, stores and deploys workflow definitions through the workflow repository.
-          GlossaryAutomationReviewMigration.class,
-          // 2.1.0: edits seeded policies, system settings and notification templates through
-          // their repositories.
-          MigrationUtil.class,
-          // 2.1.0: creates and attaches seeded policies through the role and policy repositories.
-          OntologyRolesMigration.class,
-          // 2.1.0: resets notification templates to the current defaults through the repository.
-          UnsupportedNotificationTemplates.class);
+          MigrationProcess.class,
+          MigrationProcessImpl.class,
+          MigrationFile.class,
+          ConnectionType.class,
+          MigrationDAO.class,
+          DataMigrationStep.class,
+          IdBatches.class,
+          MigrationTableUtil.class);
 
-  /**
-   * Code that keeps changing after a migration ships: repositories, secrets, search, workflows and
-   * the pipeline service client.
-   */
-  private static final DescribedPredicate<JavaClass> PLATFORM_CODE =
-      resideInAPackage(SERVICE + ".jdbi3..")
-          .and(simpleNameEndingWith("Repository"))
-          .or(
-              resideInAnyPackage(
-                  SERVICE + ".secrets..",
-                  SERVICE + ".search..",
-                  SERVICE + ".governance.workflows..",
-                  SERVICE + ".clients.pipeline.."))
-          .or(assignableTo(PipelineServiceClientInterface.class));
+  /** Formats the stored data must match, so a step uses the shared code for them. */
+  private static final DescribedPredicate<JavaClass> CONTRACTS =
+      belongToAnyOf(
+          FullyQualifiedName.class,
+          Fernet.class,
+          MessageParser.class,
+          JsonUtils.class,
+          Relationship.class);
 
+  // No folder after 2.1.0 exists yet, so the rules may match no class.
   @ArchTest
-  static final ArchRule versionedMigrationsDoNotDependOnPlatformCode =
-      noClasses()
-          .that(VERSIONED_MIGRATIONS)
-          .and(not(SHIPPED_BEFORE_THE_RULE))
-          .and(not(EXCEPTIONS))
+  static final ArchRule versionedMigrationsUseOnlyAllowedClasses =
+      classes()
+          .that(CHECKED_STEPS)
           .should()
-          .dependOnClassesThat(PLATFORM_CODE);
+          .onlyDependOnClassesThat(CHECKED_STEPS.or(LIBRARIES).or(FRAMEWORK).or(CONTRACTS))
+          .as("A versioned migration step uses only the classes MigrationArchitectureTest allows")
+          .allowEmptyShould(true);
 
   @ArchTest
-  static final ArchRule versionedMigrationsDoNotReadEntitiesThroughTheRegistry =
+  static final ArchRule versionedMigrationsDoNotReachWorkflowsThroughTheirBaseClass =
       noClasses()
-          .that(VERSIONED_MIGRATIONS)
-          .and(not(SHIPPED_BEFORE_THE_RULE))
-          .and(not(EXCEPTIONS))
+          .that(CHECKED_STEPS)
           .should()
           .callMethodWhere(
-              target(owner(type(Entity.class)))
-                  .and(
-                      target(
-                          nameMatching(
-                              "get(Entity|Entities|EntityByName.*|EntityOrNull|EntityReference.*"
-                                  + "|EntityRepository|ServiceEntityRepository|UserRepository"
-                                  + "|EntityForInheritance|EntitiesForInheritance|Owners"
-                                  + "|EntityTags|Fields|SearchRepo)"))));
+              target(owner(assignableTo(MigrationProcessImpl.class)))
+                  .and(target(nameMatching("initializeWorkflowHandler|getPipelineServiceClient"))))
+          .as(
+              "A versioned migration step does not reach workflows or pipelines from its base class")
+          .allowEmptyShould(true);
 }
