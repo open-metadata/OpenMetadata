@@ -34,7 +34,9 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import searchClassBase from '../../../../../utils/SearchClassBase';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
+import { TaskMentionCard } from '../../../../NotificationBox/TaskMentionCard';
 import ActivityFeedItem from '../components/ActivityFeedItem';
+import { ACTIVITY_CARD_CLASS } from '../components/ActivityFeedItem.constants';
 import ActivitySkeleton from '../components/ActivitySkeleton';
 import ActivityToolbar from '../components/ActivityToolbar';
 import {
@@ -65,10 +67,10 @@ import { useIsScrolled } from '../useIsScrolled';
 // but a small DOM keeps a modal over it (a delete confirm, say) cheap to open.
 const ACTIVITY_RENDER_BATCH = 40;
 
-const getItemEntity = ({ activity, feed }: InboxActivityItem) =>
-  activity?.entity ?? feed?.entityRef;
-const getItemActor = ({ activity, feed }: InboxActivityItem) =>
-  activity?.actor ?? feed?.createdBy;
+const getItemEntity = ({ activity, feed, taskMention }: InboxActivityItem) =>
+  activity?.entity ?? feed?.entityRef ?? taskMention?.task.about;
+const getItemActor = ({ activity, feed, taskMention }: InboxActivityItem) =>
+  activity?.actor ?? feed?.createdBy ?? taskMention?.comment.author;
 
 // An Asset group leads with its asset's icon, a User group with the user.
 const AssetGroupIcon = ({ item }: { item: InboxActivityItem }) => {
@@ -303,6 +305,15 @@ const ActivityGroupList = ({
           </Box>
           {group.items.map((item) => {
             const itemId = getInboxItemId(item);
+            if (item.taskMention) {
+              return (
+                <Box className={ACTIVITY_CARD_CLASS} key={itemId}>
+                  <Box className="tw:p-4">
+                    <TaskMentionCard mention={item.taskMention} />
+                  </Box>
+                </Box>
+              );
+            }
 
             return (
               <ActivityFeedItem

@@ -27,6 +27,10 @@ import {
 } from '../../../../rest/activityAPI';
 import { listConversations } from '../../../../rest/conversationsAPI';
 import {
+  getTaskCommentMentions,
+  TaskCommentMention,
+} from '../../../../utils/tasks/TaskMentions.utils';
+import {
   ActivityFilter,
   ACTIVITY_LIMIT,
   CONVERSATION_LIMIT,
@@ -48,6 +52,7 @@ const INBOX_ACTIVITY_STALE_TIME = 30 * 1000;
 export interface InboxActivityResult {
   activities: ActivityEvent[];
   threads: Conversation[];
+  taskMentions?: TaskCommentMention[];
   // Either list came back a full page, so the window may hold more.
   isCapped: boolean;
   // Where the feed stops being whole: older items may be missing from here on.
@@ -55,18 +60,23 @@ export interface InboxActivityResult {
   cutAt?: number;
 }
 
-// Exactly one of `activity` or `feed`, matching ActivityFeedItem's props.
+// An inbox card represents one event, conversation, or task comment.
 export interface InboxActivityItem {
   activity?: ActivityEvent;
   feed?: Conversation;
+  taskMention?: TaskCommentMention;
 }
 
 export const getInboxItemId = (item: InboxActivityItem): string =>
-  String(item.activity?.id ?? item.feed?.id ?? '');
+  String(
+    item.activity?.id ?? item.feed?.id ?? item.taskMention?.comment.id ?? ''
+  );
 
 // When an item happened: an event's timestamp, a conversation's last activity.
 export const getInboxItemTimestamp = (item: InboxActivityItem): number =>
-  item.activity?.timestamp ?? (item.feed ? getFeedSortTimestamp(item.feed) : 0);
+  item.activity?.timestamp ??
+  item.taskMention?.comment.createdAt ??
+  (item.feed ? getFeedSortTimestamp(item.feed) : 0);
 
 // Each sub-tab's activity events. Mentions are the events whose replies name
 // the viewer; the conversations that name them come alongside.
@@ -193,16 +203,13 @@ const cutToCompleteSpan = (
  * The selected sub-tab's activity events plus its conversations, for the
  * viewer `userId` or, when `isScoped`, for another user `userId`.
  */
-export const fetchInboxActivity = async (
+const fetchActivityAndConversations = async (
   filter: ActivityFilter,
-  userId: string | undefined,
+  userId: string,
   startTs?: number,
   endTs?: number,
   isScoped = false
 ): Promise<InboxActivityResult> => {
-  if (!userId) {
-    return { activities: [], threads: [], isCapped: false };
-  }
   // startTs gives activity the same lower bound as the conversations: `days` is
   // capped at 30, which falls short of a window starting at the start of a day.
   const days = getActivityWindowDays({ startTs, endTs });
@@ -253,6 +260,46 @@ export const fetchInboxActivity = async (
   );
 };
 
+export const fetchInboxActivity = async (
+  filter: ActivityFilter,
+  userId: string | undefined,
+  startTs?: number,
+  endTs?: number,
+  isScoped = false,
+  mentionedUser?: string
+): Promise<InboxActivityResult> => {
+  if (!userId) {
+    return { activities: [], threads: [], isCapped: false };
+  }
+
+  const activityRequest = fetchActivityAndConversations(
+    filter,
+    userId,
+    startTs,
+    endTs,
+    isScoped
+  );
+  if (filter !== ActivityFilter.Mentions || !mentionedUser) {
+    return activityRequest;
+  }
+
+  const [window, taskPage] = await Promise.all([
+    activityRequest,
+    getTaskCommentMentions(mentionedUser).catch(() => undefined),
+  ]);
+  if (!taskPage) {
+    return window;
+  }
+
+  return {
+    ...window,
+    taskMentions: taskPage.mentions.filter(({ comment }) =>
+      isWithinInboxRange(comment.createdAt, { startTs, endTs })
+    ),
+    isCapped: window.isCapped || taskPage.isCapped,
+  };
+};
+
 /**
  * Write a card's reactions into every cached sub-tab list that holds it, so a
  * card read back from the cache after switching sub-tab keeps the reaction.
@@ -284,11 +331,15 @@ const useFeedSubject = (userId?: string) => {
   return {
     subjectId: userId ?? currentUser?.id,
     isScoped: Boolean(userId) && userId !== currentUser?.id,
+    mentionedUser:
+      !userId || userId === currentUser?.id ? currentUser?.name : undefined,
   };
 };
 
 const getInboxTotal = (data: InboxActivityResult): number =>
-  pairFieldChanges(data.activities).length + data.threads.length;
+  pairFieldChanges(data.activities).length +
+  data.threads.length +
+  (data.taskMentions?.length ?? 0);
 
 // One query per sub-tab, window and user, so the list and every count share a
 // fetch. The user id keys it, so one user's feed never serves another's.
@@ -296,7 +347,8 @@ const inboxActivityQuery = (
   filter: ActivityFilter,
   userId: string | undefined,
   dateRange?: InboxDateRange,
-  isScoped = false
+  isScoped = false,
+  mentionedUser?: string
 ) => ({
   queryKey: [
     INBOX_ACTIVITY_QUERY_KEY,
@@ -304,6 +356,7 @@ const inboxActivityQuery = (
     dateRange?.startTs,
     dateRange?.endTs,
     userId,
+    filter === ActivityFilter.Mentions ? mentionedUser : undefined,
   ],
   queryFn: () =>
     fetchInboxActivity(
@@ -311,7 +364,8 @@ const inboxActivityQuery = (
       userId,
       dateRange?.startTs,
       dateRange?.endTs,
-      isScoped
+      isScoped,
+      mentionedUser
     ),
   enabled: Boolean(userId),
   staleTime: INBOX_ACTIVITY_STALE_TIME,
@@ -336,10 +390,10 @@ export const useInboxActivity = (
   dateRange?: InboxDateRange,
   userId?: string
 ): UseInboxActivity => {
-  const { subjectId, isScoped } = useFeedSubject(userId);
+  const { subjectId, isScoped, mentionedUser } = useFeedSubject(userId);
 
   const { data, isLoading, error, refetch } = useQuery(
-    inboxActivityQuery(filter, subjectId, dateRange, isScoped)
+    inboxActivityQuery(filter, subjectId, dateRange, isScoped, mentionedUser)
   );
 
   const items: InboxActivityItem[] = useMemo(() => {
@@ -348,6 +402,7 @@ export const useInboxActivity = (
         activity,
       })),
       ...(data?.threads ?? []).map((feed) => ({ feed })),
+      ...(data?.taskMentions ?? []).map((taskMention) => ({ taskMention })),
     ];
 
     // Sort merges newest-first by last activity (updatedAt-first for
@@ -386,11 +441,11 @@ export const useInboxActivityCounts = (
   dateRange?: InboxDateRange,
   userId?: string
 ): Partial<Record<ActivityFilter, InboxCount>> => {
-  const { subjectId, isScoped } = useFeedSubject(userId);
+  const { subjectId, isScoped, mentionedUser } = useFeedSubject(userId);
   const filters = Object.values(ActivityFilter);
   const results = useQueries({
     queries: filters.map((filter) =>
-      inboxActivityQuery(filter, subjectId, dateRange, isScoped)
+      inboxActivityQuery(filter, subjectId, dateRange, isScoped, mentionedUser)
     ),
   });
 

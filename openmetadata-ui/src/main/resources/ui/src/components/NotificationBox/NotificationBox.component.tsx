@@ -47,13 +47,18 @@ import {
 } from '../../rest/tasksAPI';
 import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import { getUserPath } from '../../utils/RouterUtils';
+import {
+  getTaskCommentMentions,
+  TaskCommentMention,
+} from '../../utils/tasks/TaskMentions.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './notification-box.less';
 import { NotificationBoxProp } from './NotificationBox.interface';
 import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
-type NotificationItem = Conversation | TaskEntity;
+import { TaskMentionCard } from './TaskMentionCard';
+type NotificationItem = Conversation | TaskEntity | TaskCommentMention;
 
 const isTaskNotification = (
   notification: NotificationItem
@@ -88,6 +93,13 @@ const getMentionReply = (
     | ConversationReply
     | undefined;
 };
+
+const getMentionTimestamp = (item: Conversation | TaskCommentMention) =>
+  'comment' in item
+    ? item.comment.createdAt
+    : getMentionReply(item, NotificationTabsKey.CONVERSATION)?.createdAt ??
+      item.createdAt ??
+      0;
 
 const renderConversationNotificationCard = (
   feed: Conversation,
@@ -143,13 +155,15 @@ const NotificationBox = ({
   );
 
   const notificationDropDownList = useMemo(() => {
-    return notifications
-      .slice(0, 5)
-      .map((feed) =>
-        isTaskNotification(feed)
-          ? renderTaskNotificationCard(feed)
-          : renderConversationNotificationCard(feed, activeTab)
-      );
+    return notifications.slice(0, 5).map((feed) => {
+      if ('comment' in feed) {
+        return <TaskMentionCard key={feed.comment.id} mention={feed} />;
+      }
+
+      return isTaskNotification(feed)
+        ? renderTaskNotificationCard(feed)
+        : renderConversationNotificationCard(feed, activeTab);
+    });
   }, [activeTab, notifications]);
 
   const getTaskNotificationData = useCallback(() => {
@@ -180,13 +194,36 @@ const NotificationBox = ({
 
   const getMentionNotificationData = useCallback(() => {
     setIsLoading(true);
-    listConversations({
-      filterType: ConversationFilterType.Mentions,
-      limit: 10,
-      userId: currentUser?.id,
-    })
-      .then((res) => {
-        setNotifications(res.data);
+    const domain =
+      activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
+    Promise.allSettled([
+      listConversations({
+        filterType: ConversationFilterType.Mentions,
+        limit: 10,
+        userId: currentUser?.id,
+      }),
+      currentUser?.name
+        ? getTaskCommentMentions(currentUser.name, domain)
+        : undefined,
+    ])
+      .then(([conversations, tasks]) => {
+        const taskMentions =
+          tasks.status === 'fulfilled' ? tasks.value?.mentions : undefined;
+        if (conversations.status === 'rejected' && !taskMentions) {
+          throw conversations.reason;
+        }
+
+        setNotifications(
+          [
+            ...(conversations.status === 'fulfilled'
+              ? conversations.value.data
+              : []),
+            ...(taskMentions ?? []),
+          ].sort(
+            (left, right) =>
+              getMentionTimestamp(right) - getMentionTimestamp(left)
+          )
+        );
       })
       .catch((err: AxiosError) => {
         showErrorToast(
@@ -199,7 +236,7 @@ const NotificationBox = ({
       .finally(() => {
         setIsLoading(false);
       });
-  }, [currentUser?.id, t]);
+  }, [activeDomain, currentUser?.id, currentUser?.name, t]);
 
   const updateActiveTab = useCallback(
     (key: string) => {
@@ -280,10 +317,10 @@ const NotificationBox = ({
       ) : (
         <div className="notification-content-container">
           <ul className="tw:m-0 tw:h-50 tw:list-none tw:overflow-y-auto tw:p-0">
-            {notificationDropDownList.map((item, index) => (
+            {notificationDropDownList.map((item) => (
               <li
                 className="notification-dropdown-list-btn cursor-pointer tw:px-4 tw:py-3 tw:border-b tw:border-secondary"
-                key={notifications[index].id}>
+                key={item.key}>
                 {item}
               </li>
             ))}

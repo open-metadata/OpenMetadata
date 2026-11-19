@@ -22,6 +22,11 @@ const mockGetFollowingActivityFeed = jest.fn();
 const mockGetMentionsActivityFeed = jest.fn();
 const mockGetUserActivity = jest.fn();
 const mockListConversations = jest.fn();
+const mockListTasks = jest.fn().mockResolvedValue({ data: [] });
+
+jest.mock('rest/tasksAPI', () => ({
+  listTasks: (...args: unknown[]) => mockListTasks(...args),
+}));
 let mockCurrentUser: { id?: string } | undefined;
 
 jest.mock('rest/activityAPI', () => ({
@@ -157,6 +162,51 @@ describe('fetchInboxActivity', () => {
         userId: 'u1',
       })
     );
+  });
+
+  it('includes a closed task comment that mentions the viewer in the selected window', async () => {
+    const matchingComment = {
+      id: 'comment-1',
+      author: { id: 'author', type: 'user', name: 'resolver' },
+      createdAt: 200,
+      message: 'Please check <#E::user::"john.doe"|[@John](/users/john.doe)>',
+    };
+    mockListTasks.mockResolvedValueOnce({
+      data: [
+        {
+          id: 'closed-incident',
+          status: 'Completed',
+          createdAt: 10,
+          comments: [
+            matchingComment,
+            { ...matchingComment, id: 'older', createdAt: 50 },
+            { ...matchingComment, id: 'other', message: '<#E::user::jane>' },
+          ],
+        },
+      ],
+    });
+
+    const result = await fetchInboxActivity(
+      ActivityFilter.Mentions,
+      'u1',
+      100,
+      300,
+      false,
+      'john.doe'
+    );
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mentionedUser: 'john.doe',
+        fields: 'about,comments',
+      })
+    );
+    expect(result.taskMentions).toEqual([
+      expect.objectContaining({
+        task: expect.objectContaining({ id: 'closed-incident' }),
+        comment: matchingComment,
+      }),
+    ]);
   });
 
   // Regression: these were fetched with Promise.all, so a rejected conversation

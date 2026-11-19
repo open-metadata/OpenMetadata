@@ -42,7 +42,11 @@ import { waitForTaskResolveResponse } from '../../utils/task';
 import { verifyTestCaseLastRunBanner } from '../../utils/testCases';
 import { clickAndWaitFor } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
-import { disableAiAppMode, stubUserPreferencesAppMode } from '../Utils/appMode';
+import {
+  disableAiAppMode,
+  enableAiAppMode,
+  stubUserPreferencesAppMode,
+} from '../Utils/appMode';
 
 let user1: UserClass;
 let user2: UserClass;
@@ -1307,7 +1311,7 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
 });
 
 test(
-  'Incident resolution mentions work in the status popover and details modal',
+  'Incident resolution mentions work in both editors and reach the recipient Inbox',
   {
     tag: '@observability',
   },
@@ -1343,6 +1347,8 @@ test(
         table: mentionTable,
         count: 2,
       });
+
+      const resolvedTaskIds: string[] = [];
 
       for (const [index, entryPoint] of ['popover', 'modal'].entries()) {
         await test.step(`Select and persist a mention from the ${entryPoint}`, async () => {
@@ -1405,6 +1411,7 @@ test(
           const mention = `<#E::user::${mentionedUser.responseData.fullyQualifiedName}|`;
           expect(response.request().postDataJSON().comment).toContain(mention);
           const task = await response.json();
+          resolvedTaskIds.push(task.id);
           const stored = await apiContext.get(
             `/api/v1/tasks/${task.id}?fields=resolution`
           );
@@ -1412,6 +1419,25 @@ test(
           expect((await stored.json()).resolution.comment).toContain(mention);
         });
       }
+
+      await test.step('Find both resolution mentions in the recipient Inbox', async () => {
+        const recipient = await browser.newPage();
+        try {
+          await enableAiAppMode(recipient);
+          await mentionedUser.signIn(recipient, undefined, undefined, {
+            landingPath: '/inbox/activity?filter=mentions',
+          });
+          for (const id of resolvedTaskIds) {
+            const notification = recipient
+              .getByTestId('task-mention-notification')
+              .and(recipient.locator(`[href="/tasks/${id}"]`));
+            await expect(notification).toBeVisible();
+            await expect(notification).toContainText('mentioned you');
+          }
+        } finally {
+          await recipient.close();
+        }
+      });
     } finally {
       await Promise.allSettled([
         mentionTable.delete(apiContext),
