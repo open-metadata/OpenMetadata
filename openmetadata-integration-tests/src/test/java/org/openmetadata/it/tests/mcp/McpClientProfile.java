@@ -37,6 +37,11 @@ public record McpClientProfile(
     return label;
   }
 
+  public McpClientProfile withProtocolVersion(String version) {
+    return new McpClientProfile(
+        label, userAgent, registration, redirectUri, version, sendsResource, source, verifiedOn);
+  }
+
   /** Every client that registers itself and signs in with the authorization-code flow. */
   public static List<McpClientProfile> oauthClients() {
     return List.of(
