@@ -17,6 +17,7 @@ import com.google.common.annotations.VisibleForTesting;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.service.exception.SecretsManagerException;
@@ -151,6 +152,24 @@ public abstract class ExternalSecretsManager extends SecretsManager {
             "Failed to store or update secret [%s] in %s: %s",
             secretName, getSecretsManagerProvider().value(), exceptionMessage(cause)),
         cause);
+  }
+
+  @Override
+  protected boolean storesSecretsByReference() {
+    return true;
+  }
+
+  @Override
+  protected Optional<String> findSecretValue(final String reference) {
+    Optional<String> secretValue = Optional.empty();
+    try {
+      secretValue = Optional.ofNullable(getSecretValue(reference));
+    } catch (RuntimeException e) {
+      if (!isNotFoundInCauseChain(e)) {
+        throw readFailure(reference.substring(SECRET_FIELD_PREFIX.length()), e);
+      }
+    }
+    return secretValue;
   }
 
   public boolean existSecret(String secretName) {
