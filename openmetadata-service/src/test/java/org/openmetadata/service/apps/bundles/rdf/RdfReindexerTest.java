@@ -142,6 +142,28 @@ class RdfReindexerTest {
   }
 
   @Test
+  void everyPageIsWrittenWithTheQualityEvidenceLoadedOntoItsEntities() throws Exception {
+    final InMemoryPages table = pages(rows("t", 5));
+    table.storedDataOnly.add("t1");
+    final List<Integer> evidencePages = Collections.synchronizedList(new ArrayList<>());
+    final EntityPages withEvidence =
+        RdfReindexer.withQualityEvidence(
+            "table",
+            table,
+            (entityType, entities) -> {
+              evidencePages.add(entities.size());
+              entities.forEach(entity -> entity.setName(entityType + ":" + entity.getName()));
+            });
+
+    reindexer(Map.of("table", withEvidence)).index(List.of("table"));
+
+    assertEquals(
+        List.of("table:t0", "table:t1", "table:t2", "table:t3", "table:t4"),
+        writer.written("table"));
+    assertEquals(List.of(3, 2), evidencePages.stream().sorted(Collections.reverseOrder()).toList());
+  }
+
+  @Test
   void cursorWalksBackPastRowsThatDoNotDeserialize() {
     final KeysetCursor cursor =
         RdfReindexer.cursorAfterLastReadable(

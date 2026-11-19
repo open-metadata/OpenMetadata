@@ -22,7 +22,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -368,6 +370,30 @@ public class RdfLiveWriteRecoveryIT {
       fixture.primary.markRebuilt(fixture.primary.failureVersion());
       assertFalse(fixture.newStore().isDegraded());
       assertEquals(0, fixture.deadLetters());
+    }
+  }
+
+  @ParameterizedTest
+  @EnumSource(RdfTestDatabase.Backend.class)
+  void aRefreshQueuedAgainLaterIsRetiredWithoutBeingApplied(final RdfTestDatabase.Backend backend) {
+    try (Fixture fixture = new Fixture(backend)) {
+      final String refresh = insert(1);
+      fixture.primary.enqueue(refresh);
+      fixture.primary.enqueue(insert(2));
+      fixture.primary.enqueue(refresh);
+      final long last = fixture.primary.enqueuedWatermark();
+      final List<String> applied = new ArrayList<>();
+
+      while (fixture.other.processNext(applied::add, refresh::equals)) {
+        // drain
+      }
+
+      assertEquals(List.of(insert(2), refresh), applied);
+      assertEquals(0, fixture.primary.pendingWrites());
+      assertEquals(last, fixture.newStore().acknowledgedWatermark());
+      fixture.primary.enqueue(refresh);
+      assertTrue(fixture.other.processNext(applied::add, refresh::equals));
+      assertEquals(List.of(insert(2), refresh, refresh), applied, "a lone refresh is applied");
     }
   }
 
