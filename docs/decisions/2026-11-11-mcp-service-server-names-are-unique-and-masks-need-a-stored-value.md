@@ -41,7 +41,7 @@ secret id are now two keys (`ReflectionUtil.getCollectionElementIdentities` and
   once in the list, and by position (`#<index>`) otherwise. A name starting with `#` gets one more
   `#`, so it never equals a position key.
 - **Secret id:** an element with a unique exact `name` is named by that name when it, lowercased
-  and reduced to ASCII letters and digits, contains a letter and is still unique; otherwise by `h`
+  and reduced to ASCII letters and digits, contains a letter, is still unique and does not itself look like a hashed id; otherwise by `h`
   and the first 16 hex characters of the SHA-256 of the exact name. Secrets managers lowercase an id
   and drop or replace other characters, so `Prod` and `prod`, or `prod-1` and `prod_1`, would
   otherwise share one stored secret. Only unnamed elements and exact duplicates are named by
