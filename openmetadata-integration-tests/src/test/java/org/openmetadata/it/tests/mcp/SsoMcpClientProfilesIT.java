@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -39,8 +40,11 @@ import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.security.ClientType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 
 /**
  * Each MCP client's recorded connection profile signs in to {@code /mcp} through a confidential
@@ -68,10 +72,20 @@ class SsoMcpClientProfilesIT extends McpTestBase {
       Pattern.compile("name=\"consent_token\" value=\"([^\"]+)\"");
   private static final Pattern CLIENT_REDIRECT =
       Pattern.compile("window\\.location\\.href=\"([^\"]+)\"");
+  private static final Pattern CSRF_TOKEN =
+      Pattern.compile("name=\"csrf_token\" value=\"([^\"]+)\"");
+  private static final String LOGIN_PATH = "/mcp/login";
+  private static final String PASSWORD = "Mcp-Client-It-Passw0rd!";
   private static final SecureRandom RANDOM = new SecureRandom();
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
+
+  /** How the person signs in once the authorization request is made; returns the callback's parameters. */
+  @FunctionalInterface
+  private interface SignInStep {
+    Map<String, String> callback(JsonNode server, Map<String, String> authorize) throws Exception;
+  }
 
   /** The tokens of one sign-in. */
   private record Grant(String accessToken, String refreshToken) {}
@@ -103,35 +117,74 @@ class SsoMcpClientProfilesIT extends McpTestBase {
   @MethodSource("oauthClients")
   void clientSignsInThroughSsoAndCallsATool(McpClientProfile profile, TestNamespace ns)
       throws Exception {
-    User user = createUser(ns.shortPrefix("mcp"));
+    User user = createUser(new CreateUser(), ns.shortPrefix("mcp"));
     try {
       provider.signIn(MockOidcIdentity.forEmail(user.getEmail()));
-      JsonNode server = discoverAuthorizationServer();
-      String clientId = register(profile, server);
-
-      Grant grant = signIn(profile, server, clientId);
-      assertCallsToolsAs(profile, grant.accessToken(), user);
-
-      Grant rotated = refresh(profile, server, clientId, grant.refreshToken());
-      assertThat(rotated.refreshToken()).isNotEqualTo(grant.refreshToken());
-      assertThat(tokenRequest(profile, server, refreshForm(clientId, grant.refreshToken())))
-          .extracting(HttpResponse::statusCode)
-          .isEqualTo(400);
-
-      revoke(profile, server, clientId, rotated.refreshToken());
-      assertThat(mcp(profile, rotated.accessToken(), rpc("tools/list", Map.of())).statusCode())
-          .isEqualTo(401);
+      assertClientConnects(profile, user, this::approveConsent);
     } finally {
-      SdkClients.adminClient()
-          .users()
-          .delete(user.getId().toString(), Map.of("hardDelete", "true"));
+      hardDelete(user);
     }
   }
 
-  private static User createUser(String name) {
+  /** With the basic provider the sign-in is the server's own password form, with no consent page. */
+  @Test
+  void clientSignsInWithAPasswordAndCallsATool(TestNamespace ns) throws Throwable {
+    securityConfig.withVariant(
+        SsoMcpClientProfilesIT::basicProvider,
+        () -> {
+          CreateUser withPassword =
+              new CreateUser()
+                  .withPassword(PASSWORD)
+                  .withConfirmPassword(PASSWORD)
+                  .withCreatePasswordType(CreateUser.CreatePasswordType.ADMIN_CREATE);
+          User user = createUser(withPassword, ns.shortPrefix("mcp"));
+          try {
+            assertClientConnects(
+                McpClientProfile.oauthClients().getFirst(),
+                user,
+                (server, authorize) -> enterPassword(server, authorize, user));
+          } finally {
+            hardDelete(user);
+          }
+        });
+  }
+
+  private void assertClientConnects(McpClientProfile profile, User user, SignInStep signInStep)
+      throws Exception {
+    JsonNode server = discoverAuthorizationServer();
+    String clientId = register(profile, server);
+
+    Grant grant = signIn(profile, server, clientId, signInStep);
+    assertCallsToolsAs(profile, grant.accessToken(), user);
+
+    Grant rotated = refresh(profile, server, clientId, grant.refreshToken());
+    assertThat(rotated.refreshToken()).isNotEqualTo(grant.refreshToken());
+    assertThat(tokenRequest(profile, server, refreshForm(clientId, grant.refreshToken())))
+        .extracting(HttpResponse::statusCode)
+        .isEqualTo(400);
+
+    revoke(profile, server, clientId, rotated.refreshToken());
+    assertThat(mcp(profile, rotated.accessToken(), rpc("tools/list", Map.of())).statusCode())
+        .isEqualTo(401);
+  }
+
+  private static SecurityConfiguration basicProvider(SecurityConfiguration config) {
+    config
+        .getAuthenticationConfiguration()
+        .withProvider(AuthProvider.BASIC)
+        .withProviderName("OpenMetadata")
+        .withClientType(ClientType.PUBLIC);
+    return config;
+  }
+
+  private static User createUser(CreateUser create, String name) {
     return SdkClients.adminClient()
         .users()
-        .create(new CreateUser().withName(name).withEmail(name + EMAIL_DOMAIN));
+        .create(create.withName(name).withEmail(name + EMAIL_DOMAIN));
+  }
+
+  private static void hardDelete(User user) {
+    SdkClients.adminClient().users().delete(user.getId().toString(), Map.of("hardDelete", "true"));
   }
 
   // What a client knows at the start is the /mcp URL: the 401 names the resource metadata, which
@@ -170,7 +223,8 @@ class SsoMcpClientProfilesIT extends McpTestBase {
     return client.path("client_id").asText();
   }
 
-  private Grant signIn(McpClientProfile profile, JsonNode server, String clientId)
+  private Grant signIn(
+      McpClientProfile profile, JsonNode server, String clientId, SignInStep signInStep)
       throws Exception {
     String verifier = randomUrlSafe(48);
     String state = randomUrlSafe(16);
@@ -184,7 +238,7 @@ class SsoMcpClientProfilesIT extends McpTestBase {
     authorize.put("scope", SCOPE);
     addResource(profile, server, authorize);
 
-    Map<String, String> callback = approveConsent(server, authorize);
+    Map<String, String> callback = signInStep.callback(server, authorize);
     assertThat(callback.get("state")).isEqualTo(state);
     assertThat(callback.get("iss")).isEqualTo(server.path("issuer").asText());
 
@@ -224,6 +278,32 @@ class SsoMcpClientProfilesIT extends McpTestBase {
     assertThat(redirect.find()).as(decision.body()).isTrue();
     String location = redirect.group(1);
     assertThat(location).startsWith(authorize.get("redirect_uri"));
+    return MockHttp.decode(location.substring(location.indexOf('?') + 1));
+  }
+
+  /** Signs in on the server's password form, which redirects straight back to the client. */
+  private Map<String, String> enterPassword(
+      JsonNode server, Map<String, String> authorize, User user) {
+    SsoBrowser browser = new SsoBrowser();
+    String authorizeUrl =
+        MockHttp.withQuery(onTestServer(server.path("authorization_endpoint").asText()), authorize);
+    // The redirect to the login form names the advertised base URL, so it is not followed as is.
+    String loginUrl =
+        onTestServer(
+            browser
+                .navigate(authorizeUrl, SsoBrowser.pathIs(LOGIN_PATH))
+                .requirePendingUrl()
+                .toString());
+    HttpResponse<String> form = browser.get(loginUrl);
+    Matcher csrf = CSRF_TOKEN.matcher(form.body());
+    assertThat(csrf.find()).as("Expected the login form:\n%s", form.body()).isTrue();
+
+    HttpResponse<String> login =
+        browser.postForm(
+            SsoServer.url(LOGIN_PATH),
+            Map.of("csrf_token", csrf.group(1), "username", user.getEmail(), "password", PASSWORD));
+    String location = login.headers().firstValue(MockHttp.LOCATION).orElse("");
+    assertThat(location).as(login.body()).startsWith(authorize.get("redirect_uri"));
     return MockHttp.decode(location.substring(location.indexOf('?') + 1));
   }
 
