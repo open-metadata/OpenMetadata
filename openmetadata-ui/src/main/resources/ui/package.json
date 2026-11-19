@@ -17,7 +17,7 @@
     "preview": "vite preview",
     "postinstall": "yarn run build-check",
     "preinstall": "cd ../../../../.. && yarn install --frozen-lockfile && cd openmetadata-ui-core-components/src/main/resources/ui && yarn install && yarn build",
-    "test": "jest --passWithNoTests",
+    "test": "node --test scripts/sso-dev-server.test.mjs && jest --passWithNoTests",
     "test:watch": "jest --passWithNoTests --watch",
     "test:coverage": "jest --passWithNoTests --coverage",
     "test:cov-summary": "node --test scripts/sso-dev-server.test.mjs && jest --passWithNoTests --coverage --coverageReporters json-summary",
