@@ -16,7 +16,10 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
+import org.openmetadata.schema.api.events.AlertSchedulingInfo;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
+import org.openmetadata.schema.api.events.EventsRecord;
 import org.openmetadata.schema.entity.events.AlertMetrics;
 import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
@@ -31,6 +34,8 @@ import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Webhook;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.network.HttpClient;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.services.events.EventSubscriptionService;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
@@ -41,6 +46,7 @@ import org.openmetadata.service.events.consumer.ledger.LedgerKeys;
 class AlertDeliveryIT {
 
   private static final String LIVE_USER = "admin";
+  private static final String ALERTS_PATH = "/v1/events/subscriptions";
   private static final int ONE_DAY_SECONDS = 86400;
   private static final String SWITCH_OFF =
       "[{\"op\":\"replace\",\"path\":\"/enabled\",\"value\":false}]";
@@ -122,7 +128,8 @@ class AlertDeliveryIT {
   }
 
   // The second patch is merged into the first one's session, so the save compares the alert with
-  // the version from before it was switched off.
+  // the version from before it was switched off. While it is off its position row stays where it
+  // stopped, and no read reports what came after it as a backlog.
   @Test
   void alertSwitchedBackOnSendsOnlyWhatHappensFromThen(TestNamespace ns) throws Exception {
     try (RecordingReceiver receiver = new RecordingReceiver()) {
@@ -131,6 +138,12 @@ class AlertDeliveryIT {
       EventSubscriptionService alerts = SdkClients.adminClient().eventSubscriptions();
       alerts.patch(alert.getId(), JsonUtils.readTree(SWITCH_OFF));
       FixtureEvents.insert(List.of(sampleEvent("table created")));
+
+      assertTrue(
+          AlertFixtures.offsetOf(alert.getId())
+              < Entity.getCollectionDAO().changeEventDAO().getLatestOffset(),
+          "the position row stays behind the events written while the alert is off");
+      assertNothingPending(alert);
 
       alerts.patch(alert.getId(), JsonUtils.readTree(SWITCH_ON));
       QuietAlert.awaitScheduledTickIsOver(alert);
@@ -158,6 +171,36 @@ class AlertDeliveryIT {
 
       assertEquals(1, receiver.received().size());
     }
+  }
+
+  // The calls the alert's page, its diagnostics and its scheduling view make.
+  private static void assertNothingPending(EventSubscription alert) {
+    HttpClient rest = SdkClients.adminClient().getHttpClient();
+    String byId = ALERTS_PATH + "/id/" + alert.getId();
+
+    EventsRecord record =
+        rest.execute(HttpMethod.GET, byId + "/eventsRecord", null, EventsRecord.class);
+    assertEquals(0L, record.getPendingEventsCount());
+
+    EventSubscriptionDiagnosticInfo diagnostics =
+        rest.execute(
+            HttpMethod.GET, byId + "/diagnosticInfo", null, EventSubscriptionDiagnosticInfo.class);
+    assertEquals(0L, diagnostics.getRelevantUnprocessedEventsCount());
+    assertEquals(0L, diagnostics.getTotalUnprocessedEventsCount());
+    assertTrue(diagnostics.getRelevantUnprocessedEventsList().isEmpty());
+    assertTrue(diagnostics.getTotalUnprocessedEventsList().isEmpty());
+    assertTrue(diagnostics.getHasProcessedAllEvents());
+
+    AlertSchedulingInfo scheduling =
+        rest.execute(HttpMethod.GET, byId + "/scheduling", null, AlertSchedulingInfo.class);
+    assertEquals(0L, scheduling.getLag());
+
+    assertTrue(
+        rest.execute(
+            HttpMethod.GET,
+            ALERTS_PATH + "/" + alert.getId() + "/processedEvents",
+            null,
+            Boolean.class));
   }
 
   private static EventSubscription webhookTableAlert(

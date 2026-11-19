@@ -26,6 +26,7 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.api.events.EventSubscriptionDiagnosticInfo;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.events.AlertHealth;
 import org.openmetadata.schema.entity.events.AlertMetrics;
@@ -406,12 +407,10 @@ class AlertStateIT {
   void diagnosticsReadCreatesNoRow(TestNamespace ns) {
     EventSubscription neverScheduled = create(ns, "never_scheduled", false);
 
-    EventSubscriptionOffset reported =
-        EventSubscriptionScheduler.getInstance()
-            .getEventSubscriptionOffset(neverScheduled.getId())
-            .orElseThrow();
+    EventSubscriptionDiagnosticInfo reported =
+        AlertDiagnostics.diagnosticInfo(neverScheduled.getId(), 1, 0, true);
 
-    assertEquals(reported.getStartingOffset(), reported.getCurrentOffset());
+    assertTrue(reported.getHasProcessedAllEvents());
     assertNull(position(neverScheduled), "a read must not decide where an alert starts");
   }
 
