@@ -28,9 +28,7 @@ red until the grant changes, which is the case the Tableau record leaves out of 
   `successThreshold`. Its message says nothing it did not reach was deleted, and that a failure
   repeating on every run is cleared by granting access or excluding the scope with a filter pattern.
   The run does not raise `WorkflowFatalError`, and the skipped cleanup adds no second failure.
-- Not a failed listing: a catalog without the configured `databaseSchema` when no `catalog` is
-  configured (it is out of scope), and a failed progress-total count (it only costs the progress
-  denominator).
+- Not a failed listing: a failed progress-total count (it only costs the progress denominator).
 
 ## Consequences
 A partial listing never soft-deletes what it did not reach, and a failure that repeats on every

@@ -19,8 +19,7 @@ from functools import cached_property, partial
 from threading import RLock
 from typing import TYPE_CHECKING, Any, cast
 
-from databricks.sdk.errors import NotFound
-from databricks.sdk.service.catalog import ColumnInfo, SchemaInfo, TableInfo
+from databricks.sdk.service.catalog import ColumnInfo, TableInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -340,13 +339,11 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             # configured/SDK-listed casing while the view returns catalog_name in its
             # own casing, so match case-insensitively to avoid seeding a spurious 0.
             schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
-            configured_schema = (self.service_connection.databaseSchema or "").lower()
             for database_name in database_names:
                 kept = [
                     schema_name
                     for schema_name in schemas_by_lower.get(database_name.lower(), [])
-                    if configured_schema in ("", schema_name.lower())
-                    and not self._is_schema_filtered(database_name, schema_name)
+                    if not self._is_schema_filtered(database_name, schema_name)
                 ]
                 totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
 
@@ -424,29 +421,12 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         yield Either(right=database_request)
         self.register_record_database_request(database_request=database_request)
 
-    def _list_schemas(self, catalog_name: str) -> Iterable[SchemaInfo]:
-        """The configured ``databaseSchema`` alone when one is set, else every schema of the catalog."""
-        configured_schema = self.service_connection.databaseSchema
-        if not configured_schema:
-            yield from self.client.schemas.list(catalog_name=catalog_name)
-            return
-        try:
-            schema = self.client.schemas.get(f"{catalog_name}.{configured_schema}")
-        except NotFound:
-            if self.service_connection.catalog:
-                raise
-            # Walking every catalog: one that has no such schema is out of scope, not a
-            # failed listing that must stop its stale cleanup and be recorded as a failure.
-            logger.debug("Catalog [%s] has no schema [%s]", catalog_name, configured_schema)
-            return
-        yield schema
-
     def get_database_schema_names(self) -> Iterable[str]:
         """
         return schema names
         """
         catalog_name = self.context.get().database
-        schema_listing = partial(self._list_schemas, catalog_name)
+        schema_listing = partial(self.client.schemas.list, catalog_name=catalog_name)
         for schema in self._iterate_listing(schema_listing, f"schemas in catalog [{catalog_name}]", (catalog_name,)):
             try:
                 schema_name = schema.name

@@ -10,18 +10,15 @@
 #  limitations under the License.
 
 """
-Tests for the catalog and schema configured on a Unity Catalog connection.
-
-- A configured `databaseSchema` restricts the metadata walk to that schema.
-- A configured `catalog` is ingested under the name Unity Catalog stores it with
-  (lowercase), the name the system tables report to lineage and usage.
+Tests for the catalog configured on a Unity Catalog connection: it is ingested under the
+name Unity Catalog stores it with (lowercase), the name the system tables report to
+lineage and usage.
 """
 
 from unittest.mock import MagicMock, patch
 
 import pytest
-from databricks.sdk.errors import NotFound, PermissionDenied
-from databricks.sdk.service.catalog import CatalogInfo, SchemaInfo
+from databricks.sdk.service.catalog import CatalogInfo
 
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -36,7 +33,6 @@ CONFIG = {
             "config": {
                 "type": "UnityCatalog",
                 "catalog": "Demo",
-                "databaseSchema": "Sales",
                 "authType": {"token": "123sawdtesttoken"},
                 "hostPort": "localhost:443",
                 "httpPath": "/sql/1.0/warehouses/abcdedfg",
@@ -100,48 +96,3 @@ class TestConfiguredCatalog:
         uc_source.client.catalogs.get.side_effect = Exception("PERMISSION_DENIED")
 
         assert list(uc_source.get_database_names()) == ["demo"]
-
-
-class TestConfiguredSchema:
-    def test_only_the_configured_schema_is_walked(self, uc_source):
-        uc_source.client.schemas.get.return_value = SchemaInfo(catalog_name="demo", name="sales")
-        uc_source.client.schemas.list.return_value = [
-            SchemaInfo(catalog_name="demo", name="sales"),
-            SchemaInfo(catalog_name="demo", name="finance"),
-        ]
-
-        assert list(uc_source.get_database_schema_names()) == ["sales"]
-        uc_source.client.schemas.get.assert_called_once_with("demo.Sales")
-
-    def test_missing_configured_schema_is_a_failure_not_an_empty_catalog(self, uc_source):
-        uc_source.client.schemas.get.side_effect = NotFound("Schema 'demo.Sales' does not exist.")
-
-        assert list(uc_source.get_database_schema_names()) == []
-        assert [failure.name for failure in uc_source.status.failures] == ["schemas in catalog [demo]"]
-
-    def test_catalog_without_the_schema_is_out_of_scope_when_every_catalog_is_walked(self, uc_source):
-        # No configured catalog: the walk visits every catalog, and the schema lives in only some.
-        uc_source.service_connection.catalog = None
-        uc_source.client.schemas.get.side_effect = NotFound("Schema 'demo.Sales' does not exist.")
-
-        assert list(uc_source.get_database_schema_names()) == []
-        assert uc_source.status.failures == []
-        assert uc_source._incomplete_listings == set()
-
-    def test_unreadable_schema_is_a_failure_when_every_catalog_is_walked(self, uc_source):
-        uc_source.service_connection.catalog = None
-        uc_source.client.schemas.get.side_effect = PermissionDenied("User does not have USE SCHEMA on 'demo.Sales'")
-
-        assert list(uc_source.get_database_schema_names()) == []
-        assert [failure.name for failure in uc_source.status.failures] == ["schemas in catalog [demo]"]
-        assert uc_source._incomplete_listings == {("demo",)}
-
-    def test_every_schema_is_walked_without_a_configured_schema(self, uc_source):
-        uc_source.service_connection.databaseSchema = None
-        uc_source.client.schemas.list.return_value = [
-            SchemaInfo(catalog_name="demo", name="sales"),
-            SchemaInfo(catalog_name="demo", name="finance"),
-        ]
-
-        assert list(uc_source.get_database_schema_names()) == ["sales", "finance"]
-        uc_source.client.schemas.get.assert_not_called()

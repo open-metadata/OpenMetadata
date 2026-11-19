@@ -154,7 +154,6 @@ class TestListingErrorIsolation:
         assert "503 Service Unavailable" in uc_source.status.failures[0].error
 
     def test_schema_listing_failure_keeps_prior_schemas(self, uc_source):
-        uc_source.service_connection.databaseSchema = None
         uc_source.client.schemas.list.return_value = _raising_listing(
             [
                 SchemaInfo(catalog_name="hive_metastore", name="schema1"),
@@ -203,12 +202,9 @@ class TestStaleCleanupAfterFailedListing:
     def _server(self, uc_source):
         uc_source.metadata = MagicMock()
         uc_source.metadata.es_search_from_fqn.return_value = None
-        schema = SchemaInfo(catalog_name="hive_metastore", name="default")
-        # The cleanup relists the schemas before reconciling. Answer both the single-schema
-        # get and the full listing, so a cleanup that is not skipped always has a scope to
-        # send and an empty result can only mean the cleanup was skipped.
-        uc_source.client.schemas.get.return_value = schema
-        uc_source.client.schemas.list.return_value = [schema]
+        # The cleanup relists the schemas before reconciling, so a cleanup that is not skipped
+        # always has a scope to send and an empty result can only mean the cleanup was skipped.
+        uc_source.client.schemas.list.return_value = [SchemaInfo(catalog_name="hive_metastore", name="default")]
 
     @staticmethod
     def _stale_cleanup_scopes(uc_source, cleanup):
@@ -263,7 +259,6 @@ class TestStaleCleanupAfterFailedListing:
     def test_failed_schema_listing_skips_stale_cleanup_of_its_catalog(self, uc_source):
         # The cleanup lists the schemas again; that second listing succeeding must not
         # clear the tables of the schemas the walk never reached.
-        uc_source.service_connection.databaseSchema = None
         uc_source.source_config.markDeletedSchemas = True
         uc_source.client.schemas.list.side_effect = [
             Exception("500 Internal Server Error"),
