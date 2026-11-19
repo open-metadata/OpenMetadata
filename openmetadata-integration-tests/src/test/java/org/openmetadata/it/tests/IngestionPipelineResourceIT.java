@@ -77,10 +77,13 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
+import org.openmetadata.schema.security.ssl.VerifySSL;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.tests.TestSuite;
@@ -2017,6 +2020,66 @@ public class IngestionPipelineResourceIT
     assertEquals(412, failure.getStatusCode());
     assertEquals(stored, storedPipelineJson(pipeline.getId()));
     assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
+  }
+
+  /**
+   * The certificates and key used to fetch dbt artifacts over HTTPS are stored encrypted, masked for
+   * readers, and kept when an edit sends the masks back.
+   */
+  @Test
+  void test_dbtHttpSslSecretsAreEncryptedAndMasked(TestNamespace ns) {
+    String unique = ns.uniqueShortId();
+    ValidateSSLClientConfig sslConfig =
+        new ValidateSSLClientConfig()
+            .withCaCertificate("dbt-ca-" + unique)
+            .withSslCertificate("dbt-cert-" + unique)
+            .withSslKey("dbt-key-" + unique);
+    DbtPipeline dbt =
+        new DbtPipeline()
+            .withDbtConfigSource(
+                new DbtHttpConfig()
+                    .withDbtManifestHttpPath("https://dbt.example.com/manifest.json")
+                    .withDbtVerifySSL(VerifySSL.VALIDATE)
+                    .withDbtSSLConfig(sslConfig));
+    IngestionPipeline pipeline =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("dbt_http_ssl"))
+                .withPipelineType(PipelineType.DBT)
+                .withSourceConfig(new SourceConfig().withConfig(dbt)));
+
+    String stored = storedPipelineJson(pipeline.getId());
+    assertHoldsNoDbtSslSecret(stored, sslConfig);
+    assertTrue(stored.contains(Fernet.FERNET_PREFIX), "Stored certificates must be encrypted");
+    IngestionPipeline asAdmin = SdkClients.adminClient().ingestionPipelines().get(pipeline.getId());
+    String asAdminJson = JsonUtils.pojoToJson(asAdmin);
+    assertHoldsNoDbtSslSecret(asAdminJson, sslConfig);
+    assertTrue(asAdminJson.contains(PasswordEntityMasker.PASSWORD_MASK), asAdminJson);
+    assertEquals(sslConfig, botDbtSslConfig(pipeline.getId()));
+
+    DbtPipeline maskedDbt =
+        JsonUtils.convertValue(asAdmin.getSourceConfig().getConfig(), DbtPipeline.class)
+            .withDbtUpdateDescriptions(true);
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.add(replaceOp("/sourceConfig", new SourceConfig().withConfig(maskedDbt)));
+    SdkClients.adminClient().ingestionPipelines().patch(pipeline.getId(), patch);
+
+    assertEquals(sslConfig, botDbtSslConfig(pipeline.getId()));
+    assertHoldsNoDbtSslSecret(storedPipelineJson(pipeline.getId()), sslConfig);
+  }
+
+  private static void assertHoldsNoDbtSslSecret(String json, ValidateSSLClientConfig sslConfig) {
+    assertFalse(json.contains(sslConfig.getCaCertificate()), json);
+    assertFalse(json.contains(sslConfig.getSslCertificate()), json);
+    assertFalse(json.contains(sslConfig.getSslKey()), json);
+  }
+
+  private static ValidateSSLClientConfig botDbtSslConfig(UUID pipelineId) {
+    IngestionPipeline asBot = SdkClients.ingestionBotClient().ingestionPipelines().get(pipelineId);
+    DbtPipeline dbt =
+        JsonUtils.convertValue(asBot.getSourceConfig().getConfig(), DbtPipeline.class);
+    DbtHttpConfig source = JsonUtils.convertValue(dbt.getDbtConfigSource(), DbtHttpConfig.class);
+    return JsonUtils.convertValue(source.getDbtSSLConfig(), ValidateSSLClientConfig.class);
   }
 
   private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {

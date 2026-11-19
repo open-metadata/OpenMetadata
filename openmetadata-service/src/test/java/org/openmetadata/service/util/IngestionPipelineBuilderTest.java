@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,12 +32,15 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.ServiceConnections;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
+import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtHttpConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
 import org.openmetadata.schema.services.connections.database.DatabricksConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
@@ -53,6 +57,9 @@ class IngestionPipelineBuilderTest {
   private static final String SECRET = "manifest-secret";
   private static final String DATABASE_PASSWORD = "suite-database-password";
   private static final String DATABRICKS_TOKEN = "suite-databricks-token";
+  private static final String DBT_CA_CERTIFICATE = "dbt-ca-certificate";
+  private static final String DBT_CLIENT_CERTIFICATE = "dbt-client-certificate";
+  private static final String DBT_CLIENT_KEY = "dbt-client-key";
   private static final String FERNET_KEY = "mFNuF9gyyS4zNItmwvFq8wAf9TUFnNwj6m6pW1P5RjE=";
 
   private List<Key> originalFernetKeys;
@@ -128,10 +135,7 @@ class IngestionPipelineBuilderTest {
 
   @Test
   void testSuiteConnectionSecretsAreEncryptedMaskedAndDecrypted() {
-    SecretsManager secretsManager =
-        DBSecretsManager.getInstance(
-            SecretsManagerProvider.DB,
-            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of(), null));
+    SecretsManager secretsManager = dbSecretsManager();
     IngestionPipeline pipeline = testSuitePipeline(mysqlConnection(), databricksConnection());
 
     secretsManager.encryptIngestionPipeline(pipeline);
@@ -192,6 +196,84 @@ class IngestionPipelineBuilderTest {
     EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(pipeline);
 
     assertHoldsNoSecret(JsonUtils.pojoToJson(pipeline));
+  }
+
+  @Test
+  void dbtHttpSslConfigIsTyped() {
+    IngestionPipeline pipeline = dbtHttpPipeline();
+
+    IngestionPipelineBuilder.addDefinedConfig(pipeline);
+
+    DbtPipeline config =
+        assertInstanceOf(DbtPipeline.class, pipeline.getSourceConfig().getConfig());
+    DbtHttpConfig source = assertInstanceOf(DbtHttpConfig.class, config.getDbtConfigSource());
+    assertInstanceOf(ValidateSSLClientConfig.class, source.getDbtSSLConfig());
+  }
+
+  @Test
+  void dbtHttpSslSecretsAreEncryptedMaskedDecryptedAndRestored() {
+    SecretsManager secretsManager = dbSecretsManager();
+    IngestionPipeline pipeline = dbtHttpPipeline();
+
+    secretsManager.encryptIngestionPipeline(pipeline);
+    String stored = JsonUtils.pojoToJson(pipeline);
+    IngestionPipeline masked = JsonUtils.readValue(stored, IngestionPipeline.class);
+    EntityMaskerFactory.getEntityMasker().maskIngestionPipeline(masked);
+    String maskedJson = JsonUtils.pojoToJson(masked);
+    IngestionPipeline decrypted = JsonUtils.readValue(stored, IngestionPipeline.class);
+    secretsManager.decryptIngestionPipeline(decrypted);
+    IngestionPipeline storedAgain = JsonUtils.readValue(stored, IngestionPipeline.class);
+    EntityMaskerFactory.getEntityMasker().unmaskIngestionPipeline(masked, storedAgain);
+    secretsManager.decryptIngestionPipeline(masked);
+
+    assertHoldsNoDbtSslSecret(stored);
+    assertTrue(stored.contains(Fernet.FERNET_PREFIX), stored);
+    assertHoldsNoDbtSslSecret(maskedJson);
+    assertFalse(maskedJson.contains(Fernet.FERNET_PREFIX), maskedJson);
+    assertTrue(maskedJson.contains(PasswordEntityMasker.PASSWORD_MASK), maskedJson);
+    assertEquals(dbtSslConfig(), dbtSslConfig(decrypted));
+    assertEquals(dbtSslConfig(), dbtSslConfig(masked));
+  }
+
+  private static SecretsManager dbSecretsManager() {
+    return DBSecretsManager.getInstance(
+        SecretsManagerProvider.DB,
+        new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of(), null));
+  }
+
+  private static void assertHoldsNoDbtSslSecret(String json) {
+    assertFalse(json.contains(DBT_CA_CERTIFICATE), json);
+    assertFalse(json.contains(DBT_CLIENT_CERTIFICATE), json);
+    assertFalse(json.contains(DBT_CLIENT_KEY), json);
+  }
+
+  private static IngestionPipeline dbtHttpPipeline() {
+    Map<String, Object> source = new HashMap<>();
+    source.put("dbtConfigType", "http");
+    source.put("dbtManifestHttpPath", "https://dbt.example.com/manifest.json");
+    source.put("dbtVerifySSL", "validate");
+    source.put("dbtSSLConfig", dbtSslConfig());
+    Map<String, Object> config = new HashMap<>();
+    config.put("type", "DBT");
+    config.put("dbtConfigSource", source);
+    return new IngestionPipeline()
+        .withId(UUID.randomUUID())
+        .withName("dbt_http")
+        .withPipelineType(PipelineType.DBT)
+        .withSourceConfig(new SourceConfig().withConfig(config));
+  }
+
+  private static Map<String, Object> dbtSslConfig() {
+    return Map.of(
+        "caCertificate", DBT_CA_CERTIFICATE,
+        "sslCertificate", DBT_CLIENT_CERTIFICATE,
+        "sslKey", DBT_CLIENT_KEY);
+  }
+
+  private static Map<String, Object> dbtSslConfig(IngestionPipeline pipeline) {
+    Map<String, Object> config = JsonUtils.getMap(pipeline.getSourceConfig().getConfig());
+    Map<String, Object> source = JsonUtils.getMap(config.get("dbtConfigSource"));
+    return JsonUtils.getMap(source.get("dbtSSLConfig"));
   }
 
   private static void assertHoldsNoSecret(String json) {
