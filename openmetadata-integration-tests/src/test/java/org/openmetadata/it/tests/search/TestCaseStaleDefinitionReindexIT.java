@@ -104,11 +104,17 @@ class TestCaseStaleDefinitionReindexIT {
       assertNoRecordsDropped(stats.getJobStats(), "jobStats");
       assertNoRecordsDropped(stats.getReaderStats(), "readerStats");
     } finally {
-      try {
-        Entity.getCollectionDAO().testCaseDAO().delete(broken.getId());
-      } catch (Exception ignored) {
-        // best-effort: the broken relationship can trip namespace cleanup
-      }
+      // Restore the relationship so the namespace's recursive hard delete can remove the test case
+      // through TestCaseRepository, which also deletes its incident and results. Deleting only the
+      // test_case row left both behind for every later reindex that shares this database.
+      Entity.getCollectionDAO()
+          .relationshipDAO()
+          .insert(
+              broken.getTestDefinition().getId(),
+              broken.getId(),
+              Entity.TEST_DEFINITION,
+              Entity.TEST_CASE,
+              Relationship.CONTAINS.ordinal());
     }
   }
 
