@@ -131,7 +131,9 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
                 cols = chunk.columns.tolist()
             if sample_query is not None:
                 chunk = chunk.query(sample_query)  # noqa: PLW2901
-            rows.extend(self._fetch_rows(chunk[cols])[: self.sample_limit])
+            remaining = None if self.sample_limit is None else self.sample_limit - len(rows)
+            eligible = chunk[cols].dropna(how="all").iloc[:remaining]
+            rows.extend(self._fetch_rows(eligible))
             if len(rows) >= (self.sample_limit or 100):
                 break
         return cols, rows
@@ -171,7 +173,12 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         strings "nan"/"NaT". The ``is_scalar`` guard skips list/dict cells, where
         ``pd.isna`` returns an array and would raise on truthiness."""
         return [
-            [None if pd.api.types.is_scalar(cell) and pd.isna(cell) else self._truncate_cell(cell) for cell in row]
+            [
+                None
+                if pd.api.types.is_scalar(cell) and pd.isna(cell)
+                else self._truncate_cell(self._array_to_list(cell))
+                for cell in row
+            ]
             for row in data_frame.dropna(how="all").values.tolist()
         ]
 
