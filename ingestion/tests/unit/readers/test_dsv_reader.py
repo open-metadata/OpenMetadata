@@ -84,7 +84,7 @@ def test_csv_escape_character_preserves_values(tmp_path, backend, escapechar, ex
 
 
 def test_csv_escape_character_rejects_multiple_characters():
-    with pytest.raises(ValidationError, match="csvEscapeChar"):
+    with pytest.raises(ValidationError, match="at most 1 character"):
         DatalakeConnection(configSource=LocalConfig(), csvEscapeChar="xx")
 
 
