@@ -31,7 +31,7 @@
         justify-content: flex-end;
         align-items: center;
         padding: var(--om-space-24) var(--om-space-16);
-        border-top: 1px solid @grey-200;
+        border-top: 1px solid var(--tw-color-border-secondary);
       }
     }
   }
@@ -59,9 +59,17 @@
     border: 1px solid @border-color-7;
     box-shadow: 0 1px 2px 0 @grey-27;
 
+    // @border-color-7 is a fixed near-white that glares on dark surfaces.
+    .dark-mode & {
+      border-color: var(--tw-color-border-secondary);
+    }
+
     .expandable-card-header {
       background: var(--tw-color-bg-primary);
-      border-bottom: 1px solid @grey-200;
+      // Match the card's rounding so the opaque header doesn't paint square
+      // corners over the card's curved border.
+      border-radius: inherit;
+      border-bottom: 1px solid var(--tw-color-border-secondary);
 
       .security-form-item-title-container {
         display: flex;
@@ -103,7 +111,7 @@
     display: flex;
     justify-content: space-between;
     padding: var(--om-space-16) var(--om-space-24);
-    border-top: 1px solid @grey-200;
+    border-top: 1px solid var(--tw-color-border-secondary);
   }
 }
 
