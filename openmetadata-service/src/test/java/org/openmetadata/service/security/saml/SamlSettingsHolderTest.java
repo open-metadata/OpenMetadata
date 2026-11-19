@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.saml;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.security.cert.CertificateException;
 import java.util.Base64;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -39,6 +41,44 @@ import org.openmetadata.catalog.type.ServiceProviderConfig;
 
 class SamlSettingsHolderTest {
   private static final char[] KEYSTORE_PASSWORD = "changeit".toCharArray();
+
+  @Test
+  void rejectsMalformedAdditionalSigningCertificates() throws Exception {
+    String bundle =
+        resource("/saml/mock-idp.crt")
+            + "\n-----BEGIN CERTIFICATE-----\ninvalid\n-----END CERTIFICATE-----";
+    assertThrows(CertificateException.class, () -> SamlCertificates.parse(bundle));
+  }
+
+  @Test
+  void deduplicatesCertificatesAndAcceptsLegacyBase64() throws Exception {
+    String pem = resource("/saml/mock-idp.crt");
+    assertEquals(1, SamlCertificates.parse(pem + "\n" + pem).size());
+    String base64 =
+        pem.replace("-----BEGIN CERTIFICATE-----", "").replace("-----END CERTIFICATE-----", "");
+    assertEquals(SamlCertificates.parse(pem), SamlCertificates.parse(base64));
+  }
+
+  @Test
+  void acceptsResponsesSignedByTheSecondMetadataCertificate() throws Exception {
+    MockSamlIdp idp = new MockSamlIdp("https://idp.example/metadata");
+    SamlSSOClientConfig config = samlConfig();
+    config
+        .getIdp()
+        .withEntityId(idp.idpEntityId())
+        .setIdpX509Certificate(resource("/saml/other-idp.crt") + "\n" + idp.idpCertificatePem());
+    Saml2Settings settings = SamlSettingsHolder.buildSettings(config);
+    String response =
+        idp.signedResponse(
+            "alice@example.com", config.getSp().getAcs(), config.getSp().getEntityId());
+    assertEquals(2, settings.getIdpx509certMulti().size());
+    assertTrue(new SamlResponse(settings, config.getSp().getAcs(), response).isValid());
+    config.getIdp().setIdpX509Certificate(resource("/saml/other-idp.crt"));
+    assertFalse(
+        new SamlResponse(
+                SamlSettingsHolder.buildSettings(config), config.getSp().getAcs(), response)
+            .isValid());
+  }
 
   @Test
   void loadKeyStoreClosesInputStream() throws Exception {
