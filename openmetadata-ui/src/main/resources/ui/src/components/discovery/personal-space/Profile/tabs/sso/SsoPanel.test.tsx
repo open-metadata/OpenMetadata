@@ -269,6 +269,29 @@ describe('SsoPanel', () => {
     usePersonalSpaceStore.getState().setExitGuard(null);
   });
 
+  it('keeps a crumb back to the saved provider while changing provider', async () => {
+    mockSubPath = 'providers';
+    await renderPanel(OKTA_CONFIG);
+
+    await waitFor(() =>
+      expect(lastHeader().breadcrumbs).toEqual([
+        { id: 'settings', label: 'label.setting-plural' },
+        { id: 'sso', label: 'label.single-sign-on' },
+        { id: 'saved-provider', label: 'Okta' },
+        { id: 'current', label: 'label.change-provider' },
+      ])
+    );
+
+    lastHeader().onBreadcrumbAction?.('saved-provider');
+
+    expect(mockSetHash).toHaveBeenCalledWith(
+      'sso',
+      'configure',
+      undefined,
+      expect.anything()
+    );
+  });
+
   it('shows the Overview / Configure tabs in the header and switches them through the hash', async () => {
     await renderPanel(OKTA_CONFIG);
     await waitFor(() => expect(lastHeader().tabs).toBeDefined());

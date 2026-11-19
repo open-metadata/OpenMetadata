@@ -119,12 +119,9 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
             <Box
               className="tw:min-h-0 tw:min-w-0 tw:overflow-y-auto"
               data-testid="user-assets-summary">
-              {/* "explore" keeps the panel's own container transparent, so the
-                  summary and rail sit on the dialog surface in both themes. */}
               <EntitySummaryPanel
                 entityDetails={{ details: selected }}
                 handleClosePanel={() => setSelectedId(null)}
-                panelPath="explore"
               />
             </Box>
           )}

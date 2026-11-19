@@ -431,6 +431,7 @@ const BotRolesSection: FC<BotRolesSectionProps> = ({
                   contains(String(item.id), filterText)
                 }
                 items={roleItems}
+                maxVisibleItems={5}
                 placeholder={t('label.search-entity', {
                   entity: t('label.role-lowercase-plural'),
                 })}

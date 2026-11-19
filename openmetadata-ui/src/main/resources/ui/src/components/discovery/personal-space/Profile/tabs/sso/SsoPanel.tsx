@@ -54,6 +54,7 @@ import {
 import SsoProviderGrid from './SsoProviderGrid';
 
 const CRUMB_PROVIDER = 'provider';
+const CRUMB_SAVED_PROVIDER = 'saved-provider';
 // The provider crumb (shown only on a sub page) returns to the form, as Back
 // does, so it is not an exit the unsaved-changes guard should hold.
 const IN_EDITOR_CRUMBS = [CRUMB_PROVIDER];
@@ -62,11 +63,28 @@ interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;
 }
 
-// Under a sub page the provider crumb leads back to the form.
+// Under a sub page the provider crumb leads back to the form; while changing
+// provider, the saved provider's crumb leads back to its Configure tab.
 const getProviderCrumbs = (
-  provider?: string,
-  subPage?: SsoSubPage
+  provider: string | undefined,
+  subPage: SsoSubPage | undefined,
+  change: {
+    isChangingProvider: boolean;
+    savedProvider?: string;
+    changeLabel: string;
+  }
 ): BreadcrumbItemType[] => {
+  if (change.isChangingProvider) {
+    return change.savedProvider
+      ? [
+          {
+            id: CRUMB_SAVED_PROVIDER,
+            label: getProviderDisplayName(change.savedProvider),
+          },
+          { id: 'current', label: change.changeLabel },
+        ]
+      : [];
+  }
   if (!provider) {
     return [];
   }
@@ -256,7 +274,11 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     const breadcrumbs: BreadcrumbItemType[] = [
       { id: 'settings', label: t('label.setting-plural') },
       { id: SSO_HASH_TAB, label: ssoLabel },
-      ...getProviderCrumbs(headerProvider, subPage),
+      ...getProviderCrumbs(headerProvider, subPage, {
+        isChangingProvider: view.type === 'providers',
+        savedProvider,
+        changeLabel: t('label.change-provider'),
+      }),
     ];
 
     const hintToggle = (
@@ -305,6 +327,8 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
           onNavigate({ type: 'overview' });
         } else if (id === CRUMB_PROVIDER) {
           subPage?.onBack();
+        } else if (id === CRUMB_SAVED_PROVIDER) {
+          onNavigate({ type: 'configure' });
         }
       },
       actions: isLoading || subPage ? undefined : actions,
@@ -320,6 +344,7 @@ const SsoPanel = ({ onHeaderChange }: SsoPanelProps) => {
     isLoading,
     onHeaderChange,
     onNavigate,
+    savedProvider,
     showHint,
     showsForm,
     showsTabs,
