@@ -4662,7 +4662,7 @@
     "context-center-memories-empty-feature-context": "Türünü belirleyin ve ilgili olduğu veri varlıklarını bağlayın, böylece doğru anlarda karşınıza çıksın.",
     "context-center-memories-empty-feature-write": "Tek net bir ifade — yapay zekanın bilmesi gereken bir kural, tanım veya tercih.",
     "context-center-memories-empty-subtitle": "Bellekler, kuruluşunuzun nasıl çalıştığına dair küçük bilgilerdir — konuşmalardan yakalanır veya doğrudan eklenir. Kaydedildikten sonra, gelecekteki her yanıt bunları dikkate alır.",
-    "context-center-memories-subtitle": "Ekibinizin AskCollate ile sohbet ederken yakaladığı gerçekler, tanımlar ve tercihler",
+    "context-center-memories-subtitle": "Ekibinizin sohbet ederken yakaladığı gerçekler, tanımlar ve tercihler",
     "context-center-widget-description": "Ekibinizin makaleleri, sözlük girdileri ve runbook'ları.",
     "context-memory-read-only-description": "Bu belleği yalnızca {{creatorName}} (oluşturucu) veya bir çalışma alanı yöneticisi düzenleyebilir veya silebilir. Sohbetlerde onu görüntülemeye, kopyalamaya veya referans vermeye devam edebilirsiniz.",
     "contract-detail-plural-description": "Bir veri varlığı için beklentileri belirten bir sözleşme.",
