@@ -122,7 +122,6 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
     write(tmp_path, "docker/postgresql/postgres-script.sql", "select 1;\n")
     write(tmp_path, "docker/development/Dockerfile", "FROM eclipse-temurin:21\n")
     write(tmp_path, ".dockerignore", "docker/development/docker-volume\n")
-    write(tmp_path, ".github/actions/prepare-python-environment/action.yml", "name: Initial Python setup\n")
     initialize_repository(tmp_path)
 
     initial = fingerprints.fingerprint("fixture", root=tmp_path)
@@ -141,7 +140,6 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
         ("docker/postgresql/postgres-script.sql", "select 2;\n"),
         ("docker/development/Dockerfile", "FROM eclipse-temurin:22\n"),
         (".dockerignore", "different-volume\n"),
-        (".github/actions/prepare-python-environment/action.yml", "name: Prepare Python environment\n"),
     )
     for relative, content in fixture_inputs:
         before = fingerprints.fingerprint("fixture", root=tmp_path)
@@ -189,24 +187,25 @@ def test_fixture_typescript_dependency_scan_appends_extension_to_dotted_basename
     assert dependencies == {entrypoint, helper}
 
 
-def test_fixture_fingerprint_ignores_playwright_config_but_tracks_setup_scripts(
+def test_fixture_fingerprint_ignores_consumer_setup_but_tracks_seeding(
     tmp_path: Path,
 ) -> None:
-    """Retry/shard/quarantine edits must not evict the golden fixture.
-
-    playwright.config.ts only reads the seeded auth state; auth.setup.ts writes
-    it. Hashing the config made every quarantine edit pay a fixture rebuild.
-    """
+    """Consumer configuration and Python preparation do not change seeded state."""
     config = "openmetadata-ui/src/main/resources/ui/playwright.config.ts"
     setup = "openmetadata-ui/src/main/resources/ui/playwright/e2e/auth.setup.ts"
+    python_setup = ".github/actions/prepare-python-environment/action.yml"
     write(tmp_path, "pom.xml", "<version>1</version>")
     write(tmp_path, config, "export default { retries: 1 };")
     write(tmp_path, setup, "const adminFile = 'playwright/.auth/admin.json';")
+    write(tmp_path, python_setup, "name: Prepare Python environment\n")
     initialize_repository(tmp_path)
 
     initial = fingerprints.fingerprint("fixture", root=tmp_path)
 
     write(tmp_path, config, "export default { retries: 2, grepInvert: /@quarantine/ };")
+    assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
+
+    write(tmp_path, python_setup, "name: Prepare Python test environment\n")
     assert fingerprints.fingerprint("fixture", root=tmp_path) == initial
 
     write(tmp_path, setup, "const adminFile = 'playwright/.auth/root.json';")

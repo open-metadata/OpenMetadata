@@ -160,18 +160,3 @@ jobs:
         uses: ./.github/actions/python-diagnostics
         with:
           artifact-name: py-cli-e2e-diagnostics-${{ inputs.python-version }}-${{ matrix.e2e-test }}
-  py-cli-e2e-tests-status:
-    name: py-cli-e2e-tests-status
-    needs: py-cli-e2e-tests
-    if: ${{ always() }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Verify all expected CLI E2E jobs completed
-        env:
-          TEST_RESULT: ${{ needs.py-cli-e2e-tests.result }}
-        run: |
-          if [ "$TEST_RESULT" != "success" ]; then
-            echo "Expected CLI E2E jobs did not succeed: tests=$TEST_RESULT"
-            exit 1
-          fi
-        shell: bash
