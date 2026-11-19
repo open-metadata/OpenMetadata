@@ -125,6 +125,28 @@ describe('Button', () => {
   });
 });
 
+describe('Button — loading', () => {
+  it('stays natively disabled while loading but drops the disabled palette', () => {
+    render(
+      <Button isDisabled isLoading showTextWhileLoading>
+        Sign in
+      </Button>
+    );
+    const button = screen.getByRole('button', { name: 'Sign in' });
+
+    expect(button).toBeDisabled();
+    expect(button).toHaveAttribute('data-loading', 'true');
+    // Every disabled colour must be gated, or it paints over the loading look.
+    expect(
+      button.className
+        .split(' ')
+        .filter(
+          (c) => /disabled:/.test(c) && !/disabled:not-data-loading:/.test(c)
+        )
+    ).toEqual([]);
+  });
+});
+
 describe('Button — link box', () => {
   it('collapses a link button to an inline text box by default', () => {
     render(
