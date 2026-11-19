@@ -28,9 +28,9 @@ import {
 import { getSettingsSource } from '../../../../../../rest/settingConfigAPI';
 import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import ProfileContentHeader from '../../ProfileContentHeader';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { deploymentOwnedSource } from '../platform-settings/PlatformSettings.mock';
-import ProfileContentHeader from '../../ProfileContentHeader';
 import SsoPanel from './SsoPanel';
 
 jest.mock('react-i18next', () => ({

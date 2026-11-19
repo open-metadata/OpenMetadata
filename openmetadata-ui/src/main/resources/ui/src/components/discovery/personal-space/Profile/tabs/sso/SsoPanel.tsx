@@ -45,17 +45,17 @@ import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { SettingsSkeleton } from '../platform-settings/SettingsFormLayout';
 import SsoConfigureForm, { SsoSubPage } from './SsoConfigureForm';
 import SsoOverview from './SsoOverview';
+import {
+  CRUMB_PROVIDER,
+  CRUMB_SAVED_PROVIDER,
+  IN_EDITOR_CRUMBS,
+} from './SsoPanel.constants';
 import type { SsoView } from './SsoPanel.types';
 import {
   hashSubPathToView,
   SSO_HASH_TAB,
   viewToSubPath,
 } from './SsoPanel.utils';
-import {
-  CRUMB_PROVIDER,
-  CRUMB_SAVED_PROVIDER,
-  IN_EDITOR_CRUMBS,
-} from './SsoPanel.constants';
 import SsoProviderGrid from './SsoProviderGrid';
 
 interface SsoPanelProps {

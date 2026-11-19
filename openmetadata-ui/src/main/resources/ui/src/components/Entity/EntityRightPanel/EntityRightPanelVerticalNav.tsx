@@ -20,9 +20,9 @@ import {
   Schema02,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
-import { twMerge } from 'tailwind-merge';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
+import { twMerge } from 'tailwind-merge';
 import { EntityType } from '../../../enums/entity.enum';
 import {
   hasCustomPropertiesTab,

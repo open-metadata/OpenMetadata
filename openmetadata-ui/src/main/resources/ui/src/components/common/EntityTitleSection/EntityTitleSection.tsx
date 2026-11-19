@@ -19,12 +19,12 @@ import {
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { twMerge } from 'tailwind-merge';
 import { Operation } from 'fast-json-patch';
 import { TFunction } from 'i18next';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { twMerge } from 'tailwind-merge';
 import { EntityType } from '../../../enums/entity.enum';
 import { updateTableColumn } from '../../../rest/tableAPI';
 import { getTextFromHtmlString } from '../../../utils/BlockEditorPureUtils';

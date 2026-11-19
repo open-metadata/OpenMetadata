@@ -114,13 +114,13 @@ import CustomPropertiesSection from './CustomPropertiesSection/CustomPropertiesS
 import DataQualityTab from './DataQualityTab/DataQualityTab';
 import './entity-summary-panel.less';
 import {
-  EntitySummaryPanelProps,
-  SearchSourceDetails,
-} from './EntitySummaryPanel.interface';
-import {
   TRANSPARENT_PANEL_PATHS,
   USER_ASSETS_PANEL_PATH,
 } from './EntitySummaryPanel.constants';
+import {
+  EntitySummaryPanelProps,
+  SearchSourceDetails,
+} from './EntitySummaryPanel.interface';
 import LineageTabContent from './LineageTab/LineageTabContent';
 
 // Picks how to populate the panel for `entityType`: a dedicated fetch-by-fqn
