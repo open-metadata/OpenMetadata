@@ -21,6 +21,7 @@ import {
 import { useAuth } from '../../../../../hooks/authHooks';
 import { MOCK_USER_ROLE } from '../../../../../mocks/User.mock';
 import { searchRoles } from '../../../../../rest/rolesAPIV1';
+import Chip from '../../../../common/Chip/Chip.component';
 import UserProfileRoles from './UserProfileRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
 
@@ -199,5 +200,30 @@ describe('Test User Profile Roles Component', () => {
 
     // Verify the component is still rendered with initial state
     expect(screen.getByTestId('user-profile-roles')).toBeInTheDocument();
+  });
+
+  it('should label the admin flag apart from a role named Admin', () => {
+    const adminRole = { id: 'admin-role-id', type: 'role', name: 'Admin' };
+
+    render(
+      <UserProfileRoles
+        {...mockPropsData}
+        isUserAdmin
+        userRoles={[adminRole]}
+      />
+    );
+
+    expect(Chip).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: [
+          expect.objectContaining({
+            id: 'admin',
+            displayName: 'label.admin-superuser',
+          }),
+          adminRole,
+        ],
+      }),
+      expect.anything()
+    );
   });
 });

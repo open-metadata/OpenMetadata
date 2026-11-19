@@ -239,6 +239,8 @@ class DistributedSearchIndexCoordinatorTest {
                 .build());
 
     when(partitionCalculator.calculatePartitions(jobId, entities, null)).thenReturn(mockPartitions);
+    when(jobDAO.markReadyIfInitializing(eq(jobId.toString()), anyString(), anyLong()))
+        .thenReturn(1);
 
     SearchIndexJob result = coordinator.initializePartitions(jobId);
 
@@ -261,15 +263,53 @@ class DistributedSearchIndexCoordinatorTest {
             anyLong(),
             anyLong()); // claimableAt
 
-    // Verify job was updated
-    verify(jobDAO)
+    verify(jobDAO).markReadyIfInitializing(eq(jobId.toString()), anyString(), anyLong());
+  }
+
+  @Test
+  void testInitializePartitions_LeavesJobFailedWhileBuildingPartitionsFailed() {
+    // The job left INITIALIZING while its partitions were being built (its lock was lost, or an
+    // older server's orphan sweep failed it). Marking it READY would bring a failed job back and
+    // run it while its app run already reads "failed".
+    UUID jobId = UUID.randomUUID();
+    EventPublisherJob jobConfig = new EventPublisherJob().withEntities(Set.of("table"));
+    SearchIndexJobRecord jobRecord =
+        new SearchIndexJobRecord(
+            jobId.toString(),
+            IndexJobStatus.INITIALIZING.name(),
+            JsonUtils.pojoToJson(jobConfig),
+            "staged_123_",
+            null,
+            0,
+            0,
+            0,
+            0,
+            "{}",
+            "admin",
+            System.currentTimeMillis(),
+            null,
+            null,
+            System.currentTimeMillis(),
+            null,
+            null,
+            null);
+    when(jobDAO.findById(jobId.toString())).thenReturn(jobRecord);
+    when(partitionCalculator.calculatePartitions(jobId, Set.of("table"), null))
+        .thenReturn(List.of());
+    when(jobDAO.markReadyIfInitializing(eq(jobId.toString()), any(), anyLong())).thenReturn(0);
+
+    IllegalStateException failure =
+        assertThrows(IllegalStateException.class, () -> coordinator.initializePartitions(jobId));
+
+    assertTrue(failure.getMessage().contains("not marking it READY"), failure.getMessage());
+    verify(jobDAO, never())
         .update(
             eq(jobId.toString()),
             eq(IndexJobStatus.READY.name()),
             anyLong(),
             anyLong(),
             anyLong(),
-            anyString(),
+            any(),
             any(),
             any(),
             anyLong(),

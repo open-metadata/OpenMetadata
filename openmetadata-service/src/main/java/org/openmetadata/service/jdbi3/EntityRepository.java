@@ -3997,6 +3997,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
       lockManager.checkModificationsAllowed(updates);
     }
 
+    // Each original is a fresh read that nothing else holds, so it takes the relationships a PUT or
+    // PATCH records in history in place. Serializing here keeps the transaction to the inserts.
+    setFieldsInBulk(putFields, originals);
+    List<UUID> versionIds = new ArrayList<>(originals.size());
+    List<String> versionExtensions = new ArrayList<>(originals.size());
+    List<String> versionJsons = new ArrayList<>(originals.size());
+    for (T original : originals) {
+      versionIds.add(original.getId());
+      versionExtensions.add(EntityUtil.getVersionExtension(entityType, original.getVersion()));
+      versionJsons.add(serializeForVersionHistory(original));
+    }
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -4004,6 +4015,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Copy ID and version from original
       updated.setId(original.getId());
       updated.setVersion(nextVersion(original.getVersion()));
+      updated.setChangeDescription(importChangeDescription(original));
+      updated.setIncrementalChangeDescription(null);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
@@ -4016,6 +4029,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // while the handle is held.
     flushInOneTransaction(
         () -> {
+          daoCollection
+              .entityExtensionDAO()
+              .insertMany(versionIds, versionExtensions, entityType, versionJsons);
           updateMany(updatedEntities);
           removeExtensions(originals);
           storeExtensions(updatedEntities);
@@ -4033,6 +4049,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
     writeThroughCacheMany(updatedEntities, true);
 
     return updatedEntities;
+  }
+
+  /**
+   * The change description of an imported entity. It follows the stored version, so an edit in the
+   * same session consolidates against that version, and it keeps the per-field change summary.
+   */
+  private ChangeDescription importChangeDescription(T original) {
+    ChangeSummaryMap changeSummary =
+        Optional.ofNullable(original.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .orElse(null);
+    return new ChangeDescription()
+        .withPreviousVersion(original.getVersion())
+        .withChangeSummary(changeSummary);
   }
 
   @SuppressWarnings("unused")

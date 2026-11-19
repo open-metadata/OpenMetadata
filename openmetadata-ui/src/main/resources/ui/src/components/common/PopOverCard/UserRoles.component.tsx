@@ -14,7 +14,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
-import { TERM_ADMIN } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserRolesProps } from './UserPopOverCard.interface';
@@ -38,7 +37,7 @@ export const UserRoles = React.memo(({ userName }: UserRolesProps) => {
       <span className="d-flex flex-wrap m-t-xss">
         {isAdmin && (
           <span className="bg-grey rounded-4 p-x-xs text-xs m-b-xss">
-            {TERM_ADMIN}
+            {t('label.admin-superuser')}
           </span>
         )}
         {roles.map((role) => (

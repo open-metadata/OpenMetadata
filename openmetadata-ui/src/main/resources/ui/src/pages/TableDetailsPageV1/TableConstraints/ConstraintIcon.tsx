@@ -34,6 +34,8 @@ const ConstraintIcon = ({
   showOnlyIcon,
 }: ConstraintIconProps) => {
   const { t } = useTranslation();
+  const isCompositeUnique =
+    constraintType === ConstraintType.Unique && !showOnlyIcon;
 
   const { icon, title } = useMemo(() => {
     switch (constraintType) {
@@ -83,7 +85,12 @@ const ConstraintIcon = ({
       {!showOnlyIcon && (
         <img className="primary-key-section-line" src={SectionLine} />
       )}
-      <Tooltip placement="bottom" title={title} trigger="hover">
+      <Tooltip
+        placement="bottom"
+        title={
+          isCompositeUnique ? t('label.composite-unique-constraint') : title
+        }
+        trigger="hover">
         <Icon
           alt={constraintType}
           className="primary-key-icon"

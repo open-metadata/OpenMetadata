@@ -59,13 +59,13 @@ const UserProfileRoles = ({
 
     if (!isUserAdmin) {
       options.push({
-        label: TERM_ADMIN,
+        label: t('label.admin-superuser'),
         value: toLower(TERM_ADMIN),
       });
     }
 
     return options;
-  }, [roles, isUserAdmin, getEntityName]);
+  }, [roles, isUserAdmin, t]);
 
   const fetchRoles = useCallback(
     async (query = '') => {
@@ -142,7 +142,14 @@ const UserProfileRoles = ({
       <Chip
         data={[
           ...(isUserAdmin
-            ? [{ id: 'admin', type: 'role', name: TERM_ADMIN }]
+            ? [
+                {
+                  id: 'admin',
+                  type: 'role',
+                  name: TERM_ADMIN,
+                  displayName: t('label.admin-superuser'),
+                },
+              ]
             : []),
           ...(userRoles ?? []),
         ]}
@@ -151,7 +158,7 @@ const UserProfileRoles = ({
         showNoDataPlaceholder={!isUserAdmin}
       />
     ),
-    [userRoles, isUserAdmin]
+    [userRoles, isUserAdmin, t]
   );
 
   const handleCloseEditRole = useCallback(() => {

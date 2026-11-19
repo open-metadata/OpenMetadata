@@ -14,8 +14,8 @@ resource peaks, cancellation, and restart persistence against a specified catalo
 
 `docker/rdf-store/` builds the supported image (`openmetadata-fuseki:6.2.0`):
 
-- **Fuseki 6.2.0 on `eclipse-temurin:21-jre-jammy`.** Jena 6.x requires Java 21. The download is
-  verified against a pinned SHA-512 checksum at build time.
+- **Fuseki 6.2.0 on Ubuntu 22.04 with an Amazon Corretto 21 runtime.** Jena 6.x requires Java 21.
+  The download is verified against a pinned SHA-512 checksum at build time.
 - **Runs as non-root user `fuseki` (uid/gid 1000).** On Kubernetes set `fsGroup: 1000` (the shipped
   manifest does) so the persistent volume is writable.
 

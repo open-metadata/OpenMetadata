@@ -43,7 +43,7 @@ describe('UserRoles Component', () => {
     expect(screen.getByText('label.role-plural')).toBeInTheDocument();
     expect(screen.getByText('Role 1')).toBeInTheDocument();
     expect(screen.getByText('Role 2')).toBeInTheDocument();
-    expect(screen.getByText('Admin')).toBeInTheDocument();
+    expect(screen.getByText('label.admin-superuser')).toBeInTheDocument();
   });
 
   it('should not render when no roles are available', () => {

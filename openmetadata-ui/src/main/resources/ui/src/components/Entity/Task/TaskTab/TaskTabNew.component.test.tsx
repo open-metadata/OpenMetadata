@@ -352,7 +352,6 @@ jest.mock('../../../../utils/EntityLink', () => {
 
 jest.mock('../../../../utils/TaskActionUtils', () => ({
   ...jest.requireActual('../../../../utils/TaskActionUtils'),
-  isTagsTaskType: jest.fn().mockReturnValue(true),
   isDescriptionTaskType: jest.fn().mockReturnValue(false),
   isRecognizerFeedbackTask: jest.fn().mockReturnValue(false),
 }));
@@ -475,7 +474,6 @@ describe('TaskTabNew Component', () => {
       getResolvedTaskFormSchema,
     } = require('../../../../utils/TaskFormSchemaUtils');
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
       isRecognizerFeedbackTask,
     } = require('../../../../utils/TaskActionUtils');
@@ -499,7 +497,6 @@ describe('TaskTabNew Component', () => {
         )
       )
     );
-    isTagsTaskType.mockReturnValue(true);
     isDescriptionTaskType.mockReturnValue(false);
     isRecognizerFeedbackTask.mockReturnValue(false);
   });
@@ -595,10 +592,8 @@ describe('TaskTabNew Component', () => {
 
   it('should render schema-driven description payload details for description tasks', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(true);
 
     const descriptionTask: Task = {
@@ -754,7 +749,11 @@ describe('TaskTabNew Component', () => {
     await waitFor(() => {
       expect(getResolvedTaskFormSchema).toHaveBeenCalledWith(
         MOCK_APPROVAL_TASK.type,
-        MOCK_APPROVAL_TASK.category
+        MOCK_APPROVAL_TASK.category,
+        expect.objectContaining({
+          taskFormSchemaId: MOCK_APPROVAL_TASK.taskFormSchemaId,
+          payload: MOCK_APPROVAL_TASK.payload,
+        })
       );
     });
   });
@@ -957,10 +956,8 @@ describe('TaskTabNew Component', () => {
 
   it('should display the task information for approval tasks with suggestion data', async () => {
     const {
-      isTagsTaskType,
       isDescriptionTaskType,
     } = require('../../../../utils/TaskActionUtils');
-    isTagsTaskType.mockReturnValue(false);
     isDescriptionTaskType.mockReturnValue(false);
 
     await act(async () => {
@@ -1017,6 +1014,47 @@ describe('TaskTabNew Component', () => {
     expect(screen.getByTestId('task-payload-details')).toBeInTheDocument();
     expect(screen.getByText('Custom description proposal')).toBeInTheDocument();
     expect(screen.getByText('Needs final verification')).toBeInTheDocument();
+  });
+
+  it('keeps the current task form when an older schema response lands last', async () => {
+    const {
+      getResolvedTaskFormSchema,
+    } = require('../../../../utils/TaskFormSchemaUtils');
+    const schemaWithTitle = (title: string) => ({
+      name: title,
+      taskType: TaskEntityType.CustomTask,
+      taskCategory: TaskCategory.Custom,
+      formSchema: {
+        type: 'object',
+        properties: { reviewNotes: { type: 'string', title } },
+      },
+      uiSchema: {},
+    });
+    const pending: Array<(schema: unknown) => void> = [];
+    getResolvedTaskFormSchema.mockImplementation(
+      () => new Promise((resolve) => pending.push(resolve))
+    );
+    const nextTask = {
+      ...MOCK_CUSTOM_TASK,
+      id: 'custom-task-next',
+      payload: { ...MOCK_CUSTOM_TASK.payload },
+    };
+
+    const { rerender } = render(
+      <TaskTabNew {...mockProps} task={MOCK_CUSTOM_TASK} />,
+      { wrapper: MemoryRouter }
+    );
+    rerender(<TaskTabNew {...mockProps} task={nextTask} />);
+
+    await act(async () => {
+      pending[1](schemaWithTitle('Current Task Notes'));
+    });
+    await act(async () => {
+      pending[0](schemaWithTitle('Previous Task Notes'));
+    });
+
+    expect(await screen.findByText('Current Task Notes')).toBeInTheDocument();
+    expect(screen.queryByText('Previous Task Notes')).not.toBeInTheDocument();
   });
 
   it('submits schema-driven payload when resolving a custom task', async () => {

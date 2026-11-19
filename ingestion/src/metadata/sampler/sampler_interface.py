@@ -168,6 +168,28 @@ class SamplerInterface(ABC):
             return value[:SAMPLE_DATA_MAX_CELL_LENGTH]
         return value
 
+    @staticmethod
+    def _array_to_list(value: Any) -> Any:
+        """Return nested arrays and sequences as JSON-compatible lists.
+
+        pyarrow reads parquet list columns into numpy arrays. Auto classification skips
+        values it cannot read as text or lists, and the sample data upload would store
+        the array's repr.
+        """
+        import numpy as np  # noqa: PLC0415
+
+        if isinstance(value, np.datetime64):
+            return None if np.isnat(value) else str(np.datetime_as_string(value))
+        if isinstance(value, np.ndarray):
+            # tolist() coerces nanosecond timestamps to integers, losing their meaning.
+            items = value if value.dtype.kind == "M" else value.tolist()
+            return [SamplerInterface._array_to_list(item) for item in items]
+        if isinstance(value, (list, tuple)):
+            return [SamplerInterface._array_to_list(item) for item in value]
+        if isinstance(value, dict):
+            return {key: SamplerInterface._array_to_list(item) for key, item in value.items()}
+        return value
+
     def generate_sample_data(self, sample_data_config: Optional[SampleDataIngestionConfig] = None) -> TableData:  # noqa: UP045
         """Fetch and ingest sample data
 
