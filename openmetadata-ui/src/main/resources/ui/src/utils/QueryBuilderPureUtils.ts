@@ -70,9 +70,11 @@ export const resolveFieldType = (
     return undefined;
   }
 
+  // Subfield keys may themselves contain dots (`strCP.keyword`), at any depth: Explore nests custom properties one
+  // level deeper than a pinned builder (`extension.table.strCP.keyword`).
   for (let i = 1; i < fieldParts.length; i++) {
-    if (i === 1 && (currentField as FieldWithSubFields)?.subfields) {
-      const remainingPath = fieldParts.slice(1).join('.');
+    if ((currentField as FieldWithSubFields)?.subfields) {
+      const remainingPath = fieldParts.slice(i).join('.');
       const remainingField = (currentField as FieldWithSubFields).subfields[
         remainingPath
       ];
@@ -868,19 +870,144 @@ const wrapInDrillGroups = (
   } as Record<string, OldJsonItem>;
 };
 
+// A rule holding several values (`Any in`, `Not in`, an enum's multiselect) is written as one clause per value under a
+// single `should` (any of) or `must` (all of / none of); the operator follows from that, the clause shape and the
+// field type.
+const MULTI_VALUE_OPERATORS: Record<string, string> = {
+  'select|should|term|false': 'select_any_in',
+  'select|must|term|true': 'select_not_any_in',
+  'multiselect|must|term|false': 'multiselect_equals',
+  'multiselect|must|term|true': 'multiselect_not_equals',
+  'multiselect|should|wildcard|false': 'multiselect_contains',
+  'multiselect|must|wildcard|true': 'multiselect_not_contains',
+};
+
+const readMultiValueCustomProperty = (
+  clause: UnknownRecord
+):
+  | { parsed: CustomPropertyClause; occurrence: string; values: unknown[] }
+  | undefined => {
+  const bool = clause.bool as Record<string, unknown> | undefined;
+  const keys = Object.keys(bool ?? {});
+  const occurrence = keys[0];
+
+  if (keys.length !== 1 || !['must', 'should'].includes(occurrence)) {
+    return undefined;
+  }
+
+  const branches = asClauseArray(bool?.[occurrence]);
+  // Each value is its own rule clause: wrapped in an `entityType` envelope, or the bare (possibly negated) `nested`.
+  const parsedBranches = branches.map((branch) =>
+    branch.nested || branch.bool ? readCustomPropertyClause(branch) : undefined
+  );
+  const [first] = parsedBranches;
+
+  if (
+    !first ||
+    !['term', 'wildcard'].includes(first.shape) ||
+    parsedBranches.some(
+      (branch) =>
+        branch?.name !== first.name ||
+        branch.shape !== first.shape ||
+        branch.negated !== first.negated
+    )
+  ) {
+    return undefined;
+  }
+
+  return {
+    parsed: first,
+    occurrence,
+    values: parsedBranches.map((branch) =>
+      first.shape === 'wildcard' ? stripWildcards(branch?.value) : branch?.value
+    ),
+  };
+};
+
+// Each drill level (`rule_group`) the builder nests a property rule in is written as a one-clause `bool.must`.
+const stripDrillWrappers = (
+  clause: UnknownRecord,
+  levels: number
+): UnknownRecord => {
+  let current = clause;
+
+  for (let level = 0; level < levels; level++) {
+    const bool = current.bool as Record<string, unknown> | undefined;
+    const must = asClauseArray(bool?.must);
+
+    if (
+      Object.keys(bool ?? {}).length !== 1 ||
+      must.length !== 1 ||
+      !must[0].bool
+    ) {
+      break;
+    }
+    current = must[0];
+  }
+
+  return current;
+};
+
+// The first custom-property `nested` query anywhere in the clause: which property a rule is about, however deeply its
+// drill levels and per-value branches wrap it.
+const findNestedCustomProperty = (
+  clause: unknown
+): Omit<CustomPropertyClause, 'negated'> | undefined => {
+  if (!isObject(clause)) {
+    return undefined;
+  }
+
+  const direct = readNestedCustomProperty(clause as UnknownRecord);
+
+  if (direct) {
+    return direct;
+  }
+
+  for (const child of Object.values(clause as UnknownRecord)) {
+    const found = Array.isArray(child)
+      ? child.map(findNestedCustomProperty).find(Boolean)
+      : findNestedCustomProperty(child);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
+// The value type the rule's widget holds: text operators on a select property edit a text value, and `Any in` / `Not
+// in` hold a list of choices.
+const TEXT_VALUE_OPERATORS = new Set(['like', 'not_like', 'regexp']);
+const LIST_VALUE_OPERATORS = new Set(['select_any_in', 'select_not_any_in']);
+
+const getRuleValueType = (
+  rule: { operator: string },
+  fieldType: string | undefined
+): string => {
+  if (TEXT_VALUE_OPERATORS.has(rule.operator)) {
+    return 'text';
+  }
+  if (LIST_VALUE_OPERATORS.has(rule.operator)) {
+    return 'multiselect';
+  }
+
+  return fieldType ?? 'text';
+};
+
 const matchCustomProperty: QueryFilterBranchHandler = (
   curr,
   parentPath,
   fields
 ) => {
   const clause = curr as unknown as UnknownRecord;
-  const parsed = readCustomPropertyClause(clause);
+  const located = findNestedCustomProperty(clause);
 
-  if (!parsed) {
+  if (!located) {
     return undefined;
   }
 
-  const found = findExtensionField(fields, parsed.name, parsed.valueField);
+  const found = findExtensionField(fields, located.name, located.valueField);
 
   if (!found) {
     return undefined;
@@ -893,7 +1020,29 @@ const matchCustomProperty: QueryFilterBranchHandler = (
     : [extension];
   const field = [...levels.slice(-1), found.key].join('.');
   const fieldType = resolveFieldType(fields, field);
-  const rule = toCustomPropertyRule(parsed, fieldType);
+  const multiValue = readMultiValueCustomProperty(
+    stripDrillWrappers(clause, levels.length)
+  );
+  const multiValueOperator =
+    multiValue &&
+    MULTI_VALUE_OPERATORS[
+      [
+        fieldType,
+        multiValue.occurrence,
+        multiValue.parsed.shape,
+        multiValue.parsed.negated,
+      ].join('|')
+    ];
+  const single = multiValueOperator
+    ? undefined
+    : readCustomPropertyClause(clause);
+  let rule: { operator: string; value: unknown[] } | undefined;
+
+  if (multiValueOperator) {
+    rule = { operator: multiValueOperator, value: [multiValue.values] };
+  } else if (single) {
+    rule = toCustomPropertyRule(single, fieldType);
+  }
 
   if (!rule) {
     return undefined;
@@ -910,7 +1059,7 @@ const matchCustomProperty: QueryFilterBranchHandler = (
       value: rule.value,
       valueSrc: rule.value.map(() => 'value'),
       operatorOptions: null,
-      valueType: rule.value.map(() => fieldType ?? 'text'),
+      valueType: rule.value.map(() => getRuleValueType(rule, fieldType)),
     },
   } as OldJsonItem);
 };
@@ -1229,6 +1378,80 @@ export const getJsonTreeFromQueryFilter = (
   } catch {
     return {} as OldJsonTree;
   }
+};
+
+type BoolGroup = { conjunction: string; clauses: QueryFieldInterface[] };
+
+// A `bool` holding exactly one of `must` (AND) or `should` (OR), as the builder writes every group.
+const readBoolGroup = (clause: unknown): BoolGroup | undefined => {
+  const bool = (clause as QueryFieldInterface | undefined)?.bool as
+    | Record<string, unknown>
+    | undefined;
+  const keys = Object.keys(bool ?? {});
+  const clauses = bool?.[keys[0]];
+
+  if (
+    keys.length !== 1 ||
+    !['must', 'should'].includes(keys[0]) ||
+    !Array.isArray(clauses) ||
+    clauses.length === 0
+  ) {
+    return undefined;
+  }
+
+  return {
+    conjunction:
+      keys[0] === 'must'
+        ? QUERY_BUILDER_CONJUNCTION.AND
+        : QUERY_BUILDER_CONJUNCTION.OR,
+    clauses: clauses as QueryFieldInterface[],
+  };
+};
+
+/**
+ * The tree Explore's Advanced Search wrote `queryFilter` from. The modal builds a root conjunction over groups, each a
+ * conjunction over rules, and writes each level as a `bool` of one `must`/`should` — so the filter is read back as
+ * those groups. Anything else (a link built by another screen, an older single-group link) goes through
+ * `getJsonTreeFromQueryFilter`.
+ */
+export const getExploreJsonTreeFromQueryFilter = (
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
+): OldJsonTree => {
+  const root = readBoolGroup(getQueryBody(queryFilter));
+  const groups = root?.clauses.map(readBoolGroup);
+
+  if (!root || !groups?.every(Boolean)) {
+    return getJsonTreeFromQueryFilter(queryFilter, fields);
+  }
+
+  const rootId = generateUUID();
+
+  return {
+    id: rootId,
+    type: 'group',
+    properties: { conjunction: root.conjunction, not: false },
+    children1: Object.fromEntries(
+      (groups as BoolGroup[]).map((group) => {
+        const groupId = generateUUID();
+
+        return [
+          groupId,
+          {
+            id: groupId,
+            type: 'group',
+            path: [rootId, groupId],
+            properties: { conjunction: group.conjunction, not: false },
+            children1: getJsonTreePropertyFromQueryFilter(
+              [rootId, groupId],
+              group.clauses,
+              fields
+            ),
+          } as OldJsonItem,
+        ];
+      })
+    ),
+  };
 };
 
 export interface ElasticsearchQuery {
