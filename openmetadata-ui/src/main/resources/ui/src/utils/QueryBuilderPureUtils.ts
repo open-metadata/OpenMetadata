@@ -697,7 +697,9 @@ const readCustomPropertyClause = (
 const findExtensionField = (
   fields: Fields | undefined,
   name: string,
-  valueField?: string
+  valueField?: string,
+  // The entity type the filter names for the property: several can declare the same property name.
+  entityType?: string
 ): { key: string; scope: string } | undefined => {
   const subfields = (fields?.extension as FieldWithSubFields | undefined)
     ?.subfields;
@@ -716,11 +718,15 @@ const findExtensionField = (
     }
   });
 
-  const candidates = scopes.flatMap(([scope, scopeFields]) =>
+  const matching = scopes.flatMap(([scope, scopeFields]) =>
     Object.keys(scopeFields)
       .filter((key) => key === name || key.startsWith(`${name}.`))
       .map((key) => ({ key, scope }))
   );
+  const ofEntityType = matching.filter(
+    (candidate) => candidate.scope === entityType
+  );
+  const candidates = ofEntityType.length ? ofEntityType : matching;
 
   if (candidates.length === 0) {
     return undefined;
@@ -873,19 +879,50 @@ const wrapInDrillGroups = (
 // A rule holding several values (`Any in`, `Not in`, an enum's multiselect) is written as one clause per value under a
 // single `should` (any of) or `must` (all of / none of); the operator follows from that, the clause shape and the
 // field type.
-const MULTI_VALUE_OPERATORS: Record<string, string> = {
-  'select|should|term|false': 'select_any_in',
-  'select|must|term|true': 'select_not_any_in',
-  'multiselect|must|term|false': 'multiselect_equals',
-  'multiselect|must|term|true': 'multiselect_not_equals',
-  'multiselect|should|wildcard|false': 'multiselect_contains',
-  'multiselect|must|wildcard|true': 'multiselect_not_contains',
+type MultiValueOccurrence = 'must' | 'should';
+type MultiValueShape = Extract<CustomPropertyShape, 'term' | 'wildcard'>;
+
+// Field type → occurrence → clause shape → [operator, negated operator].
+const MULTI_VALUE_OPERATORS: Record<
+  string,
+  Partial<
+    Record<
+      MultiValueOccurrence,
+      Partial<Record<MultiValueShape, [string | undefined, string | undefined]>>
+    >
+  >
+> = {
+  select: {
+    should: { term: ['select_any_in', undefined] },
+    must: { term: [undefined, 'select_not_any_in'] },
+  },
+  multiselect: {
+    must: {
+      term: ['multiselect_equals', 'multiselect_not_equals'],
+      wildcard: [undefined, 'multiselect_not_contains'],
+    },
+    should: { wildcard: ['multiselect_contains', undefined] },
+  },
 };
+
+const getMultiValueOperator = (
+  fieldType: string | undefined,
+  occurrence: MultiValueOccurrence,
+  shape: CustomPropertyShape,
+  negated: boolean
+): string | undefined =>
+  MULTI_VALUE_OPERATORS[fieldType ?? '']?.[occurrence]?.[
+    shape as MultiValueShape
+  ]?.[negated ? 1 : 0];
 
 const readMultiValueCustomProperty = (
   clause: UnknownRecord
 ):
-  | { parsed: CustomPropertyClause; occurrence: string; values: unknown[] }
+  | {
+      parsed: CustomPropertyClause;
+      occurrence: MultiValueOccurrence;
+      values: unknown[];
+    }
   | undefined => {
   const bool = clause.bool as Record<string, unknown> | undefined;
   const keys = Object.keys(bool ?? {});
@@ -917,7 +954,7 @@ const readMultiValueCustomProperty = (
 
   return {
     parsed: first,
-    occurrence,
+    occurrence: occurrence as MultiValueOccurrence,
     values: parsedBranches.map((branch) =>
       first.shape === 'wildcard' ? stripWildcards(branch?.value) : branch?.value
     ),
@@ -976,6 +1013,32 @@ const findNestedCustomProperty = (
   return undefined;
 };
 
+// The entity type the writer scopes a custom-property rule to (`{ term: { entityType } }` beside its `nested` query).
+const findEntityTypeTerm = (clause: unknown): string | undefined => {
+  if (!isObject(clause)) {
+    return undefined;
+  }
+
+  const entityType = ((clause as UnknownRecord).term as UnknownRecord)
+    ?.entityType;
+
+  if (isString(entityType)) {
+    return entityType;
+  }
+
+  for (const child of Object.values(clause as UnknownRecord)) {
+    const found = Array.isArray(child)
+      ? child.map(findEntityTypeTerm).find(Boolean)
+      : findEntityTypeTerm(child);
+
+    if (found) {
+      return found;
+    }
+  }
+
+  return undefined;
+};
+
 // The value type the rule's widget holds: text operators on a select property edit a text value, and `Any in` / `Not
 // in` hold a list of choices.
 const TEXT_VALUE_OPERATORS = new Set(['like', 'not_like', 'regexp']);
@@ -1007,7 +1070,12 @@ const matchCustomProperty: QueryFilterBranchHandler = (
     return undefined;
   }
 
-  const found = findExtensionField(fields, located.name, located.valueField);
+  const found = findExtensionField(
+    fields,
+    located.name,
+    located.valueField,
+    findEntityTypeTerm(clause)
+  );
 
   if (!found) {
     return undefined;
@@ -1025,14 +1093,12 @@ const matchCustomProperty: QueryFilterBranchHandler = (
   );
   const multiValueOperator =
     multiValue &&
-    MULTI_VALUE_OPERATORS[
-      [
-        fieldType,
-        multiValue.occurrence,
-        multiValue.parsed.shape,
-        multiValue.parsed.negated,
-      ].join('|')
-    ];
+    getMultiValueOperator(
+      fieldType,
+      multiValue.occurrence,
+      multiValue.parsed.shape,
+      multiValue.parsed.negated
+    );
   const single = multiValueOperator
     ? undefined
     : readCustomPropertyClause(clause);

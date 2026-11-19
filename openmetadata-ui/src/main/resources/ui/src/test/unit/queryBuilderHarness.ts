@@ -119,11 +119,18 @@ const getCustomPropertyFields = () => {
 };
 
 // The `extension` subfields a provider merges in, as `processEntityTypeFields` builds them: directly under `extension`
-// for a builder pinned to an entity type, or one `!group` per entity type (Explore) when none is pinned.
+// for a builder pinned to an entity type, or one `!group` per entity type (Explore) when none is pinned. Dashboards
+// declare the same property names as tables, and come first, so a rule is only read back under the right entity type
+// if the reader goes by the entity type the filter names rather than by the first property that matches.
 export const getCustomPropertySubfields = (pinned: boolean) =>
   pinned
     ? getCustomPropertyFields()
     : {
+        dashboard: {
+          label: 'Dashboard',
+          type: '!group',
+          subfields: getCustomPropertyFields(),
+        },
         table: {
           label: 'Table',
           type: '!group',
