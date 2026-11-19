@@ -17,10 +17,10 @@ import { useTranslation } from 'react-i18next';
 import { DESCRIPTION_MAX_PREVIEW_CHARACTERS } from '../../../constants/constants';
 import {
   formatClientContent,
+  getTrimmedHtmlContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
 import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
-import { getTrimmedContent } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';
@@ -47,23 +47,17 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
 
   const handleReadMoreToggle = () => setReadMore((pre) => !pre);
 
-  // whether has read more content or not
-  const hasReadMore = useMemo(
-    () => enableSeeMoreVariant && markdown.length > maxLength,
-    [enableSeeMoreVariant, markdown, maxLength]
+  const trimmedContent = useMemo(
+    () =>
+      enableSeeMoreVariant
+        ? getTrimmedHtmlContent(content, maxLength)
+        : content,
+    [enableSeeMoreVariant, content, maxLength]
   );
 
-  /**
-   * if hasReadMore is true then value will be based on read more state
-   * else value will be content
-   */
-  const viewerValue = useMemo(() => {
-    if (hasReadMore) {
-      return readMore ? content : `${getTrimmedContent(content, maxLength)}...`;
-    }
+  const hasReadMore = trimmedContent !== content;
 
-    return content;
-  }, [hasReadMore, readMore, maxLength, content]);
+  const viewerValue = readMore ? content : trimmedContent;
 
   useEffect(() => {
     setReadMore(Boolean(isDescriptionExpanded));

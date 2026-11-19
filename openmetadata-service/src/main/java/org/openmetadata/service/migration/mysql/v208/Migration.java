@@ -18,6 +18,7 @@ import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
+import org.openmetadata.service.migration.utils.v208.AuditLogEntityTypeIndex;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
@@ -80,5 +81,10 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         McpGrantUserNameIndexes.STEP_NAME,
         () -> McpGrantUserNameIndexes.addOnMySql(handle));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        AuditLogEntityTypeIndex.STEP_NAME,
+        () -> AuditLogEntityTypeIndex.addOnMySql(handle));
   }
 }

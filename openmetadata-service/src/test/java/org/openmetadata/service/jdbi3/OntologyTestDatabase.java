@@ -54,7 +54,7 @@ final class OntologyTestDatabase {
 
   private static GenericContainer<?> database(ConnectionType dialect) {
     return dialect == ConnectionType.MYSQL
-        ? new GenericContainer<>("mysql:8.0")
+        ? new GenericContainer<>("mysql:8.4.13")
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
