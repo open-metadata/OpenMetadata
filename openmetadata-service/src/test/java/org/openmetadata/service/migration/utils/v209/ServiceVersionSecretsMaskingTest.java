@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -99,7 +100,14 @@ class ServiceVersionSecretsMaskingTest {
   }
 
   private static List<Row> rows() {
-    String id = UUID.randomUUID().toString();
+    final String id = UUID.randomUUID().toString();
+    return Stream.of(pipelineRows(id), otherServiceRows(id), workflowRows(id))
+        .flatMap(List::stream)
+        .toList();
+  }
+
+  /** Each secret of a pipeline service, and the values and rows that are left as they are. */
+  private static List<Row> pipelineRows(final String id) {
     return List.of(
         version(
             id,
@@ -130,7 +138,12 @@ class ServiceVersionSecretsMaskingTest {
             "pipelineService.version.0.7",
             service("Airflow", "{\"authType\":{\"token\":\"" + PLAIN + "\"}}")),
         unchanged(id, "pipelineService.config", databricks("token", PLAIN)),
-        unchanged(id, "table.version.0.1", databricks("token", PLAIN)),
+        unchanged(id, "table.version.0.1", databricks("token", PLAIN)));
+  }
+
+  /** Secrets of the other service types, each at its own path. */
+  private static List<Row> otherServiceRows(final String id) {
+    return List.of(
         version(id, "dashboardService.version.0.1", powerBi(PLAIN), powerBi(MASK)),
         unchanged(id, "dashboardService.version.0.2", powerBi(FERNET)),
         version(id, "dashboardService.version.0.3", superset(PLAIN), superset(MASK)),
@@ -155,7 +168,12 @@ class ServiceVersionSecretsMaskingTest {
         unchanged(
             id,
             "mlmodelService.version.0.1",
-            service("VertexAI", "{\"credentials\":\"" + PLAIN + "\"}")),
+            service("VertexAI", "{\"credentials\":\"" + PLAIN + "\"}")));
+  }
+
+  /** Test Connection requests are masked by their service type; other workflows are not. */
+  private static List<Row> workflowRows(final String id) {
+    return List.of(
         version(
             id,
             "workflow.version.0.1",
