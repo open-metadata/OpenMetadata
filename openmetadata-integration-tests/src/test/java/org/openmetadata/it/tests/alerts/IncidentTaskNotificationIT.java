@@ -168,7 +168,9 @@ public class IncidentTaskNotificationIT {
       long processedBefore = processedEventsCount(client, alert);
       String comment = "Fixed upstream, please verify <#E::user::" + userName + ">";
 
-      client.tasks().resolve(incident.getId().toString(), incidentResolution().withComment(comment));
+      client
+          .tasks()
+          .resolve(incident.getId().toString(), incidentResolution().withComment(comment));
 
       Task resolved = client.tasks().get(incident.getId().toString(), "comments,resolution");
       assertEquals(comment, resolved.getResolution().getComment());
@@ -180,7 +182,8 @@ public class IncidentTaskNotificationIT {
       await("resolution mention notification is delivered")
           .atMost(ALERT_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
-          .untilAsserted(() -> assertEquals(processedBefore + 1, processedEventsCount(client, alert)));
+          .untilAsserted(
+              () -> assertEquals(processedBefore + 1, processedEventsCount(client, alert)));
     } finally {
       client.eventSubscriptions().delete(alert.getId().toString());
     }

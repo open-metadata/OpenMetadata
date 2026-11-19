@@ -202,7 +202,8 @@ public class IncidentTaskIntegrationIT {
               assertEquals(
                   TestCaseResolutionStatusTypes.Resolved, latest.getTestCaseResolutionStatusType());
               Resolved details =
-                  JsonUtils.convertValue(latest.getTestCaseResolutionStatusDetails(), Resolved.class);
+                  JsonUtils.convertValue(
+                      latest.getTestCaseResolutionStatusDetails(), Resolved.class);
               assertEquals(shared.USER1.getId(), details.getAssignee().getId());
               assertEquals(
                   completedTask.getResolution().getResolvedBy().getId(),
@@ -210,7 +211,8 @@ public class IncidentTaskIntegrationIT {
             });
     Task withComments = client.tasks().get(stateId.toString(), "comments");
     assertEquals(1, withComments.getComments().size());
-    assertEquals("Resolved via integration test", withComments.getComments().getFirst().getMessage());
+    assertEquals(
+        "Resolved via integration test", withComments.getComments().getFirst().getMessage());
   }
 
   @Test
