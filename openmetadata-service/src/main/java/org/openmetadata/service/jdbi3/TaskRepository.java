@@ -41,7 +41,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
-import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
@@ -71,6 +70,8 @@ import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator;
+import org.openmetadata.service.governance.workflows.WorkflowInstanceTerminator.TaskCloseRequest;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.FieldRelationshipDAO.FieldRelationship;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -1040,36 +1041,57 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * Close a task on a user's request and end the workflow run waiting on it, recorded as
-   * CANCELLED. Not for a close made from inside a running workflow command, where terminating the
-   * process would end the command that is executing.
+   * Close a task on a user's request and end the workflow process waiting on it, per
+   * ADR:2026-11-17-closing-a-workflow-task-ends-only-the-process-holding-it. Not for a close made
+   * from inside a running workflow command, where deleting the process would end the command that
+   * is executing.
    */
   public Task closeTaskAndCancelWorkflowRun(Task task, String user, String comment) {
     Task closed = closeTask(task, user, comment);
     if (closed.getWorkflowInstanceId() != null) {
-      cancelWorkflowRun(closed, user);
+      endWorkflowProcess(closed, user);
     }
     return closed;
   }
 
   /**
-   * The run is recorded as CANCELLED before its process is terminated, so the termination keeps
-   * that status. Best effort: the task is already closed, so a failure leaves the process running
-   * and is logged rather than failing the close.
+   * Best effort: the task is already closed, so a failure leaves its process running and is logged
+   * rather than failing the close.
    */
-  private static void cancelWorkflowRun(Task closed, String user) {
-    String reason = "Task %s closed by %s".formatted(closed.getId(), user);
-    WorkflowHandler workflowHandler = WorkflowHandler.getInstance();
-    workflowHandler.endWorkflowInstance(
-        closed.getWorkflowInstanceId(), WorkflowInstance.WorkflowStatus.CANCELLED, reason);
+  private void endWorkflowProcess(Task closed, String user) {
     try {
-      workflowHandler.terminateTaskProcessInstance(closed.getId(), reason);
+      boolean endedRun =
+          WorkflowInstanceTerminator.forCurrentEngine(
+                  (WorkflowInstanceRepository)
+                      Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE))
+              .endClosedTaskProcess(
+                  new TaskCloseRequest(closed.getId(), closed.getWorkflowInstanceId(), user));
+      if (endedRun) {
+        closeOtherOpenTasksOfRun(closed, user);
+      }
     } catch (RuntimeException e) {
       LOG.warn(
-          "Closed task {} but could not terminate its workflow process: {}",
+          "Closed task {} but could not end its workflow process: {}",
           closed.getId(),
           e.getMessage(),
           e);
+    }
+  }
+
+  /**
+   * Closes the tasks the ended run still had open about the same entity, such as an approval in a
+   * parallel branch. Flowable keeps each task's id as a process-wide variable, so parallel branches
+   * of one process overwrite each other's and only the run identifies its other tasks.
+   */
+  private void closeOtherOpenTasksOfRun(Task closed, String user) {
+    if (closed.getAbout() != null && closed.getCategory() != null) {
+      String comment = "Task %s was closed by %s".formatted(closed.getId(), user);
+      listNonTerminalTasksByEntityAndCategory(
+              closed.getAbout().getFullyQualifiedName(), closed.getCategory())
+          .stream()
+          .filter(task -> closed.getWorkflowInstanceId().equals(task.getWorkflowInstanceId()))
+          .filter(task -> !closed.getId().equals(task.getId()))
+          .forEach(task -> closeTask(task, user, comment));
     }
   }
 

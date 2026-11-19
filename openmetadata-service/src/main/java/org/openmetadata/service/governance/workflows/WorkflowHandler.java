@@ -15,6 +15,7 @@ import static org.openmetadata.service.governance.workflows.elements.TriggerFact
 import com.zaxxer.hikari.HikariDataSource;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,6 +68,7 @@ import org.flowable.job.service.impl.asyncexecutor.AbstractAsyncExecutor;
 import org.flowable.job.service.impl.asyncexecutor.AsyncExecutor;
 import org.flowable.task.api.Task;
 import org.flowable.task.api.TaskQuery;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
@@ -1051,13 +1053,12 @@ public class WorkflowHandler {
    * The Flowable tasks of an OpenMetadata task, matched by its customTaskId process variable.
    * ACT_RU_VARIABLE has no index on NAME_ or TEXT_, so that match alone scans the whole table on
    * every lookup. The OpenMetadata task's run is the business key of the process holding its
-   * Flowable task, and narrowing by it uses ACT_IDX_EXEC_BUSKEY. A task without a recorded run, or
-   * whose process carries no business key, is found by the variable match alone.
+   * Flowable task, and narrowing by it uses ACT_IDX_EXEC_BUSKEY. A task without a recorded run,
+   * one whose process carries no business key, or one whose run cannot be read is found by the
+   * variable match alone.
    */
   private List<Task> findFlowableTasks(UUID customTaskId) {
-    UUID workflowInstanceId =
-        ((TaskRepository) Entity.getEntityRepository(Entity.TASK))
-            .findWorkflowInstanceId(customTaskId);
+    UUID workflowInstanceId = findRunOfTask(customTaskId);
     List<Task> tasks = List.of();
     if (workflowInstanceId != null) {
       tasks =
@@ -1071,11 +1072,39 @@ public class WorkflowHandler {
     return tasks;
   }
 
+  // The run only narrows the lookup, so a run that cannot be read (no task store, or a failed
+  // read) costs the index, never the lookup.
+  private static UUID findRunOfTask(UUID customTaskId) {
+    UUID workflowInstanceId = null;
+    if (Entity.hasEntityRepository(Entity.TASK)) {
+      try {
+        workflowInstanceId =
+            ((TaskRepository) Entity.getEntityRepository(Entity.TASK))
+                .findWorkflowInstanceId(customTaskId);
+      } catch (JdbiException e) {
+        LOG.debug(
+            "Run of task {} unreadable; lookup not narrowed: {}", customTaskId, e.getMessage());
+      }
+    }
+    return workflowInstanceId;
+  }
+
   private TaskQuery customTaskIdQuery(UUID customTaskId) {
     return processEngine
         .getTaskService()
         .createTaskQuery()
         .processVariableValueEquals("customTaskId", customTaskId.toString());
+  }
+
+  /**
+   * The process instances whose Flowable tasks belong to an OM task. Usually one; a periodic batch
+   * runs one process per entity, and its approval tasks share the run's OM task.
+   */
+  public List<String> findTaskProcessInstanceIds(UUID customTaskId) {
+    return findFlowableTasks(customTaskId).stream()
+        .map(Task::getProcessInstanceId)
+        .distinct()
+        .toList();
   }
 
   private Task getTaskFromCustomTaskId(UUID customTaskId) {
@@ -1972,35 +2001,8 @@ public class WorkflowHandler {
     }
   }
 
-  /**
-   * The key of a deployed process definition, which is the workflow or trigger name. Flowable builds
-   * the id as {@code key:version:generatedId}, but when that is longer than 64 characters, as for a
-   * long workflow name, the id is the generated part alone and carries no key, so the key is read
-   * from the deployed definition. Flowable caches deployed definitions, so that read rarely reaches
-   * the database.
-   */
   public static String getProcessDefinitionKeyFromId(String processDefinitionId) {
-    int separator = processDefinitionId.indexOf(':');
-    return separator >= 0
-        ? processDefinitionId.substring(0, separator)
-        : findDeployedProcessDefinitionKey(processDefinitionId);
-  }
-
-  private static String findDeployedProcessDefinitionKey(String processDefinitionId) {
-    String key = processDefinitionId;
-    if (initialized && instance.processEngine != null) {
-      try {
-        key =
-            instance
-                .processEngine
-                .getRepositoryService()
-                .getProcessDefinition(processDefinitionId)
-                .getKey();
-      } catch (FlowableObjectNotFoundException e) {
-        LOG.debug("No deployed process definition with id {}", processDefinitionId);
-      }
-    }
-    return key;
+    return Arrays.stream(processDefinitionId.split(":")).toList().get(0);
   }
 
   /**

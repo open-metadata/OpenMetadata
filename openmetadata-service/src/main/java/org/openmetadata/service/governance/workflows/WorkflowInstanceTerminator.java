@@ -9,6 +9,7 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -89,6 +90,13 @@ public class WorkflowInstanceTerminator {
   private final WorkflowInstanceRepository workflowInstanceRepository;
   private final WorkflowInstanceStateRepository workflowInstanceStateRepository;
 
+  /** A user's close of one workflow-managed task, which ends the process waiting on it. */
+  public record TaskCloseRequest(UUID taskId, UUID workflowInstanceId, String closedBy) {
+    String auditMessage() {
+      return "Task %s was closed by %s".formatted(taskId, closedBy);
+    }
+  }
+
   public record TerminationRequest(UUID workflowInstanceId, String reason, String requestedBy) {
     String auditMessage() {
       return nullOrEmpty(reason) || reason.isBlank()
@@ -168,11 +176,83 @@ public class WorkflowInstanceTerminator {
         workflowInstanceRepository.getByIdOrNotFound(workflowInstanceId), !isDeleted);
   }
 
+  /**
+   * Ends the processes waiting on a task a user closed, per
+   * ADR:2026-11-17-closing-a-workflow-task-ends-only-the-process-holding-it. Each process holding a
+   * Flowable task of it is deleted on its own, with every branch in it, never its trigger root;
+   * Flowable then completes the call that started it, so a periodic batch carries on. Tasks still
+   * open in a deleted process are closed after it. A run that is not a periodic batch ends with its
+   * process and is recorded as CANCELLED first, a status its end keeps; a periodic batch's run is
+   * left to its trigger. Best effort: a process this server is executing a job of is left running.
+   * Returns {@code true} when the run ended with the deleted process.
+   */
+  public boolean endClosedTaskProcess(TaskCloseRequest request) {
+    return WorkflowHandler.getInstance().findTaskProcessInstanceIds(request.taskId()).stream()
+        .map(
+            processInstanceId ->
+                runtimeService
+                    .createProcessInstanceQuery()
+                    .processInstanceId(processInstanceId)
+                    .singleResult())
+        .filter(Objects::nonNull)
+        .map(process -> endTaskProcess(request, process))
+        .reduce(false, Boolean::logicalOr);
+  }
+
+  /** {@code true} when the deleted process was its run's only one, so the run ended with it. */
+  private boolean endTaskProcess(TaskCloseRequest request, ProcessInstance process) {
+    boolean endedRun = false;
+    List<String> processTreeIds =
+        collectProcessTree(List.of(process.getId()), this::findChildProcessInstanceIds);
+    if (countJobsLockedByThisServer(processTreeIds) > 0) {
+      LOG.warn(
+          "[WorkflowTerminate] Task {} closed; its process {} has a job executing and keeps running",
+          request.taskId(),
+          process.getId());
+    } else {
+      List<UUID> otherOpenTaskIds =
+          taskCloser.findTaskIds(processTreeIds).stream()
+              .filter(taskId -> !taskId.equals(request.taskId()))
+              .toList();
+      boolean isRunOwnProcess = !isInPeriodicBatchRun(process);
+      if (isRunOwnProcess) {
+        recordRunCancelled(request);
+      }
+      if (deleteProcessInstance(process.getId(), Workflow.TASK_CLOSED_BY_USER)) {
+        taskCloser.closeTasks(otherOpenTaskIds, request.closedBy(), request.auditMessage());
+        endedRun = isRunOwnProcess;
+      }
+    }
+    return endedRun;
+  }
+
+  private boolean isInPeriodicBatchRun(ProcessInstance process) {
+    ProcessInstance root =
+        process.getId().equals(process.getRootProcessInstanceId())
+            ? process
+            : runtimeService
+                .createProcessInstanceQuery()
+                .processInstanceId(process.getRootProcessInstanceId())
+                .singleResult();
+    return root != null && isPeriodicBatchTrigger(root);
+  }
+
+  private void recordRunCancelled(TaskCloseRequest request) {
+    String reason = request.auditMessage();
+    if (workflowInstanceRepository.endRunningInstance(
+        request.workflowInstanceId(), WorkflowStatus.CANCELLED, reason)) {
+      workflowInstanceStateRepository.markInstanceStatesAs(
+          request.workflowInstanceId(), WorkflowStatus.CANCELLED, reason);
+    }
+  }
+
   /** Deletes the process tree; {@code false} when a job executing now holds rows it needs. */
   private boolean deleteProcessTree(
       TerminationRequest request, List<String> rootIds, List<String> processTreeIds) {
     List<UUID> openTaskIds = taskCloser.findTaskIds(processTreeIds);
-    boolean isDeleted = rootIds.stream().allMatch(this::deleteRootProcessInstance);
+    boolean isDeleted =
+        rootIds.stream()
+            .allMatch(rootId -> deleteProcessInstance(rootId, Workflow.TERMINATED_BY_ADMIN));
     if (isDeleted) {
       taskCloser.closeTasks(openTaskIds, request.requestedBy(), request.auditMessage());
       markTerminated(request.workflowInstanceId(), request.auditMessage());
@@ -297,22 +377,20 @@ public class WorkflowInstanceTerminator {
   }
 
   /** {@code false} when the delete is refused because a job executing now holds its rows. */
-  private boolean deleteRootProcessInstance(String rootProcessInstanceId) {
+  private boolean deleteProcessInstance(String processInstanceId, String deleteReason) {
     boolean isDeleted = true;
     try {
       managementService.executeCommand(
           new BoundedLockWaitCommand(
               Duration.ofSeconds(DELETE_LOCK_WAIT_SECONDS),
-              () ->
-                  runtimeService.deleteProcessInstance(
-                      rootProcessInstanceId, Workflow.TERMINATED_BY_ADMIN)));
+              () -> runtimeService.deleteProcessInstance(processInstanceId, deleteReason)));
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(
           "[WorkflowTerminate] Process instance {} ended before it could be deleted",
-          rootProcessInstanceId);
+          processInstanceId);
     } catch (FlowableOptimisticLockingException e) {
       isDeleted = false;
-      logDeleteBlocked(rootProcessInstanceId, e);
+      logDeleteBlocked(processInstanceId, e);
     } catch (RuntimeException e) {
       // Translates, never swallows: a lock wait reaches here wrapped by Flowable, MyBatis or JDBI,
       // so the cause chain, not the outer type, identifies it.
@@ -320,7 +398,7 @@ public class WorkflowInstanceTerminator {
         throw e;
       }
       isDeleted = false;
-      logDeleteBlocked(rootProcessInstanceId, e);
+      logDeleteBlocked(processInstanceId, e);
     }
     return isDeleted;
   }

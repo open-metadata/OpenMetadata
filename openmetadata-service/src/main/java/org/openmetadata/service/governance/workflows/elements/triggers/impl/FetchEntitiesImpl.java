@@ -16,7 +16,6 @@ import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowStopRequests;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.search.SearchRepository;
@@ -41,8 +40,7 @@ public class FetchEntitiesImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     // For PeriodicBatchEntityTrigger: extract entity type from process definition key
     // Format: triggerWorkflowId-EntityType (e.g., "workflowTrigger-Table")
-    String processDefinitionKey =
-        WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
+    String processDefinitionKey = execution.getProcessDefinitionId().split(":")[0];
     String entityTypeToFetch = extractEntityTypeFromProcessKey(processDefinitionKey);
 
     // If not a batch trigger process, use the configured entity types
