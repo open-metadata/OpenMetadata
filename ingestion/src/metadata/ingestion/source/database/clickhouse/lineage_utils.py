@@ -421,14 +421,15 @@ def _schema_and_name(table: Table) -> tuple[str, str]:
 def _writes_into(upstream: Table, distributed_name: tuple[str, str]) -> bool:
     """
     Whether a materialized view writes `TO` the Distributed table, assumed when its definition is
-    unknown. A materialized view without a `TO` clause holds its own rows and may be the local
-    table of a Distributed table.
+    unknown: missing, blank or not a `CREATE MATERIALIZED VIEW` statement. A materialized view
+    without a `TO` clause holds its own rows and may be the local table of a Distributed table.
     """
     if upstream.tableType != TableType.MaterializedView:
         return False
-    if upstream.schemaDefinition is None:
+    definition = model_str(upstream.schemaDefinition) if upstream.schemaDefinition is not None else ""
+    if not MATERIALIZED_VIEW_HEADER_PATTERN.match(definition):
         return True
-    target = get_materialized_view_target_table(model_str(upstream.schemaDefinition))
+    target = get_materialized_view_target_table(definition)
     if target is None:
         return False
     return (target.schema_name or _schema_and_name(upstream)[0], target.table_name) == distributed_name

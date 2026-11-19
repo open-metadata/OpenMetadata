@@ -28,8 +28,9 @@ both for a missing table and for a failed lookup.
   local table here, so all those edges go.
 - It keeps the edge of a materialized view whose `TO` clause names the Distributed table (an
   unqualified target resolves against the view's schema), and the edge of a materialized view whose
-  definition is unknown. A materialized view without `TO`, a plain view and a regular table are
-  possible local tables, so their edges are deleted when no longer named.
+  definition is unknown (missing, blank or not a `CREATE MATERIALIZED VIEW` statement). A
+  materialized view without `TO`, a plain view and a regular table are possible local tables, so
+  their edges are deleted when no longer named.
 - Edges of any other source, `Manual` included, and edges from other services are never deleted.
 - Nothing is deleted when the arguments cannot be read: an unparsed engine, an empty database, or a
   macro this server does not define. A local table that is named but not found removes only edges

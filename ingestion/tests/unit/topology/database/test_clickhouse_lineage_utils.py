@@ -1132,6 +1132,9 @@ class TestDistributedTableLineage:
                 id="view-writing-into-a-namesake-in-another-database",
             ),
             pytest.param(None, True, id="view-without-a-definition"),
+            pytest.param("", True, id="view-with-a-blank-definition"),
+            pytest.param("  \n ", True, id="view-with-a-whitespace-definition"),
+            pytest.param("SELECT id FROM default.raw_events", True, id="view-with-a-definition-without-create"),
         ],
     )
     def test_override_keeps_materialized_views_writing_into_the_distributed_table(
