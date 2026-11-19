@@ -12,13 +12,16 @@
 Unit tests for ADLS reader path builder, storage options, and ADLSReader methods.
 """
 
+import io
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import fsspec
 import pytest
 from adlfs import AzureBlobFileSystem
 from azure.identity import ClientSecretCredential
+from azure.storage.blob import BlobClient
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -26,6 +29,11 @@ from metadata.generated.schema.entity.services.connections.database.datalake.azu
 from metadata.generated.schema.security.credentials.azureCredentials import (
     AzureCredentials,
 )
+from metadata.ingestion.source.database.datalake.clients.azure_blob import (
+    DatalakeAzureBlobClient,
+)
+from metadata.readers.dataframe.dsv import CSVDataFrameReader
+from metadata.readers.dataframe.json import JSONDataFrameReader
 from metadata.readers.file.adls import (
     AZURE_PATH,
     ADLSReader,
@@ -265,3 +273,47 @@ class TestADLSFileReader:
             reader.read("folder/test.csv", bucket_name="my-container", verbose=False)
         with pytest.raises(ReadException, match="Error downloading file"):
             reader.download("folder/test.csv", str(dest), bucket_name="my-container", verbose=False)
+
+
+class TestConnectionScopedAzureFilesystem:
+    @pytest.mark.parametrize(
+        ("reader_class", "key", "payload"),
+        [
+            (JSONDataFrameReader, "sales.json", b'[{"id": 1}]'),
+            (CSVDataFrameReader, "sales.csv", b"id\n1\n"),
+        ],
+        ids=["adlfs-direct", "pandas-storage-options"],
+    )
+    def test_repeated_reads_share_one_filesystem_released_on_close(self, reader_class, key: str, payload: bytes):
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="govacct",
+                clientId="gov-client",
+                clientSecret="gov-secret",
+                tenantId=VALID_TENANT_ID,
+                endpointSuffix="core.usgovcloudapi.net",
+            )
+        )
+        connection = DatalakeAzureBlobClient.from_config(config)
+        credential = connection.client.credential
+
+        def connection_filesystems() -> list[AzureBlobFileSystem]:
+            return [fs for fs in AzureBlobFileSystem._cache.values() if fs.credential is credential]
+
+        with (
+            patch.object(AzureBlobFileSystem, "open", lambda *_, **__: io.BytesIO(payload)),
+            patch.object(BlobClient, "get_blob_properties", return_value=SimpleNamespace(size=len(payload))),
+        ):
+            for _ in range(50):
+                wrapper = reader_class(config_source=config, client=connection.client).read(
+                    key=key, bucket_name="raw-zone"
+                )
+                assert next(iter(wrapper.dataframes()))["id"].tolist() == [1]
+
+        assert len(connection_filesystems()) == 1
+
+        with patch.object(credential, "close", wraps=credential.close) as close_credential:
+            connection.close(service_connection=None)
+
+        assert connection_filesystems() == []
+        close_credential.assert_called_once_with()

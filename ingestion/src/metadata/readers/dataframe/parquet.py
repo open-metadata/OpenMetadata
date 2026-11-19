@@ -268,7 +268,7 @@ class ParquetDataFrameReader(DataFrameReader):
 
         account_name = AzureClient.validate_resource_name(security_config.accountName, "Account Name")
         validated_bucket = AzureClient.validate_container_name(bucket_name)
-        storage_options = return_azure_storage_options(azure_config)
+        storage_options = return_azure_storage_options(azure_config, self.client)
         pandas_storage_options = ensure_azure_pandas_storage_options(storage_options, account_name)
         account_url = build_azure_abfs_path(
             bucket_name=validated_bucket,

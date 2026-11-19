@@ -45,11 +45,12 @@ def build_azure_abfs_path(
     return f"abfs://{validated_bucket}@{validated_account}.dfs.{resolved_suffix}/{key}"
 
 
-def return_azure_storage_options(config_source: AzureConfig) -> dict[str, Any]:
+def return_azure_storage_options(config_source: AzureConfig, client: Any = None) -> dict[str, Any]:
     """
     Build the Azure Storage options passed to adlfs / fsspec readers.
     `account_name` is omitted here because callers instantiating
     `AzureBlobFileSystem(account_name=..., **storage_options)` pass it explicitly.
+    `client` is the connection's BlobServiceClient; its credential is reused for every read.
     """
     connection_args = config_source.securityConfig
     if connection_args is None:
@@ -76,12 +77,24 @@ def return_azure_storage_options(config_source: AzureConfig) -> dict[str, Any]:
     # client_id/client_secret, and crashes on None.get_secret_value() for Managed
     # Identity / DefaultAzureCredential; passing the pre-built credential fixes both
     # (ADR:2026-11-13-azure-credentials-derive-sovereign-endpoints-from-suffix).
-    storage_options: dict[str, Any] = {
-        "credential": AzureClient(connection_args).create_client(),
-    }
+    # fsspec caches filesystems by repr(credential), so a fresh credential per read
+    # would build, cache and re-authenticate a new AzureBlobFileSystem every time.
+    credential = getattr(client, "credential", None) or AzureClient(connection_args).create_client()
+    storage_options: dict[str, Any] = {"credential": credential}
     if endpoint_suffix != AzureClient.DEFAULT_ENDPOINT_SUFFIX:
         storage_options["account_host"] = f"{account_name}.blob.{endpoint_suffix}"
     return storage_options
+
+
+def release_azure_filesystems(credential: Any) -> None:
+    """Drop the fsspec-cached AzureBlobFileSystem instances that read with `credential`."""
+    from adlfs import AzureBlobFileSystem
+
+    # ponytail: fsspec has no per-instance eviction API, only clear_instance_cache() for all.
+    cache = AzureBlobFileSystem._cache  # pyright: ignore[reportAttributeAccessIssue]
+    for token, filesystem in list(cache.items()):
+        if filesystem.credential is credential:
+            cache.pop(token, None)
 
 
 def ensure_azure_pandas_storage_options(storage_options: dict[str, Any], account_name: str | None) -> dict[str, Any]:

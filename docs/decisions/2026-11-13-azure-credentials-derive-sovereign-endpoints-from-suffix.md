@@ -1,7 +1,7 @@
 # AzureCredentials derives sovereign storage, Key Vault, and Entra endpoints from endpointSuffix
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-19 (readers reuse the connection's credential; close releases it)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `ingestion/tests/unit/test_azure_credentials.py`, `ingestion/tests/unit/readers/test_adls_reader_options.py`
 - **Related:** open-metadata/OpenMetadata#35898
@@ -23,6 +23,8 @@ Two additional library constraints in `adlfs` (`AzureBlobFileSystem`) affect sov
 - `authority` (string, optional), validated as an HTTPS hostname/origin and auto-inferred from `endpointSuffix` when omitted (`https://login.microsoftonline.us` for `core.usgovcloudapi.net`, `https://login.chinacloudapi.cn` for `core.chinacloudapi.cn`, and omitted for commercial defaults).
 
 `AzureClient` derives Blob (`https://<account>.blob.<endpointSuffix>/`), Key Vault (`vault.azure.net`, `vault.usgovcloudapi.net`, `vault.azure.cn`, or `vault.<suffix without leading 'core.'>`), and Entra credentials from those validated fields, passing `disable_instance_discovery=True` when an explicit `authority` host falls outside `msal.authority.WELL_KNOWN_AUTHORITY_HOSTS` so MSAL never probes commercial `login.microsoftonline.com` in air-gapped or custom clouds. When sovereign/custom endpoints, an explicit `authority`, or `DefaultAzureCredential` (`clientSecret` omitted) are used, `return_azure_storage_options` passes the `AzureClient`-built `credential` (plus `account_host` when non-commercial) to `adlfs`, and pandas ABFS callers add `account_name` only when `account_host` is present.
+
+That `credential` is the one the connection's `BlobServiceClient` already holds, never a new one per read. fsspec caches `AzureBlobFileSystem` instances by `repr()` of their arguments, and adlfs pins every instance with its own `weakref.finalize`, so a credential per read would build, keep and re-authenticate one filesystem per file. Reusing the connection's credential keeps one cached filesystem per connection and reading thread. `DatalakeAzureBlobClient.close()` removes those filesystems from the fsspec cache and closes the credential.
 
 ## Consequences
 

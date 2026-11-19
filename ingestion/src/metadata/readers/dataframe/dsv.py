@@ -197,7 +197,7 @@ class DSVDataFrameReader(DataFrameReader):
         account_name = AzureClient.validate_resource_name(security_config.accountName, "Account Name")
         compression = "gzip" if key.endswith(".gz") else None
         storage_options = ensure_azure_pandas_storage_options(
-            return_azure_storage_options(azure_config),
+            return_azure_storage_options(azure_config, self.client),
             account_name,
         )
         path = build_azure_abfs_path(
