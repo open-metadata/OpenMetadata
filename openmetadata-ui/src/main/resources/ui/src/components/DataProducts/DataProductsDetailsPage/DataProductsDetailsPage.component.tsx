@@ -19,11 +19,11 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Announcement02,
-  Brush01,
   Collapse,
   Download01,
   Edit01,
   Expand,
+  ImageBrush,
   RefreshCcw01,
   Trash01,
   Upload01,
@@ -224,7 +224,7 @@ const getManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.data-product'),
               })}
-              icon={Brush01}
+              icon={ImageBrush}
               id="rename-button"
               name={t('label.style')}
             />
@@ -976,8 +976,17 @@ const DataProductsDetailsPage = ({
         ? dataProduct.entityStatus
         : EntityStatus.Unprocessed;
 
+    // ml-2 restores the 12px gap after the copy/learning group's 4px.
     return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
+      <Box className="tw:ml-2">
+        <EntityStatusBadge
+          entityId={dataProduct.id}
+          entityType={EntityType.DATA_PRODUCT}
+          fqn={dataProduct.fullyQualifiedName}
+          showDivider={false}
+          status={entityStatus}
+        />
+      </Box>
     ) : null;
   }, [dataProduct]);
 
@@ -1025,8 +1034,8 @@ const DataProductsDetailsPage = ({
                 serviceName=""
                 suffix={
                   <>
-                    {statusBadge}
                     <LearningIcon pageId={LEARNING_PAGE_IDS.DATA_PRODUCT} />
+                    {statusBadge}
                   </>
                 }
                 titleColor={dataProduct.style?.color}

@@ -16,6 +16,7 @@ package org.openmetadata.service.jdbi3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
@@ -23,6 +24,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -31,8 +35,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.migration.utils.v207.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -51,7 +55,7 @@ class McpGrantRevocationSqlTest {
   private static final String DATABASE = "mcp_grants";
   private static final String PASSWORD = "mcp-grants-test";
   private static final String MYSQL = "mysql";
-  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7");
+  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7", "2.1.0");
   private static final String CLIENT = "client-1";
   // Grants written before they used the account's own name may hold the provider's spelling.
   private static final String DELETED_USER = "alice";
@@ -65,7 +69,7 @@ class McpGrantRevocationSqlTest {
   @Test
   void deletingAUserEndsOnlyItsGrantsOnMysql() throws IOException {
     try (GenericContainer<?> database =
-        new GenericContainer<>("mysql:8.3.0")
+        new GenericContainer<>("mysql:8.4.13")
             .withEnv("MYSQL_DATABASE", DATABASE)
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -130,6 +134,116 @@ class McpGrantRevocationSqlTest {
     }
     assertGrantEnded(jdbi, DELETED_USER_AS_STORED);
     assertGrantKept(jdbi, OTHER_USER);
+    assertClientTokenRevocation(jdbi);
+    assertRevocationSerializesWithIssuance(jdbi);
+    assertClientRemoval(jdbi);
+  }
+
+  private void assertClientTokenRevocation(Jdbi jdbi) {
+    OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    final var before = clients.listClients("", 100, NOW).getFirst();
+    assertEquals(1, before.getActiveAccessTokens());
+    assertEquals(MORE_USERS + 1, before.getActiveRefreshTokens());
+    jdbi.onDemand(OAuthDAOs.OAuthAccessTokenDAO.class)
+        .insert("expired", "encrypted", CLIENT, OTHER_USER, "[]", NOW);
+    assertEquals(1, clients.listClients("", 100, NOW).getFirst().getActiveAccessTokens());
+    assertTrue(clients.revokeGrants(CLIENT));
+    assertNotNull(clients.findByClientId(CLIENT));
+    assertEquals(0, clients.listClients("", 100, NOW).getFirst().getActiveAccessTokens());
+    assertEquals(0, clients.listClients("", 100, NOW).getFirst().getActiveRefreshTokens());
+    assertNull(
+        jdbi.onDemand(OAuthDAOs.OAuthAuthorizationCodeDAO.class).findByCode("code-" + OTHER_USER));
+    assertNull(
+        jdbi.onDemand(OAuthDAOs.McpPendingAuthRequestDAO.class)
+            .findByAuthRequestId("consent-" + OTHER_USER));
+    assertTrue(clients.revokeGrants(CLIENT));
+    assertEquals(false, clients.revokeGrants("missing"));
+  }
+
+  private void assertRevocationSerializesWithIssuance(Jdbi jdbi) {
+    final McpGrantTransaction transaction =
+        new McpGrantTransaction(() -> jdbi.onDemand(CollectionDAO.class));
+    final OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    final CountDownLatch issued = new CountDownLatch(1);
+    final CountDownLatch revokeStarted = new CountDownLatch(1);
+    try (var executor = Executors.newVirtualThreadPerTaskExecutor()) {
+      final var issuing =
+          executor.submit(
+              () ->
+                  transaction.execute(
+                      CLIENT,
+                      () -> {
+                        final var tokens =
+                            McpGrantTransaction.resolve(
+                                OAuthDAOs::oauthAccessTokenDAO,
+                                jdbi.onDemand(OAuthDAOs.OAuthAccessTokenDAO.class));
+                        tokens.insert(
+                            "concurrent-access", "encrypted", CLIENT, OTHER_USER, "[]", LATER);
+                        issued.countDown();
+                        assertTrue(revokeStarted.await(5, TimeUnit.SECONDS));
+                        return null;
+                      }));
+      assertTrue(issued.await(5, TimeUnit.SECONDS));
+      final var revoking =
+          executor.submit(
+              () -> {
+                revokeStarted.countDown();
+                return clients.revokeGrants(CLIENT);
+              });
+      issuing.get(10, TimeUnit.SECONDS);
+      assertTrue(revoking.get(10, TimeUnit.SECONDS));
+      assertNull(
+          jdbi.onDemand(OAuthDAOs.OAuthAccessTokenDAO.class).findByTokenHash("concurrent-access"));
+      transaction.execute(
+          CLIENT,
+          () -> {
+            assertNull(
+                McpGrantTransaction.resolve(
+                        OAuthDAOs::oauthRefreshTokenDAO,
+                        jdbi.onDemand(OAuthDAOs.OAuthRefreshTokenDAO.class))
+                    .findByTokenHash("rotated-" + OTHER_USER));
+            return null;
+          });
+    } catch (Exception exception) {
+      throw new AssertionError("Grant issuance and revocation must serialize", exception);
+    }
+  }
+
+  private void assertClientRemoval(Jdbi jdbi) {
+    OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    clients.insert("unrelated", null, "Unaffected", "[]", "[]", "none", "[]");
+    assertEquals(2, clients.listClients("", 100).size());
+    assertEquals("unrelated", clients.listClients(CLIENT, 100).getFirst().getClientId());
+    assertTrue(clients.listClients("", 100).getFirst().getIssuedAt() > 0);
+    assertEquals(1, clients.deleteWithGrants(CLIENT));
+    assertNull(clients.findByClientId(CLIENT));
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new McpGrantTransaction(() -> jdbi.onDemand(CollectionDAO.class))
+                .execute(
+                    CLIENT,
+                    () -> {
+                      throw new AssertionError("Deleted client must not issue grants");
+                    }));
+    assertNotNull(clients.findByClientId("unrelated"));
+    for (String table :
+        List.of(
+            "oauth_authorization_codes",
+            "oauth_access_tokens",
+            "oauth_refresh_tokens",
+            "mcp_pending_auth_requests")) {
+      final int remaining =
+          jdbi.withHandle(
+              handle ->
+                  handle
+                      .createQuery("SELECT COUNT(*) FROM " + table + " WHERE client_id = :client")
+                      .bind("client", CLIENT)
+                      .mapTo(Integer.class)
+                      .one());
+      assertEquals(0, remaining);
+    }
+    assertEquals(0, clients.deleteWithGrants(CLIENT));
   }
 
   /** The statements of OAuthTokenRepository.rotateRefreshToken, in its order. */
@@ -254,7 +368,7 @@ class McpGrantRevocationSqlTest {
       jdbi.useHandle(handle -> statements.forEach(handle::execute));
     }
     if (MYSQL.equals(dialect)) {
-      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
     }

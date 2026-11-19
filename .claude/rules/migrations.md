@@ -20,6 +20,10 @@ reference: `bootstrap/sql/migrations/native/1.1.0/mysql/schemaChanges.sql`.
   migrations go under `bootstrap/sql/migrations/extensions/{name}/`.
 - Write both dialects (MySQL `JSON`/`AUTO_INCREMENT` vs PostgreSQL `JSONB`/`SERIAL`) and make them
   **idempotent** where possible (`IF NOT EXISTS`, etc.).
+- **Migration queries on large, growing tables must not scan the whole table.** Back each such
+  query's `WHERE` or `JOIN` with an index that already exists when the query runs; an index created
+  in a later version, or present only on `main`, does not count. Check a backport on the target
+  branch itself; do not assume an index, column or other change from `main` came with it.
 - Use Docker containers for local DB setup; sample data loads automatically in the dev environment.
 - **Put a migration in the release its feature ships in, in a folder that has not shipped.** A
   database that has run a later version of the same release line never reads an earlier folder

@@ -16,6 +16,7 @@ package org.openmetadata.service.datacontract.odcs;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -102,6 +103,9 @@ final class ODCSLegacyQuality {
   ObjectNode v22(JsonNode source, String column) {
     if (source.has("templateName") && source.has("toolName") && source.has("code"))
       return source.deepCopy();
+    ObjectNode canonical = source.deepCopy();
+    ObjectNode legacyMetadata = removeLegacyMetadata(canonical);
+    source = canonical;
     Optional<TestCaseOutcome> nativeRule = nativeRule(source, column);
     String template =
         nativeRule
@@ -110,24 +114,56 @@ final class ODCSLegacyQuality {
                 source
                     .path("metric")
                     .asText(source.path("rule").asText(source.path("type").asText("odcsRule"))));
-    ObjectNode result = ODCSExportModelWriter.JSON.createObjectNode();
+    ObjectNode result =
+        legacyMetadata == null
+            ? ODCSExportModelWriter.JSON.createObjectNode()
+            : legacyMetadata.deepCopy();
+    if (legacyMetadata != null && nativeRule.isEmpty())
+      template = legacyMetadata.path("templateName").asText(template);
     result.put("templateName", template);
     result.put(
         "toolName", nativeRule.isPresent() ? "openmetadata" : source.path("engine").asText("odcs"));
     result.put("toolRuleName", source.path("name").asText(template));
-    result.put("code", nativeRule.map(ODCSLegacyQuality::implementation).orElse(source.toString()));
+    result.put(
+        "code",
+        nativeRule
+            .map(ODCSLegacyQuality::implementation)
+            .orElse(
+                legacyMetadata != null && source.has("implementation")
+                    ? source.path("implementation").asText()
+                    : source.toString()));
+    result.remove("column");
     if (!column.isEmpty()) result.put("column", column);
     for (String field : List.of("description", "dimension", "severity", "businessImpact", "type")) {
       if (source.has(field)) result.set(field, source.get(field).deepCopy());
     }
     if (source.has("schedule"))
       result.set("scheduleCronExpression", source.get("schedule").deepCopy());
+    result.remove("customProperties");
+    if (legacyMetadata != null && legacyMetadata.path("customProperties").isArray())
+      result.set("customProperties", legacyMetadata.path("customProperties").deepCopy());
     result
         .withArray("customProperties")
         .addObject()
         .put("property", "odcsRule")
         .set("value", source.deepCopy());
     return result;
+  }
+
+  private static ObjectNode removeLegacyMetadata(ObjectNode rule) {
+    ObjectNode metadata = null;
+    if (rule.path("customProperties") instanceof ArrayNode properties) {
+      for (int index = properties.size() - 1; index >= 0; index--) {
+        JsonNode property = properties.get(index);
+        if (ODCSImportQuality.LEGACY_METADATA.equals(property.path("property").asText())
+            && property.path("value").isObject()) {
+          metadata = property.path("value").deepCopy();
+          properties.remove(index);
+        }
+      }
+      if (properties.isEmpty()) rule.remove("customProperties");
+    }
+    return metadata;
   }
 
   private ObjectNode custom(JsonNode source, String column) {

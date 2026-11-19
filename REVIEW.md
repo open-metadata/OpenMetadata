@@ -315,6 +315,13 @@ repeatedly add the following.
   - Predicates on `entity_extension` must be index-usable; `LIKE 'app.version.%'` scans the table.
   - Scope catch-up sweeps to rows created after the previous upgrade: a missing target row can mean
     it was deleted on purpose.
+- **Migration queries on large, growing tables must not scan the whole table.** Check that each
+  such query's `WHERE` or `JOIN` is backed by an index, and that the index already exists when the
+  query runs: an index created in a later version, or present only on `main`, does not help an
+  earlier version. Check a backport on the target branch itself; do not assume an index, column or
+  other change from `main` came with it. A test on an empty database will not show a scan. (The
+  2.0.8 `audit_log_event` cleanup ran for hours on large deployments because only 2.1.0 indexed
+  `entity_type`.)
 - **Earlier releases' stored data.**
   - A new schema `maximum` (Pydantic `le=`) must not reject saved configs; ship a clamping migration.
   - Class names persisted by Quartz or `ServiceLoader` keep resolving.
@@ -327,6 +334,17 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
 
 ### UI
 
+- **No duplicate component or variant.** A new UI component implementing a concept the tree already
+  has (empty state, status badge, confirm dialog, skeleton, search input, date range, pagination —
+  the canon table is `.claude/rules/single-source.md`) is a 🔴 unless the PR says why the canonical
+  one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
+  is a prop/variant on the original, or a core-component extension. Name the existing component in
+  the finding. A sanctioned migration's successor is done only when the old variant's importer count
+  is zero and the file is deleted.
+- **No new page scaffold.** New pages use the ui-core `PageLayout`
+  (`PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header`/`.PageHeader` +
+  `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
+  mechanism is a finding.
 - **antd → core migrations keep behavior.** List each implicit antd behavior or default the call
   site relied on, and carry it over:
   - z-index: the core overlay is `z-50`, an antd drawer is 1000, so a dialog can open under a drawer;

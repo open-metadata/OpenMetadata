@@ -4,8 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.macasaet.fernet.Key;
+import com.macasaet.fernet.Token;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
+import java.security.SecureRandom;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -225,10 +228,16 @@ class AlertLimitsTest {
             .withConfig(
                 Map.of(
                     "endpoint",
-                    Fernet.getInstance().encrypt("https://hooks.example.com/old"),
+                    encryptedWithAnotherKey("https://hooks.example.com/old"),
                     "receivers",
                     receivers(receivers)));
     return alert(List.of(destination), ORDINARY_BATCH);
+  }
+
+  // Ciphertext written with a key the server does not have: it does not decrypt.
+  private static String encryptedWithAnotherKey(String secret) {
+    return Fernet.FERNET_PREFIX
+        + Token.generate(new SecureRandom(), Key.generateKey(), secret).serialise();
   }
 
   private static Set<String> receivers(int count) {

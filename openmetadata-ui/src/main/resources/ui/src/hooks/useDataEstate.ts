@@ -16,6 +16,7 @@ import type { Bucket } from 'Models';
 import { useMemo } from 'react';
 import { AGGREGATE_PAGE_SIZE_LARGE } from '../constants/constants';
 import { SystemChartType } from '../enums/DataInsight.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import {
   DataInsightCustomChartResult,
@@ -41,6 +42,17 @@ export const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 const SERVICE_TYPE_FIELD = 'serviceType';
 
 /**
+ * Columns share the data-asset alias and carry their table's `serviceType`, so
+ * counting them would size every connector by its column count. Data Insights
+ * and the "Total data assets" card do not count columns as assets either.
+ */
+const EXCLUDE_COLUMNS_QUERY = JSON.stringify({
+  query: {
+    bool: { must_not: [{ term: { entityType: EntityType.TABLE_COLUMN } }] },
+  },
+});
+
+/**
  * Connectors the bar names individually. The rest fold into one "Other"
  * segment: past this many the slivers are unreadable, but their assets still
  * belong in the bar, or it would no longer add up to the estate.
@@ -59,11 +71,15 @@ export interface ConnectorCount {
 
 export interface DataEstate {
   /**
-   * The newest Data Insights total, or — when Data Insights has no rows for the
-   * window — the live sum of the per-connector counts.
+   * The sum of the per-connector counts, so the header always adds up to the
+   * bar beneath it. The estate-wide Data Insights total belongs to the "Total
+   * data assets" card.
    */
   totalAssets: number;
-  /** Change in total assets across the window; null when there is no baseline. */
+  /**
+   * Change in the Data Insights total across the window; null when there is no
+   * baseline. The per-connector counts are live, with no history to diff.
+   */
   totalDelta: number | null;
   /**
    * The window the figures on screen were measured over. Trails the selected
@@ -185,6 +201,7 @@ const fetchConnectorBreakdown = async (): Promise<ConnectorCount[]> => {
     deleted: false,
     fieldName: SERVICE_TYPE_FIELD,
     index: SearchIndex.DATA_ASSET,
+    query: EXCLUDE_COLUMNS_QUERY,
     size: AGGREGATE_PAGE_SIZE_LARGE,
   });
   const buckets: Bucket[] =
@@ -259,20 +276,14 @@ const deriveEstate = (
     (oldest, row) => Math.min(oldest, row.day),
     newestDay
   );
-  const liveTotal = allConnectors.reduce(
+  const totalAssets = allConnectors.reduce(
     (total, connector) => total + connector.count,
     0
   );
-  // Data Insights only has rows once its pipeline has run. Without them the
-  // header would print 0 above a populated breakdown, so it falls back to the
-  // live connector sum — which leaves out assets with no service (glossary
-  // terms and the like), so it is a floor rather than the same figure.
-  const hasInsights = totals.length > 0;
-  const totalAssets = hasInsights ? sumForDay(totals, newestDay) : liveTotal;
   const series = coverageSeries(coverage, totals);
   // A single-day window has no baseline to compare against, so report no
   // movement rather than the whole estate's worth of it.
-  const hasBaseline = hasInsights && oldestDay !== newestDay;
+  const hasBaseline = totals.length > 0 && oldestDay !== newestDay;
 
   return {
     connectorCount: allConnectors.length,
@@ -282,7 +293,9 @@ const deriveEstate = (
       series.length > 1 ? series[series.length - 1] - series[0] : null,
     descriptionCoverageSeries: series,
     totalAssets,
-    totalDelta: hasBaseline ? totalAssets - sumForDay(totals, oldestDay) : null,
+    totalDelta: hasBaseline
+      ? sumForDay(totals, newestDay) - sumForDay(totals, oldestDay)
+      : null,
   };
 };
 

@@ -64,6 +64,7 @@ import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
+import { getEntityDetailsUrl } from '../../../utils/RouterUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import {
@@ -76,7 +77,7 @@ import {
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
-import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
+import CopyButton from '../../common/CopyButton/CopyButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import Table from '../../common/Table/TableV2';
@@ -321,9 +322,15 @@ const APIEndpointSchema: FC<APIEndpointSchemaProps> = ({
           </span>
         </Tooltip>
         {!isVersionView && record.fullyQualifiedName && (
-          <CopyLinkButton
-            entityType={EntityType.API_ENDPOINT}
-            fieldFqn={record.fullyQualifiedName}
+          <CopyButton
+            className="hover-cell-icon"
+            isDisabled={!record.fullyQualifiedName}
+            size="xs"
+            testId="copy-field-link-button"
+            value={getEntityDetailsUrl(
+              EntityType.API_ENDPOINT,
+              record.fullyQualifiedName ?? ''
+            )}
           />
         )}
       </div>

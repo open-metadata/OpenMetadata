@@ -27,7 +27,11 @@ import { getSettingsLink } from '../utils/SettingsModalLinkUtils';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
 import { useAppModeStore } from './useAppMode';
-import { useHashPagingParams, useSettingsHash } from './useSettingsHash';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+  useSettingsHashSync,
+} from './useSettingsHash';
 
 // Real MemoryRouter (no react-router mock): the hook drives navigation through
 // react-router and reads the live URL hash from `globalThis.location`, so tests
@@ -149,6 +153,35 @@ describe('useSettingsHash', () => {
     act(() => result.current.clearHash());
 
     expect(result.current.state.tab).toBeNull();
+  });
+
+  it('replaces the entry by default and pushes one only when asked', () => {
+    const { result } = renderHook(
+      () => ({
+        location: useLocation(),
+        navigate: useNavigate(),
+        settings: useSettingsHash(),
+      }),
+      { wrapper: makeWrapper('/a') }
+    );
+    act(() => result.current.navigate('/explore'));
+
+    act(() => result.current.settings.setHash('personas'));
+    act(() =>
+      result.current.settings.setHash('personas', 'p1', undefined, {
+        push: true,
+      })
+    );
+    act(() => result.current.navigate(-1));
+
+    expect(result.current.location).toMatchObject({
+      pathname: '/explore',
+      hash: '#personas',
+    });
+
+    act(() => result.current.navigate(-1));
+
+    expect(result.current.location.pathname).toBe('/a');
   });
 
   it('should keep setHash/clearHash stable across plain re-renders', () => {
@@ -356,6 +389,28 @@ describe('useSettingsHash', () => {
       expect(result.current.settings.state.tab).toBeNull();
     });
 
+    // The user menu opens the modal with a push and Personas pushes each view
+    // the user opens; closing must land on the page, not leave them behind.
+    it('closes by going back past the views the modal pushed itself', () => {
+      const { result } = renderOnPage('/x?a=1');
+      const pageKey = result.current.location.key;
+      const pushView = (tab: string, subPath?: string) =>
+        act(() => {
+          globalThis.location.hash = `#${tab}${subPath ? `/${subPath}` : ''}`;
+          result.current.settings.setHash(tab, subPath, undefined, {
+            push: true,
+          });
+        });
+
+      pushView('preferences');
+      act(() => result.current.settings.setHash('personas'));
+      pushView('personas', 'p1');
+      act(() => result.current.settings.clearHash());
+
+      expect(result.current.location.key).toBe(pageKey);
+      expect(result.current.location.hash).toBe('');
+    });
+
     // Panels, the paging hook and the modal each mount the hook; one push is
     // still one entry to pop.
     it('counts a push once however many hooks see it', () => {
@@ -434,6 +489,60 @@ describe('useSettingsHash', () => {
       expect(result.current.location.pathname).toBe('/explore');
       expect(result.current.settings.state.tab).toBeNull();
     });
+  });
+});
+
+describe('useSettingsHashSync', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+    const { result, unmount } = renderHook(() => useSettingsHash(), {
+      wrapper,
+    });
+    act(() => result.current.clearHash());
+    unmount();
+  });
+
+  // The fullscreen persona customizer closes the modal but keeps the hash;
+  // Back from it to a view the modal shows must open the modal again.
+  it('opens the closed modal when the hash moves to another view of the same tab', () => {
+    const openModal = jest.fn();
+    const { result } = renderHook(
+      () => {
+        useSettingsHashSync(openModal, false, true);
+
+        return useSettingsHash();
+      },
+      { wrapper }
+    );
+
+    act(() => result.current.setHash('personas', 'p1/customize/homepage'));
+    act(() => result.current.setHash('personas', 'p1'));
+
+    expect(openModal).toHaveBeenCalledTimes(2);
+
+    act(() => result.current.setHash('personas', 'p1', { tab: 'users' }));
+
+    expect(openModal).toHaveBeenCalledTimes(2);
+  });
+
+  it('closes the open modal when Back lands on the page without a hash', () => {
+    const closeModal = jest.fn();
+    const { result } = renderHook(
+      () => {
+        useSettingsHashSync(jest.fn(), true, false, undefined, closeModal);
+
+        return useSettingsHash();
+      },
+      { wrapper }
+    );
+
+    act(() => result.current.setHash('personas'));
+    act(() => {
+      globalThis.location.hash = '';
+      globalThis.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(closeModal).toHaveBeenCalledTimes(1);
   });
 });
 

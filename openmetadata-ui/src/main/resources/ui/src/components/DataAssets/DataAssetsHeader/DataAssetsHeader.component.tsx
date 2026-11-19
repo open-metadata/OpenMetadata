@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonUtility,
   ClassificationTag,
+  Divider,
   FeaturedIcon,
   Owner,
   Tooltip,
@@ -69,6 +71,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { LifeCycle } from '../../../generated/type/lifeCycle';
 import { Style } from '../../../generated/type/schema';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
@@ -86,7 +89,12 @@ import { getContainerAncestors } from '../../../rest/storageAPI';
 import {
   getDataAssetsHeaderInfo,
   HeaderDotSeparator,
+  isRecordedLifeCycleTimestamp,
 } from '../../../utils/DataAssetsHeader.utils';
+import {
+  formatDateTime,
+  getRelativeTime,
+} from '../../../utils/date-time/DateTimeUtils';
 import EntityLink from '../../../utils/EntityLink';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
@@ -312,7 +320,13 @@ export const DataAssetsHeader = ({
         : EntityStatus.Unprocessed;
 
     return shouldShowStatus && entityStatus ? (
-      <EntityStatusBadge showDivider={false} status={entityStatus} />
+      <EntityStatusBadge
+        entityId={dataAsset.id}
+        entityType={entityType}
+        fqn={dataAsset.fullyQualifiedName}
+        showDivider={false}
+        status={entityStatus}
+      />
     ) : null;
   }, [entityType, dataAsset]);
 
@@ -327,24 +341,25 @@ export const DataAssetsHeader = ({
     }
 
     return (
-      <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger
-          aria-label={t('label.check-upstream-failure')}
-          onPress={() =>
-            navigate({
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            })
-          }>
-          <Alerts className="tw:text-fg-error-primary" size={24} />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Alerts}
+        size="lg"
+        tooltip={t('label.check-upstream-failure')}
+        tooltipPlacement="right"
+        onClick={() =>
+          navigate({
+            pathname: getEntityDetailsPath(
+              entityType,
+              dataAsset?.fullyQualifiedName ?? '',
+              EntityTabs.LINEAGE
+            ),
+            search: QueryString.stringify({
+              layers: [LineageLayer.DataObservability],
+            }),
+          })
+        }
+      />
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 
@@ -794,11 +809,43 @@ export const DataAssetsHeader = ({
     );
   };
 
+  // lifeCycle.updated is when the asset last changed at its source, set by
+  // ingestion from the source's metadata or the usage workflow's query log; it
+  // is not when the entity was edited in OpenMetadata.
+  const renderSourceUpdatedAt = () => {
+    const sourceUpdatedAt = (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle
+      ?.updated?.timestamp;
+
+    if (!isRecordedLifeCycleTimestamp(sourceUpdatedAt)) {
+      return null;
+    }
+
+    return (
+      <>
+        <Box align="center" gap={2}>
+          <Typography as="span" color="secondary" size="text-sm">
+            {t('label.updated-at-source')}
+          </Typography>
+          <Typography
+            as="span"
+            data-testid="source-updated-at"
+            size="text-sm"
+            tooltip={formatDateTime(sourceUpdatedAt)}
+            weight="medium">
+            {getRelativeTime(sourceUpdatedAt)}
+          </Typography>
+        </Box>
+        <Divider className="tw:h-5" orientation="vertical" />
+      </>
+    );
+  };
+
   const renderFollowAndVoteStats = () => {
     const followLabel = t(`label.${isFollowing ? 'un-follow' : 'follow'}`);
 
     return (
       <div className="tw:flex tw:items-center tw:gap-4">
+        {renderSourceUpdatedAt()}
         {canShowFollowStat && onFollowClick && (
           <StatItem
             iconNode={<FollowStarIcon selected={isFollowing} />}
@@ -857,8 +904,10 @@ export const DataAssetsHeader = ({
               Activity
             )
           }
+          radius="lg"
+          shape="square"
           size="md"
-          theme="surface"
+          theme="modern"
         />
         {editStylePermission && (
           <ButtonUtility

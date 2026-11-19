@@ -14,6 +14,7 @@
 package org.openmetadata.service.context.center;
 
 import java.util.Optional;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.llm.LLMCompletionClient;
 
@@ -40,5 +41,30 @@ public interface AiProvider {
    */
   default Optional<LLMCompletionClient> duplicateJudge() {
     return Optional.ofNullable(LLMClientHolder.get());
+  }
+
+  /**
+   * Whether memories can be extracted now, and why not: uploads and article edits extract only
+   * while it is. By default that takes the LLM layer and {@code memoryExtractionEnabled}, and never
+   * answers {@code ProviderDisabled}: only a provider with a platform of its own, such as Collate's,
+   * does, while that platform is switched off.
+   *
+   * <p>Article prepare and update call it, so an override must be cheap, must never throw or return
+   * null, and must answer the same way throughout one request.
+   */
+  default ExtractionAvailability extractionAvailability() {
+    return LLMClientHolder.isMemoryExtractionEnabled()
+        ? new ExtractionAvailability().withAvailable(true)
+        : new ExtractionAvailability().withAvailable(false).withReason(whyLlmCannotExtract());
+  }
+
+  /** Unavailable, not off, only while extraction is switched on but its LLM failed to build. */
+  private static ExtractionAvailability.Reason whyLlmCannotExtract() {
+    final boolean switchedOnButUnbuilt =
+        LLMClientHolder.isMemoryExtractionSwitchedOn()
+            && LLMClientHolder.getUnavailableReason().isPresent();
+    return switchedOnButUnbuilt
+        ? ExtractionAvailability.Reason.ProviderUnavailable
+        : ExtractionAvailability.Reason.ExtractionDisabled;
   }
 }
