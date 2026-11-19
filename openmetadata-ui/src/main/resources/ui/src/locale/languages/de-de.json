@@ -2048,6 +2048,7 @@
     "last-run-sentence": "Letzte Ausführung",
     "last-seen": "Zuletzt gesehen",
     "last-updated": "Zuletzt aktualisiert",
+    "last-used-time": "Zuletzt verwendet {{time}}",
     "late-by": "Zu spät",
     "latency": "Latenz",
     "latest": "Neueste",
