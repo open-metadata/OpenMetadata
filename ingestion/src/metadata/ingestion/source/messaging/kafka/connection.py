@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.models.custom_pydantic import SECRET, SecretReferenceError
+from metadata.ingestion.models.custom_pydantic import SECRET, resolve_secret_reference
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
 
@@ -56,40 +56,6 @@ TIMEOUT_SECONDS = 10
 CONSUMER_ONLY_CONFIG_KEYS = ("group.id", "enable.auto.commit", "auto.offset.reset")
 
 
-def _resolve_secret_value(value: str) -> str:
-    """Resolve a `secret:` reference against the configured secrets manager.
-
-    A reference the secrets manager cannot return, or returns no value for, raises
-    `SecretReferenceError`. Imported lazily, as in custom_pydantic, to avoid a circular import.
-    """
-    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
-        DBSecretsManager,
-    )
-    from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
-        SecretsManagerFactory,
-    )
-
-    factory = SecretsManagerFactory()
-    secrets_manager = factory.get_secrets_manager()
-    # The server only hands out references with an external store; under the default DB
-    # provider a value starting with `secret:` is the literal setting and must reach the client.
-    if not secrets_manager or isinstance(secrets_manager, DBSecretsManager):
-        return value
-    provider = getattr(factory.secrets_manager_provider, "value", factory.secrets_manager_provider)
-    secret_id = value.replace(SECRET, "", 1)
-    try:
-        resolved = secrets_manager.get_string_value(secret_id)
-    except Exception as exc:
-        raise SecretReferenceError(
-            f"Cannot resolve the secret reference [{value}] with the [{provider}] secrets manager: {exc}"
-        ) from exc
-    if resolved is None:
-        raise SecretReferenceError(
-            f"Cannot resolve the secret reference [{value}] with the [{provider}] secrets manager: no value returned."
-        )
-    return resolved
-
-
 def client_config(config: BaseModel | None) -> dict:
     """consumerConfig/schemaRegistryConfig as the flat dict librdkafka takes: declared keys
     (`sasl.password`) under their dotted names next to the free-form entries, with secrets left
@@ -101,13 +67,17 @@ def client_config(config: BaseModel | None) -> dict:
 
 def _resolve_secret_values(config: dict) -> dict:
     """consumerConfig/schemaRegistryConfig entries are encrypted per entry on the server.
-    With an external secrets manager the API hands the client `secret:` references, which
-    typed password fields resolve through CustomSecretStr but a free-form map cannot, so
-    resolve them here before the dict reaches librdkafka."""
-    return {
-        key: _resolve_secret_value(value) if isinstance(value, str) and value.startswith(SECRET) else value
-        for key, value in config.items()
-    }
+    With an external secrets manager the API hands the client `secret:` references, for the
+    declared keys and the free-form entries alike, so resolve them here before the dict reaches
+    librdkafka. An entry whose secret holds a cleared credential is left out, as the server
+    leaves out a cleared entry."""
+    resolved = {}
+    for key, value in config.items():
+        is_reference = isinstance(value, str) and value.startswith(SECRET)
+        resolved_value = resolve_secret_reference(value) if is_reference else value
+        if resolved_value is not None:
+            resolved[key] = resolved_value
+    return resolved
 
 
 class KafkaClient:

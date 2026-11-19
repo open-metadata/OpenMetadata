@@ -202,6 +202,37 @@ class SecretReferenceError(Exception):
     """A `secret:` reference that the configured secrets manager could not return."""
 
 
+def resolve_secret_reference(reference: str) -> str | None:
+    """Read the value a `secret:` reference points to.
+
+    Under the DB provider the value is the literal secret and is returned unchanged. Otherwise
+    the configured secrets manager is asked for it, and a reference it cannot return raises
+    `SecretReferenceError`. `None` means the store holds a cleared credential.
+    ADR:2026-11-19-an-unreadable-secret-reference-stops-ingestion
+    """
+    # Importing inside function to avoid circular import error
+    from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
+        DBSecretsManager,
+    )
+    from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
+        SecretsManagerFactory,
+    )
+
+    factory = SecretsManagerFactory()
+    secrets_manager = factory.get_secrets_manager()
+    if isinstance(secrets_manager, DBSecretsManager):
+        return reference
+    provider = getattr(factory.secrets_manager_provider, "value", factory.secrets_manager_provider)
+    secret_id = reference.removeprefix(SECRET)
+    logger.info("Getting secret value for %s", secret_id)
+    try:
+        return secrets_manager.get_string_value(secret_id)
+    except Exception as exc:
+        raise SecretReferenceError(
+            f"Cannot resolve the secret reference [{reference}] with the [{provider}] secrets manager: {exc}"
+        ) from exc
+
+
 class _CustomSecretStr(SecretStr):
     """
     Custom SecretStr class which use the configured Secrets Manager to retrieve the actual values.
@@ -228,50 +259,16 @@ class _CustomSecretStr(SecretStr):
         We log it and fall back to an empty string so downstream callers that
         expect a string (e.g. URL building with ``quote_plus``) do not crash.
 
-        A ``secret:`` reference the secrets manager cannot return raises
-        ``SecretReferenceError``: the reference is never handed on as the value.
-
-        The DB provider never hands out references, so under it a value starting
-        with ``secret:`` is the literal secret and is returned unchanged.
+        ``secret:`` references resolve through ``resolve_secret_reference``.
         """
         secret_value = self._secret_value
         if not skip_secret_manager and secret_value and secret_value.startswith(SECRET):
-            secret_value = self._read_reference()
+            secret_value = resolve_secret_reference(secret_value)
 
         if secret_value is None:
             logger.warning("Resolved a null secret value; treating it as an empty string")
             secret_value = ""
         return secret_value
-
-    def _read_reference(self) -> str | None:
-        """Read the value a `secret:` reference points to from the configured secrets manager."""
-        # Importing inside function to avoid circular import error
-        from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
-            DBSecretsManager,
-        )
-        from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
-            SecretsManagerFactory,
-        )
-
-        factory = SecretsManagerFactory()
-        secrets_manager = factory.get_secrets_manager()
-        provider = getattr(factory.secrets_manager_provider, "value", factory.secrets_manager_provider)
-        if not secrets_manager:
-            raise SecretReferenceError(
-                f"Cannot resolve the secret reference [{self._secret_value}]:"
-                f" no secrets manager is configured for provider [{provider}]."
-            )
-        if isinstance(secrets_manager, DBSecretsManager):
-            return self._secret_value
-        secret_id = self._secret_value.replace(SECRET, "")
-        logger.info("Getting secret value for %s", secret_id)
-        try:
-            return secrets_manager.get_string_value(secret_id)
-        except Exception as exc:
-            raise SecretReferenceError(
-                f"Cannot resolve the secret reference [{self._secret_value}]"
-                f" with the [{provider}] secrets manager: {exc}"
-            ) from exc
 
 
 def handle_secret(value: Any, handler, info: SerializationInfo) -> str:

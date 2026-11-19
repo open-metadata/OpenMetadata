@@ -17,6 +17,7 @@ import base64
 import os
 import traceback
 from abc import ABC
+from typing import cast
 
 from kubernetes import client, config
 from kubernetes.client.exceptions import ApiException
@@ -128,8 +129,12 @@ class KubernetesSecretsManager(ExternalSecretsManager, ABC):
         :raises ValueError: when the secret does not exist or has no `value` key
         """
         try:
-            # Get the secret from Kubernetes
-            secret = self.client.read_namespaced_secret(name=secret_id, namespace=self.namespace)
+            # The client documents a V1Secret but is untyped, so the checker would infer every
+            # shape its generic call_api can return.
+            secret = cast(
+                "client.V1Secret",
+                self.client.read_namespaced_secret(name=secret_id, namespace=self.namespace),
+            )
         except ApiException as exc:
             if exc.status == 404:
                 raise ValueError(f"Secret [{secret_id}] not found in namespace [{self.namespace}].") from exc

@@ -149,22 +149,6 @@ def test_secret_references_in_config_maps_are_resolved():
     assert registry_config["basic.auth.user.info"].startswith("resolved:/om/messaging")
 
 
-def test_config_maps_pass_through_when_no_secrets_manager_is_configured():
-    from metadata.ingestion.source.messaging.kafka.connection import get_connection
-
-    config = _kafka_config(consumerConfig={"ssl.key.password": "secret:/om/messaging/prod/key"})
-
-    with (
-        patch(f"{CONNECTION_MODULE}.AdminClient") as mock_admin,
-        patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
-    ):
-        mock_factory.return_value.get_secrets_manager.return_value = None
-        get_connection(config)
-
-    admin_config = mock_admin.call_args.args[0]
-    assert admin_config["ssl.key.password"] == "secret:/om/messaging/prod/key"
-
-
 def test_literal_secret_prefixed_values_pass_through_under_the_default_db_provider():
     """The default provider never hands out references, so a literal `secret:` value is kept."""
     from metadata.ingestion.source.messaging.kafka.connection import get_connection
@@ -186,17 +170,19 @@ def test_literal_secret_prefixed_values_pass_through_under_the_default_db_provid
 SECRET_REFERENCE = "secret:/om/messaging/prod/key"
 
 
-def _connect_with_secrets_manager(secrets_manager):
+def _connect_with_secrets_manager(secrets_manager) -> dict:
+    """Build the connection and return the config the admin client received."""
     from metadata.ingestion.source.messaging.kafka.connection import get_connection
 
-    config = _kafka_config(consumerConfig={"ssl.key.password": SECRET_REFERENCE})
+    config = _kafka_config(consumerConfig={"ssl.key.password": SECRET_REFERENCE, "session.timeout.ms": 6000})
     with (
-        patch(f"{CONNECTION_MODULE}.AdminClient"),
+        patch(f"{CONNECTION_MODULE}.AdminClient") as mock_admin,
         patch("metadata.utils.secrets.secrets_manager_factory.SecretsManagerFactory") as mock_factory,
     ):
         mock_factory.return_value.get_secrets_manager.return_value = secrets_manager
         mock_factory.return_value.secrets_manager_provider = SecretsManagerProvider.aws
         get_connection(config)
+    return mock_admin.call_args.args[0]
 
 
 def test_unreadable_secret_reference_in_config_map_names_the_reference_and_the_provider():
@@ -211,12 +197,13 @@ def test_unreadable_secret_reference_in_config_map_names_the_reference_and_the_p
     assert isinstance(error.value.__cause__, KeyError)
 
 
-def test_secret_reference_in_config_map_without_a_value_names_the_reference_and_the_provider():
+def test_secret_reference_holding_a_cleared_credential_leaves_the_entry_out():
+    """A secret stored as `null` is a cleared credential: the server leaves a cleared entry out of
+    the config, so the client config must not carry it either, not even as an empty string."""
     secrets_manager = MagicMock()
     secrets_manager.get_string_value.return_value = None
 
-    with pytest.raises(SecretReferenceError) as error:
-        _connect_with_secrets_manager(secrets_manager)
+    admin_config = _connect_with_secrets_manager(secrets_manager)
 
-    assert SECRET_REFERENCE in str(error.value)
-    assert f"[{SecretsManagerProvider.aws.value}]" in str(error.value)
+    assert "ssl.key.password" not in admin_config
+    assert admin_config["session.timeout.ms"] == 6000

@@ -1272,7 +1272,6 @@ public class SystemRepository implements DeploymentSettingPreparer {
   public void addExtraValidations(
       OpenMetadataApplicationConfig applicationConfig, ValidationResponse validation) {}
 
-  /** Only an LDAP login depends on the directory, so only then does the status report on it. */
   @VisibleForTesting
   static void addEncryptionKeyValidation(ValidationResponse validation) {
     StepValidation step =
@@ -1285,6 +1284,7 @@ public class SystemRepository implements DeploymentSettingPreparer {
             .orElseGet(() -> step.withPassed(true).withMessage(OWN_ENCRYPTION_KEY_MESSAGE)));
   }
 
+  /** Only an LDAP login depends on the directory, so only then does the status report on it. */
   @VisibleForTesting
   static void addLdapValidation(
       ValidationResponse validation, AuthenticationConfiguration authConfig) {

@@ -1070,14 +1070,13 @@ class TestUnresolvableSecretReference:
         with pytest.raises(SecretReferenceError, match="no secret named"):
             get_password_secret(connection).get_secret_value()
 
-    def test_reference_without_a_secrets_manager_raises(self):
+    def test_only_the_leading_prefix_is_removed_from_the_secret_id(self):
+        """The server strips exactly the leading `secret:`; an id that contains it again is kept whole."""
         factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
-        factory.secrets_manager = None
+        factory.secrets_manager = _UnreadableSecretsManager()
 
-        with pytest.raises(SecretReferenceError) as error:
-            CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value()
-
-        assert self.EXTERNAL_SECRET_REFERENCE in str(error.value)
+        with pytest.raises(SecretReferenceError, match=r"no secret named /team/secret:key"):
+            CustomSecretStr("secret:/team/secret:key").get_secret_value()
 
     def test_skipping_the_secrets_manager_keeps_the_reference(self):
         factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
