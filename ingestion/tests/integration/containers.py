@@ -27,7 +27,7 @@ from testcontainers.mysql import MySqlContainer
 class MySqlContainerConfigs:
     """MySQL Configurations"""
 
-    image: str = "mysql:8"
+    image: str = "mysql:8.4.13"
     username: str = "user"
     password: str = "password"
     dbname: str = "db"
