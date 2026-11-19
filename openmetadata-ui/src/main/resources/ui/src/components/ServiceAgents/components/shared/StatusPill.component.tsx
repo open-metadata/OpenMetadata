@@ -35,7 +35,7 @@ const IDLE_DOT_CLASS = 'tw:bg-utility-gray-400';
 
 const DOT_CLASS: Record<AgentStatus, string> = {
   failed: 'tw:bg-utility-error-500',
-  stopped: IDLE_DOT_CLASS,
+  stopped: 'tw:bg-utility-warning-500',
   queued: IDLE_DOT_CLASS,
   running: 'tw:bg-utility-brand-500',
   success: 'tw:bg-utility-success-500',

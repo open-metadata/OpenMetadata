@@ -80,6 +80,28 @@ describe('DeploymentSummaryCard', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should treat a stopped agent as finished, not queued', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({}),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'stopped',
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'label.deployment-complete'
+    );
+    expect(
+      screen.queryByTestId('deployment-progress-bar')
+    ).not.toBeInTheDocument();
+  });
+
   it('should take the newest Metadata run rather than summing the agents', () => {
     render(
       <DeploymentSummaryCard

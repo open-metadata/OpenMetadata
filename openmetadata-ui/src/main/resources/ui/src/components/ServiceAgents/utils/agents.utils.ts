@@ -193,7 +193,7 @@ export const STATUS_PILL_META: Record<AgentStatus, PillMeta> = {
   running: { color: 'brand', pulse: true },
   success: { color: 'success' },
   failed: { color: 'error' },
-  stopped: { color: 'gray' },
+  stopped: { color: 'warning' },
   queued: { color: 'gray' },
   none: { color: 'gray' },
 };

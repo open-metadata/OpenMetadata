@@ -47,6 +47,8 @@ const STAT_VALUE_CLASS: Record<string, string> = {
 interface AgentCounts {
   done: number;
   failed: number;
+  // Stopped runs ended without finishing: not queued, and not holding the banner in progress.
+  stopped: number;
   queued: number;
   running: number;
   total: number;
@@ -68,9 +70,10 @@ function getAgentCounts(
   const running = activeAgents.filter((a) => a.status === 'running').length;
   const done = activeAgents.filter((a) => a.status === 'success').length;
   const failed = activeAgents.filter((a) => a.status === 'failed').length;
-  const queued = total - done - running - failed;
+  const stopped = activeAgents.filter((a) => a.status === 'stopped').length;
+  const queued = total - done - running - failed - stopped;
 
-  return { done, failed, queued, running, total };
+  return { done, failed, queued, running, stopped, total };
 }
 
 // Assets ingested reflects only the Metadata agent — other agents count
@@ -120,7 +123,10 @@ function getOverallPercent(activeAgents: Agent[], total: number): number {
 }
 
 function isAllDone(counts: AgentCounts): boolean {
-  return counts.running === 0 && counts.done + counts.failed === counts.total;
+  return (
+    counts.running === 0 &&
+    counts.done + counts.failed + counts.stopped === counts.total
+  );
 }
 
 function getFailedSuffix(failed: number, t: TFunction): string {
