@@ -84,15 +84,27 @@ public final class RelationshipTypeResolver {
     return relationshipType;
   }
 
-  /**
-   * The name of the inverse {@code name} declares, whether or not it is registered: the writes that
-   * pick a stored direction need the declared one, and refuse a missing type when they look it up.
-   */
+  /** The name of the live inverse of {@code name}; null when it declares none or names no live type. */
   public String inverseName(final String name) {
+    return inverseOf(require(name)).map(RelationshipType::getName).orElse(null);
+  }
+
+  /**
+   * The live inverse a new relation of type {@code name} is stored against. An inverse that names no
+   * live type refuses the relation: storing it would pick a direction readers cannot undo.
+   */
+  public String requireInverseName(final String name) {
     final RelationshipType relationshipType = require(name);
-    final String inverseName =
-        relationshipType.getInverse() == null ? null : relationshipType.getInverse().getName();
-    return inverseName;
+    final Optional<RelationshipType> inverse = inverseOf(relationshipType);
+    if (relationshipType.getInverse() != null && inverse.isEmpty()) {
+      throw new BadRequestException(
+          "Relationship type '"
+              + name
+              + "' names inverse '"
+              + relationshipType.getInverse().getName()
+              + "', which is not a registered relationship type");
+    }
+    return inverse.map(RelationshipType::getName).orElse(null);
   }
 
   /**

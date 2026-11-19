@@ -132,21 +132,50 @@ class RelationshipTypeResolverTest {
   }
 
   @Test
-  void inverseNameReturnsInverseTypeName() {
+  void inverseNameReturnsTheLiveInverseTypeName() {
     RelationshipType broader =
         type("broader").withInverse(new EntityReference().withName("narrower"));
     when(relationshipTypeDAO.findEntityByName("broader", Include.NON_DELETED)).thenReturn(broader);
+    when(relationshipTypeDAO.findEntityByName("narrower", Include.NON_DELETED))
+        .thenReturn(type("narrower"));
 
     assertEquals("narrower", resolver().inverseName("broader"));
   }
 
   @Test
-  void inverseNameReadsTheDeclaredNameOfAReferenceStoredWithoutOne() {
+  void inverseNameIsNullWhenTheInverseNamesNoLiveType() {
     RelationshipType forward =
-        type("forward").withInverse(apiReference(UUID.randomUUID(), "inverse"));
+        type("forward").withInverse(apiReference(UUID.randomUUID(), "missing"));
     when(relationshipTypeDAO.findEntityByName("forward", Include.NON_DELETED)).thenReturn(forward);
+    when(relationshipTypeDAO.findEntityById(forward.getInverse().getId(), Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("missing"));
+    when(relationshipTypeDAO.findEntityByName("missing", Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("missing"));
 
-    assertEquals("inverse", resolver().inverseName("forward"));
+    assertNull(resolver().inverseName("forward"));
+  }
+
+  @Test
+  void requireInverseNameRefusesAnInverseThatNamesNoLiveType() {
+    RelationshipType forward =
+        type("forward")
+            .withInverse(
+                new EntityReference().withType("relationshipType").withFullyQualifiedName("gone"));
+    when(relationshipTypeDAO.findEntityByName("forward", Include.NON_DELETED)).thenReturn(forward);
+    when(relationshipTypeDAO.findEntityByName("gone", Include.NON_DELETED))
+        .thenThrow(new EntityNotFoundException("missing"));
+
+    BadRequestException exception =
+        assertThrows(BadRequestException.class, () -> resolver().requireInverseName("forward"));
+    assertTrue(exception.getMessage().contains("'gone'"), exception.getMessage());
+  }
+
+  @Test
+  void requireInverseNameIsNullWhenNoInverseIsDeclared() {
+    when(relationshipTypeDAO.findEntityByName("plain", Include.NON_DELETED))
+        .thenReturn(type("plain"));
+
+    assertNull(resolver().requireInverseName("plain"));
   }
 
   @Test

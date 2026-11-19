@@ -15,8 +15,8 @@ package org.openmetadata.service.jdbi3;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -145,7 +145,7 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
       entity.setDisjointWith(
           disjointWith.stream()
               .map(ref -> hydrate(ref, entity))
-              .collect(Collectors.toUnmodifiableSet()));
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
     }
   }
 
@@ -158,8 +158,9 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
   private RelationshipType findTarget(
       final EntityReference reference, final RelationshipType self) {
     final boolean isSelf =
-        (reference.getId() != null && reference.getId().equals(self.getId()))
-            || self.getName().equals(reference.getName());
+        reference.getId() == null
+            ? self.getName().equals(reference.getName())
+            : reference.getId().equals(self.getId());
     final RelationshipType target = isSelf ? self : findStoredTarget(reference);
     requireOneIdentity(reference, target);
     return target;
@@ -173,15 +174,18 @@ public class RelationshipTypeRepository extends EntityRepository<RelationshipTyp
         : findByNameOrNull(FullyQualifiedName.quoteName(reference.getName()), Include.ALL);
   }
 
-  /** A reference whose id, name and FQN name different types is refused, not resolved by one. */
+  /**
+   * A reference whose id, name and FQN name different types is refused rather than resolved by one;
+   * only the parts it carries are compared.
+   */
   private static void requireOneIdentity(
       final EntityReference reference, final RelationshipType target) {
-    final String fqnName =
-        reference.getFullyQualifiedName() == null
-            ? reference.getName()
-            : FullyQualifiedName.unquoteName(reference.getFullyQualifiedName());
-    final String targetName = target == null ? reference.getName() : target.getName();
-    if (!Objects.equals(targetName, reference.getName()) || !Objects.equals(targetName, fqnName)) {
+    final String name = reference.getName();
+    final String fqn = reference.getFullyQualifiedName();
+    final boolean isConflicting =
+        (target != null && name != null && !target.getName().equals(name))
+            || (name != null && fqn != null && !name.equals(FullyQualifiedName.unquoteName(fqn)));
+    if (isConflicting) {
       throw new BadRequestException(
           String.format(
               "Relationship type reference %s names more than one relationship type",

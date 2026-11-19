@@ -1459,13 +1459,6 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     return relationshipTypeResolver.inverseName(relationType);
   }
 
-  private String readableInverseType(String relationType) {
-    return relationshipTypeResolver
-        .inverseOf(relationshipTypeResolver.require(relationType))
-        .map(RelationshipType::getName)
-        .orElse(null);
-  }
-
   private boolean isEquivalentRelationType(String typeA, String typeB) {
     if (typeA.equals(typeB)) {
       return true;
@@ -1482,13 +1475,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private String computeCanonicalRelationType(UUID fromId, UUID toId, String relationType) {
-    if (fromId.compareTo(toId) > 0) {
-      String inverse = getInverseRelationType(relationType);
-      if (inverse != null) {
-        return inverse;
-      }
-    }
-    return relationType;
+    String inverse = relationshipTypeResolver.requireInverseName(relationType);
+    return fromId.compareTo(toId) > 0 && inverse != null ? inverse : relationType;
   }
 
   private int getRelationCount(UUID termId, String relationType, Map<String, Integer> cache) {
@@ -2375,7 +2363,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         TermRelation relation = buildTermRelation(rec.getJson(), relatedRef, relationType);
         relatedTermsMap.computeIfAbsent(termId, k -> new ArrayList<>()).add(relation);
 
-        String inverseType = readableInverseType(relationType);
+        String inverseType = getInverseRelationType(relationType);
         String reverseType = inverseType != null ? inverseType : relationType;
         EntityReference termRef =
             Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, termId, Include.ALL);
@@ -2394,7 +2382,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
               : relatedTermId + ":" + termId + ":" + relationType;
 
       if (processedPairs.add(pairKey)) {
-        String inverseType = readableInverseType(relationType);
+        String inverseType = getInverseRelationType(relationType);
         String termRelType = inverseType != null ? inverseType : relationType;
         EntityReference relatedRef =
             Entity.getEntityReferenceById(Entity.GLOSSARY_TERM, relatedTermId, Include.ALL);

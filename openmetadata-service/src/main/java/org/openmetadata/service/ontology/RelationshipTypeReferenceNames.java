@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.ontology;
 
+import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.EntityReference;
@@ -22,9 +24,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Gives every reference one relationship type holds to another ({@code inverse}, {@code
- * replacedBy}, {@code propertyChain}, {@code disjointWith}) its {@code name}. A relationship type's
- * fully qualified name is its quoted name, so a reference stored with only its FQN is completed
- * without a lookup (ADR:2026-11-19-relationship-type-references-carry-their-name).
+ * replacedBy}, {@code propertyChain}, {@code disjointWith}) both its {@code name} and its {@code
+ * fullyQualifiedName}. A relationship type's FQN is its quoted name, so a reference stored with only
+ * one of them is completed without a lookup
+ * (ADR:2026-11-19-relationship-type-references-carry-their-name).
  */
 public final class RelationshipTypeReferenceNames {
   private RelationshipTypeReferenceNames() {}
@@ -32,39 +35,61 @@ public final class RelationshipTypeReferenceNames {
   public static RelationshipType withNamedReferences(final RelationshipType type) {
     type.setInverse(named(type.getInverse()));
     type.setReplacedBy(named(type.getReplacedBy()));
-    if (type.getPropertyChain() != null) {
+    if (needsCompleting(type.getPropertyChain())) {
       type.setPropertyChain(
           type.getPropertyChain().stream().map(RelationshipTypeReferenceNames::named).toList());
     }
-    if (type.getDisjointWith() != null) {
+    if (needsCompleting(type.getDisjointWith())) {
       type.setDisjointWith(
           type.getDisjointWith().stream()
               .map(RelationshipTypeReferenceNames::named)
-              .collect(Collectors.toUnmodifiableSet()));
+              .collect(Collectors.toCollection(LinkedHashSet::new)));
     }
     return type;
   }
 
-  /** The one shape a stored reference to {@code type} takes, whichever writer stores it. */
+  private static boolean needsCompleting(final Collection<EntityReference> references) {
+    return references != null
+        && references.stream().anyMatch(reference -> named(reference) != reference);
+  }
+
+  /**
+   * The one shape a stored reference to {@code type} takes, whichever writer stores it: identity
+   * only, so it never goes stale when the type's display name or description changes.
+   */
   public static EntityReference referenceTo(final RelationshipType type) {
     return new EntityReference()
         .withId(type.getId())
         .withType(Entity.RELATIONSHIP_TYPE)
         .withName(type.getName())
-        .withFullyQualifiedName(type.getFullyQualifiedName())
-        .withDisplayName(type.getDisplayName())
-        .withDescription(type.getDescription());
+        .withFullyQualifiedName(type.getFullyQualifiedName());
   }
 
-  /** A copy carrying the name, so a reference held in a set is never changed in place. */
+  /**
+   * A copy carrying both the name and the FQN when the reference holds one of them, so a reference
+   * held in a set is never changed in place.
+   */
   public static EntityReference named(final EntityReference reference) {
     final boolean isNameless =
         reference != null
             && reference.getName() == null
             && reference.getFullyQualifiedName() != null;
-    return isNameless
-        ? JsonUtils.deepCopy(reference, EntityReference.class)
-            .withName(FullyQualifiedName.unquoteName(reference.getFullyQualifiedName()))
-        : reference;
+    final boolean isFqnless =
+        reference != null
+            && reference.getFullyQualifiedName() == null
+            && reference.getName() != null;
+    final EntityReference completed;
+    if (isNameless) {
+      completed =
+          JsonUtils.deepCopy(reference, EntityReference.class)
+              .withName(FullyQualifiedName.unquoteName(reference.getFullyQualifiedName()));
+    } else if (isFqnless) {
+      completed =
+          JsonUtils.deepCopy(reference, EntityReference.class)
+              .withFullyQualifiedName(FullyQualifiedName.quoteName(reference.getName()));
+    } else {
+      completed = reference;
+    }
+    return completed;
   }
 }

@@ -27,6 +27,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.ontology.RelationshipTypeReferenceNames;
 import org.openmetadata.service.ontology.RelationshipTypeReferences;
 import org.openmetadata.service.ontology.RelationshipTypeReferences.PartnerUse;
 import org.openmetadata.service.ontology.RelationshipTypeReferences.Reference;
@@ -68,16 +69,19 @@ final class RelationshipTypeReferenceGuard {
     }
   }
 
-  private RelationshipType findReferenced(final EntityReference reference) {
+  private RelationshipType findReferenced(final EntityReference stored) {
+    final EntityReference reference = RelationshipTypeReferenceNames.named(stored);
     final List<RelationshipType> byId =
         reference.getId() == null
             ? List.of()
             : daoCollection
                 .relationshipTypeDAO()
                 .findEntitiesByIds(List.of(reference.getId()), Include.ALL);
-    return !byId.isEmpty() || reference.getFullyQualifiedName() == null
-        ? byId.stream().findFirst().orElse(null)
-        : repository.findByNameOrNull(reference.getFullyQualifiedName(), Include.ALL);
+    final RelationshipType found =
+        !byId.isEmpty() || reference.getFullyQualifiedName() == null
+            ? byId.stream().findFirst().orElse(null)
+            : repository.findByNameOrNull(reference.getFullyQualifiedName(), Include.ALL);
+    return found == null ? null : RelationshipTypeReferenceNames.withNamedReferences(found);
   }
 
   /**
@@ -162,7 +166,7 @@ final class RelationshipTypeReferenceGuard {
    * cleared, which changes no relation because a deleted type holds none.
    */
   void afterRestore(final RelationshipType entity) {
-    final EntityReference inverse = entity.getInverse();
+    final EntityReference inverse = RelationshipTypeReferenceNames.named(entity.getInverse());
     if (inverse != null && !RelationshipTypeReferences.refersTo(inverse, entity)) {
       final RelationshipType partner = findReferenced(inverse);
       if (isRelinkable(partner)) {
@@ -177,23 +181,13 @@ final class RelationshipTypeReferenceGuard {
     }
   }
 
-  /**
-   * The partner's link back takes the shape of the restored type's own inverse reference, the shape
-   * the pair was written in: references written through the API carry no name, and the inverse is
-   * applied to relations by name, so a named link on one side only would read them differently.
-   */
   private static EntityReference backLinkTo(final RelationshipType restored) {
-    final EntityReference link =
-        new EntityReference()
-            .withId(restored.getId())
-            .withType(Entity.RELATIONSHIP_TYPE)
-            .withFullyQualifiedName(restored.getFullyQualifiedName());
-    return restored.getInverse().getName() == null ? link : link.withName(restored.getName());
+    return RelationshipTypeReferenceNames.referenceTo(restored);
   }
 
   /** The inverse {@code type} keeps when it is restored, as {@link #afterRestore} decides it. */
   EntityReference inverseKeptOnRestore(final RelationshipType type) {
-    final EntityReference inverse = type.getInverse();
+    final EntityReference inverse = RelationshipTypeReferenceNames.named(type.getInverse());
     final boolean namesPartner =
         inverse != null && !RelationshipTypeReferences.refersTo(inverse, type);
     final RelationshipType partner = namesPartner ? findReferenced(inverse) : null;
@@ -259,7 +253,7 @@ final class RelationshipTypeReferenceGuard {
   /**
    * Drops references to other types being removed in the same write, so each delete passes whatever
    * the order. A reference written by FQN before its target existed has no id and is matched by
-   * FQN or name.
+   * FQN.
    */
   private void detachReferencesTo(
       final RelationshipType type, final List<RelationshipType> removed) {
@@ -278,6 +272,7 @@ final class RelationshipTypeReferenceGuard {
   List<RelationshipType> listIncludingDeleted() {
     return daoCollection.relationshipTypeDAO().listIncludingDeleted().stream()
         .map(json -> JsonUtils.readValue(json, RelationshipType.class))
+        .map(RelationshipTypeReferenceNames::withNamedReferences)
         .toList();
   }
 }
