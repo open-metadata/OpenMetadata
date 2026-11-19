@@ -18,21 +18,28 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
 
 import java.io.StringReader;
 import java.net.URI;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.configuration.rdf.ShaclValidationMode;
 import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.entity.data.RelationshipType;
 import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.ontology.RelationshipTypeResolver;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.DatatypeIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.RelationIntent;
 import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
@@ -40,6 +47,7 @@ import org.openmetadata.service.rdf.GlossaryRdfImporter.TermIntent;
 /** Unit tests for the OWL/SKOS &rarr; glossary-term parsing in {@link GlossaryRdfImporter}. */
 class GlossaryRdfImporterTest {
   private static final String HCP = "http://example.com/ontology/hcp#";
+  private static final String SKOS_RELATED = "http://www.w3.org/2004/02/skos/core#related";
 
   private static final String ONTOLOGY =
       """
@@ -202,8 +210,9 @@ class GlossaryRdfImporterTest {
         """);
   }
 
-  @Test
-  void symmetricPropertyKeepsSelfInverseEvenWhenNamedInverseIsDeclared() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void symmetricPropertyKeepsSelfInverseEvenWhenNamedInverseIsDeclared(boolean alreadyRegistered) {
     String ontology =
         """
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
@@ -219,18 +228,90 @@ class GlossaryRdfImporterTest {
       RelationshipType forward = importer.buildRelationType(model, "prescribes");
       RelationshipType reverse = importer.buildRelationType(model, "prescribedBy");
 
+      Map<String, RelationshipType> newTypes = new LinkedHashMap<>();
+      newTypes.put(reverse.getName(), reverse);
+      Map<String, RelationshipType> existing = new LinkedHashMap<>();
+      (alreadyRegistered ? existing : newTypes).put(forward.getName(), forward);
+      assertTrue(importer.wireInversePartners(model, newTypes, existing).isEmpty());
+
       assertTrue(
           forward.getCharacteristics().contains(RelationshipCharacteristic.SYMMETRIC),
           "prescribes is symmetric");
-      // applyCharacteristics makes a symmetric property its own inverse, and that self
-      // reference must survive even though owl:inverseOf also names a partner.
+      // A named inverse declaration cannot change a symmetric property's self-reference.
       assertNotNull(forward.getInverse());
       assertEquals("prescribes", forward.getInverse().getName());
       assertEquals(forward.getId(), forward.getInverse().getId());
-      // The named partner is still resolved as the reverse direction.
-      assertNotNull(reverse.getInverse());
-      assertEquals("prescribes", reverse.getInverse().getName());
-      assertEquals(forward.getId(), reverse.getInverse().getId());
+      assertNull(reverse.getInverse());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void wireInversePartnersResolvesAGovernedPredicateInsteadOfItsLocalName() {
+    String ontology =
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:authored a owl:ObjectProperty ; owl:inverseOf hcp:inverse .
+        hcp:inverse a owl:ObjectProperty .
+        """;
+    Model model = ModelFactory.createDefaultModel();
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      GlossaryRdfImporter importer = new GlossaryRdfImporter(null, "test", true);
+      RelationshipType governed =
+          importer
+              .buildRelationType(model, "authored")
+              .withName("governedAuthored")
+              .withFullyQualifiedName("governedAuthored");
+      RelationshipType inverse = importer.buildRelationType(model, "inverse");
+      Map<String, RelationshipType> added = new LinkedHashMap<>();
+      added.put(inverse.getName(), inverse);
+      importer.wireInversePartners(model, added, Map.of(governed.getName(), governed));
+      assertNotNull(
+          inverse.getInverse(), "The inverse must resolve the governed predicate identity");
+      assertEquals(governed.getName(), inverse.getInverse().getName());
+      assertEquals(governed.getId(), inverse.getInverse().getId());
+    } finally {
+      model.close();
+    }
+  }
+
+  @Test
+  void collectRelationTypesRegistersOnePredicateOnceAcrossEdgeAndInverseSlots() {
+    String ontology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix hcp: <http://example.com/ontology/hcp#> .
+        hcp:mirrors a owl:ObjectProperty ; owl:inverseOf skos:related .
+        hcp:T0 a skos:Concept ; skos:related hcp:T1 ; hcp:mirrors hcp:T1 .
+        hcp:T1 a skos:Concept .
+        """;
+    CollectionDAO.RelationshipTypeDAO registry = mock(CollectionDAO.RelationshipTypeDAO.class);
+    GlossaryRdfImporter importer =
+        new GlossaryRdfImporter(
+            null,
+            "test",
+            true,
+            () -> ShaclValidationMode.OFF,
+            () -> new RelationshipTypeResolver(registry));
+    Model model = ModelFactory.createDefaultModel();
+    try {
+      model.read(new StringReader(ontology), null, "TURTLE");
+      Map<String, RelationshipType> added =
+          importer.collectRelationTypes(
+              model, importer.buildTermIntents(model), new LinkedHashMap<>());
+      List<String> related =
+          added.values().stream()
+              .filter(type -> URI.create(SKOS_RELATED).equals(type.getRdfPredicate()))
+              .map(RelationshipType::getName)
+              .toList();
+      assertEquals(List.of("skosRelated"), related);
+      importer.wireInversePartners(model, added, Map.of());
+      assertEquals("skosRelated", added.get("mirrors").getInverse().getName());
+      assertEquals("mirrors", added.get("skosRelated").getInverse().getName());
     } finally {
       model.close();
     }
