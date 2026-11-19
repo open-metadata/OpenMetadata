@@ -21,11 +21,7 @@ import {
 import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  StageStatus,
-  Status,
-  TestLoginResult,
-} from '../../../generated/system/testLoginResult';
+import { StageStatus, Status } from '../../../generated/system/testLoginResult';
 import {
   getConnectionStepIcon,
   getStepStatusLabel,
@@ -33,7 +29,9 @@ import {
 import InlineAlert from '../../common/InlineAlert/InlineAlert';
 import Loader from '../../common/Loader/Loader';
 import {
-  ConfigurationCheckState,
+  TimelineRowProps,
+  StageTimelineProps,
+  ResolvedIdentityProps,
   SsoTestLoginModalProps,
 } from './SsoTestLogin.interface';
 import {
@@ -48,12 +46,7 @@ const TimelineRow = ({
   messages,
   state,
   testId,
-}: {
-  label: string;
-  messages: string[];
-  state: ReturnType<typeof toConnectionStepState>;
-  testId: string;
-}) => {
+}: Readonly<TimelineRowProps>) => {
   const { t } = useTranslation();
 
   return (
@@ -86,10 +79,7 @@ const TimelineRow = ({
 const StageTimeline = ({
   configurationCheck,
   result,
-}: {
-  configurationCheck?: ConfigurationCheckState;
-  result?: TestLoginResult;
-}) => {
+}: Readonly<StageTimelineProps>) => {
   const { t } = useTranslation();
   const isSettled = isTestLoginSettled(result);
   // A skipped stage does not apply to this protocol at all, so it is not shown.
@@ -123,7 +113,7 @@ const StageTimeline = ({
   );
 };
 
-const ResolvedIdentity = ({ result }: { result: TestLoginResult }) => {
+const ResolvedIdentity = ({ result }: Readonly<ResolvedIdentityProps>) => {
   const { t } = useTranslation();
   const domainCheck = result.domainCheck;
   // The domain line matters whenever the rules are on, or whenever they rejected the identity.

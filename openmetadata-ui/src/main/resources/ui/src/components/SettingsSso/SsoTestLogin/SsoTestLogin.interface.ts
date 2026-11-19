@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { toConnectionStepState } from './SsoTestLogin.utils';
 import { StageStatus } from '../../../generated/system/testLoginResult';
 import {
   SecurityConfiguration,
@@ -67,4 +68,20 @@ export interface SsoTestLoginCredentialsFormProps {
 export interface SsoTestLoginCredentialsFormValues {
   email: string;
   password: string;
+}
+
+export interface TimelineRowProps {
+  label: string;
+  messages: string[];
+  state: ReturnType<typeof toConnectionStepState>;
+  testId: string;
+}
+
+export interface StageTimelineProps {
+  configurationCheck?: ConfigurationCheckState;
+  result?: TestLoginResult;
+}
+
+export interface ResolvedIdentityProps {
+  result: TestLoginResult;
 }

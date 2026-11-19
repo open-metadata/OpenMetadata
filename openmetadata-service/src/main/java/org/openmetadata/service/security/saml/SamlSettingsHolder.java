@@ -129,7 +129,7 @@ public class SamlSettingsHolder {
     if (!CommonUtil.nullOrEmpty(pem)) {
       // Keep future rollover keys: live settings are cached, so filtering here would require a
       // restart when the IdP activates its next key. Static validation requires an active key.
-      List<X509Certificate> certificates = SamlCertificates.parse(pem);
+      List<X509Certificate> certificates = SamlCertificates.parseUnexpiredIdpCertificates(pem);
       samlData.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, certificates.getFirst());
       for (int i = 0; i < certificates.size(); i++) {
         samlData.put(SettingsBuilder.IDP_X509CERTMULTI_PROPERTY_KEY + "." + i, certificates.get(i));

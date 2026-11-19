@@ -44,6 +44,19 @@ public final class SamlCertificates {
     return List.copyOf(valid);
   }
 
+  /** Retain upcoming rollover keys, but never trust a key that has already expired. */
+  public static List<X509Certificate> parseUnexpiredIdpCertificates(String value)
+      throws CertificateException {
+    Date now = new Date();
+    List<X509Certificate> certificates =
+        parse(value).stream().filter(certificate -> !now.after(certificate.getNotAfter())).toList();
+    if (certificates.isEmpty()) {
+      throw new CertificateException(
+          "All IdP X509 certificates have expired; import current IdP metadata");
+    }
+    return certificates;
+  }
+
   public static List<X509Certificate> parse(String value) throws CertificateException {
     try {
       if (value.replace(PEM_BEGIN, "").replace("-----END CERTIFICATE-----", "").isBlank()) {
