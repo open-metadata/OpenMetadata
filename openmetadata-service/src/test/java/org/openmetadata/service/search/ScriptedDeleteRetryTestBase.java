@@ -3,6 +3,10 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
@@ -22,6 +26,7 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.slf4j.LoggerFactory;
 
 public abstract class ScriptedDeleteRetryTestBase {
   protected static final String SCRIPT =
@@ -107,6 +112,23 @@ public abstract class ScriptedDeleteRetryTestBase {
     delete(path);
     assertOnlyOtherTestCaseRemains();
     assertEquals(List.of(1L, 0L), conflicts);
+  }
+
+  @ParameterizedTest
+  @EnumSource(DeletePath.class)
+  void persistentConflictsAreNotLoggedAsErrors(DeletePath path) throws Exception {
+    Logger managerLog = (Logger) LoggerFactory.getLogger(manager().getClass());
+    ListAppender<ILoggingEvent> logged = new ListAppender<>();
+    logged.start();
+    managerLog.addAppender(logged);
+    try {
+      keepConflicting = true;
+      delete(path);
+    } finally {
+      managerLog.detachAppender(logged);
+    }
+    assertEquals(List.of(1L, 1L, 1L), conflicts);
+    assertTrue(logged.list.stream().noneMatch(e -> e.getLevel().isGreaterOrEqual(Level.ERROR)));
   }
 
   @Test
