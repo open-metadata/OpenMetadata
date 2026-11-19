@@ -2643,6 +2643,8 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> params,
         @Bind("relatedLimit") int relatedLimit);
 
+    // Ordering the baseline lookup by both index columns lets MySQL read it in reverse.
+    // Closed baselines contribute nothing unless a later status reopens the incident.
     @SqlQuery(
         """
         WITH scoped_incidents AS (
@@ -2652,14 +2654,32 @@ public interface TimeSeriesDAOs {
           <dimensionJoin>
           <cond> AND tc.deleted = FALSE AND <groupKey> IN (<groupKeys>)
           AND i.createdAt <= :trendEnd
-        ), history AS (
-          SELECT scoped.groupKey, h.stateId, h.timestamp, h.testCaseResolutionStatusType,
-            LEAD(h.timestamp) OVER (
-              PARTITION BY scoped.groupKey, h.stateId ORDER BY h.timestamp, h.id
-            ) AS nextTimestamp
+        ), relevant_statuses AS (
+          SELECT scoped.groupKey, scoped.stateId, baseline.timestamp, baseline.id,
+            baseline.testCaseResolutionStatusType
+          FROM scoped_incidents scoped
+          INNER JOIN LATERAL (
+            SELECT h.timestamp, h.id, h.testCaseResolutionStatusType
+            FROM test_case_resolution_status_time_series h
+            WHERE h.stateId = scoped.stateId AND h.timestamp = (
+              SELECT prior.timestamp
+              FROM test_case_resolution_status_time_series prior
+              WHERE prior.stateId = scoped.stateId AND prior.timestamp <= :trendSample0
+              ORDER BY prior.stateId DESC, prior.timestamp DESC
+              LIMIT 1
+            )
+            ORDER BY h.id DESC
+            LIMIT 1
+          ) baseline ON baseline.testCaseResolutionStatusType IN (<openStatuses>)
+          UNION ALL
+          SELECT scoped.groupKey, h.stateId, h.timestamp, h.id, h.testCaseResolutionStatusType
           FROM scoped_incidents scoped
           INNER JOIN test_case_resolution_status_time_series h ON h.stateId = scoped.stateId
-          WHERE h.timestamp <= :trendEnd
+          WHERE h.timestamp > :trendSample0 AND h.timestamp <= :trendEnd
+        ), history AS (
+          SELECT groupKey, stateId, timestamp, testCaseResolutionStatusType,
+            LEAD(timestamp) OVER (PARTITION BY groupKey, stateId ORDER BY timestamp, id) AS nextTimestamp
+          FROM relevant_statuses
         ), samples AS (<samples>)
         SELECT h.groupKey, s.sample, COUNT(DISTINCT h.stateId) AS incidentCount
         FROM history h INNER JOIN samples s ON h.timestamp <= s.sampledAt

@@ -51,7 +51,7 @@ class IncidentGroupTrendSqlTest {
       String url =
           "jdbc:mysql://%s:%d/%s?allowPublicKeyRetrieval=true&useSSL=false"
               .formatted(database.getHost(), database.getMappedPort(3306), DATABASE);
-      runChecks(connect(url, "root", "com.mysql.cj.jdbc.Driver"), true);
+      runChecks(connect(url, "root", "com.mysql.cj.jdbc.Driver"));
     }
   }
 
@@ -68,7 +68,7 @@ class IncidentGroupTrendSqlTest {
       String url =
           "jdbc:postgresql://%s:%d/%s"
               .formatted(database.getHost(), database.getMappedPort(5432), DATABASE);
-      runChecks(connect(url, "postgres", "org.postgresql.Driver"), false);
+      runChecks(connect(url, "postgres", "org.postgresql.Driver"));
     }
   }
 
@@ -79,7 +79,7 @@ class IncidentGroupTrendSqlTest {
     return jdbi;
   }
 
-  private void runChecks(Jdbi jdbi, boolean mysql) {
+  private void runChecks(Jdbi jdbi) {
     jdbi.useHandle(
         handle -> {
           handle.execute(
@@ -89,16 +89,23 @@ class IncidentGroupTrendSqlTest {
           handle.execute(
               "CREATE TABLE test_case_resolution_status_time_series (stateId VARCHAR(36), id VARCHAR(36), timestamp BIGINT, testCaseResolutionStatusType VARCHAR(36))");
           handle.execute(
+              "CREATE INDEX incident_history_state_timestamp ON test_case_resolution_status_time_series (stateId, timestamp)");
+          handle.execute(
               "INSERT INTO test_case VALUES ('test', 'table', FALSE), ('other', 'other_table', FALSE), ('deleted', 'table', TRUE)");
           handle.execute(
-              "INSERT INTO test_case_incident VALUES ('a','test',50),('b','test',110),('c','test',120),('d','test',700),('e','other',50),('f','deleted',50)");
+              "INSERT INTO test_case_incident VALUES ('a','test',50),('b','test',110),('c','test',120),('d','test',700),('e','other',50),('f','deleted',50),"
+                  + "('g','test',10),('h','test',10),('j','test',10),('k','test',10)");
           handle.execute(
               "INSERT INTO test_case_resolution_status_time_series VALUES "
                   + "('a','1',50,'New'),('a','2',110,'Ack'),('a','3',120,'Assigned'),"
                   + "('b','4',110,'New'),('c','5',120,'New'),('d','6',700,'New'),"
                   + "('a','7',800,'Resolved'),('a','8',850,'Resolved'),"
                   + "('b','9',800,'Assigned'),('b','a',800,'Resolved'),"
-                  + "('e','b',50,'New'),('f','c',50,'New')");
+                  + "('e','b',50,'New'),('f','c',50,'New'),"
+                  + "('g','g1',10,'New'),('g','g2',90,'Resolved'),"
+                  + "('h','h1',10,'New'),('h','h2',90,'Resolved'),('h','h3',300,'Assigned'),"
+                  + "('j','j1',10,'New'),('j','j2',100,'Resolved'),"
+                  + "('k','k2',90,'Assigned'),('k','k1',90,'Resolved'),('k','k3',200,'Resolved')");
         });
     var dao = jdbi.onDemand(CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO.class);
     var window = new IncidentGroupTrend(100, 900);
@@ -111,7 +118,7 @@ class IncidentGroupTrendSqlTest {
             "'New','Ack','Assigned'",
             List.of("table"),
             window.bindings());
-    assertEquals(List.of(1, 3, 3, 3, 3, 3, 4, 2, 2), IncidentGroupTrend.counts(rows));
+    assertEquals(List.of(2, 3, 4, 4, 4, 4, 5, 3, 3), IncidentGroupTrend.counts(rows));
     assertEquals(
         Set.of("table"),
         rows.stream()
@@ -124,7 +131,7 @@ class IncidentGroupTrendSqlTest {
             handle.execute(
                 "INSERT INTO test_case_resolution_status_time_series VALUES ('c','d',850,'New'),('c','e',870,'Assigned')"));
     assertEquals(
-        List.of(1, 3, 3, 3, 3, 3, 4, 2, 2),
+        List.of(2, 3, 4, 4, 4, 4, 5, 3, 3),
         IncidentGroupTrend.counts(
             dao.listIncidentGroupTrendCounts(
                 "tc.tableFqn",

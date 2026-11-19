@@ -21,7 +21,6 @@ import {
   TestCaseResolutionStatusTypes,
 } from '../../../../generated/tests/testCaseIncidentGroup';
 import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
-import { IncidentTrendSparklineProps } from './IncidentGroups.types';
 import IncidentGroupsTable from './IncidentGroupsTable';
 
 // The global mock drops the interpolated values; the related badge is a count,
@@ -45,19 +44,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
     AvatarGroup: jest.fn((props) => <actual.AvatarGroup {...props} />),
   };
 });
-
-jest.mock('./IncidentTrendSparkline', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(
-      ({ trend, trendDirection }: IncidentTrendSparklineProps) => (
-        <div data-testid="trend-sparkline">
-          {`${trendDirection ?? 'none'}:${trend?.join(',') ?? ''}`}
-        </div>
-      )
-    ),
-}));
 
 const mockOnSortChange = jest.fn();
 const mockOnGroupPreview = jest.fn();
@@ -179,8 +165,8 @@ describe('IncidentGroupsTable', () => {
     expect(screen.getByTestId('group-first-seen')).toHaveTextContent(
       'label.first-seen-date'
     );
-    expect(screen.getByTestId('trend-sparkline')).toHaveTextContent(
-      'Rising:1,0,0,2,0,1,3,4'
+    expect(screen.getByTestId('incident-trend-direction')).toHaveTextContent(
+      'label.rising'
     );
   });
 
@@ -263,7 +249,7 @@ describe('IncidentGroupsTable', () => {
     expect(screen.queryByTestId('group-first-seen')).not.toBeInTheDocument();
     expect(screen.queryByTestId('group-assignees')).not.toBeInTheDocument();
     expect(screen.getByText('label.none')).toBeInTheDocument();
-    expect(screen.getByTestId('trend-sparkline')).toHaveTextContent('none:');
+    expect(screen.queryByTestId('incident-trend')).not.toBeInTheDocument();
   });
 
   it('should name the owner dimension bucket of unowned test cases', () => {
@@ -411,6 +397,21 @@ describe('IncidentGroupsTable', () => {
     expect(mockOnGroupPreview).toHaveBeenCalledWith(fixtureGroup);
     expect(mockOnGroupOpen).not.toHaveBeenCalled();
   });
+
+  it.each(['incident-trend-sparkline', 'incident-trend-direction'])(
+    'should preview a group when %s is pressed',
+    (testId) => {
+      renderTable();
+
+      const target = screen.getByTestId(testId);
+
+      press(target);
+
+      expect(mockOnGroupPreview).toHaveBeenCalledTimes(1);
+      expect(mockOnGroupPreview).toHaveBeenCalledWith(fixtureGroup);
+      expect(target.closest('button')).toBeNull();
+    }
+  );
 
   it('should open the drill-down from the row chevron, not the preview', () => {
     renderTable();

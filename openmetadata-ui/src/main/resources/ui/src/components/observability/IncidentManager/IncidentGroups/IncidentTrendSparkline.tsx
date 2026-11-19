@@ -11,12 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Tooltip,
-  TooltipTrigger,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import {
@@ -32,11 +27,6 @@ import {
   getIncidentTrendTone,
 } from './IncidentGroups.utils';
 
-/**
- * Read-only trend line for one incident group: the bucket counts the server
- * computed, plus the direction it derived from them. Pure — every value it
- * draws comes from its props, so the row can render it without a fetch.
- */
 const IncidentTrendSparkline = ({
   trend,
   trendDirection,
@@ -59,43 +49,38 @@ const IncidentTrendSparkline = ({
   });
 
   return (
-    <Tooltip title={description}>
-      <TooltipTrigger>
-        <Box
-          className="tw:gap-0.5"
-          data-testid="incident-trend"
-          direction="col">
-          <svg
-            aria-label={description}
-            data-testid="incident-trend-sparkline"
-            fill="none"
-            height={SPARKLINE_HEIGHT}
-            role="img"
-            viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
-            width={SPARKLINE_WIDTH}>
-            <polyline
-              data-testid="incident-trend-line"
-              points={getIncidentTrendPoints(trend)}
-              // An SVG stroke takes no class, so the tone arrives as its token.
-              stroke={INCIDENT_TREND_COLORS[tone]}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={1.5}
-            />
-          </svg>
-          {directionLabel && (
-            <Typography
-              as="span"
-              className={INCIDENT_TREND_TEXT_CLASSES[tone]}
-              data-testid="incident-trend-direction"
-              size="text-xs"
-              weight="semibold">
-              {directionLabel}
-            </Typography>
-          )}
-        </Box>
-      </TooltipTrigger>
-    </Tooltip>
+    <Box className="tw:gap-0.5" data-testid="incident-trend" direction="col">
+      <Tooltip excludeTriggerFromTabOrder title={description}>
+        <svg
+          aria-label={description}
+          data-testid="incident-trend-sparkline"
+          fill="none"
+          height={SPARKLINE_HEIGHT}
+          role="img"
+          viewBox={`0 0 ${SPARKLINE_WIDTH} ${SPARKLINE_HEIGHT}`}
+          width={SPARKLINE_WIDTH}>
+          <polyline
+            data-testid="incident-trend-line"
+            points={getIncidentTrendPoints(trend)}
+            // An SVG stroke takes no class, so the tone arrives as its token.
+            stroke={INCIDENT_TREND_COLORS[tone]}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={1.5}
+          />
+        </svg>
+      </Tooltip>
+      {directionLabel && (
+        <Typography
+          as="span"
+          className={INCIDENT_TREND_TEXT_CLASSES[tone]}
+          data-testid="incident-trend-direction"
+          size="text-xs"
+          weight="semibold">
+          {directionLabel}
+        </Typography>
+      )}
+    </Box>
   );
 };
 

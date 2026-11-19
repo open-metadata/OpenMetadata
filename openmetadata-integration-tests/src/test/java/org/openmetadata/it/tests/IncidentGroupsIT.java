@@ -1008,6 +1008,14 @@ public class IncidentGroupsIT {
     assertEquals(List.of(1, 1, 1, 1, 1, 1, 0, 1, 1), group.getTrend());
     assertEquals(IncidentTrendDirection.Steady, group.getTrendDirection());
     assertEquals(1, group.getIncidentCount());
+
+    params.put("status", TestCaseResolutionStatusTypes.Assigned.value());
+    params.put("dateField", TestCaseResolutionStatusRepository.INCIDENT_DATE_FIELD_CREATED_AT);
+    params.put("startTs", String.valueOf(now - 2 * day));
+    params.put("endTs", String.valueOf(now));
+    TestCaseIncidentGroup filtered = findGroup(fetchGroups(params), table.getFullyQualifiedName());
+    assertEquals(group.getTrend(), filtered.getTrend());
+    assertEquals(1, filtered.getIncidentCount());
   }
 
   @Test
