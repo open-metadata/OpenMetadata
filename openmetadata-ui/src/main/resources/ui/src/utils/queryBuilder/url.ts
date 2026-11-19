@@ -19,6 +19,7 @@ const EXTENSION_FIELD = 'extension';
 // The `queryFilter` param for an Explore link. Explore reads its advanced search as a root conjunction over groups,
 // so a filter from a single-group builder becomes one group under an AND root: the modal then shows that builder's
 // rules as they were, and searches with the same filter.
+// ADR:2026-11-19-explore-urls-carry-the-elasticsearch-filter-not-the-tree
 export const getExploreQueryFilterParam = (
   queryFilter: QueryFilterInterface
 ): string => JSON.stringify({ query: { bool: { must: [queryFilter.query] } } });
