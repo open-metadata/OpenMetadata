@@ -37,15 +37,17 @@ A `resolutions` entry in a UI `package.json` exists for one of two reasons only:
    pin is acceptable only when that dependent is the package's only requester in the tree.
 
 Before adding an entry, upgrade the dependent, or delete the stale lockfile entry so Yarn
-re-resolves it within its range. Use an entry only when neither works. Never force a package
-across a major that its dependent did not declare.
+re-resolves it within its range. Use an entry only when neither works. An entry crosses a major
+its dependent did not declare only under rule 2, when no release inside the declared range is
+fixed, and only after checking that what the dependent imports still exists in the forced major.
 
 ## Consequences
 
 `openmetadata-ui` goes from 47 resolutions to 13, and core-components from 16 to 5. Removing the
-bare `js-yaml` pin also removes the scoped `@apidevtools/json-schema-ref-parser/js-yaml` pin, so
-the ordering rule in ADR:2026-11-17-ref-parser-js-yaml-resolution-precedes-bare-js-yaml no longer
-applies.
+bare `js-yaml` pin also removes the scoped `@apidevtools/json-schema-ref-parser/js-yaml` pin.
+collate-ui carries the same pair, and its companion change drops both too, as that record asked.
+With both pairs gone, the ordering rule in
+ADR:2026-11-17-ref-parser-js-yaml-resolution-precedes-bare-js-yaml no longer applies anywhere.
 
 A new advisory on a transitive package now needs a check of who requests it before any pin is
 added. A scoped entry has to be removed once its dependent ships a fixed range. Each remaining
