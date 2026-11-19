@@ -82,7 +82,9 @@ public class PasswordEntityMasker extends EntityMasker {
 
   public void maskIngestionPipeline(IngestionPipeline ingestionPipeline) {
     if (ingestionPipeline != null) {
-      IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
+      UnmatchedOptions.runDuring(
+          UnmatchedOptions.replaceLeaves(leaf -> PASSWORD_MASK),
+          () -> IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline));
       try {
         maskPasswordFields(ingestionPipeline);
       } catch (Exception e) {

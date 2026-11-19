@@ -375,7 +375,9 @@ public abstract class SecretsManager {
         encryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection(), true);
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline);
+    UnmatchedOptions.runDuring(
+        UnmatchedOptions.refuse(),
+        () -> IngestionPipelineBuilder.addDefinedConfig(ingestionPipeline));
     try {
       // A pipeline name is unique only within its service, so it cannot key the vault entry.
       encryptPasswordFields(
@@ -396,7 +398,9 @@ public abstract class SecretsManager {
         decryptOpenMetadataConnection(ingestionPipeline.getOpenMetadataServerConnection());
     ingestionPipeline.setOpenMetadataServerConnection(null);
     // we don't store OM conn sensitive data
-    IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline);
+    UnmatchedOptions.runDuring(
+        UnmatchedOptions.replaceLeaves(this::decryptIfTokenized),
+        () -> IngestionPipelineBuilder.addDefinedConfigForRead(ingestionPipeline));
     try {
       decryptPasswordFields(ingestionPipeline);
     } catch (Exception e) {

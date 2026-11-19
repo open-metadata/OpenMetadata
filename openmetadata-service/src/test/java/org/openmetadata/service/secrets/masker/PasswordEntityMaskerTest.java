@@ -148,6 +148,41 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   }
 
   @Test
+  @SuppressWarnings("unchecked")
+  void testEveryLeafOfAPipelineValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> gcpConfig =
+        Map.of("type", "service_account", "privateKey", TOKEN, "path", "/keys/sa.json");
+    Map<String, Object> source =
+        Map.of("dbtConfigType", "gcs", "dbtSecurityConfig", Map.of("gcpConfig", gcpConfig));
+    IngestionPipeline stored =
+        JsonUtils.convertValue(
+            Map.of(
+                "name",
+                "dbt-gcs",
+                "pipelineType",
+                "dbt",
+                "sourceConfig",
+                Map.of("config", Map.of("type", "DBT", "dbtConfigSource", source)),
+                "airflowConfig",
+                Map.of()),
+            IngestionPipeline.class);
+
+    EntityMaskerFactory.createEntityMasker().maskIngestionPipeline(stored);
+
+    Map<String, Object> config =
+        (Map<String, Object>)
+            ((Map<String, Object>)
+                    JsonUtils.readValue(JsonUtils.pojoToJson(stored), Map.class)
+                        .get("sourceConfig"))
+                .get("config");
+    Map<String, Object> security =
+        (Map<String, Object>)
+            ((Map<String, Object>) config.get("dbtConfigSource")).get("dbtSecurityConfig");
+    String mask = getMaskedPassword();
+    assertEquals(Map.of("type", mask, "privateKey", mask, "path", mask), security.get("gcpConfig"));
+  }
+
+  @Test
   void testEveryLeafOfAValueThatMatchesNoOptionIsMasked() {
     Map<String, Object> stored =
         Map.of(

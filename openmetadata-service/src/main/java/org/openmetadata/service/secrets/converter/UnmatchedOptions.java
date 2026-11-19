@@ -103,6 +103,15 @@ public final class UnmatchedOptions {
     }
   }
 
+  public static void runDuring(Handler handler, Runnable conversion) {
+    during(
+        handler,
+        () -> {
+          conversion.run();
+          return null;
+        });
+  }
+
   private static void restore(Handler previous) {
     if (previous == null) {
       HANDLER.remove();
