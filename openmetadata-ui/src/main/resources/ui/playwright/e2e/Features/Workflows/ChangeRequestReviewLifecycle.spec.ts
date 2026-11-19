@@ -252,6 +252,10 @@ const editDescription = async (
   // The editor loads the current text on a timer after it mounts; filling before
   // that lands merges the two texts and leaves focus in the editor, so Save never fires.
   await expect(editor).toContainText(current);
+  // fill() selects the text through the DOM, and the editor's autofocus frame can still
+  // collapse that selection to the caret after it; the editor's own keymap clears it in its state.
+  await editor.press('ControlOrMeta+a');
+  await editor.press('Backspace');
   await editor.fill(description);
   await expect(editor).toHaveText(description);
   const saved = waitForResponseWithStatus(
