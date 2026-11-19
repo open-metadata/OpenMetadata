@@ -76,7 +76,6 @@ import {
   PluginEntityDetailsContext,
   SlotContribution,
   TabContribution,
-  TestConnectionActionContribution,
 } from '../../../utils/ExtensionPointTypes';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -87,6 +86,7 @@ import {
   getResourceEntityFromServiceCategory,
   shouldTestConnection,
 } from '../../../utils/ServicePureUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AnnouncementsWidgetV3Body from '../../common/AnnouncementsWidget/AnnouncementsWidgetV3Body.component';
 import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
@@ -212,6 +212,20 @@ const ConnectionServiceDetailsPage: React.FC = () => {
   const [serviceDetails, setServiceDetails] = useState<ServicesType>(
     {} as ServicesType
   );
+  const [isExtraInfoLoaded, setIsExtraInfoLoaded] = useState(false);
+
+  useEffect(() => {
+    serviceUtilClassBase
+      .getExtraInfo()
+      .finally(() => setIsExtraInfoLoaded(true));
+  }, []);
+
+  // Resolved only after getExtraInfo() has loaded what it reads (e.g. the service's ingestion runner).
+  const extraInfoData = useMemo(() => {
+    return isExtraInfoLoaded
+      ? serviceUtilClassBase.getServiceExtraInfo(serviceDetails)
+      : null;
+  }, [serviceDetails, isExtraInfoLoaded]);
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
   const [isServicePermissionLoading, setIsServicePermissionLoading] =
@@ -545,9 +559,10 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     [serviceCategory]
   );
 
+  // Wait for the extra info, or a test started meanwhile goes out without the service's runner.
   const isTestingDisabled = useMemo(
-    () => !canEditAll || !connectionDetails,
-    [canEditAll, connectionDetails]
+    () => !isExtraInfoLoaded || !canEditAll || !connectionDetails,
+    [isExtraInfoLoaded, canEditAll, connectionDetails]
   );
 
   const goToEditConnection = useCallback(() => {
@@ -738,21 +753,6 @@ const ConnectionServiceDetailsPage: React.FC = () => {
     extensionRegistry.getContributions<SlotContribution>(
       EXTENSION_POINTS.SERVICE_DETAILS_FOOTER
     );
-
-  const testConnectionActions =
-    extensionRegistry.getContributions<TestConnectionActionContribution>(
-      EXTENSION_POINTS.SERVICE_DETAILS_TEST_CONNECTION_ACTIONS
-    );
-
-  const renderTestConnectionAction = (failure: string, onClose: () => void) =>
-    testConnectionActions.map(({ key, component: Action }) => (
-      <Action
-        key={key}
-        {...extensionContext}
-        failure={failure}
-        onClose={onClose}
-      />
-    ));
 
   // Contributed tabs (e.g. Collate's summary/insights/agents, ordered 10/20/30) sort ahead of the
   // OSS built-ins by design — `order` is the only coupling between this page and what a plugin adds,
@@ -1020,12 +1020,13 @@ const ConnectionServiceDetailsPage: React.FC = () => {
         }
         icon={
           <FeaturedIcon
-            className="tw:bg-[linear-gradient(180deg,#ffffff_0%,#f5f5f5_100%)]"
             color="gray"
             icon={getServiceLogo(
               serviceDetails.serviceType,
               'tw:h-6 tw:w-6 tw:object-contain'
             )}
+            radius="lg"
+            shape="square"
             size="lg"
             theme="modern"
           />
@@ -1062,7 +1063,7 @@ const ConnectionServiceDetailsPage: React.FC = () => {
       <PageLayout.Content className="tw:relative tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden! tw:p-0!">
         {/* Tab Content */}
         <div
-          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:p-4"
+          className="tw:relative tw:flex-1 tw:overflow-y-auto tw:overflow-x-hidden tw:py-3"
           data-testid="service-details-scroll-container"
           ref={contentScrollRef}
           // Reserve the contributed footer's height so the last of a tab's content can be scrolled
@@ -1139,13 +1140,9 @@ const ConnectionServiceDetailsPage: React.FC = () => {
                     {allowTestConn && (
                       <TestConnection
                         connectionType={serviceDetails?.serviceType ?? ''}
+                        extraInfo={extraInfoData?.name}
                         getData={() => connectionDetails}
                         isTestingDisabled={isTestingDisabled}
-                        renderFailureAction={
-                          testConnectionActions.length > 0
-                            ? renderTestConnectionAction
-                            : undefined
-                        }
                         serviceCategory={serviceCategory as ServiceCategory}
                         serviceName={serviceDetails?.name}
                         shouldValidateForm={false}

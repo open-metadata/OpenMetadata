@@ -297,7 +297,7 @@ class TestParquetDataFrameColumnParser(TestCase):
         ]
         other_types = [typ for typ in SupportedTypes if typ not in parquet_types]
         for other_type in other_types:
-            with self.subTest(other_type=other_type):
+            with self.subTest(other_type=other_type.value):
                 generic_parser = DataFrameColumnParser.create(self.df, other_type)
                 self.assertIsInstance(generic_parser.parser, GenericDataFrameColumnParser)
 
@@ -515,9 +515,8 @@ class TestParquetDataFrameColumnParser(TestCase):
             ),  # type: ignore
         ]
         actual = self.parquet_parser.get_columns()
-        for validation in zip(expected, actual):  # noqa: B905
-            with self.subTest(validation=validation):
-                expected_col, actual_col = validation
+        for expected_col, actual_col in zip(expected, actual):  # noqa: B905
+            with self.subTest(column=expected_col.name.root):
                 self.assertEqual(expected_col.name, actual_col.name)
                 self.assertEqual(expected_col.displayName, actual_col.displayName)
                 self.assertEqual(expected_col.dataType, actual_col.dataType)
@@ -529,9 +528,8 @@ class TestParquetDataFrameColumnParser(TestCase):
         self.assertEqual(expected.displayName, actual.displayName)
         if expected.children:
             self.assertEqual(len(expected.children), len(actual.children))
-            for validation in zip(expected.children, actual.children):  # noqa: B905
-                with self.subTest(validation=validation):
-                    expected_col, actual_col = validation
+            for expected_col, actual_col in zip(expected.children, actual.children):  # noqa: B905
+                with self.subTest(column=expected_col.name.root):
                     self._validate_parsed_column(expected_col, actual_col)
 
     def test_get_file_format_type_csv_gz(self):

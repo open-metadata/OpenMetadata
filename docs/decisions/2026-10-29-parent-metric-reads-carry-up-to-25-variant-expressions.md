@@ -1,7 +1,8 @@
 # A parent metric read carries the expression of up to 25 visible variants
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-29 (initial)
+- **Revisions:** v1 2026-10-29 (initial) · v2 2026-11-13 (a child the caller cannot view is
+  dropped, not kept as a bare reference)
 - **Deciders:** Vishnu Jain
 - **Guard:** `AIContextMcpIT#getEntityDetails_parentMetricCarriesEachVariantExpression`,
   `AIContextMcpIT#getEntityDetails_withholdsExpressionOfAVariantTheCallerCannotView`
@@ -26,3 +27,13 @@ The child list itself is unbounded.
 - A parent read with children costs one bulk read plus one authorization check per shown child.
 - 25 expressions of at most 1000 characters add about 25 KB, well inside the 100 KB response cap.
 - If hierarchies routinely go past 25 variants, page the children rather than raising the cap.
+
+## Amendment — a child the caller cannot view is dropped
+
+ADR:2026-10-31-metric-and-metric-group-responses-hide-relations-the-viewer-cannot-see removes a
+child the caller may not view from the metric response and recounts `childrenCount`, so such a
+child is no longer kept as a bare reference. Expressions are still added only to the first 25
+children the caller may `VIEW_ALL`. That check now only matters for a caller granted `VIEW_BASIC`
+on a child without `VIEW_ALL`; every user holds the Organization's default `DataConsumer` role,
+and a deny of `VIEW_ALL` also denies `VIEW_BASIC`, so the suite has no such caller and the guard
+above covers only the dropped child.

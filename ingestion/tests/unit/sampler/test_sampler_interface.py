@@ -18,7 +18,7 @@ from metadata.generated.schema.configuration.profilerConfiguration import (
 )
 from metadata.generated.schema.entity.data.table import TableData
 from metadata.sampler.sampler_interface import SamplerInterface
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT, SAMPLE_DATA_MAX_CELL_LENGTH
+from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.logger import sampler_logger
 
 SAMPLER_LOGGER = sampler_logger().name
@@ -161,33 +161,22 @@ def _sampler_warnings(caplog) -> list[str]:
 class TestSampleDataHandoffDiagnostics:
     """Issue #34299: report sampled data that is lost before classification."""
 
-    def test_handoff_loss_is_reported(self, caplog):
-        sampler = _handoff_sampler(_rows(60), sample_limit=60)
-
-        with caplog.at_level(logging.DEBUG, logger=SAMPLER_LOGGER):
-            result = sampler.generate_sample_data(None)
-
-        assert len(result.rows) == SAMPLE_DATA_DEFAULT_COUNT
-        warnings = _sampler_warnings(caplog)
-        assert len(warnings) == 1
-        assert "60 rows requested and 60 fetched, but only 50 handed off" in warnings[0]
-        assert "10 rows were dropped" in warnings[0]
-
     @pytest.mark.parametrize(
         "fetched,sample_limit",
         [
             (50, 50),  # ordinary run
+            (60, 60),  # budget above the default count is honored (#34622)
             (20, 60),  # table smaller than the requested sample
             (100, 50),  # custom query returns more rows than requested
         ],
     )
-    def test_no_loss_warning_when_requested_rows_are_handed_off(self, caplog, fetched, sample_limit):
+    def test_requested_rows_are_handed_off_without_warning(self, caplog, fetched, sample_limit):
         sampler = _handoff_sampler(_rows(fetched), sample_limit=sample_limit)
 
         with caplog.at_level(logging.DEBUG, logger=SAMPLER_LOGGER):
             result = sampler.generate_sample_data(None)
 
-        assert len(result.rows) == min(fetched, sample_limit, SAMPLE_DATA_DEFAULT_COUNT)
+        assert len(result.rows) == min(fetched, sample_limit)
         assert _sampler_warnings(caplog) == []
         assert f"{sample_limit} rows requested, {fetched} fetched, {len(result.rows)} handed off" in caplog.text
 

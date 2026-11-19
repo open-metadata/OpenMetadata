@@ -84,20 +84,6 @@ def _log_sample_data_handoff(
         fetched,
         handed_off,
     )
-    # Fetching fewer rows than requested (small table) or more than requested
-    # (custom sample query) is not a loss. Dropping rows we were asked for is.
-    dropped = min(requested, fetched) - handed_off
-    if dropped > 0:
-        logger.warning(
-            "Sample data for [%s]: %d rows requested and %d fetched, but only %d handed off."
-            " %d rows were dropped because sample data is capped at %d rows.",
-            entity_fqn,
-            requested,
-            fetched,
-            handed_off,
-            dropped,
-            SAMPLE_DATA_DEFAULT_COUNT,
-        )
     if truncated:
         logger.warning(
             "Sample data for [%s]: values longer than %d characters were truncated (column=count): %s",
@@ -259,6 +245,28 @@ class SamplerInterface(ABC):
         """Truncate string values that exceed the max cell length."""
         if isinstance(value, str) and len(value) > SAMPLE_DATA_MAX_CELL_LENGTH:
             return _TruncatedCell(value[:SAMPLE_DATA_MAX_CELL_LENGTH])
+        return value
+
+    @staticmethod
+    def _array_to_list(value: Any) -> Any:
+        """Return nested arrays and sequences as JSON-compatible lists.
+
+        pyarrow reads parquet list columns into numpy arrays. Auto classification skips
+        values it cannot read as text or lists, and the sample data upload would store
+        the array's repr.
+        """
+        import numpy as np  # pylint: disable=import-outside-toplevel
+
+        if isinstance(value, np.datetime64):
+            return None if np.isnat(value) else str(np.datetime_as_string(value))
+        if isinstance(value, np.ndarray):
+            # tolist() coerces nanosecond timestamps to integers, losing their meaning.
+            items = value if value.dtype.kind == "M" else value.tolist()
+            return [SamplerInterface._array_to_list(item) for item in items]
+        if isinstance(value, (list, tuple)):
+            return [SamplerInterface._array_to_list(item) for item in value]
+        if isinstance(value, dict):
+            return {key: SamplerInterface._array_to_list(item) for key, item in value.items()}
         return value
 
     def generate_sample_data(self, sample_data_config: SampleDataIngestionConfig | None = None) -> TableData:

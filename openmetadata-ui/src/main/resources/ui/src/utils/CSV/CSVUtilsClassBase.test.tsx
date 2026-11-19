@@ -24,8 +24,13 @@ import { RenderEditCellProps } from 'react-data-grid';
 import { lazyTextEditor } from '../../components/common/DataGrid/LazyDataGrid';
 import { UserTeamSelectableList } from '../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
+import {
+  AI_APP_MODE,
+  DEFAULT_APP_MODE,
+} from '../../constants/appMode.constants';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { useAppModeStore } from '../../hooks/useAppMode';
 import { getCSVStringFromColumnsAndDataSource } from './CSVPureUtils';
 import csvUtilsClassBase, { CSVUtilsClassBase } from './CSVUtilsClassBase';
 
@@ -572,6 +577,76 @@ describe('CSV utils ClassBase', () => {
 
       expect(onRowChange).toHaveBeenCalledWith({ ...row, tags: '' }, true);
     });
+
+    // Classic opens the users page in a new tab. AI mode serves no settings
+    // pages, so the button opens the settings modal over the grid instead.
+    it.each([
+      [
+        'owners',
+        'message.bulk-edit-open-users-and-teams',
+        '/settings/members',
+        '#members',
+      ],
+      [
+        'reviewers',
+        'message.bulk-edit-open-users',
+        '/settings/members/users',
+        '#members/users',
+      ],
+    ])(
+      'opens the users list from the empty %s picker',
+      async (column, actionLabel, classicPage, aiHash) => {
+        mockSearchQuery.mockResolvedValue({
+          hits: { hits: [], total: { value: 0 } },
+        });
+        const openSpy = jest
+          .spyOn(window, 'open')
+          .mockImplementation(() => null);
+        const Editor = csvUtils.getEditor(
+          column,
+          EntityType.METRIC,
+          multipleOwner,
+          {
+            usePlainTextEditor: true,
+          }
+        ) as FC<RenderEditCellProps<Record<string, unknown>, unknown>>;
+        const renderEditor = () =>
+          render(
+            <Editor
+              {...({
+                row: { name: 'asset', [column]: '' },
+                rowIdx: 0,
+                column: { key: column },
+                onRowChange: jest.fn(),
+                onClose: jest.fn(),
+              } as unknown as Parameters<typeof Editor>[0])}
+            />
+          );
+
+        const { unmount } = renderEditor();
+        fireEvent.click(
+          await screen.findByRole('button', { name: actionLabel })
+        );
+        unmount();
+        const classicCalls = openSpy.mock.calls.map(([url]) => url);
+
+        globalThis.history.replaceState(null, '', '/bulk/edit/metric/*');
+        useAppModeStore.getState().setMode(AI_APP_MODE);
+        renderEditor();
+        fireEvent.click(
+          await screen.findByRole('button', { name: actionLabel })
+        );
+        useAppModeStore.getState().setMode(DEFAULT_APP_MODE);
+        const aiLocation = `${globalThis.location.pathname}${globalThis.location.hash}`;
+        globalThis.history.replaceState(null, '', '/');
+
+        expect(classicCalls).toEqual([classicPage]);
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(aiLocation).toBe(`/bulk/edit/metric/*${aiHash}`);
+
+        openSpy.mockRestore();
+      }
+    );
 
     it('should return the editor component for the specified column', () => {
       const column = 'owner';

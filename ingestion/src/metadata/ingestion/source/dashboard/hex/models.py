@@ -51,22 +51,22 @@ class Reviews(BaseModel):
 class AppViews(BaseModel):
     """App view counts"""
 
-    allTime: int | None = Field(None, alias="all_time")  # noqa: N815
-    lastSevenDays: int | None = Field(None, alias="last_seven_days")  # noqa: N815
-    lastFourteenDays: int | None = Field(None, alias="last_fourteen_days")  # noqa: N815
-    lastThirtyDays: int | None = Field(None, alias="last_thirty_days")  # noqa: N815
+    allTime: int | None = None  # noqa: N815
+    lastSevenDays: int | None = None  # noqa: N815
+    lastFourteenDays: int | None = None  # noqa: N815
+    lastThirtyDays: int | None = None  # noqa: N815
 
 
 class ProjectAnalytics(BaseModel):
     """Project analytics data"""
 
-    appViews: AppViews | None = Field(None, alias="app_views")  # noqa: N815
-    lastViewedAt: datetime | None = Field(None, alias="last_viewed_at")  # noqa: N815
-    publishedResultsUpdatedAt: datetime | None = Field(None, alias="published_results_updated_at")  # noqa: N815
+    appViews: AppViews | None = None  # noqa: N815
+    lastViewedAt: datetime | None = None  # noqa: N815
+    publishedResultsUpdatedAt: datetime | None = None  # noqa: N815
 
 
 class Project(BaseModel):
-    """Hex Project Model"""
+    """Hex Project or Component, told apart by type"""
 
     id: str
     title: str
@@ -78,11 +78,11 @@ class Project(BaseModel):
     categories: list[Category] = Field(default_factory=list)
     reviews: Reviews | None = None
     analytics: ProjectAnalytics | None = None
-    lastEditedAt: datetime | None = Field(None, alias="last_edited_at")  # noqa: N815
-    lastPublishedAt: datetime | None = Field(None, alias="last_published_at")  # noqa: N815
-    createdAt: datetime | None = Field(None, alias="created_at")  # noqa: N815
-    archivedAt: datetime | None = Field(None, alias="archived_at")  # noqa: N815
-    trashedAt: datetime | None = Field(None, alias="trashed_at")  # noqa: N815
+    lastEditedAt: datetime | None = None  # noqa: N815
+    lastPublishedAt: datetime | None = None  # noqa: N815
+    createdAt: datetime | None = None  # noqa: N815
+    archivedAt: datetime | None = None  # noqa: N815
+    trashedAt: datetime | None = None  # noqa: N815
     schedules: list = Field(default_factory=list)
 
 
@@ -103,29 +103,21 @@ class ProjectListResponse(PagedResponse):
     values: list[Project] = Field(default_factory=list)
 
 
-class ProjectRunInput(BaseModel):
-    """Project run input parameter"""
-
-    name: str
-    value: str | None = None
-
-
 class ProjectRun(BaseModel):
-    """Project run information"""
+    """A run of a published project"""
 
-    projectId: str = Field(alias="project_id")  # noqa: N815
-    runId: str = Field(alias="run_id")  # noqa: N815
+    runId: str  # noqa: N815
     status: str | None = None
-    startedAt: datetime | None = Field(None, alias="started_at")  # noqa: N815
-    completedAt: datetime | None = Field(None, alias="completed_at")  # noqa: N815
-    inputs: list[ProjectRunInput] = Field(default_factory=list)
+    startTime: datetime | None = None  # noqa: N815
+    endTime: datetime | None = None  # noqa: N815
+    # Milliseconds
+    elapsedTime: float | None = None  # noqa: N815
 
 
 class ProjectRunsResponse(BaseModel):
     """Get Project Runs API Response"""
 
     runs: list[ProjectRun] = Field(default_factory=list)
-    nextPage: str | None = Field(None, alias="next_page")  # noqa: N815
 
 
 class DataConnection(BaseModel):

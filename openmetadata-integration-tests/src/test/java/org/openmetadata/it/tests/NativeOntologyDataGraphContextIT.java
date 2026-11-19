@@ -275,12 +275,21 @@ class NativeOntologyDataGraphContextIT extends BaseOntologyApprovalIT {
     final var widePrefixes = loadAllClusters(client, wide);
     assertEquals(4, narrowPrefixes.size());
     assertEquals(40, widePrefixes.size());
-    final int narrowReads = pageReads(client, narrow, narrowPrefixes);
-    final int wideReads = pageReads(client, wide, widePrefixes);
+    final int narrowReads = fewestPageReads(client, narrow, narrowPrefixes);
+    final int wideReads = fewestPageReads(client, wide, widePrefixes);
     assertTrue(narrowReads > 0);
     assertTrue(
         wideReads <= narrowReads,
         "Loaded context queries grew from " + narrowReads + " at 4 concepts to " + wideReads);
+  }
+
+  // The fewest over a few reads: one read can also pay for a one-off cache miss outside the graph
+  // (e.g. the reader's ownership lookup), which says nothing about how the context scales.
+  private static int fewestPageReads(
+      final OpenMetadataClient client,
+      final Ontology ontology,
+      final List<NativeOntologyLoadedPrefix> loaded) {
+    return IntStream.range(0, 3).map(i -> pageReads(client, ontology, loaded)).min().orElseThrow();
   }
 
   private static int pageReads(

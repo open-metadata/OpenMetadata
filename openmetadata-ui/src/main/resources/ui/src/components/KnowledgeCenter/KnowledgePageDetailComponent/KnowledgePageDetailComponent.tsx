@@ -86,12 +86,13 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { withExtractionState } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
-import i18n, { Transi18next } from '../../../utils/i18next/LocalUtil';
+import i18n from '../../../utils/i18next/LocalUtil';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import {
   addToKnowledgeCenterRecentViewed,
@@ -103,6 +104,7 @@ import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withSuspenseFallback } from '../../AppRouter/withSuspenseFallback';
+import { DomainMismatchAlert } from '../../common/DomainMismatchAlert/DomainMismatchAlert.component';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
@@ -172,6 +174,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
+  const extractionStateRequestRef = useRef(0);
   const knowledgePageIdRef = useRef<string | undefined>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -228,6 +231,29 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   }, [permissionsError]);
 
+  // A body write changes whether the article reads Not processed, which its PATCH response omits.
+  // Callers start it once their write is settled: it never holds a save or a load.
+  const refreshExtractionState = useCallback(async (page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    const request = extractionStateRequestRef.current;
+    try {
+      const read = await getKnowledgePageByFqn(page.fullyQualifiedName, {
+        fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
+      });
+      if (request === extractionStateRequestRef.current) {
+        setKnowledgePage((prev) => withExtractionState(prev, read));
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
+  // What an Extract or Retry left: newer than any refresh still in flight, which it discards.
+  const applyExtractionState = useCallback((page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    setKnowledgePage((prev) => withExtractionState(prev, page));
+  }, []);
+
   // Persists a locally-stashed draft (created while offline/unsaved) back to the
   // server once the canonical page has been fetched.
   const syncDraftedKnowledgePage = async (
@@ -253,6 +279,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (response.id === knowledgePageIdRef.current) {
         setContentChangeState(ContentChangeState.SAVED);
       }
+      void refreshExtractionState(response);
     } catch (syncError) {
       showErrorToast(syncError as AxiosError);
       if (response.id === knowledgePageIdRef.current) {
@@ -270,6 +297,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.EDITORS,
           KNOWLEDGE_PAGE_FIELDS.PARENT,
           KNOWLEDGE_PAGE_FIELDS.EXTENSION,
+          KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
         ]),
       });
 
@@ -501,6 +529,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       } finally {
         endTrackedSave(currentKnowledgePage.id, didSucceed);
       }
+      if (didSucceed) {
+        void refreshExtractionState(currentKnowledgePage);
+      }
     },
     [
       knowledgePage,
@@ -509,6 +540,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       beginTrackedSave,
       endTrackedSave,
       onArticleSaved,
+      refreshExtractionState,
     ]
   );
 
@@ -1013,6 +1045,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             permissions={permissions}
             tags={tags}
             updatePageTag={updatePageTag}
+            onExtractionStateChange={applyExtractionState}
           />
         </GenericProvider>
       );
@@ -1048,6 +1081,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
+    applyExtractionState,
   ]);
 
   useEffect(() => {
@@ -1062,15 +1096,9 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     return (
       <div className="tw:relative tw:flex-1 tw:h-full">
         <PermissionPlaceholder
-          description={
-            <Transi18next
-              i18nKey="message.no-access-placeholder"
-              renderElement={<b />}
-              values={{
-                entity: t('label.view-entity', { entity: t('label.article') }),
-              }}
-            />
-          }
+          description={t('message.no-access-placeholder', {
+            entity: t('label.view-entity', { entity: t('label.article') }),
+          })}
           icon={<Lock />}
           title={t('label.access-denied')}
         />
@@ -1091,6 +1119,11 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
 
   return (
     <>
+      <DomainMismatchAlert
+        className="tw:mb-4"
+        domains={knowledgePage.domains}
+        entityId={knowledgePage.id}
+      />
       {activeTabContent}
       {threadLink ? (
         <ActivityThreadPanel

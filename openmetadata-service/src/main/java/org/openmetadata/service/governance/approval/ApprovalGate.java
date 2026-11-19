@@ -359,12 +359,13 @@ public final class ApprovalGate {
         gatingWorkflows(
             rules,
             entityType,
-            edited.published(),
+            edited,
             triggerNames(edited.base(), edited.proposed(), edited.changed()));
     Optional<StagedChange> staged = Optional.empty();
     if (!gating.isEmpty()) {
       rejectAmbiguousReview(gating);
       rejectMutuallyExclusiveTags(edited.published(), edited.changed());
+      rejectUnapprovedGlossaryTerms(entityType, edited);
       rejectStageMoveOutsideLifecycle(
           entityType, edited.original(), edited.published(), edited.changed());
       final GatedBy review = gating.get(0);
@@ -393,14 +394,11 @@ public final class ApprovalGate {
   }
 
   private static List<GatedBy> gatingWorkflows(
-      List<GatingRule> rules,
-      String entityType,
-      EntityInterface updated,
-      Map<String, List<String>> changed) {
+      List<GatingRule> rules, String entityType, Edited edited, Map<String, List<String>> changed) {
     List<GatedBy> gating = new ArrayList<>();
     for (GatingRule rule : rules) {
       Set<String> fields =
-          WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), updated)
+          isExcludedBeforeAndAfter(rule, edited)
               ? Set.of()
               : gatedFields(rule, entityType, changed);
       if (!fields.isEmpty()) {
@@ -408,6 +406,14 @@ public final class ApprovalGate {
       }
     }
     return gating;
+  }
+
+  // The filter is judged on the stored entity as well as the proposed one: an edit that moves the
+  // asset out of the filter is itself reviewed, and only an asset the filter leaves out both
+  // before and after the edit is not.
+  private static boolean isExcludedBeforeAndAfter(GatingRule rule, Edited edited) {
+    return WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.original())
+        && WorkflowTriggerFilters.matchesExclusionFilter(rule.filterLogic(), edited.published());
   }
 
   private static void rejectAmbiguousReview(List<GatedBy> gating) {
@@ -588,6 +594,13 @@ public final class ApprovalGate {
       EntityStatusAdapter<?> statuses = repository.getEntityLifecycle().adapter();
       repository.validateEntityStatusMove(statuses.read(original), statuses.read(updated));
     }
+  }
+
+  // Not narrowed to changed `tags`: a field's labels change under its container (`columns`, ...),
+  // so a workflow gating that container would otherwise hold a term the write would refuse.
+  private static void rejectUnapprovedGlossaryTerms(String entityType, Edited edited) {
+    Entity.getEntityRepository(entityType)
+        .checkNewlyAppliedGlossaryTermsApproved(edited.original(), edited.published());
   }
 
   private static void rejectMutuallyExclusiveTags(EntityInterface updated, Set<String> changed) {

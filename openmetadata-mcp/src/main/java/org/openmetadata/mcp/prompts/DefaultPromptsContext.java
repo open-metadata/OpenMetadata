@@ -29,14 +29,15 @@ public class DefaultPromptsContext {
           result = new SearchPrompt().callPrompt(promptRequest);
           break;
         default:
-          return new McpSchema.GetPromptResult("error", new ArrayList<>());
+          return McpSchema.GetPromptResult.builder(new ArrayList<>()).description("error").build();
       }
 
       return result;
     } catch (Exception ex) {
       LOG.error("Error executing tool: {}", ex.getMessage());
-      return new McpSchema.GetPromptResult(
-          String.format("Error executing tool: %s", ex.getMessage()), new ArrayList<>());
+      return McpSchema.GetPromptResult.builder(new ArrayList<>())
+          .description(String.format("Error executing tool: %s", ex.getMessage()))
+          .build();
     }
   }
 }

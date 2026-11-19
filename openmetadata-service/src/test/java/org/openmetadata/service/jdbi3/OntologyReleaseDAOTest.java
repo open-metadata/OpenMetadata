@@ -8,9 +8,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.statement.UnableToExecuteStatementException;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -159,6 +161,46 @@ class OntologyReleaseDAOTest {
                   .releases()
                   .listMembers(release.getId(), "CONCEPT", member.getMemberId().toString(), 10)
                   .isEmpty());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void batchedInsertsLandEveryMemberOfAnUnsealedReleaseAndNoneOfASealedOne(ConnectionType dialect) {
+    withStorage(
+        dialect,
+        storage -> {
+          final OntologyRelease release = storage.release(1);
+          final List<OntologyReleaseMember> members =
+              IntStream.range(0, 1_201).mapToObj(i -> member(release)).toList();
+          storage.insert(release);
+          assertEquals(0, storage.releases().insertMembers(List.of()));
+          assertEquals(1_201, storage.releases().insertMembers(members));
+          assertThrows(
+              UnableToExecuteStatementException.class,
+              () -> storage.releases().insertMembers(members.subList(0, 1)));
+          release
+              .withContentDigest(OntologyReleaseManifest.digest(members))
+              .withMemberCount(members.size())
+              .withTotalBytes(
+                  members.stream().mapToLong(OntologyReleaseMember::getPayloadBytes).sum())
+              .withSealedAt(2L);
+          assertEquals(
+              1, storage.releases().seal(release.getId(), JsonUtils.pojoToJson(release), 1_201));
+          assertEquals(0, storage.releases().insertMembers(List.of(member(release))));
+          final List<OntologyReleaseMember> captured = new ArrayList<>();
+          String after = "";
+          List<OntologyReleaseMember> page;
+          do {
+            page = storage.releases().listMembers(release.getId(), "CONCEPT", after, 500);
+            captured.addAll(page);
+            after = page.isEmpty() ? after : page.getLast().getMemberId().toString();
+          } while (page.size() == 500);
+          assertEquals(1_201, captured.size());
+          assertEquals(release.getContentDigest(), OntologyReleaseManifest.digest(captured));
+          assertEquals(0.2, captured.getFirst().getSourceVersion());
         });
   }
 

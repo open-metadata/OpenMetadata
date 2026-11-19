@@ -26,7 +26,7 @@ To execute the metadata extraction and Usage workflow successfully, the user or 
 
 You can visit <a href="https://cloud.google.com/vertex-ai/docs/general/access-control" target="_blank">this</a> documentation on how you can create a custom role in GCP and assign the above permissions to the role & service account!
 
-You can find further information on the VertexAI connector in the <a href="https://docs.open-metadata.org/connectors/ml-model/vertexai" target="_blank">docs</a>.
+You can find further information on the VertexAI connector in the <a href="https://docs.getcollate.io/connectors/ml-model/vertexai" target="_blank">docs</a>.
 
 ## Connection Details
 

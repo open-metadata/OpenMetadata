@@ -2,6 +2,7 @@ package org.openmetadata.service.resources.dqtests;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.resolveDomainFilterIds;
 import static org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.resolveFilterEntityId;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
@@ -254,10 +255,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("incidentListSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
     filter.addQueryParam("originEntityFQN", originEntityFQN);
-    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
-    if (domainId != null) {
-      filter.addQueryParam("incidentListDomainId", domainId.toString());
-    }
+    filter.addQueryParam("incidentListDomainId", resolveDomainFilterIds(domain));
     UUID testDefinitionId = resolveFilterEntityId(Entity.TEST_DEFINITION, testDefinition);
     if (testDefinitionId != null) {
       filter.addQueryParam("testDefinitionId", testDefinitionId.toString());
@@ -422,10 +420,7 @@ public class TestCaseResolutionStatusResource
     filter.addQueryParam("incidentAssignee", assignee);
     filter.addQueryParam("incidentSeverity", parseIncidentSeverities(severities));
     filter.addQueryParam("entityFQNHash", FullyQualifiedName.buildHash(testCaseFQN));
-    UUID domainId = resolveFilterEntityId(Entity.DOMAIN, domain);
-    if (domainId != null) {
-      filter.addQueryParam("incidentDomainId", domainId.toString());
-    }
+    filter.addQueryParam("incidentDomainId", resolveDomainFilterIds(domain));
     filter.addQueryParam("incidentDateField", dateField.value());
     if (startTs != null) {
       filter.addQueryParam("incidentStartTs", String.valueOf(startTs));
@@ -443,7 +438,9 @@ public class TestCaseResolutionStatusResource
   @Operation(
       operationId = "getTestCaseResolutionStatusesForAStateId",
       summary = "Get test case failure statuses for a sequence id",
-      description = "Get a test case failure statuses for a sequence id",
+      description =
+          "Get test case failure statuses, newest first. With a limit, paging.total counts "
+              + "stored events, including orphaned events skipped from data; paging.after continues to older events.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -456,14 +453,20 @@ public class TestCaseResolutionStatusResource
   public ResultList<TestCaseResolutionStatus> listForStateId(
       @Context SecurityContext securityContext,
       @Parameter(description = "Sequence ID", schema = @Schema(type = "UUID")) @PathParam("stateId")
-          UUID stateId) {
+          UUID stateId,
+      @Parameter(description = "Maximum events to return; omitted returns the complete history")
+          @QueryParam("limit")
+          @Min(1)
+          @Max(1000000)
+          Integer limit,
+      @Parameter(description = "Cursor for older events") @QueryParam("after") String after) {
     ResourceContextInterface testCaseResourceContext = TestCaseResourceContext.builder().build();
     ResourceContextInterface entityResourceContext = TestCaseResourceContext.builder().build();
     List<AuthRequest> requests =
         buildViewAuthRequests(testCaseResourceContext, entityResourceContext);
     authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
 
-    return repository.listTestCaseResolutionStatusesForStateId(stateId);
+    return repository.listTestCaseResolutionStatusesForStateId(stateId, limit, after);
   }
 
   @GET

@@ -245,7 +245,7 @@ The Fuseki container (`docker/development/docker-compose-fuseki.yml`) runs the p
 ```yaml
 services:
   fuseki:
-    image: openmetadata/fuseki:6.2.0-c75b095
+    image: openmetadata/fuseki:6.2.0-91a23ac
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"

@@ -80,11 +80,18 @@ public final class NamespaceCleanup {
           Map.entry(Entity.CONTEXT_MEMORY, "contextCenter/memories"),
           Map.entry(Entity.CONTEXT_FILE, "contextCenter/drive/files"),
           Map.entry(Entity.ONTOLOGY_CHANGE_SET, "ontologyChangeSets"),
+          Map.entry(Entity.METRIC, "metrics"),
+          Map.entry(Entity.METRIC_GROUP, "metricGroups"),
+          Map.entry(Entity.BOT, "bots"),
           Map.entry(Entity.TEST_SUITE, "dataQuality/testSuites"));
 
   // These leaf resources do not expose the asynchronous deletion endpoint.
   private static final Set<String> DIRECT_DELETE_TYPES =
-      Set.of(Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE, Entity.ONTOLOGY_CHANGE_SET);
+      Set.of(
+          Entity.CONTEXT_MEMORY,
+          Entity.CONTEXT_FILE,
+          Entity.ONTOLOGY_CHANGE_SET,
+          Entity.METRIC_GROUP);
 
   private NamespaceCleanup() {}
 

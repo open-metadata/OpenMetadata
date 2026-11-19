@@ -39,6 +39,8 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 @Slf4j
 final class NativeOntologyGraphScanProbe {
+  private static final int BUDGET_SAMPLES = 3;
+
   private NativeOntologyGraphScanProbe() {}
 
   /** Inserts {@code count} binding rows to topics that do not exist, ids ascending from after. */
@@ -208,6 +210,15 @@ final class NativeOntologyGraphScanProbe {
     assertEquals(List.of(), graph.getEdges());
     assertEquals(expectedRows, observed.bindingRows());
     observed.assertBounded();
+  }
+
+  /**
+   * The fewest SQL statements a first-page graph read runs over a few reads. A single read can also
+   * pay for a one-off cache miss outside the graph (e.g. the reader's ownership lookup), which says
+   * nothing about how the graph scales.
+   */
+  static int fewestReads(final OpenMetadataClient client, final Ontology ontology) {
+    return IntStream.range(0, BUDGET_SAMPLES).map(i -> reads(client, ontology)).min().orElseThrow();
   }
 
   /** The SQL statements one first-page graph read runs, each logged with its request. */

@@ -157,14 +157,16 @@ jest.mock('@openmetadata/ui-core-components', () => {
     ),
     ButtonUtility: ({
       icon: Icon,
+      isDisabled,
       onClick,
       ...props
     }: {
       icon?: React.ComponentType<{ className?: string }>;
+      isDisabled?: boolean;
       onClick?: () => void;
       [key: string]: unknown;
     }) => (
-      <button type="button" onClick={onClick} {...props}>
+      <button disabled={isDisabled} type="button" onClick={onClick} {...props}>
         {Icon ? <Icon /> : null}
       </button>
     ),
@@ -491,7 +493,7 @@ describe('InlineTestCaseIncidentStatus', () => {
       );
     });
 
-    it('status menu of an assigned incident offers only reassign and resolve', async () => {
+    it('status menu of an assigned incident offers New, Ack and Resolved', async () => {
       renderComponent({
         testCaseResolutionStatusType: TestCaseResolutionStatusTypes.Assigned,
       });
@@ -506,7 +508,7 @@ describe('InlineTestCaseIncidentStatus', () => {
 
       expect(
         screen.getAllByRole('menuitem').map((item) => item.textContent)
-      ).toEqual(['label.assigned', 'label.resolved']);
+      ).toEqual(['label.assigned', 'label.new', 'label.ack', 'label.resolved']);
     });
 
     it('selecting ACK submits directly via API', async () => {

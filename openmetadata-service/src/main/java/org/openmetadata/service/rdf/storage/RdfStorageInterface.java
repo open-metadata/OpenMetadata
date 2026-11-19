@@ -7,8 +7,11 @@ import java.util.Optional;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.Getter;
 import org.apache.jena.graph.NodeFactory;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.sparql.core.Quad;
 import org.apache.jena.sparql.modify.request.QuadDataAcc;
@@ -24,10 +27,18 @@ import org.openmetadata.service.rdf.RdfWriteMode;
  */
 public interface RdfStorageInterface extends AutoCloseable {
 
+  /** Makes the stored projection of the entity equal {@code entityModel}, writing only what differs. */
+  default RdfEntityWriteResult storeEntity(String entityType, UUID entityId, Model entityModel) {
+    return storeEntity(entityType, entityId, entityModel, RdfEntityWriteStrategy.DIFFERENCE);
+  }
+
   /**
-   * Store an entity model in the RDF store
+   * Makes the stored projection of the entity equal {@code entityModel}. The result tells callers
+   * whether the graph may have changed, so a write that found nothing to change can leave derived
+   * state, such as materialized inferences, alone.
    */
-  void storeEntity(String entityType, UUID entityId, Model entityModel);
+  RdfEntityWriteResult storeEntity(
+      String entityType, UUID entityId, Model entityModel, RdfEntityWriteStrategy strategy);
 
   /**
    * Maximum JVM heap of the remote storage server in bytes, when the backend exposes it (Fuseki
@@ -192,8 +203,12 @@ public interface RdfStorageInterface extends AutoCloseable {
    */
   void loadTurtleFile(java.io.InputStream turtleStream, String graphUri);
 
-  /** Replaces a complete named graph atomically, including removal of all previous blank nodes. */
-  default void replaceGraph(final String graphUri, final Model model) {
+  /**
+   * Replaces a complete named graph atomically, including removal of all previous blank nodes.
+   * {@code model} is the projection of the sealed ontology release {@code releaseId}, or empty when
+   * it is null; the rebuild journal keeps only the id and projects the release again on replay.
+   */
+  default void replaceGraph(final String graphUri, final UUID releaseId, final Model model) {
     if (!URI.create(graphUri).isAbsolute()) {
       throw new IllegalArgumentException("A graph requires an absolute IRI");
     }
@@ -204,6 +219,16 @@ public interface RdfStorageInterface extends AutoCloseable {
             new QuadDataAcc(
                 model.getGraph().find().mapWith(triple -> new Quad(graph, triple)).toList())));
     executeSparqlUpdate(update.toString());
+  }
+
+  /**
+   * Runs a read query whose results {@code reader} consumes before the execution closes, so a
+   * caller can stream them through its own bounded serializer. A store that cannot hand the server
+   * a live execution refuses.
+   */
+  default void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    throw new UnsupportedOperationException("This RDF store cannot stream query results");
   }
 
   /**

@@ -1,9 +1,9 @@
 # Ontology AI proposal review is a Collate extension of the Studio canvas
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-16 (initial)
+- **Revisions:** v1 2026-10-16 (initial) · v2 2026-11-16 (the Studio canvas lives in Collate and calls the hook directly)
 - **Deciders:** Anuj Kumar Yadav, Karan Hotchandani
-- **Guard:** `OntologyExplorer.test.tsx` ("OntologyExplorer AI proposals extension"), reviewer
+- **Guard:** `OntologyStudioCanvas.test.tsx` *(openmetadata-collate)* ("OntologyExplorer AI proposals extension"), reviewer
 - **Related:** #35655, #35656, Collate `OntologyExplorerClassCollate`
 
 ## Context
@@ -34,3 +34,11 @@ one stable `(OntologyAiProposalsOptions) => OntologyAiProposals` — is shared b
 so changing either interface needs a paired Collate change, and the OSS change merges before the
 Collate override that depends on it. Bringing review back to OSS would mean making the AI that
 produces proposals available in OSS first.
+
+## Amendment
+
+v2 (2026-11-16): the Studio canvas moved to Collate as `OntologyStudioCanvas`
+(ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate v4), so it calls `useOntologyAiProposals`
+directly. `OntologyExplorerClassBase.getAiProposalsHook()` and the types in
+`OntologyExplorerClassBase.interface.ts` are removed; the types live in Collate's
+`OntologyStudioCanvas.interface.ts`. Proposal review is still Collate-only.

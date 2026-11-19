@@ -22,6 +22,10 @@
       "description": "Existing concepts or properties newly marked deprecated. Disjoint from added, changed and removed. New captures always set this count; its absence on older summaries means the total is unavailable.",
       "type": "integer",
       "minimum": 0
+    },
+    "kindCounts": {
+      "description": "Every counted change (added, changed, removed and deprecated) grouped by member kind. The ontology row is counted apart so readers can leave out the container the user created. Absent on summaries captured before kind counts existed.",
+      "$ref": "ontologyReleaseKindCounts.json"
     }
   },
   "required": ["added", "changed", "removed"],

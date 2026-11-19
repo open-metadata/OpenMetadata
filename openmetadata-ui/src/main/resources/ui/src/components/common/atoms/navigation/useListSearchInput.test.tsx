@@ -22,6 +22,12 @@ const renderSearch = (props: Props) =>
   });
 
 describe('useListSearchInput', () => {
+  it('turns off browser autocomplete on the search input', () => {
+    const { result } = renderSearch({ onSearchChange: jest.fn() });
+
+    expect(result.current.searchInputProps.autoComplete).toBe('off');
+  });
+
   it('pushes a typed query once typing settles', () => {
     const onSearchChange = jest.fn();
     const { result } = renderSearch({ onSearchChange });

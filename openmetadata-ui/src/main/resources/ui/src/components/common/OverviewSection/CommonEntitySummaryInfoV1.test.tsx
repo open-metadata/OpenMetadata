@@ -161,6 +161,42 @@ describe('CommonEntitySummaryInfoV1', () => {
     expect(screen.getByTestId('external-link-icon')).toBeInTheDocument();
   });
 
+  it.each([
+    ['javascript:alert(1)'],
+    ['JaVaScRiPt:alert(1)'],
+    ['data:text/html,<script>alert(1)</script>'],
+  ])('does not render the external url %s as an href', (url) => {
+    const items: EntityInfoItemV1[] = [
+      {
+        name: 'Pipeline URL',
+        value: 'Daily ETL',
+        isLink: true,
+        isExternal: true,
+        url,
+        visible: ['explore'],
+      },
+      {
+        name: 'Dashboard URL',
+        value: '-',
+        isLink: true,
+        isExternal: true,
+        url,
+        visible: ['explore'],
+      },
+    ];
+
+    render(
+      <CommonEntitySummaryInfoV1 componentType="explore" entityInfo={items} />
+    );
+
+    expect(screen.getByTestId('Pipeline URL-value')).toHaveTextContent(
+      'Daily ETL'
+    );
+    expect(screen.getByTestId('Dashboard URL-value')).toHaveTextContent('-');
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(document.querySelector('[href]')).toBeNull();
+  });
+
   it('renders dash when value is null or undefined', () => {
     const items: EntityInfoItemV1[] = [
       { name: 'Empty', value: undefined, visible: ['explore'] },

@@ -17,7 +17,7 @@ import {
   Input,
 } from '@openmetadata/ui-core-components';
 import {
-  Edit03,
+  Edit01,
   Lock01,
   Plus,
   RefreshCcw01,
@@ -409,7 +409,7 @@ const BulkEditEntity = ({
               data-testid="bulk-edit-remove-row"
               type="button"
               onClick={() => handleRemoveRow(row.id ?? '')}>
-              <Trash01 size={12} />
+              <Trash01 size={18} />
               {t('label.remove')}
             </button>
           )}
@@ -652,7 +652,7 @@ const BulkEditEntity = ({
     <BadgeWithIcon
       className="bulk-edit-edited-pill"
       color="blue"
-      iconLeading={Edit03}
+      iconLeading={Edit01}
       size="sm"
       type="pill-color">
       {`${changedCellCount} ${t('label.edited').toLowerCase()}`}
@@ -670,6 +670,7 @@ const BulkEditEntity = ({
       {changedCellCount > 0 && renderEditedBadge()}
       <div className="bulk-edit-toolbar-actions">
         <Input
+          autoComplete="off"
           className="bulk-edit-search"
           data-testid="bulk-edit-search"
           icon={BulkEditSearchIcon}
@@ -700,7 +701,6 @@ const BulkEditEntity = ({
     <div className="bulk-edit-add-row-bar">
       <div className="bulk-edit-add-row-content">
         <Button
-          className="bulk-edit-add-row-btn"
           color="secondary"
           data-testid="bulk-edit-add-metric"
           iconLeading={Plus}
@@ -738,21 +738,20 @@ const BulkEditEntity = ({
 
   const renderStepOneCard = () => (
     <Card className="csv-import-card bulk-edit-card">
-      <div className="csv-import-stack bulk-edit-stack">
+      <div className="csv-import-stack bulk-edit-stack tw:pb-5">
         {renderToolbar()}
         <div className="bulk-edit-grid-shell">
           {searchText.trim() && visibleRows.length === 0 ? (
             // The grid is far wider than the card, so an in-grid fallback would centre off-screen.
-            <div
-              className="tw:relative tw:min-h-80"
-              data-testid="bulk-edit-no-search-results">
-              <NoSearchResultsPlaceholder />
+            <div className="tw:relative tw:min-h-70">
+              <NoSearchResultsPlaceholder data-testid="bulk-edit-no-search-results" />
             </div>
           ) : (
             editDataGrid
           )}
         </div>
-        {newRowConfig && renderAddRowBar()}
+        {/* A blank new row never matches a search, so it would be added out of sight. */}
+        {newRowConfig && !searchText.trim() && renderAddRowBar()}
       </div>
     </Card>
   );

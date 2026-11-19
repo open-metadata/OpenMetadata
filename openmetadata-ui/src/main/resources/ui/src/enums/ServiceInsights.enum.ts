@@ -29,4 +29,5 @@ export enum AgentStatus {
   Failed = 'Failed',
   Running = 'Running',
   Pending = 'Pending',
+  Stopped = 'Stopped',
 }

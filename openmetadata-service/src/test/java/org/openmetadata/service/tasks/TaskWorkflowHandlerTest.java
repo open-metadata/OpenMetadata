@@ -28,22 +28,30 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import jakarta.json.JsonPatch;
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TaskAvailableTransition;
@@ -52,14 +60,20 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.type.TaskResolutionType;
+import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.tasks.TaskFormExecutionResolver.ActionType;
+import org.openmetadata.service.tasks.TaskFormExecutionResolver.TaskExecutionAction;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * Unit tests for TaskWorkflowHandler.
@@ -801,7 +815,10 @@ class TaskWorkflowHandlerTest {
             .withName("customer_events")
             .withColumns(List.of(profile));
 
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE));
     Map<String, String> payload =
         Map.of(
             "suggestionType", "Description",
@@ -839,7 +856,10 @@ class TaskWorkflowHandlerTest {
             .withFullyQualifiedName("svc.db.schema.orders")
             .withColumns(List.of(customerId));
 
-    Task task = new Task().withId(UUID.randomUUID());
+    Task task =
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE));
     Map<String, String> payload =
         Map.of(
             "suggestionType", "Tag",
@@ -870,6 +890,169 @@ class TaskWorkflowHandlerTest {
         "Column tag suggestion must not tag the parent table");
   }
 
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags, Map<String, Object> payload, List<TagLabel> newValue)
+      throws Exception {
+    return applyColumnTagUpdate(
+        columnTags,
+        payload,
+        newValue,
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, null, null, null, null, null, null));
+  }
+
+  private static List<String> applyColumnTagUpdate(
+      List<TagLabel> columnTags,
+      Map<String, Object> payload,
+      List<TagLabel> newValue,
+      TaskExecutionAction action)
+      throws Exception {
+    Column email = new Column().withName("email").withTags(new ArrayList<>(columnTags));
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("my_table")
+            .withFullyQualifiedName("svc.db.schema.my_table")
+            .withColumns(List.of(email));
+
+    Method applyMergeTagsAction =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "applyMergeTagsAction",
+            Task.class,
+            EntityInterface.class,
+            EntityRepository.class,
+            String.class,
+            String.class,
+            Object.class,
+            TaskExecutionAction.class);
+    applyMergeTagsAction.setAccessible(true);
+    applyMergeTagsAction.invoke(
+        TaskWorkflowHandler.getInstance(),
+        new Task()
+            .withId(UUID.randomUUID())
+            .withAbout(new EntityReference().withId(table.getId()).withType(Entity.TABLE)),
+        table,
+        mock(EntityRepository.class),
+        "admin",
+        JsonUtils.pojoToJson(newValue),
+        payload,
+        action);
+
+    return table.getColumns().getFirst().getTags().stream().map(TagLabel::getTagFQN).toList();
+  }
+
+  private static TagLabel tag(String fqn) {
+    return new TagLabel().withTagFQN(fqn).withSource(TagLabel.TagSource.CLASSIFICATION);
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_replacesTheColumnTags() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    assertEquals(
+        List.of("Tier.B"),
+        applyColumnTagUpdate(List.of(tag("Tier.A")), payload, List.of(tag("Tier.B"))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_keepsTagsAddedAfterTheTask() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // PII.Sensitive was added to the column after the task was created, so the task never saw it
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_dropsALiveTagFromTheSameExclusiveClassification()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath", "columns.email.tags",
+            "operation", "Replace",
+            "tagsToAdd", List.of(tag("Tier.B")),
+            "tagsToRemove", List.of(tag("Tier.A")),
+            "currentTags", List.of(tag("Tier.A")));
+
+    // Tier.A was swapped for Tier.C after the task was created, and PII.Sensitive was added
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(
+              () -> Entity.getEntityByName(Entity.CLASSIFICATION, "Tier", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(true));
+      entityMock
+          .when(() -> Entity.getEntityByName(Entity.CLASSIFICATION, "PII", "", Include.NON_DELETED))
+          .thenReturn(new Classification().withMutuallyExclusive(false));
+
+      assertEquals(
+          Set.of("Tier.B", "PII.Sensitive"),
+          Set.copyOf(
+              applyColumnTagUpdate(
+                  List.of(tag("Tier.C"), tag("PII.Sensitive")), payload, List.of(tag("Tier.B")))));
+    }
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_readsTheSnapshotFromTheConfiguredField()
+      throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email.tags",
+            "operation",
+            "Replace",
+            "tagsToAdd",
+            List.of(tag("Tier.B")),
+            "seenTags",
+            List.of(tag("Tier.A")));
+    TaskExecutionAction action =
+        new TaskExecutionAction(
+            ActionType.MERGE_TAGS, null, null, "seenTags", null, null, null, null, null);
+
+    assertEquals(
+        Set.of("Tier.B", "PII.Sensitive"),
+        Set.copyOf(
+            applyColumnTagUpdate(
+                List.of(tag("Tier.A"), tag("PII.Sensitive")),
+                payload,
+                List.of(tag("Tier.B")),
+                action)));
+  }
+
+  @Test
+  void testTagUpdate_resolvedWithNewValue_removesWhatTheReviewerDropped() throws Exception {
+    Map<String, Object> payload =
+        Map.of(
+            "fieldPath",
+            "columns.email.tags",
+            "operation",
+            "Remove",
+            "tagsToRemove",
+            List.of(tag("PII.Sensitive")),
+            "currentTags",
+            List.of(tag("PII.Sensitive"), tag("Tier.A")));
+
+    assertEquals(
+        List.of("Tier.A"),
+        applyColumnTagUpdate(
+            List.of(tag("PII.Sensitive"), tag("Tier.A")), payload, List.of(tag("Tier.A"))));
+  }
+
   @Test
   void aRejectionWithoutItsOwnCommentUsesTheReviewersLatestTaskComment() {
     EntityReference karan = new EntityReference().withName("karan").withType("user");
@@ -887,5 +1070,85 @@ class TaskWorkflowHandlerTest {
         "Add the refresh schedule", TaskWorkflowHandler.latestCommentBy("karan", comments));
     assertNull(TaskWorkflowHandler.latestCommentBy("admin", comments));
     assertNull(TaskWorkflowHandler.latestCommentBy("karan", null));
+  }
+
+  // The write runs inside the task's request, whose response is the task, so the entity's own
+  // change event must be recorded here or alerts and the audit log never see the change.
+  @Test
+  void anApprovedChangeIsSavedAndRecordedAsTheEntitysChangeEvent() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    String before = JsonUtils.pojoToJson(table);
+    table.setDescription("approved");
+    EntityRepository<?> repository = repositoryAnswering(table, EventType.ENTITY_UPDATED);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    CollectionDAO collectionDAO = collectionDAOWith(changeEventDAO);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      saveChange(table, repository, "steward", before);
+
+      ArgumentCaptor<String> inserted = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(inserted.capture());
+      ChangeEvent event = JsonUtils.readValue(inserted.getValue(), ChangeEvent.class);
+      assertEquals(EventType.ENTITY_UPDATED, event.getEventType());
+      assertEquals(table.getId(), event.getEntityId());
+      assertEquals("steward", event.getUserName());
+    }
+  }
+
+  // A write that changed nothing, or that is held until someone approves it, records no event.
+  @Test
+  void aWriteThatChangedNothingRecordsNoEvent() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    String before = JsonUtils.pojoToJson(table);
+    table.setDescription("approved");
+    EntityRepository<?> repository = repositoryAnswering(table, EventType.ENTITY_NO_CHANGE);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    CollectionDAO collectionDAO = collectionDAOWith(changeEventDAO);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      saveChange(table, repository, "steward", before);
+
+      verify(changeEventDAO, never()).insert(anyString());
+    }
+  }
+
+  @Test
+  void anUnchangedEntityIsNotSaved() throws Exception {
+    Table table = new Table().withId(UUID.randomUUID()).withName("orders").withDescription("old");
+    EntityRepository<?> repository = mock(EntityRepository.class);
+
+    saveChange(table, repository, "steward", JsonUtils.pojoToJson(table));
+
+    verifyNoInteractions(repository);
+  }
+
+  private static EntityRepository<?> repositoryAnswering(Table patched, EventType changeType) {
+    EntityRepository<?> repository = mock(EntityRepository.class);
+    Mockito.doReturn(new PatchResponse<>(Response.Status.OK, patched, changeType))
+        .when(repository)
+        .patch(any(), any(UUID.class), anyString(), any(JsonPatch.class), any(), any());
+    return repository;
+  }
+
+  private static CollectionDAO collectionDAOWith(CollectionDAO.ChangeEventDAO changeEventDAO) {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    return collectionDAO;
+  }
+
+  private static void saveChange(
+      Table table, EntityRepository<?> repository, String user, String before) throws Exception {
+    Method saveChange =
+        TaskWorkflowHandler.class.getDeclaredMethod(
+            "saveChange",
+            EntityInterface.class,
+            EntityRepository.class,
+            String.class,
+            String.class,
+            ChangeSource.class);
+    saveChange.setAccessible(true);
+    saveChange.invoke(TaskWorkflowHandler.getInstance(), table, repository, user, before, null);
   }
 }

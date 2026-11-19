@@ -15,6 +15,9 @@ public class TestNamespace {
   private static final long SHORT_ID_SEQUENCE_STEP = 0x9E3779B9L;
   private static final long SHORT_ID_SEQUENCE_OFFSET =
       Long.parseUnsignedLong(RUN_ID.substring(8, 16), 16);
+  private static final AtomicLong SHORT_PREFIX_SEQUENCE = new AtomicLong();
+  private static final String SHORT_PREFIX_SUFFIX_FORMAT = "%04x";
+  private static final long SHORT_PREFIX_SUFFIX_MASK = 0xFFFFL;
   private final String classId;
   private String methodId;
   private String cachedShortPrefix;
@@ -75,12 +78,17 @@ public class TestNamespace {
    */
   public String shortPrefix() {
     if (cachedShortPrefix == null) {
-      // Use first 8 chars of run ID + short hash of method name + random suffix for uniqueness
+      // Run ID + method hash + a per-run counter suffix: a random suffix let invocations of the
+      // same method (e.g. a parameterized test) draw the same prefix and collide on entity names.
       String shortRun = RUN_ID.substring(0, 8);
       String methodHash =
           methodId != null ? Integer.toHexString(Math.abs(methodId.hashCode()) % 0xFFFF) : "0";
-      String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 4);
-      cachedShortPrefix = shortRun + methodHash + uniqueSuffix;
+      long dispersedSequence =
+          (SHORT_ID_SEQUENCE_OFFSET
+                  + SHORT_PREFIX_SEQUENCE.getAndIncrement() * SHORT_ID_SEQUENCE_STEP)
+              & SHORT_PREFIX_SUFFIX_MASK;
+      cachedShortPrefix =
+          shortRun + methodHash + SHORT_PREFIX_SUFFIX_FORMAT.formatted(dispersedSequence);
     }
     return cachedShortPrefix;
   }

@@ -92,7 +92,7 @@ const AccessControlLanding: FC<AccessControlLandingProps> = ({
                 onNavigate(card.view);
               }
             }}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`access-control-card-${card.id}`}

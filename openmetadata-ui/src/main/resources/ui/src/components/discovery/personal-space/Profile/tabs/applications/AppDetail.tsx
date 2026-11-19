@@ -234,11 +234,11 @@ const AppDetailTabs: FC<{
 };
 
 const MetaItem: FC<{
-  icon: FC<{ className?: string }>;
+  icon: FC<{ size?: number }>;
   children: ReactNode;
 }> = ({ icon: Icon, children }) => (
   <Box align="center" className="tw:text-tertiary" direction="row" gap={1}>
-    <Icon className="tw:size-4" />
+    <Icon size={16} />
     <Typography size="text-xs">{children}</Typography>
   </Box>
 );
@@ -258,8 +258,6 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
   const [selectedTab, setSelectedTab] = useState<Key>();
   const [showHint, setShowHint] = useState(false);
   const [subPage, setSubPage] = useState<AppSubPage>();
-  // Bumped by Cancel to remount the configuration form with the saved values.
-  const [configFormKey, setConfigFormKey] = useState(0);
   const { canEditAll, canDelete, can } = useEntityPermissions(
     ResourceEntity.APPLICATION,
     fqn,
@@ -436,7 +434,8 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
       getResourceLimit('app', true, true).catch(noop);
     }
     setAction(undefined);
-    onNavigate({ type: 'list' });
+    // An uninstalled app's detail no longer resolves, so Back must skip it.
+    onNavigate({ type: 'list' }, { replace: action === 'uninstall' });
 
     return true;
   };
@@ -446,6 +445,17 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
 
   const ConfigurationComponent =
     applicationsClassBase.getModalAppConfigurationComponent();
+
+  // Some apps ship a schema with no properties on purpose; the form would render blank.
+  const emptyConfigPlaceholder = isEmpty(jsonSchema?.properties) ? (
+    <Box className="tw:relative tw:flex-1 tw:min-h-90">
+      <NoDataPlaceholder
+        data-testid="app-config-empty"
+        icon={GridView}
+        title={t('label.no-entity', { entity: t('label.configuration') })}
+      />
+    </Box>
+  ) : undefined;
 
   const getTabs = (): DetailTab[] => {
     if (!appData) {
@@ -489,13 +499,13 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
         id: TAB_CONFIGURATION,
         show: Boolean(configKind),
         content:
-          configKind === 'mcp' ? (
+          emptyConfigPlaceholder ??
+          (configKind === 'mcp' ? (
             <McpConfigForm
               appData={appData}
               jsonSchema={jsonSchema as RJSFSchema}
-              key={configFormKey}
               showHint={showHint}
-              onCancel={() => setConfigFormKey((key) => key + 1)}
+              onCancel={() => onNavigate({ type: 'list' })}
             />
           ) : (
             <ConfigurationComponent
@@ -503,13 +513,12 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
               isReadOnly={!canEditAll}
               isSaving={Boolean(loading.save)}
               jsonSchema={jsonSchema as RJSFSchema}
-              key={configFormKey}
               showHint={showHint}
               submitLabel={t('label.save')}
-              onCancel={() => setConfigFormKey((key) => key + 1)}
+              onCancel={() => onNavigate({ type: 'list' })}
               onSave={handleConfigSave}
             />
-          ),
+          )),
       },
       {
         id: TAB_RUNS,
@@ -601,12 +610,13 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
           {appData.developerUrl && (
             <Button
               noTextPadding
+              className="tw:gap-1"
               color="link-color"
               data-testid="developer-website"
               href={appData.developerUrl}
               iconLeading={LinkExternal01}
               rel="noopener noreferrer"
-              size="sm"
+              size="xs"
               target="_blank">
               {t('label.visit-developer-website')}
             </Button>
@@ -676,15 +686,17 @@ const AppDetail: FC<AppDetailProps> = ({ fqn, onNavigate, onHeaderChange }) => {
     // Config is disabled without a schema, so a run-config page always has one.
     if (subPage?.type === SUB_PAGE_RUN_CONFIG && jsonSchema) {
       return (
-        <ConfigurationComponent
-          isReadOnly
-          appData={{ ...appData, appConfiguration: subPage.record.config }}
-          isSaving={false}
-          jsonSchema={jsonSchema}
-          showHint={false}
-          submitLabel={t('label.save')}
-          onSave={noop}
-        />
+        emptyConfigPlaceholder ?? (
+          <ConfigurationComponent
+            isReadOnly
+            appData={{ ...appData, appConfiguration: subPage.record.config }}
+            isSaving={false}
+            jsonSchema={jsonSchema}
+            showHint={false}
+            submitLabel={t('label.save')}
+            onSave={noop}
+          />
+        )
       );
     }
     if (subPage?.type === SUB_PAGE_EDIT_SCHEDULE) {

@@ -17,13 +17,40 @@ import {
 } from '../constants/constants';
 import { SearchIndex } from '../enums/search.enum';
 import type { DataQualityReportBatchRequest } from '../generated/tests/dataQualityReportBatchRequest';
-import { isProductTourRunning } from '../hooks/product-tour/useProductTourStore';
 import { useDomainStore } from '../hooks/useDomainStore';
 import {
   QueryFieldInterface,
   QueryFilterInterface,
 } from '../pages/ExplorePage/ExplorePage.interface';
 import { getPathNameFromWindowLocation } from '../utils/LocationUtils';
+
+// Tasks follow the pick like any other list, except a list about given assets (e.g. an asset's
+// Tasks tab): an opened asset shows all its tasks, as the rest of its page does.
+const TASKS_PATH = '/tasks';
+const ABOUT_ASSET_TASK_PARAMS = ['aboutEntity', 'aboutEntityIds', 'dataset'];
+
+const isTaskListAboutAssets = (config: InternalAxiosRequestConfig) =>
+  (config.url === TASKS_PATH ||
+    Boolean(config.url?.startsWith(`${TASKS_PATH}/`))) &&
+  ABOUT_ASSET_TASK_PARAMS.some((param) => Boolean(config.params?.[param]));
+
+// An asset's own activity (its Activity tab) is not narrowed either; the activity feed is.
+const ASSET_ACTIVITY_PATH = '/activity/entity/';
+
+const isAboutOneAsset = (config: InternalAxiosRequestConfig) =>
+  config.method === 'get' &&
+  (isTaskListAboutAssets(config) ||
+    Boolean(config.url?.startsWith(ASSET_ACTIVITY_PATH)));
+
+// A request about one asset never carries the pick, even when its caller passed one.
+const withoutDomain = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const { domain: _domain, ...params } = config.params ?? {};
+  config.params = params;
+
+  return config;
+};
 
 const parseExistingFilter = (queryFilter?: string): QueryFilterInterface => {
   if (!queryFilter) {
@@ -79,21 +106,27 @@ const isUnscopedSearch = (index?: string | string[]) => {
   );
 };
 
+// Mostly global content (e.g. Context Center articles) keeps items with no domain under a pick,
+// as its list endpoint does, so a search or sort does not change what the list shows.
+const KEEPS_UNASSIGNED_SEARCH_INDEXES = new Set<string>([
+  SearchIndex.KNOWLEDGE_PAGE_INDEX,
+]);
+
+const keepsUnassignedSearch = (index?: string | string[]) =>
+  (Array.isArray(index) ? index : (index ?? '').split(','))
+    .map((name) => name.trim())
+    .some((name) => KEEPS_UNASSIGNED_SEARCH_INDEXES.has(name));
+
 /**
  * The navbar domain a request should be scoped to, or `undefined` when none is
- * selected or scoping is off (product tour, domain pages, auth calls).
+ * selected or scoping is off (domain pages, auth calls).
  */
 const getRequestDomain = (): string | undefined => {
   const { activeDomain } = useDomainStore.getState();
   const currentPath = getPathNameFromWindowLocation();
-  // A product tour shows every user the same recorded pages, whatever domain
-  // they have selected. Off while the tour is recorded too, so the recorded
-  // requests are the ones the tour sends.
-  const isUnscopedPage =
-    isProductTourRunning() ||
-    ['/domain', '/auth/logout', '/auth/refresh'].some((path) =>
-      currentPath.startsWith(path)
-    );
+  const isUnscopedPage = ['/domain', '/auth/logout', '/auth/refresh'].some(
+    (path) => currentPath.startsWith(path)
+  );
 
   return activeDomain === DEFAULT_DOMAIN_VALUE || isUnscopedPage
     ? undefined
@@ -122,6 +155,104 @@ const withDomainOnReportBatch = (
   return config;
 };
 
+// A domain clause matches the picked domain and its sub-domains, plus items with no domain on
+// indexes that keep them.
+const domainClause = (
+  field: string,
+  activeDomain: string,
+  keepUnassigned: boolean
+): QueryFieldInterface =>
+  ({
+    bool: {
+      should: [
+        { term: { [field]: activeDomain } },
+        { prefix: { [field]: `${activeDomain}.` } },
+        ...(keepUnassigned
+          ? [{ bool: { must_not: { exists: { field } } } }]
+          : []),
+      ],
+    },
+  } as QueryFieldInterface);
+
+const scopeSearchFilter = (
+  index: string | string[] | undefined,
+  queryFilter: string | undefined,
+  activeDomain: string
+): string | undefined => {
+  if (isUnscopedSearch(index)) {
+    return queryFilter;
+  }
+
+  const field =
+    index === SearchIndex.DOMAIN
+      ? 'fullyQualifiedName'
+      : 'domains.fullyQualifiedName';
+  const filter = parseExistingFilter(queryFilter);
+  filter.query = {
+    bool: {
+      ...filter.query?.bool,
+      must: [
+        ...collectMustClauses(filter),
+        domainClause(field, activeDomain, keepsUnassignedSearch(index)),
+      ],
+    },
+  };
+
+  return JSON.stringify(filter);
+};
+
+const withDomainOnSearch = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  config.params = {
+    ...config.params,
+    query_filter: scopeSearchFilter(
+      config.params?.index,
+      config.params?.query_filter as string | undefined,
+      activeDomain
+    ),
+  };
+
+  return config;
+};
+
+// Searches whose filter is too large for a URL (e.g. a metric's linked asset ids) are POSTed
+// with the same inputs in the body; they follow the pick exactly as the GET does.
+const withDomainOnSearchBody = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  // A request replayed after a token refresh carries the body axios already serialized.
+  const body = (
+    typeof config.data === 'string' ? JSON.parse(config.data) : config.data
+  ) as { index?: string | string[]; queryFilter?: string } | undefined;
+  config.data = {
+    ...body,
+    queryFilter: scopeSearchFilter(
+      body?.index,
+      body?.queryFilter,
+      activeDomain
+    ),
+  };
+
+  return config;
+};
+
+const withDomainOnPostBody = (
+  config: InternalAxiosRequestConfig,
+  activeDomain: string
+): InternalAxiosRequestConfig => {
+  if (config.url?.includes(DQ_REPORT_BATCH_PATH)) {
+    return withDomainOnReportBatch(config, activeDomain);
+  }
+  if (config.url?.includes('/search/query')) {
+    return withDomainOnSearchBody(config, activeDomain);
+  }
+
+  return config;
+};
+
 export const withDomainFilter = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
@@ -133,67 +264,22 @@ export const withDomainFilter = (
 
   const activeDomain = getRequestDomain();
 
-  if (
-    activeDomain &&
-    config.method === 'post' &&
-    config.url?.includes(DQ_REPORT_BATCH_PATH)
-  ) {
-    return withDomainOnReportBatch(config, activeDomain);
+  if (activeDomain && config.method === 'post') {
+    return withDomainOnPostBody(config, activeDomain);
   }
 
-  if (config.method === 'get' && activeDomain) {
-    if (config.url?.includes('/search/query')) {
-      if (isUnscopedSearch(config.params?.index)) {
-        return config;
-      }
-
-      const domainFilterField =
-        config.params?.index === SearchIndex.DOMAIN
-          ? 'fullyQualifiedName'
-          : 'domains.fullyQualifiedName';
-      const filter = parseExistingFilter(
-        config.params?.query_filter as string | undefined
-      );
-
-      const mustArray = collectMustClauses(filter);
-      const existingBool = filter.query?.bool;
-
-      filter.query = {
-        bool: {
-          ...existingBool,
-          must: [
-            ...mustArray,
-            {
-              bool: {
-                should: [
-                  {
-                    term: {
-                      [domainFilterField]: activeDomain,
-                    },
-                  },
-                  {
-                    prefix: {
-                      [domainFilterField]: `${activeDomain}.`,
-                    },
-                  },
-                ],
-              },
-            } as QueryFieldInterface,
-          ],
-        },
-      };
-
-      config.params = {
-        ...config.params,
-        query_filter: JSON.stringify(filter),
-      };
-    } else {
-      config.params = {
-        ...config.params,
-        domain: activeDomain,
-      };
-    }
+  if (isAboutOneAsset(config)) {
+    return withoutDomain(config);
   }
+
+  if (!activeDomain || config.method !== 'get') {
+    return config;
+  }
+
+  if (config.url?.includes('/search/query')) {
+    return withDomainOnSearch(config, activeDomain);
+  }
+  config.params = { ...config.params, domain: activeDomain };
 
   return config;
 };
