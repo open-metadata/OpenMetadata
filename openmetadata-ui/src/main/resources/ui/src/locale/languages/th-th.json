@@ -4058,6 +4058,7 @@
     "update-sample-query": "อัปเดตคิวรีตัวอย่าง",
     "updated": "อัปเดตแล้ว",
     "updated-at": "อัปเดตเมื่อ",
+    "updated-at-source": "อัปเดตที่แหล่งที่มา",
     "updated-by": "อัปเดตโดย",
     "updated-by-user-time-ago": "อัปเดตโดย {{user}} {{time}}",
     "updated-field-for-lowercase": "อัปเดต {{field}}",

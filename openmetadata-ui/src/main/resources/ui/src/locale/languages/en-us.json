@@ -4058,6 +4058,7 @@
     "update-sample-query": "Update sample query",
     "updated": "Updated",
     "updated-at": "Updated at",
+    "updated-at-source": "Updated at source",
     "updated-by": "Updated by",
     "updated-by-user-time-ago": "Updated by {{user}} {{time}}",
     "updated-field-for-lowercase": "updated {{field}}",

@@ -4058,6 +4058,7 @@
     "update-sample-query": "नमुना क्वेरी अद्यतनित करा",
     "updated": "अद्यतनित केले",
     "updated-at": "अद्ययावत वेळ",
+    "updated-at-source": "स्रोतावर अद्यतनित",
     "updated-by": "द्वारे अद्यतनित केले",
     "updated-by-user-time-ago": "{{user}} यांनी {{time}} रोजी अद्यतनित केले",
     "updated-field-for-lowercase": "{{field}} अद्यतनित केले",

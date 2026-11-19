@@ -4058,6 +4058,7 @@
     "update-sample-query": "Uppdatera exempelfråga",
     "updated": "Uppdaterad",
     "updated-at": "Uppdaterad",
+    "updated-at-source": "Uppdaterad vid källan",
     "updated-by": "Uppdaterad av",
     "updated-by-user-time-ago": "Updated by {{user}} {{time}}",
     "updated-field-for-lowercase": "uppdaterade {{field}}",

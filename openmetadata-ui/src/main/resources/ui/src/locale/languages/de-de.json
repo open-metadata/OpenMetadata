@@ -4058,6 +4058,7 @@
     "update-sample-query": "Beispielabfrage aktualisieren",
     "updated": "Aktualisiert",
     "updated-at": "Aktualisiert unter",
+    "updated-at-source": "An der Quelle aktualisiert",
     "updated-by": "Aktualisiert von",
     "updated-by-user-time-ago": "Aktualisiert von {{user}} {{time}}",
     "updated-field-for-lowercase": "{{field}} aktualisiert",
