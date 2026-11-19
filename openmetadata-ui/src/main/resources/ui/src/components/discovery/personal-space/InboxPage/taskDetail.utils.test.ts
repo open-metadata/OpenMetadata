@@ -405,6 +405,60 @@ describe('tag request change', () => {
   });
 });
 
+describe('tag suggestion', () => {
+  const describeSuggestion = (payload: Record<string, unknown>) =>
+    getTaskDetailDescriptor(
+      buildTask({
+        type: TaskType.Suggestion,
+        payload,
+      } as unknown as Partial<Task>),
+      t
+    );
+
+  it('shows the suggested tags as a tags change, not a JSON callout', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual({
+      labelKey: 'label.tag-plural',
+      before: [],
+      after: ['Data Sensitivity.Confidential'],
+      isText: false,
+    });
+    expect(descriptor.callout).toBeUndefined();
+  });
+
+  it('lists only the tags it adds, not the ones the field already has', () => {
+    const descriptor = describeSuggestion({
+      suggestionType: 'Tag',
+      currentValue: JSON.stringify([{ tagFQN: 'Tier.Tier1' }]),
+      suggestedValue: JSON.stringify([
+        { tagFQN: 'Data Sensitivity.Confidential' },
+      ]),
+    });
+
+    expect(descriptor.change).toEqual(
+      expect.objectContaining({
+        before: [],
+        after: ['Data Sensitivity.Confidential'],
+      })
+    );
+  });
+
+  it('keeps the text callout for a description suggestion', () => {
+    expect(
+      describeSuggestion({
+        suggestionType: 'Description',
+        suggestedValue: 'A customer address',
+      }).callout
+    ).toEqual({ label: 'label.suggestion', text: 'A customer address' });
+  });
+});
+
 describe('withExistingValues for a tag task', () => {
   const change = {
     labelKey: 'label.tag-plural',

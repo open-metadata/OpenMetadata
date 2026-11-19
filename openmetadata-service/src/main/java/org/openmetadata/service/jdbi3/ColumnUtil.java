@@ -7,7 +7,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.type.Column;
@@ -120,35 +119,6 @@ public final class ColumnUtil {
     return null;
   }
 
-  public static List<Column> cloneWithoutTags(List<Column> columns) {
-    if (nullOrEmpty(columns)) {
-      return columns;
-    }
-    List<Column> copy = new ArrayList<>();
-    columns.forEach(c -> copy.add(cloneWithoutTags(c)));
-    return copy;
-  }
-
-  private static Column cloneWithoutTags(Column column) {
-    List<Column> children = cloneWithoutTags(column.getChildren());
-    return new Column()
-        .withDescription(column.getDescription())
-        .withName(column.getName())
-        .withDisplayName(column.getDisplayName())
-        .withFullyQualifiedName(column.getFullyQualifiedName())
-        .withArrayDataType(column.getArrayDataType())
-        .withConstraint(column.getConstraint())
-        .withDataTypeDisplay(column.getDataTypeDisplay())
-        .withDataType(column.getDataType())
-        .withDataLength(column.getDataLength())
-        .withPrecision(column.getPrecision())
-        .withScale(column.getScale())
-        .withOrdinalPosition(column.getOrdinalPosition())
-        .withJsonSchema(column.getJsonSchema())
-        .withExtension(column.getExtension())
-        .withChildren(children);
-  }
-
   public static void setColumnFQN(String parentFQN, List<Column> columns) {
     columns.forEach(
         c -> {
@@ -213,32 +183,5 @@ public final class ColumnUtil {
       }
     }
     return null;
-  }
-
-  /**
-   * Adds or updates a column within the given column list.
-   * If the column exists, it updates its values.
-   * If the column does not exist, it adds it to the list.
-   */
-  public static void addOrUpdateColumn(List<Column> columns, Column newColumn) {
-    Optional<Column> existingColumn =
-        columns.stream()
-            .filter(col -> col.getFullyQualifiedName().equals(newColumn.getFullyQualifiedName()))
-            .findFirst();
-
-    if (existingColumn.isPresent()) {
-      // Update existing column
-      Column col = existingColumn.get();
-      col.withDisplayName(newColumn.getDisplayName())
-          .withDescription(newColumn.getDescription())
-          .withDataType(newColumn.getDataType())
-          .withDataTypeDisplay(newColumn.getDataTypeDisplay())
-          .withDataLength(newColumn.getDataLength())
-          .withChildren(newColumn.getChildren())
-          .withArrayDataType(newColumn.getArrayDataType());
-    } else {
-      // Add new column
-      columns.add(newColumn);
-    }
   }
 }

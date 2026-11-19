@@ -50,6 +50,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -123,6 +124,7 @@ import org.openmetadata.service.jdbi3.RelationshipTypeRepository;
 import org.openmetadata.service.jdbi3.StoredSecurityConfiguration;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.monitoring.LatencyPhase;
+import org.openmetadata.service.ontology.LegacyRelationshipTypeMapper;
 import org.openmetadata.service.ontology.LegacyRelationshipTypeSynchronizer;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
@@ -2016,6 +2018,13 @@ public class SystemResource {
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
     }
+    // The setting is saved before its types are deleted, so a delete the guard would refuse has to
+    // be refused here, while nothing is written yet.
+    ((RelationshipTypeRepository) Entity.getEntityRepository(Entity.RELATIONSHIP_TYPE))
+        .requireRemovableTogether(
+            removedRelationTypes,
+            new LegacyRelationshipTypeMapper(Clock.systemUTC())
+                .map(newConfig, Entity.ADMIN_USER_NAME));
   }
 
   private static int relationTypeUsage(

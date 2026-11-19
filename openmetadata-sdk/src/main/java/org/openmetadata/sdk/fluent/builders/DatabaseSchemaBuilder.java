@@ -112,6 +112,7 @@ public class DatabaseSchemaBuilder {
    * Set custom extension data.
    */
   public DatabaseSchemaBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

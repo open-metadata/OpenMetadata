@@ -30,6 +30,9 @@ export enum SchedularOptions {
   ON_DEMAND = 'OnDemand',
 }
 
+export const TEST_CASE_RESOLUTION_WORKFLOW_NAME =
+  'TestCaseResolutionTaskWorkflow';
+
 export enum WorkflowType {
   EVENT_BASED = 'Event Based',
   PERIODIC_BATCH = 'Periodic Batch',
