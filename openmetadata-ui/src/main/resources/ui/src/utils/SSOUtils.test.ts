@@ -12,9 +12,9 @@
  */
 
 import { ErrorSchema } from '@rjsf/utils';
-import authenticationSchema from '../jsons/configuration/authenticationConfiguration.json';
 import { ClientType } from '../generated/configuration/securityConfiguration';
 import { AuthProvider } from '../generated/settings/settings';
+import authenticationSchema from '../jsons/configuration/authenticationConfiguration.json';
 import {
   applySamlConfiguration,
   cleanupProviderSpecificFields,

@@ -64,7 +64,8 @@ final class TestLoginAccountChecks {
                   null,
                   result.getResolvedPrincipal(),
                   users.getAuthUpdateFields(),
-                  Include.NON_DELETED);
+                  Include.NON_DELETED,
+                  false);
       if (Boolean.TRUE.equals(user.getIsBot()) || Boolean.TRUE.equals(user.getDeleted())) {
         throw new AuthenticationException("This account cannot sign in interactively.");
       }

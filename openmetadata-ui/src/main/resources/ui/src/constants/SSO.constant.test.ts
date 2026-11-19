@@ -15,7 +15,9 @@ import { SAML_UI_SCHEMA } from './SSO.constant';
 
 describe('SAML encryption policy', () => {
   it('exposes the saved requirement independently of strict mode', () => {
-    expect(SAML_UI_SCHEMA.samlConfiguration.security.wantAssertionEncrypted).toEqual({
+    expect(
+      SAML_UI_SCHEMA.samlConfiguration.security.wantAssertionEncrypted
+    ).toEqual({
       'ui:title': 'Require Encrypted Assertions',
     });
   });

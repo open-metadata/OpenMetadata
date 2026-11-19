@@ -60,7 +60,8 @@ class TestLoginRoundTripTest {
   void existingAccount() {
     User user = new User().withName("alice").withEmail("alice@example.com");
     when(users.getByEmail(isNull(), anyString(), any())).thenReturn(user);
-    when(users.getByName(isNull(), anyString(), any(), eq(Include.NON_DELETED))).thenReturn(user);
+    when(users.getByName(isNull(), anyString(), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(user);
   }
 
   private final InMemoryTestLoginSessionStore store = new InMemoryTestLoginSessionStore();

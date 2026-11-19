@@ -54,7 +54,7 @@ class TestLoginAccountChecksTest {
   void missingAccount() {
     when(users.getByEmail(isNull(), anyString(), any()))
         .thenThrow(EntityNotFoundException.byMessage("missing"));
-    when(users.getByName(isNull(), anyString(), any(), eq(Include.NON_DELETED)))
+    when(users.getByName(isNull(), anyString(), any(), eq(Include.NON_DELETED), eq(false)))
         .thenThrow(EntityNotFoundException.byMessage("missing"));
   }
 
@@ -105,7 +105,7 @@ class TestLoginAccountChecksTest {
         .withEnableSelfSignup(true);
     doReturn(new User().withName("alice"))
         .when(users)
-        .getByName(isNull(), eq("alice"), any(), eq(Include.NON_DELETED));
+        .getByName(isNull(), eq("alice"), any(), eq(Include.NON_DELETED), eq(false));
     assertEquals(
         TestLoginResult.Status.SUCCESS,
         TestLoginAccountChecks.check(candidate, success(TestLoginProtocol.OIDC), users)
