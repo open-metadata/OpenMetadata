@@ -101,6 +101,7 @@ from metadata.ingestion.source.database.bigquery.queries import (
     BIGQUERY_GET_TABLE_DDLS,
     BIGQUERY_GET_TABLE_DDLS_BY_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY,
+    BIGQUERY_LIFE_CYCLE_QUERY_ALL_IN_REGION,
     BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION,
 )
 from metadata.ingestion.source.database.bigquery.sharding import (
@@ -300,6 +301,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         self._policy_tag_client = None
         self._policy_tag_prefetch_key: tuple[str, ...] | None = None
         self._policy_tag_lock = threading.Lock()
+        # Each project/region query can scan gigabytes. Do it once per ingestion run,
+        # sharing the result between schema workers instead of querying per dataset.
+        self._region_lifecycle_cache: dict[
+            tuple[str, str], dict[str, dict[str, LifeCycleQueryByTable]] | None
+        ] = {}
+        self._region_lifecycle_locks: dict[tuple[str, str], threading.Lock] = {}
+        self._region_lifecycle_locks_guard = threading.Lock()
 
         if self.service_connection.includePolicyTags:
             try:
@@ -752,7 +760,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def life_cycle_query_dict(self, query: str):  # pyright: ignore[reportIncompatibleVariableOverride]
         if not self.sharding_enabled:
-            return super().life_cycle_query_dict(query)
+            return self._cached_region_lifecycle(query)
         context = self._shard_context()
         descriptor = context.shard_family
         if not descriptor:
@@ -780,6 +788,60 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         stored.updated_at = max(updated) if updated else None
             context.shard_lifecycle = summaries
         return context.shard_lifecycle
+
+    def _load_region_lifecycle(
+        self, database: str, region: str
+    ) -> dict[str, dict[str, LifeCycleQueryByTable]] | None:
+        """Run the costly region-wide scan only once per project and region.
+
+        None caches a failed region query, so all datasets fall back to a
+        dataset-scoped query without retrying the costly scan.
+        """
+        key = (database, region.casefold())
+        with self._region_lifecycle_locks_guard:
+            region_lock = self._region_lifecycle_locks.setdefault(key, threading.Lock())
+        with region_lock:
+            if key not in self._region_lifecycle_cache:
+                try:
+                    sql = BIGQUERY_LIFE_CYCLE_QUERY_ALL_IN_REGION.format(
+                        database_name=database, region=region
+                    )
+                    by_schema: dict[str, dict[str, LifeCycleQueryByTable]] = {}
+                    with self.engine.connect() as conn:
+                        for row in conn.execute(text(sql)):
+                            values = row._asdict()
+                            schema_name = values.pop("table_schema")
+                            lifecycle = LifeCycleQueryByTable.model_validate(values)
+                            by_schema.setdefault(schema_name, {})[lifecycle.table_name] = lifecycle
+                    self._region_lifecycle_cache[key] = by_schema
+                except Exception as exc:
+                    logger.warning(
+                        "BigQuery region-wide life cycle query failed for %s/%s; "
+                        "falling back to dataset-scoped queries: %s",
+                        database,
+                        region,
+                        exc,
+                    )
+                    self._region_lifecycle_cache[key] = None
+            return self._region_lifecycle_cache[key]
+
+    def _cached_region_lifecycle(self, query: str) -> dict[str, LifeCycleQueryByTable]:
+        context = self.context.get()
+        database, schema_name = context.database, context.database_schema
+        region = self._get_schema_region(schema_name)
+        # Retain the original behavior for unresolvable locations and any
+        # caller-supplied/custom query that is not the known region query.
+        if region is None or query != BIGQUERY_LIFE_CYCLE_QUERY_BY_REGION.format(
+            database_name=database, schema_name=schema_name, region=region
+        ):
+            return super().life_cycle_query_dict(query)
+        region_data = self._load_region_lifecycle(database, region)
+        if region_data is None:
+            dataset_query = BIGQUERY_LIFE_CYCLE_QUERY.format(
+                database_name=database, schema_name=schema_name
+            )
+            return super().life_cycle_query_dict(dataset_query)
+        return region_data.get(schema_name, {})
 
     def _get_schema_region(self, schema_name: str) -> str | None:
         """Resolve the dataset's region for region-scoped INFORMATION_SCHEMA queries."""
