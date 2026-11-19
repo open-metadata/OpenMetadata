@@ -6450,11 +6450,24 @@ public class WorkflowDefinitionResourceIT {
   @Test
   @Order(224)
   void test_longWorkflowNameKeepsItsApprovalTaskAndCompletesItsRun() throws Exception {
-    OpenMetadataClient client = SdkClients.adminClient();
+    final OpenMetadataClient client = SdkClients.adminClient();
     ensureWorkflowEventConsumerIsActive(client);
-    Tag tag = createClassificationWithTags(client, "longEvent", 1).getFirst();
-    String workflowName = "ownerAssignedTagApproval_" + UUID.randomUUID();
-    JsonNode created =
+    final Tag tag = createClassificationWithTags(client, "longEvent", 1).getFirst();
+    final String workflowName = "ownerAssignedTagApproval_" + UUID.randomUUID();
+    final UUID workflowId = deployLongNamedTagApprovalWorkflow(client, workflowName, tag);
+
+    startTagWorkflowWithDescriptionChange(client, tag);
+    final Task task =
+        awaitOpenApprovalTaskOfWorkflow(client, tag.getFullyQualifiedName(), workflowId);
+    final UUID runId = assertTaskBoundToRecordedRun(client, workflowName, task);
+    approve(task);
+
+    awaitRunFinishedWithTaskApproved(client, workflowName, runId, task);
+  }
+
+  private UUID deployLongNamedTagApprovalWorkflow(
+      final OpenMetadataClient client, final String workflowName, final Tag tag) throws Exception {
+    final JsonNode created =
         MAPPER.readTree(
             executeWorkflowRequest(
                 client,
@@ -6471,26 +6484,34 @@ public class WorkflowDefinitionResourceIT {
     ensureWorkflowEventConsumerIsActive(client);
     assertFlowableGeneratedId(workflowName);
     assertFlowableGeneratedId(TriggerFactory.getTriggerWorkflowId(workflowName));
+    return UUID.fromString(created.get("id").asText());
+  }
 
+  private static void startTagWorkflowWithDescriptionChange(
+      final OpenMetadataClient client, final Tag tag) throws Exception {
     client
         .tags()
         .patch(
             tag.getId(),
             MAPPER.readTree(
                 "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"updated to start the long-named workflow\"}]"));
-    UUID workflowId = UUID.fromString(created.get("id").asText());
-    Task task = awaitOpenApprovalTaskOfWorkflow(client, tag.getFullyQualifiedName(), workflowId);
-    String taskId = task.getId().toString();
-    UUID workflowInstanceId = client.tasks().get(taskId).getWorkflowInstanceId();
-    assertNotNull(workflowInstanceId, "The approval task must carry the run it belongs to");
+  }
+
+  private UUID assertTaskBoundToRecordedRun(
+      final OpenMetadataClient client, final String workflowName, final Task task) {
+    final UUID runId = client.tasks().get(task.getId().toString()).getWorkflowInstanceId();
+    assertNotNull(runId, "The approval task must carry the run it belongs to");
     assertDoesNotThrow(
-        () -> workflowInstance(client, workflowName, workflowInstanceId.toString()),
+        () -> workflowInstance(client, workflowName, runId.toString()),
         "The run must be recorded as a WorkflowInstance of " + workflowName);
+    return runId;
+  }
 
-    SdkClients.user1Client()
-        .tasks()
-        .resolve(taskId, new ResolveTask().withResolutionType(TaskResolutionType.Approved));
-
+  private void awaitRunFinishedWithTaskApproved(
+      final OpenMetadataClient client,
+      final String workflowName,
+      final UUID runId,
+      final Task task) {
     await("long-named workflow run to finish once its approval task is approved")
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(1))
@@ -6499,8 +6520,10 @@ public class WorkflowDefinitionResourceIT {
             () -> {
               assertEquals(
                   WorkflowInstance.WorkflowStatus.FINISHED.value(),
-                  workflowInstanceStatus(client, workflowName, workflowInstanceId.toString()));
-              assertEquals(TaskEntityStatus.Approved, client.tasks().get(taskId).getStatus());
+                  workflowInstanceStatus(client, workflowName, runId.toString()));
+              assertEquals(
+                  TaskEntityStatus.Approved,
+                  client.tasks().get(task.getId().toString()).getStatus());
             });
   }
 

@@ -41,7 +41,7 @@ public class FetchEntitiesImpl implements JavaDelegate {
   public void execute(DelegateExecution execution) {
     // For PeriodicBatchEntityTrigger: extract entity type from process definition key
     // Format: triggerWorkflowId-EntityType (e.g., "workflowTrigger-Table")
-    String processDefinitionKey =
+    final String processDefinitionKey =
         WorkflowHandler.getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
     String entityTypeToFetch = extractEntityTypeFromProcessKey(processDefinitionKey);
 

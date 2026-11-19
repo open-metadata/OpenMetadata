@@ -525,7 +525,7 @@ public class WorkflowHandler {
           // Get the process definition ID and extract the key
           String processDefId = timerJob.getProcessDefinitionId();
           if (processDefId != null) {
-            String jobKey = deployedProcessDefinitionKey(repositoryService, processDefId);
+            final String jobKey = deployedProcessDefinitionKey(repositoryService, processDefId);
             if (jobKey.startsWith(triggerWorkflowKey + "-")) {
               LOG.info(
                   "Cancelling old entity-specific timer job {} for workflow {}",
@@ -1926,18 +1926,18 @@ public class WorkflowHandler {
    * of the ID before the first ':', which is the whole bare generated ID when the ID embeds no key.
    * It returns null for a null ID and never throws: most callers use it while logging an error.
    */
-  public static String getProcessDefinitionKeyFromId(String processDefinitionId) {
-    ProcessEngine engine = runningProcessEngine();
+  public static String getProcessDefinitionKeyFromId(final String processDefinitionId) {
+    final ProcessEngine engine = runningProcessEngine();
     return engine != null && processDefinitionId != null
         ? deployedProcessDefinitionKey(engine.getRepositoryService(), processDefinitionId)
         : keyEmbeddedIn(processDefinitionId);
   }
 
   static String deployedProcessDefinitionKey(
-      RepositoryService repositoryService, String processDefinitionId) {
+      final RepositoryService repositoryService, final String processDefinitionId) {
     try {
       return repositoryService.getProcessDefinition(processDefinitionId).getKey();
-    } catch (FlowableException | PersistenceException e) {
+    } catch (final FlowableException | PersistenceException e) {
       // Callers log from catch blocks; a lookup failure must not replace the error they report.
       // Outside a Flowable command a database error escapes as MyBatis' own exception, unwrapped.
       LOG.debug(
@@ -1948,11 +1948,11 @@ public class WorkflowHandler {
 
   /** Null before the engine starts, and between closing one engine and starting the next. */
   private static ProcessEngine runningProcessEngine() {
-    WorkflowHandler handler = initialized ? instance : null;
+    final WorkflowHandler handler = initialized ? instance : null;
     return handler == null ? null : handler.processEngine;
   }
 
-  private static String keyEmbeddedIn(String processDefinitionId) {
+  private static String keyEmbeddedIn(final String processDefinitionId) {
     return processDefinitionId == null ? null : processDefinitionId.split(":")[0];
   }
 
