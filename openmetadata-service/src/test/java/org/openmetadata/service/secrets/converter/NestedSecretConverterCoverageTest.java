@@ -70,8 +70,8 @@ class NestedSecretConverterCoverageTest {
       JsonNode properties = schema.path("properties");
       for (String property : iterable(properties.fieldNames())) {
         String id = connection + "." + property;
-        Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
-        Ref typed =
+        final Ref oneOf = resolveToOneOfNode(properties.get(property), path, schemas);
+        final Ref typed =
             oneOf == null
                 ? resolveToNestedOneOfHolder(properties.get(property), path, schemas)
                 : null;
@@ -117,7 +117,7 @@ class NestedSecretConverterCoverageTest {
     }
     boolean leaks = false;
     for (Ref branch : secretBearingBranches(oneOf.node(), oneOf.path(), schemas)) {
-      Map<String, Object> payload = new LinkedHashMap<>();
+      final Map<String, Object> payload = new LinkedHashMap<>();
       payload.put(property, secretPayload(branch.node(), branch.path(), schemas));
       leaks |= convertsWithASecretLeftUntyped(connectionClass, payload);
     }
@@ -143,7 +143,7 @@ class NestedSecretConverterCoverageTest {
     } catch (ClassNotFoundException e) {
       return false;
     }
-    Map<String, Object> payload = new LinkedHashMap<>();
+    final Map<String, Object> payload = new LinkedHashMap<>();
     payload.put(property, secretPayload(typed.node(), typed.path(), schemas));
     return convertsWithASecretLeftUntyped(connectionClass, payload);
   }
@@ -154,12 +154,12 @@ class NestedSecretConverterCoverageTest {
    */
   private Ref resolveToNestedOneOfHolder(
       JsonNode property, String path, Map<String, JsonNode> schemas) {
-    String ref = property.path("$ref").asText("");
+    final String ref = property.path("$ref").asText("");
     Ref resolved = ref.isEmpty() ? null : resolveRef(ref, path, schemas);
     boolean holdsSecretOneOf = false;
     if (resolved != null && resolved.node().has("properties")) {
       for (JsonNode child : resolved.node().get("properties")) {
-        Ref oneOf = resolveToOneOfNode(child, resolved.path(), schemas);
+        final Ref oneOf = resolveToOneOfNode(child, resolved.path(), schemas);
         holdsSecretOneOf |=
             oneOf != null && containsPasswordFormat(oneOf.node(), oneOf.path(), schemas);
       }
@@ -226,7 +226,7 @@ class NestedSecretConverterCoverageTest {
    * by its fields or by an enum discriminator sees what it would see in production.
    */
   private Object secretPayload(JsonNode branch, String path, Map<String, JsonNode> schemas) {
-    Map<String, Object> payload = new LinkedHashMap<>();
+    final Map<String, Object> payload = new LinkedHashMap<>();
     String owner = simpleJavaName(branch, path);
     JsonNode properties = branch.path("properties");
     for (String name : iterable(properties.fieldNames())) {
@@ -235,7 +235,7 @@ class NestedSecretConverterCoverageTest {
         allowlistHits.add(owner + "." + name);
         continue;
       }
-      String ref = property.path("$ref").asText("");
+      final String ref = property.path("$ref").asText("");
       Ref resolved = ref.isEmpty() ? new Ref(property, path) : resolveRef(ref, path, schemas);
       if (resolved == null) {
         continue;

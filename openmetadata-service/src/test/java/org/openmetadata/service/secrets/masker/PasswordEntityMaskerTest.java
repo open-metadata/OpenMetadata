@@ -146,7 +146,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
             .withServers(
                 List.of(new McpServerConfig().withName("beta").withApiKey(getMaskedPassword())));
 
-    McpConnection restored =
+    final McpConnection restored =
         (McpConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
@@ -171,12 +171,12 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                     new McpServerConfig().withName("beta").withApiKey(getMaskedPassword()),
                     new McpServerConfig().withName("alpha").withApiKey(getMaskedPassword())));
 
-    McpConnection restored =
+    final McpConnection restored =
         (McpConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(reordered, original, "Mcp", ServiceType.MCP);
 
-    assertEquals(BETA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
     assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
   }
 
@@ -200,12 +200,12 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                     new McpServerConfig().withName("dup").withApiKey(getMaskedPassword()),
                     new McpServerConfig().withName("dup").withApiKey(getMaskedPassword())));
 
-    McpConnection restored =
+    final McpConnection restored =
         (McpConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(edited, original, "Mcp", ServiceType.MCP);
 
-    assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().getFirst().getApiKey());
     assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
   }
 
@@ -215,19 +215,19 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
    */
   @Test
   void testNamesSharingASecretIdKeepTheirOwnKeysWhenReordered() {
-    McpConnection restored =
+    final McpConnection restored =
         unmaskServers(
             List.of(server("Prod", ALPHA_KEY), server("prod", BETA_KEY)),
             List.of(server("prod", getMaskedPassword()), server("Prod", getMaskedPassword())));
 
-    assertEquals(BETA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(BETA_KEY, restored.getServers().getFirst().getApiKey());
     assertEquals(ALPHA_KEY, restored.getServers().get(1).getApiKey());
   }
 
   /** Deleting server "1" must not hand its key to server "2", which then sits in slot 0. */
   @Test
   void testDigitOnlyNamesKeepTheirOwnKeysWhenOneIsDeleted() {
-    McpConnection restored =
+    final McpConnection restored =
         unmaskServers(
             List.of(server("1", ALPHA_KEY), server("2", BETA_KEY)),
             List.of(server("2", getMaskedPassword())));
@@ -238,7 +238,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   /** A server named like a position key must not take the key of the server in that position. */
   @Test
   void testANameLikeAPositionKeyKeepsItsOwnKey() {
-    McpConnection restored =
+    final McpConnection restored =
         unmaskServers(
             List.of(server("#1", ALPHA_KEY), server("dup", BETA_KEY), server("dup", GAMMA_KEY)),
             List.of(
@@ -246,7 +246,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 server("dup", getMaskedPassword()),
                 server("dup", getMaskedPassword())));
 
-    assertEquals(ALPHA_KEY, restored.getServers().get(0).getApiKey());
+    assertEquals(ALPHA_KEY, restored.getServers().getFirst().getApiKey());
     assertEquals(BETA_KEY, restored.getServers().get(1).getApiKey());
     assertEquals(GAMMA_KEY, restored.getServers().get(2).getApiKey());
   }
@@ -319,7 +319,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   /** The config arrives from the database as a map, which is what used to defeat the masker. */
   @Test
   void testSftpPrivateKeyFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "host",
             "sftp.example.com",
@@ -336,7 +336,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testDatabricksPipelineTokenFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "hostPort",
             "dbc.cloud.databricks.com:443",
@@ -354,7 +354,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testDatabricksPipelineClientSecretFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "hostPort",
             "dbc.cloud.databricks.com:443",
@@ -374,7 +374,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testPowerBiGcsPrivateKeyFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "PowerBI",
@@ -402,7 +402,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testSupersetApiSslConfigFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "Superset",
@@ -431,7 +431,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testMysqlCloudSqlAuthFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "Mysql",
@@ -458,7 +458,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   /** Masks a config shaped as it is stored: nested auth objects arrive as plain maps. */
   @Test
   void testSsisDatabaseConnectionSslConfigFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "SSIS",
@@ -475,9 +475,9 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 "sslConfig",
                 Map.of("caCertificate", NESTED_SECRET)));
 
-    SSISConnection masked = (SSISConnection) mask(serialized, "SSIS", ServiceType.PIPELINE);
+    final SSISConnection masked = (SSISConnection) mask(serialized, "SSIS", ServiceType.PIPELINE);
 
-    MssqlConnection database = masked.getDatabaseConnection();
+    final MssqlConnection database = masked.getDatabaseConnection();
     assertEquals(
         getMaskedPassword(),
         ((ValidateSSLClientConfig) database.getSslConfig()).getCaCertificate());
@@ -485,7 +485,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testQlikSenseCertificateValuesFromSerializedConfigAreMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "QlikSense",
@@ -494,10 +494,10 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
             "certificates",
             Map.of("sslConfig", Map.of("caCertificate", NESTED_SECRET, "sslKey", NESTED_SECRET)));
 
-    QlikSenseConnection masked =
+    final QlikSenseConnection masked =
         (QlikSenseConnection) mask(serialized, "QlikSense", ServiceType.DASHBOARD);
 
-    ValidateSSLClientConfig ssl =
+    final ValidateSSLClientConfig ssl =
         (ValidateSSLClientConfig) ((QlikCertificateValues) masked.getCertificates()).getSslConfig();
     assertEquals(getMaskedPassword(), ssl.getCaCertificate());
     assertEquals(getMaskedPassword(), ssl.getSslKey());
@@ -505,7 +505,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testSapS4HanaOAuthClientSecretFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "SapS4Hana",
@@ -522,7 +522,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 "tokenEndpoint",
                 "https://sap.example.com/token"));
 
-    SapS4HanaConnection masked =
+    final SapS4HanaConnection masked =
         (SapS4HanaConnection) mask(serialized, "SapS4Hana", ServiceType.DASHBOARD);
 
     assertEquals(
@@ -531,7 +531,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testSampleDataStorageS3KeyFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "Postgres",
@@ -560,7 +560,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testEmptySampleDataStorageConfigStaysEmpty() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "Postgres",
@@ -581,7 +581,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testDeltaLakeMetastoreDbPasswordFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "DeltaLake",
@@ -606,7 +606,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
 
   @Test
   void testDeltaLakeStorageS3KeyFromSerializedConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "DeltaLake",
@@ -627,7 +627,7 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
   /** Released 2.0 versions typed a storage config as a metastore config and added its appName. */
   @Test
   void testDeltaLakeStorageS3KeySavedAsMetastoreConfigIsMasked() {
-    Map<String, Object> serialized =
+    final Map<String, Object> serialized =
         Map.of(
             "type",
             "DeltaLake",

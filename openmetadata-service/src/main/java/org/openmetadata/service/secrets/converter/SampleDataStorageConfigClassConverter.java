@@ -27,6 +27,7 @@ import org.openmetadata.schema.services.connections.database.SampleDataStorageCo
  */
 final class SampleDataStorageConfigClassConverter extends ClassConverter {
   private static final String PROPERTY = "sampleDataStorageConfig";
+  private static final String GETTER = "getSampleDataStorageConfig";
   private static final List<Class<?>> CLASSES = List.of(SampleDataStorageConfig.class);
 
   private final ClassConverter connectionConverter;
@@ -43,11 +44,11 @@ final class SampleDataStorageConfigClassConverter extends ClassConverter {
     return connection;
   }
 
-  static boolean holdsSampleDataStorageConfig(Class<?> clazz) {
+  static boolean holdsSampleDataStorageConfig(final Class<?> clazz) {
     return Arrays.stream(clazz.getMethods())
         .anyMatch(
             method ->
-                "getSampleDataStorageConfig".equals(method.getName())
+                GETTER.equals(method.getName())
                     && method.getReturnType() == SampleDataStorageConfig.class);
   }
 }

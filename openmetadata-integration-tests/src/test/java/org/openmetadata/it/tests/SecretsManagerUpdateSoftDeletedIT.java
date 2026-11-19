@@ -45,14 +45,14 @@ class SecretsManagerUpdateSoftDeletedIT {
 
   @Test
   void migrateEncryptsSoftDeletedServicesAndWorkflows(TestNamespace ns) {
-    String serviceId = softDeletedServiceWithPlainPassword(ns);
-    String workflowId = softDeletedWorkflowWithPlainPassword(ns);
+    final String serviceId = softDeletedServiceWithPlainPassword(ns);
+    final String workflowId = softDeletedWorkflowWithPlainPassword(ns);
 
     new SecretsManagerUpdateService(SecretsManagerFactory.getSecretsManager(), "openmetadata")
         .updateEntities();
 
-    JsonNode service = JsonUtils.readTree(stored(false, serviceId));
-    JsonNode workflow = JsonUtils.readTree(storedWorkflow(workflowId));
+    final JsonNode service = JsonUtils.readTree(stored(false, serviceId));
+    final JsonNode workflow = JsonUtils.readTree(storedWorkflow(workflowId));
     assertEncrypted(service.at("/connection/config" + PASSWORD).asText());
     assertEncrypted(workflow.at("/request/connection/config" + PASSWORD).asText());
     assertTrue(service.path("deleted").asBoolean());
@@ -65,23 +65,23 @@ class SecretsManagerUpdateSoftDeletedIT {
   }
 
   private static String softDeletedServiceWithPlainPassword(TestNamespace ns) {
-    CreateDatabaseService request =
+    final CreateDatabaseService request =
         new CreateDatabaseService()
             .withName(ns.prefix("soft_deleted_" + UUID.randomUUID().toString().substring(0, 8)))
             .withServiceType(CreateDatabaseService.DatabaseServiceType.Mysql)
             .withConnection(mysqlConnection());
-    String id =
+    final String id =
         write(HttpMethod.POST, "/v1/services/databaseServices", request).path("id").asText();
     ns.trackRoot(Entity.DATABASE_SERVICE, UUID.fromString(id));
     write(HttpMethod.DELETE, "/v1/services/databaseServices/" + id, null);
-    ObjectNode legacy = (ObjectNode) JsonUtils.readTree(stored(false, id));
+    final ObjectNode legacy = (ObjectNode) JsonUtils.readTree(stored(false, id));
     ((ObjectNode) legacy.at("/connection/config/authType")).put("password", PLAIN);
     store(false, id, legacy.toString());
     return id;
   }
 
   private static String softDeletedWorkflowWithPlainPassword(TestNamespace ns) {
-    CreateWorkflow request =
+    final CreateWorkflow request =
         new CreateWorkflow()
             .withName(ns.prefix("soft_deleted_wf_" + UUID.randomUUID().toString().substring(0, 8)))
             .withWorkflowType(WorkflowType.TEST_CONNECTION)
@@ -90,9 +90,9 @@ class SecretsManagerUpdateSoftDeletedIT {
                     .withServiceType(ServiceType.DATABASE)
                     .withConnectionType("Mysql")
                     .withConnection(mysqlConnection()));
-    String id = SdkClients.adminClient().workflows().create(request).getId().toString();
+    final String id = SdkClients.adminClient().workflows().create(request).getId().toString();
     ns.trackRoot(Entity.WORKFLOW, UUID.fromString(id));
-    ObjectNode legacy = (ObjectNode) JsonUtils.readTree(storedWorkflow(id));
+    final ObjectNode legacy = (ObjectNode) JsonUtils.readTree(storedWorkflow(id));
     ((ObjectNode) legacy.at("/request/connection/config/authType")).put("password", PLAIN);
     legacy.put("deleted", true);
     storeWorkflow(id, legacy.toString());
@@ -126,7 +126,8 @@ class SecretsManagerUpdateSoftDeletedIT {
   }
 
   private static void storeWorkflow(String id, String json) {
-    String value = connectionType() == ConnectionType.POSTGRES ? "CAST(:json AS jsonb)" : ":json";
+    final String value =
+        connectionType() == ConnectionType.POSTGRES ? "CAST(:json AS jsonb)" : ":json";
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle ->

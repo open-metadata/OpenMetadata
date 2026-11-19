@@ -407,7 +407,7 @@ public final class ClassConverterFactory {
   }
 
   public static ClassConverter getConverter(Class<?> clazz) {
-    ClassConverter converter =
+    final ClassConverter converter =
         converterMap.getOrDefault(clazz, new DefaultConnectionClassConverter(clazz));
     return SAMPLE_DATA_HOLDERS.get(clazz)
         ? new SampleDataStorageConfigClassConverter(clazz, converter)
