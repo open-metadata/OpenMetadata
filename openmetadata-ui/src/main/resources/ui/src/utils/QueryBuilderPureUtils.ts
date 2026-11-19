@@ -723,10 +723,11 @@ const findExtensionField = (
       .filter((key) => key === name || key.startsWith(`${name}.`))
       .map((key) => ({ key, scope }))
   );
-  const ofEntityType = matching.filter(
-    (candidate) => candidate.scope === entityType
-  );
-  const candidates = ofEntityType.length ? ofEntityType : matching;
+  // A named entity type reads only its own group, or a pinned builder's ungrouped properties: falling back to another
+  // entity type's property of the same name would change what the filter searches.
+  const candidates = entityType
+    ? matching.filter(({ scope }) => scope === entityType || scope === '')
+    : matching;
 
   if (candidates.length === 0) {
     return undefined;
@@ -961,6 +962,9 @@ const readMultiValueCustomProperty = (
   };
 };
 
+// `extension`, then Explore's per-entity-type level.
+const MAX_DRILL_LEVELS = 2;
+
 // Each drill level (`rule_group`) the builder nests a property rule in is written as a one-clause `bool.must`.
 const stripDrillWrappers = (
   clause: UnknownRecord,
@@ -1078,7 +1082,15 @@ const matchCustomProperty: QueryFilterBranchHandler = (
   );
 
   if (!found) {
-    return undefined;
+    // A property rule the config has no field for is dropped whole: left unclaimed, the `bool.must` reader would
+    // descend into it and read its bare `nested` query without the entity type beside it, under another entity type.
+    const isPropertyRule =
+      readCustomPropertyClause(clause) ||
+      readMultiValueCustomProperty(
+        stripDrillWrappers(clause, MAX_DRILL_LEVELS)
+      );
+
+    return isPropertyRule ? {} : undefined;
   }
 
   const extension = EntityReferenceFields.EXTENSION as string;
