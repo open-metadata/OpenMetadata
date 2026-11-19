@@ -45,8 +45,10 @@ import org.openmetadata.it.factories.StorageServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.MessagingService;
@@ -70,13 +72,18 @@ import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.OpenMetadataWorkflowConfig;
+import org.openmetadata.schema.metadataIngestion.ServiceConnections;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtCloudConfig;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtS3Config;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataBucketDetails;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataS3Config;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
+import org.openmetadata.schema.services.connections.database.MysqlConnection;
+import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.ProviderType;
@@ -1773,6 +1780,81 @@ public class IngestionPipelineResourceIT
                     .getHttpClient()
                     .execute(HttpMethod.POST, getResourcePath(), create, IngestionPipeline.class));
     assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  /** The connections a test suite pipeline carries are masked for readers, as a service's are. */
+  @Test
+  void test_testSuiteConnectionSecretsAreMaskedForReaders(TestNamespace ns) {
+    String password = "suite-password-" + ns.uniqueShortId();
+    TestSuitePipeline testSuitePipeline =
+        new TestSuitePipeline()
+            .withServiceConnections(
+                List.of(
+                    new ServiceConnections()
+                        .withServiceName("suite_mysql")
+                        .withServiceConnection(
+                            new DatabaseConnection()
+                                .withConfig(
+                                    new MysqlConnection()
+                                        .withHostPort("localhost:3306")
+                                        .withUsername("suite_user")
+                                        .withAuthType(new basicAuth().withPassword(password))))));
+    IngestionPipeline pipeline = createEntity(testSuitePipelineRequest(ns, testSuitePipeline));
+    String path = getResourcePath() + pipeline.getId();
+
+    String asAdmin =
+        SdkClients.adminClient().getHttpClient().executeForString(HttpMethod.GET, path, null);
+    String asBot =
+        SdkClients.ingestionBotClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, path, null);
+
+    assertFalse(asAdmin.contains(password), asAdmin);
+    assertTrue(asAdmin.contains(PasswordEntityMasker.PASSWORD_MASK), asAdmin);
+    assertTrue(asBot.contains(password), "the ingestion bot runs the suite with the stored secret");
+  }
+
+  /** A test suite connection that cannot be typed would keep its secrets out of reach. */
+  @Test
+  void test_testSuiteConnectionOfNoKnownTypeIsRefused(TestNamespace ns) {
+    Map<String, Object> connection =
+        Map.of(
+            "serviceName",
+            "suite_unknown",
+            "serviceConnection",
+            Map.of(
+                "config",
+                Map.of(
+                    "type",
+                    "NotAConnectionType",
+                    "password",
+                    "suite-password-" + ns.uniqueShortId())));
+    CreateIngestionPipeline create =
+        testSuitePipelineRequest(
+            ns, Map.of("type", "TestSuite", "serviceConnections", List.of(connection)));
+
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(HttpMethod.POST, getResourcePath(), create, IngestionPipeline.class));
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+  }
+
+  private static CreateIngestionPipeline testSuitePipelineRequest(
+      TestNamespace ns, Object testSuiteConfig) {
+    TestSuite logicalSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("suite_connections")));
+    return new CreateIngestionPipeline()
+        .withName(ns.prefix("suite_connections"))
+        .withPipelineType(PipelineType.TEST_SUITE)
+        .withService(logicalSuite.getEntityReference())
+        .withSourceConfig(new SourceConfig().withConfig(testSuiteConfig))
+        .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
   }
 
   /**

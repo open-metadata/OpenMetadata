@@ -24,6 +24,7 @@ import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.utils.SupersetApiConnection;
 import org.openmetadata.schema.metadataIngestion.DbtPipeline;
 import org.openmetadata.schema.metadataIngestion.StorageServiceMetadataPipeline;
+import org.openmetadata.schema.metadataIngestion.TestSuitePipeline;
 import org.openmetadata.schema.metadataIngestion.dbtconfig.DbtGCSConfig;
 import org.openmetadata.schema.metadataIngestion.storage.StorageMetadataGCSConfig;
 import org.openmetadata.schema.security.credentials.ApiAccessTokenAuth;
@@ -333,6 +334,7 @@ public final class ClassConverterFactory {
                     new StorageServiceMetadataPipelineClassConverter()),
                 Map.entry(
                     StorageMetadataGCSConfig.class, new StorageMetadataGCSConfigClassConverter()),
+                Map.entry(TestSuitePipeline.class, new TestSuitePipelineClassConverter()),
                 Map.entry(
                     ElasticSearchConnection.class, new ElasticSearchConnectionClassConverter()),
                 Map.entry(OpenSearchConnection.class, new OpenSearchConnectionClassConverter()),
