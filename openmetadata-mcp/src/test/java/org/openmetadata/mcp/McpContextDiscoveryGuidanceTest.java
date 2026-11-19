@@ -68,7 +68,47 @@ class McpContextDiscoveryGuidanceTest {
     assertThat(listedTools.get("find_context").path("description").asText())
         .contains("does not search Context Center Memories");
     assertThat(listedTools.get("company_context").path("description").asText())
-        .contains("file-extracted", "Shared", "Approved", "search_metadata", "contextMemory");
+        .contains(
+            "file-extracted",
+            "Shared",
+            "Approved",
+            "search_metadata",
+            "contextMemory",
+            "keyword-based, not semantic",
+            "not exhaustive",
+            "returned-ID anchor discovery");
+  }
+
+  @Test
+  void companyContextQueryExplainsItsSharedScopeAndEntityMisses() {
+    final JsonNode companyContext = listedTools.get("company_context");
+    assertThat(companyContext.path("description").asText())
+        .contains("visibility='Entity'", "read them by FQN", "does not prove");
+    assertThat(companyContext.at("/inputSchema/properties/query/description").asText())
+        .contains(
+            "Semantic",
+            "Approved",
+            "file-extracted",
+            "visibility='Shared'",
+            "visibility='Entity'",
+            "embeddings",
+            "Mutually exclusive with 'fqn'");
+  }
+
+  @Test
+  void companyContextFqnExplainsCallerVisibilityWithoutEmbeddings() {
+    assertThat(
+            listedTools
+                .get("company_context")
+                .at("/inputSchema/properties/fqn/description")
+                .asText())
+        .contains(
+            "caller",
+            "Approved",
+            "file-extracted",
+            "not restricted to Shared",
+            "does not need embeddings",
+            "Mutually exclusive with 'query'");
   }
 
   @Test

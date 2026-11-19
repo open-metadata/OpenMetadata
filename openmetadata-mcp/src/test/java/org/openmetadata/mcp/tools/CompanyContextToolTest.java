@@ -283,6 +283,24 @@ class CompanyContextToolTest {
   }
 
   @Test
+  void callerVisibleEntityFilePillIsReadableByFqnWithoutEmbeddings() throws Exception {
+    final String fqn = "entity-file-pill";
+    stubMemory(fqn, memory(fqn, ContextMemorySourceType.FILE_EXTRACTION, MemoryVisibility.ENTITY));
+    final CatalogSecurityContext securityContext = securityContextFor("reader");
+
+    final Map<String, Object> result =
+        withSubject(
+            securityContext,
+            "reader",
+            () -> tool.execute(mock(Authorizer.class), securityContext, Map.of("fqn", fqn)));
+
+    assertEquals(fqn, result.get("fullyQualifiedName"));
+    assertEquals("Q", result.get("question"));
+    assertEquals("A", result.get("answer"));
+    assertFalse(result.containsKey("error"));
+  }
+
+  @Test
   void sharedFilePillIsProjectedToAPrincipalItIsSharedWith() throws Exception {
     stubMemory(
         "pill-fqn",
