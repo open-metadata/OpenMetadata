@@ -55,12 +55,13 @@ export const styles = sortCx({
       'tw:group tw:relative tw:inline-flex tw:h-max tw:cursor-pointer tw:items-center tw:justify-center tw:whitespace-nowrap tw:transition tw:duration-100 tw:ease-linear tw:before:absolute',
       // When button is used within `InputGroup`
       'tw:in-data-input-wrapper:shadow-xs tw:in-data-input-wrapper:focus:!z-50 tw:in-data-input-wrapper:in-data-leading:-mr-px tw:in-data-input-wrapper:in-data-leading:rounded-r-none tw:in-data-input-wrapper:in-data-leading:before:rounded-r-none tw:in-data-input-wrapper:in-data-trailing:-ml-px tw:in-data-input-wrapper:in-data-trailing:rounded-l-none tw:in-data-input-wrapper:in-data-trailing:before:rounded-l-none',
-      // Disabled styles
-      'tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled',
+      // Disabled styles. They skip `data-loading`: callers often pass
+      // `isDisabled={loading}`, and the disabled palette must not cover the loading fill.
+      'tw:disabled:not-data-loading:cursor-not-allowed tw:disabled:not-data-loading:text-fg-disabled',
       // The masked highlight fades the disabled border into dark surfaces.
-      'tw:dark:disabled:before:hidden tw:dark:disabled:after:outline-disabled',
+      'tw:dark:disabled:not-data-loading:before:hidden tw:dark:disabled:not-data-loading:after:outline-disabled',
       // Icon styles
-      'tw:disabled:*:data-icon:text-fg-disabled_subtle',
+      'tw:disabled:not-data-loading:*:data-icon:text-fg-disabled_subtle',
       // Same as `icon` but for SSR icons that cannot be passed to the client as functions.
       'tw:*:data-icon:pointer-events-none tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
       // Smaller frames scale the 20-grid glyph down; keep its drawn line weight.
@@ -132,7 +133,7 @@ export const styles = sortCx({
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-white',
       ].join(' '),
@@ -142,7 +143,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover tw:dark:data-loading:bg-raised',
         `${borderAfter} tw:after:outline-primary`,
         // Disabled styles
-        'tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-utility-gray-500 tw:hover:*:data-icon:text-utility-gray-600',
       ].join(' '),
@@ -198,7 +199,7 @@ export const styles = sortCx({
         // Inner border gradient
         'tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
         // Disabled styles
-        'tw:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-button-destructive-primary-icon tw:hover:*:data-icon:text-button-destructive-primary-icon_hover',
       ].join(' '),
@@ -208,7 +209,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-error-primary tw:shadow-xs-skeuomorphic tw:outline-error tw:hover:bg-error-primary tw:hover:text-error-primary_hover tw:data-loading:bg-error-primary',
         `${borderAfter} tw:after:outline-error_subtle`,
         // Disabled styles
-        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         // Icon styles
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
@@ -234,7 +235,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-success-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-success-300`,
         'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
-        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-success-primary',
       ].join(' '),
     },
@@ -243,7 +244,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-warning-primary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
-        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-warning-primary',
       ].join(' '),
     },
@@ -254,7 +255,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-utility-warning-300`,
         'tw:hover:bg-primary_hover tw:hover:text-secondary_hover tw:data-loading:bg-primary_hover',
-        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-utility-gray-500',
       ].join(' '),
     },
@@ -263,7 +264,7 @@ export const styles = sortCx({
         'tw:bg-surface tw:text-brand-secondary tw:shadow-xs-skeuomorphic',
         `${borderAfter} tw:after:outline-brand`,
         'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
-        'tw:disabled:bg-surface tw:dark:disabled:bg-disabled tw:disabled:shadow-xs tw:disabled:after:outline-disabled_subtle',
+        'tw:disabled:not-data-loading:bg-surface tw:dark:disabled:not-data-loading:bg-disabled tw:disabled:not-data-loading:shadow-xs tw:disabled:not-data-loading:after:outline-disabled_subtle',
         'tw:*:data-icon:text-brand-secondary',
       ].join(' '),
     },
