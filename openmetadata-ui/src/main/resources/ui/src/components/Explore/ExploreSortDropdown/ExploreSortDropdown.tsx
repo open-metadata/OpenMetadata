@@ -15,12 +15,12 @@ import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
   Check,
   ChevronDown,
-  FilterLines,
   Search,
   SortAscending,
   SortDescending,
+  SortLinesAscending,
+  SortLinesDescending,
 } from '@openmetadata/ui-core-components/icons';
-import classNames from 'classnames';
 import { FC, Fragment, Key } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -33,14 +33,9 @@ import { SortingField } from '../SortingDropDown';
 
 type IconComponent = FC<{ className?: string }>;
 
-// Core ships no "ascending bars" glyph; the descending one flipped reads the same.
-const FilterLinesAscending: IconComponent = ({ className }) => (
-  <FilterLines className={classNames(className, 'tw:rotate-180')} />
-);
-
 const SORT_ICONS: Record<SortOrderIcon, IconComponent> = {
-  barsDesc: FilterLines,
-  barsAsc: FilterLinesAscending,
+  barsDesc: SortLinesDescending,
+  barsAsc: SortLinesAscending,
   az: SortAscending,
   za: SortDescending,
   search: Search,
