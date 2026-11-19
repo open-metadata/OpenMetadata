@@ -806,6 +806,28 @@ def test_failed_spark_sql_job_keeps_its_error_when_a_same_named_job_succeeds(sou
 )
 def test_retry_of_the_blamed_task_moves_the_blame_to_a_task_still_failing(source, server, ingestions):
     """The row keeps one error, so the still failing task is named without its message."""
+    row = retried_run_where_load_fails(source, server, ingestions)
+
+    assert row.executionStatus == StatusType.Failed
+    assert (row.error.failedTask, row.error.errorMessage) == ("nightly_retry.load", None)
+
+
+@pytest.mark.parametrize(
+    "indexes",
+    [
+        pytest.param([0, 5, 6, 1, 2, 7, "load_fails", "dag_fails"], id="first_try"),
+        pytest.param([0, 5, 6, 3, 4, 1, 2, 7, "load_fails", "dag_fails"], id="both_failed_tries"),
+    ],
+)
+def test_failed_try_read_after_its_retry_succeeded_does_not_become_the_error(source, server, indexes):
+    row = retried_run_where_load_fails(source, server, [indexes])
+
+    assert row.executionStatus == StatusType.Failed
+    assert (row.error.failedTask, row.error.errorMessage) == ("nightly_retry.load", "load lost its connection")
+
+
+def retried_run_where_load_fails(source, server, ingestions: list[list[int | str]]) -> PipelineStatus:
+    """The row of the retried run once ``ingestions`` are read, with load and then the DAG run failing."""
     load_fails = event("retried_task", 8, eventType="FAIL")
     load_fails.run_facet["facets"]["errorMessage"] = {
         "message": "load lost its connection",
@@ -817,8 +839,7 @@ def test_retry_of_the_blamed_task_moves_the_blame_to_a_task_still_failing(source
         ingest(source, server, [named.get(index) or event("retried_task", index) for index in indexes])
 
     [row] = server.statuses.values()
-    assert row.executionStatus == StatusType.Failed
-    assert (row.error.failedTask, row.error.errorMessage) == ("nightly_retry.load", None)
+    return row
 
 
 def test_dag_pipeline_written_by_this_ingestion_is_found_before_search_indexes_it(source, server):

@@ -259,11 +259,16 @@ def _try_time(line: TaskStatus) -> int:
     return _value(line.startTime) or _value(line.endTime) or 0
 
 
+def _latest_tries(lines: list[TaskStatus]) -> dict[str, TaskStatus]:
+    return {line.name: line for line in sorted(lines, key=_try_time)}
+
+
 def _first_step_still_failing(lines: list[TaskStatus], other_than: str) -> str | None:
     """The step whose latest try failed earliest, other than ``other_than``."""
-    latest = {line.name: line for line in sorted(lines, key=_try_time)}
     failing = [
-        line for name, line in latest.items() if name != other_than and line.executionStatus == StatusType.Failed
+        line
+        for name, line in _latest_tries(lines).items()
+        if name != other_than and line.executionStatus == StatusType.Failed
     ]
     return min(failing, key=_try_time).name if failing else None
 
@@ -303,6 +308,9 @@ def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> Pipeli
             lines.append(line)
         else:
             lines[index] = line
+        if not update.fails_run and _latest_tries(lines)[update.job].executionStatus != StatusType.Failed:
+            # A failed try read after a later try of its step no longer explains the run.
+            update = replace(update, error=None)
         if error is not None and error.failedTask == update.job and line.executionStatus == StatusType.Successful:
             # A later try of the failed step succeeded, so its failure no longer explains the run.
             # The row keeps one error, so a step still failing is named without its message. A
