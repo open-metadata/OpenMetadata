@@ -1,4 +1,4 @@
-name: Python tests
+name: Run Python tests
 description: Run a Nox test suite, retain its exit code, and upload results.
 inputs:
   suite:

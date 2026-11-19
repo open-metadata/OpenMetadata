@@ -1,4 +1,4 @@
-name: Diagnostics
+name: Collect diagnostics and clean up
 description: Collect runner diagnostics and stop the test stack
 inputs:
   artifact-name:

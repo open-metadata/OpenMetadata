@@ -1,4 +1,4 @@
-name: Python type checks
+name: Check Python types
 description: Run basedpyright and CI contract tests without classification models or a backend.
 inputs:
   python-version:

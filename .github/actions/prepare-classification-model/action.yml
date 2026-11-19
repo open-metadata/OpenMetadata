@@ -1,4 +1,4 @@
-name: Classification model
+name: Prepare one classification model
 description: Restore or prepare one pinned model using the standard Actions cache transport
 inputs:
   model:

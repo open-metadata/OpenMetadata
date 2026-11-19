@@ -1,4 +1,4 @@
-name: Test environment
+name: Prepare test environment
 description: Steps needed to have a coherent test environment
 
 inputs:

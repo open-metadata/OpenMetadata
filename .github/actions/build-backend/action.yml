@@ -1,5 +1,9 @@
 name: Build backend
 description: Set up Java, restore Maven dependencies, and build the requested modules.
+inputs:
+  maven-args:
+    description: Whitespace-separated Maven build arguments.
+    default: -DskipTests clean package
 runs:
   using: composite
   steps:
@@ -22,7 +26,3 @@ runs:
         read -r -a args <<< "$BACKEND_MAVEN_ARGS"
         mvn "${args[@]}"
       shell: bash
-inputs:
-  maven-args:
-    description: Whitespace-separated Maven build arguments.
-    default: -DskipTests clean package

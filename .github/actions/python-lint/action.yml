@@ -1,4 +1,4 @@
-name: Python lint
+name: Lint Python
 description: Run formatting and lint with the locked style tools.
 inputs:
   python-version:

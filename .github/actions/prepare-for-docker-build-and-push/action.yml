@@ -1,4 +1,4 @@
-name: Docker publish setup
+name: Prepare Docker publishing
 description: Set up Docker Build&Push dependencies and generate Docker Tags.
 
 inputs:

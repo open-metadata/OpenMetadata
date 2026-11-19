@@ -1,4 +1,4 @@
-name: Connector E2E
+name: Run connector E2E
 description: Run a connector through Nox and upload its results and subprocess coverage.
 inputs:
   connector:

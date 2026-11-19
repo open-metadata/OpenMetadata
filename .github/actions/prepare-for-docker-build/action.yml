@@ -1,4 +1,4 @@
-name: Docker build setup
+name: Prepare Docker build
 description: Set up Docker Build dependencies (without pushing) and run Maven build
 inputs:
   image:
