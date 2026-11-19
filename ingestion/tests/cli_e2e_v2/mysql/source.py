@@ -35,7 +35,7 @@ if TYPE_CHECKING:
     from ..features.database.source import SqlSourceBaseline
 
 logger = logging.getLogger(__name__)
-MYSQL_IMAGE = "mysql:8.0.46@sha256:7dcddc01f13bab2f15cde676d44d01f61fc9f99fe7785e86196dfc07d358ae2b"
+MYSQL_IMAGE = "mysql:8.4.13@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902"
 _INGEST_USER_OPTION = "e2e_mysql_ingest_user"
 
 
