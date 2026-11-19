@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
@@ -28,6 +29,7 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.rdf.RdfUtils;
+import org.openmetadata.service.rdf.translator.ConceptBindingLookup.ServedBinding;
 
 @Slf4j
 public class JsonLdTranslator {
@@ -53,8 +55,13 @@ public class JsonLdTranslator {
   // shared across entities.
   private final RdfPropertyMapper propertyMapper;
   private final Function<EntityInterface<?>, String> entityTypeResolver;
+  private final ConceptBindingLookup bindingLookup;
 
-  /** A translator for the graph: references and labels that are not live are left out. */
+  /**
+   * A translator for the graph: references and labels that are not live are left out. It projects
+   * no concept bindings; the serving graph's translator is built with {@link
+   * ConceptBindingLookup#database()}.
+   */
   public JsonLdTranslator(ObjectMapper objectMapper, String baseUri) {
     this(objectMapper, baseUri, LiveTagLookup.database(), ReferenceScope.LIVE);
   }
@@ -64,11 +71,20 @@ public class JsonLdTranslator {
       String baseUri,
       LiveTagLookup tagLookup,
       ReferenceScope referenceScope) {
+    this(objectMapper, baseUri, tagLookup, ConceptBindingLookup.NONE, referenceScope);
+  }
+
+  public JsonLdTranslator(
+      ObjectMapper objectMapper,
+      String baseUri,
+      LiveTagLookup tagLookup,
+      ConceptBindingLookup bindingLookup,
+      ReferenceScope referenceScope) {
     this(
         objectMapper,
         baseUri,
         entity -> entity.getEntityReference().getType(),
-        tagLookup,
+        new Lookups(tagLookup, bindingLookup),
         referenceScope);
   }
 
@@ -76,23 +92,31 @@ public class JsonLdTranslator {
       ObjectMapper objectMapper,
       String baseUri,
       Function<EntityInterface<?>, String> entityTypeResolver) {
-    this(objectMapper, baseUri, entityTypeResolver, LiveTagLookup.database(), ReferenceScope.LIVE);
+    this(
+        objectMapper,
+        baseUri,
+        entityTypeResolver,
+        new Lookups(LiveTagLookup.database(), ConceptBindingLookup.NONE),
+        ReferenceScope.LIVE);
   }
 
   private JsonLdTranslator(
       ObjectMapper objectMapper,
       String baseUri,
       Function<EntityInterface<?>, String> entityTypeResolver,
-      LiveTagLookup tagLookup,
+      Lookups lookups,
       ReferenceScope referenceScope) {
     this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = new HashMap<>();
     this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
     this.entityTypeResolver = Objects.requireNonNull(entityTypeResolver, "entityTypeResolver");
+    this.bindingLookup = Objects.requireNonNull(lookups.bindings(), "bindingLookup");
     loadContexts();
     this.propertyMapper =
-        new RdfPropertyMapper(baseUri, objectMapper, contextCache, tagLookup, referenceScope);
+        new RdfPropertyMapper(baseUri, objectMapper, contextCache, lookups.tags(), referenceScope);
   }
+
+  private record Lookups(LiveTagLookup tags, ConceptBindingLookup bindings) {}
 
   private void loadContexts() {
     contextCache.put("base", contextValue("base.jsonld"));
@@ -220,34 +244,42 @@ public class JsonLdTranslator {
 
   public Model toRdf(EntityInterface<?> entity) {
     Model model = typedEntityModel(entity);
-    propertyMapper.mapEntityToRdf(entity, entityResource(entity, model), model);
+    Resource resource = entityResource(entity, model);
+    propertyMapper.mapEntityToRdf(entity, resource, model);
+    emitBindings(entity, servedBindings(List.of(entity)), resource, model);
     LOG.debug(
         "RDF model size for entity {}: {} triples", entity.getFullyQualifiedName(), model.size());
     return model;
   }
 
   /**
-   * Translates a reindex page. The labels of all its entities are resolved up front, with one
-   * lookup per label type, and held only while the page is translated: the page is read as one
-   * snapshot, so the result is as current as resolving each entity on its own, at a fraction of
-   * the queries.
+   * Translates a reindex page. The labels and concept bindings of all its entities are resolved up
+   * front, with one lookup per label type and one for the bindings, and held only while the page is
+   * translated: the page is read as one snapshot, so the result is as current as resolving each
+   * entity on its own, at a fraction of the queries.
    */
   public Page page(List<? extends EntityInterface<?>> entities) {
     Map<EntityInterface<?>, JsonNode> documents = new IdentityHashMap<>();
     for (EntityInterface<?> entity : entities) {
       documents.put(entity, propertyMapper.document(entity));
     }
-    return new Page(documents, propertyMapper.resolveLabelsTogether(documents.values()));
+    return new Page(
+        documents, propertyMapper.resolveLabelsTogether(documents), servedBindings(entities));
   }
 
   /** A reindex page whose labels are resolved; translate each of its entities once. */
   public final class Page {
     private final Map<EntityInterface<?>, JsonNode> documents;
     private final LiveTagLookup labels;
+    private final Map<UUID, List<ServedBinding>> bindings;
 
-    private Page(Map<EntityInterface<?>, JsonNode> documents, LiveTagLookup labels) {
+    private Page(
+        Map<EntityInterface<?>, JsonNode> documents,
+        LiveTagLookup labels,
+        Map<UUID, List<ServedBinding>> bindings) {
       this.documents = documents;
       this.labels = labels;
+      this.bindings = bindings;
     }
 
     public Model toRdf(EntityInterface<?> entity) {
@@ -256,9 +288,30 @@ public class JsonLdTranslator {
         throw new IllegalArgumentException("Entity " + entity.getId() + " is not in this page");
       }
       Model model = typedEntityModel(entity);
-      propertyMapper.mapEntityToRdf(entity, document, labels, entityResource(entity, model), model);
+      Resource resource = entityResource(entity, model);
+      propertyMapper.mapEntityToRdf(entity, document, labels, resource, model);
+      emitBindings(entity, bindings, resource, model);
       return model;
     }
+  }
+
+  private Map<UUID, List<ServedBinding>> servedBindings(
+      List<? extends EntityInterface<?>> entities) {
+    List<UUID> bindable =
+        entities.stream()
+            .filter(entity -> RdfConceptBindingMapper.isBindable(entityTypeResolver.apply(entity)))
+            .map(EntityInterface::getId)
+            .toList();
+    return bindable.isEmpty() ? Map.of() : bindingLookup.servedBindings(bindable);
+  }
+
+  private void emitBindings(
+      EntityInterface<?> entity,
+      Map<UUID, List<ServedBinding>> bindings,
+      Resource resource,
+      Model model) {
+    RdfConceptBindingMapper.emit(
+        entity, bindings.getOrDefault(entity.getId(), List.of()), resource, model, baseUri);
   }
 
   private Resource entityResource(EntityInterface<?> entity, Model model) {
