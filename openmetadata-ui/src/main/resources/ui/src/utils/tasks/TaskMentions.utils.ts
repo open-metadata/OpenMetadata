@@ -15,11 +15,17 @@ import { entityLinkRegEx } from '../../constants/Feeds.constants';
 import { listTasks, Task, TaskComment } from '../../rest/tasksAPI';
 import Fqn from '../Fqn';
 
-const TASK_MENTION_LIMIT = 100;
+const TASK_MENTION_PAGE_SIZE = 100;
 
 export interface TaskCommentMention {
-  task: Task;
+  task: Pick<Task, 'id' | 'name' | 'about'>;
   comment: TaskComment;
+}
+
+interface TaskCommentMentionOptions {
+  domain?: string;
+  startTs?: number;
+  endTs?: number;
 }
 
 const mentionsUser = (message: string, name: string, quotedName: string) => {
@@ -35,21 +41,36 @@ const mentionsUser = (message: string, name: string, quotedName: string) => {
 
 export const getTaskCommentMentions = async (
   mentionedUser: string,
-  domain?: string
+  { domain, startTs = 0, endTs = Infinity }: TaskCommentMentionOptions = {}
 ) => {
-  const { data, paging } = await listTasks({
-    mentionedUser,
-    domain,
-    fields: 'about,comments',
-    limit: TASK_MENTION_LIMIT,
-  });
   const name = Fqn.unquoteName(mentionedUser);
   const quotedName = Fqn.quoteName(name);
-  const mentions = data.flatMap((task) =>
-    (task.comments ?? [])
-      .filter(({ message }) => mentionsUser(message, name, quotedName))
-      .map((comment) => ({ task, comment }))
-  );
+  const mentions: TaskCommentMention[] = [];
+  let after: string | undefined;
 
-  return { mentions, isCapped: Boolean(paging?.after) };
+  // Task pages are ordered by creation time. An old task can have a new mention.
+  do {
+    const { data, paging } = await listTasks({
+      mentionedUser,
+      domain,
+      fields: 'about,comments',
+      limit: TASK_MENTION_PAGE_SIZE,
+      after,
+    });
+    for (const { id, name: taskName, about, comments } of data) {
+      const task = { id, name: taskName, about };
+      for (const comment of comments ?? []) {
+        if (
+          comment.createdAt >= startTs &&
+          comment.createdAt <= endTs &&
+          mentionsUser(comment.message, name, quotedName)
+        ) {
+          mentions.push({ task, comment });
+        }
+      }
+    }
+    after = paging?.after;
+  } while (after);
+
+  return mentions;
 };

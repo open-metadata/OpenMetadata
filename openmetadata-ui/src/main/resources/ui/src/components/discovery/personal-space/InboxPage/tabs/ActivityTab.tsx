@@ -373,19 +373,32 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
   const userId = user?.id;
 
   // Shared with the badge (one fetch); merge semantics documented on the hook.
-  const { items, isCapped, cutAt, isLoading, error, refetch } =
-    useInboxActivity(filter, dateRange, userId);
+  const {
+    items,
+    isCapped,
+    cutAt,
+    isLoading,
+    error,
+    refetch,
+    taskMentionsLoaded,
+  } = useInboxActivity(filter, dateRange, userId);
 
-  // Looking at the list is what clears the sidebar's unread badge; feeds have no
-  // server-side read state to update. Another user's feed is not the inbox.
-  // Only a successfully loaded view of the viewer's own feed is "looking at
-  // the list" — a loading skeleton or an error screen is not, so the mark is
-  // not stamped until the feed resolves without error.
+  // Keep the unread badge until a view that includes the viewer's mentions loads.
   useEffect(() => {
-    if (!isOtherUser && !isLoading && !error) {
+    const showsUnfilteredTaskMentions =
+      taskMentionsLoaded && !isFiltered && typeKeys.length === 0;
+    if (!isOtherUser && !isLoading && !error && showsUnfilteredTaskMentions) {
       markInboxActivitySeen();
     }
-  }, [isOtherUser, isLoading, error, markInboxActivitySeen]);
+  }, [
+    isOtherUser,
+    isLoading,
+    error,
+    taskMentionsLoaded,
+    isFiltered,
+    typeKeys.length,
+    markInboxActivitySeen,
+  ]);
   const counts = useInboxActivityCounts(dateRange, userId);
   // The Mentions feed (already read for its count) marks the cards that name
   // the feed's user, whichever tab they appear under.

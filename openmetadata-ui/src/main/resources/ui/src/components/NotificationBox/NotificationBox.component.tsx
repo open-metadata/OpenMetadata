@@ -203,12 +203,12 @@ const NotificationBox = ({
         userId: currentUser?.id,
       }),
       currentUser?.name
-        ? getTaskCommentMentions(currentUser.name, domain)
+        ? getTaskCommentMentions(currentUser.name, { domain })
         : undefined,
     ])
       .then(([conversations, tasks]) => {
         const taskMentions =
-          tasks.status === 'fulfilled' ? tasks.value?.mentions : undefined;
+          tasks.status === 'fulfilled' ? tasks.value : undefined;
         if (conversations.status === 'rejected' && !taskMentions) {
           throw conversations.reason;
         }

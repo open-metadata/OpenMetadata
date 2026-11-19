@@ -57,7 +57,7 @@ export const useUnreadInboxActivity = (): number => {
           startTs: seenTs ?? undefined,
         }),
         userName && seenTs !== null
-          ? getTaskCommentMentions(userName)
+          ? getTaskCommentMentions(userName, { startTs: seenTs + 1 })
           : undefined,
       ]);
       const conversationCount =
@@ -65,11 +65,7 @@ export const useUnreadInboxActivity = (): number => {
           ? conversations.value.paging?.total ?? 0
           : 0;
       const taskCount =
-        tasks.status === 'fulfilled'
-          ? tasks.value?.mentions.filter(
-              ({ comment }) => comment.createdAt > (seenTs ?? 0)
-            ).length ?? 0
-          : 0;
+        tasks.status === 'fulfilled' ? tasks.value?.length ?? 0 : 0;
 
       return conversationCount + taskCount;
     },

@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { QueryClient, useQueries, useQuery } from '@tanstack/react-query';
+import {
+  QueryClient,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { ActivityEvent } from '../../../../generated/entity/activity/activityEvent';
 import { Conversation } from '../../../../generated/entity/feed/conversation';
@@ -260,13 +265,35 @@ const fetchActivityAndConversations = async (
   );
 };
 
+const includesTaskMentions = (filter: ActivityFilter) =>
+  filter === ActivityFilter.All || filter === ActivityFilter.Mentions;
+
+const readTaskMentions = (
+  mentionedUser: string,
+  startTs?: number,
+  endTs?: number,
+  queryClient?: QueryClient
+) => {
+  const queryFn = () =>
+    getTaskCommentMentions(mentionedUser, { startTs, endTs });
+
+  return queryClient
+    ? queryClient.fetchQuery({
+        queryKey: ['inbox-task-mentions', mentionedUser, startTs, endTs],
+        queryFn,
+        staleTime: INBOX_ACTIVITY_STALE_TIME,
+      })
+    : queryFn();
+};
+
 export const fetchInboxActivity = async (
   filter: ActivityFilter,
   userId: string | undefined,
   startTs?: number,
   endTs?: number,
   isScoped = false,
-  mentionedUser?: string
+  mentionedUser?: string,
+  queryClient?: QueryClient
 ): Promise<InboxActivityResult> => {
   if (!userId) {
     return { activities: [], threads: [], isCapped: false };
@@ -279,25 +306,18 @@ export const fetchInboxActivity = async (
     endTs,
     isScoped
   );
-  if (filter !== ActivityFilter.Mentions || !mentionedUser) {
+  if (!includesTaskMentions(filter) || !mentionedUser) {
     return activityRequest;
   }
 
-  const [window, taskPage] = await Promise.all([
+  const [window, taskMentions] = await Promise.all([
     activityRequest,
-    getTaskCommentMentions(mentionedUser).catch(() => undefined),
-  ]);
-  if (!taskPage) {
-    return window;
-  }
-
-  return {
-    ...window,
-    taskMentions: taskPage.mentions.filter(({ comment }) =>
-      isWithinInboxRange(comment.createdAt, { startTs, endTs })
+    readTaskMentions(mentionedUser, startTs, endTs, queryClient).catch(
+      () => undefined
     ),
-    isCapped: window.isCapped || taskPage.isCapped,
-  };
+  ]);
+
+  return { ...window, taskMentions };
 };
 
 /**
@@ -348,7 +368,8 @@ const inboxActivityQuery = (
   userId: string | undefined,
   dateRange?: InboxDateRange,
   isScoped = false,
-  mentionedUser?: string
+  mentionedUser?: string,
+  queryClient?: QueryClient
 ) => ({
   queryKey: [
     INBOX_ACTIVITY_QUERY_KEY,
@@ -356,7 +377,7 @@ const inboxActivityQuery = (
     dateRange?.startTs,
     dateRange?.endTs,
     userId,
-    filter === ActivityFilter.Mentions ? mentionedUser : undefined,
+    includesTaskMentions(filter) ? mentionedUser : undefined,
   ],
   queryFn: () =>
     fetchInboxActivity(
@@ -365,7 +386,8 @@ const inboxActivityQuery = (
       dateRange?.startTs,
       dateRange?.endTs,
       isScoped,
-      mentionedUser
+      mentionedUser,
+      queryClient
     ),
   enabled: Boolean(userId),
   staleTime: INBOX_ACTIVITY_STALE_TIME,
@@ -376,6 +398,7 @@ export interface UseInboxActivity extends InboxCount {
   // See InboxActivityResult.
   cutAt?: number;
   isLoading: boolean;
+  taskMentionsLoaded: boolean;
   error: unknown;
   refetch: () => void;
 }
@@ -391,9 +414,17 @@ export const useInboxActivity = (
   userId?: string
 ): UseInboxActivity => {
   const { subjectId, isScoped, mentionedUser } = useFeedSubject(userId);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery(
-    inboxActivityQuery(filter, subjectId, dateRange, isScoped, mentionedUser)
+    inboxActivityQuery(
+      filter,
+      subjectId,
+      dateRange,
+      isScoped,
+      mentionedUser,
+      queryClient
+    )
   );
 
   const items: InboxActivityItem[] = useMemo(() => {
@@ -425,6 +456,7 @@ export const useInboxActivity = (
     isCapped: data?.isCapped ?? false,
     cutAt: data?.cutAt,
     isLoading,
+    taskMentionsLoaded: data?.taskMentions !== undefined,
     // A failed background refresh keeps the cached feed on screen.
     error: data ? null : error,
     refetch,
@@ -442,10 +474,18 @@ export const useInboxActivityCounts = (
   userId?: string
 ): Partial<Record<ActivityFilter, InboxCount>> => {
   const { subjectId, isScoped, mentionedUser } = useFeedSubject(userId);
+  const queryClient = useQueryClient();
   const filters = Object.values(ActivityFilter);
   const results = useQueries({
     queries: filters.map((filter) =>
-      inboxActivityQuery(filter, subjectId, dateRange, isScoped, mentionedUser)
+      inboxActivityQuery(
+        filter,
+        subjectId,
+        dateRange,
+        isScoped,
+        mentionedUser,
+        queryClient
+      )
     ),
   });
 
@@ -475,13 +515,21 @@ export const useInboxActivityCounts = (
 export const useUserActivityCount = (
   userId: string | undefined
 ): number | undefined => {
-  const { isScoped } = useFeedSubject(userId);
+  const { isScoped, mentionedUser } = useFeedSubject(userId);
+  const queryClient = useQueryClient();
   const dateRange = useMemo(
     () => ({ ...getDefaultInboxDateRange(), key: DEFAULT_INBOX_DATE_PRESET }),
     []
   );
   const { data } = useQuery(
-    inboxActivityQuery(ActivityFilter.All, userId, dateRange, isScoped)
+    inboxActivityQuery(
+      ActivityFilter.All,
+      userId,
+      dateRange,
+      isScoped,
+      mentionedUser,
+      queryClient
+    )
   );
 
   return data && getInboxTotal(data);

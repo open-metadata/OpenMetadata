@@ -34,6 +34,7 @@ let activityState: {
   isCapped?: boolean;
   cutAt?: number;
   error?: unknown;
+  taskMentionsLoaded?: boolean;
 };
 const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
@@ -57,6 +58,7 @@ jest.mock('../useInboxActivity', () => ({
       isCapped: activityState.isCapped ?? false,
       cutAt: activityState.cutAt,
       error: activityState.error ?? null,
+      taskMentionsLoaded: activityState.taskMentionsLoaded ?? filter === 'all',
       refetch: mockRefetch,
     };
   },
@@ -682,6 +684,19 @@ describe('ActivityTab', () => {
   // has loaded successfully — not while loading, not on error, and not for
   // another user's feed.
   describe('seen-mark timing', () => {
+    it('keeps mentions unread when the task source fails', () => {
+      activityState = { ...activityState, taskMentionsLoaded: false };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('keeps mentions unread when the selected view excludes them', () => {
+      render(<ActivityTab initialFilter={ActivityFilter.Following} />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
     it('stamps the seen-mark once the feed has loaded', () => {
       activityState = { items: [], total: 0, isLoading: false };
       render(<ActivityTab />);
