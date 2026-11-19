@@ -26,6 +26,7 @@ interface TaskCommentMentionOptions {
   domain?: string;
   startTs?: number;
   endTs?: number;
+  maxResults?: number;
 }
 
 const mentionsUser = (message: string, name: string, quotedName: string) => {
@@ -39,35 +40,70 @@ const mentionsUser = (message: string, name: string, quotedName: string) => {
   return false;
 };
 
+const trimToNewestMentions = (
+  mentions: TaskCommentMention[],
+  maxResults: number,
+  oldestTaskUpdate?: number
+) => {
+  if (mentions.length < maxResults) {
+    return false;
+  }
+
+  mentions.sort(
+    (left, right) => right.comment.createdAt - left.comment.createdAt
+  );
+  mentions.splice(maxResults);
+
+  // Adding a comment advances updatedAt, which bounds the timestamps on older pages.
+  const oldestMention = mentions.at(-1);
+
+  return (
+    oldestTaskUpdate !== undefined &&
+    oldestMention !== undefined &&
+    oldestTaskUpdate < oldestMention.comment.createdAt
+  );
+};
+
 export const getTaskCommentMentions = async (
   mentionedUser: string,
-  { domain, startTs = 0, endTs = Infinity }: TaskCommentMentionOptions = {}
+  {
+    domain,
+    startTs,
+    endTs = Infinity,
+    maxResults = Infinity,
+  }: TaskCommentMentionOptions = {}
 ) => {
+  if (maxResults < 1) {
+    return [];
+  }
+
   const name = Fqn.unquoteName(mentionedUser);
   const quotedName = Fqn.quoteName(name);
+  const includesComment = ({ createdAt, message }: TaskComment) =>
+    createdAt >= (startTs ?? 0) &&
+    createdAt <= endTs &&
+    mentionsUser(message, name, quotedName);
   const mentions: TaskCommentMention[] = [];
   let after: string | undefined;
 
-  // Task pages are ordered by creation time. An old task can have a new mention.
   do {
     const { data, paging } = await listTasks({
       mentionedUser,
       domain,
       fields: 'about,comments',
+      updatedSince: startTs,
+      sortBy: 'updatedAt',
       limit: TASK_MENTION_PAGE_SIZE,
       after,
     });
     for (const { id, name: taskName, about, type, comments } of data) {
       const task = { id, name: taskName, about, type };
-      for (const comment of comments ?? []) {
-        if (
-          comment.createdAt >= startTs &&
-          comment.createdAt <= endTs &&
-          mentionsUser(comment.message, name, quotedName)
-        ) {
-          mentions.push({ task, comment });
-        }
-      }
+      comments
+        ?.filter(includesComment)
+        .forEach((comment) => mentions.push({ task, comment }));
+    }
+    if (trimToNewestMentions(mentions, maxResults, data.at(-1)?.updatedAt)) {
+      break;
     }
     after = paging?.after;
   } while (after);

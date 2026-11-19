@@ -2458,6 +2458,34 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testListPagesRecentTaskUpdates(TestNamespace ns) throws Exception {
+    final Domain domain = createDomain(ns, "task-update-order-domain");
+    final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());
+    createTaskWithDisplayName(ns, "stale", table, "Stale task");
+    final Task first = createTaskWithDisplayName(ns, "first", table, "First task");
+    final Task second = createTaskWithDisplayName(ns, "second", table, "Second task");
+    SdkClients.adminClient()
+        .tasks()
+        .addComment(first.getId().toString(), "New comment on older task");
+
+    final RequestOptions.Builder options =
+        RequestOptions.builder()
+            .queryParam("aboutEntity", table.getFullyQualifiedName())
+            .queryParam("sortBy", "updatedAt")
+            .queryParam("updatedSince", Long.toString(second.getUpdatedAt()))
+            .queryParam("limit", "1");
+    final JsonNode latest = taskListPage("/v1/tasks", options.build());
+    assertEquals(List.of(first.getId()), pageIds(latest));
+    assertEquals(2, latest.path("paging").path("total").asInt());
+
+    final JsonNode previous =
+        taskListPage(
+            "/v1/tasks",
+            options.queryParam("after", latest.path("paging").path("after").asText()).build());
+    assertEquals(List.of(second.getId()), pageIds(previous));
+  }
+
+  @Test
   void testListSearchPagesNewestFirstBothWays(TestNamespace ns) throws Exception {
     final Domain domain = createDomain(ns, "list-search-order-domain");
     final Table table = createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of());

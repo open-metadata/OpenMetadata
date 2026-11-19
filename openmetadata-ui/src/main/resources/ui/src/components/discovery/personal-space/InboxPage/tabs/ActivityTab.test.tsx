@@ -25,6 +25,7 @@ interface MockItem {
 interface MockInboxItem {
   activity?: MockItem;
   feed?: MockItem;
+  taskMention?: { comment: { id: string; createdAt: number } };
 }
 
 let activityState: {
@@ -40,14 +41,23 @@ const mockRefetch = jest.fn();
 const mockUseInboxActivity = jest.fn();
 // What the Mentions feed returns, read separately to mark mentioned cards.
 let mockMentionItems: MockInboxItem[] = [];
+let mockMentionsCutAt: number | undefined;
 
 jest.mock('../useInboxActivity', () => ({
   getInboxItemId: (item: MockInboxItem) =>
-    String(item.activity?.id ?? item.feed?.id ?? ''),
-  getInboxItemTimestamp: (item: MockInboxItem) => item.activity?.timestamp ?? 0,
+    String(
+      item.activity?.id ?? item.feed?.id ?? item.taskMention?.comment.id ?? ''
+    ),
+  getInboxItemTimestamp: (item: MockInboxItem) =>
+    item.activity?.timestamp ?? item.taskMention?.comment.createdAt ?? 0,
   useInboxActivity: (filter: string, ...args: unknown[]) => {
     if (filter === 'mentions') {
-      return { items: mockMentionItems, total: 0, isLoading: false };
+      return {
+        items: mockMentionItems,
+        total: mockMentionItems.length,
+        isLoading: false,
+        cutAt: mockMentionsCutAt,
+      };
     }
     mockUseInboxActivity(filter, ...args);
 
@@ -63,6 +73,10 @@ jest.mock('../useInboxActivity', () => ({
     };
   },
   useInboxActivityCounts: () => ({}),
+}));
+
+jest.mock('../../../../NotificationBox/TaskMentionCard', () => ({
+  TaskMentionCard: () => <span>Task mention</span>,
 }));
 
 // Exercised by its own suite; here it only drives the tab's state.
@@ -201,6 +215,7 @@ const alice = {
 
 describe('ActivityTab', () => {
   beforeEach(() => {
+    mockMentionsCutAt = undefined;
     jest.clearAllMocks();
     activityState = {
       items: [],
@@ -524,6 +539,30 @@ describe('ActivityTab', () => {
     ).toBeInTheDocument();
   });
 
+  it('marks older days with task mentions as incomplete in All', () => {
+    const day = 24 * 60 * 60 * 1000;
+    activityState = {
+      items: [
+        { activity: { id: 'newest', timestamp: 3 * day } },
+        { activity: { id: 'cut', timestamp: 2 * day } },
+        { taskMention: { comment: { id: 'mention', createdAt: day } } },
+      ],
+      total: 3,
+      isLoading: false,
+      isCapped: true,
+      cutAt: 2 * day,
+    };
+
+    render(<ActivityTab />);
+
+    const [newest, cutoff, older] = screen.getAllByTestId('activity-group');
+
+    expect(newest).toHaveTextContent('label.one-update');
+    expect(cutoff).toHaveTextContent('label.number-update-plural:1+');
+    expect(older).toHaveTextContent('Task mention');
+    expect(older).toHaveTextContent('label.number-update-plural:1+');
+  });
+
   // The cut is the whole feed's: a type filter that empties the cut day must
   // not move the floor onto a complete one.
   it('keeps the floor on the cut day when a type filter empties it', () => {
@@ -563,23 +602,20 @@ describe('ActivityTab', () => {
   // sit past the cut; the floor goes on the day the feed was cut.
   it('marks the day the feed was cut, not the day of its last card', () => {
     const DAY = 24 * 60 * 60 * 1000;
-    activityState = {
-      items: [
-        { activity: { id: 'today', timestamp: 3 * DAY } },
-        { activity: { id: 'old-mentioned-today', timestamp: DAY } },
-      ],
-      total: 2,
-      isLoading: false,
-      isCapped: true,
-      cutAt: 3 * DAY,
-    };
+    mockMentionItems = [
+      { activity: { id: 'today', timestamp: 3 * DAY } },
+      { activity: { id: 'old-mentioned-today', timestamp: DAY } },
+    ];
+    mockMentionsCutAt = 3 * DAY;
 
-    render(<ActivityTab />);
+    render(<ActivityTab initialFilter={ActivityFilter.Mentions} />);
 
     const [cutDay, olderDay] = screen.getAllByTestId('activity-group');
 
     expect(cutDay).toHaveTextContent('label.number-update-plural:1+');
     expect(olderDay).toHaveTextContent('label.one-update');
+
+    mockMentionItems = [];
   });
 
   it('says nothing about a cap when the feed is complete', () => {

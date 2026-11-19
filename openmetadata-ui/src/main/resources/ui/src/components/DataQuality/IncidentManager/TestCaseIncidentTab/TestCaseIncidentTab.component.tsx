@@ -61,37 +61,29 @@ const TaskTabNew = withSuspenseFallback(
   )
 );
 
-const TestCaseIncidentTab = () => {
+const useLinkedIncidentSelection = (
+  decodedFqn: string,
+  selectedTask: Task | undefined,
+  setActiveTask: (task?: Task) => void,
+  setTaskFilter: (filter: TaskFilter) => void
+) => {
   const { t } = useTranslation();
-  const { fqn: decodedFqn } = useFqn();
   const [searchParams] = useSearchParams();
   const linkedTaskId = searchParams.get(INCIDENT_TASK_ID_PARAM);
-  const { testCase } = useTestCaseStore();
-
-  const owners = useMemo(() => testCase?.owners, [testCase]);
-
-  const {
-    getTaskData,
-    loading,
-    entityPaging,
-    tasks,
-    selectedTask,
-    setActiveTask,
-  } = useActivityFeedProvider();
-  const [elementRef, isInView] = useElementInView({
-    ...observerOptions,
-    root: document.querySelector('#center-container'),
-    rootMargin: '0px 0px 2px 0px',
-  });
-  const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
-  const [openTasksCount, setOpenTasksCount] = useState(0);
-  const [closedTasksCount, setClosedTasksCount] = useState(0);
-
-  const statusGroup =
-    taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
+  const [loadedTaskLink, setLoadedTaskLink] = useState<string>();
+  const taskLink =
+    linkedTaskId && decodedFqn ? `${decodedFqn}/${linkedTaskId}` : undefined;
+  const isLoadingLinkedTask = Boolean(taskLink && loadedTaskLink !== taskLink);
+  const isLinkedTaskSelected = Boolean(
+    selectedTask &&
+      selectedTask.id === linkedTaskId &&
+      selectedTask.about?.fullyQualifiedName === decodedFqn
+  );
 
   useEffect(() => {
     if (!linkedTaskId || !decodedFqn) {
+      setLoadedTaskLink(undefined);
+
       return;
     }
 
@@ -119,12 +111,67 @@ const TestCaseIncidentTab = () => {
             t('server.entity-fetch-error', { entity: t('label.incident') })
           );
         }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadedTaskLink(taskLink);
+        }
       });
 
     return () => {
       cancelled = true;
     };
-  }, [decodedFqn, linkedTaskId, setActiveTask, t]);
+  }, [decodedFqn, linkedTaskId, setActiveTask, setTaskFilter, t, taskLink]);
+
+  return { isLoadingLinkedTask, isLinkedTaskSelected };
+};
+
+const TestCaseIncidentTab = () => {
+  const { t } = useTranslation();
+  const { fqn: decodedFqn } = useFqn();
+  const { testCase } = useTestCaseStore();
+
+  const owners = useMemo(() => testCase?.owners, [testCase]);
+
+  const {
+    getTaskData,
+    loading,
+    entityPaging,
+    tasks,
+    selectedTask,
+    setActiveTask,
+  } = useActivityFeedProvider();
+  const [elementRef, isInView] = useElementInView({
+    ...observerOptions,
+    root: document.querySelector('#center-container'),
+    rootMargin: '0px 0px 2px 0px',
+  });
+  const [taskFilter, setTaskFilter] = useState<TaskFilter>('open');
+  const [openTasksCount, setOpenTasksCount] = useState(0);
+  const [closedTasksCount, setClosedTasksCount] = useState(0);
+  const { isLoadingLinkedTask, isLinkedTaskSelected } =
+    useLinkedIncidentSelection(
+      decodedFqn,
+      selectedTask,
+      setActiveTask,
+      setTaskFilter
+    );
+  const displayedTasks = useMemo(() => {
+    if (
+      !isLinkedTaskSelected ||
+      !selectedTask ||
+      tasks.some(({ id }) => id === selectedTask.id)
+    ) {
+      return tasks;
+    }
+
+    return [selectedTask, ...tasks];
+  }, [isLinkedTaskSelected, selectedTask, tasks]);
+  const showTaskDetails =
+    !isLoadingLinkedTask && (!loading || isLinkedTaskSelected);
+
+  const statusGroup =
+    taskFilter === 'open' ? TaskStatusGroup.Open : TaskStatusGroup.Closed;
 
   const fetchCounts = useCallback(async () => {
     if (!decodedFqn) {
@@ -153,14 +200,22 @@ const TestCaseIncidentTab = () => {
   );
 
   useEffect(() => {
-    if (decodedFqn) {
+    if (decodedFqn && !isLoadingLinkedTask) {
       handleFeedFetchFromFeedList();
       fetchCounts();
     }
-  }, [decodedFqn, handleFeedFetchFromFeedList, fetchCounts]);
+  }, [
+    decodedFqn,
+    handleFeedFetchFromFeedList,
+    fetchCounts,
+    isLoadingLinkedTask,
+  ]);
 
   useEffect(() => {
-    if (decodedFqn && isInView && entityPaging.after && !loading) {
+    if (!decodedFqn || isLoadingLinkedTask) {
+      return;
+    }
+    if (isInView && entityPaging.after && !loading) {
       handleFeedFetchFromFeedList(entityPaging.after);
     }
   }, [
@@ -169,6 +224,7 @@ const TestCaseIncidentTab = () => {
     isInView,
     decodedFqn,
     handleFeedFetchFromFeedList,
+    isLoadingLinkedTask,
   ]);
 
   const handleTaskClick = useCallback(
@@ -237,10 +293,12 @@ const TestCaseIncidentTab = () => {
           emptyPlaceholderText={t('label.no-entity', {
             entity: t('label.task-plural'),
           })}
-          isLoading={loading && isEmpty(tasks)}
+          isLoading={
+            isLoadingLinkedTask || (loading && isEmpty(displayedTasks))
+          }
           selectedTask={selectedTask}
-          taskList={tasks}
-          onTaskClick={handleTaskClick}
+          taskList={displayedTasks}
+          onTaskClick={isLoadingLinkedTask ? undefined : handleTaskClick}
         />
         {!isEmpty(tasks) && loader}
         <div
@@ -253,7 +311,7 @@ const TestCaseIncidentTab = () => {
       </div>
       <div className="right-container" data-testid="right-container">
         {loader}
-        {selectedTask && !loading && (
+        {showTaskDetails && selectedTask && (
           <div id="task-panel">
             <TaskTabNew
               entityType={EntityType.TEST_CASE}

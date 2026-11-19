@@ -1,11 +1,11 @@
 # Task lists page newest first by creation time
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-28 (initial)
+- **Revisions:** v1 2026-10-28 (initial) · v2 2026-11-19 (opt-in update-time paging)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `TaskListOrderTest`; `TaskResourceIT#testListPagesNewestFirstBothWays`,
   `#testListSearchPagesNewestFirstBothWays`, `#testScopedListsReturnNewestFirst`,
-  `#testListRejectsNameCursorAndUnknownSortOrder`
+  `#testListRejectsNameCursorAndUnknownSortOrder`, `#testListPagesRecentTaskUpdates`
 - **Related:** `TaskListOrder`, `FeedDAOs.TaskDAO`
 
 ## Context
@@ -32,3 +32,11 @@ that held one across the upgrade must list again from the first page. A new call
 `TaskRepository.listAfter` gets name order unless it applies `TaskListOrder`. Changing the
 repository-wide default instead would break reindex cursor seeding. Revisit this if tasks gain a
 numeric sequence column that can be sorted directly.
+
+## Amendment
+
+v2 2026-11-19: `GET /v1/tasks` accepts `sortBy=updatedAt` to page by `(updatedAt, id)` and
+`updatedSince` as an inclusive lower bound in epoch milliseconds. Clients reuse the same sort
+field across a cursor walk. Inbox task mentions use the updated-time bound because a new comment
+can arrive on a task created outside the Inbox window. The client still filters individual
+comments by their own timestamps, since task edits can also advance `updatedAt`.

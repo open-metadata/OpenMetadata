@@ -225,15 +225,17 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * A listing paged by creation time compares its cursor against createdAt, so the cursor carries
-   * createdAt in the slot the name cursor uses. Listings that never ask for that order keep the
-   * name cursor, which the search reindex seeds by offset.
+   * Timestamp listings carry the selected timestamp in the name cursor's slot. The search reindex
+   * still uses the name cursor that it seeds by offset.
    */
   @Override
   public String getCursorValue(Task entity, ListFilter filter) {
-    return TaskListOrder.isRequestedBy(filter)
-        ? getCursorValue(String.valueOf(entity.getCreatedAt()), String.valueOf(entity.getId()))
-        : super.getCursorValue(entity, filter);
+    if (!TaskListOrder.isRequestedBy(filter)) {
+      return super.getCursorValue(entity, filter);
+    }
+    Long timestamp =
+        TaskListOrder.usesUpdatedAt(filter) ? entity.getUpdatedAt() : entity.getCreatedAt();
+    return getCursorValue(String.valueOf(timestamp), String.valueOf(entity.getId()));
   }
 
   public ResultList<Task> listDataAccessRequests(

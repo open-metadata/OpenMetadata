@@ -31,7 +31,7 @@ import org.jdbi.v3.sqlobject.customizer.SqlStatementParameterCustomizer;
 import org.openmetadata.service.exception.BadRequestException;
 
 /**
- * Creation-time order the task list endpoints page in. Task names are zero-padded sequence numbers
+ * Timestamp order the task list endpoints page in. Task names are zero-padded sequence numbers
  * compared as text, so name order stops matching creation order past TASK-99999 and on installs
  * whose 2.0 migration numbered every suggestion before any thread task; createdAt does not.
  *
@@ -44,6 +44,7 @@ public enum TaskListOrder {
   OLDEST_FIRST(TaskListOrder.ASC, ">", Long.MIN_VALUE);
 
   public static final String SORT_FIELD = "createdAt";
+  static final String UPDATED_AT = "updatedAt";
   public static final String ASC = "asc";
   public static final String DESC = "desc";
 
@@ -76,7 +77,11 @@ public enum TaskListOrder {
   }
 
   static boolean isRequestedBy(ListFilter filter) {
-    return SORT_FIELD.equals(filter.getSortField());
+    return SORT_FIELD.equals(filter.getSortField()) || usesUpdatedAt(filter);
+  }
+
+  static boolean usesUpdatedAt(ListFilter filter) {
+    return UPDATED_AT.equals(filter.getSortField());
   }
 
   static TaskListOrder of(ListFilter filter) {
@@ -87,57 +92,63 @@ public enum TaskListOrder {
     return filter.withSort(SORT_FIELD, param);
   }
 
+  public ListFilter applyTo(ListFilter filter, String sortBy) {
+    if (nullOrEmpty(sortBy) || SORT_FIELD.equals(sortBy)) {
+      return applyTo(filter);
+    }
+    if (UPDATED_AT.equals(sortBy)) {
+      return filter.withSort(UPDATED_AT, param);
+    }
+    throw BadRequestException.of("sortBy must be 'createdAt' or 'updatedAt'");
+  }
+
   /** The page that follows the cursor row in this order. */
-  CreatedAtPage after(String cursorCreatedAt, String cursorId) {
-    return new CreatedAtPage(
-        parseCursor(cursorCreatedAt), cursorId, afterOperator, direction, direction);
+  TimestampPage after(String cursorTime, String cursorId) {
+    return new TimestampPage(
+        parseCursor(cursorTime), cursorId, afterOperator, direction, direction);
   }
 
   /**
    * The page that precedes the cursor row. It is the next page of the opposite order — walked that
    * way so LIMIT keeps the rows nearest the cursor — handed back in this order.
    */
-  CreatedAtPage before(String cursorCreatedAt, String cursorId) {
+  TimestampPage before(String cursorTime, String cursorId) {
     final TaskListOrder opposite = this == NEWEST_FIRST ? OLDEST_FIRST : NEWEST_FIRST;
-    return new CreatedAtPage(
-        parseCursor(cursorCreatedAt),
-        cursorId,
-        opposite.afterOperator,
-        opposite.direction,
-        direction);
+    return new TimestampPage(
+        parseCursor(cursorTime), cursorId, opposite.afterOperator, opposite.direction, direction);
   }
 
-  private long parseCursor(String cursorCreatedAt) {
-    long createdAt = openBound;
-    if (!nullOrEmpty(cursorCreatedAt)) {
+  private long parseCursor(String cursorTime) {
+    long timestamp = openBound;
+    if (!nullOrEmpty(cursorTime)) {
       try {
-        createdAt = Long.parseLong(cursorCreatedAt);
+        timestamp = Long.parseLong(cursorTime);
       } catch (NumberFormatException e) {
         // Cursors issued before task lists paged by creation time carry the task name instead.
         throw BadRequestException.of(
-            "Task list cursor '%s' is not a creation-time cursor; list again from the first page"
-                .formatted(cursorCreatedAt));
+            "Task list cursor '%s' is not a timestamp cursor; list again from the first page"
+                .formatted(cursorTime));
       }
     }
-    return createdAt;
+    return timestamp;
   }
 
   /**
-   * One keyset page over (createdAt, id). {@code operator} compares rows against the cursor,
+   * One keyset page over (timestamp, id). {@code operator} compares rows against the cursor,
    * {@code scanDirection} orders the rows LIMIT picks from and {@code pageDirection} the rows
    * returned.
    */
-  record CreatedAtPage(
-      long createdAt, String id, String operator, String scanDirection, String pageDirection) {
-    CreatedAtPage {
+  record TimestampPage(
+      long timestamp, String id, String operator, String scanDirection, String pageDirection) {
+    TimestampPage {
       id = id == null ? "" : id;
     }
   }
 
   /**
-   * Supplies one {@link CreatedAtPage} to a createdAt keyset query: the comparison operator and the
+   * Supplies one {@link TimestampPage} to a timestamp keyset query: the comparison operator and the
    * two sort directions as the {@code <op>}, {@code <scanDir>} and {@code <pageDir>} template
-   * attributes, and the cursor row as {@code :cursorCreatedAt} and {@code :cursorId}.
+   * attributes, and the cursor row as {@code :cursorTime} and {@code :cursorId}.
    */
   @Retention(RetentionPolicy.RUNTIME)
   @Target({ElementType.PARAMETER})
@@ -155,12 +166,12 @@ public enum TaskListOrder {
           Type type) {
         return (stmt, arg) -> {
           // Jdbi's customizer SPI passes the argument as Object; BindPage is only declared on
-          // CreatedAtPage parameters, so the cast is the shape check the SPI leaves us.
-          final CreatedAtPage page = (CreatedAtPage) arg;
+          // TimestampPage parameters, so the cast is the shape check the SPI leaves us.
+          final TimestampPage page = (TimestampPage) arg;
           stmt.define("op", page.operator())
               .define("scanDir", page.scanDirection())
               .define("pageDir", page.pageDirection())
-              .bind("cursorCreatedAt", page.createdAt())
+              .bind("cursorTime", page.timestamp())
               .bind("cursorId", page.id());
         };
       }

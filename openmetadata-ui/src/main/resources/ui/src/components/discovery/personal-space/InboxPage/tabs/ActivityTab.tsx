@@ -437,25 +437,33 @@ const ActivityTab: React.FC<ActivityTabProps> = ({
 
   // Groups keep the feed's newest-first order, as does each group's cards. Only
   // the revealed batch renders, but a header counts its whole group.
-  // A capped feed is incomplete from the day it was cut, so only that day's
-  // count can fall short. The cut is where the feed's lists stopped, not its
-  // last card: a type filter, or an old event mentioned today, can leave a
-  // card past it (ADR:2026-11-16-a-capped-inbox-feed-is-cut-at-its-oldest-item).
+  // Older task mentions stay visible in All when the activity and conversation
+  // lists stop. Their days and the cut day only have a lower bound.
   const groups = useMemo(() => {
     const { key, title } = GROUPING[grouping];
     const totals = countBy(filteredItems, key);
     const cutKey =
       cutAt && grouping === ActivityGrouping.Day ? getDayKey(cutAt) : undefined;
 
-    return Object.values(groupBy(visibleItems, key)).map((groupItems) => ({
-      key: key(groupItems[0]),
-      first: groupItems[0],
-      title: title(groupItems[0], t),
-      items: groupItems,
-      total: totals[key(groupItems[0])],
-      isFloor: key(groupItems[0]) === cutKey,
-    }));
-  }, [filteredItems, visibleItems, grouping, cutAt, t]);
+    const marksOlderDays =
+      cutKey !== undefined && filter === ActivityFilter.All;
+
+    return Object.values(groupBy(visibleItems, key)).map((groupItems) => {
+      const first = groupItems[0];
+      const groupKey = key(first);
+      const isOlderDay =
+        marksOlderDays && getInboxItemTimestamp(first) < (cutAt ?? 0);
+
+      return {
+        key: groupKey,
+        first,
+        title: title(first, t),
+        items: groupItems,
+        total: totals[groupKey],
+        isFloor: groupKey === cutKey || isOlderDay,
+      };
+    });
+  }, [filteredItems, visibleItems, grouping, cutAt, filter, t]);
   const GroupIcon = GROUPING[grouping].Icon;
   const timeFormat =
     grouping === ActivityGrouping.Day

@@ -59,6 +59,7 @@ import { tabsInfo } from './NotificationBox.utils';
 import NotificationFeedCard from './NotificationFeedCard.component';
 import { TaskMentionCard } from './TaskMentionCard';
 type NotificationItem = Conversation | TaskEntity | TaskCommentMention;
+const MAX_NOTIFICATION_ITEMS = 5;
 
 const isTaskNotification = (
   notification: NotificationItem
@@ -156,7 +157,7 @@ const NotificationBox = ({
   );
 
   const notificationDropDownList = useMemo(() => {
-    return notifications.slice(0, 5).map((feed) => {
+    return notifications.slice(0, MAX_NOTIFICATION_ITEMS).map((feed) => {
       if ('comment' in feed) {
         return <TaskMentionCard key={feed.comment.id} mention={feed} />;
       }
@@ -218,7 +219,10 @@ const NotificationBox = ({
         userId: currentUser?.id,
       }),
       currentUser?.name
-        ? getTaskCommentMentions(currentUser.name, { domain })
+        ? getTaskCommentMentions(currentUser.name, {
+            domain,
+            maxResults: MAX_NOTIFICATION_ITEMS,
+          })
         : undefined,
     ]).then(([conversations, tasks]) => {
       const taskMentions =

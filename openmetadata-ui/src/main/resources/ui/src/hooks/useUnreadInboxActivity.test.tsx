@@ -93,6 +93,10 @@ describe('useUnreadInboxActivity', () => {
     const { result } = renderUnreadCount();
 
     await waitFor(() => expect(result.current).toBe(8));
+
+    expect(mockListTasks).toHaveBeenCalledWith(
+      expect.objectContaining({ updatedSince: 1001 })
+    );
   });
 
   /**

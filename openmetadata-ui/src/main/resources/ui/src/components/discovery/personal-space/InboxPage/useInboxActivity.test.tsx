@@ -47,6 +47,7 @@ jest.mock('hooks/useApplicationStore', () => ({
   useApplicationStore: () => ({ currentUser: mockCurrentUser }),
 }));
 
+import { getTaskCommentMentions } from '../../../../utils/tasks/TaskMentions.utils';
 import { ActivityFilter, getDefaultInboxDateRange } from './inbox.utils';
 import {
   fetchInboxActivity,
@@ -209,6 +210,8 @@ describe('fetchInboxActivity', () => {
           after: 'older-tasks',
           mentionedUser: 'john.doe',
           fields: 'about,comments',
+          updatedSince: 100,
+          sortBy: 'updatedAt',
         })
       );
       expect(result.taskMentions).toEqual([
@@ -219,6 +222,38 @@ describe('fetchInboxActivity', () => {
       ]);
     }
   );
+
+  it('stops reading task pages once they cannot contain newer mentions', async () => {
+    const mention = '<#E::user::alice>';
+    mockListTasks
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'updated-task',
+            updatedAt: 400,
+            comments: [{ id: 'old', createdAt: 150, message: mention }],
+          },
+        ],
+        paging: { after: 'second-page' },
+      })
+      .mockResolvedValueOnce({
+        data: [
+          {
+            id: 'recent-mention',
+            updatedAt: 350,
+            comments: [{ id: 'recent', createdAt: 350, message: mention }],
+          },
+          { id: 'older-task', updatedAt: 300 },
+        ],
+        paging: { after: 'irrelevant-history' },
+      })
+      .mockResolvedValueOnce({ data: [] });
+
+    const mentions = await getTaskCommentMentions('alice', { maxResults: 1 });
+
+    expect(mentions.map(({ comment }) => comment.id)).toEqual(['recent']);
+    expect(mockListTasks).toHaveBeenCalledTimes(2);
+  });
 
   // Regression: these were fetched with Promise.all, so a rejected conversation
   // request emptied the activity list too and the Inbox rendered nothing at all.
