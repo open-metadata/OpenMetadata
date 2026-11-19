@@ -101,8 +101,25 @@ public final class TaskAssigneeCleanup {
     if (changed) {
       assignees.sort(EntityUtil.compareEntityReference);
       task.setAssignees(assignees);
-      final Task original = repository.find(task.getId(), Include.NON_DELETED, false);
-      repository.update(null, original, task, Entity.ADMIN_USER_NAME, null, ASSIGNEE_PATCH_FIELDS);
+      final boolean saved = repository.executeInTransaction(() -> saveIfLive(repository, task));
+      if (!saved) {
+        LOG.debug("Task {} was deleted during assignee cleanup", task.getId());
+        deleteAssigneeEdge(repository, entityId, entityType, task.getId());
+      }
     }
+  }
+
+  /**
+   * The row lock makes the live check and the write one step. A soft delete that commits first
+   * leaves no live row to lock, and one that comes later waits for this write, so the stored task
+   * never goes back from deleted to live.
+   */
+  private static boolean saveIfLive(final TaskRepository repository, final Task task) {
+    if (repository.getDao().findJsonByIdForUpdate(task.getId(), Include.NON_DELETED) == null) {
+      return false;
+    }
+    final Task original = repository.find(task.getId(), Include.NON_DELETED, false);
+    repository.update(null, original, task, Entity.ADMIN_USER_NAME, null, ASSIGNEE_PATCH_FIELDS);
+    return true;
   }
 }

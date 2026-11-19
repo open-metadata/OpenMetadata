@@ -20,6 +20,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
@@ -30,9 +32,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.EntityReference;
@@ -40,6 +44,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 
@@ -49,14 +54,76 @@ class TaskAssigneeCleanupTest {
       "assignees,about,createdBy,reviewers,watchers,domains";
 
   private TaskRepository repository;
+  private EntityDAO<Task> taskDao;
   private Fields cleanupFields;
 
   @BeforeEach
+  @SuppressWarnings("unchecked")
   void setUp() {
     repository = mock(TaskRepository.class);
+    taskDao = mock(EntityDAO.class);
+    when(repository.getDao()).thenReturn(taskDao);
+    when(taskDao.findJsonByIdForUpdate(any(), eq(Include.NON_DELETED))).thenReturn("{}");
+    when(repository.executeInTransaction(any()))
+        .thenAnswer(invocation -> invocation.<Supplier<?>>getArgument(0).get());
     cleanupFields =
         new Fields(Set.of("assignees", "about", "createdBy", "reviewers", "watchers", "domains"));
     when(repository.getFields(EXPECTED_CLEANUP_FIELDS)).thenReturn(cleanupFields);
+  }
+
+  @Test
+  void keepsTaskDeletedWhenSoftDeletedAfterCleanupLoadedIt() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference racedRef = taskRef(UUID.randomUUID(), false);
+    stubAssignedTasks(userId, Entity.USER, List.of(racedRef));
+    stubLiveTask(
+        racedRef.getId(),
+        taskWithAssignees(racedRef.getId(), entityRef(userId, Entity.USER, "alice")),
+        new Task().withId(racedRef.getId()));
+    when(taskDao.findJsonByIdForUpdate(racedRef.getId(), Include.NON_DELETED)).thenReturn(null);
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    verify(repository, never()).update(any(), any(), any(), any(), any(), any());
+    verify(repository)
+        .deleteRelationship(
+            userId, Entity.USER, racedRef.getId(), Entity.TASK, Relationship.ASSIGNED_TO);
+  }
+
+  @Test
+  void writesTheTaskOnlyWhileHoldingItsRowLock() {
+    final UUID userId = UUID.randomUUID();
+    final EntityReference liveRef = taskRef(UUID.randomUUID(), false);
+    stubAssignedTasks(userId, Entity.USER, List.of(liveRef));
+    stubLiveTask(
+        liveRef.getId(),
+        taskWithAssignees(liveRef.getId(), entityRef(userId, Entity.USER, "alice")),
+        new Task().withId(liveRef.getId()));
+    final boolean[] inTransaction = {false};
+    doAnswer(
+            invocation -> {
+              inTransaction[0] = true;
+              try {
+                return invocation.<Supplier<?>>getArgument(0).get();
+              } finally {
+                inTransaction[0] = false;
+              }
+            })
+        .when(repository)
+        .executeInTransaction(any());
+    doAnswer(
+            invocation -> {
+              assertTrue(inTransaction[0], "the task was written outside the locking transaction");
+              return null;
+            })
+        .when(repository)
+        .update(any(), any(), any(), any(), any(), any());
+
+    TaskAssigneeCleanup.removeAssignee(repository, userId, Entity.USER);
+
+    final InOrder order = inOrder(taskDao, repository);
+    order.verify(taskDao).findJsonByIdForUpdate(liveRef.getId(), Include.NON_DELETED);
+    order.verify(repository).update(any(), any(), any(), any(), any(), any());
   }
 
   @Test
