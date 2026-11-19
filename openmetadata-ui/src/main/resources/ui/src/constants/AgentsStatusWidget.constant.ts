@@ -43,5 +43,6 @@ export const AUTOPILOT_AGENTS_STATUS_ORDERED_LIST = [
   AgentStatus.Successful,
   AgentStatus.Running,
   AgentStatus.Failed,
+  AgentStatus.Stopped,
   AgentStatus.Pending,
 ];

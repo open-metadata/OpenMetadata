@@ -13,12 +13,32 @@
 
 import { isPlainObject, omit } from 'lodash';
 import { Node } from 'reactflow';
+import { TEST_CASE_RESOLUTION_WORKFLOW_NAME } from '../constants/WorkflowBuilder.constants';
 import { EntityType } from '../enums/entity.enum';
 import { SinkType } from '../generated/governance/workflows/elements/nodes/automatedTask/sinkTask';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
-import { WorkflowDefinition } from '../generated/governance/workflows/workflowDefinition';
+import {
+  Type,
+  WorkflowDefinition,
+} from '../generated/governance/workflows/workflowDefinition';
 import { NodeConfig } from '../interface/workflow-builder-components.interface';
 import { t } from './i18next/LocalUtil';
+
+export const isIncidentSettingsWorkflow = (
+  workflowDefinition?: WorkflowDefinition | null
+): boolean => {
+  if (workflowDefinition?.name !== TEST_CASE_RESOLUTION_WORKFLOW_NAME) {
+    return false;
+  }
+  const trigger = workflowDefinition?.trigger;
+
+  return (
+    typeof trigger === 'object' &&
+    trigger !== null &&
+    !Array.isArray(trigger) &&
+    trigger.type === Type.NoOp
+  );
+};
 
 const getEntityTypesFromDataAssets = (
   config: NodeConfig
