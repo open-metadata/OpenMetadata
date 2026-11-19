@@ -16,6 +16,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -137,6 +138,59 @@ public class WorkflowResourceIT {
     assertEquals(
         service.getName(),
         JsonUtils.valueToTree(runnerWorkflow.getRequest()).get("serviceName").asText());
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = HttpMethod.class,
+      names = {"POST", "PUT"})
+  void testConnectionAcceptsAnEncryptedPasswordOnlyAsItsServicesStoredValue(
+      HttpMethod method, TestNamespace ns) {
+    final OpenMetadataClient admin = SdkClients.adminClient();
+    final DatabaseService service =
+        testConnectionService(ns, UserTestFactory.createUser(ns, "cipherOwner"));
+    final String serviceToken = storedServicePassword(service);
+
+    final CreateWorkflow fromService =
+        encryptedPasswordRequest(
+            ns.shortPrefix() + "cipherFromService", serviceToken, service.getName());
+    final Workflow created = createWorkflow(admin, fromService, method, ns);
+    assertEquals(
+        SERVICE_PASSWORD,
+        workflowPassword(
+            SdkClients.ingestionBotClient()
+                .workflows()
+                .getByName(created.getFullyQualifiedName())));
+
+    for (final String serviceName : new String[] {null, ns.shortPrefix() + "unregisteredService"}) {
+      final CreateWorkflow copy =
+          encryptedPasswordRequest(ns.shortPrefix() + "cipherCopy", serviceToken, serviceName);
+      final InvalidRequestException refused =
+          assertThrows(
+              InvalidRequestException.class, () -> createWorkflow(admin, copy, method, ns));
+      assertEquals(400, refused.getStatusCode());
+    }
+  }
+
+  private CreateWorkflow encryptedPasswordRequest(String name, String token, String serviceName) {
+    final CreateWorkflow request = createRequest(name);
+    ((TestServiceConnectionRequest) request.getRequest())
+        .withServiceName(serviceName)
+        .withConnection(mysqlConnection(token));
+    return request;
+  }
+
+  private static String storedServicePassword(DatabaseService service) {
+    final String json =
+        TestSuiteBootstrap.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery("SELECT json FROM dbservice_entity WHERE id = :id")
+                        .bind("id", service.getId().toString())
+                        .mapTo(String.class)
+                        .one());
+    return JsonUtils.readTree(json).at("/connection/config/authType/password").asText();
   }
 
   private WorkflowOperator workflowOperator(TestNamespace ns) {

@@ -1937,6 +1937,67 @@ public class IngestionPipelineResourceIT
     assertEquals(history, storedPipelineVersionJson(pipeline.getId(), pipeline.getVersion()));
   }
 
+  @Test
+  void pipelineAcceptsAnEncryptedSecretOnlyAsItsOwnStoredValue(TestNamespace ns) {
+    IngestionPipeline source = createDbtPipelineWithSecret(ns, "dbt-source-secret");
+    EntityReference service = source.getService();
+    String sourceToken = dbtSecret(storedPipelineJson(source.getId()));
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> createEntity(dbtRequest(ns.prefix("dbt_cipher_copy"), service, sourceToken)))
+            .getStatusCode());
+
+    putPipeline(dbtRequest(source.getName(), service, sourceToken));
+    assertDbtSecretEncrypted(storedPipelineJson(source.getId()), "dbt-source-secret");
+
+    IngestionPipeline target =
+        createEntity(dbtRequest(ns.prefix("dbt_cipher_target"), service, "dbt-target-secret"));
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> putPipeline(dbtRequest(target.getName(), service, sourceToken)))
+            .getStatusCode());
+    ArrayNode patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.add(
+        replaceOp(
+            "/sourceConfig/config/dbtConfigSource/dbtSecurityConfig/awsSecretAccessKey",
+            sourceToken));
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () -> SdkClients.adminClient().ingestionPipelines().patch(target.getId(), patch))
+            .getStatusCode());
+    assertDbtSecretEncrypted(storedPipelineJson(target.getId()), "dbt-target-secret");
+  }
+
+  private static void putPipeline(CreateIngestionPipeline request) {
+    SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT, "/v1/services/ingestionPipelines", request, IngestionPipeline.class);
+  }
+
+  private CreateIngestionPipeline dbtRequest(String name, EntityReference service, String secret) {
+    AWSCredentials credentials =
+        new AWSCredentials()
+            .withAwsAccessKeyId("dbt-conditional-access-key")
+            .withAwsSecretAccessKey(secret)
+            .withAwsRegion("us-east-1");
+    DbtPipeline dbt =
+        new DbtPipeline().withDbtConfigSource(new DbtS3Config().withDbtSecurityConfig(credentials));
+    return new CreateIngestionPipeline()
+        .withName(name)
+        .withPipelineType(PipelineType.DBT)
+        .withService(service)
+        .withSourceConfig(new SourceConfig().withConfig(dbt))
+        .withAirflowConfig(new AirflowConfig().withStartDate(START_DATE));
+  }
+
   private IngestionPipeline createDbtPipelineWithSecret(TestNamespace ns, String secret) {
     assertTrue(Fernet.getInstance().isKeyDefined(), "The test server must encrypt secrets at rest");
     AWSCredentials credentials =

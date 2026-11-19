@@ -651,6 +651,7 @@ public class IngestionPipelineResource
       @Valid CreateIngestionPipeline create) {
     IngestionPipeline ingestionPipeline =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    EntityMaskerFactory.getEntityMasker().requireNoEncryptedSecrets(ingestionPipeline);
     Response response = create(uriInfo, securityContext, ingestionPipeline);
     validateProfileSample(ingestionPipeline);
     decryptOrNullify(securityContext, (IngestionPipeline) response.getEntity(), false);
@@ -1574,6 +1575,9 @@ public class IngestionPipelineResource
     repository.setFullyQualifiedName(ingestionPipeline);
     IngestionPipeline originalIngestionPipeline =
         repository.findByNameOrNull(ingestionPipeline.getFullyQualifiedName(), Include.NON_DELETED);
+    if (originalIngestionPipeline == null) {
+      EntityMaskerFactory.getEntityMasker().requireNoEncryptedSecrets(ingestionPipeline);
+    }
     if (originalIngestionPipeline != null
         && !ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
       ConnectionSecretsGuard.requireSecretsReenteredOnRetarget(
