@@ -20,6 +20,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jdbi.v3.core.Handle;
+import org.jdbi.v3.core.JdbiException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,37 +51,18 @@ import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.v1100.MigrationUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * End-to-end regression for the v1.10.0 {@link MigrationUtil#cleanupOrphanedDataContracts()} bug:
- * the migration resolved each contract's parent with {@code Include.NON_DELETED}, which throws
- * {@code EntityNotFoundException} for both a hard-deleted (truly gone) parent <em>and</em> a
- * soft-deleted (recoverable trash) parent, and then recursively hard-deleted the contract —
- * destroying the contract, its logical test suite, the suite's DQ ingestion pipelines and the
- * contract-result time series irreversibly, and purging the CONTAINS edge so a later parent
- * restore could not bring the contract back.
- *
- * <p>The fix re-checks the parent with {@code Include.ALL} and only hard-deletes the contract when
- * the parent row is truly gone. These tests drive that path on a live cluster: they create a
- * table-backed data contract (owning a logical test suite and a stored result), put the parent in
- * trash via the soft-delete API, run the migration directly via JDBI, and assert that the
- * contract, suite and result rows all survive — then restore the table and assert the contract
- * comes back with its history. A paired test fabricates a truly missing parent (direct row delete
- * that bypasses the cascade) and asserts the migration still hard-deletes the orphan, pinning the
- * cleanup's original intent against regression.
- *
- * <p>{@link ExecutionMode#SAME_THREAD} because {@code cleanupOrphanedDataContracts()} lists every
- * data contract with {@code Include.ALL}: a concurrent test creating or deleting contracts could
- * race the scan and either skip a real orphan or reach into another test's fixture. {@code
- * OrphanIngestionPipelineCleanupIT} uses the same mode for the same reason.
- */
+// The migration scans all contracts, so this class runs in the global-state lane.
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 public class OrphanedDataContractMigrationIT {
@@ -94,13 +77,6 @@ public class OrphanedDataContractMigrationIT {
   private static final Map<String, String> RECURSIVE_HARD_DELETE =
       Map.of("hardDelete", "true", "recursive", "true");
 
-  /**
-   * Newest-first teardown for everything a test created, registered at creation time so an
-   * assertion failing mid-test still cleans up. Mirrors {@code SoftDeleteRetentionIT} — the
-   * {@link TestNamespaceExtension} cleanup only walks roots tracked via {@code ns.trackRoot}, and
-   * these tests delete the parent table by id rather than tracking a database root, so the
-   * contract's parents would otherwise leak on a failed assertion.
-   */
   private final List<Runnable> fixtureCleanups = new ArrayList<>();
 
   @AfterEach
@@ -115,13 +91,6 @@ public class OrphanedDataContractMigrationIT {
     fixtureCleanups.clear();
   }
 
-  /**
-   * The bug: a contract whose parent table is in trash is hard-deleted by the v1.10.0 migration
-   * even though the parent row is still present (deleted = true) and could be restored. This test
-   * pins the fix — the migration must leave the contract (and its test suite, and its result
-   * history) intact, and a later table restore must bring the contract back with everything still
-   * attached.
-   */
   @Test
   void contractWithSoftDeletedParent_migrationLeavesItIntactForRestore(TestNamespace ns)
       throws Exception {
@@ -149,7 +118,6 @@ public class OrphanedDataContractMigrationIT {
         containsEdgeRowCount(tableId, contractId),
         "the table -> contract CONTAINS edge must survive soft delete so a restore can find it");
 
-    // Run the v1.10.0 migration against the live cluster. It must NOT hard-delete this contract.
     runCleanupMigration();
 
     assertEquals(
@@ -169,7 +137,6 @@ public class OrphanedDataContractMigrationIT {
         containsEdgeRowCount(tableId, contractId),
         "the CONTAINS edge must survive so the table restore can cascade to the contract");
 
-    // Restoring the parent must bring the contract back, with the same suite and history intact.
     SdkClients.adminClient().tables().restore(tableId.toString());
 
     DataContract restored = SdkClients.adminClient().dataContracts().get(contractId.toString());
@@ -220,8 +187,7 @@ public class OrphanedDataContractMigrationIT {
                     .createUpdate("DELETE FROM " + TABLE_ENTITY + " WHERE id = :id")
                     .bind("id", tableId.toString())
                     .execute());
-    org.openmetadata.service.jdbi3.EntityRepository.invalidateCacheForEntity(
-        Entity.TABLE, tableId, null);
+    EntityRepository.invalidateCacheForEntity(Entity.TABLE, tableId, null);
     // Defensive teardown in case the migration does not run: best-effort removal of the
     // contract by id and any residual relationship row pointed at the gone parent.
     fixtureCleanups.add(
@@ -244,7 +210,7 @@ public class OrphanedDataContractMigrationIT {
                             .bind("toId", contractId.toString())
                             .bind("toEntity", Entity.DATA_CONTRACT)
                             .execute());
-          } catch (org.jdbi.v3.core.JdbiException e) {
+          } catch (JdbiException e) {
             LOG.warn(
                 "Best-effort cleanup of residual relationship rows for contract {} failed: {}",
                 contractId,
@@ -286,7 +252,7 @@ public class OrphanedDataContractMigrationIT {
   // ===================================================================
 
   private void runCleanupMigration() {
-    try (org.jdbi.v3.core.Handle handle = TestSuiteBootstrap.getJdbi().open()) {
+    try (Handle handle = TestSuiteBootstrap.getJdbi().open()) {
       ConnectionType connectionType = TestSuiteBootstrap.getConnectionType();
       new MigrationUtil(handle, connectionType).cleanupOrphanedDataContracts();
     }
@@ -372,6 +338,24 @@ public class OrphanedDataContractMigrationIT {
                         List.of(
                             new TestCaseParameterValue().withName("minValue").withValue("0"),
                             new TestCaseParameterValue().withName("maxValue").withValue("100"))));
+
+    UUID basicSuiteId =
+        SdkClients.adminClient()
+            .testCases()
+            .get(testCase.getId().toString(), "testSuite")
+            .getTestSuite()
+            .getId();
+    // Removing the table row bypasses the cascade that normally owns this suite and test case.
+    fixtureCleanups.add(
+        () ->
+            SdkClients.adminClient()
+                .getHttpClient()
+                .execute(
+                    HttpMethod.DELETE,
+                    "/v1/dataQuality/testSuites/basic/" + basicSuiteId,
+                    null,
+                    Void.class,
+                    RequestOptions.builder().queryParams(RECURSIVE_HARD_DELETE).build()));
 
     DataContract contract =
         SdkClients.adminClient()

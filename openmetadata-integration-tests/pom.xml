@@ -21,7 +21,7 @@
     <integrationTests.skipIsolated>false</integrationTests.skipIsolated>
     <integrationTests.skipParallel>false</integrationTests.skipParallel>
     <integrationTests.forkTimeoutSeconds>3600</integrationTests.forkTimeoutSeconds>
-    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
+    <integrationTests.globalStateTests>TagRecognizerFeedbackIT,WorkflowDefinitionResourceIT,ChangeRequestAdmissionIT,ChangeRequestApplyIT,ChangeRequestDecisionIT,ChangeRequestImportAndBulkIT,ChangeRequestLifecycleIT,ChangeRequestResourceIT,AppsResourceIT,TestSuiteReindexIT,DataContractValidationAppIT,SystemResourceIT,Sso*IT,VectorEmbeddingIntegrationIT,PatchTableEmbeddingIT,GlossaryOntologyExportIT,UserMetricsResourceIT,ConversationSchemaMigrationIT,OrphanedDataContractMigrationIT,MetricMigrationIT,EntityShapeIT,ContextMemoryExtractionIT,ContextMemoryExtractionRequestIT,ContextMemoryDerivationIT,CredentialDatabaseOutageIT,CredentialRedisNoRoundTripIT,CredentialRedisDownIT,OntologyConcurrentHardDeleteIT,NativeOntologyEveryPackInstallIT,DataProductDeleteRaceIT</integrationTests.globalStateTests>
     <integrationTests.multiNodeTests>SessionMultiNodeIT,SessionRedisMultiNodeIT,CredentialRevocationTwoProcessIT,RevokeWaitForPropagationIT,OpsRegenerateBotTokensIT,CsvExportMultiNodeIT,RdfDisabledMarkLifecycleIT</integrationTests.multiNodeTests>
     <integrationTests.retryQueueTests>SearchIndexRetryQueueIT</integrationTests.retryQueueTests>
     <!-- Tests that need the RDF store. The rdf lane runs them against the published
@@ -466,6 +466,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -536,6 +537,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -636,6 +638,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -705,6 +708,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -806,6 +810,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -876,6 +881,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -977,6 +983,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -1046,6 +1053,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -1146,6 +1154,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -1215,6 +1224,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -1314,6 +1324,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -1384,6 +1395,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -1500,6 +1512,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -1571,6 +1584,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>
@@ -1678,6 +1692,7 @@
                     <include>**/PatchTableEmbeddingIT.java</include>
                     <include>**/GlossaryOntologyExportIT.java</include>
                     <include>**/ConversationSchemaMigrationIT.java</include>
+                    <include>**/OrphanedDataContractMigrationIT.java</include>
                     <include>**/MetricMigrationIT.java</include>
                     <include>**/EntityShapeIT.java</include>
                     <include>**/ContextMemoryExtractionIT.java</include>
@@ -1748,6 +1763,7 @@
                     <exclude>**/PatchTableEmbeddingIT.java</exclude>
                     <exclude>**/GlossaryOntologyExportIT.java</exclude>
                     <exclude>**/ConversationSchemaMigrationIT.java</exclude>
+                    <exclude>**/OrphanedDataContractMigrationIT.java</exclude>
                     <exclude>**/MetricMigrationIT.java</exclude>
                     <exclude>**/EntityShapeIT.java</exclude>
                     <exclude>**/ContextMemoryExtractionIT.java</exclude>

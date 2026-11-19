@@ -1,7 +1,6 @@
 package org.openmetadata.service.migration.utils.v1100;
 
 import java.util.List;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.entity.data.DataContract;
@@ -333,82 +332,42 @@ public class MigrationUtil {
       }
 
       int deletedCount = 0;
-      int skippedSoftDeletedParentCount = 0;
       int totalContracts = allDataContracts.size();
 
       LOG.info("Found {} data contracts to validate", totalContracts);
 
       for (DataContract dataContract : allDataContracts) {
-        String parentType = dataContract.getEntity().getType();
-        UUID parentId = dataContract.getEntity().getId();
         try {
-          // Try to get the associated entity
-          Entity.getEntityReferenceById(parentType, parentId, Include.NON_DELETED);
+          // A soft-deleted parent can still be restored with its contract.
+          Entity.getEntityReferenceById(
+              dataContract.getEntity().getType(), dataContract.getEntity().getId(), Include.ALL);
 
         } catch (EntityNotFoundException e) {
-          // NON_DELETED lookup throws both when the parent row is gone entirely (a true
-          // orphan from the pre-1.9.3 HAS-relationship bug) AND when the parent is merely
-          // soft-deleted (recoverable trash). Hard-deleting a contract whose parent is just
-          // soft-deleted destroys the contract, its logical test suite, the suite's DQ
-          // ingestion pipeline and the contract-result time series irreversibly, and purges
-          // the CONTAINS edge so a later parent restore cannot bring the contract back.
-          // Re-check with Include.ALL so a soft-deleted parent is left untouched.
-          if (isParentTrulyMissing(parentType, parentId)) {
-            LOG.info(
-                "Deleting orphaned data contract '{}' - associated {} entity with ID {} not found",
-                dataContract.getFullyQualifiedName(),
-                parentType,
-                parentId);
+          LOG.info(
+              "Deleting orphaned data contract '{}' - associated {} entity with ID {} not found",
+              dataContract.getFullyQualifiedName(),
+              dataContract.getEntity().getType(),
+              dataContract.getEntity().getId());
 
-            try {
-              dataContractRepository.delete(
-                  Entity.ADMIN_USER_NAME, dataContract.getId(), true, true);
-              deletedCount++;
-            } catch (Exception deleteException) {
-              LOG.warn(
-                  "Failed to delete orphaned data contract '{}': {}",
-                  dataContract.getFullyQualifiedName(),
-                  deleteException.getMessage());
-            }
-          } else {
-            LOG.info(
-                "Skipping data contract '{}' - associated {} entity with ID {} is soft-deleted, "
-                    + "not missing; leaving the contract intact for the parent restore cascade",
+          try {
+            dataContractRepository.delete(Entity.ADMIN_USER_NAME, dataContract.getId(), true, true);
+            deletedCount++;
+          } catch (Exception deleteException) {
+            LOG.warn(
+                "Failed to delete orphaned data contract '{}': {}",
                 dataContract.getFullyQualifiedName(),
-                parentType,
-                parentId);
-            skippedSoftDeletedParentCount++;
+                deleteException.getMessage());
           }
         }
       }
 
       LOG.info(
-          "✓ Cleanup complete: {} orphaned data contracts deleted out of {} total "
-              + "({} skipped with soft-deleted parent)",
+          "✓ Cleanup complete: {} orphaned data contracts deleted out of {} total",
           deletedCount,
-          totalContracts,
-          skippedSoftDeletedParentCount);
+          totalContracts);
 
     } catch (Exception e) {
       LOG.error("✗ FAILED cleanup of orphaned data contracts: {}", e.getMessage(), e);
-    }
-  }
-
-  /**
-   * Distinguishes a truly missing parent (the row is gone entirely) from a soft-deleted one (the
-   * row still exists with {@code deleted = true}). The migration lists contracts with {@link
-   * Include#ALL}, so it iterates soft-deleted contracts whose parents are themselves soft-deleted;
-   * resolving such a parent with {@link Include#NON_DELETED} throws {@link
-   * EntityNotFoundException}, which is indistinguishable from a hard-deleted parent without a
-   * second lookup. Only return {@code true} when the parent row does not exist at all, so that a
-   * contract attached to a soft-deleted parent is left for the parent restore cascade to recover.
-   */
-  private static boolean isParentTrulyMissing(String parentType, UUID parentId) {
-    try {
-      Entity.getEntityReferenceById(parentType, parentId, Include.ALL);
-      return false;
-    } catch (EntityNotFoundException ex) {
-      return true;
     }
   }
 
