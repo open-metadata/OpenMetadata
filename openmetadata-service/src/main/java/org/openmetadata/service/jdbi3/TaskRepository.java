@@ -1076,6 +1076,7 @@ public class TaskRepository extends EntityRepository<Task> {
    * A voter already counted on a multi-approval task is refused before the policy runs: a direct
    * assignee is pruned from the assignees once they vote, so the policy would answer them 403 where a
    * team member gets 409. The refusal tells the caller only about their own vote.
+   * ADR:2026-11-19-a-repeat-vote-on-a-multi-approval-task-is-refused-with-409
    */
   public void checkPermissionsForResolveTask(
       Authorizer authorizer,
