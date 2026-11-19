@@ -61,13 +61,8 @@ public class MainWorkflow {
     }
 
     // Add Nodes
-    // A pre-1.7.1 WorkflowDefinition can be stored with config = null: the JSON schema does not
-    // require `config`, and the v1.7.1 backfill that writes a default WorkflowConfiguration is
-    // the only writer, so a definition it skipped leaves config = null. The node builders
-    // dereference config (config.getStoreStageStatus()), which would NPE on a null config and
-    // make the workflow un-editable/un-redeployable. Build with an effective config that defaults
-    // to storeStageStatus = false — the same default the backfill writes — so such a legacy
-    // definition still builds and can be repaired by a save instead of throwing on every build.
+    // Pre-1.7.1 definitions the v1.7.1 backfill skipped still have config = null; node builders
+    // dereference it, so default to the same config the backfill writes (storeStageStatus=false).
     WorkflowConfiguration effectiveConfig =
         workflowDefinition.getConfig() != null
             ? workflowDefinition.getConfig()

@@ -4,9 +4,11 @@ import static org.openmetadata.service.migration.utils.v171.MigrationUtil.update
 import static org.openmetadata.service.migration.utils.v171.MigrationUtil.updateWorkflowDefinitions;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 
+@Slf4j
 public class Migration extends MigrationProcessImpl {
 
   public Migration(MigrationFile migrationFile) {
@@ -18,15 +20,15 @@ public class Migration extends MigrationProcessImpl {
   public void runDataMigration() {
     updateServiceCharts();
 
-    // The workflow backfill is the only step that backfills a default WorkflowConfiguration
-    // (storeStageStatus=false) onto pre-1.7.1 WorkflowDefinitions, which otherwise have
-    // config = null. A failure must propagate out of runDataMigration() so MigrationWorkflow
-    // does not record this version's data-migration identity, and the next migrate/startup
-    // retries the backfill (see DataMigrationStep: "A step that fails records nothing, so the
-    // next run retries it"). Swallowing it — as the previous try-catch did — records the
-    // version as complete and leaves config = null permanently, which later throws a raw
-    // NullPointerException from config.getStoreStageStatus() on every edit/redeploy.
-    initializeWorkflowHandler();
-    updateWorkflowDefinitions();
+    // Updating WorkflowDefinition - wrap in try-catch to prevent blocking other migrations
+    try {
+      initializeWorkflowHandler();
+      updateWorkflowDefinitions();
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to initialize WorkflowHandler or update workflows in v171 migration. "
+              + "Workflow features may not work correctly until server restart.",
+          e);
+    }
   }
 }
