@@ -384,4 +384,12 @@ public class ReindexingUtil {
   public static String escapeDoubleQuotes(String str) {
     return str.replace("\"", "\\\"");
   }
+
+  /**
+   * Escapes a value for a double-quoted query_string phrase, where a backslash is itself an escape:
+   * a term named {@code o\'brien} must be searched as {@code o\\'brien} to match.
+   */
+  public static String escapeQueryStringPhrase(String str) {
+    return escapeDoubleQuotes(str.replace("\\", "\\\\"));
+  }
 }
