@@ -26,6 +26,7 @@ import org.openmetadata.schema.system.TestLoginStageStatus;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.security.AuthenticationException;
+import org.openmetadata.service.security.EmailFirstUserProvisioner;
 import org.openmetadata.service.security.SecurityUtil;
 
 /** Read-only admission checks after identity resolution; never provisions an account. */
@@ -53,6 +54,35 @@ final class TestLoginAccountChecks {
     return result;
   }
 
+  static String admitOidc(
+      SecurityConfiguration candidate,
+      TestLoginService.ResolvedAccountIdentity identity,
+      UserRepository users) {
+    try {
+      User user =
+          identity.emailFirstFlow()
+              ? users.getActiveUserByEmailForAuth(identity.email(), users.getAuthUpdateFields())
+              : users.getUserByNameForAuthUpdate(identity.userName());
+      requireInteractiveAccount(user);
+      if (identity.emailFirstFlow()
+          && EmailFirstUserProvisioner.hasConflictingSubject(user, identity.subject())) {
+        throw new AuthenticationException(
+            "Email is already bound to a different identity-provider subject. Contact your administrator.");
+      }
+      return user.getName();
+    } catch (EntityNotFoundException e) {
+      requireSignupAllowed(
+          candidate, TestLoginProtocol.OIDC, identity.email(), identity.emailFirstFlow());
+      return identity.userName();
+    }
+  }
+
+  private static void requireInteractiveAccount(User user) {
+    if (Boolean.TRUE.equals(user.getIsBot()) || Boolean.TRUE.equals(user.getDeleted())) {
+      throw new AuthenticationException("This account cannot sign in interactively.");
+    }
+  }
+
   private static void requireAdmitted(
       SecurityConfiguration candidate, TestLoginResult result, UserRepository users) {
     boolean emailFirst =
@@ -63,12 +93,10 @@ final class TestLoginAccountChecks {
               ? users.getActiveUserByEmailForAuth(
                   result.getResolvedEmail(), users.getAuthUpdateFields())
               : users.getUserByNameForAuthUpdate(result.getResolvedPrincipal());
-      if (Boolean.TRUE.equals(user.getIsBot()) || Boolean.TRUE.equals(user.getDeleted())) {
-        throw new AuthenticationException("This account cannot sign in interactively.");
-      }
+      requireInteractiveAccount(user);
       result.setResolvedPrincipal(user.getName());
     } catch (EntityNotFoundException e) {
-      requireSignupAllowed(candidate, result, emailFirst);
+      requireSignupAllowed(candidate, result.getProtocol(), result.getResolvedEmail(), emailFirst);
     }
   }
 
@@ -79,17 +107,19 @@ final class TestLoginAccountChecks {
   }
 
   private static void requireSignupAllowed(
-      SecurityConfiguration candidate, TestLoginResult result, boolean emailFirst) {
+      SecurityConfiguration candidate,
+      TestLoginProtocol protocol,
+      String email,
+      boolean emailFirst) {
     if (!Boolean.TRUE.equals(candidate.getAuthenticationConfiguration().getEnableSelfSignup())) {
       throw new AuthenticationException(
           "User not registered. Contact administrator to create an account.");
     }
     // The legacy SAML handler only gates self-signup; email-first SAML, LDAP and OIDC also
     // enforce registration domains. Existing accounts are not subject to the signup allow-list.
-    if ((emailFirst || result.getProtocol() == TestLoginProtocol.OIDC)
+    if ((emailFirst || protocol == TestLoginProtocol.OIDC)
         && !SecurityUtil.isEmailRegistrationDomainAllowed(
-            result.getResolvedEmail(),
-            candidate.getAuthorizerConfiguration().getAllowedEmailRegistrationDomains())) {
+            email, candidate.getAuthorizerConfiguration().getAllowedEmailRegistrationDomains())) {
       throw new AuthenticationException("Email domain not allowed for self-signup.");
     }
   }

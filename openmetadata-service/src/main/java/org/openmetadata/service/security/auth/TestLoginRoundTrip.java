@@ -201,7 +201,12 @@ public final class TestLoginRoundTrip {
                     entry,
                     () ->
                         TestLoginOidcHandler.complete(
-                            entry.candidate(), handshake, callbackParameters));
+                            entry.candidate(),
+                            handshake,
+                            callbackParameters,
+                            identity ->
+                                TestLoginAccountChecks.admitOidc(
+                                    entry.candidate(), identity, users.get())));
               } else {
                 LOG.warn("Ignoring an OIDC callback for a {} test login", entry.protocol());
               }
@@ -254,6 +259,7 @@ public final class TestLoginRoundTrip {
   private TestLoginResult checkAdmission(TestLoginSessionEntry entry, TestLoginResult result) {
     return result.getStatus() == TestLoginResult.Status.SUCCESS
             && result.getProtocol() != TestLoginProtocol.BASIC
+            && result.getProtocol() != TestLoginProtocol.OIDC
         ? TestLoginAccountChecks.check(entry.candidate(), result, users.get())
         : result;
   }

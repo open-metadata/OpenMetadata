@@ -139,7 +139,7 @@ public class EmailFirstUserProvisioner {
       user.setIdentityProviderSubject(subject);
       return true;
     }
-    if (!bound.equals(subject)) {
+    if (hasConflictingSubject(user, subject)) {
       LOG.warn(
           "SECURITY: {} login for {} presented subject '{}' but the account is bound to a "
               + "different subject; refusing to reuse the existing account",
@@ -154,6 +154,16 @@ public class EmailFirstUserProvisioner {
               email));
     }
     return false;
+  }
+
+  /** Read-only identity binding policy, also used by Test Login before it reports success. */
+  public static boolean hasConflictingSubject(User user, String subject) {
+    String bound = user.getIdentityProviderSubject();
+    return subject != null
+        && !subject.isBlank()
+        && bound != null
+        && !bound.isBlank()
+        && !bound.equals(subject);
   }
 
   private boolean promoteToAdminIfConfigured(User user, String email) {
