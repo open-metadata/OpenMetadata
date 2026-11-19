@@ -133,10 +133,17 @@ function getFailedSuffix(failed: number, t: TFunction): string {
   return failed > 0 ? ` · ${failed} ${t('label.failed-lowercase')}` : '';
 }
 
-function getAttentionSuffix(failed: number, t: TFunction): string {
-  return failed > 0
-    ? ` · ${failed} ${t('label.need-attention')}`
-    : ` · ${t('message.everything-healthy')}`;
+function getStoppedSuffix(stopped: number, t: TFunction): string {
+  return stopped > 0 ? ` · ${stopped} ${t('label.stopped-lowercase')}` : '';
+}
+
+function getAttentionSuffix(counts: AgentCounts, t: TFunction): string {
+  const stoppedSuffix = getStoppedSuffix(counts.stopped, t);
+  if (counts.failed > 0) {
+    return ` · ${counts.failed} ${t('label.need-attention')}${stoppedSuffix}`;
+  }
+
+  return stoppedSuffix || ` · ${t('message.everything-healthy')}`;
 }
 
 function getSubtitle(
@@ -146,7 +153,7 @@ function getSubtitle(
 ): string {
   if (allDone) {
     return t('message.agents-finished-summary', {
-      attentionSuffix: getAttentionSuffix(counts.failed, t),
+      attentionSuffix: getAttentionSuffix(counts, t),
       done: counts.done,
       total: counts.total,
     });
@@ -154,7 +161,10 @@ function getSubtitle(
 
   return t('message.agents-deploy-progress', {
     done: counts.done,
-    failedSuffix: getFailedSuffix(counts.failed, t),
+    failedSuffix: `${getFailedSuffix(counts.failed, t)}${getStoppedSuffix(
+      counts.stopped,
+      t
+    )}`,
     queued: counts.queued,
     running: counts.running,
   });
@@ -252,7 +262,9 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({
               ? t('label.deployment-complete')
               : t('message.agents-deploying-ingesting')}
           </div>
-          <div className="tw:mt-0.5 tw:text-sm tw:text-tertiary">
+          <div
+            className="tw:mt-0.5 tw:text-sm tw:text-tertiary"
+            data-testid="deployment-summary-subtitle">
             {subtitle}
           </div>
         </div>

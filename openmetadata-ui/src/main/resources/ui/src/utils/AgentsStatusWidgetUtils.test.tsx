@@ -12,6 +12,7 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { AgentStatus } from '../enums/ServiceInsights.enum';
 import {
   AppRunRecord,
   Status,
@@ -29,7 +30,6 @@ import {
   AutomationPipelineRun,
   CollateAgentAutomation,
 } from '../rest/applicationAPI';
-import { AgentStatus } from '../enums/ServiceInsights.enum';
 import {
   automationRunToAppRunRecord,
   getAgentStatusLabelFromStatus,

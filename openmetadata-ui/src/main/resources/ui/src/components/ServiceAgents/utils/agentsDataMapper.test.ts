@@ -20,6 +20,7 @@ import {
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { IngestionPipelineLogByIdInterface } from '../../../interface/IngestionPipelineLogs.interface';
+import { ALL_AGENT_PERMISSIONS, canRunAgent } from './agents.utils';
 import {
   getAgentTypeFromPipelineType,
   getAgentUnitVerb,
@@ -31,7 +32,6 @@ import {
   toRunStatus,
   toUiAgentStatus,
 } from './agentsDataMapper';
-import { ALL_AGENT_PERMISSIONS, canRunAgent } from './agents.utils';
 
 describe('agentsDataMapper', () => {
   describe('getAgentTypeFromPipelineType', () => {
