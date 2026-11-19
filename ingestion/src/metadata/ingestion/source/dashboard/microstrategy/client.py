@@ -20,7 +20,7 @@ from __future__ import annotations
 import traceback
 from collections import OrderedDict
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, Any, NamedTuple, TypeVar
 from urllib.parse import quote
 
 import requests
@@ -96,6 +96,16 @@ def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None
     return value
 
 
+class CubeSql(NamedTuple):
+    """
+    The SQL a dataset reads, and the cube it was read from: the source cube of a report built on
+    one, else the dataset itself. Cached together, so the cube is known whenever the SQL is.
+    """
+
+    cube: str
+    sql: str
+
+
 class MicroStrategyApiError(Exception):
     """A MicroStrategy REST call failed or answered with an unexpected body"""
 
@@ -124,7 +134,7 @@ class MicroStrategyClient:
         library_path = (self.config.libraryPath or "").strip().strip("/") or DEFAULT_LIBRARY_PATH
         self.library_url = f"{self._base_url}/{library_path}"
         self._api_version = f"{library_path}/api"
-        self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
+        self._cube_sql: OrderedDict[str, CubeSql | None] = OrderedDict()
         self._report_cubes: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
         self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
@@ -277,7 +287,7 @@ class MicroStrategyClient:
             raise MicroStrategyApiError(f"Unexpected definition of dossier {dashboard_id}: {str(response)[:200]}")
         return response
 
-    def get_cube_sql_details(self, project_id: str, cube_id: str) -> str | None:
+    def get_cube_sql_details(self, project_id: str, cube_id: str) -> CubeSql | None:
         """
         Get the SQL of a dataset, cached for the dossiers that share it. A dataset that is a report
         built on an Intelligent Cube reads that cube's SQL: the SQL view serves cubes only. A
@@ -285,7 +295,7 @@ class MicroStrategyClient:
         every dossier using it.
         """
 
-        def fetch() -> str | None:
+        def fetch() -> CubeSql | None:
             try:
                 return self._sql_view(project_id, cube_id)
             except MicroStrategyApiError as exc:
@@ -318,9 +328,10 @@ class MicroStrategyClient:
 
         return cached(self._cube_sql, cube_id, fetch, f"the SQL of cube {cube_id}")
 
-    def _sql_view(self, project_id: str, cube_id: str) -> str | None:
+    def _sql_view(self, project_id: str, cube_id: str) -> CubeSql | None:
         response = self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id)
-        return strip_engine_steps(response.get("sqlStatement"))
+        sql = strip_engine_steps(response.get("sqlStatement"))
+        return CubeSql(cube=cube_id, sql=sql) if sql else None
 
     def get_report_cube(self, project_id: str, report_id: str) -> str | None:
         """
@@ -333,14 +344,6 @@ class MicroStrategyClient:
             return report.source.id if report.source else ""
 
         return cached(self._report_cubes, report_id, fetch, f"the source of report {report_id}")
-
-    def cube_behind(self, dataset_id: str) -> str:
-        """
-        The cube whose SQL a dataset was read from: the source cube of a report built on one,
-        else the dataset itself. Known right after the dataset's SQL was requested; the caller
-        keeps it, since the report cache may later evict it.
-        """
-        return self._report_cubes.get(dataset_id) or dataset_id
 
     def _warn_report_without_sql(self, project_id: str, report_id: str) -> None:
         """

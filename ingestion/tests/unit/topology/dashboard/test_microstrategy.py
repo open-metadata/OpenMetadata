@@ -38,6 +38,7 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.dashboard.microstrategy.client import (
     CACHE_SIZE,
+    CubeSql,
     MicroStrategyApiError,
     MicroStrategyClient,
     strip_engine_steps,
@@ -425,8 +426,8 @@ class TestClient:
         assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary"
 
     def test_cube_sql_is_read_once_per_cube_and_failures_are_cached(self, server, client):
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CubeSql(cube="C1", sql=CUBE_STATEMENT)
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CubeSql(cube="C1", sql=CUBE_STATEMENT)
         server.overrides["/v2/cubes/C2/sqlView"] = lambda: (400, {"code": "ERR010", "message": "local file"})
         assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
         assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
@@ -466,15 +467,14 @@ class TestClient:
     def test_a_report_on_an_intelligent_cube_reads_the_cube_sql_once(self, server, client):
         _report_route(server, "R1", source="C9")
 
-        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CUBE_STATEMENT
-        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CUBE_STATEMENT
+        # The SQL comes with the cube it was read from.
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
+        assert client.get_cube_sql_details(TUTORIAL["id"], "R1") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
         # Another dossier using the cube itself reads it from the cache.
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C9") == CUBE_STATEMENT
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C9") == CubeSql(cube="C9", sql=CUBE_STATEMENT)
 
         assert len(server.requests_to("/v2/reports/R1")) == 1
         assert len(server.requests_to("/v2/cubes/C9/sqlView")) == 1
-        assert client.cube_behind("R1") == "C9"
-        assert client.cube_behind("C9") == "C9"
 
     def test_a_live_cube_has_no_sql_and_says_why(self, server, client, caplog):
         server.overrides["/v2/cubes/L1/sqlView"] = lambda: (
@@ -1475,22 +1475,10 @@ class TestColumnLineage:
         assert len(server.requests_to("/model/attributes/")) == 2
         assert caplog.text.count("further attributes that cannot be read are logged at debug level") == 1
 
-    def test_a_report_keeps_its_cube_after_the_report_cache_evicts_it(self, server, client):
-        _model_routes(server, {IMPORT_CUBE: 779, "R1": 768})
-        _report_route(server, "R1", source=IMPORT_CUBE)
-        server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
-        source = _source(client)
-        source.get_query_parser_type = MagicMock(return_value=None)
-
-        parsed = source._parse_cube("P", "R1", Dialect.BIGQUERY)
-        client._report_cubes.clear()
-
-        assert parsed.cube == IMPORT_CUBE
-        assert client.cube_behind("R1") == "R1"
-
-    # A report built on the Data Import cube is matched like the cube: on names.
-    @pytest.mark.parametrize("dataset_id", [IMPORT_CUBE, "R1"])
-    def test_the_lineage_edge_carries_the_column_pairs(self, server, client, dataset_id):
+    # A report built on the Data Import cube is matched like the cube: on names, also once the
+    # report and parse caches have evicted it while the SQL cache still holds it.
+    @pytest.mark.parametrize(("dataset_id", "evicted"), [(IMPORT_CUBE, False), ("R1", False), ("R1", True)])
+    def test_the_lineage_edge_carries_the_column_pairs(self, server, client, dataset_id, evicted):
         _model_routes(server, {IMPORT_CUBE: 779, "R1": 768})
         _report_route(server, "R1", source=IMPORT_CUBE)
         server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
@@ -1516,6 +1504,11 @@ class TestColumnLineage:
             "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
             side_effect=lambda table_name, **_: [bare] if table_name.endswith("order_items") else [],
         ):
+            if evicted:
+                list(source.yield_dashboard_lineage_details(details, "bq"))
+                client._report_cubes.clear()
+                source._source_tables.clear()
+                assert dataset_id in client._cube_sql
             results = list(source.yield_dashboard_lineage_details(details, "bq"))
 
         assert [either.left for either in results if either.left] == []

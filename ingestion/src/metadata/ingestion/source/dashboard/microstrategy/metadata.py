@@ -436,9 +436,10 @@ class MicrostrategySource(DashboardServiceSource):
         cube and dialect: the base class asks for lineage once per dbServicePrefixes entry, and a
         cube is shared by many dossiers.
         """
-        cube_sql = self.client.get_cube_sql_details(project_id, cube_id)
-        if not cube_sql:
+        details = self.client.get_cube_sql_details(project_id, cube_id)
+        if not details:
             return ParsedCube()
+        cube_sql = details.sql
         parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
         # The third-party cached_property is not read as a descriptor by type checkers.
         tables = tuple(str(table) for table in cast("list", parser.source_tables))
@@ -449,8 +450,7 @@ class MicrostrategySource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
             columns = frozenset()
-        # Kept with the parse, which outlives the client's report cache.
-        return ParsedCube(tables=tables, read_columns=columns, cube=self.client.cube_behind(cube_id))
+        return ParsedCube(tables=tables, read_columns=columns, cube=details.cube)
 
     def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
         """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
