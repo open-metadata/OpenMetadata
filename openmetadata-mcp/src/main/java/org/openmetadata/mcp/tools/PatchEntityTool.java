@@ -52,7 +52,8 @@ public class PatchEntityTool implements McpTool {
   //   announcement         authorizeAdminOrBot on system announcements (no entityLink)
   //   app                  system-app guard, scheduler teardown/reinstall
   //   contextFile          Private/Shared visibility, owner-only restriction of sharing
-  //   document             requirePublic - private doc types are not editable
+  //   document             requirePublic - private doc types are not editable; authorizeAdmin
+  //                        on email templates
   //   eventsubscription    scheduler re-registration
   //   ingestionPipeline    secret decryptOrNullify on the response
   //   intakeForm           authorizeAdmin
