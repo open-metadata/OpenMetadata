@@ -409,18 +409,20 @@ describe('ExplorePageV1', () => {
     );
   });
 
-  it('navigates with a pathname built from the route tab when sort value changes', async () => {
+  it('navigates once with both sort field and order when the sort changes', async () => {
     const mockNavigate = jest.fn();
     (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
 
-    let capturedCallback: ((sortVal: string) => void) | undefined;
+    let capturedCallback:
+      | ((sortVal: string, sortOrderVal: string) => void)
+      | undefined;
     (ExploreV1 as jest.Mock).mockImplementationOnce(
       ({
-        onChangeSortValue,
+        onChangeSort,
       }: {
-        onChangeSortValue?: (sortVal: string) => void;
+        onChangeSort?: (sortVal: string, sortOrderVal: string) => void;
       }) => {
-        capturedCallback = onChangeSortValue;
+        capturedCallback = onChangeSort;
 
         return <p>ExploreV1</p>;
       }
@@ -430,9 +432,10 @@ describe('ExplorePageV1', () => {
     await screen.findByText('ExploreV1');
 
     act(() => {
-      capturedCallback?.('name.keyword');
+      capturedCallback?.('name.keyword', 'asc');
     });
 
+    expect(mockNavigate).toHaveBeenCalledTimes(1);
     expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
       getExploreTabPath('tables')
     );
@@ -442,41 +445,6 @@ describe('ExplorePageV1', () => {
     );
 
     expect(searchParams.get('sort')).toBe('name.keyword');
-    expect(searchParams.get('currentPage')).toBe('1');
-  });
-
-  it('navigates with a pathname built from the route tab when sort order changes', async () => {
-    const mockNavigate = jest.fn();
-    (useNavigate as jest.Mock).mockReturnValue(mockNavigate);
-
-    let capturedCallback: ((sortOrderVal: string) => void) | undefined;
-    (ExploreV1 as jest.Mock).mockImplementationOnce(
-      ({
-        onChangeSortOder,
-      }: {
-        onChangeSortOder?: (sortOrderVal: string) => void;
-      }) => {
-        capturedCallback = onChangeSortOder;
-
-        return <p>ExploreV1</p>;
-      }
-    );
-
-    render(<ExplorePageV1 {...mockProps} />);
-    await screen.findByText('ExploreV1');
-
-    act(() => {
-      capturedCallback?.('asc');
-    });
-
-    expect(mockNavigate.mock.calls[0][0].pathname).toEqual(
-      getExploreTabPath('tables')
-    );
-
-    const searchParams = new URLSearchParams(
-      mockNavigate.mock.calls[0][0].search
-    );
-
     expect(searchParams.get('sortOrder')).toBe('asc');
     expect(searchParams.get('currentPage')).toBe('1');
   });

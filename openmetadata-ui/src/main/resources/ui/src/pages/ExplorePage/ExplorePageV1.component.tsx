@@ -143,7 +143,12 @@ const ExplorePageV1: FC<unknown> = () => {
     [browseFields]
   );
 
-  const handleSortValueChange = (sortVal: string) => {
+  // Field and order land in one navigate: two navigates against the same
+  // memoized parsedSearch would clobber each other.
+  const handleSortChange: ExploreProps['onChangeSort'] = (
+    sortVal,
+    sortOrderVal
+  ) => {
     navigate({
       // When tab is present, build the pathname from the route param rather
       // than the router's current location: a search-only navigate is *relative*
@@ -156,16 +161,6 @@ const ExplorePageV1: FC<unknown> = () => {
         ...parsedSearch,
         currentPage: 1,
         sort: sortVal,
-      }),
-    });
-  };
-
-  const handleSortOrderChange = (sortOrderVal: string) => {
-    navigate({
-      pathname: tab ? getExploreTabPath(tab) : ROUTES.EXPLORE,
-      search: Qs.stringify({
-        ...parsedSearch,
-        currentPage: 1,
         sortOrder: sortOrderVal,
       }),
     });
@@ -738,12 +733,7 @@ const ExplorePageV1: FC<unknown> = () => {
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
       onChangeShowRankingDetails={setShowRankingDetails}
-      onChangeSortOder={(sortOrderVal) => {
-        handleSortOrderChange(sortOrderVal);
-      }}
-      onChangeSortValue={(sortVal) => {
-        handleSortValueChange(sortVal);
-      }}
+      onChangeSort={handleSortChange}
       onTreeSelect={handleTreeSelect}
     />
   );

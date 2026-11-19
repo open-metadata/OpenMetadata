@@ -508,11 +508,16 @@ test.describe('Filter persistence after bug fixes', () => {
   }) => {
     test.slow();
 
-    await test.step('Toggle sort order to ascending', async () => {
+    await test.step('Sort by fewest votes first (ascending)', async () => {
+      await page.getByTestId('sorting-dropdown-label').click();
+      const fewestVotesFirst = page.getByRole('menuitemradio', {
+        name: 'Fewest votes first',
+      });
+      await expect(fewestVotesFirst).toBeVisible();
       const sortRes = page.waitForResponse(
-        '/api/v1/search/query?*sort_order=asc*'
+        '/api/v1/search/query?*sort_field=totalVotes*sort_order=asc*'
       );
-      await page.getByTestId('sort-order-button').click();
+      await fewestVotesFirst.click();
       await sortRes;
       await waitForAllLoadersToDisappear(page);
     });
