@@ -16,6 +16,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SettingType } from '../../../../../../generated/system/settingsSourceResponse';
@@ -29,6 +30,7 @@ import { renderWithQueryClient } from '../../../../../../test/unit/test-utils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import { deploymentOwnedSource } from '../platform-settings/PlatformSettings.mock';
+import ProfileContentHeader from '../../ProfileContentHeader';
 import SsoPanel from './SsoPanel';
 
 jest.mock('react-i18next', () => ({
@@ -119,13 +121,15 @@ const renderHeaderActions = () => render(<>{lastHeader().actions}</>);
 
 const renderPanel = async (config: unknown) => {
   (getSecurityConfiguration as jest.Mock).mockResolvedValue({ data: config });
-  renderWithQueryClient(
+  const view = renderWithQueryClient(
     <MemoryRouter>
       <SsoPanel onHeaderChange={onHeaderChange} />
     </MemoryRouter>
   );
   await waitFor(() => expect(getSecurityConfiguration).toHaveBeenCalled());
   await screen.findByTestId('sso-panel');
+
+  return view;
 };
 
 describe('SsoPanel', () => {
@@ -269,26 +273,46 @@ describe('SsoPanel', () => {
     usePersonalSpaceStore.getState().setExitGuard(null);
   });
 
-  it('keeps a crumb back to the saved provider while changing provider', async () => {
+  it('returns from Change Provider to the saved provider via its breadcrumb', async () => {
     mockSubPath = 'providers';
-    await renderPanel(OKTA_CONFIG);
-
+    const { unmount } = await renderPanel(OKTA_CONFIG);
     await waitFor(() =>
-      expect(lastHeader().breadcrumbs).toEqual([
-        { id: 'settings', label: 'label.setting-plural' },
-        { id: 'sso', label: 'label.single-sign-on' },
-        { id: 'saved-provider', label: 'Okta' },
-        { id: 'current', label: 'label.change-provider' },
-      ])
+      expect(lastHeader().breadcrumbs).toContainEqual({
+        id: 'current',
+        label: 'label.change-provider',
+      })
+    );
+    const header = lastHeader();
+    render(
+      <ProfileContentHeader
+        breadcrumbRoot="label.setting-plural"
+        breadcrumbs={header.breadcrumbs}
+        description={header.description ?? ''}
+        icon={() => null}
+        title={header.title ?? ''}
+        onBreadcrumbAction={header.onBreadcrumbAction}
+      />
     );
 
-    lastHeader().onBreadcrumbAction?.('saved-provider');
+    fireEvent.click(
+      within(screen.getByRole('list', { name: 'Breadcrumb' })).getByText('Okta')
+    );
 
     expect(mockSetHash).toHaveBeenCalledWith(
       'sso',
       'configure',
       undefined,
       expect.anything()
+    );
+
+    // The hash now points at Configure: the panel opens the saved provider's form.
+    unmount();
+    mockSubPath = 'configure';
+    await renderPanel(OKTA_CONFIG);
+
+    expect(await screen.findByTestId('sso-configure-form')).toHaveAttribute(
+      'data-provider',
+      'okta'
     );
   });
 

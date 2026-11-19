@@ -19,6 +19,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
 import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { USER_ASSETS_PANEL_PATH } from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.constants';
 import UserAssetCardList from './UserAssetCardList';
 import { SEARCH_DEBOUNCE_MS, TYPE_OPTIONS } from './UserAssets.constants';
 import { getSelectedAsset, UserAssetsKind } from './UserAssets.utils';
@@ -122,7 +123,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
               <EntitySummaryPanel
                 entityDetails={{ details: selected }}
                 handleClosePanel={() => setSelectedId(null)}
-                panelPath="user-assets"
+                panelPath={USER_ASSETS_PANEL_PATH}
               />
             </Box>
           )}

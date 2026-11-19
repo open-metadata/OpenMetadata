@@ -51,13 +51,12 @@ import {
   SSO_HASH_TAB,
   viewToSubPath,
 } from './SsoPanel.utils';
+import {
+  CRUMB_PROVIDER,
+  CRUMB_SAVED_PROVIDER,
+  IN_EDITOR_CRUMBS,
+} from './SsoPanel.constants';
 import SsoProviderGrid from './SsoProviderGrid';
-
-const CRUMB_PROVIDER = 'provider';
-const CRUMB_SAVED_PROVIDER = 'saved-provider';
-// The provider crumb (shown only on a sub page) returns to the form, as Back
-// does, so it is not an exit the unsaved-changes guard should hold.
-const IN_EDITOR_CRUMBS = [CRUMB_PROVIDER];
 
 interface SsoPanelProps {
   onHeaderChange?: (override: ProfileHeaderOverride | null) => void;

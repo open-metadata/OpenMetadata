@@ -117,6 +117,10 @@ import {
   EntitySummaryPanelProps,
   SearchSourceDetails,
 } from './EntitySummaryPanel.interface';
+import {
+  TRANSPARENT_PANEL_PATHS,
+  USER_ASSETS_PANEL_PATH,
+} from './EntitySummaryPanel.constants';
 import LineageTabContent from './LineageTab/LineageTabContent';
 
 // Picks how to populate the panel for `entityType`: a dedicated fetch-by-fqn
@@ -198,12 +202,6 @@ const mergeEntityData = (
 
 const ONTOLOGY_EXPLORER = 'ontology-explorer';
 const GLOSSARY_TERM_ASSETS_TAB = 'glossary-term-assets-tab';
-const USER_ASSETS_PANEL_PATH = 'user-assets';
-const TRANSPARENT_PANEL_PATHS = new Set([
-  'explore',
-  'lineage',
-  USER_ASSETS_PANEL_PATH,
-]);
 const DETAILS_ENTITY_TYPE_KEY = 'details.entityType';
 const getSummaryLineageConfig = ({
   upstreamDepth = 1,
