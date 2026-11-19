@@ -15,9 +15,9 @@ package org.openmetadata.service.security.saml;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.onelogin.saml2.Auth;
-import com.onelogin.saml2.SamlMessageFactory;
 import com.onelogin.saml2.authn.AuthnRequestParams;
 import com.onelogin.saml2.authn.SamlResponse;
+import com.onelogin.saml2.factory.SamlMessageFactory;
 import com.onelogin.saml2.http.HttpRequest;
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.util.Constants;
