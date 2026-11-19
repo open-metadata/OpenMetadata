@@ -178,13 +178,14 @@ public class WorkflowInstanceTerminator {
 
   /**
    * Ends the processes waiting on a task a user closed, per
-   * ADR:2026-11-17-closing-a-workflow-task-ends-only-the-process-holding-it. Each process holding a
-   * Flowable task of it is deleted on its own, with every branch in it, never its trigger root;
-   * Flowable then completes the call that started it, so a periodic batch carries on. Tasks still
-   * open in a deleted process are closed after it. A run that is not a periodic batch ends with its
-   * process and is recorded as CANCELLED first, a status its end keeps; a periodic batch's run is
-   * left to its trigger. Best effort: a process this server is executing a job of is left running.
-   * Returns {@code true} when the run ended with the deleted process.
+   * ADR:2026-11-17-closing-a-workflow-task-ends-only-the-process-holding-it. A run that is not a
+   * periodic batch belongs to this task alone, so its whole process tree is deleted from its root and
+   * the run is recorded as CANCELLED once the delete succeeded; a refused delete leaves both as they
+   * were. In a periodic batch only the process holding the task is deleted, never the trigger root:
+   * Flowable then completes the call that started it, so the batch carries on, and the run's status
+   * is left to its trigger. Tasks still open in a deleted process are closed after it. Best effort:
+   * a process this server is executing a job of is left running. Returns {@code true} when the run
+   * ended.
    */
   public boolean endClosedTaskProcess(TaskCloseRequest request) {
     return WorkflowHandler.getInstance().findTaskProcessInstanceIds(request.taskId()).stream()
@@ -199,31 +200,51 @@ public class WorkflowInstanceTerminator {
         .reduce(false, Boolean::logicalOr);
   }
 
-  /** {@code true} when the deleted process was its run's only one, so the run ended with it. */
+  /** The process a close deletes, with its call-activity children. */
+  private record ClosedTaskProcess(
+      String processInstanceId, List<String> processTreeIds, boolean isWholeRun) {}
+
+  /** {@code true} when the close ended the task's whole run. */
   private boolean endTaskProcess(TaskCloseRequest request, ProcessInstance process) {
-    boolean endedRun = false;
-    List<String> processTreeIds =
-        collectProcessTree(List.of(process.getId()), this::findChildProcessInstanceIds);
-    if (countJobsLockedByThisServer(processTreeIds) > 0) {
+    boolean isWholeRun = !isInPeriodicBatchRun(process);
+    String target = isWholeRun ? process.getRootProcessInstanceId() : process.getId();
+    ClosedTaskProcess closed =
+        new ClosedTaskProcess(
+            target,
+            collectProcessTree(List.of(target), this::findChildProcessInstanceIds),
+            isWholeRun);
+    boolean isJobExecuting = countJobsLockedByThisServer(closed.processTreeIds()) > 0;
+    if (isJobExecuting) {
       LOG.warn(
           "[WorkflowTerminate] Task {} closed; its process {} has a job executing and keeps running",
           request.taskId(),
-          process.getId());
-    } else {
-      List<UUID> otherOpenTaskIds =
-          taskCloser.findTaskIds(processTreeIds).stream()
-              .filter(taskId -> !taskId.equals(request.taskId()))
-              .toList();
-      boolean isRunOwnProcess = !isInPeriodicBatchRun(process);
-      if (isRunOwnProcess) {
-        recordRunCancelled(request);
-      }
-      if (deleteProcessInstance(process.getId(), Workflow.TASK_CLOSED_BY_USER)) {
-        taskCloser.closeTasks(otherOpenTaskIds, request.closedBy(), request.auditMessage());
-        endedRun = isRunOwnProcess;
-      }
+          target);
     }
-    return endedRun;
+    return !isJobExecuting && deleteTaskProcess(request, closed);
+  }
+
+  /**
+   * Deletes the process, then records the run's end when the whole run was deleted and closes the
+   * tasks the process still had open. The open tasks are read first because the delete removes what
+   * links them, and nothing is recorded when the delete is refused.
+   */
+  private boolean deleteTaskProcess(TaskCloseRequest request, ClosedTaskProcess closed) {
+    List<UUID> otherOpenTaskIds = otherOpenTaskIds(request, closed.processTreeIds());
+    boolean isDeleted =
+        deleteProcessInstance(closed.processInstanceId(), Workflow.TASK_CLOSED_BY_USER);
+    if (isDeleted && closed.isWholeRun()) {
+      recordRunCancelled(request);
+    }
+    if (isDeleted) {
+      taskCloser.closeTasks(otherOpenTaskIds, request.closedBy(), request.auditMessage());
+    }
+    return isDeleted && closed.isWholeRun();
+  }
+
+  private List<UUID> otherOpenTaskIds(TaskCloseRequest request, List<String> processTreeIds) {
+    return taskCloser.findTaskIds(processTreeIds).stream()
+        .filter(taskId -> !taskId.equals(request.taskId()))
+        .toList();
   }
 
   private boolean isInPeriodicBatchRun(ProcessInstance process) {

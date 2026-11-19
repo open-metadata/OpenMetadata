@@ -16,16 +16,18 @@ down the whole trigger, including batches it has yet to fetch. Parallel approval
 one process, so their other tasks would be left open with nothing behind them.
 
 ## Decision
-A user's close of a workflow-managed task deletes, one at a time, each main-workflow process
-holding a Flowable task of it, with every branch in it, never the trigger root, and then closes the
-tasks still open in those processes. Flowable completes the call that started each process, so a
-periodic batch's trigger carries on. The run is recorded as CANCELLED before the delete only when
-its trigger is not a periodic batch; a periodic batch's run status is left to its trigger.
-A close made from inside a running workflow command (supersede, expiry, the terminator) keeps
-using `TaskRepository.closeTask`, which does not touch Flowable.
+A user's close of a workflow-managed task ends each process holding a Flowable task of it. A run
+that is not a periodic batch belongs to that task alone, so its whole process tree is deleted from
+its root, and the run is recorded as CANCELLED only after the delete succeeded. In a periodic batch
+only the process holding the task is deleted, never the trigger root: Flowable completes the call
+that started it, so the batch's trigger carries on, and the run's status is left to the trigger.
+The tasks still open in a deleted process, and an ended run's other open tasks about the same
+entity, are then closed. A close made from inside a running workflow command (supersede, expiry,
+the terminator) keeps using `TaskRepository.closeTask`, which does not touch Flowable.
 
 ## Consequences
-No process waits on a closed task, and a close never tears down a trigger root. Closing a task in
-a batch-sink workflow, which runs every entity in one process, ends that batch's process.
-A delete refused because a job of the process is executing on this server leaves the process
-running and is logged. `ChangeRequestTasks.closeTask` still uses the `terminateAll` message.
+No process waits on a closed task, and a close never tears down a periodic batch's trigger root.
+Closing a task in a batch-sink workflow, which runs every entity in one process, ends that batch's process.
+A refused delete, because a job of the process is executing, leaves the process running and the
+run's status unchanged, and is logged. `ChangeRequestTasks.closeTask` still uses the
+`terminateAll` message.
