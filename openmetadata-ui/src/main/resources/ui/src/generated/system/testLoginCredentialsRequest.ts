@@ -1,5 +1,5 @@
 /*
- *  Copyright 2025 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * Admin-only request completing a credential-based (LDAP/Basic) Test Login. The credentials
  * are used for a single transient bind or password verification and are never persisted,
