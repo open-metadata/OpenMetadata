@@ -7,6 +7,7 @@ python:
   - .github/workflows/py-cli-e2e-tests-v2.yml
   - .github/workflows/py-cli-e2e-tests.yml
   - .github/scripts/prepare_python_coverage.py
+  - .github/actions/prepare-python-environment/**
   - .github/actions/setup-openmetadata-test-environment/action.yml
   - openmetadata-spec/**
   - openmetadata-service/src/main/java/org/openmetadata/service/resources/**

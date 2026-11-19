@@ -68,6 +68,7 @@
   ],
   "sharedInfrastructure": [
     ".github/actions/setup-openmetadata-test-environment/**",
+    ".github/actions/prepare-python-environment/**",
     ".github/playwright/**",
     ".github/scripts/*playwright*.py",
     ".github/scripts/*playwright*.sh",

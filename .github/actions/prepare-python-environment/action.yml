@@ -1,0 +1,71 @@
+name: Prepare Python environment
+description: Install Python tools, generate models, and synchronize the locked application dependencies.
+inputs:
+  python-version:
+    description: Python Version to install
+    required: true
+  classification-models:
+    description: Import model archives and retain models in the test profile
+    default: 'false'
+  install-test-dependencies:
+    description: Install the locked ingestion test dependencies on the runner
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Install Ubuntu dependencies
+      run: |
+        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
+        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
+      shell: bash
+    - name: Setup Python ${{ inputs.python-version }}
+      id: setup-python
+      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+      with:
+        python-version: ${{ inputs.python-version }}
+    - name: Install uv
+      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78
+      with:
+        enable-cache: false
+        version-file: ingestion/pyproject.toml
+    - name: Generate models
+      run: |
+        python3 -m venv env
+        source env/bin/activate
+        sudo make install_antlr_cli
+        make generate
+      shell: bash
+    - name: Download classification model archives
+      if: inputs.classification-models == 'true'
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+      with:
+        name: classification-models
+        path: ${{ runner.temp }}/classification-models
+    - name: Import classification model caches
+      if: inputs.classification-models == 'true'
+      run: |
+        for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
+          python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
+        done
+      shell: bash
+    - name: Install Python dependencies
+      env:
+        CLASSIFICATION_MODELS: ${{ inputs.classification-models }}
+        INSTALL_TEST_DEPENDENCIES: ${{ inputs.install-test-dependencies }}
+      run: |
+        source env/bin/activate
+        if [ "$INSTALL_TEST_DEPENDENCIES" = 'true' ]; then
+          profile='test'
+          if [ "$CLASSIFICATION_MODELS" = 'true' ]; then
+            profile=test-classification
+          fi
+          make install_test PYTHON_TEST_PROFILE="$profile"
+        else
+          make install_dev
+        fi
+      shell: bash
+    - name: Verify classification models
+      if: inputs.classification-models == 'true'
+      run: env/bin/python scripts/prepare_classification_models.py verify --project ingestion
+      shell: bash

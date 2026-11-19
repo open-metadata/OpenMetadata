@@ -62,6 +62,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Run formatting and lint
         if: ${{ needs.plan.outputs.static == 'true' }}
         uses: ./.github/actions/python-lint
@@ -80,6 +81,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Run type checks
         uses: ./.github/actions/python-static-checks
         with:
@@ -95,6 +97,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - uses: ./.github/actions/prepare-classification-models
   unit:
     needs:
@@ -126,6 +129,7 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}

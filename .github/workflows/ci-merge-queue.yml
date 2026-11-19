@@ -35,13 +35,14 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
-          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          fetch-depth: 1
           filter: blob:none
       - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d
         id: filter
         if: ${{ github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event.merge_group.base_sha }}
+          initial-fetch-depth: 2
           filters: .github/python-ci/paths.yml
       - name: Read Python versions
         id: versions
@@ -57,6 +58,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Run formatting and lint
         if: ${{ needs.plan.outputs.static == 'true' }}
         uses: ./.github/actions/python-lint
@@ -75,6 +77,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Run type checks
         uses: ./.github/actions/python-static-checks
         with:
@@ -90,6 +93,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - uses: ./.github/actions/prepare-classification-models
   backend:
     name: Build Backend Distribution
@@ -102,6 +106,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - uses: ./.github/actions/build-backend
         with:
           maven-args: -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
@@ -161,6 +166,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}

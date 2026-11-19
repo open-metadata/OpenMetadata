@@ -41,12 +41,12 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
-      - name: Setup Openmetadata Test Environment
-        uses: ./.github/actions/setup-openmetadata-test-environment
+          fetch-depth: 1
+      - name: Prepare Python environment
+        uses: ./.github/actions/prepare-python-environment
         with:
           python-version: ${{ inputs.python-version }}
           classification-models: 'true'
-          install-server: 'false'
       - name: Run offline E2E framework tests
         if: ${{ inputs.run-e2e-meta }}
         run: |

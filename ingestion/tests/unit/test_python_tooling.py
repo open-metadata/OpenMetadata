@@ -29,6 +29,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
+import yaml
 
 from ingestion.tests.utils.python_tooling import prepare_locked_tooling
 
@@ -96,6 +97,55 @@ def nox_tests(repo: Path, suite: str, *args: str) -> subprocess.CompletedProcess
 def reported_test_names(repo: Path, suite: str) -> list[str]:
     report = ET.parse(repo / f"ingestion/junit/test-results-{suite}.xml")
     return [case.attrib["name"] for case in report.findall(".//testcase")]
+
+
+@pytest.mark.parametrize("test_dependencies", [False, True])
+def test_ci_python_action_installs_the_locked_selection(nox_repo: Path, monkeypatch, test_dependencies: bool) -> None:
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/prepare-python-environment/action.yml").read_text())
+    install = next(step["run"] for step in action["runs"]["steps"] if step.get("name") == "Install Python dependencies")
+    environment = nox_repo / "env"
+    assert_success(run(sys.executable, "-m", "venv", str(environment), cwd=nox_repo))
+    monkeypatch.setenv("INSTALL_TEST_DEPENDENCIES", str(test_dependencies).lower())
+    monkeypatch.setenv("CLASSIFICATION_MODELS", "false")
+    lock = (nox_repo / "ingestion/uv.lock").read_bytes()
+
+    assert_success(run("bash", "-eo", "pipefail", "-c", install, cwd=nox_repo))
+
+    assert_success(
+        run(
+            str(environment / "bin/python"),
+            "-I",
+            "-c",
+            "from metadata.sample import classify; assert classify(1) == 'positive'",
+            cwd=nox_repo,
+        )
+    )
+    probe = run(str(environment / "bin/python"), "-I", "-c", "import pytest, coverage", cwd=nox_repo)
+    assert (probe.returncode == 0) == test_dependencies, probe.stdout + probe.stderr
+    assert (nox_repo / "ingestion/uv.lock").read_bytes() == lock
+
+
+def test_ci_server_setup_restores_test_dependencies_after_application_setup(nox_repo: Path, monkeypatch) -> None:
+    assert_success(run("make", "install_dev", cwd=nox_repo))
+    action = yaml.safe_load((REPO_ROOT / ".github/actions/setup-openmetadata-test-environment/action.yml").read_text())
+    restore = next(
+        step["run"]
+        for step in action["runs"]["steps"]
+        if step.get("name") == "Synchronize test dependencies after server setup"
+    )
+    monkeypatch.setenv("CLASSIFICATION_MODELS", "true")
+
+    assert_success(run("bash", "-eo", "pipefail", "-c", restore, cwd=nox_repo))
+
+    assert_success(
+        run(
+            str(nox_repo / "env/bin/python"),
+            "-I",
+            "-c",
+            "import pytest, coverage; from metadata.sample import classify",
+            cwd=nox_repo,
+        )
+    )
 
 
 @pytest.mark.parametrize("exit_code", [0, 1, 5])

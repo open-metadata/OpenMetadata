@@ -19,10 +19,10 @@ on:
         description: CLI E2E connectors as a JSON array (subset of the default list)
         type: string
         default: &default-connectors '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]'
-env:
-  DEFAULT_CONNECTORS: *default-connectors
 permissions:
   contents: read
+env:
+  DEFAULT_CONNECTORS: *default-connectors
 concurrency:
   group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
@@ -61,6 +61,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Run formatting and lint
         uses: ./.github/actions/python-lint
         with:
@@ -75,6 +76,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Run type checks
         uses: ./.github/actions/python-static-checks
         with:
@@ -88,6 +90,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - uses: ./.github/actions/prepare-classification-models
   backend:
     name: Build Backend Distribution
@@ -99,6 +102,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - uses: ./.github/actions/build-backend
         with:
           maven-args: -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
@@ -170,6 +174,7 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+          fetch-depth: 1
       - name: Verify selected Python workloads
         env:
           NEEDS_JSON: ${{ toJSON(needs) }}
@@ -199,6 +204,7 @@ jobs:
         with:
           ref: ${{ needs.plan.outputs.ref }}
           persist-credentials: false
+          # Sonar uses history for blame and new-code analysis.
           fetch-depth: 0
       - name: Collect Python reports
         uses: ./.github/actions/python-coverage

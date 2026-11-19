@@ -1,5 +1,5 @@
 name: Prepare test environment
-description: Steps needed to have a coherent test environment
+description: Prepare Python dependencies and start the requested OpenMetadata server environment.
 
 inputs:
   python-version:
@@ -56,15 +56,6 @@ inputs:
 runs:
   using: composite
   steps:
-    # ---- Install Ubuntu Dependencies ---------------------------------------------
-    - name: Install Ubuntu dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: |
-        sudo apt-get update && sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-        libevent-dev python3-dev libkrb5-dev tdsodbc && ACCEPT_EULA=Y sudo apt-get -qq install -y msodbcsql18
-      shell: bash
-    # ------------------------------------------------------------------------------
-
     # ---- Setup Java --------------------------------------------------------------
     - name: Setup JDK ${{ inputs.java-version }}
       if: ${{ inputs.install-server == 'true' && (inputs.fast-mode == 'true' || inputs.lightweight-ingestion != 'true') }}
@@ -87,52 +78,13 @@ runs:
       shell: bash
     # ------------------------------------------------------------------------------
 
-    # ---- Setup Python Test Environment -------------------------------------------
-    - name: Setup Python ${{ inputs.python-version }}
-      id: setup-python
+    - name: Prepare Python environment
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-
-    - name: Install uv
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
-      with:
-        enable-cache: false
-        version-file: ingestion/pyproject.toml
-
-    - name: Generate Models
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: |
-        python3 -m venv env
-        source env/bin/activate
-        sudo make install_antlr_cli
-        uv pip install "${{ github.workspace }}/ingestion[dev]"
-        make generate
-      shell: bash
-
-    - name: Install test dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
-      run: |
-        source env/bin/activate
-        make install_test PYTHON_TEST_PROFILE=test
-      shell: bash
-
-    - name: Download classification model archives
-      if: inputs.classification-models == 'true'
-      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-      with:
-        name: classification-models
-        path: ${{ runner.temp }}/classification-models
-
-    - name: Import classification model caches
-      if: inputs.classification-models == 'true'
-      run: |
-        for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
-          python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
-        done
-      shell: bash
+        classification-models: ${{ inputs.classification-models }}
+        install-test-dependencies: ${{ inputs.install-test-dependencies }}
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Configure Test Session Limit
@@ -186,12 +138,12 @@ runs:
       shell: bash
 
     - name: Synchronize test dependencies after server setup
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
       env:
         CLASSIFICATION_MODELS: ${{ inputs.classification-models }}
       run: |
         source env/bin/activate
-        profile=test
+        profile='test'
         if [ "$CLASSIFICATION_MODELS" = 'true' ]; then
           profile=test-classification
         fi

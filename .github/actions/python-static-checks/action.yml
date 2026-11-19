@@ -7,10 +7,9 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: ./.github/actions/setup-openmetadata-test-environment
+    - uses: ./.github/actions/prepare-python-environment
       with:
         python-version: ${{ inputs.python-version }}
-        install-server: 'false'
     - name: Run Static Checks
       env:
         PYTHON_VERSIONS: ${{ inputs.python-version }}
@@ -28,6 +27,8 @@ runs:
         path: ingestion/static-checks-run.log
         if-no-files-found: warn
         retention-days: 14
-    - name: Check Python CI contracts
-      run: env PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 env/bin/python -m pytest -q --noconftest .github/scripts/tests/test_python_ci.py
+    - name: Test Python CI
+      env:
+        PYTEST_DISABLE_PLUGIN_AUTOLOAD: '1'
+      run: env/bin/python -m pytest -q --noconftest .github/scripts/tests/test_python_ci.py
       shell: bash

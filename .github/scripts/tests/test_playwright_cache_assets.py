@@ -122,6 +122,7 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
     write(tmp_path, "docker/postgresql/postgres-script.sql", "select 1;\n")
     write(tmp_path, "docker/development/Dockerfile", "FROM eclipse-temurin:21\n")
     write(tmp_path, ".dockerignore", "docker/development/docker-volume\n")
+    write(tmp_path, ".github/actions/prepare-python-environment/action.yml", "name: Initial Python setup\n")
     initialize_repository(tmp_path)
 
     initial = fingerprints.fingerprint("fixture", root=tmp_path)
@@ -140,6 +141,7 @@ def test_fixture_fingerprint_tracks_compatibility_inputs_without_source_sha(
         ("docker/postgresql/postgres-script.sql", "select 2;\n"),
         ("docker/development/Dockerfile", "FROM eclipse-temurin:22\n"),
         (".dockerignore", "different-volume\n"),
+        (".github/actions/prepare-python-environment/action.yml", "name: Prepare Python environment\n"),
     )
     for relative, content in fixture_inputs:
         before = fingerprints.fingerprint("fixture", root=tmp_path)

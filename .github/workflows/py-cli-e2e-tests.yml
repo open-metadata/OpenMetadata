@@ -9,7 +9,21 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
-name: py-cli-e2e-tests
+name: Run connector E2E tests
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Highest supported Python version for connector E2E tests
+        required: true
+        type: string
+      connectors:
+        description: Connector names as a JSON array
+        required: true
+        type: string
+      ref:
+        type: string
+        required: true
 permissions:
   id-token: write
   contents: read
@@ -40,6 +54,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
           persist-credentials: false
+          fetch-depth: 1
       - name: configure aws credentials
         if: contains(fromJSON('["quicksight", "datalake_s3", "athena"]'), matrix.e2e-test)
         uses: aws-actions/configure-aws-credentials@4a1596c86fd706dc0521e32f0121ad1a6d1adb74
@@ -160,17 +175,3 @@ jobs:
             exit 1
           fi
         shell: bash
-on:
-  workflow_call:
-    inputs:
-      python-version:
-        description: Highest supported Python version for connector E2E tests
-        required: true
-        type: string
-      connectors:
-        description: Connector names as a JSON array
-        required: true
-        type: string
-      ref:
-        type: string
-        required: true
