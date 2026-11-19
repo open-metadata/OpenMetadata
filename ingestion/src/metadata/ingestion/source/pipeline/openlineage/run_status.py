@@ -255,6 +255,19 @@ def _line(stored: TaskStatus | None, update: RunUpdate) -> TaskStatus:
     )
 
 
+def _try_time(line: TaskStatus) -> int:
+    return _value(line.startTime) or _value(line.endTime) or 0
+
+
+def _first_step_still_failing(lines: list[TaskStatus], other_than: str) -> str | None:
+    """The step whose latest try failed earliest, other than ``other_than``."""
+    latest = {line.name: line for line in sorted(lines, key=_try_time)}
+    failing = [
+        line for name, line in latest.items() if name != other_than and line.executionStatus == StatusType.Failed
+    ]
+    return min(failing, key=_try_time).name if failing else None
+
+
 def place_run(rows: list[PipelineStatus], update: RunUpdate) -> tuple[PipelineStatus | None, RunUpdate] | None:
     """
     The run's stored row and the update keyed to it, given the pipeline's rows from the run's key
@@ -290,15 +303,16 @@ def merge_run_status(stored: PipelineStatus | None, update: RunUpdate) -> Pipeli
             lines.append(line)
         else:
             lines[index] = line
-        if (
-            error is not None
-            and status != StatusType.Failed
-            and error.failedTask == update.job
-            and line.executionStatus == StatusType.Successful
-        ):
-            # A later try of the failed step succeeded before the run failed, so its failure
-            # no longer explains the run.
-            error = None
+        if error is not None and error.failedTask == update.job and line.executionStatus == StatusType.Successful:
+            # A later try of the failed step succeeded, so its failure no longer explains the run.
+            # The row keeps one error, so a step still failing is named without its message. A
+            # run already failed with no other step failing keeps the error: one Spark application
+            # can run two SQL jobs of one name, and the failed one failed the run.
+            still_failing = _first_step_still_failing(lines, other_than=update.job)
+            if still_failing is not None:
+                error = ExecutionError(failedTask=still_failing)
+            elif status != StatusType.Failed:
+                error = None
 
     ended_at = None
     if status != StatusType.Pending:
