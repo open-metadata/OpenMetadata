@@ -97,7 +97,10 @@ public class PasswordEntityMasker extends EntityMasker {
   public Workflow maskWorkflow(Workflow workflow) {
     if (workflow != null) {
       Workflow workflowConverted =
-          (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+          UnmatchedOptions.during(
+              UnmatchedOptions.replaceLeaves(leaf -> PASSWORD_MASK),
+              () ->
+                  (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow));
       try {
         maskPasswordFields(workflowConverted);
       } catch (Exception e) {

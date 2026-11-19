@@ -412,7 +412,9 @@ public abstract class SecretsManager {
     OpenMetadataConnection openMetadataConnection =
         encryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection(), true);
     Workflow workflowConverted =
-        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+        UnmatchedOptions.during(
+            UnmatchedOptions.refuse(),
+            () -> (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow));
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {
@@ -431,7 +433,9 @@ public abstract class SecretsManager {
     OpenMetadataConnection openMetadataConnection =
         decryptOpenMetadataConnection(workflow.getOpenMetadataServerConnection());
     Workflow workflowConverted =
-        (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow);
+        UnmatchedOptions.during(
+            UnmatchedOptions.replaceLeaves(this::decryptIfTokenized),
+            () -> (Workflow) ClassConverterFactory.getConverter(Workflow.class).convert(workflow));
     // we don't store OM conn sensitive data
     workflowConverted.setOpenMetadataServerConnection(null);
     try {

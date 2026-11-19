@@ -38,8 +38,10 @@ import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.services.connections.pipeline.DatabricksPipelineConnection;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Permission;
+import org.openmetadata.schema.type.PipelineConnection;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -506,6 +508,31 @@ public class WorkflowResourceIT {
         Exception.class,
         () -> client.workflows().create(duplicateRequest),
         "Creating duplicate workflow with same name should fail");
+  }
+
+  @Test
+  void post_testConnectionWithAuthTypeMatchingNoOption_400(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    String token = "databricks-workflow-token";
+    DatabricksPipelineConnection config =
+        new DatabricksPipelineConnection()
+            .withHostPort("databricks.example:443")
+            .withAuthType(Map.of("token", token, "region", "eu"));
+    CreateWorkflow createRequest =
+        new CreateWorkflow()
+            .withName(ns.prefix("databricksUnmatchedAuth"))
+            .withWorkflowType(WorkflowType.TEST_CONNECTION)
+            .withRequest(
+                new TestServiceConnectionRequest()
+                    .withServiceType(ServiceType.PIPELINE)
+                    .withConnectionType("DatabricksPipeline")
+                    .withConnection(new PipelineConnection().withConfig(config)));
+
+    InvalidRequestException error =
+        assertThrows(InvalidRequestException.class, () -> client.workflows().create(createRequest));
+
+    assertEquals(400, error.getStatusCode());
+    assertFalse(error.getMessage().contains(token), error.getMessage());
   }
 
   @Test

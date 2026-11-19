@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
@@ -113,6 +114,37 @@ public class PasswordEntityMaskerTest extends TestEntityMasker {
                 .unmaskServiceConnectionConfig(
                     masked, original, "DomoDashboard", ServiceType.DASHBOARD);
     assertEquals(TOKEN, restored.getAccessToken());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void testEveryLeafOfAWorkflowValueThatMatchesNoOptionIsMasked() {
+    Map<String, Object> config =
+        Map.of("type", "DatabricksPipeline", "authType", Map.of("token", TOKEN, "region", "eu"));
+    Workflow stored =
+        JsonUtils.convertValue(
+            Map.of(
+                "name",
+                "test-connection",
+                "workflowType",
+                "TEST_CONNECTION",
+                "request",
+                Map.of(
+                    "connection", Map.of("config", config),
+                    "serviceType", "Pipeline",
+                    "connectionType", "DatabricksPipeline")),
+            Workflow.class);
+
+    Workflow masked = EntityMaskerFactory.createEntityMasker().maskWorkflow(stored);
+
+    Map<String, Object> request =
+        (Map<String, Object>)
+            JsonUtils.readValue(JsonUtils.pojoToJson(masked), Map.class).get("request");
+    Map<String, Object> connection = (Map<String, Object>) request.get("connection");
+    String mask = getMaskedPassword();
+    assertEquals(
+        Map.of("token", mask, "region", mask),
+        ((Map<String, Object>) connection.get("config")).get("authType"));
   }
 
   @Test
