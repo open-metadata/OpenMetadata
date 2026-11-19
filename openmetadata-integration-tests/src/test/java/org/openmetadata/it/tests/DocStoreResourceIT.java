@@ -478,12 +478,17 @@ public class DocStoreResourceIT {
                 .executeForString(HttpMethod.PATCH, byId, unchanged));
   }
 
+  /**
+   * The editor creates, patches and deletes a panel of its own, so its grants work outside email
+   * templates. A patch keeps the document's entityType.
+   */
   @Test
   void documentPatchKeepsEntityType(TestNamespace ns) throws Exception {
     OpenMetadataClient editor = documentEditor(ns.shortPrefix("panel_editor"));
     String panelName = ns.prefix("typed_panel");
     Document panel =
         createDocument(
+            editor,
             new CreateDocument()
                 .withName(panelName)
                 .withFullyQualifiedName(panelName)
@@ -506,6 +511,11 @@ public class DocStoreResourceIT {
 
       assertEquals(KNOWLEDGE_PANEL, patched.getEntityType());
       assertEquals("edited", patched.getData().getAdditionalProperties().get("name"));
+      assertDoesNotThrow(
+          () ->
+              editor
+                  .getHttpClient()
+                  .executeForString(HttpMethod.DELETE, documentByNamePath(panelName), null));
     } finally {
       deleteDocument(panelName);
     }
@@ -597,8 +607,13 @@ public class DocStoreResourceIT {
   }
 
   private Document createDocument(CreateDocument createRequest) throws Exception {
+    return createDocument(SdkClients.adminClient(), createRequest);
+  }
+
+  private Document createDocument(OpenMetadataClient client, CreateDocument createRequest)
+      throws Exception {
     String response =
-        SdkClients.adminClient()
+        client
             .getHttpClient()
             .executeForString(
                 HttpMethod.PUT, "/v1/docStore", createRequest, RequestOptions.builder().build());
