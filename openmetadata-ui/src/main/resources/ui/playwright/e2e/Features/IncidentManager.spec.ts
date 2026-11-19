@@ -1434,6 +1434,16 @@ test(
             await expect(notification).toBeVisible();
             await expect(notification).toContainText('mentioned you');
           }
+
+          await recipient.goto(`/inbox/tasks?taskId=${resolvedTaskIds[0]}`);
+          const resolutionComment = recipient
+            .getByTestId('task-detail-summary')
+            .getByTestId('task-detail-row-resolutionComment');
+          await expect(
+            resolutionComment.getByRole('link', {
+              name: `@${mentionedUser.responseData.name}`,
+            })
+          ).toBeVisible();
         } finally {
           await recipient.close();
         }

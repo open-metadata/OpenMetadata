@@ -102,6 +102,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 @Slf4j
@@ -774,10 +775,30 @@ public class TaskRepository extends EntityRepository<Task> {
    * Add a comment to a task.
    * Anyone who can view the task can add comments.
    */
-  public Task addComment(Task task, org.openmetadata.schema.type.TaskComment comment) {
-    Task original = JsonUtils.deepCopy(task, Task.class);
-    List<org.openmetadata.schema.type.TaskComment> comments =
-        new java.util.ArrayList<>(listOrEmpty(task.getComments()));
+  public Task addComment(Task task, TaskComment comment) {
+    return executeInTransaction(
+        () -> {
+          // The caller's snapshot may predate a comment or task edit that already committed.
+          Task current = lockTaskForComment(task);
+          Task original = JsonUtils.deepCopy(current, Task.class);
+          appendComment(current, comment);
+          PostCommitActionQueue.runOrDefer(() -> postUpdate(original, current));
+          return current;
+        });
+  }
+
+  private Task lockTaskForComment(Task task) {
+    UUID taskId = task.getId();
+    Task current = dao.jsonToEntity(dao.findJsonByIdForUpdate(taskId, NON_DELETED), taskId);
+    Fields fields = getFields("*");
+    setFieldsInternal(current, fields);
+    setInheritedFields(current, fields);
+    current.setHref(task.getHref());
+    return current;
+  }
+
+  private void appendComment(Task task, TaskComment comment) {
+    List<TaskComment> comments = new ArrayList<>(listOrEmpty(task.getComments()));
     comments.add(comment);
     task.setComments(comments);
     task.setCommentCount(comments.size());
@@ -786,6 +807,8 @@ public class TaskRepository extends EntityRepository<Task> {
       task.setUpdatedBy(comment.getAuthor().getName());
     }
     storeEntity(task, true);
+    storeMentions(task, comment.getMessage());
+    invalidate(task);
 
     // Record the new comment in the change delta so the event is self-describing: the notification
     // pipeline resolves mentions from this comment only, and the email template renders it as a
@@ -800,16 +823,6 @@ public class TaskRepository extends EntityRepository<Task> {
                     new FieldChange()
                         .withName(FIELD_COMMENTS)
                         .withNewValue(comment.getMessage()))));
-
-    // Store mentions from the comment message
-    storeMentions(task, comment.getMessage());
-
-    // storeEntity is the raw persistence path; fire postUpdate so search/lifecycle
-    // handlers stay consistent. The task/entityUpdated change event that drives
-    // mention notifications is emitted from the resource response header.
-    postUpdate(original, task);
-
-    return task;
   }
 
   /**

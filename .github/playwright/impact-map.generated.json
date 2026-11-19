@@ -10787,6 +10787,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/components/TaskDetailSummary.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Features/IncidentManager.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/personal-space/InboxPage/tabs/TasksTab.tsx"
       ],
       "specs": [

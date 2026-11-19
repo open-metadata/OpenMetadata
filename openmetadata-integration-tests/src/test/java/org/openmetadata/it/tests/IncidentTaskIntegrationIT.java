@@ -64,6 +64,7 @@ import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskCategory;
+import org.openmetadata.schema.type.TaskComment;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
@@ -142,6 +143,38 @@ public class IncidentTaskIntegrationIT {
     assertNotNull(afterPatch.getComments(), "comments must not be dropped by a task patch");
     assertEquals(1, afterPatch.getComments().size(), "the comment must survive the patch");
     assertEquals("keep me across a patch", afterPatch.getComments().get(0).getMessage());
+  }
+
+  @Test
+  void testAppendingCommentKeepsEditsMadeAfterTaskWasLoaded(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createTestCase(client, ns, "incident-comment-stale-task");
+    createFailedTestResult(client, testCase);
+    Task staleTask = awaitIncidentTaskForTestCase(client, testCase);
+    String taskId = staleTask.getId().toString();
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+
+    client.tasks().addComment(taskId, "Concurrent note");
+    client
+        .tasks()
+        .patch(
+            taskId,
+            JsonUtils.readTree(
+                "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Updated description\"}]"));
+    repository.addComment(
+        staleTask,
+        new TaskComment()
+            .withId(UUID.randomUUID())
+            .withAuthor(staleTask.getCreatedBy())
+            .withCreatedAt(System.currentTimeMillis())
+            .withMessage("Resolution note"));
+
+    Task stored = client.tasks().get(taskId, "comments");
+    assertEquals("Updated description", stored.getDescription());
+    assertEquals(2, stored.getCommentCount());
+    assertEquals(
+        List.of("Concurrent note", "Resolution note"),
+        stored.getComments().stream().map(TaskComment::getMessage).toList());
   }
 
   @Test
