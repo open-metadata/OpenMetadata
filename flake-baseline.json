@@ -1,14 +1,9 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-11-19T03:12:32Z",
+  "generatedAt": "2026-11-19T10:43:34Z",
   "window": 10,
   "threshold": 2,
   "runs": [
-    {
-      "runId": "43353296951",
-      "sourceSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
-      "recordedAt": "2026-11-13T03:20:02Z"
-    },
     {
       "runId": "43437005879",
       "sourceSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
@@ -53,6 +48,11 @@
       "runId": "44445461359",
       "sourceSha": "ed7536a3330c014c0a69eb8f1e8d265f335217d3",
       "recordedAt": "2026-11-19T03:12:32Z"
+    },
+    {
+      "runId": "44502789545",
+      "sourceSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
+      "recordedAt": "2026-11-19T10:43:34Z"
     }
   ],
   "entries": {
@@ -110,7 +110,6 @@
     },
     "GlobalSettings :: Features/Workflows/ChangeRequestReviewLifecycle.spec.ts :: Change request review lifecycle \u203a accepting one of two competing edits supersedes the other": {
       "observations": [
-        "43353296951",
         "43482948785",
         "43668471513",
         "44004103039",
@@ -211,23 +210,24 @@
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it": {
       "observations": [
         "43668471513",
-        "43793180722"
+        "43793180722",
+        "44502789545"
       ],
       "project": "Knowledge Graph",
       "file": "Features/KnowledgeGraph.spec.ts",
       "title": "Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
-      "lastSeenSha": "a7214e76255bf9d60bd8174d935d052cb09075cc",
+      "lastSeenSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
       "hardFailure": false
     },
-    "chromium :: Features/ContextCenterDocument.spec.ts :: Context Center - Documents Page \u203a a document uploaded while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing": {
+    "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a the level dropdown is keyboard accessible, maps levels to depths 1, 1 and 2 and shows the entity profile at level 1": {
       "observations": [
-        "43353296951"
+        "44502789545"
       ],
-      "project": "chromium",
-      "file": "Features/ContextCenterDocument.spec.ts",
-      "title": "Context Center - Documents Page \u203a a document uploaded while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
-      "hardFailure": true
+      "project": "Knowledge Graph",
+      "file": "Features/KnowledgeGraph.spec.ts",
+      "title": "Knowledge Graph \u203a the level dropdown is keyboard accessible, maps levels to depths 1, 1 and 2 and shows the entity profile at level 1",
+      "lastSeenSha": "eac56d0fd889168ae450ffd5faee3c0c026972cf",
+      "hardFailure": false
     },
     "chromium :: Features/ContextCenterPermission.spec.ts :: Context Center Permissions \u203a Documents Permissions \u203a user with createAll permission can see upload and folder create actions but no row actions, and can create a folder": {
       "observations": [
@@ -366,7 +366,6 @@
     },
     "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL": {
       "observations": [
-        "43353296951",
         "43547153622"
       ],
       "project": "chromium",
@@ -445,16 +444,6 @@
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
       "hardFailure": true
     },
-    "chromium :: Features/OntologyReview.spec.ts :: Native ontology publication \u203a manages reviewers with reload persistence and locks settings during an open review": {
-      "observations": [
-        "43353296951"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyReview.spec.ts",
-      "title": "Native ontology publication \u203a manages reviewers with reload persistence and locks settings during an open review",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
-      "hardFailure": false
-    },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in ai mode": {
       "observations": [
         "43617762853"
@@ -478,7 +467,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43482948785",
         "43547153622"
@@ -502,7 +490,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a says there are no differences when a release is compared with itself": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43482948785"
       ],
@@ -514,7 +501,6 @@
     },
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases": {
       "observations": [
-        "43353296951",
         "43482948785",
         "43668471513"
       ],
@@ -532,36 +518,6 @@
       "file": "Features/OntologyReviewTasks.spec.ts",
       "title": "Ontology review Tasks drawer \u203a requires a rejection reason and preserves it in the decided task and thread",
       "lastSeenSha": "b03472028fbf28fbd1f8616875617c263aae08dc",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyRules.spec.ts :: Ontology rules in plain language \u203a lane 7: shows a clash on the graph, lists it, opens its concept and clears after the fix in ai mode": {
-      "observations": [
-        "43353296951"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyRules.spec.ts",
-      "title": "Ontology rules in plain language \u203a lane 7: shows a clash on the graph, lists it, opens its concept and clears after the fix in ai mode",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyRules.spec.ts :: Ontology rules in plain language \u203a lane 7: shows a clash on the graph, lists it, opens its concept and clears after the fix in classic mode": {
-      "observations": [
-        "43353296951"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyRules.spec.ts",
-      "title": "Ontology rules in plain language \u203a lane 7: shows a clash on the graph, lists it, opens its concept and clears after the fix in classic mode",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
-      "hardFailure": true
-    },
-    "chromium :: Features/OntologyRules.spec.ts :: Ontology rules in plain language \u203a lane 9: adds a mapping by label, to another ontology by label, and by pasted address": {
-      "observations": [
-        "43353296951"
-      ],
-      "project": "chromium",
-      "file": "Features/OntologyRules.spec.ts",
-      "title": "Ontology rules in plain language \u203a lane 9: adds a mapping by label, to another ontology by label, and by pasted address",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
       "hardFailure": true
     },
     "chromium :: Features/OntologyStudioFlows.spec.ts :: Ontology Studio flows \u203a flow 7: a rejection shows its reason to the author, who edits and asks again, and withdraws the second request, in ai mode": {
@@ -616,7 +572,6 @@
     },
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed": {
       "observations": [
-        "43353296951",
         "43668471513",
         "43793180722"
       ],
@@ -739,7 +694,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-owners": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -750,7 +704,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-security": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -761,7 +714,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-semantics": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -772,7 +724,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-sla": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -783,7 +734,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-status-options": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -794,7 +744,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-quality-filter": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -805,7 +754,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-read-only": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -816,7 +764,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-security-row-filter": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -827,7 +774,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-semantic-validation": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -878,7 +824,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-apiEndpoint": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -889,7 +834,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-container": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -900,7 +844,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboard": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -911,7 +854,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboardDataModel": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -922,7 +864,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-database": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -933,7 +874,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-databaseSchema": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -944,7 +884,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-directory": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -955,7 +894,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-file": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -966,7 +904,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossary": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -977,7 +914,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossaryTerm": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -988,7 +924,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-metric": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -999,7 +934,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-mlmodel": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1010,7 +944,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-pipeline": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1021,7 +954,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-searchIndex": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1032,7 +964,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-spreadsheet": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1043,7 +974,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-storedProcedure": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1054,7 +984,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-table": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1065,7 +994,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-topic": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1076,7 +1004,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-worksheet": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1087,7 +1014,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-apiEndpoint": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1098,7 +1024,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-container": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1109,7 +1034,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboard": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1120,7 +1044,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboardDataModel": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1131,7 +1054,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-database": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1142,7 +1064,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-databaseSchema": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1153,7 +1074,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-directory": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1164,7 +1084,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-file": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1175,7 +1094,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossary": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1186,7 +1104,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossaryTerm": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1197,7 +1114,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-metric": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1208,7 +1124,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-mlmodel": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1219,7 +1134,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-pipeline": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1230,7 +1144,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-searchIndex": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1241,7 +1154,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-spreadsheet": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1252,7 +1164,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-storedProcedure": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1263,7 +1174,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-table": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1274,7 +1184,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-topic": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1285,7 +1194,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-worksheet": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1296,7 +1204,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-activity-feeds-tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1307,7 +1214,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-review": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1318,7 +1224,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-activity-feeds-tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1329,7 +1234,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-assets": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1350,7 +1254,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -1362,7 +1265,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-activity-feeds-tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1373,7 +1275,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -1385,7 +1286,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-custom-properties": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1396,7 +1296,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1407,7 +1306,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -1419,7 +1317,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1430,7 +1327,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1441,7 +1337,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1452,7 +1347,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -1464,7 +1358,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1485,7 +1378,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1496,7 +1388,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1507,7 +1398,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-searchIndex-search-index-settings": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1518,7 +1408,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1529,7 +1418,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1540,7 +1428,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1551,7 +1438,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1562,7 +1448,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1573,7 +1458,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1584,7 +1468,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tag-tab-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1595,7 +1478,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-activity-feeds-tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1606,7 +1488,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-review": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1617,7 +1498,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-activity-feeds-tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1628,7 +1508,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-assets": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1649,7 +1528,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -1671,7 +1549,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-activity-feeds-tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1682,7 +1559,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -1694,7 +1570,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-custom-properties": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1705,7 +1580,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1716,7 +1590,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1727,7 +1600,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1738,7 +1610,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1749,7 +1620,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-custom-properties": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1760,7 +1630,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1771,7 +1640,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-assets": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1782,7 +1650,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1793,7 +1660,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1804,7 +1670,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1815,7 +1680,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-assets": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1826,7 +1690,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1847,7 +1710,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1858,7 +1720,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1869,7 +1730,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-mlmodel-custom-properties": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1880,7 +1740,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1891,7 +1750,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1902,7 +1760,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-sample-data": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1913,7 +1770,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-search-index-settings": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1924,7 +1780,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1947,7 +1802,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1958,7 +1812,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -1969,7 +1822,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2004,7 +1856,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2027,7 +1878,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2038,7 +1888,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-activity-feeds---tasks": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2049,7 +1898,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-lineage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2060,7 +1908,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tag-tab-data-observability": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2071,7 +1918,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2083,7 +1929,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2095,7 +1940,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2148,7 +1992,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-query": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2160,7 +2003,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-scope-menu": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2172,7 +2014,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-tree": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2184,7 +2025,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-export-dialog": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2206,7 +2046,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-native-graph": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2228,7 +2067,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-new-validation": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2240,7 +2078,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-changes": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2252,7 +2089,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43482948785",
         "43547153622",
@@ -2266,7 +2102,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2288,7 +2123,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43793180722"
       ],
@@ -2360,7 +2194,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-case": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2371,7 +2204,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-menu": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2382,7 +2214,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-suite": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2393,7 +2224,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-cases": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2404,7 +2234,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-suites": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2455,7 +2284,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-case": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2466,7 +2294,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-menu": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2477,7 +2304,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-suite": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2488,7 +2314,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-cases": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2499,7 +2324,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-suites": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2550,7 +2374,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-certification": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2561,7 +2384,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-customize": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2572,7 +2394,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-sort": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2583,7 +2404,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-manage": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2594,7 +2414,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-data-quality": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2625,7 +2444,6 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-data-quality": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2676,33 +2494,12 @@
     },
     "visual-regression :: ../utils/visualScenarios.ts :: State variants light \u203a entity-table-narrow": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
       "file": "../utils/visualScenarios.ts",
       "title": "State variants light \u203a entity-table-narrow",
       "lastSeenSha": "4985b835b875d56d9e96fe4041ea6ed62d633ba9",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: State variants light \u203a entity-table-read-only": {
-      "observations": [
-        "43353296951"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "State variants light \u203a entity-table-read-only",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
-      "hardFailure": true
-    },
-    "visual-regression :: ../utils/visualScenarios.ts :: State variants light \u203a table-long-header": {
-      "observations": [
-        "43353296951"
-      ],
-      "project": "visual-regression",
-      "file": "../utils/visualScenarios.ts",
-      "title": "State variants light \u203a table-long-header",
-      "lastSeenSha": "dad5249791630d8d7f1b4b727a930dde6f0051e5",
       "hardFailure": true
     },
     "visual-regression :: VisualRegression/connectionBranches.spec.ts :: Connection branches dark \u203a connection-branch-dashboardServices-Tableau-root-authType-3512437263": {
@@ -2803,7 +2600,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -2845,7 +2641,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Cassandra configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2856,7 +2651,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Databricks configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2887,7 +2681,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Greenplum configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2898,7 +2691,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Mysql configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2909,7 +2701,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Postgres configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2920,7 +2711,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Redshift configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2931,7 +2721,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Snowflake configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2942,7 +2731,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Timescale configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2953,7 +2741,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Trino configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2964,7 +2751,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices UnityCatalog configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -2985,7 +2771,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -2997,7 +2782,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a messagingServices Nats configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3008,7 +2792,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a metadataServices AlationSink configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3039,7 +2822,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices DatabricksPipeline configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3060,7 +2842,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices Prefect configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3071,7 +2852,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices TableauPipeline configuration form": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -3083,7 +2863,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices ElasticSearch configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3094,7 +2873,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices OpenSearch configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3171,7 +2949,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -3213,7 +2990,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Cassandra configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3224,7 +3000,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Databricks configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3255,7 +3030,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Greenplum configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3266,7 +3040,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Mysql configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3277,7 +3050,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Postgres configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3288,7 +3060,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Redshift configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3299,7 +3070,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Snowflake configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3310,7 +3080,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Timescale configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3321,7 +3090,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Trino configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3332,7 +3100,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices UnityCatalog configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3353,7 +3120,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a driveServices Sftp configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3364,7 +3130,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a messagingServices Nats configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3375,7 +3140,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a metadataServices AlationSink configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3386,7 +3150,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices DatabricksPipeline configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3407,7 +3170,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices Prefect configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3418,7 +3180,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices TableauPipeline configuration form": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -3430,7 +3191,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices ElasticSearch configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3441,7 +3201,6 @@
     },
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices OpenSearch configuration form": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3472,7 +3231,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -3484,7 +3242,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-initial": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3495,7 +3252,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-nested-group": {
       "observations": [
-        "43353296951",
         "44445461359"
       ],
       "project": "visual-regression",
@@ -3506,7 +3262,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-or": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3517,7 +3272,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-all": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3528,7 +3282,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-visible": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3539,7 +3292,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results": {
       "observations": [
-        "43353296951",
         "43617762853",
         "43668471513"
       ],
@@ -3551,7 +3303,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-search-error": {
       "observations": [
-        "43353296951",
         "44004103039"
       ],
       "project": "visual-regression",
@@ -3562,7 +3313,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -3574,7 +3324,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -3586,7 +3335,6 @@
     },
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44445461359"
       ],
@@ -3629,7 +3377,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions dark \u203a glossary-late-activity-count": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43482948785",
         "43547153622",
@@ -3644,7 +3391,6 @@
     },
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43482948785",
         "43547153622",
@@ -3691,7 +3437,6 @@
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886",
         "44445461359"
@@ -3724,7 +3469,6 @@
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error dark": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3735,7 +3479,6 @@
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error light": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3746,7 +3489,6 @@
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction detail light": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3757,7 +3499,6 @@
     },
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction related-metrics-edit dark": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3768,7 +3509,6 @@
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-form-table-schema": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3779,7 +3519,6 @@
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-confirmation": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3790,7 +3529,6 @@
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44004103039"
       ],
@@ -3802,7 +3540,6 @@
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44004103039"
       ],
@@ -3814,7 +3551,6 @@
     },
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-overridden": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3845,7 +3581,6 @@
     },
     "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-brand": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3856,7 +3591,6 @@
     },
     "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-error": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3867,7 +3601,6 @@
     },
     "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-gray": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3878,7 +3611,6 @@
     },
     "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-success": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3889,7 +3621,6 @@
     },
     "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-warning": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3900,7 +3631,6 @@
     },
     "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls light \u203a autocomplete-selected": {
       "observations": [
-        "43353296951",
         "43437005879"
       ],
       "project": "visual-regression",
@@ -3941,7 +3671,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: database-services matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -3953,7 +3682,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: explore matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -3965,7 +3693,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "43482948785",
         "43547153622",
@@ -3990,7 +3717,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: landing page with expanded sidebar matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -4002,7 +3728,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: landing-page matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -4025,7 +3750,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: settings matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886"
       ],
@@ -4037,7 +3761,6 @@
     },
     "visual-regression :: VisualRegression/staticPages.spec.ts :: teams matches baseline": {
       "observations": [
-        "43353296951",
         "43437005879",
         "44224347886",
         "44445461359"
@@ -4068,7 +3791,6 @@
     "Knowledge Graph :: Features/KnowledgeGraph.spec.ts :: Knowledge Graph \u203a hover reveals the exact predicate and clicking a canvas edge pins it",
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
     "chromium :: Features/OntologyNativeDataMode.spec.ts :: Native ontology Data mode \u203a linking a table from the picker and binding a column updates the graph and the API",
-    "chromium :: Features/OntologyNativeLiveData.spec.ts :: Native ontology Live data \u203a a failed bindings read shows an error with Retry, not a missing binding, and Retry reaches the SQL",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a fills history rows and compares two releases in classic mode",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a lists per-kind counts on a row and keeps the plain counts for a release captured before kinds existed",
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a reads Published without review on a directly published release row and detail",
@@ -4076,117 +3798,15 @@
     "chromium :: Features/OntologyReview.spec.ts :: Release history and compare (G8) \u203a shows reviewer, reason and filters for approved, rejected and draft releases",
     "chromium :: Features/Permissions/TableQueriesTabPermissions.spec.ts :: Table Queries tab follows Query resource permissions \u203a shows the Queries tab with its count and query when Query view is allowed",
     "chromium :: Pages/InputOutputPorts.spec.ts :: Input Output Ports \u203a Section 2: Adding Ports \u203a Add different entity types as ports",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-owners",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-security",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-semantics",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-sla",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-status-options",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-quality-filter",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-read-only",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-security-row-filter",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-semantic-validation",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-apiEndpoint",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-container",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboard",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboardDataModel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-database",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-databaseSchema",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-directory",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-file",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossary",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossaryTerm",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-metric",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-mlmodel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-pipeline",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-searchIndex",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-spreadsheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-storedProcedure",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-table",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-topic",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-worksheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-apiEndpoint",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-container",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboard",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboardDataModel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-database",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-databaseSchema",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-directory",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-file",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossary",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossaryTerm",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-metric",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-mlmodel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-pipeline",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-searchIndex",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-spreadsheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-storedProcedure",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-table",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-topic",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-worksheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-review",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-assets",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-activity-feeds-tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-searchIndex-search-index-settings",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tag-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-review",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-assets",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-activity-feeds-tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-mlmodel-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-sample-data",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-search-index-settings",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-table-schema-definition",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tag-tab-data-observability",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph",
@@ -4201,73 +3821,17 @@
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-case",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-menu",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-suite",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-cases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-suites",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-case",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-menu",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-suite",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-cases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-suites",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-certification",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-customize",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-sort",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-manage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-data-quality",
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-data-quality",
-    "visual-regression :: ../utils/visualScenarios.ts :: State variants light \u203a entity-table-narrow",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Cassandra configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Databricks configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Greenplum configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Mysql configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Postgres configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Redshift configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Snowflake configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Timescale configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Trino configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices UnityCatalog configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a messagingServices Nats configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a metadataServices AlationSink configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices DatabricksPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices Prefect configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices TableauPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices ElasticSearch configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices OpenSearch configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Cassandra configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Databricks configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Greenplum configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Mysql configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Postgres configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Redshift configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Snowflake configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Timescale configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Trino configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices UnityCatalog configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a driveServices Sftp configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a messagingServices Nats configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a metadataServices AlationSink configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices DatabricksPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices Prefect configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices TableauPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices ElasticSearch configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices OpenSearch configuration form",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-initial",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-nested-group",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-or",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-all",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-visible",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-search-error",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group",
@@ -4276,21 +3840,8 @@
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error dark",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error light",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction detail light",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction related-metrics-edit dark",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-form-table-schema",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-confirmation",
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error",
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-overridden",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-brand",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-error",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-gray",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-success",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-warning",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls light \u203a autocomplete-selected",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: database-services matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: explore matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline",
@@ -4303,116 +3854,14 @@
   ],
   "hardFailureStableIds": [
     "chromium :: Features/McpAdministration.spec.ts :: admin controls MCP access and revokes registered clients",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-owners",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-security",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-semantics",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-sla",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-edit-status-options",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-quality-filter",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-read-only",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-security-row-filter",
-    "visual-regression :: ../utils/visualScenarios.ts :: Contract states light \u203a contract-semantic-validation",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-apiEndpoint",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-container",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboard",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-dashboardDataModel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-database",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-databaseSchema",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-directory",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-file",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossary",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-glossaryTerm",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-metric",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-mlmodel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-pipeline",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-searchIndex",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-spreadsheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-storedProcedure",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-table",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-topic",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities dark \u203a entity-worksheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-apiEndpoint",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-container",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboard",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-dashboardDataModel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-database",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-databaseSchema",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-directory",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-file",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossary",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-glossaryTerm",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-metric",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-mlmodel",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-pipeline",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-searchIndex",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-spreadsheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-storedProcedure",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-table",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-topic",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entities light \u203a entity-worksheet",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossary-tab-review",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-assets",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-activity-feeds-tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a metric-tab-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-dataProduct-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-directory-lineage",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-domain-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-file-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-searchIndex-search-index-settings",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-spreadsheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-topic-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tab-worksheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs dark \u203a tag-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossary-tab-review",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-activity-feeds-tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-assets",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a glossaryTerm-tab-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-activity-feeds-tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a metric-tab-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-apiEndpoint-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-container-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-dataProduct-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-directory-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-assets",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-domain-data-observability",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-file-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-mlmodel-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-sample-data",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-searchIndex-search-index-settings",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-spreadsheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-storedProcedure-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-activity-feeds---tasks",
     "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-custom-properties",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-topic-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-activity-feeds---tasks",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tab-worksheet-lineage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Entity tabs light \u203a tag-tab-data-observability",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-export-dialog",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-library",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states dark \u203a ontology-native-graph",
@@ -4427,73 +3876,17 @@
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-publish-releases",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-query",
     "visual-regression :: ../utils/visualScenarios.ts :: Governance states light \u203a ontology-tree",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-case",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-menu",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-add-suite",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-cases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states dark \u203a quality-tab-test-suites",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-case",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-menu",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-add-suite",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-cases",
-    "visual-regression :: ../utils/visualScenarios.ts :: Interaction states light \u203a quality-tab-test-suites",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-certification",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-customize",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-column-sort",
-    "visual-regression :: ../utils/visualScenarios.ts :: Overlays light \u203a table-overlay-manage",
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages dark \u203a page-data-quality",
-    "visual-regression :: ../utils/visualScenarios.ts :: Pages light \u203a page-data-quality",
-    "visual-regression :: ../utils/visualScenarios.ts :: State variants light \u203a entity-table-narrow",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Cassandra configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Databricks configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Greenplum configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Mysql configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Postgres configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Redshift configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Snowflake configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Timescale configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices Trino configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a databaseServices UnityCatalog configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a driveServices Sftp configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a messagingServices Nats configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a metadataServices AlationSink configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices DatabricksPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices Prefect configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a pipelineServices TableauPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices ElasticSearch configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms dark \u203a searchServices OpenSearch configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices MicroStrategy configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Sigma configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a dashboardServices Tableau configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Cassandra configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Databricks configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Greenplum configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Mysql configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Postgres configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Redshift configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Snowflake configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Timescale configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices Trino configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a databaseServices UnityCatalog configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a driveServices Sftp configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a messagingServices Nats configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a metadataServices AlationSink configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices DatabricksPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices Prefect configuration form",
     "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a pipelineServices TableauPipeline configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices ElasticSearch configuration form",
-    "visual-regression :: VisualRegression/connectorForms.spec.ts :: Connection forms light \u203a searchServices OpenSearch configuration form",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-extra-rule",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-initial",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-nested-group",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-advanced-or",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-all",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-export-visible",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-long-results",
-    "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-search-error",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions dark \u203a explore-tools-menu",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-extra-rule",
     "visual-regression :: VisualRegression/exploreInteractions.spec.ts :: Explore interactions light \u203a explore-advanced-nested-group",
@@ -4502,21 +3895,8 @@
     "visual-regression :: VisualRegression/glossaryInteractions.spec.ts :: Glossary interactions light \u203a glossary-late-activity-count",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets dark",
     "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction assets light",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error dark",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction definition-save-error light",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction detail light",
-    "visual-regression :: VisualRegression/metricList.spec.ts :: Metric interaction related-metrics-edit dark",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-form-table-schema",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-confirmation",
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-adoption-error",
     "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-fully-managed",
-    "visual-regression :: VisualRegression/settingsForms.spec.ts :: Settings form bodies dark \u203a settings-source-overridden",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-brand",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-error",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-gray",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-success",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls dark \u203a alert-warning",
-    "visual-regression :: VisualRegression/sharedControls.spec.ts :: Shared controls light \u203a autocomplete-selected",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: database-services matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: explore matches baseline",
     "visual-regression :: VisualRegression/staticPages.spec.ts :: glossary matches baseline",
