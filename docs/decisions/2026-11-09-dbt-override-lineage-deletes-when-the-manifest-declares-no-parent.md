@@ -1,7 +1,7 @@
 # dbt override lineage deletes a model's lineage only when its manifest declares no parent
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-19 (only the manifest's own project's nodes qualify)
 - **Deciders:** OpenMetadata ingestion maintainers
 - **Guard:** TestDbtOverrideLineageWithoutUpstream (`ingestion/tests/unit/test_dbt.py`), including test_the_delete_runs_before_query_lineage; TestDeleteLineageBySource (`ingestion/tests/unit/sink/test_metadata_rest_lineage.py`)
 - **Related:** Issue #37092, PR #37429
@@ -23,6 +23,12 @@ SQL into the same table, so a delete that ran after it would remove them.
 `depends_on.nodes` is empty (`DataModelLink.declared_no_upstream`). An empty resolved upstream never
 triggers the delete, and seeds and sources never do.
 
+The node must also belong to the manifest's own project: its `package_name` equals
+`metadata.project_name`. dbt Mesh and dbt-loom inject another project's public models into the
+manifest as `model` nodes with no `depends_on.nodes`, and deleting for them would wipe the lineage
+that project's own ingestion drew. A manifest without `metadata.project_name`, written before dbt
+1.6 could inject such nodes, treats every node as its own.
+
 The record deletes only the `DbtLineage` upstream edges into that table, by id, or by FQN when the
 reference has no id. It never touches downstream edges, edges from other sources, or other
 entities, and the sink counts it neither as a scanned record nor as a failure.
@@ -34,7 +40,9 @@ compiled-SQL edges are written.
 ## Consequences
 
 A model whose parents are filtered out or not ingested yet keeps its lineage, at the cost that a
-manifest which wrongly lists a parent leaves stale lineage in place. Reordering the dbt stages, or
+manifest which wrongly lists a parent leaves stale lineage in place. A model from an installed
+dbt package is skipped as well, since its `package_name` is the package's, so it can keep stale
+lineage after its parents are removed. Reordering the dbt stages, or
 moving the delete into another stage, has to keep it ahead of every stage that writes `DbtLineage`
 for the same table; `test_the_delete_runs_before_query_lineage` fails otherwise. Revisit if dbt
 lineage stops being written by more than one stage.

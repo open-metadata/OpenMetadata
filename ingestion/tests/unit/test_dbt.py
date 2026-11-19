@@ -4461,16 +4461,20 @@ class TestDbtOverrideLineageWithoutUpstream:
 
     parsed = TestDbtLineageReusesParsedUpstream
 
-    def _lineage(self, override_lineage, catalog=None, edit_manifest=None):
+    def _lineage(self, override_lineage, catalog=None, edit_manifest=None, project_name=None):
         catalog = self.parsed._catalog() if catalog is None else catalog
         manifest = json.loads(self.parsed.MANIFEST.read_text(encoding="utf-8"))
         if edit_manifest:
             edit_manifest(manifest)
+        dbt_manifest = parse_manifest(manifest)
+        if project_name:
+            # The v8 fixture predates metadata.project_name, which dbt 1.6 added with cross-project refs.
+            dbt_manifest.metadata = dbt_manifest.metadata.model_copy(update={"project_name": project_name})
         harness = self.parsed()
         harness._ctx = SimpleNamespace()
         source = harness._source(catalog, [])
         source.source_config.overrideLineage = override_lineage
-        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=parse_manifest(manifest)))]
+        links = [item.right for item in source.yield_data_models(DbtObjects(dbt_manifest=dbt_manifest))]
         return {
             model_str(link.table_entity.fullyQualifiedName): [
                 result.right for result in source.create_dbt_lineage(link)
@@ -4507,6 +4511,22 @@ class TestDbtOverrideLineageWithoutUpstream:
         del catalog[self.parsed.RAW_FQN]
 
         assert self._lineage(override_lineage=True, catalog=catalog)[self.parsed.ORDERS_FQN] == []
+
+    def test_another_projects_injected_model_is_left_alone(self):
+        """dbt Mesh injects an upstream project's public model with no parents; deleting for it
+        would wipe the lineage that project's own ingestion drew."""
+
+        def from_platform(manifest):
+            manifest["nodes"]["model.jaffle_shop.raw_orders"]["package_name"] = "platform"
+
+        lineage = self._lineage(override_lineage=True, edit_manifest=from_platform, project_name="jaffle_shop")
+
+        assert lineage[self.parsed.RAW_FQN] == []
+
+    def test_a_model_of_the_manifests_own_project_still_clears_its_lineage(self):
+        lineage = self._lineage(override_lineage=True, project_name="jaffle_shop")
+
+        assert [type(record) for record in lineage[self.parsed.RAW_FQN]] == [OMetaDeleteLineageBySource]
 
     def test_a_seed_is_left_alone(self):
         """A seed never lists parents, and the table may be another project's model."""

@@ -1121,10 +1121,15 @@ class DbtSource(DbtServiceSource):
                         data_model_link = DataModelLink(
                             table_entity=table_entity,
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
-                            # Sources and seeds never list parents, and the table may be another
-                            # project's model, so only nodes dbt builds from refs qualify.
+                            # Sources and seeds never list parents, and dbt Mesh injects another
+                            # project's public models with no parents, so only this project's
+                            # models and snapshots qualify.
                             # ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
                             declared_no_upstream=resource_type in ("model", "snapshot")
+                            and (
+                                dbt_project_name is None
+                                or getattr(manifest_node, "package_name", None) == dbt_project_name
+                            )
                             and not getattr(getattr(manifest_node, "depends_on", None), "nodes", None),
                             datamodel=DataModel(
                                 modelType=ModelType.DBT,
