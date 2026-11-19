@@ -60,6 +60,7 @@ import { Style } from '../../../generated/type/tagLabel';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
+import { useLifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import { VotingDataProps } from '../../../interface/entity/vote.interface';
 import { FeedCounts } from '../../../interface/feed.interface';
@@ -816,6 +817,14 @@ const DomainDetails = ({
     []
   );
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: EntityType.DOMAIN,
+    entityId: domain.id,
+    entityFqn: domain.fullyQualifiedName,
+    entityStatus: domain.entityStatus,
+    canRequest: editAllPermission && !isVersionsView,
+  });
+
   // Wrapped in an IIFE so the permission-driven ternaries are scoped to
   // their own function for cyclomatic-complexity purposes.
   const manageButtonContent: ManageMenuItem[] = (() => [
@@ -1015,8 +1024,13 @@ const DomainDetails = ({
           entityId={domain.id}
           entityType={EntityType.DOMAIN}
           fqn={domain.fullyQualifiedName}
+          requestStages={lifecycleRequests.stages}
+          requestTaskId={lifecycleRequests.pending?.taskId}
+          requestedStage={lifecycleRequests.pending?.stage}
           showDivider={false}
           status={domain.entityStatus}
+          onRequest={lifecycleRequests.request}
+          onWithdraw={lifecycleRequests.withdraw}
         />
       </Box>
     ) : null;

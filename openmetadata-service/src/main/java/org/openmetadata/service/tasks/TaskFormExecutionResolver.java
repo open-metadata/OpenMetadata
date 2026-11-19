@@ -35,6 +35,7 @@ public final class TaskFormExecutionResolver {
     OWNERSHIP_UPDATE,
     TIER_UPDATE,
     DOMAIN_UPDATE,
+    STATUS_UPDATE,
     APPROVAL,
     INCIDENT,
     FEEDBACK_APPROVAL,
@@ -211,6 +212,8 @@ public final class TaskFormExecutionResolver {
           HandlerType.TIER_UPDATE, MetadataOperation.EDIT_TIER, null, null, null, null, null);
       case DomainUpdate -> new TaskExecutionBinding(
           HandlerType.DOMAIN_UPDATE, MetadataOperation.EDIT_ALL, null, null, null, null, null);
+      case StatusUpdate -> new TaskExecutionBinding(
+          HandlerType.STATUS_UPDATE, MetadataOperation.EDIT_ALL, null, null, null, null, null);
       case GlossaryApproval, RequestApproval -> new TaskExecutionBinding(
           HandlerType.APPROVAL, MetadataOperation.EDIT_ALL, null, null, null, null, null);
       case TestCaseResolution, IncidentResolution -> new TaskExecutionBinding(
@@ -304,6 +307,19 @@ public final class TaskFormExecutionResolver {
                   null,
                   "entityStatus",
                   "Approved")),
+          List.of());
+      case STATUS_UPDATE -> new TaskExecutionPlan(
+          List.of(
+              new TaskExecutionAction(
+                  ActionType.PATCH_ENTITY_FIELD,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  "newStatus",
+                  "entityStatus",
+                  null)),
           List.of());
       case SUGGESTION -> new TaskExecutionPlan(
           List.of(
@@ -416,6 +432,7 @@ public final class TaskFormExecutionResolver {
       case "ownershipUpdate" -> HandlerType.OWNERSHIP_UPDATE;
       case "tierUpdate" -> HandlerType.TIER_UPDATE;
       case "domainUpdate" -> HandlerType.DOMAIN_UPDATE;
+      case "statusUpdate" -> HandlerType.STATUS_UPDATE;
       case "approval" -> HandlerType.APPROVAL;
       case "incident" -> HandlerType.INCIDENT;
       case "feedbackApproval" -> HandlerType.FEEDBACK_APPROVAL;

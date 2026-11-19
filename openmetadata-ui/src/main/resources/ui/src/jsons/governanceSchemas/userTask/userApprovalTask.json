@@ -163,7 +163,7 @@
           "javaType": "org.openmetadata.schema.governance.workflows.elements.nodes.userTask.LifecycleMove",
           "properties": {
             "stage": {
-              "description": "Stage the asset is in while the approval is pending.",
+              "description": "Stage the asset is in while the approval is pending. Left out for a move made from any stage, whose task names the stage the asset is in when it is asked.",
               "title": "EntityStatus",
               "type": "string",
               "javaType": "org.openmetadata.schema.type.EntityStatus",
@@ -183,7 +183,6 @@
             }
           },
           "required": [
-            "stage",
             "targetStage"
           ],
           "additionalProperties": false

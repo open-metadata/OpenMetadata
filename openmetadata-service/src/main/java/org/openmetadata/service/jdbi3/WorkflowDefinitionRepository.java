@@ -36,6 +36,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.governance.workflows.BatchExecutionPlan;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.LifecycleTransitionRules;
 import org.openmetadata.service.governance.workflows.SinkEntityTypeRule;
 import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowExpressionValidator;
@@ -333,6 +334,22 @@ public class WorkflowDefinitionRepository extends EntityRepository<WorkflowDefin
     validateExpressionInterpolation(workflowDefinition);
     // 9. Trigger filter entries are JSON Logic strings
     validateTriggerFilterEntries(workflowDefinition);
+    // 10. A lifecycle's transitions follow the rules its editor enforces
+    validateLifecycleTransitions(workflowDefinition);
+  }
+
+  private static void validateLifecycleTransitions(WorkflowDefinition workflowDefinition) {
+    if (workflowDefinition.getConfig() != null
+        && workflowDefinition.getConfig().getLifecycle() != null) {
+      List<String> problems =
+          LifecycleTransitionRules.problems(
+              workflowDefinition.getConfig().getLifecycle().getTransitions());
+      if (!problems.isEmpty()) {
+        throw BadRequestException.of(
+            "Workflow '%s' has an invalid lifecycle: %s"
+                .formatted(workflowDefinition.getName(), String.join("; ", problems)));
+      }
+    }
   }
 
   private static void validateTriggerFilterEntries(WorkflowDefinition workflowDefinition) {

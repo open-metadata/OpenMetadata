@@ -49,7 +49,8 @@
         "RecognizerFeedbackApproval",
         "CustomTask",
         "MemoryConflictReview",
-        "MetadataCompletion"
+        "MetadataCompletion",
+        "StatusUpdate"
       ],
       "javaEnums": [
         {"name": "GlossaryApproval"},
@@ -68,7 +69,8 @@
         {"name": "RecognizerFeedbackApproval"},
         {"name": "CustomTask"},
         {"name": "MemoryConflictReview"},
-        {"name": "MetadataCompletion"}
+        {"name": "MetadataCompletion"},
+        {"name": "StatusUpdate"}
       ]
     },
     "taskStatus": {

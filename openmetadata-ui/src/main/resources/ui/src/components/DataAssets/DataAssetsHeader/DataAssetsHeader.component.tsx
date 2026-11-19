@@ -180,6 +180,7 @@ export const DataAssetsHeader = ({
   onProfilerSettingUpdate,
   onUpdateRetentionPeriod,
   extraDropdownContent,
+  lifecycleRequests,
   badge,
   headerActions,
   isDqAlertSupported = false,
@@ -316,11 +317,16 @@ export const DataAssetsHeader = ({
         entityId={dataAsset.id}
         entityType={entityType}
         fqn={dataAsset.fullyQualifiedName}
+        requestStages={lifecycleRequests?.stages}
+        requestTaskId={lifecycleRequests?.pending?.taskId}
+        requestedStage={lifecycleRequests?.pending?.stage}
         showDivider={false}
         status={entityStatus}
+        onRequest={lifecycleRequests?.request}
+        onWithdraw={lifecycleRequests?.withdraw}
       />
     ) : null;
-  }, [entityType, dataAsset]);
+  }, [entityType, dataAsset, lifecycleRequests]);
 
   const dqFailureAlert = useMemo(() => {
     const shouldRender =

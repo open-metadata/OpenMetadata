@@ -14,9 +14,12 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.governance.workflows.LifecycleTransition;
+import org.openmetadata.schema.governance.workflows.LifecycleTransitionTrigger;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.governance.workflows.elements.triggers.Config;
@@ -25,6 +28,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
+import org.openmetadata.service.governance.workflows.elements.nodes.automatedTask.impl.CheckEntityAttributesImpl;
 import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
@@ -48,6 +52,7 @@ public final class EntityStatusWorkflows implements StageOwnership {
   // The field names a Set Action resolves to the entity's lifecycle stage.
   private static final Set<String> STAGE_FIELD_NAMES = Set.of("status", Entity.FIELD_ENTITY_STATUS);
   private static final String FIELD_NAME_CONFIG = "fieldName";
+  private static final String UNPROCESSED = "Unprocessed";
 
   // The active workflows that own a stage. A workflow change on this server invalidates it at
   // once; the expiry bounds how long another server acts on a stale copy.
@@ -88,6 +93,98 @@ public final class EntityStatusWorkflows implements StageOwnership {
         .min(Comparator.comparing(WorkflowDefinition::getName))
         .map(EntityStatusWorkflows::isLifecyclePlaybook)
         .orElse(false);
+  }
+
+  @Override
+  public List<String> requestableStagesOf(
+      String entityType, EntityInterface<?> entity, String currentStage) {
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
+        .filter(workflow -> appliesTo(workflow, entityType, entity))
+        .min(Comparator.comparing(WorkflowDefinition::getName))
+        .map(
+            workflow ->
+                onRequestTargets(
+                    workflow,
+                    currentStage,
+                    conditions ->
+                        CheckEntityAttributesImpl.meetsRules(entityType, entity, conditions)))
+        .orElse(List.of());
+  }
+
+  /**
+   * The stages a user can request from {@code currentStage}: its on-request transitions whose
+   * conditions the asset meets, as {@code meets} judges them.
+   */
+  static List<String> onRequestTargets(
+      WorkflowDefinition workflow, String currentStage, Predicate<String> meets) {
+    return onRequestTransitionsLeaving(workflow, currentStage).stream()
+        .filter(
+            transition ->
+                nullOrEmpty(transition.getConditions()) || meets.test(transition.getConditions()))
+        .map(EntityStatusWorkflows::targetOf)
+        .distinct()
+        .toList();
+  }
+
+  /** The on-request transitions leaving {@code currentStage}, whatever their conditions. */
+  static List<LifecycleTransition> onRequestTransitionsLeaving(
+      WorkflowDefinition workflow, String currentStage) {
+    return transitionsOf(workflow).stream()
+        .filter(transition -> transition.getTrigger() == LifecycleTransitionTrigger.ON_REQUEST)
+        .filter(transition -> leaves(transition, currentStage))
+        .toList();
+  }
+
+  /** The playbook's on-request transition from one stage to the other, if it has one. */
+  public static Optional<LifecycleTransition> onRequestTransition(
+      WorkflowDefinition playbook, String from, String to) {
+    return transitionsOf(playbook).stream()
+        .filter(transition -> transition.getTrigger() == LifecycleTransitionTrigger.ON_REQUEST)
+        .filter(transition -> leaves(transition, from) && targetOf(transition).equals(to))
+        .findFirst();
+  }
+
+  /**
+   * Whether one of the playbook's transitions, automatic or on request, moves from one to the
+   * other. A step of the onboarding path made on request counts: its move leaves the stage that
+   * held the asset for the request.
+   */
+  static boolean makesTransition(WorkflowDefinition playbook, String from, String to) {
+    return transitionsOf(playbook).stream()
+        .anyMatch(transition -> leaves(transition, from) && targetOf(transition).equals(to));
+  }
+
+  /** Whether a transition leaving {@code from} for {@code to} exists, whatever its conditions. */
+  public static boolean offersOnRequest(WorkflowDefinition playbook, String from, String to) {
+    return onRequestTransition(playbook, from, to).isPresent();
+  }
+
+  /** The active lifecycle playbook of this name, when it is one and has transitions. */
+  public static Optional<WorkflowDefinition> playbookWithTransitions(String workflowName) {
+    return ACTIVE_STAGE_WORKFLOWS.get().stream()
+        .filter(workflow -> workflow.getName().equals(workflowName))
+        .filter(workflow -> !transitionsOf(workflow).isEmpty())
+        .findFirst();
+  }
+
+  // A transition with no from stages leaves every stage but its own target. Unprocessed is the
+  // enrolment state the lifecycle moves out of on its own, so no transition moves an asset to it.
+  private static boolean leaves(LifecycleTransition transition, String stage) {
+    String target = targetOf(transition);
+    boolean fromStage =
+        nullOrEmpty(transition.getFrom())
+            || transition.getFrom().stream().anyMatch(from -> from.value().equals(stage));
+    return fromStage && !target.equals(stage) && !UNPROCESSED.equals(target);
+  }
+
+  private static String targetOf(LifecycleTransition transition) {
+    return transition.getTo().value();
+  }
+
+  private static List<LifecycleTransition> transitionsOf(WorkflowDefinition workflow) {
+    return isLifecyclePlaybook(workflow)
+        ? listOrEmpty(workflow.getConfig().getLifecycle().getTransitions())
+        : List.of();
   }
 
   private static boolean isLifecyclePlaybook(WorkflowDefinition workflow) {

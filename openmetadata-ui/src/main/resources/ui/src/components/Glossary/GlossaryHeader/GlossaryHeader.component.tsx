@@ -60,6 +60,7 @@ import {
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useFqn } from '../../../hooks/useFqn';
+import { useLifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { QueryVoteType } from '../../../interface/entity/vote.interface';
 import {
   exportGlossaryInCSVFormat,
@@ -733,6 +734,14 @@ const GlossaryHeader = ({
     }
   }, [selectedData]);
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM,
+    entityId: selectedData.id,
+    entityFqn: selectedData.fullyQualifiedName,
+    entityStatus: selectedData.entityStatus,
+    canRequest: canEditAll && !isVersionView && !selectedData.deleted,
+  });
+
   const manageButtonContent: ManageMenuItem[] = buildManageButtonContent({
     t,
     isGlossary,
@@ -758,11 +767,16 @@ const GlossaryHeader = ({
         entityId={selectedData.id}
         entityType={isGlossary ? EntityType.GLOSSARY : EntityType.GLOSSARY_TERM}
         fqn={selectedData.fullyQualifiedName}
+        requestStages={lifecycleRequests.stages}
+        requestTaskId={lifecycleRequests.pending?.taskId}
+        requestedStage={lifecycleRequests.pending?.stage}
         showDivider={false}
         status={entityStatus}
+        onRequest={lifecycleRequests.request}
+        onWithdraw={lifecycleRequests.withdraw}
       />
     );
-  }, [selectedData, isGlossary]);
+  }, [selectedData, isGlossary, lifecycleRequests]);
 
   const createButtons = useMemo(() => {
     if (permissions.Create || createGlossaryTermPermission) {

@@ -351,7 +351,7 @@ describe('DomainDetails lifecycle stage', () => {
 
     await waitFor(() => expect(EntityHeader).toHaveBeenCalled());
     const { suffix } = (EntityHeader as jest.Mock).mock.calls.at(-1)[0];
-    render(suffix);
+    render(suffix, { wrapper: MemoryRouter });
 
     expect(screen.getByText('Draft')).toBeInTheDocument();
   });

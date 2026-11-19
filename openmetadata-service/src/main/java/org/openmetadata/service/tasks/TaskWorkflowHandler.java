@@ -68,9 +68,11 @@ import org.openmetadata.service.governance.approval.ApprovalDecisionService;
 import org.openmetadata.service.governance.approval.ApprovalDecisionService.ReviewOutcome;
 import org.openmetadata.service.governance.approval.ChangeRequestReview;
 import org.openmetadata.service.governance.approval.ChangeRequestTasks;
+import org.openmetadata.service.governance.workflows.LifecycleRestart;
 import org.openmetadata.service.governance.workflows.OntologyApprovalWorkflow;
 import org.openmetadata.service.governance.workflows.OntologyReviewReconciler;
 import org.openmetadata.service.governance.workflows.OntologyWorkflowDecision;
+import org.openmetadata.service.governance.workflows.StatusUpdateTasks;
 import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowHandler.TaskResolutionOutcome;
@@ -832,6 +834,10 @@ public class TaskWorkflowHandler {
       }
 
       executeConfiguredActions(actions, task, entity, repository, user, effectivePayload, newValue);
+      if (approved && taskType == TaskEntityType.StatusUpdate) {
+        LifecycleRestart.afterApprovedRequest(
+            aboutRef, StatusUpdateTasks.requestedStage(task), user);
+      }
     } catch (Exception e) {
       LOG.error(
           "[TaskWorkflowHandler] Failed to apply entity changes for task '{}'", task.getId(), e);

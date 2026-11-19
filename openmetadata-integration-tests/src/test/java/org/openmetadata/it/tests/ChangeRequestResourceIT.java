@@ -37,6 +37,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.ai.CreateMcpServer;
+import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.governance.WithdrawChangeRequest;
 import org.openmetadata.schema.api.services.CreateMcpService;
 import org.openmetadata.schema.entity.ai.Env;
@@ -60,6 +61,7 @@ import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 // Each test deploys its own Enforce workflow, which receives the signals of every event on its
@@ -234,6 +236,110 @@ class ChangeRequestResourceIT {
     assertEquals(1, visibleCount(SdkClients.user3Client(), glossary.getId()));
     assertThrows(ForbiddenException.class, () -> getAs(SdkClients.user2Client(), requestId));
     assertEquals(0, visibleCount(SdkClients.user2Client(), glossary.getId()));
+  }
+
+  @Test
+  void theReviewTaskCarriesTheRequestFieldsOnlyForThoseWhoMayViewTheRequest(TestNamespace ns) {
+    Glossary glossary = gated(ns);
+    String fqn = glossary.getFullyQualifiedName();
+    String staged = ns.prefix("staged-description");
+    patchAs(
+        SdkClients.user2Client(),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]".formatted(staged));
+    UUID requestId = onlyPendingRequest(glossary.getId()).getId();
+    Task task = awaitOpenApprovalTask(fqn);
+
+    for (OpenMetadataClient client :
+        List.of(SdkClients.adminClient(), SdkClients.user2Client(), SdkClients.user1Client())) {
+      assertTrue(taskJsonAs(client, task.getId()).contains(staged));
+      assertTrue(openEntityTasksJsonAs(client, fqn).contains(staged));
+    }
+    String single = taskJsonAs(SdkClients.user3Client(), task.getId());
+    String listed = openEntityTasksJsonAs(SdkClients.user3Client(), fqn);
+    String commented =
+        JsonUtils.pojoToJson(
+            SdkClients.user3Client()
+                .tasks()
+                .addComment(task.getId().toString(), "Looks fine to me"));
+    assertTrue(listed.contains(task.getId().toString()));
+    for (String body : List.of(single, listed, commented)) {
+      assertFalse(body.contains(staged));
+      assertFalse(body.contains(requestId.toString()));
+    }
+  }
+
+  @Test
+  void anAssigneeOfTheReviewTaskReadsItsRequestFieldsButOthersDoNot(TestNamespace ns) {
+    Glossary glossary = gatedGlossary(ns, "dn");
+    String fqn = glossary.getFullyQualifiedName();
+    deployWorkflowAssigning(
+        ns,
+        Entity.GLOSSARY,
+        "\"description\"",
+        "",
+        filterScopedTo(fqn),
+        SharedEntities.get().USER3.getEntityReference());
+    String staged = ns.prefix("staged-description");
+    patchDescription(glossary.getId(), staged);
+    onlyPendingRequest(glossary.getId());
+    Task task = awaitOpenApprovalTask(fqn);
+
+    assertTrue(taskJsonAs(SdkClients.user3Client(), task.getId()).contains(staged));
+    assertTrue(openEntityTasksJsonAs(SdkClients.user3Client(), fqn).contains(staged));
+    assertFalse(taskJsonAs(SdkClients.user2Client(), task.getId()).contains(staged));
+    assertFalse(openEntityTasksJsonAs(SdkClients.user2Client(), fqn).contains(staged));
+  }
+
+  @Test
+  void theDomainTaskListCarriesTheRequestFieldsOnlyForThoseWhoMayViewTheRequest(TestNamespace ns) {
+    String domainFqn = SharedEntities.get().DOMAIN.getFullyQualifiedName();
+    Glossary glossary =
+        ns.trackRoot(
+            Entity.GLOSSARY,
+            SdkClients.adminClient()
+                .glossaries()
+                .create(
+                    new CreateGlossary()
+                        .withName(ns.shortPrefix("domainGlossary"))
+                        .withDescription("Glossary in a domain")
+                        .withOwners(List.of(SharedEntities.get().USER2.getEntityReference()))
+                        .withReviewers(List.of(SharedEntities.get().USER1.getEntityReference()))
+                        .withDomains(List.of(domainFqn))));
+    deployHookWorkflow(ns, "\"description\"", "", filterScopedTo(glossary.getFullyQualifiedName()));
+    String staged = ns.prefix("staged-description");
+    patchAs(
+        SdkClients.user2Client(),
+        glossary.getId(),
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"%s\"}]".formatted(staged));
+    onlyPendingRequest(glossary.getId());
+    awaitOpenApprovalTask(glossary.getFullyQualifiedName());
+
+    assertTrue(domainTasksJsonAs(SdkClients.adminClient(), domainFqn).contains(staged));
+    assertFalse(domainTasksJsonAs(SdkClients.user3Client(), domainFqn).contains(staged));
+  }
+
+  private static String domainTasksJsonAs(OpenMetadataClient client, String domainFqn) {
+    return client
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.GET,
+            "/v1/domains/%s/tasks?limit=100".formatted(domainFqn),
+            null,
+            RequestOptions.builder().build());
+  }
+
+  private static String taskJsonAs(OpenMetadataClient client, UUID taskId) {
+    return JsonUtils.pojoToJson(client.tasks().get(taskId.toString()));
+  }
+
+  private static String openEntityTasksJsonAs(OpenMetadataClient client, String entityFqn) {
+    return JsonUtils.pojoToJson(
+        client
+            .tasks()
+            .listWithFilters(
+                Map.of("aboutEntity", entityFqn, "statusGroup", "open", "limit", "100"))
+            .getData());
   }
 
   private static ChangeRequest getAs(OpenMetadataClient client, UUID id) {

@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -65,6 +66,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.RecognizerFeedback;
@@ -84,6 +86,7 @@ import org.openmetadata.service.governance.approval.ChangeRequestRun;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.workflows.TriggeringChange;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowRunTermination;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler.InputNamespaces;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -95,8 +98,6 @@ import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
-import org.openmetadata.service.util.AsyncService;
-import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -499,7 +500,7 @@ public class CreateTask implements TaskListener {
     String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
     String workflowStageDisplayName =
         WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
-    LifecycleMove lifecycleMove = readLifecycleMove(delegateTask);
+    LifecycleMove lifecycleMove = withCurrentStage(readLifecycleMove(delegateTask), entity);
     TaskEntityStatus stageStatus = resolveStageStatus(delegateTask);
     List<TaskAvailableTransition> availableTransitions =
         TaskWorkflowLifecycleResolver.parseTransitions(
@@ -804,6 +805,7 @@ public class CreateTask implements TaskListener {
         // reviews survive. Every other run keeps the entity-level supersede (requesterToMatch =
         // null).
         String requesterToMatch = reviewsChangeRequest(delegateTask) ? updatedBy : null;
+        LifecycleMove move = withCurrentStage(readLifecycleMove(delegateTask), entity);
         List<Task> priors =
             reviewsStaleRevision(delegateTask)
                 ? List.of()
@@ -813,10 +815,11 @@ public class CreateTask implements TaskListener {
             .filter(
                 prior ->
                     isSupersedablePriorApprovalTask(
-                        prior,
-                        currentWorkflowDefinitionId,
-                        currentWorkflowInstanceId,
-                        requesterToMatch))
+                            prior,
+                            currentWorkflowDefinitionId,
+                            currentWorkflowInstanceId,
+                            requesterToMatch)
+                        && decidesSameMove(prior, move))
             .forEach(
                 prior ->
                     cancelAndTerminatePriorApproval(
@@ -873,6 +876,27 @@ public class CreateTask implements TaskListener {
     return priorPayload;
   }
 
+  /**
+   * A lifecycle can ask for approval of several moves on one asset at once, such as its onboarding
+   * step and a transition to Deprecated, so a new approval replaces only an earlier one for a move
+   * to the same stage. Comparing the target alone keeps an approval asked from an earlier stage, for
+   * a transition from any stage, from staying open next to its replacement. An approval that gates
+   * no lifecycle move, on either side, replaces as before.
+   */
+  static boolean decidesSameMove(Task prior, LifecycleMove move) {
+    boolean same = true;
+    if (move != null) {
+      // The task payload is free-form JSON shared by every task type, so it is read as a map.
+      Object priorMove = JsonUtils.getMap(prior.getPayload()).get(LIFECYCLE_MOVE_KEY);
+      same =
+          priorMove == null
+              || Objects.equals(
+                  JsonUtils.convertValue(priorMove, LifecycleMove.class).getTargetStage(),
+                  move.getTargetStage());
+    }
+    return same;
+  }
+
   static boolean isSupersedablePriorApprovalTask(
       Task prior,
       UUID currentWorkflowDefinitionId,
@@ -918,50 +942,8 @@ public class CreateTask implements TaskListener {
         prior.getId(),
         prior.getWorkflowInstanceId());
     taskRepository.closeTask(prior, updatedBy, SUPERSEDED_BY_NEWER_RUN);
-    dispatchPriorInstanceTermination(
+    WorkflowRunTermination.terminateOnceTaskCloses(
         inferWorkflowDefinitionRef(delegateTask), prior.getId(), prior.getWorkflowInstanceId());
-  }
-
-  private void dispatchPriorInstanceTermination(
-      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
-    // Run on the shared async executor in its own transaction so deleting the superseded Flowable
-    // process can never poison the current task-creation transaction. Flowable runs as a standalone
-    // engine with its own JDBC connection, so closeTask() above already committed in a separate OM
-    // transaction before this dispatch. The worker reads the prior task straight from the database
-    // (not the entity cache) to observe that committed status, and only terminates the process when
-    // the task is actually terminal — so a still-live approval is never orphaned.
-    AsyncService.getInstance()
-        .submitDatabaseTask(
-            DatabaseOperation.WORKFLOW_TASK,
-            priorInstanceId.toString(),
-            () -> {
-              terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId);
-              return null;
-            })
-        .exceptionally(
-            ex -> {
-              LOG.error(
-                  "[CreateTask] Failed to terminate superseded workflow instance '{}'",
-                  priorInstanceId,
-                  ex);
-              return null;
-            });
-  }
-
-  private void terminateSupersededInstance(
-      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
-    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
-    Task prior = taskRepository.findCommittedTask(priorTaskId);
-    if (prior != null && isTerminalTaskStatus(prior.getStatus())) {
-      WorkflowHandler.getInstance()
-          .terminateWorkflowInstance(priorInstanceId, mainWorkflowName, SUPERSEDED_BY_NEWER_RUN);
-    } else {
-      LOG.debug(
-          "[CreateTask] Prior approval task '{}' is not terminal (status={}); leaving its workflow "
-              + "process intact",
-          priorTaskId,
-          prior == null ? null : prior.getStatus());
-    }
   }
 
   /**
@@ -1241,6 +1223,20 @@ public class CreateTask implements TaskListener {
     updated.remove(ChangePreviewUtils.PROPOSED_CHANGES_KEY);
     updated.put(LIFECYCLE_MOVE_KEY, move);
     return updated;
+  }
+
+  /** A move made from any stage names the stage the asset is in when its approval is asked. */
+  static LifecycleMove withCurrentStage(LifecycleMove move, EntityInterface<?> entity) {
+    LifecycleMove resolved = move;
+    // The generated status enums print their value.
+    Object current = entity == null ? null : entity.getEntityStatus();
+    if (move != null && move.getStage() == null && current != null) {
+      resolved =
+          new LifecycleMove()
+              .withStage(EntityStatus.fromValue(current.toString()))
+              .withTargetStage(move.getTargetStage());
+    }
+    return resolved;
   }
 
   private LifecycleMove readLifecycleMove(DelegateTask delegateTask) {

@@ -260,6 +260,7 @@ import org.openmetadata.service.governance.approval.ApprovedApplication;
 import org.openmetadata.service.governance.approval.ChangeRequestService;
 import org.openmetadata.service.governance.approval.StagedChange;
 import org.openmetadata.service.governance.workflows.EntityStatusWorkflows;
+import org.openmetadata.service.governance.workflows.LifecycleTransitionRuns;
 import org.openmetadata.service.governance.workflows.StageOwnership;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipRecord;
@@ -1629,6 +1630,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         : List.of();
   }
 
+  /**
+   * Stages a user can request for this entity now: the on-request transitions that leave its stage
+   * in the lifecycle that owns it.
+   */
+  public List<String> getRequestableStages(T entity) {
+    List<String> requestable = List.of();
+    if (supportsEntityStatus && workflowsOwnEntityStatus) {
+      requestable =
+          stageOwnership.requestableStagesOf(
+              entityType, entity, entityLifecycle.adapter().read(entity));
+    }
+    return requestable;
+  }
+
+  /** As {@link #getRequestableStages(EntityInterface)}, read with the fields a trigger filter sees. */
+  public List<String> getRequestableStages(UUID id) {
+    return getRequestableStages(get(null, id, getFields("*")));
+  }
+
   private void validateEntityStatusChange(T current, T change, String from, String to) {
     requireMoveInLifecycle(from, to);
     checkEntityStatusNotOwnedByWorkflow(current, change);
@@ -1768,6 +1788,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (approvalTaskReviewsEntityStatus && updated.getUpdatedBy() != null) {
       approvalTaskClosingComment(entityType, original.getEntityStatus(), updated.getEntityStatus())
           .ifPresent(comment -> closeApprovalTask(updated, comment));
+    }
+  }
+
+  /** A move one of its lifecycle's transitions makes ends that lifecycle's other runs on the entity. */
+  private void endLifecycleRunsOnTransition(T original, T updated) {
+    if (supportsEntityStatus && workflowsOwnEntityStatus) {
+      String from = entityLifecycle.adapter().read(original);
+      String to = entityLifecycle.adapter().read(updated);
+      if (to != null && !to.equals(from)) {
+        LifecycleTransitionRuns.endRuns(updated, entityType, from, to);
+      }
     }
   }
 
@@ -4822,6 +4853,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
+    endLifecycleRunsOnTransition(original, updated);
     invalidateListCountsOnStageChange(original, updated);
     refreshCountingParentsOnMove(original, updated);
   }

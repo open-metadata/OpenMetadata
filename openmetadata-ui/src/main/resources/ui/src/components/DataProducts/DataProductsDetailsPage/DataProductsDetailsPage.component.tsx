@@ -59,6 +59,7 @@ import { useCustomPages } from '../../../hooks/useCustomPages';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
+import { useLifecycleRequests } from '../../../hooks/useLifecycleRequests';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
 import {
   QueryVote,
@@ -746,6 +747,14 @@ const DataProductsDetailsPage = ({
     }
   }, [dataProduct.fullyQualifiedName]);
 
+  const lifecycleRequests = useLifecycleRequests({
+    entityType: EntityType.DATA_PRODUCT,
+    entityId: dataProduct.id,
+    entityFqn: dataProduct.fullyQualifiedName,
+    entityStatus: dataProduct.entityStatus,
+    canRequest: editAllPermission,
+  });
+
   const manageButtonContent: ManageMenuItem[] = getManageButtonContent({
     editAllPermission,
     editDisplayNamePermission,
@@ -983,12 +992,17 @@ const DataProductsDetailsPage = ({
           entityId={dataProduct.id}
           entityType={EntityType.DATA_PRODUCT}
           fqn={dataProduct.fullyQualifiedName}
+          requestStages={lifecycleRequests.stages}
+          requestTaskId={lifecycleRequests.pending?.taskId}
+          requestedStage={lifecycleRequests.pending?.stage}
           showDivider={false}
           status={entityStatus}
+          onRequest={lifecycleRequests.request}
+          onWithdraw={lifecycleRequests.withdraw}
         />
       </Box>
     ) : null;
-  }, [dataProduct]);
+  }, [dataProduct, lifecycleRequests]);
 
   if (isCustomPageLoading) {
     return <Loader />;

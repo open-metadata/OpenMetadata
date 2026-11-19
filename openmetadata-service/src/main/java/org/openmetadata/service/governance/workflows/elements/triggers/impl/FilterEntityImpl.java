@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.triggers.impl;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
+import static org.openmetadata.service.governance.workflows.Workflow.LIFECYCLE_RESTART_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_EVENT_TYPE_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.TRIGGERING_OBJECT_ID_VARIABLE;
@@ -85,6 +86,13 @@ public class FilterEntityImpl implements JavaDelegate {
     if (isTagFeedbackCreation(varHandler)) {
       // We skip the entity filtering for this special case
       passesFilter = true;
+    } else if (Boolean.TRUE.equals(
+        varHandler.getNamespacedVariable(GLOBAL_NAMESPACE, LIFECYCLE_RESTART_VARIABLE))) {
+      // A lifecycle restarted after an approved status request carries on from the stage the
+      // request set, a change its exclude list skips by design; only its entity filter applies.
+      passesFilter =
+          !TriggerEntityFilter.excludes(
+              filterLogic, Entity.getEntity(entityLink, "*", Include.ALL));
     } else if (changeRequest != null) {
       // A change-request run was admitted at submission with the reviewing workflow's own
       // include/exclude/filter; only that workflow runs it and every other hook workflow on the
