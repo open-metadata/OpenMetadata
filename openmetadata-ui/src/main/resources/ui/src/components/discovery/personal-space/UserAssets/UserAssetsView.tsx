@@ -122,6 +122,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
               <EntitySummaryPanel
                 entityDetails={{ details: selected }}
                 handleClosePanel={() => setSelectedId(null)}
+                panelPath="user-assets"
               />
             </Box>
           )}

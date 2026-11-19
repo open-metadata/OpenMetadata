@@ -29,6 +29,23 @@
     background: var(--tw-background-color-canvas);
   }
 
+  // Personal-space asset lists sit on the dialog surface; in dark the panel's
+  // cards match the canvas-coloured asset cards beside them.
+  &.user-assets {
+    background: transparent;
+  }
+
+  .dark-mode &.user-assets {
+    .summary-panel-container,
+    .content-area,
+    .title-section,
+    .title-container,
+    .summary-panel-card,
+    .entity-right-panel-vertical-nav {
+      background: var(--tw-background-color-canvas);
+    }
+  }
+
   &.explore,
   &.lineage,
   &.glossary-term-assets-tab,

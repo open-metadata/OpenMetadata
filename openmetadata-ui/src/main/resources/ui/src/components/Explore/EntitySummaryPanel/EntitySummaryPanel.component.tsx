@@ -1171,6 +1171,7 @@ export default function EntitySummaryPanel({
       className={classNames('entity-summary-panel-container', {
         explore: panelPath === 'explore',
         lineage: panelPath === 'lineage',
+        'user-assets': panelPath === 'user-assets',
         [GLOSSARY_TERM_ASSETS_TAB]: panelPath === GLOSSARY_TERM_ASSETS_TAB,
         [ONTOLOGY_EXPLORER]: panelPath === ONTOLOGY_EXPLORER,
       })}
