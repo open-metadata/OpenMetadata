@@ -54,7 +54,7 @@ public final class GlossaryTermPendingLabels implements Managed {
   static final int BATCH_SIZE = 500;
   static final int MAX_ATTEMPTS = 3;
   static final long RETRY_DELAY_SECONDS = 60;
-  static final int SWEEP_LIMIT = 10_000;
+  static final int SWEEP_PAGE = 1_000;
   // Bounds hashes x probed tables, which become bind variables of one query.
   static final int MAX_PROBE_BINDINGS = 20_000;
   private static final int GLOSSARY = TagLabel.TagSource.GLOSSARY.ordinal();
@@ -94,12 +94,17 @@ public final class GlossaryTermPendingLabels implements Managed {
     }
   }
 
-  /** Shows the pending labels of every Approved term that still has some. */
+  /** Shows the pending labels of every Approved term that still has some, page by page. */
   static void sweep() {
     try {
-      List<String> termFqns = dao().listPendingTermFqns(GLOSSARY, SWEEP_LIMIT);
-      showIfApproved(new HashSet<>(termFqns));
-      LOG.info("Checked {} glossary terms with pending labels", termFqns.size());
+      int checked = 0;
+      List<String> page = dao().listPendingTermFqns(GLOSSARY, "", SWEEP_PAGE);
+      while (!page.isEmpty()) {
+        showIfApproved(new HashSet<>(page));
+        checked += page.size();
+        page = dao().listPendingTermFqns(GLOSSARY, page.getLast(), SWEEP_PAGE);
+      }
+      LOG.info("Checked {} glossary terms with pending labels", checked);
     } catch (RuntimeException e) {
       LOG.error("Could not sweep pending glossary term labels", e);
     }
@@ -112,10 +117,11 @@ public final class GlossaryTermPendingLabels implements Managed {
             delaySeconds, TimeUnit.SECONDS, AsyncService.getInstance().getExecutorService()));
   }
 
+  // Each attempt re-reads the term: one deprecated or rejected since its approval is not shown.
   private static void apply(String termFqn, int attempt) {
     boolean complete;
     try {
-      complete = applyApproved(termFqn).complete();
+      complete = !isApproved(termFqn) || applyApproved(termFqn).complete();
     } catch (RuntimeException e) {
       LOG.error("Could not show the pending labels of glossary term {}", termFqn, e);
       complete = false;
@@ -261,6 +267,11 @@ public final class GlossaryTermPendingLabels implements Managed {
       }
     }
     return tables;
+  }
+
+  private static boolean isApproved(String termFqn) {
+    return TagLabelUtil.getGlossaryTerms(List.of(termFqn)).stream()
+        .anyMatch(term -> term.getEntityStatus() == EntityStatus.APPROVED);
   }
 
   private static TagLabel termLabel(String termFqn) {
