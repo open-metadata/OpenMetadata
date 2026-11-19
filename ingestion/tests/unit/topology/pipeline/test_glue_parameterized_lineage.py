@@ -2917,7 +2917,65 @@ df1.join(load_mystery_df(), "id").write.format("snowflake").option("dbtable", "O
                 "unresolved",
                 id="returned_from_helper",
             ),
+            pytest.param('status = f"{populate_externally(frames)}"', "unresolved", id="f_string_placeholder"),
+            pytest.param('status = f"{n:{populate_externally(frames)}}"', "unresolved", id="f_string_format_spec"),
+            pytest.param("head = rows[: populate_externally(frames)]", "unresolved", id="slice_bound"),
+            pytest.param(
+                "res = [populate_externally(frames) for _ in batches]", "unresolved", id="comprehension_element"
+            ),
+            pytest.param("res = [x for x in populate_externally(frames)]", "unresolved", id="comprehension_iterable"),
+            pytest.param(
+                "res = [x for x in batches if populate_externally(frames)]", "unresolved", id="comprehension_filter"
+            ),
+            pytest.param(
+                "ok = any(populate_externally(frames) for _ in batches)", "unresolved", id="generator_argument"
+            ),
+            pytest.param("res = {populate_externally(frames): b for b in batches}", "unresolved", id="dict_comp_key"),
+            pytest.param(
+                "containers = [frames]\npopulate_externally(containers[0])", "unresolved", id="list_item_alias"
+            ),
+            pytest.param(
+                'holder = {"f": frames}\npopulate_externally(holder["f"])', "unresolved", id="dict_entry_alias"
+            ),
+            pytest.param('holder = {"f": frames}\npopulate_externally(holder)', "unresolved", id="nested_in_argument"),
+            pytest.param(
+                "containers = [frames]\npopulate_externally(*containers)", "unresolved", id="starred_argument"
+            ),
+            pytest.param('populate_externally(**{"d": frames})', "unresolved", id="double_star_argument"),
+            pytest.param(
+                "def one():\n    return 1\ncontainers = [frames]\npopulate_externally(containers[0], one())",
+                "unresolved",
+                id="alias_before_helper_argument",
+            ),
+            pytest.param("run_later(lambda: populate_externally(frames))", "unresolved", id="lambda_argument"),
+            pytest.param(
+                'def fill():\n    frames["k"] = spark.table("B")\nrun_later(fill)', "unresolved", id="callback_closure"
+            ),
             pytest.param("print(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="print_keeps"),
+            pytest.param("s = str(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="str_keeps"),
+            pytest.param(
+                "f = udf(lambda x: x.upper())", Resolved((SnowflakeRef(table="RAW_A"),)), id="pure_lambda_keeps"
+            ),
+            pytest.param(
+                "ignored = False and populate_externally(frames)",
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="short_circuit_and_keeps",
+            ),
+            pytest.param(
+                "ignored = True or populate_externally(frames)",
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="short_circuit_or_keeps",
+            ),
+            pytest.param(
+                "ok = 2 < 1 < populate_externally(frames)",
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="short_circuit_chain_keeps",
+            ),
+            pytest.param(
+                "res = [populate_externally(frames) for b in batches if False]",
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="false_filter_keeps",
+            ),
             pytest.param("n = len(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="len_keeps"),
             pytest.param("logger.info(frames)", Resolved((SnowflakeRef(table="RAW_A"),)), id="logger_keeps"),
             pytest.param(
@@ -2940,6 +2998,81 @@ frames["k"].write.format("snowflake").option("dbtable", "OUT").save()
         assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
             (expected_sources, Resolved((SnowflakeRef(table="OUT"),)))
         ]
+
+    @pytest.mark.parametrize(
+        "skipped",
+        [
+            pytest.param('ignored = False and df.write.saveAsTable("db.never_written")', id="false_and"),
+            pytest.param('ignored = None and df.write.saveAsTable("db.never_written")', id="none_and"),
+            pytest.param('ignored = True or df.write.saveAsTable("db.never_written")', id="true_or"),
+            pytest.param('ok = 2 < 1 < df.write.saveAsTable("db.never_written")', id="false_chain_link"),
+            pytest.param('[df.write.saveAsTable("db.never_written") for b in batches if False]', id="false_filter"),
+        ],
+    )
+    def test_operand_python_short_circuits_past_never_runs(self, skipped: str):
+        script = f"""
+df = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+{skipped}
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (Resolved((SnowflakeRef(table="RAW_A"),)), "absent")
+        ]
+
+    def test_operand_that_may_run_is_still_recorded(self):
+        script = """
+df = spark.read.format("snowflake").option("dbtable", "RAW_A").load()
+ok = flag() and df.write.saveAsTable("db.maybe_written")
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)] == [
+            (Resolved((SnowflakeRef(table="RAW_A"),)), Resolved((CatalogRef(database="db", table="maybe_written"),)))
+        ]
+
+    @pytest.mark.parametrize(
+        ("aliasing", "expected_sources"),
+        [
+            pytest.param(
+                'if flag():\n    d = frames\nelse:\n    d = {}\nd["k"] = spark.table("B")', "unresolved", id="if_else"
+            ),
+            pytest.param('if flag():\n    d = frames\nd["k"] = spark.table("B")', "unresolved", id="one_branch"),
+            pytest.param(
+                'holder = {}\nif flag():\n    holder["f"] = frames\nholder["f"]["k"] = spark.table("B")',
+                "unresolved",
+                id="one_branch_dict_entry",
+            ),
+            pytest.param("d = frames if flag() else {}\npopulate_externally(d)", "unresolved", id="conditional_expr"),
+            pytest.param("d = cached or frames\npopulate_externally(d)", "unresolved", id="or_expr"),
+            pytest.param(
+                'def pick():\n    if flag():\n        return frames\n    return {}\nd = pick()\nd["k"] = spark.table("B")',
+                "unresolved",
+                id="helper_returns",
+            ),
+            pytest.param(
+                'if flag():\n    d = frames\nelse:\n    d = frames\nd["k"].write.format("snowflake").option("dbtable", "OUT2").save()',
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="same_alias_both_branches_keeps",
+            ),
+            pytest.param(
+                "d = frames or {}\nn = len(d)", Resolved((SnowflakeRef(table="RAW_A"),)), id="known_truthy_or_keeps"
+            ),
+            pytest.param(
+                "if flag():\n    x = 1\nelse:\n    x = 2",
+                Resolved((SnowflakeRef(table="RAW_A"),)),
+                id="untouched_keeps",
+            ),
+        ],
+    )
+    def test_container_aliased_differently_per_branch_is_not_trusted(self, aliasing: str, expected_sources: Any):
+        # After the join `d` may or may not be `frames`; one joined copy cannot alias both, so a write through `d`
+        # or a call that receives it must leave frames["k"] unresolved.
+        script = f"""
+frames = {{"k": spark.read.format("snowflake").option("dbtable", "RAW_A").load()}}
+{aliasing}
+frames["k"].write.format("snowflake").option("dbtable", "OUT").save()
+"""
+        assert [(g.sources, g.targets) for g in parse_script_lineage_groups(script)][-1] == (
+            expected_sources,
+            Resolved((SnowflakeRef(table="OUT"),)),
+        )
 
     def test_helper_parameters_dict_items_loop_temp_view_lifecycle_and_container_aliases(self):
         # 1. Helper function with parameter + `frames.items()` tuple unpacking loop

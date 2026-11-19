@@ -19,10 +19,11 @@ tracking to emit typed `LineageGroup` contracts as well as backward-compatible
 """
 
 import ast
+import operator
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
-from typing import Literal, TypeAlias
+from typing import Any, Literal, TypeAlias
 
 import sqlglot
 from sqlglot import exp
@@ -30,6 +31,7 @@ from sqlglot.errors import SqlglotError
 from sqlglot.optimizer.scope import Scope, traverse_scope
 
 from metadata.ingestion.source.pipeline.gluepipeline.script_evaluator import (
+    COMPREHENSIONS,
     FUNCTIONS,
     MAX_EXPR_DEPTH,
     MAX_LOOP_UNROLLS,
@@ -109,7 +111,16 @@ IN_MEMORY_FRAME_CONSTRUCTORS = {
     "from_rdd",
     "parallelize",
 }
-_MODELED_COMPARE_OPS = (ast.Eq, ast.NotEq, ast.Is, ast.IsNot, ast.In, ast.NotIn)
+_ORDERING_OPS: dict[type[ast.cmpop], Callable[[Any, Any], Any]] = {
+    ast.Lt: operator.lt,
+    ast.LtE: operator.le,
+    ast.Gt: operator.gt,
+    ast.GtE: operator.ge,
+}
+# Builtins that never mutate their arguments; callables passed to them are still treated as run.
+_NON_MUTATING_BUILTINS = frozenset(
+    {"print", "len", "dict", "list", "tuple", "reduce", "str", "repr", "sorted", "set", "isinstance"}
+)
 # ADR:2026-11-13-glue-parameterized-lineage-evaluates-per-run-context
 MAX_TOTAL_LOOP_STEPS = 256
 MAX_CALL_DEPTH = 8
@@ -467,6 +478,19 @@ _FlowStatus: TypeAlias = Literal["normal", "break", "continue", "return"]
 _OPAQUE_VAL = _OpaqueVal()
 _UNBOUND_VAL = _UnboundVal()
 _NONE_VAL = _ScalarVal(None)
+_ESCAPED_ID = id(_UNBOUND_VAL)
+
+
+def _truthiness(val: _ProvVal) -> bool | None:
+    if isinstance(val, _ScalarVal):
+        return bool(val.value)
+    if isinstance(val, _FrameDict) and not val.has_unknown_entries:
+        return bool(val.entries)
+    if isinstance(val, _ListVal) and not val.opaque:
+        return bool(val.items)
+    if isinstance(val, _TupleVal):
+        return bool(val.items)
+    return None
 
 
 def _carries_frame(val: _ProvVal) -> bool:
@@ -479,6 +503,61 @@ def _carries_frame(val: _ProvVal) -> bool:
     if isinstance(val, _TupleVal):
         return any(_carries_frame(item) for item in val.items)
     return False
+
+
+def _dict_key_of_val(val: _ProvVal) -> DictKey | UnknownValue:
+    if isinstance(val, _ScalarVal):
+        return val.value
+    if isinstance(val, _TupleVal):
+        parts: list[DictKey] = []
+        for item in val.items:
+            if not isinstance(item, _ScalarVal):
+                return UNKNOWN
+            parts.append(item.value)
+        return tuple(parts)
+    return UNKNOWN
+
+
+def _compare_known_keys(left: DictKey | UnknownValue, op: ast.cmpop, right: DictKey | UnknownValue) -> bool | None:
+    if isinstance(left, UnknownValue) or isinstance(right, UnknownValue):
+        return None
+    if isinstance(op, (ast.Eq, ast.NotEq)):
+        equal = left == right
+        return equal if isinstance(op, ast.Eq) else not equal
+    ordering = _ORDERING_OPS.get(type(op))
+    if ordering is None:
+        return None
+    try:
+        return bool(ordering(left, right))
+    except TypeError:
+        return None
+
+
+def _invalidate_reachable(val: _ProvVal | None, seen: set[int] | None = None) -> None:
+    """A callee the analyzer cannot inspect may mutate every container it can reach, not only the outer one."""
+    seen = set() if seen is None else seen
+    if val is None or id(val) in seen:
+        return
+    seen.add(id(val))
+    if isinstance(val, _FrameDict):
+        for item in val.entries.values():
+            _invalidate_reachable(item, seen)
+        val.entries.clear()
+        val.has_unknown_entries = True
+    elif isinstance(val, _ListVal):
+        for item in val.items:
+            _invalidate_reachable(item, seen)
+        val.items.clear()
+        val.opaque = True
+    elif isinstance(val, _TupleVal):
+        for item in val.items:
+            _invalidate_reachable(item, seen)
+
+
+def _is_access_path(expr: ast.expr) -> bool:
+    while isinstance(expr, ast.Subscript) and isinstance(expr.slice, (ast.Constant, ast.Name)):
+        expr = expr.value
+    return isinstance(expr, ast.Name)
 
 
 def _as_required_frame_side(val: _ProvVal) -> Side[ScriptRef]:
@@ -549,12 +628,14 @@ def _join_frame_dicts(
     if pair_memo is not None:
         pair_memo[pair_key] = joined_dict
     all_keys: list[DictKey] = [*left.entries.keys(), *(k for k in right.entries if k not in left.entries)]
-    merged_entries: dict[DictKey, _ProvVal] = {
-        k: _join_prov(left.entries[k], right.entries[k], pair_memo)
-        if k in left.entries and k in right.entries
-        else _FrameVal("unresolved")
-        for k in all_keys
-    }
+    merged_entries: dict[DictKey, _ProvVal] = {}
+    for k in all_keys:
+        if k in left.entries and k in right.entries:
+            merged_entries[k] = _join_prov(left.entries[k], right.entries[k], pair_memo)
+            continue
+        if pair_memo is not None:
+            _record_escaped_containers(left.entries.get(k, _NONE_VAL), right.entries.get(k, _NONE_VAL), pair_memo)
+        merged_entries[k] = _FrameVal("unresolved")
     joined_dict.entries = merged_entries
     joined_dict.contains_frames = (
         left.contains_frames or right.contains_frames or any(_carries_frame(v) for v in merged_entries.values())
@@ -580,6 +661,10 @@ def _join_list_vals(
     opaque_list = _ListVal(items=[], opaque=True, contains_frames=contains)
     if pair_memo is not None:
         pair_memo[pair_key] = opaque_list
+        for item in left.items:
+            _record_escaped_containers(item, _NONE_VAL, pair_memo)
+        for item in right.items:
+            _record_escaped_containers(_NONE_VAL, item, pair_memo)
     return opaque_list
 
 
@@ -596,21 +681,64 @@ def _join_prov(
         and isinstance(right, (_ListVal, _FrameDict))
     ):
         return pair_memo[pair_key]
-    if _prov_equal(left, right):
-        memo: dict[int, _ProvVal] = {}
-        cloned = _clone_prov(left, memo)
-        if pair_memo is not None and isinstance(left, (_ListVal, _FrameDict)):
-            pair_memo[pair_key] = cloned
-        return cloned
+    # Containers always join structurally so every nested pair lands in pair_memo and shared aliases stay shared.
+    if not isinstance(left, (_ListVal, _FrameDict, _TupleVal)) and _prov_equal(left, right):
+        return left
     if isinstance(left, _FrameDict) and isinstance(right, _FrameDict):
         return _join_frame_dicts(left, right, pair_key, pair_memo)
     if isinstance(left, _ListVal) and isinstance(right, _ListVal):
         return _join_list_vals(left, right, pair_key, pair_memo)
     if isinstance(left, _TupleVal) and isinstance(right, _TupleVal) and len(left.items) == len(right.items):
         return _TupleVal(tuple(_join_prov(a, b, pair_memo) for a, b in zip(left.items, right.items, strict=True)))
+    if pair_memo is not None:
+        _record_escaped_containers(left, right, pair_memo)
     if _carries_frame(left) or _carries_frame(right):
         return _FrameVal("unresolved")
     return _OPAQUE_VAL
+
+
+def _record_escaped_containers(left: _ProvVal, right: _ProvVal, pair_memo: dict[tuple[int, int], _ProvVal]) -> None:
+    # A container joined against a non-container leaves no joined copy to carry its alias; an extra pair entry
+    # makes _invalidate_ambiguous_aliases treat it as aliased differently per branch.
+    for side, val in ((0, left), (1, right)):
+        stack, seen = [val], set()
+        while stack:
+            cur = stack.pop()
+            if id(cur) in seen:
+                continue
+            seen.add(id(cur))
+            if isinstance(cur, (_FrameDict, _ListVal)):
+                pair_memo[(id(cur), _ESCAPED_ID) if side == 0 else (_ESCAPED_ID, id(cur))] = _OPAQUE_VAL
+            if isinstance(cur, _FrameDict):
+                stack.extend(cur.entries.values())
+            elif isinstance(cur, (_ListVal, _TupleVal)):
+                stack.extend(cur.items)
+
+
+def _invalidate_ambiguous_aliases(pair_memo: dict[tuple[int, int], _ProvVal]) -> None:
+    """A container paired with different partners on the two sides is aliased differently per branch; one
+    joined copy cannot keep both alias sets, so every joined copy it took part in becomes unknown."""
+    left_uses: dict[int, int] = {}
+    right_uses: dict[int, int] = {}
+    for left_id, right_id in pair_memo:
+        left_uses[left_id] = left_uses.get(left_id, 0) + 1
+        right_uses[right_id] = right_uses.get(right_id, 0) + 1
+    for (left_id, right_id), joined in pair_memo.items():
+        if left_uses[left_id] > 1 or right_uses[right_id] > 1:
+            _invalidate_reachable(joined)
+
+
+def _join_alternatives(vals: Sequence[_ProvVal]) -> _ProvVal:
+    """Join the values an expression may yield (`a if c else b`, `a or b`) when it is unknown which one."""
+    if all(val is vals[0] for val in vals):
+        return vals[0]
+    # The result aliases whichever container it turns out to be, and no joined copy can stand in for all of them.
+    for val in vals:
+        _invalidate_reachable(val)
+    joined = vals[0]
+    for val in vals[1:]:
+        joined = _join_prov(joined, val)
+    return joined
 
 
 def _join_view_maps(
@@ -720,6 +848,7 @@ def _join_states(
         joined_overrides[key] = lv if type(lv) is type(rv) and lv == rv else UNKNOWN
 
     joined_defaults = _join_fn_defaults(left.fn_defaults, right.fn_defaults, shared_memo)
+    _invalidate_ambiguous_aliases(shared_memo)
     temp_views, temp_opaque = _join_view_maps(
         left.temp_views, left.temp_views_opaque, right.temp_views, right.temp_views_opaque
     )
@@ -1692,50 +1821,59 @@ class _ProvenanceAnalyzer:
                     container.items.clear()
                     container.opaque = True
 
-    def _eval_dict_key(self, node: ast.expr | None, state: _ExecState, scope: ast.AST) -> DictKey | UnknownValue:
+    def _eval_dict_key(
+        self, node: ast.expr | None, state: _ExecState, scope: ast.AST, evaluated: _ProvVal | None = None
+    ) -> DictKey | UnknownValue:
         if node is None:
             return UNKNOWN
         dk = self._reader_for(state).dict_key(node)
         if not isinstance(dk, UnknownValue):
             return dk
-        val = self._eval_expr(node, state, scope)
-        if isinstance(val, _ScalarVal):
-            return val.value
-        if isinstance(val, _TupleVal):
-            parts: list[DictKey] = []
-            for item in val.items:
-                if not isinstance(item, _ScalarVal):
-                    return UNKNOWN
-                parts.append(item.value)
-            return tuple(parts)
-        return UNKNOWN
+        return _dict_key_of_val(self._eval_expr(node, state, scope) if evaluated is None else evaluated)
 
-    def _eval_int(self, node: ast.expr | None, state: _ExecState, scope: ast.AST) -> int | None:
+    def _eval_int(
+        self, node: ast.expr | None, state: _ExecState, scope: ast.AST, evaluated: _ProvVal | None = None
+    ) -> int | None:
         if node is None:
             return None
         iv = self._reader_for(state).int_value(node)
         if iv is not None:
             return iv
-        val = self._eval_expr(node, state, scope)
+        val = self._eval_expr(node, state, scope) if evaluated is None else evaluated
         if isinstance(val, _ScalarVal) and isinstance(val.value, int) and not isinstance(val.value, bool):
             return val.value
         return None
 
     def _eval_condition(self, test: ast.expr, state: _ExecState, scope: ast.AST) -> bool | None:
-        if isinstance(test, ast.Constant) and isinstance(test.value, bool):
-            return test.value
+        if isinstance(test, ast.Constant):
+            return bool(test.value)
         if isinstance(test, ast.Name):
-            val = self._eval_expr(test, state, scope)
-            return val.value if isinstance(val, _ScalarVal) and isinstance(val.value, bool) else None
+            return _truthiness(self._eval_expr(test, state, scope))
         if isinstance(test, ast.UnaryOp) and isinstance(test.op, ast.Not):
             inner = self._eval_condition(test.operand, state, scope)
             return (not inner) if inner is not None else None
         if isinstance(test, ast.BoolOp):
             return self._eval_bool_op(test, state, scope)
-        if isinstance(test, ast.Compare) and len(test.ops) == 1 and isinstance(test.ops[0], _MODELED_COMPARE_OPS):
-            return self._eval_single_compare(test.left, test.ops[0], test.comparators[0], state, scope)
+        if isinstance(test, ast.Compare):
+            return self._eval_compare(test, state, scope)
         self._eval_expr(test, state, scope)
         return None
+
+    def _eval_compare(self, test: ast.Compare, state: _ExecState, scope: ast.AST) -> bool | None:
+        if len(test.ops) == 1:
+            return self._eval_single_compare(test.left, test.ops[0], test.comparators[0], state, scope)
+        # A chain evaluates each operand once, left to right, and stops at the first link known to be false.
+        result: bool | None = True
+        left = self._eval_dict_key(test.left, state, scope)
+        for op, right_expr in zip(test.ops, test.comparators, strict=True):
+            right = self._eval_dict_key(right_expr, state, scope)
+            link = _compare_known_keys(left, op, right)
+            if link is False:
+                return False
+            if link is None:
+                result = None
+            left = right
+        return result
 
     def _eval_bool_op(self, test: ast.BoolOp, state: _ExecState, scope: ast.AST) -> bool | None:
         if isinstance(test.op, ast.And):
@@ -1779,13 +1917,9 @@ class _ProvenanceAnalyzer:
             return self._eval_is_none_compare(left_expr, op, right_expr, state, scope)
         if isinstance(op, (ast.In, ast.NotIn)):
             return self._eval_membership_compare(left_expr, op, right_expr, state, scope)
-        if isinstance(op, (ast.Eq, ast.NotEq)):
-            lk = self._eval_dict_key(left_expr, state, scope)
-            rk = self._eval_dict_key(right_expr, state, scope)
-            if not isinstance(lk, UnknownValue) and not isinstance(rk, UnknownValue):
-                equal = lk == rk
-                return equal if isinstance(op, ast.Eq) else not equal
-        return None
+        return _compare_known_keys(
+            self._eval_dict_key(left_expr, state, scope), op, self._eval_dict_key(right_expr, state, scope)
+        )
 
     def _eval_is_none_compare(
         self,
@@ -1869,6 +2003,9 @@ class _ProvenanceAnalyzer:
                     return _FrameVal("absent")
                 return recv if isinstance(recv, _FrameVal) else _OPAQUE_VAL
             if isinstance(node, ast.JoinedStr):
+                for part in node.values:
+                    if isinstance(part, ast.FormattedValue):
+                        self._eval_compound_expr(part, state, scope)
                 s = self._reader_for(state).string(node)
                 return _ScalarVal(s) if isinstance(s, str) else _OPAQUE_VAL
             return self._eval_compound_expr(node, state, scope)
@@ -1888,23 +2025,63 @@ class _ProvenanceAnalyzer:
                 return self._eval_expr(node.body, state, scope)
             if cond is False:
                 return self._eval_expr(node.orelse, state, scope)
-            return _join_prov(self._eval_expr(node.body, state, scope), self._eval_expr(node.orelse, state, scope))
+            return _join_alternatives(
+                [self._eval_expr(node.body, state, scope), self._eval_expr(node.orelse, state, scope)]
+            )
         if isinstance(node, ast.NamedExpr):
             val = self._eval_expr(node.value, state, scope)
             self._assign_target(node.target, val, state, scope)
             return val
-        if isinstance(node, (ast.ListComp, ast.GeneratorExp, ast.SetComp)):
-            probe = self._eval_expr(node.elt, state.clone(), scope)
-            return _ListVal([], opaque=True, contains_frames=_carries_frame(probe))
-        if isinstance(node, ast.DictComp):
-            probe = self._eval_expr(node.value, state.clone(), scope)
-            return _FrameDict(entries={}, has_unknown_entries=True, contains_frames=_carries_frame(probe))
+        if isinstance(node, ast.BoolOp):
+            return self._eval_bool_op_value(node, state, scope)
+        if isinstance(node, ast.Compare) or (isinstance(node, ast.UnaryOp) and isinstance(node.op, ast.Not)):
+            truth = self._eval_condition(node, state, scope)
+            return _OPAQUE_VAL if truth is None else _ScalarVal(truth)
+        if isinstance(node, COMPREHENSIONS):
+            return self._eval_comprehension(node, state, scope)
         if not isinstance(node, ast.Lambda):
-            # Unmodelled operators (`not`, `and`/`or`, `<`, ...) still execute their operands' calls.
+            # Unmodelled expressions (`-x`, `await`, f-string placeholders, ...) still execute their operands' calls.
             for child in ast.iter_child_nodes(node):
                 if isinstance(child, ast.expr):
                     self._eval_expr(child, state, scope)
         return _OPAQUE_VAL
+
+    def _eval_bool_op_value(self, node: ast.BoolOp, state: _ExecState, scope: ast.AST) -> _ProvVal:
+        # Python yields the operand that decided the result; operands after a known short-circuit never run.
+        stops_on = isinstance(node.op, ast.Or)
+        candidates: list[_ProvVal] = []
+        for idx, operand in enumerate(node.values):
+            val = self._eval_expr(operand, state, scope)
+            truth = _truthiness(val)
+            if truth is None or truth is stops_on or idx == len(node.values) - 1:
+                candidates.append(val)
+            if truth is stops_on:
+                break
+        return _join_alternatives(candidates)
+
+    def _eval_comprehension(
+        self,
+        node: ast.ListComp | ast.SetComp | ast.GeneratorExp | ast.DictComp,
+        state: _ExecState,
+        scope: ast.AST,
+    ) -> _ProvVal:
+        # Iterables, filters and the element run on the live state so their calls invalidate what they receive;
+        # targets are shadowed names that never bind here. A filter known to be false stops the element.
+        # ponytail: the element is taken as run once, so a walrus inside it binds as if definite.
+        body_runs = True
+        for gen in node.generators:
+            self._eval_expr(gen.iter, state, scope)
+            if any(self._eval_condition(cond, state, scope) is False for cond in gen.ifs):
+                body_runs = False
+                break
+        probe: _ProvVal = _OPAQUE_VAL
+        if body_runs:
+            if isinstance(node, ast.DictComp):
+                self._eval_expr(node.key, state, scope)
+            probe = self._eval_expr(node.value if isinstance(node, ast.DictComp) else node.elt, state, scope)
+        if isinstance(node, ast.DictComp):
+            return _FrameDict(entries={}, has_unknown_entries=True, contains_frames=_carries_frame(probe))
+        return _ListVal([], opaque=True, contains_frames=_carries_frame(probe))
 
     def _eval_name(self, node: ast.Name, state: _ExecState, scope: ast.AST) -> _ProvVal:
         if self._bindings.is_shadowed(node):
@@ -2013,15 +2190,21 @@ class _ProvenanceAnalyzer:
 
     def _eval_subscript(self, node: ast.Subscript, state: _ExecState, scope: ast.AST) -> _ProvVal:
         container = self._eval_expr(node.value, state, scope)
+        # Evaluated once here so calls in a key or slice bound run even when the container is not tracked.
+        slice_val = self._eval_expr(node.slice, state, scope)
         if isinstance(container, _FrameDict):
-            key = UNKNOWN if isinstance(node.slice, ast.Slice) else self._eval_dict_key(node.slice, state, scope)
+            key = (
+                UNKNOWN
+                if isinstance(node.slice, ast.Slice)
+                else self._eval_dict_key(node.slice, state, scope, slice_val)
+            )
             if not isinstance(key, UnknownValue) and key in container.entries:
                 return container.entries[key]
             return _FrameVal("unresolved")
         if isinstance(container, (_ListVal, _TupleVal)):
             is_opaque = isinstance(container, _ListVal) and container.opaque
             if not isinstance(node.slice, ast.Slice) and not is_opaque:
-                idx = self._eval_int(node.slice, state, scope)
+                idx = self._eval_int(node.slice, state, scope, slice_val)
                 if idx is not None and -len(container.items) <= idx < len(container.items):
                     return container.items[idx]
             return _FrameVal("unresolved") if _carries_frame(container) else _OPAQUE_VAL
@@ -2493,11 +2676,11 @@ class _ProvenanceAnalyzer:
         state: _ExecState,
         scope: ast.AST,
     ) -> _ProvVal:
-        arg_vals: list[_ProvVal] = [*([recv] if recv is not None else [])]
-        arg_vals.extend(
+        passed: list[_ProvVal] = [
             self._eval_expr(arg.value if isinstance(arg, ast.Starred) else arg, state, scope) for arg in call.args
-        )
-        arg_vals.extend(self._eval_expr(kw.value, state, scope) for kw in call.keywords)
+        ]
+        passed.extend(self._eval_expr(kw.value, state, scope) for kw in call.keywords)
+        arg_vals: list[_ProvVal] = [*([recv] if recv is not None else []), *passed]
 
         collected_sides: list[Side[ScriptRef]] = []
         saw_frame_carrier = False
@@ -2523,37 +2706,58 @@ class _ProvenanceAnalyzer:
 
         # The result reflects the arguments as passed; an uninspectable callee may still have mutated them in
         # place, so invalidate after collecting. Runs wherever the call appears (statement, RHS, nested, return).
-        self._mark_opaque_side_effect_call(call, recv, state, scope)
+        self._mark_opaque_side_effect_call(call, recv, passed, state, scope)
         if saw_frame_carrier:
             return _FrameVal(merge_sides(collected_sides))
         dk = self._reader_for(state).dict_key(call)
         return _ScalarVal(dk) if not isinstance(dk, UnknownValue) else _OPAQUE_VAL
 
     def _mark_opaque_side_effect_call(
-        self, call: ast.Call, recv: _ProvVal | None, state: _ExecState, scope: ast.AST
+        self,
+        call: ast.Call,
+        recv: _ProvVal | None,
+        passed: Sequence[_ProvVal],
+        state: _ExecState,
+        scope: ast.AST,
     ) -> None:
-        if isinstance(call.func, ast.Name) and call.func.id in ("print", "len", "dict", "list", "tuple", "reduce"):
-            return
         if isinstance(call.func, ast.Attribute):
             if isinstance(call.func.value, ast.Name) and call.func.value.id in ("logger", "logging", "job"):
                 return
             if isinstance(recv, (_FrameDict, _ListVal, _FrameVal)):
                 return
-        for arg in [*call.args, *(kw.value for kw in call.keywords)]:
-            inner = arg.value if isinstance(arg, ast.Starred) else arg
-            if isinstance(inner, ast.Name) and not self._bindings.is_shadowed(inner):
-                cb_fn = self._bindings.resolve_function_def(inner)
-                if cb_fn is not None:
-                    self._invalidate_function_effects(cb_fn, state)
-                    continue
-                owner = self._bindings.owner_of(scope, inner.id)
-                val = state.scope_envs.get(id(owner), {}).get(inner.id)
-                if isinstance(val, _FrameDict):
-                    val.entries.clear()
-                    val.has_unknown_entries = True
-                elif isinstance(val, _ListVal):
-                    val.items.clear()
-                    val.opaque = True
+        non_mutating = (
+            isinstance(call.func, ast.Name)
+            and call.func.id in _NON_MUTATING_BUILTINS
+            and not self._bindings.has_binding_in_scope(scope, call.func.id)
+        )
+        arg_exprs = [
+            *(a.value if isinstance(a, ast.Starred) else a for a in call.args),
+            *(k.value for k in call.keywords),
+        ]
+        for inner, val in zip(arg_exprs, passed, strict=True):
+            if isinstance(inner, ast.Lambda):
+                self._run_lambda_effects(inner, state, scope)
+                continue
+            cb_fn = self._bindings.resolve_function_def(inner) if isinstance(inner, ast.Name) else None
+            if cb_fn is not None:
+                self._invalidate_function_effects(cb_fn, state)
+                continue
+            if non_mutating:
+                continue
+            # The evaluated value carries aliases reached through subscripts and containers; re-reading an access
+            # path covers containers a later argument's helper call replaced in the state.
+            _invalidate_reachable(val)
+            if _is_access_path(inner):
+                _invalidate_reachable(self._eval_expr(inner, state, scope))
+
+    def _run_lambda_effects(self, fn: ast.Lambda, state: _ExecState, scope: ast.AST) -> None:
+        # The callee may invoke the lambda; its parameters are shadowed names, so only its effects on the
+        # enclosing state matter. Its I/O is not attributed to this call site.
+        self._suppress_io_depth += 1
+        try:
+            self._eval_expr(fn.body, state, scope)
+        finally:
+            self._suppress_io_depth -= 1
 
     def _invalidate_function_effects(
         self,
@@ -2565,15 +2769,16 @@ class _ProvenanceAnalyzer:
         state.global_temp_views.clear()
         state.global_temp_views_opaque = True
         for node in ast.walk(fn_def):
-            if (
-                isinstance(node, ast.Name)
-                and not isinstance(node.ctx, ast.Load)
-                and not self._bindings.is_shadowed(node)
-            ):
-                fn_scope = self._bindings.scope_of(node)
-                owner = self._bindings.owner_of(fn_scope, node.id)
-                if owner is not fn_def and id(owner) in state.scope_envs:
-                    state.scope_envs[id(owner)][node.id] = _FrameVal("unresolved")
+            if isinstance(node, ast.Name) and not self._bindings.is_shadowed(node):
+                owner = self._bindings.owner_of(self._bindings.scope_of(node), node.id)
+                env = state.scope_envs.get(id(owner))
+                if owner is fn_def or env is None:
+                    continue
+                if isinstance(node.ctx, ast.Load):
+                    # Containers the function reaches through its closure can be mutated in place.
+                    _invalidate_reachable(env.get(node.id))
+                else:
+                    env[node.id] = _FrameVal("unresolved")
 
     def _bail_helper_call(
         self,
@@ -2584,13 +2789,7 @@ class _ProvenanceAnalyzer:
     ) -> _ProvVal:
         for arg in [*call.args, *(kw.value for kw in call.keywords)]:
             inner = arg.value if isinstance(arg, ast.Starred) else arg
-            arg_val = self._eval_expr(inner, state, scope)
-            if isinstance(arg_val, _FrameDict):
-                arg_val.entries.clear()
-                arg_val.has_unknown_entries = True
-            elif isinstance(arg_val, _ListVal):
-                arg_val.items.clear()
-                arg_val.opaque = True
+            _invalidate_reachable(self._eval_expr(inner, state, scope))
         self._invalidate_function_effects(fn_def, state)
         return _FrameVal("unresolved")
 
@@ -2677,6 +2876,7 @@ class _ProvenanceAnalyzer:
                 pair_memo: dict[tuple[int, int], _ProvVal] = {}
                 merged_state = _join_states(merged_state, extra_state, pair_memo=pair_memo)
                 merged_ret = _join_prov(merged_ret, extra_ret, pair_memo=pair_memo)
+                _invalidate_ambiguous_aliases(pair_memo)
             self._overwrite_state_in_place(state, merged_state)
             return merged_ret
         finally:
