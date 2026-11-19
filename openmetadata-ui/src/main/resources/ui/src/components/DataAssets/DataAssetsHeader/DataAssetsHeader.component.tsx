@@ -808,8 +808,9 @@ export const DataAssetsHeader = ({
     );
   };
 
-  // lifeCycle.updated is when the asset last changed at its source, read by
-  // metadata ingestion; it is not when the entity was edited in OpenMetadata.
+  // lifeCycle.updated is when the asset last changed at its source, set by
+  // ingestion from the source's metadata or the usage workflow's query log; it
+  // is not when the entity was edited in OpenMetadata.
   // triggerClassName makes Tooltip wrap Typography in a focusable trigger; a
   // bare component child never opens the tooltip.
   const renderSourceUpdatedAt = () => {

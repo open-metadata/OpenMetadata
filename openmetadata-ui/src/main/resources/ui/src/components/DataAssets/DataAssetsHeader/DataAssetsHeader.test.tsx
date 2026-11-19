@@ -42,6 +42,7 @@ import { getContractByEntityId } from '../../../rest/contractAPI';
 import { getDataQualityLineage } from '../../../rest/lineageAPI';
 import { getContainerAncestors } from '../../../rest/storageAPI';
 import { ExtraInfoLink } from '../../../utils/DataAssetsHeader.utils';
+import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
@@ -445,7 +446,7 @@ describe('DataAssetsHeader component', () => {
     await user.hover(screen.getByTestId('source-updated-at'));
 
     expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      String(new Date(twoHoursAgo).getFullYear())
+      formatDateTime(twoHoursAgo)
     );
   });
 

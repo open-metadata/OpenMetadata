@@ -41,8 +41,8 @@ test.describe('Asset source update time in the entity header', () => {
     sourceUpdatedAt = Date.now() - HOURS_SINCE_SOURCE_UPDATE * HOUR;
     const { apiContext, afterAction } = await performAdminLogin(browser);
 
-    // Connectors read lifeCycle.updated from the source during metadata
-    // ingestion; patch it directly here.
+    // Ingestion sets lifeCycle.updated from the source's metadata or the usage
+    // workflow's query log; patch it directly here.
     for (const { entity } of assetsWithSourceUpdate) {
       await entity.create(apiContext);
       await entity.patch({
