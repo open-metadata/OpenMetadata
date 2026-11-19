@@ -14,8 +14,8 @@ import { Locator } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/base';
 import {
   installVisualData,
-  VISUAL_ENTITIES,
   VisualEntity,
+  VISUAL_ENTITIES,
 } from '../../utils/visualData';
 import {
   expectVisualScreenshot,
