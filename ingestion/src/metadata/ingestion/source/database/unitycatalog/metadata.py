@@ -66,7 +66,6 @@ from metadata.generated.schema.type.basic import (
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.delete import delete_entity_by_name, delete_entity_from_source
 from metadata.ingestion.api.models import Either
-from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -178,7 +177,6 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         # catalog's schemas, (catalog, schema) for a schema's tables. What such a listing
         # did not reach was not seen, so stale-entity cleanup must leave the scope alone.
         self._incomplete_listings: set[tuple[str, ...]] = set()
-        self._skipped_stale_cleanups: list[str] = []
         self.owner_resolver = DatabricksOwnerResolver(
             api_client=connection.api.client,
             metadata=self.metadata,
@@ -247,7 +245,8 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         Iterate a Databricks SDK listing, recording a failure and stopping gracefully
         instead of aborting the whole ingestion when the API call or its pagination
         raises mid-iteration. The failed ``scope`` is remembered so that stale-entity
-        cleanup skips it.
+        cleanup skips it; the failure counts against ``successThreshold`` like any other
+        (ADR:2026-11-19-a-failed-unity-catalog-listing-skips-its-stale-cleanup-without-failing-the-run).
         """
         try:
             yield from list_call()
@@ -257,7 +256,11 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             self.status.failed(
                 StackTraceError(
                     name=listing_name,
-                    error=f"Error while listing {listing_name}, results may be partial: {exc}",
+                    error=(
+                        f"Error while listing {listing_name}, results may be partial: {exc}. Nothing this listing "
+                        "did not reach is marked as deleted this run. If it fails on every run, grant the "
+                        "connection's principal access to it or exclude it with a filter pattern."
+                    ),
                     stackTrace=traceback.format_exc(),
                 )
             )
@@ -433,7 +436,7 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
             if self.service_connection.catalog:
                 raise
             # Walking every catalog: one that has no such schema is out of scope, not a
-            # failed listing that must stop its stale cleanup and fail the run.
+            # failed listing that must stop its stale cleanup and be recorded as a failure.
             logger.debug("Catalog [%s] has no schema [%s]", catalog_name, configured_schema)
             return
         yield schema
@@ -1068,30 +1071,18 @@ class UnitycatalogSource(UnitycatalogMetricViewMixin, ExternalTableLineageMixin,
         else:
             yield from self._mark_listed_tables_as_deleted()
 
-    def _iter(self) -> Iterable[Either]:
-        """
-        Fail a run that skipped a stale-entity cleanup, whatever the success threshold: what
-        the failed listing did not reach was neither refreshed nor reconciled. Raised once the
-        topology is done because the runner only records a producer's exception, then
-        reconciles anyway (ADR:2026-11-15-unity-catalog-runs-fail-when-a-failed-listing-skipped-their-cleanup).
-        """
-        yield from super()._iter()
-        if self._skipped_stale_cleanups:
-            message = (
-                f"Stale entities were not marked as deleted for {', '.join(self._skipped_stale_cleanups)}: a "
-                "listing there failed this run, so what it did not reach was not seen, not removed from Unity "
-                "Catalog. The run fails so that it is not reported as a success; re-run it once the listing succeeds."
-            )
-            self.status.failed(StackTraceError(name="Stale entity cleanup", error=message))
-            raise WorkflowFatalError(message)
-
     def _skip_incomplete_listing(self, scope: tuple[str, ...], entities: str) -> bool:
-        """Whether the listing of ``scope`` failed this run, recording the stale cleanup it skips."""
+        """
+        Whether the listing of ``scope`` failed this run. Its failure is already recorded and says
+        that nothing it did not reach is deleted, so the skipped cleanup is only logged.
+        """
         if scope not in self._incomplete_listings:
             return False
-        skipped = f"{entities} in [{'.'.join(scope) or self.context.get().database_service}]"  # pyright: ignore[reportAttributeAccessIssue]
-        logger.warning("Not marking %s as deleted: a listing there failed this run.", skipped)
-        self._skipped_stale_cleanups.append(skipped)
+        logger.info(
+            "Not marking %s in [%s] as deleted: a listing there failed this run.",
+            entities,
+            ".".join(scope) or self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+        )
         return True
 
     def _mark_listed_tables_as_deleted(self) -> Iterable[Either]:

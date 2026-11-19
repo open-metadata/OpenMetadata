@@ -36,7 +36,6 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.unitycatalog.metadata import UnitycatalogSource
 
@@ -242,7 +241,9 @@ class TestStaleCleanupAfterFailedListing:
 
         assert self._stale_cleanup_scopes(uc_source, uc_source.mark_tables_as_deleted) == []
 
-    def test_skipped_stale_cleanup_fails_the_run(self, uc_source):
+    def test_skipped_stale_cleanup_is_the_listing_failure_alone_and_does_not_end_the_run(self, uc_source):
+        # A listing that fails on every run (a missing grant) must not fail every run whatever
+        # successThreshold is: its one recorded failure counts against the threshold instead.
         uc_source.client.api_client.do = MagicMock(
             side_effect=[
                 {"tables": [{"name": "t1", "table_type": "MANAGED"}], "next_page_token": "page-2"},
@@ -250,24 +251,14 @@ class TestStaleCleanupAfterFailedListing:
             ]
         )
         list(uc_source.get_tables_name_and_type())
-        list(uc_source.mark_tables_as_deleted())
 
-        with (
-            patch.object(DatabaseServiceSource, "_iter", return_value=iter([])),
-            pytest.raises(WorkflowFatalError, match=r"for tables in \[hive_metastore\.default\]"),
-        ):
-            list(uc_source._iter())
-        assert uc_source.status.failures[-1].name == "Stale entity cleanup"
-
-    def test_failed_listing_does_not_fail_the_run_when_no_cleanup_was_due(self, uc_source):
-        uc_source.source_config.markDeletedTables = False
-        uc_source.client.api_client.do = MagicMock(side_effect=Exception("500 Internal Server Error"))
-        list(uc_source.get_tables_name_and_type())
-        list(uc_source.mark_tables_as_deleted())
-
+        assert self._stale_cleanup_scopes(uc_source, uc_source.mark_tables_as_deleted) == []
         with patch.object(DatabaseServiceSource, "_iter", return_value=iter([])):
             assert list(uc_source._iter()) == []
-        assert [failure.name for failure in uc_source.status.failures] == ["tables in schema [hive_metastore.default]"]
+        [failure] = uc_source.status.failures
+        assert failure.name == "tables in schema [hive_metastore.default]"
+        assert "Nothing this listing did not reach is marked as deleted this run" in failure.error
+        assert "exclude it with a filter pattern" in failure.error
 
     def test_failed_schema_listing_skips_stale_cleanup_of_its_catalog(self, uc_source):
         # The cleanup lists the schemas again; that second listing succeeding must not
@@ -310,15 +301,11 @@ class TestStaleCleanupAfterFailedListing:
         )
 
         assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == []
-        with (
-            patch.object(DatabaseServiceSource, "_iter", return_value=iter([])),
-            pytest.raises(WorkflowFatalError, match=r"for databases in \[local_unitycatalog\]"),
-        ):
-            list(uc_source._iter())
+        assert [failure.name for failure in uc_source.status.failures] == ["catalogs"]
 
     def test_failed_progress_count_leaves_the_walk_and_its_cleanup_alone(self, uc_source):
         # The progress counter lists the catalogs before the walk does. Its failure only costs
-        # the denominator: the walk's own listing succeeds, so the cleanup runs and the run passes.
+        # the denominator: the walk's own listing succeeds, so the cleanup runs and nothing is recorded.
         uc_source.service_connection.catalog = None
         uc_source.source_config.markDeletedDatabases = True
         uc_source.client.catalogs.list.side_effect = [
@@ -333,8 +320,6 @@ class TestStaleCleanupAfterFailedListing:
         assert self._stale_cleanup_scopes(uc_source, uc_source.mark_databases_as_deleted) == [
             {"service": "local_unitycatalog"}
         ]
-        with patch.object(DatabaseServiceSource, "_iter", return_value=iter([])):
-            assert list(uc_source._iter()) == []
         assert uc_source.status.failures == []
 
 
