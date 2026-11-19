@@ -17,13 +17,32 @@ import java.nio.charset.StandardCharsets;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Date;
 import java.util.List;
 
 public final class SamlCertificates {
   private static final String PEM_BEGIN = "-----BEGIN CERTIFICATE-----";
 
   private SamlCertificates() {}
+
+  /** Ignore inactive rollover keys while requiring at least one currently usable trust anchor. */
+  public static List<X509Certificate> parseValidIdpCertificates(String value)
+      throws CertificateException {
+    List<X509Certificate> valid = new ArrayList<>();
+    Date now = new Date();
+    for (X509Certificate certificate : parse(value)) {
+      if (!now.before(certificate.getNotBefore()) && !now.after(certificate.getNotAfter())) {
+        valid.add(certificate);
+      }
+    }
+    if (valid.isEmpty()) {
+      throw new CertificateException(
+          "IdP X509 certificates have expired or are not yet valid; provide a currently valid signing certificate");
+    }
+    return List.copyOf(valid);
+  }
 
   public static List<X509Certificate> parse(String value) throws CertificateException {
     try {

@@ -480,7 +480,10 @@ public class SamlValidator {
   private void validateX509Certificate(
       String certData, String certName, SamlSSOClientConfig samlConfig) throws Exception {
     try {
-      for (X509Certificate cert : SamlCertificates.parse(certData)) {
+      for (X509Certificate cert :
+          samlConfig != null
+              ? SamlCertificates.parseValidIdpCertificates(certData)
+              : SamlCertificates.parse(certData)) {
         validateParsedCertificate(cert, certName, samlConfig);
       }
 

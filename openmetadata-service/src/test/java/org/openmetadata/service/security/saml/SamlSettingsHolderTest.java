@@ -81,6 +81,21 @@ class SamlSettingsHolderTest {
   }
 
   @Test
+  void ignoresInactiveRolloverCertificatesAndRejectsBundlesWithoutActiveKeys() throws Exception {
+    for (String inactive : List.of("expired", "future")) {
+      String inactivePem = resource("/saml/" + inactive + "-idp.crt");
+      SamlSSOClientConfig config = samlConfig();
+      config.getIdp().setIdpX509Certificate(inactivePem + "\n" + resource("/saml/mock-idp.crt"));
+      assertEquals(
+          SamlCertificates.parse(resource("/saml/mock-idp.crt")),
+          SamlSettingsHolder.buildSettings(config).getIdpx509certMulti());
+      assertThrows(
+          CertificateException.class,
+          () -> SamlCertificates.parseValidIdpCertificates(inactivePem));
+    }
+  }
+
+  @Test
   void loadKeyStoreClosesInputStream() throws Exception {
     TrackingInputStream inputStream = new TrackingInputStream(createKeyStoreBytes());
 
