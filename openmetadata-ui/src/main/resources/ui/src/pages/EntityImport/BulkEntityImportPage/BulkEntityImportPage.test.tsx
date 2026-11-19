@@ -229,6 +229,9 @@ jest.mock(
   })
 );
 
+const DEFAULT_UPLOADED_CSV = 'name,description\nrow1,desc1\nrow2,desc2';
+let mockUploadedCsv = DEFAULT_UPLOADED_CSV;
+
 jest.mock('../../../components/UploadFile/UploadFile', () => ({
   __esModule: true,
   default: jest.fn(({ onCSVUploaded, disabled }) => (
@@ -239,7 +242,7 @@ jest.mock('../../../components/UploadFile/UploadFile', () => ({
         onClick={() => {
           const mockEvent = {
             target: {
-              result: 'name,description\nrow1,desc1\nrow2,desc2',
+              result: mockUploadedCsv,
             },
           } as ProgressEvent<FileReader>;
           onCSVUploaded(mockEvent, { name: 'metrics.csv', size: 48 });
@@ -337,6 +340,7 @@ describe('BulkEntityImportPage', () => {
     mockIsBulkEditRoute = EntityBulkEditUtils.isBulkEditRoute as jest.Mock;
 
     jest.clearAllMocks();
+    mockUploadedCsv = DEFAULT_UPLOADED_CSV;
     mockGetEntityByFqn.mockResolvedValue(mockEntity);
     mockValidateCsvString.mockResolvedValue({
       jobId: 'test-job-id',
@@ -727,6 +731,23 @@ describe('BulkEntityImportPage', () => {
       await waitFor(() => {
         expect(mockValidateCsvString).toHaveBeenCalled();
       });
+    });
+
+    it('should validate an upload that mixes line endings with one row per line', async () => {
+      mockUploadedCsv =
+        'name,description\r\nrow1,desc1\r\nrow2,desc2\nrow3,desc3\n';
+      renderComponent();
+
+      await uploadCsv();
+      await startPreview();
+
+      await waitFor(() => {
+        expect(mockValidateCsvString).toHaveBeenCalled();
+      });
+
+      expect(mockValidateCsvString.mock.calls[0][0]).toBe(
+        'name,description\nrow1,desc1\nrow2,desc2\nrow3,desc3\n'
+      );
     });
 
     it('should disable upload when async job is in progress', async () => {
