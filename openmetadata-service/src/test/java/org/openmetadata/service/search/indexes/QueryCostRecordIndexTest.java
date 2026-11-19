@@ -15,6 +15,9 @@ package org.openmetadata.service.search.indexes;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.io.InputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,6 +28,31 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 
 class QueryCostRecordIndexTest {
+  @Test
+  void everyLanguageMapsTheFieldsUsedBySearchAuthorization() throws Exception {
+    for (String language : List.of("en", "jp", "ko", "ru", "zh")) {
+      try (InputStream source =
+          getClass()
+              .getResourceAsStream(
+                  "/elasticsearch/" + language + "/query_cost_record_index_mapping.json")) {
+        JsonNode fields = new ObjectMapper().readTree(source).path("mappings").path("properties");
+        assertEquals("nested", fields.path("owners").path("type").asText(), language);
+        assertEquals(
+            "keyword",
+            fields.path("owners").path("properties").path("id").path("type").asText(),
+            language);
+        assertEquals(
+            "keyword",
+            fields.path("domains").path("properties").path("id").path("type").asText(),
+            language);
+        assertEquals(
+            "keyword",
+            fields.path("tier").path("properties").path("tagFQN").path("type").asText(),
+            language);
+      }
+    }
+  }
+
   @Test
   void costRecordsInheritDedicatedTierAndOtherAccessFields() {
     TagLabel tier = new TagLabel().withTagFQN("Tier.Tier1");

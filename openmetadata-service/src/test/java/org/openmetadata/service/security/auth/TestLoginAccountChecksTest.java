@@ -13,6 +13,7 @@
 package org.openmetadata.service.security.auth;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -21,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,6 +132,55 @@ class TestLoginAccountChecksTest {
         TestLoginResult.Status.FAILED,
         TestLoginAccountChecks.check(candidate, success(TestLoginProtocol.OIDC), users)
             .getStatus());
+  }
+
+  @Test
+  void oidcFallbackUsesTheResolvedUsernameInsteadOfTheConfiguredEmailFlow() {
+    candidate
+        .getAuthenticationConfiguration()
+        .withEmailClaim("mail")
+        .withJwtPrincipalClaims(List.of("preferred_username"));
+    doReturn(new User().withName("alice").withEmail("different@example.com"))
+        .when(users)
+        .getUserByNameForAuthUpdate("alice");
+    assertEquals(
+        TestLoginResult.Status.SUCCESS,
+        resolveOidc(Map.of("preferred_username", "alice@example.com")).getStatus());
+    doThrow(EntityNotFoundException.byMessage("missing"))
+        .when(users)
+        .getUserByNameForAuthUpdate("alice");
+    doReturn(new User().withName("someone-else"))
+        .when(users)
+        .getActiveUserByEmailForAuth(anyString(), any());
+    assertEquals(
+        TestLoginResult.Status.FAILED,
+        resolveOidc(Map.of("preferred_username", "alice@example.com")).getStatus());
+  }
+
+  @Test
+  void oidcSubjectBindingRejectsReassignedAddressesWithoutMutatingTheAccount() {
+    User account = new User().withName("alice").withIdentityProviderSubject("subject-a");
+    doReturn(account).when(users).getActiveUserByEmailForAuth(anyString(), any());
+    assertEquals(
+        TestLoginResult.Status.FAILED,
+        resolveOidc(Map.of("email", "alice@example.com", "sub", "subject-b")).getStatus());
+    assertEquals("subject-a", account.getIdentityProviderSubject());
+    assertEquals(
+        TestLoginResult.Status.SUCCESS,
+        resolveOidc(Map.of("email", "alice@example.com", "sub", "subject-a")).getStatus());
+    account.setIdentityProviderSubject(null);
+    assertEquals(
+        TestLoginResult.Status.SUCCESS,
+        resolveOidc(Map.of("email", "alice@example.com", "sub", "subject-b")).getStatus());
+    assertNull(account.getIdentityProviderSubject());
+  }
+
+  private TestLoginResult resolveOidc(Map<String, Object> claims) {
+    return TestLoginService.resolveOidcCallbackIdentity(
+        candidate,
+        claims,
+        TestLoginStageRecorder.forProtocol(TestLoginProtocol.OIDC),
+        identity -> TestLoginAccountChecks.admitOidc(candidate, identity, users));
   }
 
   private static TestLoginResult success(TestLoginProtocol protocol) {
