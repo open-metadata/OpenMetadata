@@ -40,7 +40,10 @@ import {
   PAGE_SIZE_BASE,
   ROUTES,
 } from '../../constants/constants';
-import { COMMON_FILTERS_FOR_DIFFERENT_TABS } from '../../constants/explore.constants';
+import {
+  COMMON_FILTERS_FOR_DIFFERENT_TABS,
+  SORT_ORDER_OPTIONS,
+} from '../../constants/explore.constants';
 import { SORT_ORDER } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
@@ -317,6 +320,18 @@ const ExplorePageV1: FC<unknown> = () => {
       : tabsInfo[searchIndex]?.sortField ?? sortValue;
   }, [tabsInfo, searchIndex, sortValue]);
 
+  // The sort menu only offers some orders per field (Relevance is best-match first only),
+  // and a header search keeps the previous sortOrder in the URL. Normalise it the same way
+  // so the request never sorts in an order the menu does not show.
+  const effectiveSortOrder = useMemo(() => {
+    const options = SORT_ORDER_OPTIONS[effectiveSortValue];
+    if (!options || options.some((option) => option.order === sortOrder)) {
+      return sortOrder;
+    }
+
+    return options[0].order;
+  }, [effectiveSortValue, sortOrder]);
+
   // Use the utility function to generate tab items
   const tabItems = useMemo(() => {
     const items = generateTabItems(tabsInfo, searchHitCounts);
@@ -373,7 +388,7 @@ const ExplorePageV1: FC<unknown> = () => {
       queryFilter,
       searchQueryParam,
       sortValue: effectiveSortValue,
-      sortOrder,
+      sortOrder: effectiveSortOrder,
       showDeleted,
       page: currentPage,
       size: pageSize,
@@ -388,7 +403,7 @@ const ExplorePageV1: FC<unknown> = () => {
     queryFilter,
     searchQueryParam,
     effectiveSortValue,
-    sortOrder,
+    effectiveSortOrder,
     showDeleted,
     currentPage,
     pageSize,
@@ -572,7 +587,7 @@ const ExplorePageV1: FC<unknown> = () => {
         searchIndex,
         showDeleted,
         sortValue: effectiveSortValue,
-        sortOrder,
+        sortOrder: effectiveSortOrder,
         page: currentPage,
         size: pageSize,
         isNLPRequestEnabled,
@@ -605,7 +620,7 @@ const ExplorePageV1: FC<unknown> = () => {
         searchIndex,
         showDeleted,
         sortValue: effectiveSortValue,
-        sortOrder,
+        sortOrder: effectiveSortOrder,
         page: currentPage,
         size: pageSize,
         isNLPRequestEnabled,
@@ -724,7 +739,7 @@ const ExplorePageV1: FC<unknown> = () => {
       searchResults={searchResults}
       showDeleted={showDeleted}
       showRankingDetails={showRankingDetails}
-      sortOrder={sortOrder}
+      sortOrder={effectiveSortOrder}
       sortValue={effectiveSortValue}
       tabItems={tabItems}
       onChangeAdvancedSearchQuickFilters={handleAdvanceSearchQuickFiltersChange}

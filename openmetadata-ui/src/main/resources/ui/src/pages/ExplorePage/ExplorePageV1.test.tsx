@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -447,6 +447,28 @@ describe('ExplorePageV1', () => {
     expect(searchParams.get('sort')).toBe('name.keyword');
     expect(searchParams.get('sortOrder')).toBe('asc');
     expect(searchParams.get('currentPage')).toBe('1');
+  });
+
+  it('drops a sort order the selected field does not offer before searching', async () => {
+    // A header search keeps sortOrder=asc from a previous "A to Z" pick while resetting the
+    // field to relevance, which only offers best-match-first (desc).
+    mockLocation.search = '?search=orders&sort=_score&sortOrder=asc';
+
+    render(<ExplorePageV1 {...mockProps} />);
+    await screen.findByText('ExploreV1');
+
+    expect(ExploreV1).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sortValue: '_score', sortOrder: 'desc' }),
+      expect.anything()
+    );
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ sortField: '_score', sortOrder: 'desc' })
+      )
+    );
+    expect(searchQuery).not.toHaveBeenCalledWith(
+      expect.objectContaining({ sortOrder: 'asc' })
+    );
   });
 
   describe('search count revalidation', () => {
