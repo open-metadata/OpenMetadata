@@ -69,6 +69,7 @@ import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
+import org.openmetadata.service.migration.utils.v210.WorkflowEventTypeRedeployMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -246,6 +247,14 @@ public class Migration extends MigrationProcessImpl {
         () -> {
           initializeWorkflowHandler();
           IncidentWorkflowTransitionMigration.addAssignedStatusTransitions();
+        });
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WorkflowEventTypeRedeployMigration.STEP_NAME,
+        () -> {
+          initializeWorkflowHandler();
+          WorkflowEventTypeRedeployMigration.redeploy();
         });
     // The 2.1.0 post-data SQL disables these alerts; their names go to the log first.
     AppCreatedAlerts.logForReviewOnMySql(handle);
