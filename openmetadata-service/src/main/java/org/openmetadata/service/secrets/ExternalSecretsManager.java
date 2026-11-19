@@ -152,6 +152,19 @@ public abstract class ExternalSecretsManager extends SecretsManager {
   }
 
   @Override
+  protected void restoreMovedSecret(final MovedSecret moved) {
+    moved
+        .previous()
+        .ifPresentOrElse(
+            value -> upsertSecret(moved.secretId(), value), () -> deleteSecret(moved.secretId()));
+  }
+
+  @Override
+  protected void validateBeforeStore(final String fieldName, final String value) {
+    rejectReservedPlaceholder(fieldName, value);
+  }
+
+  @Override
   protected Optional<String> findSecretValue(String reference) {
     Optional<String> secretValue = Optional.empty();
     try {
