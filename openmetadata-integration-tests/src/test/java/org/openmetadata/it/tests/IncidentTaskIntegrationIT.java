@@ -177,6 +177,49 @@ public class IncidentTaskIntegrationIT {
         stored.getComments().stream().map(TaskComment::getMessage).toList());
   }
 
+  @ParameterizedTest
+  @CsvSource({"edit", "delete"})
+  void testCommentMutationKeepsResolutionSavedAfterTaskWasLoaded(
+      String operation, TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    TestCase testCase = createTestCase(client, ns, "incident-resolve-comment-" + operation);
+    createFailedTestResult(client, testCase);
+    Task incident = awaitIncidentTaskForTestCase(client, testCase);
+    String taskId = incident.getId().toString();
+    client.tasks().addComment(taskId, "Investigation note");
+    Task staleTask = client.tasks().get(taskId, "comments");
+    TaskComment note = staleTask.getComments().getFirst();
+
+    client
+        .tasks()
+        .resolve(
+            taskId,
+            new ResolveTask()
+                .withTransitionId("resolve")
+                .withResolutionType(TaskResolutionType.Completed)
+                .withComment("Resolution note")
+                .withPayload(
+                    resolutionPayload(
+                        "Other", "Resolution note", TestCaseFailureReasonType.Other)));
+
+    TaskRepository repository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    if (operation.equals("edit")) {
+      repository.editComment(staleTask, note.getId(), "Edited note", note.getAuthor().getName());
+    } else {
+      repository.deleteComment(staleTask, note.getId(), note.getAuthor().getName(), false);
+    }
+
+    Task stored = client.tasks().get(taskId, "comments,resolution");
+    assertEquals(TaskEntityStatus.Completed, stored.getStatus());
+    assertEquals("Resolution note", stored.getResolution().getComment());
+    List<String> expected =
+        operation.equals("edit")
+            ? List.of("Edited note", "Resolution note")
+            : List.of("Resolution note");
+    assertEquals(expected.size(), stored.getCommentCount());
+    assertEquals(expected, stored.getComments().stream().map(TaskComment::getMessage).toList());
+  }
+
   @Test
   void testFullIncidentWorkflow_TaskTransitionsMirrorTcrs(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
@@ -380,6 +423,21 @@ public class IncidentTaskIntegrationIT {
         recordsAfterResolve,
         tcrsTimeline(client, stateId).size(),
         "commenting on a resolved incident must not duplicate the Resolved record");
+
+    JsonNode reassignment =
+        JsonUtils.valueToTree(
+            List.of(
+                Map.of("op", "replace", "path", "/assignees", "value", List.of(shared.USER2_REF))));
+    client.tasks().patch(stateId.toString(), reassignment);
+    Task reassigned = client.tasks().get(stateId.toString(), "assignees");
+    assertEquals(shared.USER2.getId(), reassigned.getAssignees().getFirst().getId());
+
+    List<TestCaseResolutionStatus> history = tcrsTimeline(client, stateId);
+    assertEquals(recordsAfterResolve, history.size(), "the resolution is a historical snapshot");
+    Resolved details =
+        JsonUtils.convertValue(
+            history.getLast().getTestCaseResolutionStatusDetails(), Resolved.class);
+    assertEquals(shared.USER1.getId(), details.getAssignee().getId());
   }
 
   @Test

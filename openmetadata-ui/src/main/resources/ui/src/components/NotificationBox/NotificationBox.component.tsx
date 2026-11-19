@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityFeedTabs } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import {
@@ -146,6 +146,7 @@ const NotificationBox = ({
   const { currentUser } = useApplicationStore();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const latestRequest = useRef(0);
   const [viewAllPath, setViewAllPath] = useState<string>(
     getUserPath(
       currentUser?.name as string,
@@ -166,37 +167,51 @@ const NotificationBox = ({
     });
   }, [activeTab, notifications]);
 
+  const loadNotifications = useCallback(
+    async (request: Promise<NotificationItem[]>) => {
+      const requestId = ++latestRequest.current;
+      setIsLoading(true);
+      setNotifications([]);
+      try {
+        const items = await request;
+        if (requestId === latestRequest.current) {
+          setNotifications(items);
+        }
+      } catch (error) {
+        if (requestId === latestRequest.current) {
+          showErrorToast(
+            error as AxiosError,
+            t('server.entity-fetch-error', {
+              entity: t('label.notification'),
+            })
+          );
+        }
+      } finally {
+        if (requestId === latestRequest.current) {
+          setIsLoading(false);
+        }
+      }
+    },
+    [t]
+  );
+
   const getTaskNotificationData = useCallback(() => {
-    setIsLoading(true);
     const domain =
       activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-    listMyAssignedTasks({
-      status: TaskEntityStatus.Open,
-      fields: 'about,createdBy,assignees',
-      limit: 10,
-      domain,
-    })
-      .then((res) => {
-        setNotifications(res.data);
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.notification'),
-          })
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [activeDomain, t]);
+    void loadNotifications(
+      listMyAssignedTasks({
+        status: TaskEntityStatus.Open,
+        fields: 'about,createdBy,assignees',
+        limit: 10,
+        domain,
+      }).then((res) => res.data)
+    );
+  }, [activeDomain, loadNotifications]);
 
   const getMentionNotificationData = useCallback(() => {
-    setIsLoading(true);
     const domain =
       activeDomain !== DEFAULT_DOMAIN_VALUE ? activeDomain : undefined;
-    Promise.allSettled([
+    const request = Promise.allSettled([
       listConversations({
         filterType: ConversationFilterType.Mentions,
         limit: 10,
@@ -205,38 +220,24 @@ const NotificationBox = ({
       currentUser?.name
         ? getTaskCommentMentions(currentUser.name, { domain })
         : undefined,
-    ])
-      .then(([conversations, tasks]) => {
-        const taskMentions =
-          tasks.status === 'fulfilled' ? tasks.value : undefined;
-        if (conversations.status === 'rejected' && !taskMentions) {
-          throw conversations.reason;
-        }
+    ]).then(([conversations, tasks]) => {
+      const taskMentions =
+        tasks.status === 'fulfilled' ? tasks.value : undefined;
+      if (conversations.status === 'rejected' && !taskMentions) {
+        throw conversations.reason;
+      }
 
-        setNotifications(
-          [
-            ...(conversations.status === 'fulfilled'
-              ? conversations.value.data
-              : []),
-            ...(taskMentions ?? []),
-          ].sort(
-            (left, right) =>
-              getMentionTimestamp(right) - getMentionTimestamp(left)
-          )
-        );
-      })
-      .catch((err: AxiosError) => {
-        showErrorToast(
-          err,
-          t('server.entity-fetch-error', {
-            entity: t('label.notification'),
-          })
-        );
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, [activeDomain, currentUser?.id, currentUser?.name, t]);
+      return [
+        ...(conversations.status === 'fulfilled'
+          ? conversations.value.data
+          : []),
+        ...(taskMentions ?? []),
+      ].sort(
+        (left, right) => getMentionTimestamp(right) - getMentionTimestamp(left)
+      );
+    });
+    void loadNotifications(request);
+  }, [activeDomain, currentUser?.id, currentUser?.name, loadNotifications]);
 
   const updateActiveTab = useCallback(
     (key: string) => {
@@ -273,6 +274,8 @@ const NotificationBox = ({
       hasMentionNotification,
       getTaskNotificationData,
       getMentionNotificationData,
+      onMarkMentionsNotificationRead,
+      onMarkTaskNotificationRead,
     ]
   );
 
