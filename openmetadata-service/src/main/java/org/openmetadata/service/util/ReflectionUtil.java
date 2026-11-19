@@ -24,6 +24,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.service.exception.ReflectionException;
@@ -32,6 +33,8 @@ import org.openmetadata.service.exception.ReflectionException;
 public class ReflectionUtil {
   // Distinguishes a positional key from a name, so the two can never collide.
   private static final String POSITION_KEY_PREFIX = "#";
+  private static final Pattern NOT_LETTER_OR_DIGIT = Pattern.compile("[^a-z0-9]");
+  private static final Pattern DIGITS_ONLY = Pattern.compile("[0-9]*");
 
   private ReflectionUtil() {
     /* Hidden construction */
@@ -104,6 +107,11 @@ public class ReflectionUtil {
    * password map and in the secret store. Names are therefore used only where they occur once in the
    * collection; duplicates and unnamed elements fall back to position, which is the best available
    * answer for elements that are genuinely indistinguishable.
+   *
+   * <p>Uniqueness is checked on the name lowercased and reduced to letters and digits, because every
+   * secrets manager lowercases a secret id and drops or replaces its other characters: {@code Prod}
+   * and {@code prod} would share one stored secret. A name with no letters (such as {@code #1} or
+   * {@code 3}) also falls back to position, since it could match a position key once cleaned.
    */
   public static List<String> getCollectionElementKeys(Collection<?> collection) {
     List<String> names = new ArrayList<>(collection.size());
@@ -112,16 +120,24 @@ public class ReflectionUtil {
       String name = readName(element);
       names.add(name);
       if (name != null) {
-        occurrences.merge(name, 1, Integer::sum);
+        occurrences.merge(secretIdForm(name), 1, Integer::sum);
       }
     }
     List<String> keys = new ArrayList<>(names.size());
     for (int index = 0; index < names.size(); index++) {
       String name = names.get(index);
-      boolean usable = name != null && occurrences.get(name) == 1;
+      boolean usable =
+          name != null
+              && !DIGITS_ONLY.matcher(secretIdForm(name)).matches()
+              && occurrences.get(secretIdForm(name)) == 1;
       keys.add(usable ? name : POSITION_KEY_PREFIX + index);
     }
     return keys;
+  }
+
+  /** A name as any secrets manager could clean it into a secret id: lowercase letters and digits. */
+  private static String secretIdForm(String name) {
+    return NOT_LETTER_OR_DIGIT.matcher(name.toLowerCase(Locale.ROOT)).replaceAll("");
   }
 
   /** The name an element reports, or null when it has none - see {@link #getCollectionElementKeys}. */
