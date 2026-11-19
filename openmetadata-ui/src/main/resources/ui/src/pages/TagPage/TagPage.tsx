@@ -74,7 +74,6 @@ import IconColorModal from '../../components/Modals/IconColorModal/IconColorModa
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
   CERTIFICATION_CATEGORY,
-  MAX_NAME_LENGTH,
   ROUTES,
   TIER_CATEGORY,
 } from '../../constants/constants';
@@ -123,6 +122,7 @@ import {
   getExcludedIndexesBasedOnEntityTypeEditTagPermission,
   getQueryFilterToExcludeTermsAndEntities,
   getTagAssetsQueryFilter,
+  getTagRenameRules,
 } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -976,17 +976,7 @@ const TagPage = () => {
       <EntityNameModal
         allowRename
         entity={tagItem}
-        nameValidationRules={[
-          {
-            min: 1,
-            max: MAX_NAME_LENGTH,
-            message: t('message.entity-size-in-between', {
-              entity: t('label.name'),
-              min: 1,
-              max: MAX_NAME_LENGTH,
-            }),
-          },
-        ]}
+        nameValidationRules={getTagRenameRules(t)}
         title={t('label.edit-entity', {
           entity: t('label.name'),
         })}
