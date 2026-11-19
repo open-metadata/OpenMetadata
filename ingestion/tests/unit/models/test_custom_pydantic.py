@@ -1,6 +1,7 @@
 import json
 import uuid
 from unittest import TestCase
+from unittest.mock import patch
 from urllib.parse import quote_plus
 
 import pytest
@@ -1061,6 +1062,44 @@ class TestUnresolvableSecretReference:
         raw = CustomSecretStr(self.EXTERNAL_SECRET_REFERENCE).get_secret_value(skip_secret_manager=True)
 
         assert raw == self.EXTERNAL_SECRET_REFERENCE
+
+
+class TestSecretPrefixUnderDbProvider:
+    """The DB provider stores secrets itself and never hands out references, so a value that
+    starts with ``secret:`` is the literal password and must reach the source unchanged."""
+
+    LITERAL_PASSWORD = "secret:abc"
+
+    @pytest.fixture(autouse=True)
+    def clean_singletons(self):
+        Singleton.clear_all()
+        yield
+        Singleton.clear_all()
+
+    def test_db_provider_returns_the_literal_value(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+
+        with patch.object(factory.get_secrets_manager(), "get_string_value") as get_string_value:
+            resolved = CustomSecretStr(self.LITERAL_PASSWORD).get_secret_value()
+
+        assert resolved == self.LITERAL_PASSWORD
+        get_string_value.assert_not_called()
+
+    def test_db_provider_connection_password_is_the_literal_value(self):
+        SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        connection = MysqlConnection(
+            username="user",
+            authType=BasicAuth(password=self.LITERAL_PASSWORD),
+            hostPort="localhost:3306",
+        )
+
+        assert get_password_secret(connection).get_secret_value() == self.LITERAL_PASSWORD
+
+    def test_external_provider_still_resolves_the_reference(self):
+        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory.secrets_manager = _FakeExternalSecretsManager()
+
+        assert CustomSecretStr(self.LITERAL_PASSWORD).get_secret_value() == RESOLVED_EXTERNAL_SECRET
 
 
 class DashboardDataModelTransformationTest(TestCase):

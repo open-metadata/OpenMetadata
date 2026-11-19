@@ -230,6 +230,9 @@ class _CustomSecretStr(SecretStr):
 
         A ``secret:`` reference the secrets manager cannot return raises
         ``SecretReferenceError``: the reference is never handed on as the value.
+
+        The DB provider never hands out references, so under it a value starting
+        with ``secret:`` is the literal secret and is returned unchanged.
         """
         secret_value = self._secret_value
         if not skip_secret_manager and secret_value and secret_value.startswith(SECRET):
@@ -243,6 +246,9 @@ class _CustomSecretStr(SecretStr):
     def _read_reference(self) -> str | None:
         """Read the value a `secret:` reference points to from the configured secrets manager."""
         # Importing inside function to avoid circular import error
+        from metadata.utils.secrets.db_secrets_manager import (  # pylint: disable=import-outside-toplevel
+            DBSecretsManager,
+        )
         from metadata.utils.secrets.secrets_manager_factory import (  # pylint: disable=import-outside-toplevel,cyclic-import
             SecretsManagerFactory,
         )
@@ -255,6 +261,8 @@ class _CustomSecretStr(SecretStr):
                 f"Cannot resolve the secret reference [{self._secret_value}]:"
                 f" no secrets manager is configured for provider [{provider}]."
             )
+        if isinstance(secrets_manager, DBSecretsManager):
+            return self._secret_value
         secret_id = self._secret_value.replace(SECRET, "")
         logger.info("Getting secret value for %s", secret_id)
         try:
