@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Box,
   Button,
   ButtonUtility,
   ClassificationTag,
@@ -811,8 +812,6 @@ export const DataAssetsHeader = ({
   // lifeCycle.updated is when the asset last changed at its source, set by
   // ingestion from the source's metadata or the usage workflow's query log; it
   // is not when the entity was edited in OpenMetadata.
-  // triggerClassName makes Tooltip wrap Typography in a focusable trigger; a
-  // bare component child never opens the tooltip.
   const renderSourceUpdatedAt = () => {
     const sourceUpdatedAt = (dataAsset as { lifeCycle?: LifeCycle }).lifeCycle
       ?.updated?.timestamp;
@@ -823,23 +822,19 @@ export const DataAssetsHeader = ({
 
     return (
       <>
-        <div className="tw:flex tw:items-center tw:gap-1.5">
+        <Box align="center" gap={2}>
           <Typography as="span" color="secondary" size="text-sm">
             {t('label.updated-at-source')}
           </Typography>
-          <Tooltip
-            placement="bottom"
-            title={formatDateTime(sourceUpdatedAt)}
-            triggerClassName="tw:flex tw:cursor-default">
-            <Typography
-              as="span"
-              data-testid="source-updated-at"
-              size="text-sm"
-              weight="medium">
-              {getRelativeTime(sourceUpdatedAt)}
-            </Typography>
-          </Tooltip>
-        </div>
+          <Typography
+            as="span"
+            data-testid="source-updated-at"
+            size="text-sm"
+            tooltip={formatDateTime(sourceUpdatedAt)}
+            weight="medium">
+            {getRelativeTime(sourceUpdatedAt)}
+          </Typography>
+        </Box>
         <Divider className="tw:h-5" orientation="vertical" />
       </>
     );
