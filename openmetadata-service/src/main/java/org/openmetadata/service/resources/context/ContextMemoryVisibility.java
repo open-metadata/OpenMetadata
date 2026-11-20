@@ -544,7 +544,8 @@ public final class ContextMemoryVisibility {
 
   /**
    * The ids a sharing list may name to reach {@code userName}: their own, their teams' and their
-   * domains'. A user that cannot be resolved is shared nothing.
+   * domains', plus any additional principals from the distribution. A user that cannot be resolved
+   * is shared nothing.
    */
   static Set<String> resolvePrincipalIdentifiers(String userName) {
     Set<String> ids = Set.of();

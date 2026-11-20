@@ -302,7 +302,8 @@ public class PersonaRepository extends EntityRepository<Persona> {
     return null;
   }
 
-  static void validateContextDefinition(PersonaContextDefinition definition) {
+  /** Validates and normalizes a persona context definition in place for repository and external callers. */
+  public static void validateContextDefinition(PersonaContextDefinition definition) {
     if (definition == null) {
       return;
     }

@@ -37,6 +37,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.ContextMemorySharePrincipals;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
@@ -387,6 +389,31 @@ class ContextMemorySearchVisibilityTest {
     assertTrue(json.contains(TEAM_ID.toString()), "sharedWithIds must include the user's team id");
     assertTrue(
         json.contains(DOMAIN_ID.toString()), "sharedWithIds must include the user's domain id");
+  }
+
+  @Test
+  @ResourceLock("contextMemorySharePrincipals")
+  void searchMatchesAdditionalSharePrincipals() {
+    UUID principalId = UUID.randomUUID();
+    User user = new User().withId(UUID.randomUUID()).withName("analyst");
+    SubjectContext subject = new SubjectContext(user, null);
+    assertFalse(buildElasticJson(subject).contains(principalId.toString()));
+
+    try {
+      ContextMemorySharePrincipals.set(
+          new ContextMemorySharePrincipals() {
+            @Override
+            public Set<UUID> additionalPrincipalIds(User caller) {
+              return user.getId().equals(caller.getId()) ? Set.of(principalId) : Set.of();
+            }
+          });
+
+      List<List<String>> terms =
+          JsonPath.parse(buildElasticJson(subject)).read("$..terms['sharedWithIds']");
+      assertTrue(terms.stream().anyMatch(ids -> ids.contains(principalId.toString())));
+    } finally {
+      ContextMemorySharePrincipals.set(null);
+    }
   }
 
   @Test
