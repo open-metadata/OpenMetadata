@@ -86,6 +86,10 @@ export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
     label: 'label.unique',
     value: Constraint.Unique,
   },
+  {
+    label: 'label.not-null-unique',
+    value: 'NOT_NULL_UNIQUE' as Constraint,
+  },
 ];
 
 export const RELATIONSHIP_TYPE_OPTION = [
