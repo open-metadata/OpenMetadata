@@ -317,6 +317,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         ] = {}
         self._region_lifecycle_db: sqlite3.Connection | None = None
         self._region_lifecycle_dir: tempfile.TemporaryDirectory | None = None
+        # Disk errors may prevent both rollback and recording a failed scan.
+        # One bounded in-memory flag prevents any further costly scans.
+        self._region_lifecycle_spool_disabled = False
 
         if self.service_connection.includePolicyTags:
             try:
@@ -899,6 +902,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             # SQLite operations are short and serialized, but BigQuery executes
             # outside the global SQLite lock so separate regions can scan in parallel.
             with self._region_lifecycle_lock:
+                if self._region_lifecycle_spool_disabled:
+                    return None
                 db = self._get_region_lifecycle_db()
                 state = db.execute(
                     "SELECT status, attempts FROM scans WHERE project = ? AND region = ?",
@@ -940,6 +945,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     if batch:
                         self._write_region_lifecycle_batch(batch)
                     with self._region_lifecycle_lock:
+                        if self._region_lifecycle_spool_disabled:
+                            return None
                         db.execute(
                             "INSERT OR REPLACE INTO scans "
                             "(project, region, status, attempts) VALUES (?, ?, 'ok', 0)",
@@ -947,26 +954,54 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                         )
                         db.commit()
                 except Exception as exc:
-                    # Completed batches are individually committed, so remove
-                    # only this region's partial rows; never other running scans.
                     with self._region_lifecycle_lock:
-                        db.rollback()
-                        db.execute(
-                            "DELETE FROM rows WHERE project = ? AND region = ?",
-                            (database, normalized_region),
-                        )
-                        attempts = 1 if state is None else state[1] + 1
-                        code = self._region_error_http_status(exc)
-                        permanent = isinstance(exc, (sqlite3.Error, OSError)) or (
-                            code is not None and 400 <= code < 500 and code != 429
-                        )
-                        next_status = "failed" if permanent or attempts >= 2 else "retry"
-                        db.execute(
-                            "INSERT OR REPLACE INTO scans "
-                            "(project, region, status, attempts) VALUES (?, ?, ?, ?)",
-                            (database, normalized_region, next_status, attempts),
-                        )
-                        db.commit()
+                        # A full/broken disk may reject DELETE and even the
+                        # failed-status write. Disable the *whole* spool in RAM
+                        # before attempting any cleanup so later tables never
+                        # reissue an expensive region-wide query.
+                        if isinstance(exc, (sqlite3.Error, OSError)):
+                            self._region_lifecycle_spool_disabled = True
+                            logger.warning(
+                                "Disabling BigQuery lifecycle region scans after "
+                                "temporary spool I/O failure for %s/%s: %s",
+                                database,
+                                region,
+                                exc,
+                            )
+                            return None
+                        try:
+                            # Batches commit separately, so rollback alone does
+                            # not discard all rows from a failed region.
+                            db.rollback()
+                            db.execute(
+                                "DELETE FROM rows WHERE project = ? AND region = ?",
+                                (database, normalized_region),
+                            )
+                            attempts = 1 if state is None else state[1] + 1
+                            code = self._region_error_http_status(exc)
+                            permanent = (
+                                code is not None and 400 <= code < 500 and code != 429
+                            )
+                            next_status = (
+                                "failed" if permanent or attempts >= 2 else "retry"
+                            )
+                            db.execute(
+                                "INSERT OR REPLACE INTO scans "
+                                "(project, region, status, attempts) VALUES (?, ?, ?, ?)",
+                                (database, normalized_region, next_status, attempts),
+                            )
+                            db.commit()
+                        except Exception as cleanup_exc:
+                            self._region_lifecycle_spool_disabled = True
+                            logger.warning(
+                                "Disabling BigQuery lifecycle region scans: "
+                                "could not record failure or clean partial rows "
+                                "for %s/%s: %s",
+                                database,
+                                region,
+                                cleanup_exc,
+                            )
+                            return None
                     logger.warning(
                         "BigQuery lifecycle scan for %s/%s failed (%s, attempt %s/2); "
                         "using cheaper dataset-scoped created-only query: %s",
@@ -991,8 +1026,10 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 for table_name, payload in records
             }
         except (OSError, sqlite3.Error) as exc:
+            with self._region_lifecycle_lock:
+                self._region_lifecycle_spool_disabled = True
             logger.warning(
-                "BigQuery lifecycle temporary spool unavailable for %s/%s: %s",
+                "Disabling BigQuery lifecycle spool after failure for %s/%s: %s",
                 database,
                 region,
                 exc,
@@ -1001,6 +1038,8 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def _write_region_lifecycle_batch(self, batch: list[tuple[str, ...]]) -> None:
         with self._region_lifecycle_lock:
+            if self._region_lifecycle_spool_disabled:
+                raise sqlite3.OperationalError("BigQuery lifecycle spool disabled")
             db = self._get_region_lifecycle_db()
             try:
                 db.executemany(
