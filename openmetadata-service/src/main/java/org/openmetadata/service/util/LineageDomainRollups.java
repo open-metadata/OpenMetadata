@@ -264,7 +264,7 @@ public final class LineageDomainRollups {
   }
 
   // A type without a repository, such as one retired since the row was written, holds no domains.
-  private static boolean hasDomains(final String entityType) {
+  static boolean hasDomains(final String entityType) {
     return Entity.hasEntityRepository(entityType)
         && !Entity.isTimeSeriesEntity(entityType)
         && Entity.entityHasField(entityType, FIELD_DOMAINS);

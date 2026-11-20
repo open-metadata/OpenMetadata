@@ -304,6 +304,7 @@ import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
 import org.openmetadata.service.util.LifeCycles;
+import org.openmetadata.service.util.LineageDomainInheritors;
 import org.openmetadata.service.util.LineageDomainRollups;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 import org.openmetadata.service.util.LineageUtil;
@@ -4681,12 +4682,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
+          LineageDomainInheritors inheritors = LineageDomainInheritors.ofMoved(domainMoves);
           storeVersions(previousVersions);
           updateMany(updatedEntities);
           replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
           storeRelationshipsInternal(updatedEntities);
-          LineageDomainRollups.move(domainMoves);
+          LineageDomainRollups.move(inheritors.followedBy(domainMoves));
           // Drop every cached variant for each updated entity so the next GET rebuilds from the
           // freshly-stored row + relationships.
           for (T entity : updatedEntities) {
@@ -12325,8 +12327,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               addedDomains,
               removedDomains,
               entityReferenceMatch)) {
+        final LineageDomainInheritors inheritors = inheritorsBeforeWrite();
         updateDomains(original, origDomains, writtenDomains);
-        moveDomainRollups(origDomains, writtenDomains);
+        moveDomainRollups(origDomains, writtenDomains, inheritors);
         // Inherited domains are not written, but an entity without its own still holds them.
         updated.setDomains(
             writtenDomains.isEmpty() ? inheritedOnly(updated.getDomains()) : writtenDomains);
@@ -12335,16 +12338,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
 
+    private LineageDomainInheritors inheritorsBeforeWrite() {
+      return isIndexBaselinePass()
+          ? LineageDomainInheritors.of(List.of(original.getEntityReference()))
+          : LineageDomainInheritors.NONE;
+    }
+
     // Consolidation replays this diff against reverted baselines the stored rollups never saw.
     private void moveDomainRollups(
-        final List<EntityReference> ownBefore, final List<EntityReference> ownAfter) {
+        final List<EntityReference> ownBefore,
+        final List<EntityReference> ownAfter,
+        final LineageDomainInheritors inheritors) {
       if (isIndexBaselinePass()) {
         LineageDomainRollups.move(
-            List.of(
-                new DomainMove(
-                    original.getEntityReference(),
-                    domainsInEffect(original, ownBefore),
-                    domainsInEffect(updated, ownAfter))));
+            inheritors.followedBy(
+                List.of(
+                    new DomainMove(
+                        original.getEntityReference(),
+                        domainsInEffect(original, ownBefore),
+                        domainsInEffect(updated, ownAfter)))));
       }
     }
 

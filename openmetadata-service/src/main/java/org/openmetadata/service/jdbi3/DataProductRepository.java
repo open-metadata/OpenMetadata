@@ -95,6 +95,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.EntityWithType;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.IntakeFormValidator;
+import org.openmetadata.service.util.LineageDomainInheritors;
 import org.openmetadata.service.util.LineageDomainRollups;
 import org.openmetadata.service.util.LineageDomainRollups.DomainMove;
 
@@ -1249,6 +1250,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
         assetsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
       }
       List<DomainMove> domainMoves = assetDomainMoves(assetRecords, oldDomains, newDomains);
+      LineageDomainInheritors inheritors = LineageDomainInheritors.ofMoved(domainMoves);
 
       for (EntityReference oldDomain : oldDomains) {
         for (Map.Entry<String, List<UUID>> entry : assetsByType.entrySet()) {
@@ -1273,7 +1275,7 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
                   newDomain.getId(), assetIds, DOMAIN, assetType, Relationship.HAS.ordinal());
         }
       }
-      LineageDomainRollups.move(inheritingWhenBare(domainMoves));
+      LineageDomainRollups.move(inheritors.followedBy(inheritingWhenBare(domainMoves)));
 
       // Drop every cache layer for each migrated asset - the bundle cache stores domains as a
       // field and would otherwise serve stale data. invalidateCacheForReferencedEntity pulls the
