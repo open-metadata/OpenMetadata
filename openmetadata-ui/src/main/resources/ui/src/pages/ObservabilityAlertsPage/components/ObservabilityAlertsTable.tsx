@@ -20,6 +20,7 @@ import {
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import AlertDisabledBadge from '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
 import PermissionPlaceholder from '../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -29,7 +30,6 @@ import { ALERT_EMPTY_STATE_FEATURES } from '../../../constants/Alerts.constants'
 import { ClientErrors } from '../../../enums/Axios.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import AlertDisabledBadge from '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import { ALERT_TABLE_COLUMN_IDS } from '../ObservabilityAlertsPage.constants';
 import { ObservabilityAlertsTableProps } from '../ObservabilityAlertsPage.interface';
 import {

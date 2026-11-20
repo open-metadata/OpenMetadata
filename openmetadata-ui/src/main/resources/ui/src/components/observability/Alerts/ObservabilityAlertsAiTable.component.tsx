@@ -48,9 +48,9 @@ import {
   getAlertTableCellLayoutClassName,
   getAlertTableHeaderLayoutClassName,
 } from '../../../pages/ObservabilityAlertsPage/ObservabilityAlertsPage.utils';
-import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { computeTotalPages } from '../../../utils/PaginationUtils';
+import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import FeaturesPlaceholder from '../../common/EmptyPlaceholder/FeaturesPlaceholder';
 import ObservabilityAlertAiActions from './ObservabilityAlertAiActions.component';
 

@@ -28,9 +28,9 @@ import {
 import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import AlertDisabledBadge from '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import Description from '../../../components/common/EntityDescription/Description';
-import AlertDisabledBadge from '../../../components/Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { UserTeamSelectableList } from '../../../components/common/UserTeamSelectableList/UserTeamSelectableList.component';
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';

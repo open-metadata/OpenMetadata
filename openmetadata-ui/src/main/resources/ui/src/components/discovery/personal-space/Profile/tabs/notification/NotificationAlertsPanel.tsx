@@ -39,7 +39,6 @@ import {
   LIST_PAGE_SIZE_OPTIONS,
   NO_DATA_PLACEHOLDER,
 } from '../../../../../../constants/constants';
-import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../../../../enums/entity.enum';
@@ -58,6 +57,7 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { getDerivedPermissionFlags } from '../../../../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
+import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../../../../common/RichTextEditor/RichTextEditorPreviewerV1';

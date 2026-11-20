@@ -48,6 +48,7 @@ import alertsClassBase from '../../../utils/AlertsClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { invalidateQueriesWithoutInitialRace } from '../../../utils/queryCacheUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import {
@@ -55,7 +56,6 @@ import {
   OBSERVABILITY_PAGE_LAYOUT_CLASS,
 } from '../observability.constants';
 import AlertAiDiagnosticTab from './AlertAiDiagnosticTab';
-import AlertDisabledBadge from '../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
 import AlertAiEventCounts from './AlertAiEventCounts';
 import AlertAiForm from './AlertAiForm.component';
 import { getAlertAiResources } from './AlertAiFormFieldsPureUtils';

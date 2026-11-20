@@ -38,8 +38,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
-import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
@@ -68,6 +66,8 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
+import AlertDisabledBadge from '../../../../../Alerts/AlertDisabledBadge/AlertDisabledBadge';
+import AlertPendingEvents from '../../../../../Alerts/AlertPendingEvents/AlertPendingEvents';
 import DeleteEntityPopover from '../../../../../common/DeleteWidget/DeleteEntityPopover';
 import Loader from '../../../../../common/Loader/Loader';
 import RichTextEditor from '../../../../../common/RichTextEditor/RichTextEditor';
