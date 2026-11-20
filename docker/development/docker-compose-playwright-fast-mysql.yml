@@ -1,6 +1,6 @@
 services:
   mysql:
-    image: ${PW_DATABASE_IMAGE:-mysql:8.0}
+    image: ${PW_DATABASE_IMAGE:-mysql:8.4.13}
     pull_policy: missing
     restart: "no"
     command:

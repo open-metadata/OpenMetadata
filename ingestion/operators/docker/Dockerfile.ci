@@ -130,8 +130,13 @@ fi
 
 WORKDIR /ingestion
 
-# For the dev build, we copy all files
+# For the dev build, we copy all files except uv.lock, which Dockerfile.ci.dockerignore keeps out
+# (ADR:2026-11-18-ingestion-dev-image-does-not-ship-uv-lock).
 COPY ingestion/ .
+RUN if [ -e uv.lock ]; then \
+      echo "ingestion/uv.lock reached the image; build with BuildKit so Dockerfile.ci.dockerignore applies" >&2; \
+      exit 1; \
+    fi
 COPY openmetadata-spec /openmetadata-spec
 COPY scripts/datamodel_generation.py /scripts/datamodel_generation.py
 

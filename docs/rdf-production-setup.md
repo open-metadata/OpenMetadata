@@ -42,7 +42,7 @@ materialize need separate sizing. See
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag
-(today `6.2.0-318ff87`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
+(today `6.2.0-91a23ac`). [rdf-fuseki-image-release.md](rdf-fuseki-image-release.md) lists the
 environment OpenMetadata needs, what readiness checks, and how to verify a deployment. In short:
 
 - **Fuseki 6.2.0 on Java 21**, downloaded and checked against its SHA-512 when the image is built,
@@ -72,7 +72,26 @@ environment OpenMetadata needs, what readiness checks, and how to verify a deplo
 - **No Lucene text index.** The retired in-repo image wrapped each dataset in a Jena
   `text:TextDataset`; no OpenMetadata code issues `text:query`.
 
+### Docker Compose
+
+`docker/docker-compose-quickstart/docker-compose-fuseki.yml` adds Fuseki to the release compose
+file and points `execute-migrate-all` and `openmetadata-server` at it:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose-fuseki.yml up -d
+docker compose -f docker-compose-postgres.yml -f docker-compose-fuseki.yml up -d
+```
+
+`FUSEKI_ADMIN_PASSWORD` sets the image's `ADMIN_PASSWORD` and OpenMetadata's
+`RDF_REMOTE_PASSWORD` to the same value (default `admin`).
+
 ### Upgrading from the in-repo image
+
+Compose files written for OpenMetadata 2.0.0 through 2.1.0-rc1 do not start the published image:
+they pass `FUSEKI_ADMIN_PASSWORD` and `FUSEKI_OPENMETADATA_PASSWORD` to the container, which reads
+only `ADMIN_PASSWORD` and exits with `Set ADMIN_PASSWORD, or FUSEKI_MANAGE_SHIRO=false with your
+own shiro.ini`. They also mount the data volume at `/fuseki-data`. Replace the `fuseki` service
+with the one in `docker-compose-fuseki.yml`, then move or rebuild the data as described below.
 
 The retired `docker/rdf-store/` image stored TDB2 at `/fuseki-data/<dataset>`. Mounting that volume
 at `/fuseki` does not fail: it silently starts **empty** datasets. Verify data survival with a
@@ -399,6 +418,27 @@ thrashes the database. Two mechanisms keep them apart:
 
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
+
+**Turning RDF on.** Changes made while RDF is off never reach the graph. So every server with RDF
+off records it in `rdf_projection_health` when it starts, when its stop begins and again at the end
+of its stop: each write raises `failureVersion`. Once RDF is on, `/v1/rdf/status` reports
+`DEGRADED` (or `REBUILDING` when the graph was never built), and the agent SPARQL path refuses,
+until a full Recreate that started after the last of those writes completes. A run on a server with
+RDF off indexes nothing and does not count.
+
+Nothing queues that rebuild. After enabling RDF, run `RdfIndexApp` with Recreate once: from the
+application page or through the API (`POST /v1/apps/trigger/RdfIndexApp` with
+`recreateIndex: true`); otherwise the weekly run does it. `openmetadata-ops.sh reindex-rdf` cannot
+do it today: it stops before it queues a run. This is the way search reindexing is handled too. A
+server start queues one `RdfIndexApp` run only when no run record exists at all: a new install, or
+an upgrade from 2.0.x that starts with RDF on, whose 2.1.0 migration deletes the old records.
+
+When RDF is turned on with a rolling restart, a server with RDF off is still running while the new
+server starts, and can take writes the graph never receives. Until that server stops, the state
+can read `READY` although its changes are not in the graph. Its stop is recorded after that, so
+from then on the state is `DEGRADED`. Run the rebuild once every server has restarted. A server
+that is killed without a stop signal records nothing. See
+ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 ## Blue/green rebuilds
 

@@ -70,10 +70,6 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
-  getOntologyHealthSummary,
-  resolveOntologyTermLabel,
-} from '../OntologyStudio.utils';
-import {
   ASSET_BINDING_EDGE_KIND,
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
@@ -85,6 +81,10 @@ import {
   mergeMetricsIntoGraph,
   METRIC_NODE_TYPE,
 } from '../utils/graphBuilders';
+import {
+  getOntologyHealthSummary,
+  resolveOntologyTermLabel,
+} from '../utils/ontologyHealth';
 import { useOntologyGraphDerived } from './useOntologyGraphDerived';
 const MODEL_TERM_FIELDS = [
   TabSpecificField.RELATED_TERMS,

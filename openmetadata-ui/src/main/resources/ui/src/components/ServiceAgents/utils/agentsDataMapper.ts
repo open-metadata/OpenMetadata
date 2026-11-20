@@ -73,6 +73,7 @@ const AGENT_STATUS_TO_UI_STATUS: Record<AgentStatus, UiAgentStatus> = {
   [AgentStatus.Running]: 'running',
   [AgentStatus.Successful]: 'success',
   [AgentStatus.Failed]: 'failed',
+  [AgentStatus.Stopped]: 'stopped',
   [AgentStatus.Pending]: 'queued',
 };
 
@@ -406,18 +407,19 @@ export const mapStepSummaryToRunStep = (step: StepSummary): RunStep => {
 export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
   const steps = status.status ?? [];
   const startedAtMillis = status.startDate ?? status.timestamp;
-  const duration =
+  const durationMs =
     status.endDate && status.startDate
-      ? Math.round(((status.endDate - status.startDate) / 60000) * 10) / 10
-      : 0;
+      ? status.endDate - status.startDate
+      : undefined;
 
   return {
     id: status.runId ?? String(status.timestamp),
+    runId: status.runId,
     status: toRunStatus(status.pipelineState),
     startedAt: startedAtMillis
       ? customFormatDateTime(startedAtMillis, RUN_STARTED_AT_FORMAT)
       : '',
-    duration,
+    durationMs,
     totals: buildRunTotals(steps),
     steps: steps.map(mapStepSummaryToRunStep),
   };

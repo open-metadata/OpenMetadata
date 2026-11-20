@@ -20,6 +20,7 @@ import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import DocumentTitle from '../DocumentTitle/DocumentTitle';
 import './resizable-panels.less';
 import { ResizablePanelsProps } from './ResizablePanels.interface';
+import { getEnforcedMinWidthStyle } from './ResizablePanels.utils';
 
 const ResizablePanels: React.FC<ResizablePanelsProps> = ({
   className,
@@ -122,6 +123,7 @@ const ResizablePanels: React.FC<ResizablePanelsProps> = ({
           data-testid={secondPanel.className}
           flex={isRightPanelCollapsed ? 0 : secondPanel.flex}
           minSize={isRightPanelCollapsed ? 0 : secondPanel.minWidth}
+          style={getEnforcedMinWidthStyle(secondPanel, isRightPanelCollapsed)}
           onStopResize={(args) => {
             secondPanel.onStopResize?.(args.component.props.flex);
           }}>

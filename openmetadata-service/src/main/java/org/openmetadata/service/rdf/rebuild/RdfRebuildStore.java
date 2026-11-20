@@ -261,11 +261,11 @@ public final class RdfRebuildStore {
     }
 
     /**
-     * Refuses the write when storage maintenance has paused writes to the serving dataset, unless
-     * it comes from the job holding the pause.
+     * Whether the write may go ahead now that storage maintenance may have paused writes to the
+     * serving dataset; see {@link RdfLiveWritePause#isWritable}.
      */
-    void requireLiveWritesAllowed(final RdfWriteDelivery delivery) {
-      RdfLiveWritePause.requireWritable(handle, clock.millis(), delivery);
+    boolean allowsLiveWrite(final RdfWriteDelivery delivery, final boolean canWait) {
+      return RdfLiveWritePause.isWritable(handle, clock.millis(), delivery, canWait);
     }
 
     public State state() {

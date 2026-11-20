@@ -171,7 +171,7 @@ describe('SsoConfigureForm', () => {
     expect(applySecurityConfiguration).not.toHaveBeenCalled();
   });
 
-  it('discards edits from the unsaved-changes dialog', async () => {
+  it('discards edits from the unsaved-changes popover', async () => {
     renderForm({ securityConfig: OKTA_CONFIG });
     await waitFor(() =>
       expect(field('authenticationConfiguration/clientId')).toBeInTheDocument()
@@ -181,7 +181,9 @@ describe('SsoConfigureForm', () => {
     });
 
     fireEvent.click(screen.getByTestId('cancel-sso-configuration'));
-    fireEvent.click(await screen.findByTestId('sso-unsaved-changes-discard'));
+    fireEvent.click(
+      await screen.findByTestId('unsaved-changes-popover-confirm')
+    );
 
     await waitFor(() =>
       expect(field('authenticationConfiguration/clientId')).toHaveValue(
@@ -190,7 +192,7 @@ describe('SsoConfigureForm', () => {
     );
   });
 
-  it('starts a new provider with the sign-out warning and returns to the grid on discard', async () => {
+  it('starts a new provider with the sign-out warning and returns to the grid on an untouched cancel', async () => {
     const { onChangeProvider } = renderForm({
       selectedProvider: AuthProvider.Google,
     });
@@ -201,9 +203,11 @@ describe('SsoConfigureForm', () => {
     expect(screen.getByTestId('sso-test-login-required')).toBeInTheDocument();
 
     fireEvent.click(screen.getByTestId('cancel-sso-configuration'));
-    fireEvent.click(await screen.findByTestId('sso-unsaved-changes-discard'));
 
     expect(onChangeProvider).toHaveBeenCalled();
+    expect(
+      screen.queryByTestId('unsaved-changes-popover')
+    ).not.toBeInTheDocument();
   });
 
   it('validates a new provider before writing it', async () => {
@@ -290,7 +294,11 @@ describe('SsoConfigureForm', () => {
       onBack: expect.any(Function),
     });
 
-    fireEvent.click(screen.getByTestId('sso-test-login-back'));
+    act(() => {
+      onSubPageChange.mock.calls[
+        onSubPageChange.mock.calls.length - 1
+      ][0].onBack();
+    });
 
     expect(screen.queryByTestId('sso-test-login-page')).not.toBeInTheDocument();
     expect(onSubPageChange).toHaveBeenLastCalledWith(undefined);

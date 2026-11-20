@@ -5,12 +5,12 @@ import static org.openmetadata.service.governance.workflows.Workflow.FAILURE_VAR
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import org.openmetadata.schema.governance.workflows.ApprovalOutcome;
 import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -227,6 +227,11 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         > 0;
   }
 
+  /** Adds a decided approval step to the instance's {@code approvals}. */
+  public void recordApproval(UUID workflowInstanceId, ApprovalOutcome approval) {
+    instanceDao.appendApproval(workflowInstanceId.toString(), JsonUtils.pojoToJson(approval));
+  }
+
   /** The stop request recorded on the workflow instance, read from the database. */
   public Optional<StopRequest> findStopRequest(UUID workflowInstanceId) {
     return Optional.ofNullable(getById(workflowInstanceId))
@@ -250,10 +255,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
   /** Marks a workflow instance as SUPERSEDED when a newer run replaces it. */
   public void markInstanceAsSuperseded(UUID workflowInstanceId, String reason) {
-    WorkflowInstance workflowInstance =
-        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
-    markEnded(
-        workflowInstanceId, workflowInstance, WorkflowInstance.WorkflowStatus.SUPERSEDED, reason);
+    markEnded(workflowInstanceId, WorkflowInstance.WorkflowStatus.SUPERSEDED, reason);
   }
 
   /**
@@ -269,33 +271,16 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         workflowInstance != null
             && workflowInstance.getStatus() == WorkflowInstance.WorkflowStatus.RUNNING;
     if (running) {
-      markEnded(workflowInstanceId, workflowInstance, status, reason);
+      markEnded(workflowInstanceId, status, reason);
     }
     return running;
   }
 
   private void markEnded(
-      UUID workflowInstanceId,
-      WorkflowInstance workflowInstance,
-      WorkflowInstance.WorkflowStatus status,
-      String reason) {
-
-    Map<String, Object> variables = workflowInstance.getVariables();
-    if (variables == null) {
-      variables = new HashMap<>();
-    }
-    variables.put(TERMINATION_REASON_VARIABLE_KEY, reason);
-
-    WorkflowInstance updatedInstance =
-        workflowInstance
-            .withStatus(status)
-            .withVariables(variables)
-            .withEndedAt(System.currentTimeMillis());
-
-    getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
+      UUID workflowInstanceId, WorkflowInstance.WorkflowStatus status, String reason) {
+    instanceDao.recordEndFromOutside(
+        workflowInstanceId.toString(), status.value(), System.currentTimeMillis(), reason);
   }
-
-  private static final String TERMINATION_REASON_VARIABLE_KEY = "terminationReason";
 
   /** Key, in a workflow instance's variables, of the {@link StopRequest} an administrator made. */
   public static final String STOP_REQUEST_VARIABLE_KEY = "stopRequest";
