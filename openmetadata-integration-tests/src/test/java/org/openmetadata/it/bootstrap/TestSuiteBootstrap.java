@@ -328,9 +328,9 @@ public class TestSuiteBootstrap implements LauncherSessionListener {
       mysql.withStartupTimeoutSeconds(240);
       mysql.withConnectTimeoutSeconds(240);
       if (Boolean.parseBoolean(System.getProperty("dbContainerTmpfs", "true"))) {
-        // The parallel lane outgrew 2g at its very tail: MySQL reports "Disk is full writing
-        // './binlog...'", every COMMIT then stalls, and the lane idles into its job timeout. tmpfs
-        // only consumes memory for what is written, so the larger cap costs nothing until needed.
+        // The parallel lane outgrew 2g at its very tail: InnoDB reports "The table ... is full",
+        // every COMMIT then stalls, and the lane idles into its job timeout. tmpfs only consumes
+        // memory for what is written, so the larger cap costs nothing until it is needed.
         mysql.withTmpFs(java.util.Map.of("/var/lib/mysql", "rw,size=3g"));
       }
       mysql.withCreateContainerCmdModifier(

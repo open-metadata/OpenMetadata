@@ -3820,4 +3820,9 @@ public class TableRepository extends EntityRepository<Table> {
   protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Table table) {
     return Map.of("columns", listOrEmpty(table.getColumns()));
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }

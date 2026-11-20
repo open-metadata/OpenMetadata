@@ -1450,4 +1450,9 @@ public class ContainerRepository extends EntityRepository<Container> {
             ? List.of()
             : listOrEmpty(container.getDataModel().getColumns()));
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }

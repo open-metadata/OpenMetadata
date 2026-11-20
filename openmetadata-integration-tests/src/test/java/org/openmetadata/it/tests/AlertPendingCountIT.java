@@ -6,10 +6,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
@@ -78,9 +80,11 @@ class AlertPendingCountIT {
     assertFalse(record.get("countsAreLowerBound").asBoolean());
   }
 
-  // Watches tables only, so its own creation event is not counted. It ticks once, when created,
-  // and reads one event, so that tick can take only the creation event and never the backlog.
-  private static EventSubscription createAlert(TestNamespace ns, String name) {
+  // Disabled, so no tick moves its position while a test counts, and positioned after every change
+  // event its setup wrote: creating it records its own event after the request returns, and the
+  // count reads the first CAP unread events whether they match or not, so a setup event among them
+  // would push an event of the backlog out of the count.
+  private static EventSubscription createAlert(TestNamespace ns, String name) throws Exception {
     Webhook webhook =
         new Webhook().withEndpoint(URI.create("http://localhost:8585/api/v1/test/webhook/pending"));
     CreateEventSubscription request =
@@ -88,9 +92,7 @@ class AlertPendingCountIT {
             .withName(ns.prefix(name))
             .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
             .withResources(List.of(Entity.TABLE))
-            .withEnabled(true)
-            .withBatchSize(1)
-            .withPollInterval(3600)
+            .withEnabled(false)
             .withDestinations(
                 List.of(
                     new SubscriptionDestination()
@@ -100,7 +102,30 @@ class AlertPendingCountIT {
                         .withConfig(webhook)));
     EventSubscription alert = SdkClients.adminClient().eventSubscriptions().create(request);
     ns.trackRoot(Entity.EVENT_SUBSCRIPTION, alert);
+    awaitNoNewChangeEvents();
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(
+            HttpMethod.PUT,
+            "/v1/events/subscriptions/name/" + alert.getFullyQualifiedName() + "/syncOffset",
+            null,
+            RequestOptions.builder().build());
     return alert;
+  }
+
+  private static void awaitNoNewChangeEvents() {
+    long[] lastSeen = {-1L, 0L};
+    Awaitility.await("change events of the setup to settle")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .until(() -> unchangedForFourReads(lastSeen));
+  }
+
+  private static boolean unchangedForFourReads(long[] lastSeen) {
+    long latest = Entity.getCollectionDAO().changeEventDAO().getLatestOffset();
+    lastSeen[1] = latest == lastSeen[0] ? lastSeen[1] + 1 : 0;
+    lastSeen[0] = latest;
+    return lastSeen[1] >= 4;
   }
 
   private static String changeEvent(String description) {

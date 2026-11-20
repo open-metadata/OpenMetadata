@@ -2729,4 +2729,9 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
                         task.getName(), task.getFullyQualifiedName(), task.getTags()))
             .toList());
   }
+
+  @Override
+  protected boolean hasTaggedFields() {
+    return true;
+  }
 }

@@ -140,7 +140,7 @@ export const fetchTestCaseSummaryByNoDimension = (
 };
 
 export const fetchCountOfIncidentStatusTypeByDays = (
-  status: TestCaseResolutionStatusTypes,
+  statuses: TestCaseResolutionStatusTypes[],
   filters?: DataQualityDashboardChartFilters
 ) => {
   const mustFilter = [];
@@ -164,7 +164,7 @@ export const fetchCountOfIncidentStatusTypeByDays = (
       query: {
         bool: {
           must: [
-            { term: { testCaseResolutionStatusType: status } },
+            { terms: { testCaseResolutionStatusType: statuses } },
             {
               range: {
                 timestamp: {
