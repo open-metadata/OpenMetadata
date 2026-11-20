@@ -68,6 +68,17 @@ class AlertProgressTest {
     assertFalse(progress.caughtUp());
   }
 
+  // Read between the commit that creates the alert and the write of its first position.
+  @Test
+  void enabledAlertWithNoPositionRowReadsAsAtTheLatestOffset() {
+    AlertProgress progress = withNoRow(alert(true), AlertProgress::of);
+
+    assertEquals(LATEST, progress.currentOffset());
+    assertEquals(LATEST, progress.startingOffset());
+    assertEquals(0L, progress.unread());
+    assertTrue(progress.caughtUp());
+  }
+
   private <T> T withRows(EventSubscription alert, Function<EventSubscription, T> read) {
     EventSubscriptionOffset position =
         new EventSubscriptionOffset()
@@ -77,6 +88,10 @@ class AlertProgressTest {
             .withTimestamp(1L);
     when(subscriptions.getSubscriberExtension(alert.getId().toString(), LedgerKeys.POSITION))
         .thenReturn(JsonUtils.pojoToJson(position));
+    return withNoRow(alert, read);
+  }
+
+  private <T> T withNoRow(EventSubscription alert, Function<EventSubscription, T> read) {
     when(changeEvents.getLatestOffset()).thenReturn(LATEST);
     CollectionDAO dao = mock(CollectionDAO.class);
     when(dao.changeEventDAO()).thenReturn(changeEvents);
