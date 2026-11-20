@@ -88,7 +88,7 @@ export const COLUMN_CONSTRAINT_TYPE_OPTIONS = [
   },
   {
     label: 'label.not-null-unique',
-    value: Constraint.NotNullUnique,
+    value: 'NOT_NULL_UNIQUE' as Constraint,
   },
 ];
 
