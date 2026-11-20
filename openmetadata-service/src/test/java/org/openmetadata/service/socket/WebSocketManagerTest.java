@@ -209,6 +209,19 @@ class WebSocketManagerTest {
   }
 
   @Test
+  void disconnectAll_closesSessionBoundAndSessionlessSockets() throws Exception {
+    SocketIoSocket sessionBound = trackSocket(UUID.randomUUID(), "socket-a", "session-a");
+    SocketIoSocket sessionless = registerSocket(UUID.randomUUID(), "socket-b");
+
+    manager.disconnectAll();
+
+    verify(sessionBound, times(1)).disconnect(true);
+    verify(sessionless, times(1)).disconnect(true);
+    assertTrue(manager.getActivityFeedEndpoints().isEmpty());
+    assertTrue(socketSessionIds().isEmpty());
+  }
+
+  @Test
   void sendToOne_deliversLocallyAndPublishesToRelay() {
     UUID userId = UUID.randomUUID();
     SocketIoSocket socket = mock(SocketIoSocket.class);
@@ -342,13 +355,18 @@ class WebSocketManagerTest {
 
   private SocketIoSocket trackSocket(UUID userId, String socketId, String sessionId)
       throws Exception {
+    SocketIoSocket socket = registerSocket(userId, socketId);
+    socketSessionIds().put(socketId, sessionId);
+    return socket;
+  }
+
+  private SocketIoSocket registerSocket(UUID userId, String socketId) {
     SocketIoSocket socket = mock(SocketIoSocket.class);
     when(socket.getId()).thenReturn(socketId);
     manager
         .getActivityFeedEndpoints()
         .computeIfAbsent(userId, id -> new ConcurrentHashMap<>())
         .put(socketId, socket);
-    socketSessionIds().put(socketId, sessionId);
     return socket;
   }
 

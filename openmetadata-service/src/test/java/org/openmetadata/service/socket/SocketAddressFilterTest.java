@@ -491,6 +491,23 @@ class SocketAddressFilterTest {
     assertEquals("Session is no longer active", rejected.getMessage());
   }
 
+  @Test
+  void cookieHandshakeAcceptsTheOtherNativePasswordProviderName() {
+    String sessionId = validSessionId('o');
+    SocketAddressFilter renamed =
+        new SocketAddressFilter(
+            authConfig,
+            authorizerConfig,
+            sessionServiceConfiguredWith(
+                AuthProvider.BASIC, sessionIssuedBy(AuthProvider.OPENMETADATA, sessionId)));
+    when(request.getCookies())
+        .thenReturn(new Cookie[] {new Cookie(SessionCookieUtil.COOKIE_NAME, sessionId)});
+
+    HandshakeIdentity identity = renamed.authenticate(request);
+
+    assertEquals(sessionId, identity.sessionId());
+  }
+
   /** Externally-issued tokens carry no session claim and are accepted on token validity alone. */
   @Test
   void externalTokenWithoutSessionClaimIsAcceptedWithoutStoreValidation() throws Exception {

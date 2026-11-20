@@ -62,6 +62,8 @@ import java.util.Objects;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import javax.naming.ConfigurationException;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -202,6 +204,7 @@ import org.openmetadata.service.security.auth.BasicAuthenticator;
 import org.openmetadata.service.security.auth.LdapAuthenticator;
 import org.openmetadata.service.security.auth.NoopAuthenticator;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager.ConfigurationChangeListener;
 import org.openmetadata.service.security.auth.TestLoginSessionSweeper;
 import org.openmetadata.service.security.auth.UserActivityFilter;
 import org.openmetadata.service.security.auth.UserActivityTracker;
@@ -218,6 +221,7 @@ import org.openmetadata.service.security.saml.SamlLogoutServlet;
 import org.openmetadata.service.security.saml.SamlMetadataServlet;
 import org.openmetadata.service.security.saml.SamlSettingsHolder;
 import org.openmetadata.service.security.saml.SamlTokenRefreshServlet;
+import org.openmetadata.service.security.session.SessionProviders;
 import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.security.session.SessionTimeoutResolver;
 import org.openmetadata.service.seeding.SeedDataGate;
@@ -1468,8 +1472,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     SocketAddressFilter websocketFilter = socketAddressFilter;
     SecurityConfigurationManager.getInstance()
         .addConfigurationChangeListener(
-            (authConfig, authzConfig, mcpConfig) ->
-                websocketFilter.updateConfiguration(authConfig, authzConfig));
+            pushFeedReloadListener(
+                websocketFilter,
+                SecurityConfigurationManager.getCurrentAuthConfig().getProvider(),
+                WebSocketManager::getInstance));
 
     EngineIoServerOptions eioOptions = EngineIoServerOptions.newFromDefault();
     eioOptions.setAllowedCorsOrigins(null);
@@ -1506,6 +1512,44 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
           });
     } catch (Exception ex) {
       LOG.error("Websocket configuration error: {}", ex.getMessage());
+    }
+  }
+
+  /**
+   * Applies a security reload to the push feed: handshakes from now on are validated under the new
+   * configuration, and a provider switch closes the sockets already open. Each reload is compared
+   * with the provider the previous one (or the boot) applied. The manager is looked up when a
+   * reload fires, as the feed servlet does, because the listener is registered before it is built.
+   */
+  @VisibleForTesting
+  static ConfigurationChangeListener pushFeedReloadListener(
+      SocketAddressFilter websocketFilter,
+      AuthProvider bootProvider,
+      Supplier<WebSocketManager> sockets) {
+    AtomicReference<AuthProvider> appliedProvider = new AtomicReference<>(bootProvider);
+    return (authConfig, authzConfig, mcpConfig) -> {
+      websocketFilter.updateConfiguration(authConfig, authzConfig);
+      AuthProvider current = authConfig.getProvider();
+      closeSocketsOnProviderSwitch(appliedProvider.getAndSet(current), current, sockets.get());
+    };
+  }
+
+  /**
+   * A provider switch closes every push-feed socket on this server; each client must handshake
+   * again under the new configuration. A rename between the two native-password names closes
+   * nothing.
+   * ADR:2026-10-20-a-refresh-ends-sessions-issued-by-a-provider-no-longer-configured
+   */
+  @VisibleForTesting
+  static void closeSocketsOnProviderSwitch(
+      AuthProvider previous, AuthProvider current, WebSocketManager sockets) {
+    if (SessionProviders.isFromAnotherProvider(previous.value(), current)) {
+      LOG.info(
+          "Authentication provider changed from {} to {}; closing every push-feed socket on this"
+              + " server",
+          previous.value(),
+          current.value());
+      sockets.disconnectAll();
     }
   }
 

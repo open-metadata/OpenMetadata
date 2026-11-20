@@ -226,6 +226,14 @@ public class WebSocketManager {
     }
   }
 
+  /**
+   * Closes every socket this server holds, with or without a session: a socket opened with a
+   * provider token has no session the sweep could re-check.
+   */
+  public void disconnectAll() {
+    activityFeedEndpoints.keySet().forEach(this::disconnectAllForUser);
+  }
+
   public void disconnectForSession(UUID userId, String sessionId) {
     if (userId == null || sessionId == null || sessionId.isEmpty()) {
       return;
@@ -305,7 +313,8 @@ public class WebSocketManager {
             session ->
                 session.getStatus() == SessionStatus.ACTIVE
                     && !session.isExpired(System.currentTimeMillis())
-                    && expectedUserId.toString().equals(session.getUserId()))
+                    && expectedUserId.toString().equals(session.getUserId())
+                    && !sessionService.isFromAnotherProvider(session))
         .isPresent();
   }
 
