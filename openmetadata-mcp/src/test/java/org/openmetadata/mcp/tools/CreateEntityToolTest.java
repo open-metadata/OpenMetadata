@@ -97,10 +97,13 @@ class CreateEntityToolTest {
 
   @Test
   void patchEntityContractOffersOnlyTheImplementedRawPatch() throws IOException {
-    JsonNode parameters = tool("patch_entity").path("parameters");
+    final JsonNode parameters = tool("patch_entity").path("parameters");
+    final JsonNode responseProperty = parameters.path("properties").path("response");
 
-    assertEquals(Set.of("entityType", "fqn", "patch"), propertyNames(parameters));
+    assertEquals(Set.of("entityType", "fqn", "patch", "response"), propertyNames(parameters));
     assertEquals(Set.of("entityType", "fqn", "patch"), textValues(parameters.path("required")));
+    assertEquals("compact", responseProperty.path("default").asText());
+    assertEquals(Set.of("compact", "full"), textValues(responseProperty.path("enum")));
   }
 
   @Test

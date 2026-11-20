@@ -20,7 +20,9 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.Response;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -39,9 +41,12 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -134,22 +139,81 @@ class PatchEntityToolTest {
   /** A bot may patch a memory citing a Query it cannot view; the answer is still a read. */
   @Test
   void execute_reducesAQueryTheCallerMayNotViewToIdAndType() {
+    final EntityReference query = hiddenQueryRef();
+    final ContextMemory memory = memoryCitingQuery(query);
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.CONTEXT_MEMORY);
+    params.put("fqn", "salary-bands");
+    params.put(
+        "patch",
+        "[{\"op\": \"replace\", \"path\": \"/relatedEntities\", \"value\": [{\"id\": \""
+            + query.getId()
+            + "\", \"type\": \"query\"}]}]");
+
+    final Map<String, Object> result = executeMemoryPatchWithDeniedQuery(memory, params);
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
+    assertThat(memory.getRelatedEntities()).containsExactly(query);
+  }
+
+  @Test
+  void execute_compactPatchOnDescriptionOmitsUntouchedHiddenQueryReferences() {
+    final EntityReference query = hiddenQueryRef();
+    final ContextMemory memory = memoryCitingQuery(query).withDescription("updated");
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.CONTEXT_MEMORY);
+    params.put("fqn", "salary-bands");
+    params.put(
+        "patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"updated\"}]");
+
+    final Map<String, Object> result = executeMemoryPatchWithDeniedQuery(memory, params);
+
+    assertThat(result).containsEntry("description", "updated").doesNotContainKey("relatedEntities");
+    assertThat(result.toString())
+        .doesNotContain("payroll", "erp.payroll", "Who earns more than the CEO?");
+  }
+
+  @Test
+  void execute_responseFull_reducesAQueryTheCallerMayNotViewToIdAndType() {
+    final EntityReference query = hiddenQueryRef();
+    final ContextMemory memory = memoryCitingQuery(query).withDescription("updated");
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.CONTEXT_MEMORY);
+    params.put("fqn", "salary-bands");
+    params.put(
+        "patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"updated\"}]");
+    params.put("response", "full");
+
+    final Map<String, Object> result = executeMemoryPatchWithDeniedQuery(memory, params);
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
+    assertThat(memory.getRelatedEntities()).containsExactly(query);
+  }
+
+  private static EntityReference hiddenQueryRef() {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.QUERY)
+        .withName("payroll")
+        .withFullyQualifiedName("erp.payroll")
+        .withDisplayName("Who earns more than the CEO?");
+  }
+
+  private static ContextMemory memoryCitingQuery(final EntityReference query) {
+    return new ContextMemory()
+        .withId(UUID.randomUUID())
+        .withName("salary-bands")
+        .withFullyQualifiedName("salary-bands")
+        .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
+        .withRelatedEntities(List.of(query));
+  }
+
+  private Map<String, Object> executeMemoryPatchWithDeniedQuery(
+      final ContextMemory memory, final Map<String, Object> params) {
     @SuppressWarnings("unchecked")
-    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
-    EntityReference query =
-        new EntityReference()
-            .withId(UUID.randomUUID())
-            .withType(Entity.QUERY)
-            .withName("payroll")
-            .withFullyQualifiedName("erp.payroll")
-            .withDisplayName("Who earns more than the CEO?");
-    ContextMemory memory =
-        new ContextMemory()
-            .withId(UUID.randomUUID())
-            .withName("salary-bands")
-            .withFullyQualifiedName("salary-bands")
-            .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
-            .withRelatedEntities(List.of(query));
+    final EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
     when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
         .thenReturn(
             new RestUtil.PatchResponse<>(Response.Status.OK, memory, EventType.ENTITY_UPDATED));
@@ -159,12 +223,6 @@ class PatchEntityToolTest {
             eq(securityContext),
             argThat(operation -> Entity.QUERY.equals(operation.getResource())),
             any());
-
-    Map<String, Object> params = new HashMap<>();
-    params.put("entityType", Entity.CONTEXT_MEMORY);
-    params.put("fqn", "salary-bands");
-    params.put("patch", "[{\"op\": \"replace\", \"path\": \"/description\", \"value\": \"x\"}]");
-    Map<String, Object> result;
 
     try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
         MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
@@ -183,12 +241,8 @@ class PatchEntityToolTest {
           .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
           .thenReturn(new SubjectContext(new User().withName("alice"), null, null));
 
-      result = new PatchEntityTool().execute(authorizer, securityContext, params);
+      return new PatchEntityTool().execute(authorizer, securityContext, params);
     }
-
-    assertThat(result.get("relatedEntities"))
-        .isEqualTo(List.of(Map.of("id", query.getId().toString(), "type", Entity.QUERY)));
-    assertThat(memory.getRelatedEntities()).containsExactly(query);
   }
 
   @Test
@@ -614,8 +668,219 @@ class PatchEntityToolTest {
     assertThat(result)
         .containsEntry("_operation", "pendingApproval")
         .containsEntry("changeRequestId", changeRequestId.toString())
+        .containsEntry("entityType", Entity.TABLE)
         .containsEntry("description", "old")
-        .doesNotContainKey("changed");
+        .doesNotContainKeys("changed", "tags", "columns");
+  }
+
+  @Test
+  void execute_defaultCompactResponseOmitsWideTableColumns() {
+    final Table patchedTable =
+        sampleWideTable()
+            .withDescription("Curated orders table")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("description"))));
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put(
+        "patch",
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Curated orders table\"}]");
+
+    final Map<String, Object> result = executeTablePatch(patchedTable, params);
+
+    assertThat(result)
+        .containsEntry("id", patchedTable.getId().toString())
+        .containsEntry("name", "orders")
+        .containsEntry("fullyQualifiedName", "shop.db.sales.orders")
+        .containsEntry("entityType", Entity.TABLE)
+        .containsEntry("version", 0.2)
+        .containsEntry("updatedAt", 1_700_000_000_000L)
+        .containsEntry("_operation", "updated")
+        .containsEntry("changed", List.of("description"))
+        .containsEntry("description", "Curated orders table")
+        .doesNotContainKeys(
+            "columns", "owners", "schemaDefinition", "changeDescription", "updatedBy");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"", "   ", "compact"})
+  void execute_blankOrExplicitCompactResponseUsesCompactMode(final String responseMode) {
+    final Table patchedTable =
+        sampleWideTable()
+            .withDescription("Curated orders table")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("description"))));
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put(
+        "patch",
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Curated orders table\"}]");
+    params.put("response", responseMode);
+
+    final Map<String, Object> result = executeTablePatch(patchedTable, params);
+
+    assertThat(result)
+        .containsEntry("entityType", Entity.TABLE)
+        .containsEntry("description", "Curated orders table")
+        .doesNotContainKey("columns");
+  }
+
+  @Test
+  void execute_responseFull_returnsFullEntityWithConfirmationMetadata() {
+    final Table patchedTable =
+        sampleWideTable()
+            .withDescription("Curated orders table")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("description"))));
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put(
+        "patch",
+        "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"Curated orders table\"}]");
+    params.put("response", "full");
+
+    final Map<String, Object> result = executeTablePatch(patchedTable, params);
+
+    assertThat(result)
+        .containsEntry("entityType", Entity.TABLE)
+        .containsEntry("version", 0.2)
+        .containsEntry("updatedAt", 1_700_000_000_000L)
+        .containsEntry("_operation", "updated")
+        .containsEntry("changed", List.of("description"))
+        .containsEntry("description", "Curated orders table")
+        .containsKeys("columns", "owners", "schemaDefinition")
+        .doesNotContainKeys("changeDescription", "updatedBy");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"verbose", "xml", "COMPACT", "true"})
+  void execute_invalidResponseString_throwsBeforeAuthorizingOrPatching(final String badMode) {
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+    params.put("response", badMode);
+
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("'response'")
+        .hasMessageContaining("Nothing was changed");
+    verifyNoInteractions(authorizer);
+  }
+
+  @Test
+  void execute_nonStringResponseParameter_throwsBeforeAuthorizingOrPatching() {
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+    params.put("response", 123);
+
+    assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("'response'")
+        .hasMessageContaining("Nothing was changed");
+    verifyNoInteractions(authorizer);
+  }
+
+  @Test
+  void execute_unescapesRfc6901ExtensionPointerInOrder() {
+    final Map<String, Object> extension = new LinkedHashMap<>();
+    extension.put("cost/center", "FIN-99");
+    extension.put("~1", "literal-tilde-one");
+    extension.put("untouchedProp", "huge-untouched-value");
+    final Table patchedTable =
+        sampleWideTable()
+            .withExtension(extension)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsAdded(List.of(new FieldChange().withName("extension"))));
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put(
+        "patch",
+        "[{\"op\":\"add\",\"path\":\"/extension/cost~1center\",\"value\":\"FIN-99\"},"
+            + "{\"op\":\"add\",\"path\":\"/extension/~01\",\"value\":\"literal-tilde-one\"}]");
+
+    final Map<String, Object> result = executeTablePatch(patchedTable, params);
+
+    assertThat(result)
+        .containsEntry("extension", Map.of("cost/center", "FIN-99", "~1", "literal-tilde-one"))
+        .doesNotContainKey("columns");
+  }
+
+  @Test
+  void execute_collectsMoveAndCopyFromPointersAndIgnoresTestOperations() {
+    final List<TagLabel> tags = List.of(new TagLabel().withTagFQN("Tier.Tier1"));
+    final Table patchedTable =
+        sampleWideTable()
+            .withTags(tags)
+            .withDescription("copied")
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("description"))));
+    final Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put(
+        "patch",
+        "[{\"op\":\"test\",\"path\":\"/owners\",\"value\":[]},"
+            + "{\"op\":\"copy\",\"from\":\"/tags/0/tagFQN\",\"path\":\"/description\"}]");
+
+    final Map<String, Object> result = executeTablePatch(patchedTable, params);
+
+    assertThat(result)
+        .containsEntry("description", "copied")
+        .containsKey("tags")
+        .doesNotContainKeys("owners", "columns");
+  }
+
+  private Map<String, Object> executeTablePatch(
+      final Table patchedTable, final Map<String, Object> params) {
+    @SuppressWarnings("unchecked")
+    final EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.OK, patchedTable, EventType.ENTITY_UPDATED));
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      return new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+  }
+
+  private static Table sampleWideTable() {
+    final List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < 20; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(128));
+    }
+    return new Table()
+        .withId(UUID.randomUUID())
+        .withName("orders")
+        .withFullyQualifiedName("shop.db.sales.orders")
+        .withVersion(0.2)
+        .withUpdatedAt(1_700_000_000_000L)
+        .withUpdatedBy("alice")
+        .withColumns(columns)
+        .withSchemaDefinition("CREATE TABLE orders (col_0 VARCHAR(128))")
+        .withOwners(
+            List.of(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withType(Entity.USER)
+                    .withName("owner1")));
   }
 
   /** As REST's identity endpoints: an impersonated call never writes what grants privileges. */

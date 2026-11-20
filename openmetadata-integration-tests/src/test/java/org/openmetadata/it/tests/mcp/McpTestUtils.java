@@ -117,10 +117,18 @@ public class McpTestUtils {
 
   public static Map<String, Object> createPatchEntityToolCall(
       String entityType, String fqn, String patch) {
-    Map<String, Object> arguments = new HashMap<>();
+    return createPatchEntityToolCall(entityType, fqn, patch, null);
+  }
+
+  public static Map<String, Object> createPatchEntityToolCall(
+      final String entityType, final String fqn, final String patch, final String response) {
+    final Map<String, Object> arguments = new HashMap<>();
     arguments.put("entityType", entityType);
     arguments.put("fqn", fqn);
     arguments.put("patch", patch);
+    if (response != null) {
+      arguments.put("response", response);
+    }
 
     return createToolCallRequest("patch_entity", arguments);
   }
