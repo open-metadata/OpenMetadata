@@ -896,3 +896,38 @@ def test_yield_dashboard_attaches_label_tags(omni_source, tag_metadata):
     details = OmniDashboardDetails(document=labelled, dashboard=MOCK_DASHBOARD_DOC)
     dashboard = _rights(omni_source.yield_dashboard(details))[0]
     assert [t.tagFQN.root for t in dashboard.tags] == ['OmniLabels."Shared.Tag"']
+
+
+ORDERS_TOPIC = OmniTopic(
+    model_id="m1", model_name="sales", name="Orders", base_view="analytics__orders", base_schema="ANALYTICS"
+)
+ORDERS_VIEW = OmniTopic(model_id="m1", model_name="sales", name="orders", base_view="orders", base_schema="ANALYTICS")
+
+
+def _index(source, *topics):
+    for topic in topics:
+        for key in source._topic_name_keys(topic):
+            source._topic_name_index[key].append(topic)
+        for key in source._topic_alias_keys(topic):
+            source._topic_alias_index[key].append(topic)
+
+
+def test_resolve_topic_view_handle_picks_the_view_over_a_same_named_topic(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("analytics__orders") is ORDERS_VIEW
+    assert omni_source._resolve_topic("ANALYTICS/orders") is ORDERS_VIEW
+
+
+def test_resolve_topic_topic_name_picks_the_topic_over_a_same_named_view(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("Orders") is ORDERS_TOPIC
+
+
+def test_resolve_topic_same_named_views_across_models_stay_ambiguous(omni_source):
+    _index(omni_source, ORDERS_VIEW, ORDERS_VIEW.model_copy(update={"model_id": "m2", "model_name": "finance"}))
+    assert omni_source._resolve_topic("analytics__orders") is None
+
+
+def test_resolve_topic_same_model_collision_without_exact_spelling_stays_ambiguous(omni_source):
+    _index(omni_source, ORDERS_TOPIC, ORDERS_VIEW)
+    assert omni_source._resolve_topic("ORDERS") is None
