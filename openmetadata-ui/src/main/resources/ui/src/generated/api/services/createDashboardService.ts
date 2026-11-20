@@ -451,6 +451,16 @@ export interface Connection {
      */
     token?: string;
     /**
+     * Ingest every workbook and data model in the Sigma organization. By default, Sigma's API
+     * lists only the workbooks and data models that the owner of the client credentials can
+     * access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the
+     * workbook and data model listings, and excludeExplorations=true to the workbook listing so
+     * that private custom views are not ingested. The client credentials must belong to a user
+     * with the Admin account type: Sigma documents skipPermissionCheck as available only to
+     * admins.
+     */
+    listAllAssets?: boolean;
+    /**
      * ThoughtSpot authentication configuration
      */
     authentication?: Authentication;
@@ -486,6 +496,9 @@ export interface Connection {
  *
  * Access Token Auth Credentials
  *
+ * Tableau connected app (direct trust) credentials. OpenMetadata signs a short-lived JWT
+ * with the secret and signs in as the given Tableau user.
+ *
  * Choose Basic Auth (username/password) for on-premise or OAuth 2.0 Client Credentials for
  * SAP S/4HANA Cloud.
  *
@@ -503,6 +516,9 @@ export interface AuthenticationType {
     /**
      * Username to access the service.
      *
+     * Tableau user to sign in as; ingestion runs with this user's permissions. On Tableau Cloud
+     * this is the user's email address.
+     *
      * Username to authenticate with SAP S/4HANA.
      */
     username?: string;
@@ -515,13 +531,23 @@ export interface AuthenticationType {
      */
     personalAccessTokenSecret?: string;
     /**
-     * Authentication type identifier.
-     */
-    authType?: AuthType;
-    /**
+     * Client ID of the Tableau connected app.
+     *
      * OAuth 2.0 client ID registered in SAP.
      */
     clientId?: string;
+    /**
+     * ID of the connected app secret.
+     */
+    secretId?: string;
+    /**
+     * Value of the connected app secret.
+     */
+    secretValue?: string;
+    /**
+     * Authentication type identifier.
+     */
+    authType?: AuthType;
     /**
      * OAuth 2.0 client secret.
      */

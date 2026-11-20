@@ -460,6 +460,61 @@ class TestMultiThreadedOperations:
         total_ops = summary["db_queries"]["SELECT"]["_default"]["count"]
         assert total_ops == num_threads * ops_per_thread
 
+    def test_summary_waits_for_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        class ReleaseOnWait(threading.Condition):
+            # The worker is let go only once the summary is waiting for it
+            def wait(self, timeout=None):
+                release.set()
+                return super().wait(timeout)
+
+        queue = metrics._async_queue
+        queue.all_tasks_done = ReleaseOnWait(queue.mutex)
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        # The queue is now empty while the worker still holds the item
+        assert taken.wait(timeout=5)
+
+        summary = metrics.get_summary()
+
+        assert summary["db_queries"]["SELECT"]["_default"]["count"] == 1
+
+    def test_new_run_drops_the_item_the_worker_is_recording(self) -> None:
+        metrics = OperationMetricsState()
+        metrics.set_run_context(run_id="run-1")
+        taken = threading.Event()
+        release = threading.Event()
+        record = metrics._record_sync
+
+        def slow_record(*args) -> None:
+            taken.set()
+            release.wait(timeout=5)
+            record(*args)
+
+        metrics._record_sync = slow_record
+        metrics.record_operation("db_queries", "SELECT", 1.0)
+        # The queue is now empty while the worker still holds the run-1 item
+        assert taken.wait(timeout=5)
+
+        metrics.set_run_context(run_id="run-2")
+        # Only now, after the new run has started, does the worker record the run-1 item
+        release.set()
+        metrics.record_operation("db_queries", "INSERT", 2.0)
+
+        summary = metrics.get_summary()
+
+        assert "SELECT" not in summary["db_queries"]
+        assert summary["db_queries"]["INSERT"]["_default"]["count"] == 1
+
     def test_multiple_operations_per_thread(self) -> None:
         metrics = OperationMetricsState()
 

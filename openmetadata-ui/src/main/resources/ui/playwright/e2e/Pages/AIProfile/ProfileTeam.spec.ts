@@ -254,7 +254,7 @@ test.describe('AI Profile Team Detail', () => {
       member.responseData.displayName
     );
     await expect(
-      page.getByTestId('team-users-table').getByText(member.responseData.name)
+      page.getByTestId('team-users-table').getByTestId(member.responseData.name)
     ).toBeVisible();
 
     const removeResponse = page.waitForResponse(
@@ -268,7 +268,7 @@ test.describe('AI Profile Team Detail', () => {
     await removeResponse;
 
     await expect(
-      page.getByTestId('team-users-table').getByText(member.responseData.name)
+      page.getByTestId('team-users-table').getByTestId(member.responseData.name)
     ).toBeHidden();
   });
 

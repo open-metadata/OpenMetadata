@@ -16,18 +16,6 @@
 .entity-summary-panel-container {
   height: 100%;
   width: 100%;
-  background: var(--tw-background-color-canvas);
-
-  // Drawers take the core slideout's own surface.
-  &.explore,
-  &.lineage {
-    background: transparent;
-  }
-
-  &.glossary-term-assets-tab,
-  &.ontology-explorer {
-    background: var(--tw-background-color-canvas);
-  }
 
   &.explore,
   &.lineage,
@@ -71,7 +59,6 @@
       height: 100%;
       border-radius: var(--om-radius-lg);
       position: relative;
-      background: var(--tw-background-color-surface);
       &::-webkit-scrollbar {
         width: 0px;
         background: transparent;
@@ -167,7 +154,6 @@
     z-index: var(--om-z-999);
     top: 0;
     flex: 1;
-    background-color: var(--tw-background-color-surface);
   }
   .title-container {
     display: flex;

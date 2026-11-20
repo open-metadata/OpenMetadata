@@ -1,6 +1,7 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @ExtendWith(MockitoExtension.class)
 class ContextMemoryExtractorTest {
@@ -186,17 +188,18 @@ class ContextMemoryExtractorTest {
     assertEquals(Entity.PAGE, memory.getSourceEntity().getType());
   }
 
+  /** A memory's name is its FQN and never changes, and the memory may move to another document. */
   @Test
-  void truncatesLongSourceNamesToFitEntityNameLimit() {
-    String longName = "f".repeat(256);
-    EntityReference source = fileRef(UUID.randomUUID(), longName);
+  void namesAMemoryWithoutItsSource() {
+    EntityReference source = fileRef(UUID.randomUUID(), "Quarterly report.pdf");
     when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class)))
         .thenReturn(List.of(new KnowledgePill("T", "Q", "A", "S", "Faq")));
 
-    String name = derive("text", source).getFirst().getName();
+    ContextMemory memory = derive("text", source).getFirst();
 
-    assertTrue(name.length() <= 256, "memory name must fit the entityName limit");
-    assertTrue(name.startsWith("f".repeat(ContextMemoryExtractor.MAX_NAME_BASE_LENGTH) + "-"));
+    assertTrue(memory.getName().matches("memory-[0-9a-f-]{36}"), memory.getName());
+    assertEquals(FullyQualifiedName.build(memory.getName()), memory.getFullyQualifiedName());
+    assertFalse(memory.getFullyQualifiedName().contains("Quarterly"));
   }
 
   @Test

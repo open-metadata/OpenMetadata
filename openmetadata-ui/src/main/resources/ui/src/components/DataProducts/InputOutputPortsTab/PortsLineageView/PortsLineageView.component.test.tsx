@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { Edge, Node, ReactFlowProvider } from 'reactflow';
 import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { SearchedDataProps } from '../../../SearchedData/SearchedData.interface';
@@ -29,6 +29,8 @@ import { DataProductNodeProps, PortNodeProps } from './PortsLineageView.types';
 // and to keep the post-fit setTimeout effects inert under fake timers.
 let mockCapturedNodes: Node[] = [];
 let mockCapturedEdges: Edge[] = [];
+const mockFitView = jest.fn();
+const mockZoomTo = jest.fn();
 
 jest.mock('reactflow', () => {
   const actual = jest.requireActual('reactflow');
@@ -40,7 +42,7 @@ jest.mock('reactflow', () => {
     // (an object, not a component) and React fails with "Element type is
     // invalid".
     __esModule: true,
-    useReactFlow: () => ({ fitView: jest.fn(), zoomTo: jest.fn() }),
+    useReactFlow: () => ({ fitView: mockFitView, zoomTo: mockZoomTo }),
     default: ({ nodes, edges }: { nodes: Node[]; edges: Edge[] }) => {
       mockCapturedNodes = nodes;
       mockCapturedEdges = edges;
@@ -291,5 +293,40 @@ describe('PortsLineageView handle-id wiring', () => {
           expect(handleId).not.toBe(portId);
         });
       });
+  });
+});
+
+describe('PortsLineageView viewport fit', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+    mockFitView.mockClear();
+    mockZoomTo.mockClear();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('refits when isFullScreen changes without the toggle button (Escape exit)', () => {
+    const props = {
+      assetCount: 2,
+      dataProduct,
+      inputPortsData,
+      outputPortsData,
+    };
+    const { rerender } = render(<PortsLineageView {...props} isFullScreen />);
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+    mockFitView.mockClear();
+    mockZoomTo.mockClear();
+
+    rerender(<PortsLineageView {...props} isFullScreen={false} />);
+    act(() => {
+      jest.advanceTimersByTime(100);
+    });
+
+    expect(mockFitView).toHaveBeenCalledWith({ padding: 0.2 });
+    expect(mockZoomTo).toHaveBeenCalledWith(0.4);
   });
 });

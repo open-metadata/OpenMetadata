@@ -1,9 +1,9 @@
 # Ontology releases use the existing approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model); v14 2026-11-12 (`allAssignees` threshold capped at the user entry count)
+- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model); v14 2026-11-12 (`allAssignees` threshold capped at the user entry count); v15 2026-11-15 (UI guards moved to Collate); v16 2026-11-16 (the review panel moved to Collate)
 - **Deciders:** Harsha
-- **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `CreateTaskTest`, `TaskWorkflowHandlerTest`, `TaskReviewVotesTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `IndependentOntologyReviewRuleIT`, `IndependentOntologyReleaseIT`, `OntologyReviewPanel.test.tsx`, `OntologyReview.spec.ts`
+- **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `CreateTaskTest`, `TaskWorkflowHandlerTest`, `TaskReviewVotesTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `IndependentOntologyReviewRuleIT`, `IndependentOntologyReleaseIT`, `OntologyReviewPanel.test.tsx` *(openmetadata-collate)*, `OntologyReview.spec.ts` *(openmetadata-collate)*
 - **Related:** ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
 
 ## Context
@@ -137,3 +137,5 @@ Under `allAssignees`, the task's `approvalThreshold` is still the larger of the 
 and the number of assignee entries, then capped at the entry count when every entry is a user, so a
 node threshold above the users able to vote no longer leaves the review open forever. A list
 holding a team is not capped. See ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters.
+
+v15 (2026-11-15): the Ontology Studio UI moved to Collate (ADR:2026-11-15-ontology-studio-ui-ships-only-in-collate). The guard files marked *(openmetadata-collate)* moved with it, at the same paths under `collate-ui/src/main/resources/ui/`, and the parts of this rule they check now govern Collate's code. The rest is unchanged.

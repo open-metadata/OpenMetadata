@@ -50,9 +50,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntSupplier;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
@@ -118,7 +120,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private static final Set<String> EXTRACTION_SOURCES = Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   /** Rows read to count a list page's visible total; a judgment call between cost and accuracy. */
-  static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
+  public static final int MAX_VISIBLE_COUNT_SCAN = 10_000;
 
   private static final String PIN_UPDATE_FIELDS =
       FIELDS + ",rootMemory,parentMemory,sourceEntity,sourceFile";
@@ -313,7 +315,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
    * the rows the caller may list are recounted. Never less than the page itself
    * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
-  static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
+  public static int listedTotal(int total, int listedOnPage, IntSupplier recount) {
     return total > listedOnPage ? Math.max(recount.getAsInt(), listedOnPage) : total;
   }
 
@@ -335,10 +337,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return ContextMemoryVisibility.filterListed(scanned, securityContext).size();
   }
 
+  /** The Query evidence the caller may view, and the files the last change names they may read. */
   private ResultList<ContextMemory> withVisibleEvidence(
       SecurityContext securityContext, ResultList<ContextMemory> memories) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         memories.getData(), authorizer, securityContext);
+    ContextMemoryDocumentAccess.redactDocuments(memories.getData(), securityContext);
     return memories;
   }
 
@@ -351,6 +355,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (response.getEntity() instanceof ContextMemory memory) {
       ContextMemory copy =
           ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
+      ContextMemoryDocumentAccess.redactDocuments(List.of(copy), securityContext);
       visible = Response.fromResponse(response).entity(copy).build();
     }
     return visible;
@@ -359,6 +364,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         List.of(memory), authorizer, securityContext);
+    ContextMemoryDocumentAccess.redactDocuments(List.of(memory), securityContext);
     return memory;
   }
 
@@ -763,6 +769,17 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           String version) {
     enforceCurrentVisibility(securityContext, id);
     return withVisibleEvidence(securityContext, getVersionInternal(securityContext, id, version));
+  }
+
+  /**
+   * Every stored version, wherever the base class serves it (the versions, one version or the
+   * history), names a file only to a caller who may read it now
+   * (ADR:2026-09-29-context-file-memory-reuse).
+   */
+  @Override
+  protected Optional<UnaryOperator<ContextMemory>> snapshotRedaction(
+      SecurityContext securityContext) {
+    return Optional.of(ContextMemoryDocumentAccess.versionRedaction(securityContext));
   }
 
   /** Current visibility governs every response containing a stored memory. */

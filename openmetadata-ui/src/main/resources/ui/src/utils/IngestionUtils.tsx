@@ -19,7 +19,10 @@ import {
   LogViewerModalProps,
   LogViewerStatusTone,
 } from '../components/common/LogViewerModal/LogViewerModal.interface';
-import { AgentStatus } from '../components/ServiceAgents/AgentsPage.interface';
+import {
+  AgentStatus,
+  RunStatus,
+} from '../components/ServiceAgents/AgentsPage.interface';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -195,9 +198,25 @@ const agentStatusToneMap: Record<AgentStatus, LogViewerStatusTone> = {
   running: 'muted',
   failed: 'error',
   success: 'success',
+  stopped: 'warning',
   queued: 'muted',
   none: 'muted',
 };
+
+const runStatusToneMap: Record<RunStatus, LogViewerStatusTone> = {
+  success: 'success',
+  partial: 'warning',
+  failed: 'error',
+  running: 'muted',
+  skipped: 'muted',
+};
+
+export const getLogViewerStatusFromRunStatus = (
+  runStatus: RunStatus
+): LogViewerModalProps['status'] => ({
+  label: startCase(runStatus),
+  tone: runStatusToneMap[runStatus],
+});
 
 export const getLogViewerStatusFromAgentStatus = (
   agentStatus?: AgentStatus

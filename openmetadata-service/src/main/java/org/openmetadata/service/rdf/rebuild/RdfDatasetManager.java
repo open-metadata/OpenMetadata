@@ -122,23 +122,47 @@ public final class RdfDatasetManager implements AutoCloseable {
       final RdfWriteDelivery delivery,
       final Consumer<RdfStorageInterface> mutation,
       final Supplier<RdfMutation> captured) {
-    // The live-write queue retries a held-back write; any other writer would lose it.
-    if (delivery.waitsForPause()) {
-      store.awaitLiveWritesAllowed(writerWait);
+    final long deadline = System.nanoTime() + writerWait.toNanos();
+    boolean written = false;
+    while (!written) {
+      // The live-write queue retries a held-back write; any other writer would lose it.
+      if (delivery.waitsForPause()) {
+        store.awaitLiveWritesAllowed(Duration.ofNanos(Math.max(0, deadline - System.nanoTime())));
+      }
+      written = tryWriteActive(delivery, mutation, captured, mayWaitAgain(delivery, deadline));
     }
-    withPermit(
+  }
+
+  /**
+   * A pause can start between the wait for it and taking the serving row lock. A writer with wait
+   * time left goes back to waiting then, instead of being refused and losing its write.
+   */
+  private boolean tryWriteActive(
+      final RdfWriteDelivery delivery,
+      final Consumer<RdfStorageInterface> mutation,
+      final Supplier<RdfMutation> captured,
+      final boolean mayWaitAgain) {
+    return withPermit(
         activePermit,
         () ->
             store.withActiveLock(
                 session -> {
-                  session.requireLiveWritesAllowed(delivery);
-                  final RdfRebuildStore.State state = session.state();
-                  if (state != null && state.failure() == null) {
-                    capture(session, state, captured);
+                  final boolean writable = session.allowsLiveWrite(delivery, mayWaitAgain);
+                  if (writable) {
+                    final RdfRebuildStore.State state = session.state();
+                    if (state != null && state.failure() == null) {
+                      capture(session, state, captured);
+                    }
+                    mutation.accept(storage(session.activeDataset()));
                   }
-                  mutation.accept(storage(session.activeDataset()));
-                  return null;
+                  return writable;
                 }));
+  }
+
+  private static boolean mayWaitAgain(final RdfWriteDelivery delivery, final long deadline) {
+    return delivery.waitsForPause()
+        && System.nanoTime() < deadline
+        && !Thread.currentThread().isInterrupted();
   }
 
   /**
