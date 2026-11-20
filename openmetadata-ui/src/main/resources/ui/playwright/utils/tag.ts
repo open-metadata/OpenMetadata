@@ -39,10 +39,9 @@ import {
 } from './entity';
 
 export const TAG_INVALID_NAMES = {
-  MIN_LENGTH: 'c',
-  MAX_LENGTH:
-    'a87439625b1c2d3e4f5061728394a5b6c7d8e90a1b2c3d4e5f67890aba87439625b1c2d3e4f5061728394a5',
-  WITH_SPECIAL_CHARS: '!@#$%^&*()',
+  MIN_LENGTH: '   ',
+  MAX_LENGTH: 'a'.repeat(257),
+  WITH_SPECIAL_CHARS: 'ABC::DEF',
 };
 
 export const NEW_TAG = {
@@ -305,44 +304,28 @@ export async function validateForm(page: Page) {
 
   await expect(page.getByText('Description is required')).toBeVisible();
 
-  // validation should work for invalid names
+  const nameTextbox = page.getByTestId('name').getByRole('textbox');
+  await page.getByTestId('name').scrollIntoViewIfNeeded();
 
-  // min length validation
-  await page.locator('[data-testid="name"]').scrollIntoViewIfNeeded();
-  await page.getByTestId('name').getByRole('textbox').clear();
-  await page
-    .getByTestId('name')
-    .getByRole('textbox')
-    .fill(TAG_INVALID_NAMES.MIN_LENGTH);
-
-  await page.waitForLoadState('domcontentloaded');
+  // max length validation (> 256 characters)
+  await nameTextbox.clear();
+  await nameTextbox.fill(TAG_INVALID_NAMES.MAX_LENGTH);
 
   await expect(
     page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
   ).toBeVisible();
 
-  // max length validation
-  await page.getByTestId('name').getByRole('textbox').clear();
-  await page
-    .getByTestId('name')
-    .getByRole('textbox')
-    .fill(TAG_INVALID_NAMES.MAX_LENGTH);
-
-  await page.waitForLoadState('domcontentloaded');
-
-  await expect(
-    page.getByText(NAME_MIN_MAX_LENGTH_VALIDATION_ERROR)
-  ).toBeVisible();
-
-  // with special char validation
-  await page.getByTestId('name').getByRole('textbox').clear();
-  await page
-    .getByTestId('name')
-    .getByRole('textbox')
-    .fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
-  await page.waitForLoadState('domcontentloaded');
+  // entityName forbidden character validation
+  await nameTextbox.clear();
+  await nameTextbox.fill(TAG_INVALID_NAMES.WITH_SPECIAL_CHARS);
 
   await expect(page.getByText(NAME_VALIDATION_ERROR)).toBeVisible();
+
+  // whitespace-only validation (after non-required errors so 'Name is required' freshly transitions in)
+  await nameTextbox.clear();
+  await nameTextbox.fill(TAG_INVALID_NAMES.MIN_LENGTH);
+
+  await expect(page.getByText('Name is required')).toBeVisible();
 }
 
 export const addTagToTableColumn = async (

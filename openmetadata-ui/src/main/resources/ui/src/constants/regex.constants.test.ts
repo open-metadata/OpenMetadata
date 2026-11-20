@@ -13,6 +13,7 @@
 import {
   CUSTOM_PROPERTY_NAME_REGEX,
   ENTITY_NAME_REGEX,
+  NAME_LENGTH_REGEX,
   TAG_NAME_REGEX,
   TEST_CASE_NAME_REGEX,
 } from './regex.constants';
@@ -173,52 +174,56 @@ describe('Test Regex', () => {
   });
 
   describe('TAG_NAME_REGEX', () => {
-    it('should match English letters', () => {
-      expect(TAG_NAME_REGEX.test('Hello')).toEqual(true);
+    it.each([
+      ['English letters', 'Hello'],
+      ['single character name', 'C'],
+      ['max-length 256-character name', 'a'.repeat(256)],
+      ['non-English letters', 'こんにちは'],
+      ['Unicode with single colon', 'こんにちは:タグ'],
+      ['combined characters', 'é'],
+      ['numbers', '123'],
+      ['underscores', '_'],
+      ['hyphens', '-'],
+      ['spaces', ' '],
+      ['periods', '.'],
+      ['ampersands', '&'],
+      ['parentheses', '()'],
+      ['single colon hierarchy (#37908)', 'ABC:DEF:SC:C'],
+      ['domain group level with colons', 'Domain:Group:Level'],
+      ['dots and single colons combined', 'Tag.With.Dots:And:Colons'],
+      ['leading single colon', ':leading'],
+      ['trailing single colon', 'trailing:'],
+      ['forward slash', 'PII/Email'],
+      ['plus sign', 'Tier+1'],
+      ['dollar sign', '$'],
+    ])('should accept %s', (_, value) => {
+      expect(TAG_NAME_REGEX.test(value)).toEqual(true);
     });
 
-    it('should match non-English letters', () => {
-      expect(TAG_NAME_REGEX.test('こんにちは')).toEqual(true);
+    it.each([
+      ['empty string', ''],
+      ['double colon in middle', 'ABC::DEF'],
+      ['leading double colon', '::leading'],
+      ['trailing double colon', 'trailing::'],
+      ['triple colon', 'a:::b'],
+      ['greater-than character', 'tag>bad'],
+      ['double quote character', 'tag"bad'],
+      ['newline character', 'tag\nbad'],
+      ['carriage return character', 'tag\rbad'],
+      ['tab character', 'tag\tbad'],
+      ['null control character', 'tag\u0000bad'],
+      ['unit separator control character (0x1f)', 'tag\u001fbad'],
+    ])('should reject %s', (_, value) => {
+      expect(TAG_NAME_REGEX.test(value)).toEqual(false);
     });
+  });
 
-    it('should match combined characters', () => {
-      expect(TAG_NAME_REGEX.test('é')).toEqual(true);
-    });
-
-    it('should match numbers', () => {
-      expect(TAG_NAME_REGEX.test('123')).toEqual(true);
-    });
-
-    it('should match underscores', () => {
-      expect(TAG_NAME_REGEX.test('_')).toEqual(true);
-    });
-
-    it('should match hyphens', () => {
-      expect(TAG_NAME_REGEX.test('-')).toEqual(true);
-    });
-
-    it('should match spaces', () => {
-      expect(TAG_NAME_REGEX.test(' ')).toEqual(true);
-    });
-
-    it('should match periods', () => {
-      expect(TAG_NAME_REGEX.test('.')).toEqual(true);
-    });
-
-    it('should match ampersands', () => {
-      expect(TAG_NAME_REGEX.test('&')).toEqual(true);
-    });
-
-    it('should match parentheses', () => {
-      expect(TAG_NAME_REGEX.test('()')).toEqual(true);
-    });
-
-    it('should not match other special characters', () => {
-      expect(TAG_NAME_REGEX.test('$')).toEqual(false);
-    });
-
-    it('should not match empty string', () => {
-      expect(TAG_NAME_REGEX.test('')).toEqual(false);
+  describe('NAME_LENGTH_REGEX', () => {
+    it('should remain exported and match strings of length 2..64', () => {
+      expect(NAME_LENGTH_REGEX.test('a')).toEqual(false);
+      expect(NAME_LENGTH_REGEX.test('ab')).toEqual(true);
+      expect(NAME_LENGTH_REGEX.test('a'.repeat(64))).toEqual(true);
+      expect(NAME_LENGTH_REGEX.test('a'.repeat(65))).toEqual(false);
     });
   });
 
