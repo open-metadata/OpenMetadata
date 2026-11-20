@@ -2634,9 +2634,7 @@ public interface TimeSeriesDAOs {
             + "MAX(i.updatedAt) AS lastSeen, "
             + "<createdAtAgg> AS incidentCreatedAt, "
             + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
-            + "COUNT(DISTINCT "
-            + TEST_DEFINITION_ID
-            + ") AS testDefinitionCount, "
+            + "COUNT(DISTINCT <testDefinitionId>) AS testDefinitionCount, "
             + "COUNT(*) OVER () AS totalGroups "
             + INCIDENT_GROUPS_FROM
             + "GROUP BY <groupByCols> "
@@ -2650,6 +2648,7 @@ public interface TimeSeriesDAOs {
         @Define("assigneesExpr") String assigneesExpr,
         @Define("createdAtAgg") String createdAtAgg,
         @Define("tableFqn") String tableFqn,
+        @Define("testDefinitionId") String testDefinitionId,
         @Define("groupKey") String groupKey,
         @Define("groupType") String groupType,
         @Define("groupByCols") String groupByCols,
@@ -2835,7 +2834,9 @@ public interface TimeSeriesDAOs {
               String.join(" ", statusRankWhens), OPEN_STATUSES.size() + 1);
       // A test case has one test definition, so this join does not multiply incident rows; it is
       // what lets a group of any dimension name its definitions.
-      String joins = dimension.join() + " " + TEST_DEFINITION_JOIN;
+      boolean definitionGroup = groupBy == IncidentGroupBy.TestDefinition;
+      String definitionId = definitionGroup ? dimension.groupKey() : TEST_DEFINITION_ID;
+      String joins = dimension.join() + (definitionGroup ? "" : " " + TEST_DEFINITION_JOIN);
       List<TestCaseIncidentGroupCount> counts =
           listIncidentGroups(
               openStatuses,
@@ -2844,6 +2845,7 @@ public interface TimeSeriesDAOs {
               assigneesExpr(),
               "NULL",
               tableFqnExpr(),
+              definitionId,
               dimension.groupKey(),
               dimension.groupType(),
               dimension.groupByCols(),
@@ -2861,7 +2863,9 @@ public interface TimeSeriesDAOs {
       } else if (offset == 0) {
         total = 0;
       } else {
-        total = countIncidentGroups(openStatuses, dimension.groupKey(), joins, condition, params);
+        total =
+            countIncidentGroups(
+                openStatuses, dimension.groupKey(), dimension.join(), condition, params);
       }
       IncidentGroupScope scope =
           new IncidentGroupScope(dimension, openStatuses, joins, condition, params);
@@ -2869,8 +2873,16 @@ public interface TimeSeriesDAOs {
       return new IncidentGroupPage(
           counts,
           total,
-          topRelatedKeys(scope, tableFqnExpr(), groupKeys),
-          topRelatedKeys(scope, TEST_DEFINITION_ID, groupKeys));
+          groupBy == IncidentGroupBy.Table
+              ? selfRelatedKeys(groupKeys)
+              : topRelatedKeys(scope, tableFqnExpr(), groupKeys),
+          definitionGroup
+              ? selfRelatedKeys(groupKeys)
+              : topRelatedKeys(scope, definitionId, groupKeys));
+    }
+
+    private static Map<String, List<String>> selfRelatedKeys(List<String> groupKeys) {
+      return groupKeys.stream().collect(Collectors.toMap(key -> key, List::of));
     }
 
     // Related keys by group key, each group's list ordered from the most incidents down.
@@ -2883,7 +2895,7 @@ public interface TimeSeriesDAOs {
                   scope.openStatuses(),
                   scope.dimension().groupKey(),
                   scope.dimension().groupByCols(),
-                  scope.joins(),
+                  relatedKey.equals(tableFqnExpr()) ? scope.dimension().join() : scope.joins(),
                   scope.condition(),
                   relatedKey,
                   groupKeys,
