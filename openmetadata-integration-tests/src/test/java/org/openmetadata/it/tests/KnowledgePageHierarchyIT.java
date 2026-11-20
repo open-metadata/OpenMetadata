@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.List;
@@ -28,6 +29,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.data.Article;
@@ -69,6 +72,35 @@ public class KnowledgePageHierarchyIT {
   private static final String PII_SENSITIVE = "PII.Sensitive";
   // A search-index-only pseudo-type: it has no entity repository, so resolving it throws.
   private static final String NO_REPOSITORY_TYPE = "tableColumn";
+
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.PAGE, "knowledge_page_search_index"})
+  void testPageSearchMatchesQuestionAndPreservesLuceneSyntax(String index, TestNamespace ns)
+      throws Exception {
+    String topic = ns.prefix("vacation_" + index);
+    String question = "What are the " + topic + " options?";
+    Page page =
+        createPage(RestClient.admin(), buildCreateRequest(topic, null).withDisplayName(question));
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              assertPageSearchHit(index, question, page);
+              assertPageSearchHit(index, question.substring(0, question.length() - 1), page);
+              assertPageSearchHit(index, "name:" + topic + "*", page);
+            });
+  }
+
+  private void assertPageSearchHit(String index, String query, Page page) throws Exception {
+    String response =
+        SdkClients.adminClient().search().query(query).index(index).size(10).execute();
+    JsonNode hits = JsonUtils.readTree(response).path("hits").path("hits");
+    assertTrue(
+        hits.findValuesAsText("fullyQualifiedName").contains(page.getFullyQualifiedName()),
+        () -> "Missing page for " + index + " query " + query + ": " + response);
+  }
 
   private Page createPage(RestClient rest, CreatePage request) throws HttpResponseException {
     return rest.create(KC_PATH, request, Page.class);
