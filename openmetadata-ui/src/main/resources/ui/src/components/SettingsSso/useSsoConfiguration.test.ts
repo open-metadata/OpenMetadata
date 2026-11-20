@@ -267,7 +267,7 @@ describe('useSsoConfiguration', () => {
       );
 
     expect(securityUiSchema().wantAssertionEncrypted).toEqual({
-      'ui:title': 'Require Encrypted Assertions',
+      'ui:title': 'label.require-encrypted-assertions',
     });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
       'ui:widget': 'hidden',
@@ -298,7 +298,7 @@ describe('useSsoConfiguration', () => {
     });
 
     expect(securityUiSchema().wantAssertionEncrypted).toEqual({
-      'ui:title': 'Require Encrypted Assertions',
+      'ui:title': 'label.require-encrypted-assertions',
     });
     expect(securityUiSchema().wantMessagesSigned).toEqual({
       'ui:title': 'Want Messages Signed',
