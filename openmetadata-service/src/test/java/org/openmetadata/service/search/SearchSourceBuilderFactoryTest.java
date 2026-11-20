@@ -225,14 +225,13 @@ public class SearchSourceBuilderFactoryTest {
   }
 
   /**
-   * Without ranking, fuzzy n-gram fields go through the unranked fuzzy match. Querying them with
-   * their own {@code om_ngram} analyzer splits a 16-char token into ~105 grams, each fuzzy-expanded,
-   * which exceeds OpenSearch's 1024-clause cap and fails the search with a 500
-   * (SearchScoringIT on run id e5c1df09d6f64f0387781ba669f92717). The plain analyzer keeps it one
-   * term, as the ranked stages already do.
+   * Without ranking, n-gram fields go through the unranked fuzzy match. Fuzzy-expanding every gram
+   * of a 16-char token (~105 grams) exceeds OpenSearch's 1024-clause cap and fails the search with
+   * a 500 (SearchScoringIT on run id e5c1df09d6f64f0387781ba669f92717). The n-gram clause keeps the
+   * field's own analyzer, so partial names still match, and is not fuzzy.
    */
   @Test
-  public void testUnrankedFuzzyNgramMatchUsesPlainSearchAnalyzer() {
+  public void testUnrankedNgramMatchIsNotFuzzyAndKeepsFieldAnalyzer() {
     String longToken = "e5c1df09f5c39786";
     OpenSearchRequestBuilder osBuilder =
         new OpenSearchSourceBuilderFactory(searchSettings)
@@ -241,10 +240,21 @@ public class SearchSourceBuilderFactoryTest {
         new ElasticSearchSourceBuilderFactory(searchSettings)
             .getSearchSourceBuilderV2("table", longToken, 0, 10);
 
+    for (JsonNode clause :
+        List.of(
+            ngramFuzzyClause(osBuilder.query().toJsonString()),
+            ngramFuzzyClause(esBuilder.query().toString()))) {
+      assertEquals("0", clause.path("fuzziness").asText(), clause.toString());
+      assertFalse(clause.has("analyzer"), clause.toString());
+    }
+  }
+
+  @Test
+  public void testFuzzinessIsDisabledOnlyForNgramOnlyFields() {
     assertEquals(
-        "standard", ngramFuzzyClause(osBuilder.query().toJsonString()).path("analyzer").asText());
+        "0", SearchUtils.getFuzziness("customer", List.of("name.ngram", "displayName.ngram")));
     assertEquals(
-        "standard", ngramFuzzyClause(esBuilder.query().toString()).path("analyzer").asText());
+        "1", SearchUtils.getFuzziness("customer", List.of("name.ngram", "columnNamesFuzzy")));
   }
 
   private static JsonNode ngramFuzzyClause(String queryJson) {

@@ -10,7 +10,6 @@ import jakarta.json.JsonObject;
 import jakarta.json.JsonValue;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -241,15 +240,7 @@ public final class SearchRankingHelper {
   }
 
   public static String stageSearchAnalyzer(RankingStage stage) {
-    return ngramSearchAnalyzer(stage.getFields());
-  }
-
-  /**
-   * Search-time analyzer for a text query over {@code fields}: the plain analyzer when every field
-   * is an n-gram field, otherwise {@code null} (each field's own analyzer). Used by both the ranked
-   * stages and the unranked fuzzy match so a long single-token query is never re-n-grammed.
-   */
-  public static String ngramSearchAnalyzer(Collection<String> fields) {
+    List<String> fields = stage.getFields();
     boolean allNgramFields =
         !nullOrEmpty(fields) && fields.stream().allMatch(field -> field.endsWith(".ngram"));
     return allNgramFields ? NGRAM_SEARCH_ANALYZER : null;

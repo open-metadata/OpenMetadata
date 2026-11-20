@@ -18,6 +18,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -844,6 +845,18 @@ public final class SearchUtils {
       return FUZZINESS_ENABLED;
     }
     return analyzedSubTokenCount(query) > 2 ? FUZZINESS_DISABLED : FUZZINESS_ENABLED;
+  }
+
+  /**
+   * Fuzziness for a fuzzy multi_match over {@code fields}. N-gram fields already match partial
+   * words, and fuzzy-expanding every gram a long token analyzes into (a 16-char token is ~105
+   * grams, each with up to {@code max_expansions} variants) exceeds the 1024 bool-clause cap, so a
+   * match over n-gram fields only is never fuzzy.
+   */
+  public static String getFuzziness(String query, Collection<String> fields) {
+    boolean ngramFieldsOnly =
+        !nullOrEmpty(fields) && fields.stream().allMatch(field -> field.endsWith(".ngram"));
+    return ngramFieldsOnly ? FUZZINESS_DISABLED : getFuzziness(query);
   }
 
   /**
