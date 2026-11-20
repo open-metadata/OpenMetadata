@@ -32,8 +32,11 @@ safe for large catalogs either.
   two attempts per project/region). Do **not** retry deterministic failures:
   SQLite cache capacity/IO errors or upstream non-retryable 4xx errors
   (excluding 429).
-- A spool I/O/capacity failure disables the region spool for the remainder
-  of the ingestion run using one in-memory boolean, before attempting cleanup.
+- Only failures originating from local SQLite/tempfile operations disable
+  the region spool for the remainder of the ingestion run, using one in-memory
+  boolean before attempting cleanup. Local failures carry a dedicated error
+  type; network/transport `OSError` from BigQuery is handled by the regional
+  retry budget instead and must not disable other regions.
   Disk-full errors can also prevent DELETE, rollback, or writing a "failed"
   status to SQLite; none of those operations may be required to block another
   billed region scan. Already-committed partial records remain inaccessible
