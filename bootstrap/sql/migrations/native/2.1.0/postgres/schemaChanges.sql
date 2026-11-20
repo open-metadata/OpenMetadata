@@ -743,6 +743,11 @@ CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_task_about_fqn_hash_pattern
 CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_user_tokens_user_type
   ON user_tokens (userId, tokenType, token);
 
+-- Reindex partitions keep the keyset cursors that bound them, so every server reads the same rows
+-- while entities are created or deleted during the run.
+ALTER TABLE search_index_partition ADD COLUMN IF NOT EXISTS startKey TEXT;
+ALTER TABLE search_index_partition ADD COLUMN IF NOT EXISTS endKey TEXT;
+
 -- Independent ontology definitions and releases.
 CREATE TABLE IF NOT EXISTS ontology_entity (
   id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,

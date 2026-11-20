@@ -274,16 +274,16 @@ public interface SearchReindexDAOs {
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_partition (id, jobId, entityType, partitionIndex, rangeStart, rangeEnd, "
-                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
+                + "startKey, endKey, estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
                 + "VALUES (:id, :jobId, :entityType, :partitionIndex, :rangeStart, :rangeEnd, "
-                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
+                + ":startKey, :endKey, :estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT INTO search_index_partition (id, jobId, entityType, partitionIndex, rangeStart, rangeEnd, "
-                + "estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
+                + "startKey, endKey, estimatedCount, workUnits, priority, status, processingCursor, claimableAt) "
                 + "VALUES (:id, :jobId, :entityType, :partitionIndex, :rangeStart, :rangeEnd, "
-                + ":estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
+                + ":startKey, :endKey, :estimatedCount, :workUnits, :priority, :status, :cursor, :claimableAt)",
         connectionType = POSTGRES)
     void insert(
         @Bind("id") String id,
@@ -292,6 +292,8 @@ public interface SearchReindexDAOs {
         @Bind("partitionIndex") int partitionIndex,
         @Bind("rangeStart") long rangeStart,
         @Bind("rangeEnd") long rangeEnd,
+        @Bind("startKey") String startKey,
+        @Bind("endKey") String endKey,
         @Bind("estimatedCount") long estimatedCount,
         @Bind("workUnits") long workUnits,
         @Bind("priority") int priority,
@@ -565,6 +567,8 @@ public interface SearchReindexDAOs {
             rs.getInt("partitionIndex"),
             rs.getLong("rangeStart"),
             rs.getLong("rangeEnd"),
+            rs.getString("startKey"),
+            rs.getString("endKey"),
             rs.getLong("estimatedCount"),
             rs.getLong("workUnits"),
             rs.getInt("priority"),
@@ -625,6 +629,8 @@ public interface SearchReindexDAOs {
         int partitionIndex,
         long rangeStart,
         long rangeEnd,
+        String startKey,
+        String endKey,
         long estimatedCount,
         long workUnits,
         int priority,
