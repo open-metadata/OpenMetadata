@@ -252,7 +252,7 @@ jobs:
         # always(): a failed merge-group gate must not skip the trace report.
         if: always()
         continue-on-error: true
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           persist-credentials: false
 
@@ -730,7 +730,7 @@ jobs:
       DATA_BRANCH: ci/playwright-timing
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: main
           persist-credentials: true
@@ -895,7 +895,7 @@ jobs:
       # queue entry. The data branch has no ruleset, so the workflow token can
       # push to it directly.
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: main
           persist-credentials: true

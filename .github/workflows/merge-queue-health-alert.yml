@@ -78,7 +78,7 @@ jobs:
       SEVERE_HOURS: ${{ inputs.severe_hours || '24' }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       # State lives in the MQ_ALERT_STATE repository variable, NOT the Actions cache.
       #
