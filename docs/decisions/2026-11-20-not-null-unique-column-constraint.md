@@ -1,9 +1,12 @@
 # Preserve NOT NULL and UNIQUE independently on a column
 
-Date: 2026-11-20
-Status: Proposed (Issue #37986)
+- **Status:** Accepted
+- **Revisions:** v1 2026-11-20 (initial)
+- **Deciders:** PR contributors; final adoption subject to maintainer review
+- **Guard:** `ingestion/tests/unit/topology/database/test_complex_column_constraints.py`, `ingestion/tests/unit/observability/data_quality/validations/runtime_param_setter/test_table_diff_params_setter.py`, `openmetadata-service/src/test/java/org/openmetadata/service/util/ODCSConverterTest.java`
+- **Related:** #37986
 
-## Problem
+## Context
 
 A column can be both UNIQUE and NOT NULL but the current
 `table.json#/definitions/constraint` enum can only represent one or the other.
