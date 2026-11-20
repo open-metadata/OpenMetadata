@@ -71,7 +71,6 @@ export const CanvasButtonPopover: React.FC<CanvasButtonPopoverProps> = ({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={onMouseLeave}>
       <EntityPopOverCard
-        defaultOpen
         entityFQN={pipelineData?.fullyQualifiedName ?? ''}
         entityType={hoveredEdge.data?.edge?.pipelineEntityType ?? ''}
         extraInfo={

@@ -70,7 +70,7 @@ MOCK_DATA360PIPELINE_CONFIG = {
 
 def _build_source() -> Data360PipelineSource:
     with (
-        patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+        patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360PIPELINE_CONFIG)
@@ -97,12 +97,13 @@ class TestData360PipelineSourceCreate:
                         "type": "Data360Pipeline",
                         "consumerKey": "consumer_key",
                         "consumerSecret": "consumer_secret",
+                        "salesforceDomain": "mycompany.my",
                     }
                 },
             },
         }
         with (
-            patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
             patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
         ):
             config = OpenMetadataWorkflowConfig.model_validate(config_without_db_service)
@@ -122,12 +123,13 @@ class TestData360PipelineSourceCreate:
                         "type": "Data360Pipeline",
                         "consumerKey": "consumer_key",
                         "consumerSecret": "consumer_secret",
+                        "salesforceDomain": "mycompany.my",
                     }
                 },
             },
         }
         with (
-            patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
             patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
             pytest.raises(InvalidWorkflowException),
         ):
@@ -139,7 +141,7 @@ class TestData360PipelineSourceCreate:
 
     def test_lineage_create_succeeds_with_db_service_name(self):
         with (
-            patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
             patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
         ):
             config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360PIPELINE_CONFIG)
@@ -158,7 +160,7 @@ class TestData360PipelineSourceMetadata:
             {"name": "inactive_stream", "status": "INACTIVE", "label": "Inactive Stream"},
         ]
         with patch(
-            "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+            "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
             return_value=raw_items,
         ):
             results = list(source._get_datastreams())
@@ -172,7 +174,7 @@ class TestData360PipelineSourceMetadata:
             {"apiName": "inactive_ci", "calculatedInsightStatus": "INACTIVE"},
         ]
         with patch(
-            "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+            "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
             return_value=raw_items,
         ):
             results = list(source._get_calculated_insights())
@@ -186,26 +188,62 @@ class TestData360PipelineSourceMetadata:
             {"name": "inactive_dt", "status": "INACTIVE"},
         ]
         with patch(
-            "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+            "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
             return_value=raw_items,
         ):
             results = list(source._get_datatransforms())
         assert len(results) == 1
         assert results[0].name == "active_dt"
 
+    def test_busy_or_failing_objects_are_kept(self):
+        # Filtering everything that was not ACTIVE also soft-deleted a transform
+        # while it was still PROCESSING.
+        source = _build_source()
+        raw_items = [
+            {"name": "processing_dt", "status": "PROCESSING"},
+            {"name": "error_dt", "status": "ERROR"},
+        ]
+        with patch(
+            "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
+            return_value=raw_items,
+        ):
+            results = list(source._get_datatransforms())
+        assert [result.name for result in results] == ["processing_dt", "error_dt"]
+
+    def test_an_object_listed_twice_is_yielded_once(self):
+        # Offset paging over an unstable order can return the same stream on two pages.
+        source = _build_source()
+        stream = {"name": "ds1", "status": "ACTIVE"}
+        with (
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
+                return_value=[stream, {"name": "ds2", "status": "ACTIVE"}, stream],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
+                return_value=[],
+            ),
+            patch(
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
+                return_value=[],
+            ),
+        ):
+            names = [pipeline.get_name() for pipeline in source.get_pipelines_list()]
+        assert names == ["ds1", "ds2"]
+
     def test_get_pipelines_list_combines_all_three_object_types(self):
         source = _build_source()
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 return_value=[{"name": "ds1", "status": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[{"name": "dt1", "status": "ACTIVE"}],
             ),
         ):
@@ -223,7 +261,7 @@ class TestData360PipelineSourceMetadata:
             {"status": "ACTIVE", "label": "No name at all"},
         ]
         with patch(
-            "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+            "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
             return_value=raw_items,
         ):
             results = list(source._get_datastreams())
@@ -267,13 +305,13 @@ class TestData360PipelineSourceMetadata:
         assert results[0].left is None
         assert results[0].right is not None
 
-    def test_yield_tag_collects_status_based_tags(self):
+    def test_yield_tag_tags_the_object_type_not_its_status(self):
         source = _build_source()
-        details = DataTransformDetails(name="dt1", label="DT1", status="ACTIVE", creationType="Standard")
+        details = DataTransformDetails(name="dt1", label="DT1", status="ACTIVE", creationType="Standard", type="BATCH")
         results = list(source.yield_tag_details(details))
         assert [
             (record.right.tag_request.classification.root, record.right.tag_request.name.root) for record in results
-        ] == [("Data360", "ACTIVE"), ("Data360", "Standard")]
+        ] == [("Data360", "Standard"), ("Data360", "BATCH")]
 
     def test_get_source_url_handles_my_domain(self):
         source = _build_source()
@@ -318,15 +356,15 @@ class TestData360PipelineListingIsolation:
         source = _build_source()
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 side_effect=RuntimeError("datastreams down"),
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[{"name": "dt1", "status": "ACTIVE"}],
             ),
         ):
@@ -340,15 +378,15 @@ class TestData360PipelineListingIsolation:
         source = _build_source()
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 return_value=[{"name": "ds1", "status": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 side_effect=RuntimeError("calculated insights down"),
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[{"name": "dt1", "status": "ACTIVE"}],
             ),
         ):
@@ -363,15 +401,15 @@ class TestData360PipelineListingIsolation:
         # First run fails
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 side_effect=RuntimeError("down"),
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 return_value=[],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[],
             ),
         ):
@@ -380,15 +418,15 @@ class TestData360PipelineListingIsolation:
         # Second run succeeds — flag should reset to True, not carry over
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 return_value=[{"name": "ds1", "status": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 return_value=[],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[],
             ),
         ):
@@ -406,15 +444,15 @@ class TestData360PipelineListingIsolation:
 
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 side_effect=partial_then_raise,
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[],
             ),
         ):
@@ -457,15 +495,15 @@ class TestData360PipelineMarkDeleted:
         source.pipeline_source_state = set()
         with (
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datastreams",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datastreams",
                 side_effect=RuntimeError("datastreams down"),
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_calculated_insights",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_calculated_insights",
                 return_value=[{"apiName": "ci1", "calculatedInsightStatus": "ACTIVE"}],
             ),
             patch(
-                "metadata.ingestion.source.pipeline.data360pipeline.metadata.get_datatransforms",
+                "metadata.ingestion.source.pipeline.data360pipeline.base.get_datatransforms",
                 return_value=[{"name": "dt1", "status": "ACTIVE"}],
             ),
             patch(self.DELETE_PATH) as mock_delete,
@@ -478,3 +516,56 @@ class TestData360PipelineMarkDeleted:
             deleted = list(source.mark_pipelines_as_deleted())
         assert deleted == []
         mock_delete.assert_not_called()
+
+
+class TestData360PipelineSourceRunsLineageAndStatus:
+    """The metadata agent extracts run status and lineage itself, as every other
+    pipeline service does: the separate Lineage and Usage agents were built with
+    database settings and could not run on a pipeline service."""
+
+    def test_run_status_is_yielded_by_the_metadata_source(self):
+        source = _build_source()
+        details = DataStreamDetails(name="ds1", lastRefreshDate="2024-01-01T00:00:00Z", lastRunStatus="SUCCESS")
+        results = list(source.yield_pipeline_status(details))
+        assert len(results) == 1
+        assert results[0].right.pipeline_fqn == "local_data360pipeline.ds1"
+
+    def test_lineage_is_yielded_by_the_metadata_source(self):
+        source = _build_source()
+        details = DataStreamDetails(name="ds1")
+        with patch.object(source, "_yield_datastream_lineage", return_value=iter(["edge"])) as mock_lineage:
+            assert list(source.yield_pipeline_lineage_details(details)) == ["edge"]
+        mock_lineage.assert_called_once_with(details)
+
+    def test_lineage_without_the_db_service_is_skipped_with_one_warning(self):
+        config_without_db_service = {
+            **MOCK_DATA360PIPELINE_CONFIG,
+            "source": {
+                **MOCK_DATA360PIPELINE_CONFIG["source"],
+                "serviceConnection": {
+                    "config": {
+                        "type": "Data360Pipeline",
+                        "consumerKey": "consumer_key",
+                        "consumerSecret": "consumer_secret",
+                        "salesforceDomain": "mycompany.my",
+                        "includeBulkLineage": True,
+                    }
+                },
+            },
+        }
+        with (
+            patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
+            patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
+        ):
+            config = OpenMetadataWorkflowConfig.model_validate(config_without_db_service)
+            source = Data360PipelineSource.create(
+                config_without_db_service["source"],
+                OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
+            )
+        with patch.object(source, "_yield_datastream_lineage") as mock_lineage:
+            assert list(source.yield_pipeline_lineage_details(DataStreamDetails(name="ds1"))) == []
+            assert list(source.yield_pipeline_lineage_details(DataStreamDetails(name="ds2"))) == []
+            assert list(source.yield_pipeline_bulk_lineage_details()) == []
+        mock_lineage.assert_not_called()
+        assert len(source.status.warnings) == 1
+        assert not source.status.failures

@@ -8,9 +8,9 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.credentials.AWSCredentials;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
-import org.openmetadata.schema.services.connections.messaging.nats.BasicAuth;
-import org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth;
-import org.openmetadata.schema.services.connections.messaging.nats.TokenAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KafkaBrokerConfig;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.KinesisBrokerConfig;
@@ -70,14 +70,15 @@ class OpenLineageConnectionClassConverterTest {
     assertNotNull(result);
     assertInstanceOf(NatsBrokerConfig.class, result.getBrokerConfig());
     // a LinkedHashMap here would mean the secrets manager never sees the token
-    assertInstanceOf(TokenAuth.class, ((NatsBrokerConfig) result.getBrokerConfig()).getAuthType());
+    assertInstanceOf(
+        NatsTokenAuth.class, ((NatsBrokerConfig) result.getBrokerConfig()).getAuthType());
   }
 
   @Test
   void testConvertsEachNatsAuthVariantToItsOwnClass() {
     assertInstanceOf(
-        BasicAuth.class, convertedNatsAuth(Map.of("username", "ol", "password", "s3cret")));
-    assertInstanceOf(NkeyAuth.class, convertedNatsAuth(Map.of("nkeySeed", "SUACSSL")));
+        NatsBasicAuth.class, convertedNatsAuth(Map.of("username", "ol", "password", "s3cret")));
+    assertInstanceOf(NatsNkeyAuth.class, convertedNatsAuth(Map.of("nkeySeed", "SUACSSL")));
     assertInstanceOf(
         CredentialsAuth.class, convertedNatsAuth(Map.of("credentials", "-----BEGIN NATS-----")));
   }

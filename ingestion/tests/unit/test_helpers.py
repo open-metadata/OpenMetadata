@@ -251,6 +251,19 @@ class TestHelpers(TestCase):
         self.assertFalse(is_safe_pandas_query("a.__class__.__init__.__globals__"))
         self.assertFalse(is_safe_pandas_query("a.__class__.__mro__[0]"))
 
+    def test_is_safe_pandas_query_allows_backticks_as_data_in_string_literals(self):
+        """A backtick inside a string literal is data, not an identifier delimiter"""
+        self.assertTrue(is_safe_pandas_query("a == '`'"))
+        self.assertTrue(is_safe_pandas_query("a == 'x`y' and b > 0"))
+
+    def test_is_safe_pandas_query_blocks_backtick_smuggled_through_string_literals(self):
+        """Backticks inside string literals must not be blanked as identifier delimiters
+        before the AST pass: the regex-based blanking saw `'`' == a.to_csv(...) == '`'`
+        as `a > 0 or 'col'` (safe), while DataFrame.query still evaluated the call"""
+        self.assertFalse(is_safe_pandas_query("a > 0 or '`' == a.to_csv('/tmp/x') == '`'"))
+        # the closing delimiter must also be a real backtick token, else fail closed
+        self.assertFalse(is_safe_pandas_query("`age > 'x` or a.to_csv('/tmp/x')"))
+
     def test_is_safe_pandas_query_blocks_matmul_operator(self):
         """pandas reserves `@` for frame-variable references, so the binary `@`
         operator (ast.MatMult) must not be treated as a safe filter"""

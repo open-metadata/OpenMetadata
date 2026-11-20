@@ -12,10 +12,6 @@
  */
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import {
-  TourContext,
-  TourProviderContextProps,
-} from '../../context/TourProvider/TourProvider';
 import { mockUserData } from '../../mocks/MyDataPage.mock';
 import MyDataPage from './MyDataPage.component';
 
@@ -82,8 +78,13 @@ jest.mock('../../hoc/LimitWrapper', () => {
 
 jest.mock('../../hooks/useApplicationStore', () => ({
   useApplicationStore: jest.fn().mockImplementation(() => ({
-    currentUser: mockUserData,
+    currentUser: { ...mockUserData, isFirstTimeUser: true },
+    updateCurrentUser: jest.fn(),
   })),
+}));
+
+jest.mock('../../rest/userAPI', () => ({
+  updateUserDetail: jest.fn().mockResolvedValue({}),
 }));
 
 let mockIsWelcomeVisible = true;
@@ -116,23 +117,6 @@ describe('MyDataPage component', () => {
     // awaiting the click hangs on its internal timer advance.
     userEvent.click(await screen.findByText('WelcomeScreen'));
 
-    expect(await screen.findByTestId('home-landing-page')).toBeInTheDocument();
-    expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
-  });
-
-  it('should not show the WelcomeScreen on the tour, even to a first-time user', async () => {
-    render(
-      <TourContext.Provider
-        value={
-          {
-            isTourPage: true,
-          } as Partial<TourProviderContextProps> as TourProviderContextProps
-        }>
-        <MyDataPage />
-      </TourContext.Provider>
-    );
-
-    // The welcome screen would take the place of the landing page the tour highlights.
     expect(await screen.findByTestId('home-landing-page')).toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
   });

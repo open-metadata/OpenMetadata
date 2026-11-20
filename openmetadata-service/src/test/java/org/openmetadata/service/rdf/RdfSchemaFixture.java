@@ -12,13 +12,17 @@ import io.github.classgraph.ClassGraph;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.LiveTagLookup;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 /** Exercises the projection with populated schema fields, including optional fields added later. */
 final class RdfSchemaFixture {
@@ -68,7 +72,20 @@ final class RdfSchemaFixture {
           }
         });
     return new JsonLdTranslator(
-        new ObjectMapper().registerModule(module), "https://open-metadata.org/");
+        new ObjectMapper().registerModule(module),
+        "https://open-metadata.org/",
+        everyLabelLive(),
+        ReferenceScope.ALL);
+  }
+
+  /** Treats every tag and glossary term a label names as live, for projections without a DB. */
+  static LiveTagLookup everyLabelLive() {
+    return (type, fqns) ->
+        fqns.stream()
+            .collect(
+                Collectors.toMap(
+                    fqn -> fqn,
+                    fqn -> UUID.nameUUIDFromBytes((type + fqn).getBytes(StandardCharsets.UTF_8))));
   }
 
   private static JsonNode sample(

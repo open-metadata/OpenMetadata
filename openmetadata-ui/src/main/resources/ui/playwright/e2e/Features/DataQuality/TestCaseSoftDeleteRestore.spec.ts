@@ -12,13 +12,13 @@
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { TEST_CASE_LAST_RUN_BANNER_TEST_IDS } from '../../../constant/dataQuality';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import {
   redirectToHomePage,
   toastNotification,
   uuid,
-  waitForAntdPopupToSettle,
 } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
@@ -131,6 +131,7 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
       const restoreTestCaseDisplayName = `Restore details ${uuid()}`;
       const restoreTestCaseDescription = `Description preserved after restore ${uuid()}`;
       const readOnlyTestCaseName = `deleted_read_only_${uuid()}`;
+      const lastRunTestCaseName = `restore_last_run_${uuid()}`;
       let table: TableClass;
       let softDeleteTestCaseId: string;
 
@@ -198,14 +199,31 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
           parameterValues: [{ name: 'columnCount', value: '4' }],
           testDefinition: 'tableColumnCountToEqual',
         });
+        const lastRunCandidate = await table.createTestCase(apiContext, {
+          name: lastRunTestCaseName,
+          entityLink: `<#E::table::${table.entityResponseData?.fullyQualifiedName}>`,
+          parameterValues: [{ name: 'columnCount', value: '4' }],
+          testDefinition: 'tableColumnCountToEqual',
+        });
+        await table.addTestCaseResult(
+          apiContext,
+          lastRunCandidate.fullyQualifiedName,
+          {
+            result: 'Last run before soft delete',
+            testCaseStatus: 'Success',
+            timestamp: Date.now(),
+          }
+        );
 
         await Promise.all([
           softDeleteTestCase(apiContext, restoreCandidate.id),
           softDeleteTestCase(apiContext, readOnlyCandidate.id),
+          softDeleteTestCase(apiContext, lastRunCandidate.id),
         ]);
         await Promise.all([
           waitForDeletedTestCase(apiContext, restoreTestCaseName),
           waitForDeletedTestCase(apiContext, readOnlyTestCaseName),
+          waitForDeletedTestCase(apiContext, lastRunTestCaseName),
         ]);
         await afterAction();
       });
@@ -232,6 +250,9 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
           .click();
         await page.getByTestId(`delete-${softDeleteTestCaseName}`).click();
         await expect(page.getByTestId('delete-modal')).toBeVisible();
+        await expect(page.getByTestId('modal-header')).toHaveText(
+          `Delete "${softDeleteTestCaseName}" Test Case`
+        );
         await expect(page.getByTestId('soft-delete')).toBeVisible();
 
         const deleteResponse = page.waitForResponse(
@@ -364,10 +385,51 @@ for (const { label, testCaseListPath, openApp } of APP_MODES) {
         }
 
         await page.getByTestId('manage-button').click();
-        await waitForAntdPopupToSettle(page);
         await expect(page.getByTestId('restore-button')).toBeVisible();
         await expect(page.getByTestId('delete-button')).not.toBeVisible();
         await expect(page.getByTestId('rename-button')).not.toBeVisible();
+      });
+
+      test('restores from the detail page and keeps the last run result', async ({
+        page,
+      }) => {
+        await openApp(page);
+        await openTestCaseList(
+          page,
+          testCaseListPath,
+          lastRunTestCaseName,
+          'deleted'
+        );
+
+        const detailResponse = waitForTestCaseDetailsResponse(page);
+        await page.getByTestId(lastRunTestCaseName).getByRole('link').click();
+        await detailResponse;
+        await expect(
+          page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS.success)
+        ).toBeVisible();
+
+        await page.getByTestId('manage-button').click();
+        await page.getByTestId('restore-button').click();
+        const restoreModal = page.getByTestId('restore-asset-modal');
+        await expect(restoreModal).toContainText('Restore Test case');
+
+        const restoreResponse = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/dataQuality/testCases/restore') &&
+            response.request().method() === 'PUT'
+        );
+        await restoreModal.getByRole('button', { name: 'Restore' }).click();
+        await restoreResponse;
+
+        await expect(page.getByTestId('deleted-badge')).not.toBeVisible();
+        // The restore response omits testCaseResult; the banner must keep
+        // showing the last run instead of falling back to "Not run yet".
+        await expect(
+          page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS.success)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(TEST_CASE_LAST_RUN_BANNER_TEST_IDS['not-run-yet'])
+        ).not.toBeVisible();
       });
     }
   );

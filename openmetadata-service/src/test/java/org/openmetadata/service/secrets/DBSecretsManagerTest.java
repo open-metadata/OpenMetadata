@@ -34,7 +34,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.services.connections.drive.SftpConnection;
 import org.openmetadata.schema.services.connections.drive.sftp.SftpBasicAuth;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
-import org.openmetadata.schema.services.connections.messaging.nats.TokenAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.mlmodel.SklearnConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
@@ -122,7 +122,7 @@ public class DBSecretsManagerTest {
     NatsConnection connection =
         new NatsConnection()
             .withNatsServers("nats://localhost:4222")
-            .withAuthType(new TokenAuth().withToken(DECRYPTED_VALUE));
+            .withAuthType(new NatsTokenAuth().withToken(DECRYPTED_VALUE));
 
     Object actualConfig =
         secretsManager.encryptServiceConnectionConfig(
@@ -130,7 +130,7 @@ public class DBSecretsManagerTest {
 
     assertEquals(
         ENCRYPTED_VALUE,
-        JsonUtils.convertValue(((NatsConnection) actualConfig).getAuthType(), TokenAuth.class)
+        JsonUtils.convertValue(((NatsConnection) actualConfig).getAuthType(), NatsTokenAuth.class)
             .getToken());
   }
 
@@ -142,7 +142,7 @@ public class DBSecretsManagerTest {
                 new NatsBrokerConfig()
                     .withNatsServers("nats://localhost:4222")
                     .withStreamName("OPENLINEAGE")
-                    .withAuthType(new TokenAuth().withToken(DECRYPTED_VALUE)));
+                    .withAuthType(new NatsTokenAuth().withToken(DECRYPTED_VALUE)));
 
     Object actualConfig =
         secretsManager.encryptServiceConnectionConfig(
@@ -152,7 +152,7 @@ public class DBSecretsManagerTest {
         (NatsBrokerConfig) ((OpenLineageConnection) actualConfig).getBrokerConfig();
     assertEquals(
         ENCRYPTED_VALUE,
-        JsonUtils.convertValue(brokerConfig.getAuthType(), TokenAuth.class).getToken());
+        JsonUtils.convertValue(brokerConfig.getAuthType(), NatsTokenAuth.class).getToken());
   }
 
   @Test

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { SettingsNavigateOptions } from '../../../../../../utils/SettingsHistory.utils';
 
 import { FC, ReactNode } from 'react';
 import { TeamType } from '../../../../../../generated/entity/teams/team';
@@ -55,7 +56,18 @@ export type MembersView =
   // A downstream-contributed section (EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS).
   // `subPath` carries the section's own internal route, as the Notification
   // panel's section view does.
-  | { type: 'section'; key: string; subPath?: string };
+  | { type: 'section'; key: string; subPath?: string }
+  // A sub-page owned by a contributed team tab (EXTENSION_POINTS.TEAM_DETAILS_TABS).
+  // Rendered at panel level, like the team forms, so the tab's page replaces the
+  // team detail instead of sitting inside its tab chrome. `subPath` carries the
+  // tab's own internal route, as the `section` view does.
+  | {
+      type: 'team-tab-subpage';
+      fqn: string;
+      teamId: string;
+      key: string;
+      subPath?: string;
+    };
 
 export interface MembersLandingCard {
   id: string;
@@ -78,7 +90,7 @@ export type MembersUserDetailView = Extract<
 
 export interface MembersUserDetailProps {
   view: MembersUserDetailView;
-  onNavigate: (view: MembersView) => void;
+  onNavigate: (view: MembersView, options?: SettingsNavigateOptions) => void;
   /** Header slots (title, avatar, tabs, delete…) merged over the Members header. */
   onSetHeader: (
     header:
@@ -170,6 +182,8 @@ export interface ProfileHashLinkProps {
    * in-modal view. The href is kept for middle-click / open-in-new-tab. */
   onNavigate: (target: ProfileHashTarget) => void;
   children: ReactNode;
+  className?: string;
+  title?: string;
 }
 
 export interface TimeWindowOption {

@@ -1,8 +1,8 @@
 {
   "title": "Username and Password",
   "description": "Username and password authentication for NATS.",
-  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
   "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
   "properties": {
     "username": {
       "title": "Username",

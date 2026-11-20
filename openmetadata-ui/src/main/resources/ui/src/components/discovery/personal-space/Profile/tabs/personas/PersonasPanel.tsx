@@ -24,6 +24,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useUnsavedChangesPrompt } from '../../../../../../hooks/discovery/personal-space/useUnsavedChangesPrompt';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import {
@@ -31,7 +32,7 @@ import {
   getCustomizePageOptions,
 } from '../../../../../../utils/Persona/PersonaUtils';
 import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
-import { UnsavedChangesModal } from '../../../../../Modals/UnsavedChangesModal/UnsavedChangesModal.component';
+import UnsavedChangesPrompt from '../../components/UnsavedChangesPrompt';
 import type { ProfileHeaderOverride } from '../../profileNavConfig';
 import type { CustomizeEditorActions } from './customize/customizeEditor.types';
 import PersonaAddForm from './PersonaAddForm';
@@ -61,7 +62,6 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
   const { state: hashState, setHash, updateParams } = useSettingsHash();
   const closeSilent = usePersonalSpaceStore((state) => state.closeSilent);
-  const setExitGuard = usePersonalSpaceStore((state) => state.setExitGuard);
 
   const view = useMemo<PersonaView>(
     () => hashSubPathToView(hashState.subPath),
@@ -73,62 +73,24 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
 
   const onNavigate = useCallback(
     (nextView: PersonaView) => {
-      setHash(HASH_TAB, viewToSubPath(nextView));
+      setHash(HASH_TAB, viewToSubPath(nextView), undefined, { push: true });
     },
     [setHash]
   );
+  // Replaces: Back must not reopen a deleted persona or a submitted form.
+  // Stable: PersonaDetail builds its header actions from it, and a new
+  // callback each render would re-push the header in a render loop.
+  const returnToLanding = useCallback(() => setHash(HASH_TAB), [setHash]);
 
   const [editorActions, setEditorActions] = useState<CustomizeEditorActions>();
-  const [pendingExit, setPendingExit] = useState<() => void>();
-  const [isSavingBeforeExit, setIsSavingBeforeExit] = useState(false);
   const isEditorDirty =
     view.type === 'customize' && Boolean(editorActions?.canSave);
-
-  // Every way out of a dirty in-modal editor (breadcrumbs, Cancel, the modal's
-  // close button) goes through here so unsaved changes are never dropped silently.
-  const guardExit = useCallback(
-    (exit: () => void) => {
-      if (!isEditorDirty) {
-        return false;
-      }
-      setPendingExit(() => exit);
-
-      return true;
-    },
-    [isEditorDirty]
-  );
+  const { runGuarded, promptProps } = useUnsavedChangesPrompt(isEditorDirty);
 
   const navigateGuarded = useCallback(
-    (nextView: PersonaView) => {
-      const exit = () => onNavigate(nextView);
-      if (!guardExit(exit)) {
-        exit();
-      }
-    },
-    [guardExit, onNavigate]
+    (nextView: PersonaView) => runGuarded(() => onNavigate(nextView)),
+    [runGuarded, onNavigate]
   );
-
-  useEffect(() => {
-    setExitGuard(isEditorDirty ? guardExit : null);
-
-    return () => setExitGuard(null);
-  }, [isEditorDirty, guardExit, setExitGuard]);
-
-  const handleDiscardExit = useCallback(() => {
-    const exit = pendingExit;
-    setPendingExit(undefined);
-    exit?.();
-  }, [pendingExit]);
-
-  const handleSaveExit = useCallback(async () => {
-    setIsSavingBeforeExit(true);
-    try {
-      await editorActions?.onSave();
-      handleDiscardExit();
-    } finally {
-      setIsSavingBeforeExit(false);
-    }
-  }, [editorActions, handleDiscardExit]);
 
   const onTabChange = useCallback(
     (tab: PersonaDetailTab) => updateParams({ tab }),
@@ -241,9 +203,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
 
     const onBreadcrumbAction = (id: Key) => {
       if (id === HASH_TAB) {
-        navigateGuarded({ type: 'landing' });
+        onNavigate({ type: 'landing' });
       } else if (id === 'detail' && viewFqn) {
-        navigateGuarded({ type: 'detail', fqn: viewFqn, name: resolvedName });
+        onNavigate({ type: 'detail', fqn: viewFqn, name: resolvedName });
       }
     };
 
@@ -351,17 +313,13 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
     parentCategoryMeta,
     customizeIcon,
     onNavigate,
-    navigateGuarded,
     subCategory,
     isDetailLike,
   ]);
 
   if (view.type === 'add') {
     return (
-      <PersonaAddForm
-        onCancel={() => onNavigate({ type: 'landing' })}
-        onCreated={() => onNavigate({ type: 'landing' })}
-      />
+      <PersonaAddForm onCancel={returnToLanding} onCreated={returnToLanding} />
     );
   }
 
@@ -371,8 +329,9 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
         <PersonaDetail
           activeTab={activeTab}
           fqn={view.fqn}
+          key={view.fqn}
           subCategory={subCategory}
-          onDeleted={() => onNavigate({ type: 'landing' })}
+          onDeleted={returnToLanding}
           onRename={setResolvedName}
           onSelectCategory={(category) =>
             onNavigate({
@@ -411,13 +370,7 @@ const PersonasPanel: FC<PersonasPanelProps> = ({ onHeaderChange }) => {
           onHeaderActionsChange={setCustomizeActions}
           onRename={setResolvedName}
         />
-        <UnsavedChangesModal
-          loading={isSavingBeforeExit}
-          open={Boolean(pendingExit)}
-          onCancel={() => setPendingExit(undefined)}
-          onDiscard={handleDiscardExit}
-          onSave={() => void handleSaveExit()}
-        />
+        <UnsavedChangesPrompt {...promptProps} />
       </>
     );
   }

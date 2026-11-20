@@ -8,6 +8,9 @@
   "javaInterfaces": ["org.openmetadata.schema.CreateEntity"],
 
   "properties": {
+    "tableSharding": {
+      "$ref": "../../type/tableSharding.json"
+    },
     "name": {
       "description": "Name that identifies the this entity instance uniquely. Same as id if when name is not unique",
       "$ref": "../../type/basic.json#/definitions/entityName"

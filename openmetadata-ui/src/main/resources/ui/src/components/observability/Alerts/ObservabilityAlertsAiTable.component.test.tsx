@@ -212,7 +212,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 });
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
-  AlertTriangle: () => null,
+  Alert: () => null,
   Bell01: () => null,
   Edit01: () => null,
   Lock01: () => null,

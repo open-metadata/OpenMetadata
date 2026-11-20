@@ -87,7 +87,7 @@ def _run_workflow(tmp_path, connector, pytest_exit=0):
     raise AssertionError("Workflow did not execute its E2E test step")
 
 
-@pytest.mark.parametrize("connector", ["mysql", "postgres", "bigquery", "oracle", "snowflake"])
+@pytest.mark.parametrize("connector", ["mysql", "postgres", "bigquery", "oracle", "snowflake", "mssql"])
 @pytest.mark.parametrize("pytest_exit", [0, 1, 5])
 def test_ci_runs_the_allowed_connector_and_preserves_pytest_exit(tmp_path, connector, pytest_exit):
     result = _run_workflow(tmp_path, connector, pytest_exit)
@@ -114,7 +114,7 @@ def test_ci_defaults_to_all_connectors_and_limits_each_connectors_secrets():
     job = workflow["jobs"]["py-cli-e2e-tests-v2"]
     dispatch = workflow.get("on", workflow.get(True))["workflow_dispatch"]
     default = dispatch["inputs"]["connectors"]["default"]
-    assert json.loads(default) == ["mysql", "postgres", "bigquery", "oracle", "snowflake"]
+    assert json.loads(default) == ["mysql", "postgres", "bigquery", "oracle", "snowflake", "mssql"]
     assert f"'{default}'" in job["strategy"]["matrix"]["connector"]
 
     steps = {step.get("id"): step for step in job["steps"]}
@@ -184,7 +184,12 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
         ("py-cli-e2e-tests.yml", "py-cli-e2e-tests", "e2e-test"),
     ):
         job = yaml.safe_load((root / ".github/workflows" / workflow_file).read_text())["jobs"][job_id]
-        assert "snowflake" in job["strategy"]["matrix"][matrix_key]
+        if workflow_file == "py-cli-e2e-tests.yml":
+            entrypoint = yaml.load((root / ".github/workflows/py-tests.yml").read_text(), Loader=yaml.BaseLoader)
+            connectors = json.loads(entrypoint["on"]["workflow_dispatch"]["inputs"]["connectors"]["default"])
+        else:
+            connectors = job["strategy"]["matrix"][matrix_key]
+        assert "snowflake" in connectors
         assert job["concurrency"]["cancel-in-progress"] is False
         match = _SNOWFLAKE_CONCURRENCY_GROUP.match(job["concurrency"]["group"])
         assert match, job["concurrency"]["group"]
@@ -193,11 +198,10 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
     assert len(groups) == 1
 
 
-def test_ci_reruns_these_meta_tests_when_a_workflow_they_read_changes():
-    """The shared Python workflow runs these tests only for changed paths in its filters."""
+def test_ci_tracks_changes_to_e2e_workflows():
+    """The Python entrypoint tracks the E2E workflows used by nightly meta tests."""
     root = Path(__file__).resolve().parents[4]
-    shared = yaml.safe_load((root / ".github/workflows/py-tests-shared.yml").read_text())
+    shared = yaml.safe_load((root / ".github/workflows/py-tests.yml").read_text())
     step = next(step for job in shared["jobs"].values() for step in job.get("steps", []) if step.get("id") == "filter")
     filters = yaml.safe_load(step["with"]["filters"])
-    for name in ("python", "e2e"):
-        assert set(_E2E_WORKFLOWS) <= set(filters[name]), name
+    assert set(_E2E_WORKFLOWS) <= set(filters["python"])

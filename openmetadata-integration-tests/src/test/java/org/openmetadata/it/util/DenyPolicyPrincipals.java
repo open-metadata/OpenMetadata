@@ -49,6 +49,13 @@ public final class DenyPolicyPrincipals {
    */
   public static OpenMetadataClient clientDeniedWhen(
       String uniquePrefix, String resource, MetadataOperation operation, String condition) {
+    User denied = userDeniedWhen(uniquePrefix, resource, operation, condition);
+    return SdkClients.createClient(denied.getName(), denied.getEmail(), new String[] {});
+  }
+
+  /** The user {@link #clientDeniedWhen} signs in as, for a test that acts as them another way. */
+  public static User userDeniedWhen(
+      String uniquePrefix, String resource, MetadataOperation operation, String condition) {
     OpenMetadataClient admin = SdkClients.adminClient();
     List<Rule> rules = new ArrayList<>();
     if (!isReadOperation(operation)) {
@@ -93,8 +100,7 @@ public final class DenyPolicyPrincipals {
     createUser.setName(uniquePrefix + "_user");
     createUser.setEmail(uniquePrefix + "_user@test.openmetadata.org");
     createUser.setTeams(List.of(team.getId()));
-    User denied = admin.users().create(createUser);
-    return SdkClients.createClient(denied.getName(), denied.getEmail(), new String[] {});
+    return admin.users().create(createUser);
   }
 
   private static boolean isReadOperation(MetadataOperation operation) {

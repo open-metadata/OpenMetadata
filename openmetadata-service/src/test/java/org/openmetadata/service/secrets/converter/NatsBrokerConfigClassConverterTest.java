@@ -20,9 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
-import org.openmetadata.schema.services.connections.messaging.nats.BasicAuth;
-import org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth;
-import org.openmetadata.schema.services.connections.messaging.nats.TokenAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -37,9 +37,9 @@ class NatsBrokerConfigClassConverterTest {
     // Left as a LinkedHashMap, the password, token, seed and credentials file are reached by
     // neither the masker nor the secrets manager: both only walk into org.openmetadata objects
     assertInstanceOf(
-        BasicAuth.class, convertedAuth(Map.of("username", "om", "password", "s3cret")));
-    assertInstanceOf(TokenAuth.class, convertedAuth(Map.of("token", "s3cret")));
-    assertInstanceOf(NkeyAuth.class, convertedAuth(Map.of("nkeySeed", "SUACSSL")));
+        NatsBasicAuth.class, convertedAuth(Map.of("username", "om", "password", "s3cret")));
+    assertInstanceOf(NatsTokenAuth.class, convertedAuth(Map.of("token", "s3cret")));
+    assertInstanceOf(NatsNkeyAuth.class, convertedAuth(Map.of("nkeySeed", "SUACSSL")));
   }
 
   @Test

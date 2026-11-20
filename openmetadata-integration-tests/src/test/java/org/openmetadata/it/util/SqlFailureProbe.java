@@ -5,6 +5,7 @@ import java.util.Locale;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.core.statement.SqlLogger;
 import org.jdbi.v3.core.statement.SqlStatements;
@@ -32,6 +33,9 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
    * statement, and makes the flag visible to the thread that reads {@link #injected()}.
    */
   private final AtomicBoolean injected = new AtomicBoolean();
+
+  private static final Pattern BLOCK_COMMENT = Pattern.compile("/\\*.*?\\*/", Pattern.DOTALL);
+  private static final Pattern WHITESPACE = Pattern.compile("\\s+");
 
   /** Fails the first matching statement issued on the calling thread. */
   public SqlFailureProbe(
@@ -94,7 +98,7 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
       final Predicate<StatementContext> inScope) {
     this.jdbi = jdbi;
     this.delegate = jdbi.getConfig(SqlStatements.class).getSqlLogger();
-    this.fragment = fragment.toLowerCase(Locale.ROOT);
+    this.fragment = matchable(fragment);
     this.failure = failure;
     this.inScope = inScope;
     jdbi.setSqlLogger(this);
@@ -112,7 +116,7 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
    */
   boolean claimInjection(final StatementContext context, final String renderedSql) {
     return inScope.test(context)
-        && renderedSql.toLowerCase(Locale.ROOT).contains(fragment)
+        && matchable(renderedSql).contains(fragment)
         && injected.compareAndSet(false, true);
   }
 
@@ -122,6 +126,16 @@ public final class SqlFailureProbe implements SqlLogger, AutoCloseable {
    */
   RuntimeException failureFor(final StatementContext context, final String renderedSql) {
     return claimInjection(context, renderedSql) ? failure.get() : null;
+  }
+
+  /**
+   * Lower-cased SQL with block comments removed and whitespace collapsed, so a fragment such as
+   * {@code "delete from chart_entity"} still matches a statement whose optimizer hint sits between
+   * {@code DELETE} and {@code FROM}, as {@code EntityDAO.deleteByIds} emits.
+   */
+  static String matchable(final String sql) {
+    final String withoutComments = BLOCK_COMMENT.matcher(sql).replaceAll(" ");
+    return WHITESPACE.matcher(withoutComments).replaceAll(" ").trim().toLowerCase(Locale.ROOT);
   }
 
   private static Predicate<StatementContext> callingThread() {

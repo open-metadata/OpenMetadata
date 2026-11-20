@@ -2,7 +2,7 @@ import { Tooltip } from '@/components/base/tooltip/tooltip';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { borderAfter } from '@/utils/tailwindClasses';
-import { styles as buttonStyles } from './button';
+import { ButtonLoadingIcon, styles as buttonStyles } from './button';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -10,7 +10,7 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import { isValidElement } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import type { Placement } from 'react-aria';
 import type {
   ButtonProps as AriaButtonProps,
@@ -25,7 +25,7 @@ export const styles = {
   primary: buttonStyles.colors.primary.root,
   secondary: [
     'tw:bg-surface tw:shadow-xs-skeuomorphic',
-    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:disabled:shadow-xs',
+    'tw:hover:bg-primary_hover tw:dark:hover:bg-raised tw:dark:disabled:bg-disabled tw:disabled:shadow-xs',
     borderAfter,
     'tw:after:outline-primary tw:disabled:after:outline-disabled_subtle',
     neutralIcon,
@@ -62,9 +62,11 @@ const borderless: Partial<Record<keyof typeof styles, keyof typeof styles>> = {
 /**
  * Common props shared between button and anchor variants
  */
-export interface CommonProps {
+export interface CommonProps extends Pick<AriaButtonProps, 'onPress'> {
   /** Disables the button and shows a disabled state */
   isDisabled?: boolean;
+  /** Replaces the icon with a spinner and disables the button */
+  isLoading?: boolean;
   /** The size variant of the button */
   size?: keyof typeof sizes;
   /** The color variant of the button */
@@ -94,6 +96,8 @@ export interface ButtonProps
     > {
   /** Slot name for react-aria component */
   slot?: AriaButtonProps['slot'];
+  /** Handler called when the button is pressed */
+  onPress?: AriaButtonProps['onPress'];
 }
 
 /**
@@ -112,18 +116,26 @@ interface LinkProps
 /** Union type of button and link props */
 export type Props = ButtonProps | LinkProps;
 
-export const ButtonUtility = ({
-  tooltip,
-  className,
-  isDisabled,
-  icon: Icon,
-  size = 'sm',
-  color = 'secondary',
-  tooltipPlacement = 'top',
-  isSelected,
-  ...otherProps
-}: Props) => {
+export const ButtonUtility = forwardRef<
+  HTMLButtonElement | HTMLAnchorElement,
+  Props
+>(function ButtonUtility(
+  {
+    tooltip,
+    className,
+    isDisabled: isDisabledProp,
+    isLoading,
+    icon: Icon,
+    size = 'sm',
+    color = 'tertiary',
+    tooltipPlacement = 'top',
+    isSelected,
+    ...otherProps
+  },
+  ref
+) {
   const href = 'href' in otherProps ? otherProps.href : undefined;
+  const isDisabled = isDisabledProp || isLoading;
   const Component = href ? AriaLink : AriaButton;
 
   let props = {};
@@ -149,7 +161,7 @@ export const ButtonUtility = ({
     };
   }
 
-  const content = (
+  const button = (
     <Component
       aria-label={tooltip}
       {...props}
@@ -163,23 +175,30 @@ export const ButtonUtility = ({
         'tw:*:data-icon:pointer-events-none tw:*:data-icon:shrink-0 tw:*:data-icon:transition-inherit-all',
 
         className
-      )}>
-      {isReactComponent(Icon) && <Icon data-icon />}
-      {isValidElement(Icon) && Icon}
+      )}
+      // See the matching cast in button.tsx: `Component` is chosen at runtime.
+      ref={ref as never}>
+      {isLoading ? (
+        <ButtonLoadingIcon />
+      ) : (
+        <>
+          {isReactComponent(Icon) && <Icon data-icon />}
+          {isValidElement(Icon) && Icon}
+        </>
+      )}
     </Component>
   );
 
-  if (tooltip) {
-    return (
-      <Tooltip
-        isDisabled={isDisabled}
-        offset={size === 'xs' || size === 'sm' ? 4 : 6}
-        placement={tooltipPlacement}
-        title={tooltip}>
-        {content}
-      </Tooltip>
-    );
-  }
-
-  return content;
-};
+  // A disabled trigger fires no hover or focus events, so Tooltip wraps it in a
+  // focusable span and the tooltip can still say why the action is unavailable.
+  return tooltip ? (
+    <Tooltip
+      offset={size === 'xs' || size === 'sm' ? 4 : 6}
+      placement={tooltipPlacement}
+      title={tooltip}>
+      {button}
+    </Tooltip>
+  ) : (
+    button
+  );
+});

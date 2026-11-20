@@ -149,8 +149,8 @@ describe('TaskDescriptionPreviewer', () => {
     const style = parser.style;
 
     expect(style.display).toBe('-webkit-box');
-    expect(style['WebkitBoxOrient']).toBe('vertical');
-    expect(style['WebkitLineClamp']).toBe('2');
+    expect(style).toHaveProperty('WebkitBoxOrient', 'vertical');
+    expect(style).toHaveProperty('WebkitLineClamp', '2');
     expect(style.overflow).toBe('hidden');
   });
 

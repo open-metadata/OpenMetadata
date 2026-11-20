@@ -15,31 +15,119 @@ package org.openmetadata.service.aicontext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.SecurityContext;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.schema.type.personaContext.PersonaContextCacheState;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.Authorizer;
 
 class PersonaContextCacheTest {
+  @Test
+  void aMemberValidationOutageStillRecordsAdministratorDiagnostics() throws Exception {
+    Persona persona =
+        personaFor(UUID.randomUUID())
+            .withContextDefinition(
+                new PersonaContextDefinition()
+                    .withRules(
+                        List.of(
+                            new ContextRule()
+                                .withName("Scoped tables")
+                                .withEntityType(Entity.TABLE)
+                                .withFilteredInSearch(true)
+                                .withQueryFilter("{\"term\":{\"name\":\"orders\"}}"))));
+    SearchRepository repository = mock(SearchRepository.class);
+    SearchClient client = mock(SearchClient.class);
+    when(repository.getSearchClient()).thenReturn(client);
+    when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("tables");
+    when(client.rawSearchRequest(anyString(), anyString(), anyString()))
+        .thenReturn(new SearchClient.RawSearchResponse(503, "{}"));
+    PersonaContextCache cache =
+        new PersonaContextCache(mock(CacheProvider.class), new CacheKeys("test"));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      assertThrows(
+          ServiceUnavailableException.class,
+          () -> cache.getForCaller(persona, mock(Authorizer.class), mock(SecurityContext.class)));
+      assertEquals(PersonaContextCacheState.FAILED, cache.snapshot(persona).state());
+      assertTrue(cache.snapshot(persona).error().contains("Search is unavailable"));
+    }
+  }
+
+  @Test
+  void documentsFromBeforeScopeIsolationAreRebuilt() throws Exception {
+    CacheProvider provider = mock(CacheProvider.class);
+    CacheKeys keys = new CacheKeys("om:test");
+    Persona persona = personaFor(UUID.randomUUID());
+    String oldHash =
+        HexFormat.of()
+            .formatHex(
+                MessageDigest.getInstance("SHA-256")
+                    .digest(
+                        JsonUtils.pojoToJson(persona.getContextDefinition())
+                            .getBytes(StandardCharsets.UTF_8)),
+                0,
+                8);
+    String oldContext =
+        JsonUtils.pojoToJson(
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(System.currentTimeMillis())
+                .withRules(List.of())
+                .withFingerprint(oldHash + ':' + oldHash));
+    when(provider.available()).thenReturn(true);
+    when(provider.mget(anyList()))
+        .thenAnswer(
+            invocation -> {
+              List<String> requested = invocation.getArgument(0);
+              return requested
+                      .getFirst()
+                      .equals(keys.personaContextMarkdown(persona.getId(), oldHash))
+                  ? List.of(Optional.of("old unrestricted scope"), Optional.of(oldContext))
+                  : List.of(Optional.empty(), Optional.empty());
+            });
+    when(provider.setIfAbsent(anyString(), any(), any(Duration.class))).thenReturn(true);
+    PersonaContextCache cache =
+        new PersonaContextCache(provider, keys) {
+          @Override
+          protected PersonaContextBuilder.MaterializedPersonaContext build(Persona ignored) {
+            return new PersonaContextBuilder.MaterializedPersonaContext(
+                new PersonaContext().withGeneratedAt(1L), "independent search scope");
+          }
+        };
+    assertEquals("independent search scope", cache.get(persona, false).value().markdown());
+  }
 
   @Test
   void releasesDistributedBuildLockWhenMaterializationFails() {

@@ -28,16 +28,15 @@
     "authType": {
       "title": "Authentication Type",
       "description": "NATS authentication method. Leave empty for anonymous authentication.",
-      "mask": true,
       "oneOf": [
         {
-          "$ref": "./nats/basicAuth.json"
+          "$ref": "nats/basicAuth.json"
         },
         {
-          "$ref": "./nats/tokenAuth.json"
+          "$ref": "nats/tokenAuth.json"
         },
         {
-          "$ref": "./nats/nkeyAuth.json"
+          "$ref": "nats/nkeyAuth.json"
         }
       ]
     },

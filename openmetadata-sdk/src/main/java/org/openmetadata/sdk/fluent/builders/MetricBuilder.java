@@ -51,6 +51,7 @@ public class MetricBuilder {
    * Set custom extension data.
    */
   public MetricBuilder extension(Object extension) {
+    request.setExtension(extension);
     return this;
   }
 

@@ -94,9 +94,9 @@ public final class PromptText {
    */
   private static final Pattern HTML_TAG =
       Pattern.compile(
-          "(?i)<\\s*/?\\s*(?:a|b|blockquote|br|caption|code|col|colgroup|dd|del|details|div|dl|dt"
-              + "|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub|summary"
-              + "|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*>");
+          "(?i)<\\s*+/?+\\s*+(?:a|b|blockquote|br|caption|code|col|colgroup|dd|del|details|div|dl"
+              + "|dt|em|h[1-6]|hr|i|img|ins|li|mark|ol|p|pre|s|section|small|span|strong|sub"
+              + "|summary|sup|table|tbody|td|tfoot|th|thead|tr|u|ul)\\b[^>]*+>");
 
   private PromptText() {}
 
@@ -106,9 +106,14 @@ public final class PromptText {
    * checks.
    */
   public static String forPrompt(String description) {
-    if (description == null || description.isBlank() || !HTML_TAG.matcher(description).find()) {
+    if (description == null || description.isBlank() || !hasHtmlTag(description)) {
       return description;
     }
     return DescriptionSanitizer.sanitizeWith(PROMPT_POLICY, description);
+  }
+
+  private static boolean hasHtmlTag(String description) {
+    // A tag cannot close beyond the final delimiter.
+    return HTML_TAG.matcher(description).region(0, description.lastIndexOf('>') + 1).find();
   }
 }

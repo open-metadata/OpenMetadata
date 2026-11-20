@@ -26,10 +26,17 @@ jest.mock('../../../../../common/Table/TableV2', () => ({
   default: ({
     'data-testid': testId,
     renderToolbar,
+    locale,
   }: {
     'data-testid': string;
     renderToolbar?: () => React.ReactNode;
-  }) => <div data-testid={testId}>{renderToolbar?.()}</div>,
+    locale?: { emptyText?: React.ReactNode };
+  }) => (
+    <div data-testid={testId}>
+      {renderToolbar?.()}
+      {locale?.emptyText}
+    </div>
+  ),
 }));
 
 const baseProps = {
@@ -44,6 +51,7 @@ const baseProps = {
   entityLabel: 'Role',
   entityPluralLabel: 'Roles',
   entityDescription: 'Assign roles to teams',
+  emptyIcon: <svg data-testid="role-empty-icon" />,
   tableTestId: 'team-roles-table',
   addButtonTestId: 'add-role',
   addSelectTestId: 'add-role-select',
@@ -65,6 +73,12 @@ describe('MembersInlineEntityTab', () => {
     fireEvent.click(screen.getByTestId('add-role'));
 
     expect(onStartAdd).toHaveBeenCalled();
+  });
+
+  it('shows the entity icon in the empty state', () => {
+    render(<MembersInlineEntityTab {...baseProps} />);
+
+    expect(screen.getByTestId('role-empty-icon')).toBeInTheDocument();
   });
 
   it('hides the add button without edit permission', () => {

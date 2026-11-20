@@ -1,9 +1,10 @@
 package org.openmetadata.service.jdbi3;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -11,14 +12,20 @@ import java.util.TreeSet;
 import java.util.UUID;
 import java.util.function.BiConsumer;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.api.data.OntologyConceptDeleteImpact;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.type.OntologyReference;
 import org.openmetadata.schema.type.OntologyReferenceRole;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
-import org.openmetadata.service.ontology.OntologyReleaseManifest;
+import org.openmetadata.service.ontology.OntologyDefinitionStatusResolver;
+import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -27,7 +34,13 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   public static final String COLLECTION_PATH = "/v1/ontologyConcepts/";
   private static final String SUPER_CLASSES = "superClasses";
   private static final String SUB_CLASSES = "subClasses";
-  private static final List<String> DERIVED_FIELDS = List.of(SUPER_CLASSES, SUB_CLASSES);
+  private static final String LIFECYCLE_STATUS = "lifecycleStatus";
+  private static final List<String> HIERARCHY_FIELDS = List.of(SUPER_CLASSES, SUB_CLASSES);
+  private static final List<String> DERIVED_FIELDS =
+      List.of(SUPER_CLASSES, SUB_CLASSES, LIFECYCLE_STATUS);
+
+  private static final int REFERENCE_PAGE = 500;
+  private final OntologyDefinitionStatusResolver statuses;
 
   public OntologyConceptRepository() {
     super(
@@ -35,9 +48,11 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
         OntologyConcept.class,
         Entity.getCollectionDAO().ontologyConceptDAO(),
         COLLECTION_PATH,
-        "ontology,iri,conceptType,synonyms,conceptMappings");
+        "ontology,iri,conceptType,synonyms,conceptMappings,abstract,definitionSource,deprecated,replacedBy");
     fieldFetchers.put(SUPER_CLASSES, this::fetchSuperClasses);
     fieldFetchers.put(SUB_CLASSES, this::fetchSubClasses);
+    fieldFetchers.put(LIFECYCLE_STATUS, this::fetchLifecycleStatus);
+    statuses = new OntologyDefinitionStatusResolver(Entity.getCollectionDAO());
   }
 
   @Override
@@ -45,7 +60,13 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (entity.getConceptType() == null) {
       throw new BadRequestException("Ontology concept type is required");
     }
-    entity.withSuperClasses(null).withSubClasses(null);
+    if (entity.getDefinitionSource() != null) {
+      requireAbsoluteIri(entity.getDefinitionSource(), "definitionSource");
+    }
+    if (entity.getReplacedBy() != null) {
+      requireAbsoluteIri(entity.getReplacedBy(), "replacedBy");
+    }
+    entity.withSuperClasses(null).withSubClasses(null).withLifecycleStatus(null);
   }
 
   @Override
@@ -57,6 +78,9 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (fields.contains(SUB_CLASSES)) {
       fetchSubClasses(List.of(entity), fields);
     }
+    if (fields.contains(LIFECYCLE_STATUS)) {
+      fetchLifecycleStatus(List.of(entity), fields);
+    }
   }
 
   @Override
@@ -67,15 +91,23 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
     if (!fields.contains(SUB_CLASSES)) {
       entity.setSubClasses(null);
     }
+    if (!fields.contains(LIFECYCLE_STATUS)) {
+      entity.setLifecycleStatus(null);
+    }
   }
 
   @Override
   protected void validatePatch(
       final OntologyConcept original, final OntologyConcept updated, final JsonPatch patch) {
     super.validatePatch(original, updated, patch);
-    if (JsonUtils.extractPatchedFields(patch).stream().anyMatch(DERIVED_FIELDS::contains)) {
+    final Set<String> patchedFields = JsonUtils.extractPatchedFields(patch);
+    if (patchedFields.stream().anyMatch(HIERARCHY_FIELDS::contains)) {
       throw new BadRequestException(
           "Concept superClasses and subClasses are derived from ontology axioms");
+    }
+    if (patchedFields.contains(LIFECYCLE_STATUS)) {
+      throw new BadRequestException(
+          "Concept lifecycleStatus is derived by the server from ontology releases");
     }
   }
 
@@ -85,10 +117,83 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
   }
 
   @Override
-  protected String serializeForVersionHistory(final OntologyConcept entity) {
-    final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
-    node.remove(DERIVED_FIELDS);
-    return node.toString();
+  protected void entitySpecificCleanup(final OntologyConcept concept) {
+    daoCollection.ontologyConceptBindingDAO().deleteConcept(concept.getId());
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return DERIVED_FIELDS;
+  }
+
+  /** Reads what deleting this concept touches; nothing is written. */
+  public OntologyConceptDeleteImpact deleteImpact(final OntologyConcept concept) {
+    final UUID ontologyId = concept.getOntology().getId();
+    final String iri = concept.getIri().toString();
+    final String hash = DigestUtils.sha256Hex(iri);
+    final List<OntologyDefinition> context = new ArrayList<>();
+    final Set<UUID> loaded = new HashSet<>();
+    OntologyReference last = null;
+    List<OntologyReference> page;
+    do {
+      page =
+          daoCollection
+              .ontologyReferenceDAO()
+              .list(
+                  ontologyId,
+                  hash,
+                  iri,
+                  last == null ? "" : last.getSource().getType(),
+                  last == null ? "" : last.getSource().getId().toString(),
+                  last == null ? "" : last.getRole().value(),
+                  REFERENCE_PAGE);
+      for (final OntologyReference reference : page) {
+        final var source = reference.getSource();
+        if (!source.getId().equals(concept.getId()) && loaded.add(source.getId())) {
+          context.add(loadSource(source.getType(), source.getId()));
+        }
+        last = reference;
+      }
+      if (loaded.size() > OntologyWriteClosureLimits.CONCEPT_DELETION_IMPACT) {
+        throw new BadRequestException("Concept deletion impact exceeds the 10000 reference limit");
+      }
+    } while (page.size() == REFERENCE_PAGE);
+    final var subjects =
+        context.stream()
+            .filter(OntologyAxiom.class::isInstance)
+            .map(OntologyAxiom.class::cast)
+            .filter(axiom -> axiom.getSubjectIri() != null)
+            .map(axiom -> DigestUtils.md5Hex(axiom.getSubjectIri().toString()))
+            .distinct()
+            .toList();
+    if (!subjects.isEmpty()) {
+      final var concepts = daoCollection.ontologyConceptDAO();
+      concepts
+          .findDeclarations(
+              concepts.getTableName(),
+              ontologyId,
+              subjects,
+              OntologyWriteClosureLimits.CONCEPT_DELETION_IMPACT + 1,
+              "")
+          .forEach(json -> context.add(JsonUtils.readValue(json, OntologyConcept.class)));
+    }
+    return OntologyStructureValidator.deletionImpact(concept, context);
+  }
+
+  private OntologyDefinition loadSource(final String type, final UUID id) {
+    return switch (type) {
+      case Entity.ONTOLOGY_AXIOM -> daoCollection.ontologyAxiomDAO().findEntityById(id);
+      case Entity.ONTOLOGY_PROPERTY -> daoCollection.ontologyPropertyDAO().findEntityById(id);
+      case Entity.ONTOLOGY_CONCEPT -> daoCollection.ontologyConceptDAO().findEntityById(id);
+      default -> throw new BadRequestException("Unsupported ontology reference source");
+    };
+  }
+
+  private void fetchLifecycleStatus(final List<OntologyConcept> concepts, final Fields fields) {
+    if (fields.contains(LIFECYCLE_STATUS) && !concepts.isEmpty()) {
+      final var resolved = statuses.resolve(concepts, MemberKind.CONCEPT);
+      concepts.forEach(concept -> concept.setLifecycleStatus(resolved.get(concept.getId())));
+    }
   }
 
   private void fetchSuperClasses(final List<OntologyConcept> concepts, final Fields fields) {
@@ -124,8 +229,8 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
                     .distinct()
                     .toList(),
                 role.value(),
-                OntologyReleaseManifest.MAX_MEMBERS + 1);
-    if (json.size() > OntologyReleaseManifest.MAX_MEMBERS) {
+                OntologyWriteClosureLimits.CONCEPT_HIERARCHY_EDGES + 1);
+    if (json.size() > OntologyWriteClosureLimits.CONCEPT_HIERARCHY_EDGES) {
       throw new BadRequestException("Concept hierarchy lookup exceeds the 10000 axiom limit");
     }
     final Map<ClassKey, Set<String>> edges = new HashMap<>();

@@ -24,8 +24,8 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickUntilVisible,
-  waitForAntOverlayToOpen,
   waitForAriaOverlayToSettle,
+  waitForOverlayToOpen,
 } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 
@@ -127,7 +127,7 @@ test.describe(
           await page.getByRole('button', { name: 'Add tab' }).click();
 
           const addTabDialog = page.getByRole('dialog', { name: 'Add Tab' });
-          await waitForAntOverlayToOpen(addTabDialog);
+          await waitForOverlayToOpen(addTabDialog);
           await addTabDialog.getByTestId('add-tab-input').fill(tabName);
           await addTabDialog
             .getByRole('button', { name: 'Add', exact: true })

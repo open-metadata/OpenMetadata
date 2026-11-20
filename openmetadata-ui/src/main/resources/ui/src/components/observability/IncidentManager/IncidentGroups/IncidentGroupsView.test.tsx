@@ -539,6 +539,35 @@ describe('IncidentGroupsView', () => {
     });
   });
 
+  it('should keep the ordering in the URL', async () => {
+    await act(async () => {
+      renderView();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('sort-by-severity'));
+    });
+
+    expect(screen.getByTestId('location-search')).toHaveTextContent(
+      'sortField=severity&sortType=desc'
+    );
+  });
+
+  it('should open on the ordering a link carries', async () => {
+    await act(async () => {
+      renderView(
+        '/observability/incident-manager?sortField=lastSeen&sortType=asc'
+      );
+    });
+
+    expect(screen.getByTestId('table-sort-type')).toHaveTextContent(
+      'lastSeen:asc'
+    );
+    expect(mockListIncidentGroups).toHaveBeenLastCalledWith(
+      expect.objectContaining({ sortField: 'lastSeen', sortType: 'asc' })
+    );
+  });
+
   it('should order by another field from the first page', async () => {
     mockListIncidentGroups.mockResolvedValue({
       data: mockGroups,

@@ -35,7 +35,7 @@ import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
 import org.openmetadata.schema.services.connections.messaging.NatsConnection;
 import org.openmetadata.schema.services.connections.messaging.PubSubConnection;
 import org.openmetadata.schema.services.connections.messaging.SaslMechanismType;
-import org.openmetadata.schema.services.connections.messaging.nats.TokenAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.services.connections.pipeline.AirflowConnection;
 import org.openmetadata.schema.services.connections.pipeline.OpenLineageConnection;
@@ -290,7 +290,7 @@ abstract class TestEntityMasker {
     NatsConnection connection =
         new NatsConnection()
             .withNatsServers("nats://localhost:4222")
-            .withAuthType(new TokenAuth().withToken(PASSWORD));
+            .withAuthType(new NatsTokenAuth().withToken(PASSWORD));
 
     NatsConnection masked =
         (NatsConnection)
@@ -299,14 +299,14 @@ abstract class TestEntityMasker {
     assertNotNull(masked);
     assertEquals(
         getMaskedPassword(),
-        JsonUtils.convertValue(masked.getAuthType(), TokenAuth.class).getToken());
+        JsonUtils.convertValue(masked.getAuthType(), NatsTokenAuth.class).getToken());
 
     NatsConnection unmasked =
         (NatsConnection)
             EntityMaskerFactory.createEntityMasker()
                 .unmaskServiceConnectionConfig(masked, connection, "Nats", ServiceType.MESSAGING);
     assertEquals(
-        PASSWORD, JsonUtils.convertValue(unmasked.getAuthType(), TokenAuth.class).getToken());
+        PASSWORD, JsonUtils.convertValue(unmasked.getAuthType(), NatsTokenAuth.class).getToken());
   }
 
   private static String natsCredentials(OpenLineageConnection connection) {

@@ -14,8 +14,9 @@ import { useCallback, useState } from 'react';
 
 /**
  * Each Home surface keeps its own list, because each prunes against what *it*
- * shows: the rail lists asset announcements, the critical banner system ones,
- * and a shared list would let one prune the other's dismissals away.
+ * shows: the critical banner lists the system criticals, the rail and its
+ * dialog everything else, and a shared list would let one prune the other's
+ * dismissals away.
  */
 export enum DismissedAnnouncementsScope {
   Rail = 'om-home-dismissed-announcements',

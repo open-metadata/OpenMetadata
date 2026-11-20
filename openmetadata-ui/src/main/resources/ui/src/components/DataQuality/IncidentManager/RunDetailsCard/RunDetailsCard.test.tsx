@@ -10,12 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen, within } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
+import {
+  SuffixFormat,
+  TableType,
+} from '../../../../generated/entity/data/table';
 import {
   TestCase,
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
+import { getTableDetailsByFQN } from '../../../../rest/tableAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -41,6 +52,10 @@ jest.mock(
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: () => ({ permissions: {} }),
+}));
+
+jest.mock('../../../../rest/tableAPI', () => ({
+  getTableDetailsByFQN: jest.fn(),
 }));
 
 const TEST_CASE = {
@@ -70,6 +85,49 @@ const renderCard = (results: TestCaseResult[], testCase = TEST_CASE) =>
 describe('RunDetailsCard', () => {
   afterEach(() => {
     act(() => useTestCaseStore.getState().reset());
+  });
+
+  it('shows the selected historical execution source after representative rollover', () => {
+    const older = {
+      ...FAILED_RUN,
+      evaluationScope: {
+        executionSource: {
+          databaseName: 'demo_project',
+          schemaName: 'demo_dataset',
+          tableName: 'events_20260101',
+        },
+      },
+    };
+    const newer = {
+      ...FAILED_RUN,
+      timestamp: FAILED_RUN.timestamp + 1000,
+      evaluationScope: {
+        executionSource: {
+          databaseName: 'demo_project',
+          schemaName: 'demo_dataset',
+          tableName: 'events_20260102',
+        },
+      },
+    };
+    act(() =>
+      useTestCaseStore.setState({ selectedRunTimestamp: older.timestamp })
+    );
+    renderCard([older, newer]);
+
+    expect(screen.getByTestId('run-execution-source')).toHaveTextContent(
+      'events_20260101'
+    );
+    expect(screen.getByTestId('run-execution-source')).not.toHaveTextContent(
+      'events_20260102'
+    );
+
+    act(() =>
+      useTestCaseStore.setState({ selectedRunTimestamp: newer.timestamp })
+    );
+
+    expect(screen.getByTestId('run-execution-source')).toHaveTextContent(
+      'events_20260102'
+    );
   });
 
   it('shows a failed run with its expected, found and difference', () => {
@@ -332,3 +390,47 @@ describe('RunDetailsCard', () => {
     expect(screen.queryByTestId('run-details-card')).not.toBeInTheDocument();
   });
 });
+
+it.each([TableType.Regular, TableType.Sharded])(
+  'shows missing run provenance only for sharded tables (%s)',
+  async (tableType) => {
+    jest.mocked(getTableDetailsByFQN).mockResolvedValueOnce({
+      id: 'my-table',
+      name: 'my_table',
+      columns: [],
+      tableType,
+      tableSharding:
+        tableType === TableType.Sharded
+          ? {
+              prefix: 'events_',
+              suffixFormat: SuffixFormat.Yyyymmdd,
+              shardCount: 1,
+              firstShardDate: new Date('2026-01-02'),
+              lastShardDate: new Date('2026-01-02'),
+              representative: {
+                databaseName: 'my_db',
+                schemaName: 'my_schema',
+                tableName: 'events_20260102',
+                shardDate: new Date('2026-01-02'),
+              },
+            }
+          : undefined,
+    });
+    const view = renderCard([FAILED_RUN], {
+      ...TEST_CASE,
+      entityLink: '<#E::table::svc.my_db.my_schema.my_table>',
+    });
+    await waitFor(() => expect(view.queryClient.isFetching()).toBe(0));
+    if (tableType === TableType.Sharded) {
+      expect(
+        screen.getByText('message.execution-source-unavailable')
+      ).toBeInTheDocument();
+    } else {
+      expect(
+        screen.queryByTestId('run-execution-source')
+      ).not.toBeInTheDocument();
+    }
+
+    expect(screen.queryByText(/events_20260102/)).not.toBeInTheDocument();
+  }
+);

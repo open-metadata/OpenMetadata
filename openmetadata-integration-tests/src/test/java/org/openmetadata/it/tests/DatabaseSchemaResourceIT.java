@@ -22,7 +22,10 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.util.CsvJobClient;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.GovernanceWorkflowActions;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -39,13 +42,16 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ProfileSampleConfig;
 import org.openmetadata.schema.type.StaticSamplingConfig;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.models.ListParams;
@@ -1077,6 +1083,145 @@ public class DatabaseSchemaResourceIT extends BaseEntityIT<DatabaseSchema, Creat
     } catch (Exception e) {
       fail("Creating non-existing table via CSV should succeed: " + e.getMessage());
     }
+  }
+
+  @Test
+  void test_importCsv_updateKeepsVersionHistory(TestNamespace ns) {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table table = createOwnedTaggedTable(schema, ns.prefix("carrier_invoices"));
+    editDescription(SdkClients.user1Client(), table.getId(), "Reviewed by the table owner.");
+    Table beforeImport =
+        editDescription(SdkClients.ingestionBotClient(), table.getId(), "Refreshed by ingestion.");
+
+    importReplacingText(schema, "Refreshed by ingestion.", "Imported from the catalog sheet.");
+
+    assertEquals(List.of(0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
+    assertVersionKept(table.getId(), beforeImport);
+
+    editDescription(SdkClients.adminClient(), table.getId(), "Corrected after the import.");
+    assertEquals(
+        List.of(0.4, 0.3, 0.2, 0.1),
+        versionsInHistory(table.getId()),
+        "the importer's edit within the session merges into the import's version");
+    assertVersionKept(table.getId(), beforeImport);
+
+    Table ownerEdit =
+        editDescription(SdkClients.user1Client(), table.getId(), "Approved by the table owner.");
+    assertEquals(List.of(0.5, 0.4, 0.3, 0.2, 0.1), versionsInHistory(table.getId()));
+    assertEquals(1, ownerEdit.getOwners().size());
+    assertEquals(1, ownerEdit.getTags().size());
+  }
+
+  @Test
+  void test_exportLeavesOutTablesTheExporterMayNotView(TestNamespace ns) throws Exception {
+    DatabaseSchema schema = createImportSchema(ns);
+    Table open = createExportTable(schema, ns.prefix("open_table"), List.of());
+    Table restricted =
+        createExportTable(schema, ns.prefix("restricted_table"), List.of(personalDataTagLabel()));
+    String principal = ns.shortPrefix("schema_export");
+    OpenMetadataClient exporter =
+        DenyPolicyPrincipals.clientDeniedWhen(
+            principal,
+            Entity.TABLE,
+            MetadataOperation.VIEW_ALL,
+            "matchAnyTag('" + personalDataTagLabel().getTagFQN() + "')");
+
+    assertThrows(
+        ForbiddenException.class, () -> exporter.tables().get(restricted.getId().toString()));
+    String exported = exporter.databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String adminExported =
+        SdkClients.adminClient().databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+
+    String asyncExported = exportAsync(principal + "_user", schema.getFullyQualifiedName());
+
+    assertTrue(exported.contains(open.getName()), exported);
+    assertFalse(exported.contains(restricted.getName()), exported);
+    assertTrue(asyncExported.contains(open.getName()), asyncExported);
+    assertFalse(asyncExported.contains(restricted.getName()), asyncExported);
+    assertTrue(adminExported.contains(restricted.getName()), adminExported);
+  }
+
+  /** Runs the schema's background export as {@code userName} and returns the CSV it produced. */
+  private static String exportAsync(String userName, String schemaFqn) throws Exception {
+    String token =
+        JwtAuthProvider.tokenFor(
+            userName, userName + "@test.openmetadata.org", new String[] {}, 3600);
+    CsvJobClient jobs = CsvJobClient.onDefaultServer();
+    String jobId =
+        jobs.startJob("GET", "/v1/databaseSchemas/name/" + schemaFqn + "/exportAsync", null, token);
+    Awaitility.await()
+        .atMost(2, TimeUnit.MINUTES)
+        .until(
+            () ->
+                jobs.request("GET", "/v1/csvAsyncJobs/" + jobId, null, token)
+                    .body()
+                    .contains("\"COMPLETED\""));
+    return jobs.request("GET", "/v1/csvAsyncJobs/" + jobId + "/result", null, token).body();
+  }
+
+  private Table createExportTable(DatabaseSchema schema, String name, List<TagLabel> tags) {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(name);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setTags(tags);
+    createTable.setColumns(
+        List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private DatabaseSchema createImportSchema(TestNamespace ns) {
+    Database database = createDatabase(ns, DatabaseServiceTestFactory.createPostgres(ns));
+    CreateDatabaseSchema createSchema = new CreateDatabaseSchema();
+    createSchema.setName(ns.prefix("import_history_schema"));
+    createSchema.setDatabase(database.getFullyQualifiedName());
+    return createEntity(createSchema);
+  }
+
+  private Table createOwnedTaggedTable(DatabaseSchema schema, String name) {
+    CreateTable createTable = new CreateTable();
+    createTable.setName(name);
+    createTable.setDatabaseSchema(schema.getFullyQualifiedName());
+    createTable.setDescription("Freight invoices from carriers.");
+    createTable.setOwners(List.of(testUser1Ref()));
+    createTable.setTags(List.of(personalDataTagLabel()));
+    createTable.setColumns(
+        List.of(new Column().withName("invoice_id").withDataType(ColumnDataType.BIGINT)));
+    return SdkClients.adminClient().tables().create(createTable);
+  }
+
+  private void importReplacingText(DatabaseSchema schema, String text, String replacement) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String exported = admin.databaseSchemas().exportCsv(schema.getFullyQualifiedName());
+    String csv = exported.replace(text, replacement);
+    admin.databaseSchemas().importCsv(schema.getFullyQualifiedName(), csv, false, false);
+  }
+
+  private Table editDescription(OpenMetadataClient client, UUID tableId, String description) {
+    Table table = client.tables().get(tableId.toString(), "owners,tags");
+    table.setDescription(description);
+    client.tables().update(tableId, table);
+    return client.tables().get(tableId.toString(), "owners,tags");
+  }
+
+  private List<Double> versionsInHistory(UUID tableId) {
+    // EntityHistory.versions is an untyped list: the SDK hands back each version as its JSON text,
+    // or as an already-parsed object depending on the deserializer, so both shapes are read here.
+    return SdkClients.adminClient().tables().getVersionList(tableId).getVersions().stream()
+        .map(
+            version ->
+                version instanceof String json
+                    ? JsonUtils.readValue(json, Table.class)
+                    : JsonUtils.convertValue(version, Table.class))
+        .map(Table::getVersion)
+        .toList();
+  }
+
+  private void assertVersionKept(UUID tableId, Table expected) {
+    Table stored = SdkClients.adminClient().tables().getVersion(tableId, expected.getVersion());
+    assertEquals(expected.getDescription(), stored.getDescription());
+    assertEquals(expected.getUpdatedBy(), stored.getUpdatedBy());
+    assertEquals(testUser1Ref().getId(), stored.getOwners().getFirst().getId());
+    assertEquals(personalDataTagLabel().getTagFQN(), stored.getTags().getFirst().getTagFQN());
   }
 
   @Test

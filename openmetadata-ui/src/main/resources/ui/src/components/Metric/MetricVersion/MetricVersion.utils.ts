@@ -62,7 +62,7 @@ export const getMetricVersionMetadata = ({
 }) => ({
   ownerDisplayName: owners?.map(getEntityName).join(', ') ?? '',
   domainDisplayName: domains?.map(getEntityName).join(', ') ?? '',
-  tierDisplayName: tier?.tagFQN.split('.').at(-1) ?? '',
+  tierDisplayName: tier?.displayName || (tier?.tagFQN.split('.').at(-1) ?? ''),
 });
 
 export const getMetricVersionTags = (metric: Metric) =>

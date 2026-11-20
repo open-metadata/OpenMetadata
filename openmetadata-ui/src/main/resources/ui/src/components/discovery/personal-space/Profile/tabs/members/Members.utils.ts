@@ -16,8 +16,9 @@ import type {
   SelectItemType,
 } from '@openmetadata/ui-core-components';
 import {
-  Clock,
-  ShieldTick,
+  ActivityOwnerChanged,
+  OnlineUsers,
+  Teams,
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
@@ -40,6 +41,7 @@ import {
   TEAMS_ADD,
   TEAMS_IMPORT,
   TEAM_DETAIL,
+  TEAM_TAB_SUBPAGE,
   USER_DETAIL,
 } from './membersRoute.utils';
 
@@ -218,15 +220,16 @@ export const getMembersIcons = (
 ): Record<MembersView['type'], FC<{ className?: string }>> => ({
   section: sectionIcon ?? Users01,
   landing: Users01,
-  teams: Users01,
-  [TEAM_DETAIL]: Users01,
-  [TEAMS_ADD]: Users01,
-  [TEAMS_IMPORT]: Users01,
+  teams: Teams,
+  [TEAM_DETAIL]: Teams,
+  [TEAMS_ADD]: Teams,
+  [TEAMS_IMPORT]: Teams,
+  [TEAM_TAB_SUBPAGE]: Teams,
   users: User01,
   [USER_DETAIL]: User01,
-  admins: ShieldTick,
-  'user-create': createUserIsAdmin ? ShieldTick : User01,
-  'online-users': Clock,
+  admins: ActivityOwnerChanged,
+  'user-create': createUserIsAdmin ? ActivityOwnerChanged : User01,
+  'online-users': OnlineUsers,
 });
 
 export const getMembersDescriptions = (
@@ -240,6 +243,7 @@ export const getMembersDescriptions = (
   [TEAM_DETAIL]: t('message.members-teams-description'),
   [TEAMS_ADD]: t('message.members-teams-description'),
   [TEAMS_IMPORT]: t('message.members-teams-description'),
+  [TEAM_TAB_SUBPAGE]: t('message.members-teams-description'),
   users: t('message.members-users-description'),
   // The user-detail header supplies its own `@username · email` line.
   [USER_DETAIL]: '',
@@ -258,8 +262,41 @@ export const USER_DETAIL_BACK_TO_USERS = new Set<Key>([
 
 // The fetched display name wins once known; until then the sub-path's raw FQN
 // stands in.
-const getTeamDetailName = (view: MembersView, resolvedName: string) =>
-  view.type === TEAM_DETAIL ? resolvedName || view.name : '';
+// A contributed tab's sub-page is titled after its team too, so the header
+// keeps naming the team the page belongs to; its route carries only the fqn.
+const getTeamDetailName = (view: MembersView, resolvedName: string) => {
+  if (view.type === TEAM_DETAIL) {
+    return resolvedName || view.name;
+  }
+
+  return view.type === TEAM_TAB_SUBPAGE ? resolvedName || view.fqn : '';
+};
+
+const TEAM_CRUMB = 'team';
+// The root team is what the Organization crumb already opens.
+const ROOT_TEAM_FQN = 'Organization';
+
+// A titled sub-page sits under its team, which stays a link back; the root
+// team is skipped since the Organization crumb before it is the same page.
+const getTeamTabSubPageCrumbs = (
+  view: MembersView,
+  parents: BreadcrumbItemType[],
+  teamName: string,
+  subPageTitle?: string
+): BreadcrumbItemType[] => {
+  if (!subPageTitle || view.type !== TEAM_TAB_SUBPAGE) {
+    return [...parents, { id: 'current', label: teamName }];
+  }
+  const teamCrumbs =
+    view.fqn === ROOT_TEAM_FQN ? [] : [{ id: TEAM_CRUMB, label: teamName }];
+
+  return [...parents, ...teamCrumbs, { id: 'current', label: subPageTitle }];
+};
+
+const CRUMB_LIST_VIEWS: Record<
+  string,
+  'landing' | 'teams' | 'users' | 'admins'
+> = { members: 'landing', teams: 'teams', users: 'users', admins: 'admins' };
 
 export const makeBreadcrumbAction =
   (onNavigate: (view: MembersView) => void, view?: MembersView) =>
@@ -275,14 +312,14 @@ export const makeBreadcrumbAction =
 
       return;
     }
-    if (id === 'members') {
-      onNavigate({ type: 'landing' });
-    } else if (id === 'teams') {
-      onNavigate({ type: 'teams' });
-    } else if (id === 'users') {
-      onNavigate({ type: 'users' });
-    } else if (id === 'admins') {
-      onNavigate({ type: 'admins' });
+    if (id === TEAM_CRUMB && view?.type === TEAM_TAB_SUBPAGE) {
+      onNavigate({ type: TEAM_DETAIL, fqn: view.fqn, name: view.fqn });
+
+      return;
+    }
+    const listView = CRUMB_LIST_VIEWS[String(id)];
+    if (listView) {
+      onNavigate({ type: listView });
     }
   };
 
@@ -326,7 +363,9 @@ export const buildMembersHeaderMaps = (
     title: string;
     description?: string;
     icon?: FC<{ className?: string }>;
-  }
+  },
+  // A team tab's sub-page names itself (e.g. "Configure <service>").
+  tabSubPage?: { title?: string; description?: string } | null
 ) => {
   const membersLabel = t('label.member-plural');
   const organizationLabel = t('label.organization');
@@ -370,6 +409,12 @@ export const buildMembersHeaderMaps = (
     [TEAM_DETAIL]: [...base, teamsItem, { id: 'current', label: teamName }],
     [TEAMS_ADD]: [...base, teamsItem, { id: 'current', label: addTeamLabel }],
     [TEAMS_IMPORT]: [...base, teamsItem, { id: 'current', label: importLabel }],
+    [TEAM_TAB_SUBPAGE]: getTeamTabSubPageCrumbs(
+      view,
+      [...base, teamsItem],
+      teamName,
+      tabSubPage?.title
+    ),
     users: [...base, { id: 'current', label: usersLabel }],
     [USER_DETAIL]: [...base, usersItem, ...userDetailCrumbs(view, t)],
     admins: [...base, { id: 'current', label: adminsLabel }],
@@ -388,6 +433,7 @@ export const buildMembersHeaderMaps = (
     [TEAM_DETAIL]: teamName,
     [TEAMS_ADD]: addTeamLabel,
     [TEAMS_IMPORT]: importLabel,
+    [TEAM_TAB_SUBPAGE]: tabSubPage?.title || teamName,
     users: usersLabel,
     [USER_DETAIL]: userDetailName(view),
     admins: adminsLabel,
@@ -400,11 +446,12 @@ export const buildMembersHeaderMaps = (
     crumbsByType,
     titleByType,
     iconByType: getMembersIcons(createUserIsAdmin, section?.icon),
-    descByType: getMembersDescriptions(
-      t,
-      createUserIsAdmin,
-      section?.description
-    ),
+    descByType: {
+      ...getMembersDescriptions(t, createUserIsAdmin, section?.description),
+      ...(tabSubPage?.description
+        ? { [TEAM_TAB_SUBPAGE]: tabSubPage.description }
+        : undefined),
+    },
   };
 };
 
@@ -488,6 +535,7 @@ const VIEW_ACCESS: Partial<Record<MembersView['type'], keyof MembersAccess>> = {
   teams: 'teams',
   'team-detail': 'teams',
   'teams-add': 'teams',
+  [TEAM_TAB_SUBPAGE]: 'teams',
   users: 'users',
   admins: 'users',
   'user-detail': 'users',

@@ -19,6 +19,7 @@ import { User } from '../../../../generated/entity/teams/user';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
 import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import EntitySummaryPanel from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.component';
+import { USER_ASSETS_PANEL_PATH } from '../../../Explore/EntitySummaryPanel/EntitySummaryPanel.constants';
 import UserAssetCardList from './UserAssetCardList';
 import { SEARCH_DEBOUNCE_MS, TYPE_OPTIONS } from './UserAssets.constants';
 import { getSelectedAsset, UserAssetsKind } from './UserAssets.utils';
@@ -31,6 +32,8 @@ export interface UserAssetsViewProps {
   kind: UserAssetsKind;
   // Stat tiles render only for kind === 'owned'.
   showStats?: boolean;
+  // `muted` only inside a modal, whose panel is the default card's colour in dark.
+  cardVariant?: 'default' | 'muted';
 }
 
 /**
@@ -41,6 +44,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
   user,
   kind,
   showStats = true,
+  cardVariant = 'default',
 }) => {
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -63,7 +67,9 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
       data-testid="user-assets-view"
       direction="col"
       gap={4}>
-      {showStats && kind === 'owned' && <UserAssetStats user={user} />}
+      {showStats && kind === 'owned' && (
+        <UserAssetStats cardVariant={cardVariant} user={user} />
+      )}
       {hasNoAssets ? (
         <UserAssetsEmpty kind={kind} user={user} />
       ) : (
@@ -85,6 +91,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
               />
               <Input
                 aria-label={searchLabel}
+                autoComplete="off"
                 className="tw:min-w-0 tw:flex-1"
                 icon={Search}
                 inputDataTestId="user-assets-search"
@@ -100,6 +107,7 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
             ) : (
               <UserAssetCardList
                 assets={assets}
+                cardVariant={cardVariant}
                 hasMore={hasMore}
                 isLoading={isLoading}
                 selectedId={selected?.id}
@@ -112,12 +120,10 @@ const UserAssetsView: React.FC<UserAssetsViewProps> = ({
             <Box
               className="tw:min-h-0 tw:min-w-0 tw:overflow-y-auto"
               data-testid="user-assets-summary">
-              {/* "explore" keeps the panel's own container transparent, so the
-                  summary and rail sit on the dialog surface in both themes. */}
               <EntitySummaryPanel
                 entityDetails={{ details: selected }}
                 handleClosePanel={() => setSelectedId(null)}
-                panelPath="explore"
+                panelPath={USER_ASSETS_PANEL_PATH}
               />
             </Box>
           )}

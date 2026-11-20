@@ -79,6 +79,8 @@ export const DESTINATION_TYPE_BASED_PLACEHOLDERS = {
 
 export const DEFAULT_READ_TIMEOUT = 12;
 
+export const ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH = 1;
+
 export const DATA_CONTRACT_ALERT_FILTERS = [
   'filterByFqn',
   'filterByDomain',
@@ -98,7 +100,13 @@ export const DATA_CONTRACT_STATUS_OPTIONS = [
   { label: 'label.aborted', value: 'Aborted' },
 ];
 
-export const ALERT_EMPTY_STATE_FEATURES = [
+export const ALERT_EMPTY_STATE_FEATURES: {
+  key: string;
+  Icon: typeof ZapFast;
+  iconClassName: string;
+  titleKey: string;
+  descriptionKey: string;
+}[] = [
   {
     key: 'trigger',
     Icon: ZapFast,

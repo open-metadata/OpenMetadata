@@ -283,6 +283,84 @@ describe('fetchInboxActivity', () => {
     expect(result.isCapped).toBe(false);
   });
 
+  // Past a capped list's oldest item the other list would stand alone, as if
+  // the capped one had nothing there.
+  it('cuts the conversations at the oldest event of a capped activity list', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i, timestamp: 400 })),
+    });
+    mockListConversations.mockResolvedValue({
+      data: [
+        { id: 'newer', updatedAt: 450 },
+        { id: 'older', updatedAt: 300 },
+      ],
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.All, 'u1');
+
+    expect(result.activities).toHaveLength(200);
+    expect(result.threads.map(({ id }) => id)).toEqual(['newer']);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(400);
+  });
+
+  // A mention event keeps its own time, so an old event mentioned today would
+  // fall before any cut taken from the conversations.
+  it('leaves Mentions whole when its conversations are capped', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: [{ id: 'mentioned-today', timestamp: 100 }],
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `t${i}`,
+        updatedAt: 400,
+      })),
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.Mentions, 'u1');
+
+    expect(result.activities.map(({ id }) => id)).toEqual(['mentioned-today']);
+    expect(result.isCapped).toBe(true);
+    // Incomplete from where the conversations stop, not from the old event.
+    expect(result.cutAt).toBe(400);
+  });
+
+  // Mention events carry their own time, so where a capped list of them stops
+  // can't be placed in the feed.
+  it('places no cut when only the Mentions events are capped', async () => {
+    mockGetMentionsActivityFeed.mockResolvedValue({
+      data: Array.from({ length: 200 }, (_, i) => ({ id: i, timestamp: 100 })),
+    });
+    mockListConversations.mockResolvedValue({ data: [] });
+
+    const result = await fetchInboxActivity(ActivityFilter.Mentions, 'u1');
+
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBeUndefined();
+  });
+
+  it('cuts the events at the oldest conversation of a capped conversation list', async () => {
+    mockGetActivityEvents.mockResolvedValue({
+      data: [
+        { id: 'newer', timestamp: 450 },
+        { id: 'older', timestamp: 300 },
+      ],
+    });
+    mockListConversations.mockResolvedValue({
+      data: Array.from({ length: 100 }, (_, i) => ({
+        id: `t${i}`,
+        updatedAt: 400,
+      })),
+    });
+
+    const result = await fetchInboxActivity(ActivityFilter.All, 'u1');
+
+    expect(result.activities.map(({ id }) => id)).toEqual(['newer']);
+    expect(result.threads).toHaveLength(100);
+    expect(result.isCapped).toBe(true);
+    expect(result.cutAt).toBe(400);
+  });
+
   it('returns empty lists when the user id is not resolved yet', async () => {
     const result = await fetchInboxActivity(ActivityFilter.All, undefined);
 

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.glassfish.jersey.internal.util.ExceptionUtils;
+import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.system.IndexingError;
@@ -16,6 +17,8 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.change.ChangeSummary;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.DataQualityStatusResolver;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentPipeline;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
@@ -32,6 +35,7 @@ import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.proce
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.OwnerTeamStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.RecursiveColumnStatsStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TagAndTierSourcesStep;
+import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TestCaseParentStep;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.steps.TierStep;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.SearchIndexException;
@@ -61,8 +65,8 @@ public class DataInsightsEntityEnricherProcessor
 
   /**
    * Step pipeline: each entity-version's enrichment runs through this list once. A step that
-   * throws produces no fields on that version's snapshot, but sibling steps still run and the
-   * entity is still emitted to the index. See {@link EnrichmentPipeline} for the failure-isolation
+   * throws normally drops only its contribution. Required identity/linkage steps reject the
+   * snapshot because emitting it would corrupt dependent metrics. See {@link EnrichmentPipeline} for the failure-isolation
    * contract.
    *
    * <p>Ordering is not load-bearing for correctness — no step reads keys written by sibling
@@ -74,6 +78,7 @@ public class DataInsightsEntityEnricherProcessor
       new EnrichmentPipeline(
           List.of(
               new IdentityProjectionStep(),
+              new TestCaseParentStep(),
               new EntityStatusStep(),
               new DescriptionSourcesStep(),
               new TagAndTierSourcesStep(),
@@ -86,6 +91,9 @@ public class DataInsightsEntityEnricherProcessor
 
   private final VersionResolver versionResolver = new VersionResolver();
   private final SnapshotMaterializer snapshotMaterializer = new SnapshotMaterializer();
+  private final DataQualityStatusResolver dataQualityStatusResolver =
+      new DataQualityStatusResolver(Entity.getCollectionDAO());
+  private final AtomicInteger dataQualityWarnCount = new AtomicInteger();
 
   public DataInsightsEntityEnricherProcessor(int total) {
     this.stats.withTotalRecords(total).withSuccessRecords(0).withFailedRecords(0);
@@ -185,8 +193,8 @@ public class DataInsightsEntityEnricherProcessor
 
   /**
    * Per-entity orchestration: resolve version windows → enrich each → fan out across days. One
-   * entity in, N daily snapshots out. The only way to lose the entity entirely is if version
-   * resolution itself throws — step failures only drop their own fields, not the entity (see
+   * entity in, N daily snapshots out. Version resolution and required enrichment failures
+   * reject the entity; optional step failures only drop their own fields (see
    * {@link EnrichmentPipeline}).
    */
   private List<Map<String, Object>> enrichEntityToSnapshots(
@@ -198,6 +206,7 @@ public class DataInsightsEntityEnricherProcessor
         enrichEntity(target);
         snapshots.addAll(snapshotMaterializer.materialize(window, target.entityMap()));
       }
+      stampDataQualityStatus(entity, snapshots);
       return snapshots;
     } catch (EntityNotFoundException e) {
       // The asset was hard-deleted between the source listing it and this enrichment — routine
@@ -209,20 +218,28 @@ public class DataInsightsEntityEnricherProcessor
     }
   }
 
+  /** Like a failing step, a failed lookup drops only the status, never the entity's snapshots. */
+  private void stampDataQualityStatus(
+      EntityInterface<?> entity, List<Map<String, Object>> snapshots) {
+    try {
+      dataQualityStatusResolver.stamp(entity, snapshots);
+    } catch (JdbiException e) {
+      if (dataQualityWarnCount.incrementAndGet() <= MAX_ENTITY_LOSS_WARN_SAMPLES) {
+        LOG.warn(
+            "[DataInsights enricher] entity='{}' data quality status skipped: {}",
+            entity.getFullyQualifiedName(),
+            e.toString());
+      }
+    }
+  }
+
   private EnrichmentTarget buildTarget(VersionedWindow window, EnrichmentContext context) {
     EntityInterface<?> entity = window.entity();
     Map<String, Object> entityMap = JsonUtils.getMap(entity);
     entityMap.keySet().retainAll(context.entityTypeFields());
     stripNestedColumnChildren(entityMap);
     Map<String, ChangeSummary> changeSummary = SearchIndexUtils.getChangeSummaryMap(entity);
-    return new EnrichmentTarget(
-        entity,
-        entityMap,
-        changeSummary,
-        window.windowStartTimestamp(),
-        window.windowEndTimestamp(),
-        context,
-        window.shape());
+    return new EnrichmentTarget(entity, entityMap, changeSummary, context, window.shape());
   }
 
   /**

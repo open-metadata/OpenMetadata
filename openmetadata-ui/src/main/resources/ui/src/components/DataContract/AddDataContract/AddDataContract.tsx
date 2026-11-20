@@ -18,18 +18,20 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  ClockStopwatch,
+  Contract,
+  FileLock02,
+  FileSemantics,
+  Policy,
+  Table as TableIcon,
+  TestSuite,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ContractIcon } from '../../../assets/svg/ic-contract.svg';
-import { ReactComponent as SecurityIcon } from '../../../assets/svg/ic-security.svg';
-import { ReactComponent as TermsIcon } from '../../../assets/svg/icon-test-suite.svg';
-import { ReactComponent as QualityIcon } from '../../../assets/svg/policies.svg';
-import { ReactComponent as SemanticsIcon } from '../../../assets/svg/semantics.svg';
-import { ReactComponent as TableIcon } from '../../../assets/svg/table-outline.svg';
-import { ReactComponent as SLAIcon } from '../../../assets/svg/timeout.svg';
 import {
   DataContractMode,
   EDataContractTab,
@@ -372,7 +374,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <ContractIcon className="contract-tab-icon" />
+            <Contract className="contract-tab-icon" />
             <span>{t('label.contract-detail-plural')}</span>
           </div>
         ),
@@ -392,7 +394,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <TermsIcon className="contract-tab-icon" />
+            <TestSuite className="contract-tab-icon" />
             <span>{t('label.terms-of-service')}</span>
           </div>
         ),
@@ -436,7 +438,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <SemanticsIcon className="contract-tab-icon" />
+            <FileSemantics className="contract-tab-icon" />
             <span>{t('label.semantic-plural')}</span>
           </div>
         ),
@@ -458,7 +460,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <SecurityIcon className="contract-tab-icon" />
+            <FileLock02 className="contract-tab-icon" />
             <span>{t('label.security')}</span>
           </div>
         ),
@@ -480,7 +482,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <QualityIcon className="contract-tab-icon" />
+            <Policy className="contract-tab-icon" />
             <span>{t('label.quality')}</span>
           </div>
         ),
@@ -507,7 +509,7 @@ const AddDataContract: React.FC<{
       {
         label: (
           <div className="d-flex items-center">
-            <SLAIcon className="contract-tab-icon" />
+            <ClockStopwatch className="contract-tab-icon" />
             <span>{t('label.sla')}</span>
           </div>
         ),

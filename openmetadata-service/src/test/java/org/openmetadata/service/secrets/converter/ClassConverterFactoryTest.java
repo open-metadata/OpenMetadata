@@ -100,16 +100,16 @@ public class ClassConverterFactoryTest {
 
   @Test
   void testMergeDisjointRejectsAClassClaimedTwice() {
-    // The NatsConnection case: a dedicated converter that also types authType, and a
-    // generic one that only types tlsConfig. Merging used to let the generic one win in
-    // silence, leaving the auth token unencrypted and unmasked.
+    // A dedicated converter and a generic nested one for the same class. Merging used to let
+    // the generic one win in silence, dropping whatever else the dedicated one converted.
     Map<Class<?>, ClassConverter> dedicated =
-        Map.of(NatsConnection.class, new NatsConnectionClassConverter());
+        Map.of(MysqlConnection.class, new MysqlConnectionClassConverter());
     Map<Class<?>, ClassConverter> nested =
         Map.of(
-            NatsConnection.class,
+            MysqlConnection.class,
             new NestedConfigClassConverter(
-                NatsConnection.class, Map.of("tlsConfig", List.of(ValidateSSLClientConfig.class))));
+                MysqlConnection.class,
+                Map.of("sslConfig", List.of(ValidateSSLClientConfig.class))));
 
     IllegalStateException thrown =
         assertThrows(
@@ -117,7 +117,7 @@ public class ClassConverterFactoryTest {
             () -> ClassConverterFactory.mergeDisjoint(dedicated, nested));
 
     assertTrue(
-        thrown.getMessage().contains(NatsConnection.class.getName()),
+        thrown.getMessage().contains(MysqlConnection.class.getName()),
         "the message has to name the class so the duplicate can be found: " + thrown.getMessage());
   }
 }

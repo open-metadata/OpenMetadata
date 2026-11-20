@@ -14,10 +14,24 @@ import { AppLayout } from '@openmetadata/ui-core-components/icons';
 import { PageType } from '../../generated/system/ui/uiCustomization';
 import {
   getCustomizePageCategories,
+  getCustomizePageCategoryCards,
   getCustomizePageOptions,
 } from './PersonaUtils';
 
 describe('PersonaUtils', () => {
+  describe('getCustomizePageCategoryCards', () => {
+    it('drops the AI sidebar card, which the Navigation card opens in AI mode', () => {
+      expect(getCustomizePageCategoryCards().map((c) => c.key)).toEqual(
+        getCustomizePageCategories()
+          .map((c) => c.key)
+          .filter((key) => key !== 'askCollateSidebar')
+      );
+      expect(getCustomizePageCategoryCards().map((c) => c.key)).not.toContain(
+        'askCollateSidebar'
+      );
+    });
+  });
+
   describe('getCustomizePageCategories', () => {
     it('should return the correct categories', () => {
       const categories = getCustomizePageCategories();

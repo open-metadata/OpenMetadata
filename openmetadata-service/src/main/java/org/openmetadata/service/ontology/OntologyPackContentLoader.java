@@ -41,20 +41,26 @@ public final class OntologyPackContentLoader {
 
   public SelectedPack loadSelected(
       final OntologyPackCatalog catalog, final String packId, final Collection<String> moduleIds) {
+    final Selection selection = select(catalog, packId, moduleIds);
+    final String body =
+        selection.modules().stream()
+            .map(OntologyPackModule::getResourcePath)
+            .map(this::load)
+            .map(PackContent::body)
+            .collect(Collectors.joining(System.lineSeparator()));
+    return new SelectedPack(selection.manifest(), selection.modules(), selection.format(), body);
+  }
+
+  /** The verified modules of a bundled pack, without reading their content. */
+  public Selection select(
+      final OntologyPackCatalog catalog, final String packId, final Collection<String> moduleIds) {
     final OntologyPackManifest manifest = catalog.require(packId);
     if (!Boolean.TRUE.equals(manifest.getBundled())) {
       throw new IllegalArgumentException(
           "Ontology pack '%s' requires an independently licensed payload".formatted(packId));
     }
     final List<OntologyPackModule> modules = catalog.select(manifest, moduleIds);
-    final String format = requireSingleFormat(modules);
-    final String body =
-        modules.stream()
-            .map(OntologyPackModule::getResourcePath)
-            .map(this::load)
-            .map(PackContent::body)
-            .collect(Collectors.joining(System.lineSeparator()));
-    return new SelectedPack(manifest, modules, format, body);
+    return new Selection(manifest, modules, requireSingleFormat(modules));
   }
 
   private static String requireSingleFormat(final List<OntologyPackModule> modules) {
@@ -93,6 +99,9 @@ public final class OntologyPackContentLoader {
   }
 
   public record PackContent(String body, String sha256) {}
+
+  public record Selection(
+      OntologyPackManifest manifest, List<OntologyPackModule> modules, String format) {}
 
   public record SelectedPack(
       OntologyPackManifest manifest,

@@ -1,39 +1,24 @@
 package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
-import jakarta.servlet.http.HttpServletRequest;
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.security.JwtFilter;
 
 @Slf4j
 public class McpUtils {
 
-  private static final McpJsonMapper JSON_MAPPER =
-      new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
-
-  @SuppressWarnings("unchecked")
-  public static McpSchema.JSONRPCMessage getJsonRpcMessageWithAuthorizationParam(
-      McpJsonMapper jsonMapper, HttpServletRequest request, String body) throws IOException {
-    Map<String, Object> requestMessage = JsonUtils.getMap(JsonUtils.readTree(body));
-    Map<String, Object> params = (Map<String, Object>) requestMessage.get("params");
-    if (params != null) {
-      Map<String, Object> arguments = (Map<String, Object>) params.get("arguments");
-      if (arguments != null) {
-        arguments.put("Authorization", JwtFilter.extractToken(request.getHeader("Authorization")));
-      }
-    }
-    return McpSchema.deserializeJsonRpcMessage(jsonMapper, JsonUtils.pojoToJson(requestMessage));
-  }
+  // tools.json parameters carry a top-level description and examples that clients have never
+  // received. See ADR:2026-11-06-mcp-tool-schemas-leave-out-the-tools-json-doc-keys.
+  private static final Set<String> DOC_ONLY_SCHEMA_KEYS = Set.of("description", "examples");
+  private static final Map<String, Object> NO_ARGUMENTS_SCHEMA = Map.of("type", "object");
 
   @SuppressWarnings("unchecked")
   public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
@@ -97,13 +82,13 @@ public class McpUtils {
     String name = (String) toolDef.get("name");
     String title = (String) toolDef.get("title");
     String description = (String) toolDef.get("description");
-    Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
+    Map<String, Object> schema =
+        new LinkedHashMap<>(
+            Objects.requireNonNullElse(
+                JsonUtils.getMap(toolDef.get("parameters")), NO_ARGUMENTS_SCHEMA));
+    schema.keySet().removeAll(DOC_ONLY_SCHEMA_KEYS);
     McpSchema.Tool.Builder builder =
-        McpSchema.Tool.builder()
-            .name(name)
-            .title(title)
-            .description(description)
-            .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema));
+        McpSchema.Tool.builder(name, schema).title(title).description(description);
     McpSchema.ToolAnnotations annotations = buildToolAnnotations(toolDef, title);
     if (annotations != null) {
       builder.annotations(annotations);
@@ -148,23 +133,15 @@ public class McpUtils {
                 List<McpSchema.PromptArgument> arguments =
                     JsonUtils.readOrConvertValues(
                         promptDef.get("arguments"), McpSchema.PromptArgument.class);
-                return new McpSchema.Prompt(name, description, arguments);
+                return McpSchema.Prompt.builder(name)
+                    .description(description)
+                    .arguments(arguments)
+                    .build();
               })
           .toList();
     } catch (Exception e) {
       LOG.error("Error during server startup", e);
       throw new RuntimeException("Failed to start MCP server", e);
     }
-  }
-
-  public static String readRequestBody(HttpServletRequest request) throws IOException {
-    StringBuilder body = new StringBuilder();
-    try (BufferedReader reader = request.getReader()) {
-      String line;
-      while ((line = reader.readLine()) != null) {
-        body.append(line);
-      }
-    }
-    return body.toString();
   }
 }

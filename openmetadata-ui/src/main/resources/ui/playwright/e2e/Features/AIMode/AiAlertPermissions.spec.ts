@@ -101,7 +101,7 @@ test.describe('AI mode — alert permissions match the classic alert pages', () 
     await test.step('list hides create and row actions', async () => {
       await gotoAndSettle(page, '/observability/alerts');
 
-      await expect(page.getByTestId('observability-page-shell')).toBeVisible();
+      await expect(page.getByTestId('page-layout')).toBeVisible();
       await expect(
         page.getByRole('link', { name: alert.displayName })
       ).toBeVisible();

@@ -17,10 +17,10 @@ import {
   Grid,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Nested } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ReactComponent as NestedIcon } from '../assets/svg/nested.svg';
 import PanelEmptyPlaceholder from '../components/common/EmptyPlaceholder/PanelEmptyPlaceholder';
 import FieldCard from '../components/common/FieldCard/FieldCard';
 import { NestedFieldCardProps } from '../components/common/FieldCard/FieldCard.interface';
@@ -125,7 +125,7 @@ const NestedFieldCard: React.FC<NestedFieldCardProps> = ({
           <div className="d-flex align-items-center m-l-md gap-1">
             {!isExpanded && (
               <span className="d-flex">
-                <NestedIcon />
+                <Nested className="tw:text-utility-gray-500" />
               </span>
             )}
             <Button
@@ -204,7 +204,7 @@ const NestedSchemaFieldCard: React.FC<{
           <div className="d-flex align-items-center m-l-md gap-1">
             {!isExpanded && (
               <span className="d-flex">
-                <NestedIcon />
+                <Nested className="tw:text-utility-gray-500" />
               </span>
             )}
             <Button
@@ -635,7 +635,6 @@ const PipelineTasksV1: React.FC<{
                 dataType={task.taskType || t('label.task')}
                 description={task.description}
                 fieldName={getEntityName(task)}
-                glossaryTerms={task.glossaryTerms}
                 isHighlighted={isHighlighted}
                 tags={task.tags}
               />
@@ -745,7 +744,7 @@ const APICollectionEndpointsV1: React.FC<{
   return (
     <div className="schema-field-cards-container">
       <Grid className="layout-row layout-grid">
-        {filteredEndpoints.map((endpoint: EntityReference) => {
+        {filteredEndpoints.map((endpoint) => {
           const isHighlighted = highlights?.apiEndpoints?.includes(
             endpoint.name
           );
@@ -910,7 +909,8 @@ const DashboardChartsV1: React.FC<{
     <div className="schema-field-cards-container">
       <Grid className="layout-row layout-grid">
         {filteredCharts.map((chart: EntityReference) => {
-          const isHighlighted = highlights?.chart?.includes(chart.name);
+          const isHighlighted =
+            chart.name !== undefined && highlights?.chart?.includes(chart.name);
 
           return (
             <Grid.Item className="layout-column" key={chart.id} span={24}>
@@ -919,7 +919,6 @@ const DashboardChartsV1: React.FC<{
                 description={chart.description}
                 fieldName={getEntityName(chart)}
                 isHighlighted={isHighlighted}
-                tags={chart.tags}
               />
             </Grid.Item>
           );
@@ -1192,7 +1191,6 @@ const DatabaseSchemasV1: React.FC<{
                 dataType={schema.type || 'Database Schema'}
                 description={schema.description || ''}
                 fieldName={getEntityName(schema)}
-                tags={schema.tags || []}
               />
             </Grid.Item>
           );
@@ -1365,7 +1363,7 @@ const ENTITY_CHILD_DETAILS_RENDERERS: Partial<
   ),
   [EntityType.DATABASE]: ({ entityInfo, highlights, loading, searchText }) => (
     <DatabaseSchemasV1
-      entityInfo={entityInfo}
+      entityInfo={entityInfo as Database}
       highlights={highlights}
       loading={loading}
       searchText={searchText}

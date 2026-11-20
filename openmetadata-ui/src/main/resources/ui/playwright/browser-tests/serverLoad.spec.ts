@@ -16,7 +16,7 @@ import { AddressInfo, createServer as createTcpServer, Socket } from 'net';
 import { test as serverLoadTest } from '../support/fixtures/base';
 import { installServerLoadReducers } from '../support/fixtures/serverLoad';
 
-const configPath = '/api/v1/system/settings/lineageSettings';
+const configPath = '/api/v1/system/config/rdf';
 
 serverLoadTest(
   'fixture teardown accepts an explicitly closed context',

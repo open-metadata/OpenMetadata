@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.jdbi3;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
@@ -81,6 +80,18 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
             () -> daoCollection.entityExtensionDAO(),
             this::customPropertyReferences,
             Entity.DASHBOARD_DATA_MODEL);
+  }
+
+  /** A data model's FQN puts "model" after its service's: the FQN of a chart named "model". */
+  @Override
+  protected boolean nestsUnderUnrelatedFqns() {
+    return true;
+  }
+
+  /** A data model is a descendant of the dashboard service whose FQN it extends. */
+  @Override
+  protected String fqnParentType() {
+    return Entity.DASHBOARD_SERVICE;
   }
 
   @Override
@@ -272,10 +283,13 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
     List<TagLabel> allTags = new ArrayList<>();
     DashboardDataModel dashboardDataModel = (DashboardDataModel) entity;
     EntityUtil.mergeTags(allTags, dashboardDataModel.getTags());
-    for (Column column : listOrEmpty(dashboardDataModel.getColumns())) {
-      EntityUtil.mergeTags(allTags, column.getTags());
-    }
+    EntityUtil.mergeColumnTags(allTags, dashboardDataModel.getColumns());
     return allTags;
+  }
+
+  @Override
+  public Fields getPolicyTagFields() {
+    return getOnlySupportedFields("tags,columns");
   }
 
   public class DataModelUpdater extends ColumnEntityUpdater {

@@ -1,8 +1,8 @@
 {
   "title": "Token",
   "description": "Token-based authentication for NATS.",
-  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
   "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
   "properties": {
     "token": {
       "title": "Token",

@@ -87,8 +87,8 @@
         {
           "title": "Username and Password",
           "description": "Username and password authentication for NATS.",
-          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.BasicAuth",
           "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth",
           "properties": {
             "username": {
               "title": "Username",
@@ -111,8 +111,8 @@
         {
           "title": "Token",
           "description": "Token-based authentication for NATS.",
-          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.TokenAuth",
           "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth",
           "properties": {
             "token": {
               "title": "Token",
@@ -129,8 +129,8 @@
         {
           "title": "NKey Seed",
           "description": "NKey seed authentication for NATS.",
-          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth",
           "type": "object",
+          "javaType": "org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth",
           "properties": {
             "nkeySeed": {
               "title": "NKey Seed",

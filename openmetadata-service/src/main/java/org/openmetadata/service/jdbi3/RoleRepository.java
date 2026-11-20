@@ -204,6 +204,19 @@ public class RoleRepository extends EntityRepository<Role> {
     return List.of("policies");
   }
 
+  /**
+   * "Admin" is the {@code isAdmin} flag, not a role, so no new role may take the name
+   * (ADR:2026-11-12-admin-is-a-reserved-role-name). Checked here because POST and PUT both create
+   * through this method, and roles cannot be renamed. Existing roles with the name stay editable.
+   */
+  @Override
+  protected Role createNewEntity(Role role) {
+    if (Entity.ADMIN_ROLE.equalsIgnoreCase(role.getName())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.reservedRoleName(role.getName()));
+    }
+    return super.createNewEntity(role);
+  }
+
   @Override
   public void storeEntity(Role role, boolean update) {
     store(role, update);
@@ -245,10 +258,23 @@ public class RoleRepository extends EntityRepository<Role> {
   @Override
   protected void postDelete(Role entity, boolean hardDelete) {
     super.postDelete(entity, hardDelete);
-    PolicyConditionUpdater.updateAllPolicyConditions(
-        condition ->
-            PolicyConditionUpdater.removeFromCondition(
-                condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
+    // Users and teams holding this role resolve it into their policies.
+    SubjectCache.invalidateAll();
+    // A soft-deleted role already drops out of every user's roles, so conditions naming it match
+    // nothing until a restore brings it back; only a hard delete rewrites them
+    // (ADR:2026-10-30-deleted-policy-condition-references-become-false).
+    if (hardDelete) {
+      PolicyConditionUpdater.updateAllPolicyConditions(
+          condition ->
+              PolicyConditionUpdater.removeFromCondition(
+                  condition, entity.getName(), PolicyConditionUpdater.ROLE_FUNCTIONS));
+    }
+  }
+
+  @Override
+  protected void postRestore(Role entity) {
+    super.postRestore(entity);
+    SubjectCache.invalidateAll();
   }
 
   /** Handles entity updated from PUT and POST operation. */

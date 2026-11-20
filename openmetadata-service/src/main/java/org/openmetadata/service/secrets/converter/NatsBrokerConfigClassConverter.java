@@ -15,9 +15,9 @@ package org.openmetadata.service.secrets.converter;
 
 import java.util.List;
 import org.openmetadata.schema.security.ssl.ValidateSSLClientConfig;
-import org.openmetadata.schema.services.connections.messaging.nats.BasicAuth;
-import org.openmetadata.schema.services.connections.messaging.nats.NkeyAuth;
-import org.openmetadata.schema.services.connections.messaging.nats.TokenAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsBasicAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsNkeyAuth;
+import org.openmetadata.schema.services.connections.messaging.nats.NatsTokenAuth;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.NatsBrokerConfig;
 import org.openmetadata.schema.services.connections.pipeline.openlineage.nats.CredentialsAuth;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -25,13 +25,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 /**
  * Converter class to get a `NatsBrokerConfig` object.
  *
- * <p>Same reason as {@link NatsConnectionClassConverter}: the `oneOf` fields are generated as
- * `Object`, and a `LinkedHashMap` is walked by neither the secrets manager nor the masker.
+ * <p>The `oneOf` fields are generated as `Object`, and a `LinkedHashMap` is walked by neither the
+ * secrets manager nor the masker.
  */
 public class NatsBrokerConfigClassConverter extends ClassConverter {
 
   private static final List<Class<?>> AUTH_CLASSES =
-      List.of(BasicAuth.class, TokenAuth.class, NkeyAuth.class, CredentialsAuth.class);
+      List.of(NatsBasicAuth.class, NatsTokenAuth.class, NatsNkeyAuth.class, CredentialsAuth.class);
 
   private static final List<Class<?>> TLS_CLASSES = List.of(ValidateSSLClientConfig.class);
 
