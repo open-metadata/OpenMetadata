@@ -14,6 +14,8 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from requests import Response
+from requests.exceptions import HTTPError
 
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
@@ -164,3 +166,65 @@ class TestTerminalStatusWriteRetry:
 
         assert metadata.create_or_update_pipeline_status.call_count == 3
         assert delay.call_count == 2
+
+    def test_gateway_502_with_plain_http_error_is_retried(self):
+        metadata = MagicMock()
+        response = Response()
+        response.status_code = 502
+        metadata.create_or_update_pipeline_status.side_effect = [
+            HTTPError("Bad Gateway (HTML response)", response=response),
+            None,
+        ]
+        harness = _Harness(ProgressRegistry(), metadata)
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
+
+        assert metadata.create_or_update_pipeline_status.call_count == 2
+        delay.assert_called_once()
+
+    def test_503_does_not_stack_retries_on_rest_client(self):
+        metadata = MagicMock()
+        response = Response()
+        response.status_code = 503
+        metadata.create_or_update_pipeline_status.side_effect = HTTPError(
+            "Service Unavailable", response=response
+        )
+        harness = _Harness(ProgressRegistry(), metadata)
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            with pytest.raises(HTTPError):
+                harness._write_pipeline_status("svc.pipeline", MagicMock(), terminal=True)
+
+        metadata.create_or_update_pipeline_status.assert_called_once()
+        delay.assert_not_called()
+
+    def test_terminal_read_retries_transport_failure_before_write(self):
+        metadata = MagicMock()
+        saved_status = MagicMock()
+        metadata.get_pipeline_status.side_effect = [
+            RestTransportError("GET", "/pipelineStatus/run-1", TimeoutError("reset")),
+            saved_status,
+        ]
+        harness = _Harness(ProgressRegistry(), metadata)
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            actual = harness._read_pipeline_status("svc.pipeline", "run-1", terminal=True)
+
+        assert actual is saved_status
+        assert metadata.get_pipeline_status.call_count == 2
+        delay.assert_called_once()
+
+    def test_running_read_does_not_retry(self):
+        metadata = MagicMock()
+        metadata.get_pipeline_status.side_effect = RestTransportError(
+            "GET", "/pipelineStatus/run-1", TimeoutError("reset")
+        )
+        harness = _Harness(ProgressRegistry(), metadata)
+
+        with patch("metadata.workflow.workflow_status_mixin.sleep") as delay:
+            with pytest.raises(RestTransportError):
+                harness._read_pipeline_status("svc.pipeline", "run-1", terminal=False)
+
+        metadata.get_pipeline_status.assert_called_once()
+        delay.assert_not_called()
