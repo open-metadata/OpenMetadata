@@ -14,6 +14,7 @@
 import { Box, Tooltip, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
 import {
   INCIDENT_TREND_COLORS,
   INCIDENT_TREND_DIRECTION_LABELS,
@@ -30,6 +31,8 @@ import {
 const IncidentTrendSparkline = ({
   trend,
   trendDirection,
+  trendStart,
+  trendEnd,
   severity,
 }: IncidentTrendSparklineProps) => {
   const { t } = useTranslation();
@@ -43,10 +46,15 @@ const IncidentTrendSparkline = ({
     ? t(INCIDENT_TREND_DIRECTION_LABELS[trendDirection])
     : '';
 
-  const description = t('message.open-incident-trend', {
-    startCount: trend[0],
-    endCount: trend[trend.length - 1],
-  });
+  const counts = { startCount: trend[0], endCount: trend[trend.length - 1] };
+  const description =
+    trendStart !== undefined && trendEnd !== undefined
+      ? t('message.open-incident-trend', {
+          ...counts,
+          startDate: formatDateTime(trendStart),
+          endDate: formatDateTime(trendEnd),
+        })
+      : t('message.open-incident-count-change', counts);
 
   return (
     <Box className="tw:gap-0.5" data-testid="incident-trend" direction="col">

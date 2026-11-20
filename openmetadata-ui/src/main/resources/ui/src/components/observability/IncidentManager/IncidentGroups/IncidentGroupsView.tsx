@@ -443,7 +443,7 @@ const IncidentGroupsView = ({ canEditIncidents }: IncidentGroupsViewProps) => {
                   <Typography
                     as="span"
                     className="tw:text-secondary"
-                    data-testid="incident-groups-recurring-count"
+                    data-testid="incident-groups-rising-count"
                     size="text-sm">
                     <Transi18next
                       i18nKey="label.rising-groups-count"

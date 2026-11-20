@@ -60,7 +60,6 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
-import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
@@ -423,6 +422,7 @@ public class StaleIncidentStatusIT {
     TestCase owner = createTestCase(destination, name);
     UUID stateId = createIncident(owner);
     TestCase replacement = createTestCase(original, name);
+    UUID replacementState = createIncident(replacement);
     // Reproduce legacy stale names while retaining the authoritative owner relationship.
     TestSuiteBootstrap.getJdbi()
         .useHandle(
@@ -451,18 +451,8 @@ public class StaleIncidentStatusIT {
         .testCases()
         .delete(replacement.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
     await()
-        .during(Duration.ofMillis(200))
         .atMost(Duration.ofSeconds(30))
-        .until(
-            () ->
-                AsyncService.getInstance()
-                            .getOperationQueuedCount(
-                                AsyncService.DatabaseOperation.TEST_CASE_CLEANUP)
-                        == 0
-                    && AsyncService.getInstance()
-                            .getOperationActiveCount(
-                                AsyncService.DatabaseOperation.TEST_CASE_CLEANUP)
-                        == 0);
+        .untilAsserted(() -> assertIncidentRemoved(replacementState));
     assertEquals(1, countIncidentRows("test_case_incident", stateId));
     assertEquals(1, countIncidentRows("test_case_incident_open_interval", stateId));
     SdkClients.adminClient()

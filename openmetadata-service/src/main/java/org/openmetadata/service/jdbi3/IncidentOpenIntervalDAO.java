@@ -1,11 +1,14 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.service.jdbi3.TimeSeriesDAOs.TestCaseResolutionStatusTimeSeriesDAO.OPEN_STATUSES;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.util.List;
+import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
+import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -60,10 +63,6 @@ public interface IncidentOpenIntervalDAO {
     return Math.max(timestamp, lockIncidentTimestamp(stateId) + 1);
   }
 
-  @SqlQuery(
-      "SELECT stateId FROM test_case_incident WHERE stateId > :after ORDER BY stateId LIMIT :limit")
-  List<String> listIncidentIds(@Bind("after") String after, @Bind("limit") int limit);
-
   @SqlQuery("SELECT stateId FROM test_case_incident WHERE stateId = :stateId FOR UPDATE")
   String lockIncident(@Bind("stateId") String stateId);
 
@@ -75,7 +74,7 @@ public interface IncidentOpenIntervalDAO {
       INSERT INTO test_case_incident_open_interval (stateId, openedAt, closedAt)
       WITH ranked AS (
         SELECT stateId, timestamp,
-          CASE WHEN testCaseResolutionStatusType IN ('New', 'Ack', 'Assigned') THEN 1 ELSE 0 END AS isOpen,
+          CASE WHEN testCaseResolutionStatusType IN (<openStatuses>) THEN 1 ELSE 0 END AS isOpen,
           ROW_NUMBER() OVER (PARTITION BY stateId, timestamp ORDER BY id DESC) AS position
         FROM test_case_resolution_status_time_series WHERE stateId IN (<stateIds>)
       ), changes AS (
@@ -89,22 +88,27 @@ public interface IncidentOpenIntervalDAO {
       )
       SELECT stateId, timestamp, closedAt FROM boundaries WHERE isOpen = 1
       """)
-  void insertOpenIntervalsFromHistory(@BindList("stateIds") List<String> stateIds);
+  void insertOpenIntervalsFromHistory(
+      @BindList("stateIds") List<String> stateIds, @Define("openStatuses") String openStatuses);
 
   @Transaction
   default void rebuildOpenIntervals(List<String> stateIds) {
     if (!stateIds.isEmpty()) {
       deleteOpenIntervals(stateIds);
-      insertOpenIntervalsFromHistory(stateIds);
+      insertOpenIntervalsFromHistory(
+          stateIds,
+          OPEN_STATUSES.stream()
+              .map(status -> "'" + status.value() + "'")
+              .collect(Collectors.joining(", ")));
     }
   }
 
   @SqlQuery(
       """
-      SELECT openedAt FROM test_case_incident_open_interval
-      WHERE stateId = :stateId AND closedAt IS NULL ORDER BY openedAt DESC LIMIT 1
+      SELECT EXISTS (SELECT 1 FROM test_case_incident_open_interval
+      WHERE stateId = :stateId AND closedAt IS NULL)
       """)
-  Long findOpenInterval(@Bind("stateId") String stateId);
+  boolean hasOpenInterval(@Bind("stateId") String stateId);
 
   @SqlUpdate(
       """
@@ -121,10 +125,10 @@ public interface IncidentOpenIntervalDAO {
 
   /** Called under the incident summary's write lock, with the repository's monotonic timestamp. */
   default void recordOpenInterval(String stateId, long timestamp, boolean isOpen) {
-    final Long openedAt = findOpenInterval(stateId);
-    if (isOpen && openedAt == null) {
+    final boolean hasOpenInterval = hasOpenInterval(stateId);
+    if (isOpen && !hasOpenInterval) {
       openInterval(stateId, timestamp);
-    } else if (!isOpen && openedAt != null) {
+    } else if (!isOpen && hasOpenInterval) {
       closeInterval(stateId, timestamp);
     }
   }

@@ -199,7 +199,7 @@ const IncidentGroupsTable = ({
       { id: 'lastSeen', label: t('label.last-seen') },
       {
         id: 'trend',
-        label: `${t('label.open-incidents')} (${t('label.last-7-days')})`,
+        label: t('label.open-incident-history'),
       },
       { id: 'open', ariaLabel: t('label.action-plural') },
     ],
@@ -297,6 +297,8 @@ const IncidentGroupsTable = ({
             severity={group.severity}
             trend={group.trend}
             trendDirection={group.trendDirection}
+            trendEnd={group.trendEnd}
+            trendStart={group.trendStart}
           />
         </Table.Cell>
         <Table.Cell>

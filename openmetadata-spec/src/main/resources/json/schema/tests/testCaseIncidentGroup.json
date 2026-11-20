@@ -115,6 +115,8 @@
     "trend": {
       "description": "Open-incident counts at 9 equally spaced instants from trendStart to trendEnd (the last 7 days). Includes incidents resolved since the start and incidents already open at the start. Uses current group membership, domain, test, assignee and severity filters; status and incident-date filters select rows but do not narrow this history. Retained history of non-deleted test cases only.",
       "type": "array",
+      "minItems": 9,
+      "maxItems": 9,
       "items": {
         "type": "integer"
       }

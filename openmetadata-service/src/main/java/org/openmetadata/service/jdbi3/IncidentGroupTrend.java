@@ -16,15 +16,13 @@ public record IncidentGroupTrend(long start, long end) {
   private static final long WINDOW_MILLIS = Duration.ofDays(7).toMillis();
 
   public static IncidentGroupTrend endingAt(long timestamp) {
-    return new IncidentGroupTrend(Math.max(0, timestamp - WINDOW_MILLIS), timestamp);
+    return new IncidentGroupTrend(timestamp - WINDOW_MILLIS, timestamp);
   }
 
   public Map<String, Object> bindings() {
-    Map<String, Object> result = new HashMap<>();
-    for (int sample = 0; sample <= INTERVALS; sample++) {
-      result.put("trendSample" + sample, start + (end - start) * sample / INTERVALS);
-    }
-    result.put("trendEnd", end);
+    Map<String, Object> result = new HashMap<>(Map.of("trendEnd", end));
+    IntStream.rangeClosed(0, INTERVALS)
+        .forEach(sample -> result.put(sampleParam(sample), sampleAt(sample)));
     return result;
   }
 
@@ -33,12 +31,17 @@ public record IncidentGroupTrend(long start, long end) {
     return IntStream.rangeClosed(0, INTERVALS)
         .mapToObj(
             sample ->
-                "SELECT "
-                    + sample
-                    + " AS sample, CAST(:trendSample"
-                    + sample
-                    + " AS DECIMAL(20,0)) AS sampledAt")
+                "SELECT %d AS sample, CAST(:%s AS DECIMAL(20,0)) AS sampledAt"
+                    .formatted(sample, sampleParam(sample)))
         .collect(Collectors.joining(" UNION ALL "));
+  }
+
+  private static String sampleParam(int sample) {
+    return "trendSample" + sample;
+  }
+
+  private long sampleAt(int sample) {
+    return start + (end - start) * sample / INTERVALS;
   }
 
   public static List<Integer> counts(List<TimeSeriesDAOs.IncidentGroupTrendCount> rows) {

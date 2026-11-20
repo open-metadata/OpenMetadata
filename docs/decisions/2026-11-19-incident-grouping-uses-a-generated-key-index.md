@@ -1,10 +1,10 @@
 # Incident grouping uses the full generated table name
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-19 (initial) · v2 2026-11-20 (consolidated unreleased DDL into 2.1.1) · v3 2026-11-20 (support 3,072-character table names)
+- **Revisions:** v1 2026-11-19 (initial)
 - **Deciders:** Teddy Crepineau
 - **Guard:** `IncidentGroupingIndexSqlTest`, `IncidentGroupQueriesSqlTest`, `IncidentGroupTrendSqlTest`, `IncidentGroupTrendScaleIT`
-- **Related:** https://github.com/open-metadata/OpenMetadata/pull/38164; ADR:2026-11-19-incident-grouping-uses-transactional-projections
+- **Related:** https://github.com/open-metadata/OpenMetadata/pull/38164
 
 ## Context
 
@@ -25,7 +25,10 @@ older `entityLink` and `entityFQN` generated columns to hold the full link and f
 MySQL derives the grouping key from the stored entity link. It indexes the first 512 characters
 of the table name followed by the deletion flag, ID and ASCII FQN hash. A lookup can use the
 prefix to find candidate rows and compare their complete names. PostgreSQL stores the full
-grouping key without an additional index.
+grouping key without an additional index. The shared-framework PostgreSQL scale run measured the
+25-table trend at 25.7 ms p95 (one reader) and 69.4 ms p95 (five readers), with 10,000 incidents
+across 200 tables. Those warm SQL timings do not establish full HTTP listing latency or upgrade
+rewrite duration. An additional PostgreSQL equality index remains a separate, plan-driven optimization.
 
 Generated columns and the MySQL index are maintained by the database for all writers and participate
 in transaction rollback. There is no separate projection table, backfill worker, synchronization
@@ -42,40 +45,9 @@ index. Returning to older application code leaves additive columns/indexes in pl
 The MySQL timings in the original PR benchmark were measured with the earlier covering index.
 They do not establish latency for the prefix index. A change in grouping-key semantics requires a new migration.
 
-## Regression checks
+## Guard
 
-`IncidentGroupTrendScaleIT`, tagged `@Tag("scale")`, runs the production trend query on MySQL and PostgreSQL with
-10,000 incidents across 200 table groups and 40,000 history rows. It checks all nine counts
-for a 25-table page and a single large group, with 30 measured requests at concurrency 1 and 5.
-The workload runs only in the `scale-it` profile; regular SQL tests retain the smaller correctness
-fixtures. The default five-second p95 budget is a coarse regression alarm, not a production SLO; override
-`-Dincident.trend.scale.p95Millis=...` for a calibrated runner. End-to-end HTTP concurrency
-measurements are recorded separately in PR #38164. The scale runner writes JSON measurements under
-`openmetadata-integration-tests/target/benchmark/`.
-
-The test reuses the scale framework's running application, migrated database and `TestNamespace`
-cleanup. Tables and test cases are created through the API; historical records are batch-seeded
-in that database, including parent relationships, and their intervals are rebuilt through the
-production DAO. Planner statistics are refreshed after bulk seeding so reads and cleanup do not
-depend on the timing of background statistics collection. An API assertion verifies that the
-incident endpoint reads the fixture before measuring SQL. No separate container, credentials,
-reduced schema or migration replay is used.
-Run with `-Pscale-it -Dit.test=IncidentGroupTrendScaleIT`; the framework selects the database/search
-engines using its existing properties. The report is `target/benchmark/incident-group-trend.json`
-and includes both the measured p95 and its budget. These timings measure SQL, not HTTP latency.
-
-The nine-row `samplesSql()` result supplies evenly spaced timestamps in a shared seven-day window.
-It is a time axis, not random sampling of incidents. Each count includes periods opened on or before
-the sample and excludes periods closed at or before it.
-
-Open intervals cascade from their incident summary through a foreign key. Explicit history-record
-deletion refreshes the summary and rebuilds its intervals in the same transaction. Test hard deletion
-captures status and incident IDs before asynchronous cleanup, including unlinked records and summaries
-whose audit history has expired. Cleanup deletes complete incident histories in batches. It removes
-relationships in the database transaction and deletes the captured search documents after commit. Surviving parent relationships take precedence over reusable test
-names. Soft deletion retains the data; group queries hide deleted tests until restored.
-
-The interval-table existence check is restricted to migration-context writes. The older 2.0.0 task
-cutover can invoke current incident writers before the 2.1.1 schema migration has run, especially on
-forced replay. Those early events are covered by the later backfill. Normal writes always maintain
-intervals and do not query `information_schema`.
+`IncidentGroupingIndexSqlTest` applies the actual migration, checks generated values after all write
+shapes and verifies full-name equality when two names collide in the MySQL prefix index.
+`IncidentGroupQueriesSqlTest` executes grouping and preview queries against the migrated column on
+both engines. Scale workload details and commands live in the [implementation plan](../plans/2026-11-17-incident-open-count-trend.md).

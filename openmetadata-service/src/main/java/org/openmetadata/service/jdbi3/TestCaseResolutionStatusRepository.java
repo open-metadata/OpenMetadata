@@ -478,6 +478,8 @@ public class TestCaseResolutionStatusRepository
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
     rejectReopeningResolvedIncident(recordEntity, lastIncident, recordFQN);
+    // A new stateId must follow the previous incident on this test case, including a resolved one.
+    // orderIncidentWrite separately serializes concurrent writes within the same stateId.
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -1094,6 +1096,8 @@ public class TestCaseResolutionStatusRepository
     }
 
     TestCaseResolutionStatus lastIncident = getLatestRecord(recordFQN);
+    // A new stateId must follow the previous incident on this test case, including a resolved one.
+    // orderIncidentWrite separately serializes concurrent writes within the same stateId.
     long lastTimestamp =
         lastIncident != null && lastIncident.getTimestamp() != null
             ? lastIncident.getTimestamp()
@@ -1284,12 +1288,11 @@ public class TestCaseResolutionStatusRepository
             count ->
                 withRelatedEntities(
                     toIncidentGroup(
-                            groupBy,
-                            count,
-                            trends.get(count.groupKey()),
-                            references.groups().get(count.groupKey()))
-                        .withTrendStart(window.start())
-                        .withTrendEnd(window.end()),
+                        groupBy,
+                        count,
+                        trends.get(count.groupKey()),
+                        references.groups().get(count.groupKey()),
+                        window),
                     count,
                     page,
                     references))
@@ -1355,7 +1358,8 @@ public class TestCaseResolutionStatusRepository
       IncidentGroupBy groupBy,
       CollectionDAO.TestCaseIncidentGroupCount count,
       List<Integer> trend,
-      EntityReference reference) {
+      EntityReference reference,
+      IncidentGroupTrend window) {
     TestCaseIncidentGroup group =
         new TestCaseIncidentGroup()
             .withGroupBy(groupBy)
@@ -1372,7 +1376,11 @@ public class TestCaseResolutionStatusRepository
     if (!assignees.isEmpty()) {
       group.withAssignees(assignees);
     }
-    group.withTrend(trend).withTrendDirection(IncidentGroupTrend.direction(trend));
+    group
+        .withTrend(trend)
+        .withTrendDirection(IncidentGroupTrend.direction(trend))
+        .withTrendStart(window.start())
+        .withTrendEnd(window.end());
     if (reference != null) {
       group
           .withId(reference.getId())

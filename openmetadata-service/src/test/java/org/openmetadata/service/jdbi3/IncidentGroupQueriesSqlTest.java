@@ -17,6 +17,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -32,6 +33,8 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.tests.type.IncidentGroupBy;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -43,7 +46,7 @@ class IncidentGroupQueriesSqlTest {
   private static final String PASSWORD = "incident-groups-test";
 
   @Test
-  void groupsPreservePreviewsWithoutRedundantQueriesOnPostgres() {
+  void groupsPreservePreviewsWithoutRedundantQueriesOnPostgres() throws Exception {
     try (var database =
         new GenericContainer<>("postgres:15")
             .withEnv("POSTGRES_PASSWORD", PASSWORD)
@@ -62,9 +65,9 @@ class IncidentGroupQueriesSqlTest {
   }
 
   @Test
-  void groupsPreservePreviewsWithoutRedundantQueriesOnMysql() {
+  void groupsPreservePreviewsWithoutRedundantQueriesOnMysql() throws Exception {
     try (var database =
-        new GenericContainer<>("mysql:8.3.0")
+        new GenericContainer<>("mysql:8.4.13")
             .withEnv("MYSQL_ROOT_PASSWORD", PASSWORD)
             .withEnv("MYSQL_DATABASE", "incident_groups")
             .withEnv("MYSQL_ROOT_HOST", "%")
@@ -91,7 +94,7 @@ class IncidentGroupQueriesSqlTest {
     return jdbi;
   }
 
-  private void runChecks(Jdbi jdbi, boolean mysql) {
+  private void runChecks(Jdbi jdbi, boolean mysql) throws Exception {
     jdbi.getConfig(SqlStatements.class).setUnusedBindingAllowed(true);
     createFixture(jdbi, mysql);
     var config = mock(DatasourceConfig.class);
@@ -102,26 +105,47 @@ class IncidentGroupQueriesSqlTest {
     }
   }
 
-  private void createFixture(Jdbi jdbi, boolean mysql) {
+  private void createFixture(Jdbi jdbi, boolean mysql) throws Exception {
+    var schema =
+        MigrationFile.parseSqlUnits(
+            new File(
+                "../bootstrap/sql/migrations/native/2.1.1/"
+                    + (mysql ? "mysql" : "postgres")
+                    + "/schemaChanges.sql"),
+            mysql ? ConnectionType.MYSQL : ConnectionType.POSTGRES);
     jdbi.useHandle(
         handle -> {
           handle.execute(
-              "CREATE TABLE test_case (id VARCHAR(36), fqnHash VARCHAR(36), entityLink VARCHAR(256), deleted BOOLEAN)");
+              "CREATE TABLE test_case (id VARCHAR(36), fqnHash VARCHAR(36), json "
+                  + (mysql ? "JSON" : "JSONB")
+                  + " NOT NULL, entityFQN VARCHAR(712) GENERATED ALWAYS AS ("
+                  + (mysql ? "json ->> '$.entityFQN') VIRTUAL" : "json ->> 'entityFQN') STORED")
+                  + " NOT NULL, entityLink VARCHAR(512) GENERATED ALWAYS AS ("
+                  + (mysql ? "json ->> '$.entityLink'" : "json ->> 'entityLink'")
+                  + ") STORED NOT NULL, deleted BOOLEAN)");
           handle.execute(
               "CREATE TABLE entity_relationship (fromId VARCHAR(36), toId VARCHAR(36), fromEntity VARCHAR(36), toEntity VARCHAR(36), relation INT)");
           handle.execute(
-              "CREATE TABLE test_case_incident (stateId VARCHAR(36), entityFQNHash VARCHAR(36), testCaseResolutionStatusType VARCHAR(36), severity VARCHAR(36), assignee VARCHAR(36), createdAt BIGINT, updatedAt BIGINT)");
-          String tableExpression =
-              mysql
-                  ? "TRIM(TRAILING '>' FROM SUBSTRING_INDEX(SUBSTRING_INDEX(entityLink, '::', 3), '::', -1))"
-                  : "TRIM(TRAILING '>' FROM SPLIT_PART(entityLink, '::', 3))";
-          handle.execute(
-              "ALTER TABLE test_case ADD COLUMN incidentTableFqn VARCHAR(512) GENERATED ALWAYS AS ("
-                  + tableExpression
-                  + ") "
-                  + (mysql ? "VIRTUAL" : "STORED"));
-          handle.execute(
-              "INSERT INTO test_case (id,fqnHash,entityLink,deleted) VALUES ('t1','f1','<#E::table::table1>',FALSE),('t2','f2','<#E::table::table1::columns::c>',FALSE),('t3','f3','<#E::table::table2>',FALSE),('t4','f4','<#E::table::table3>',TRUE)");
+              "CREATE TABLE test_case_incident (stateId VARCHAR(36) PRIMARY KEY, entityFQNHash VARCHAR(36), testCaseResolutionStatusType VARCHAR(36), severity VARCHAR(36), assignee VARCHAR(36), createdAt BIGINT, updatedAt BIGINT)");
+          schema.forEach(unit -> unit.statements().forEach(handle::execute));
+          String[] links = {
+            "<#E::table::table1>",
+            "<#E::table::table1::columns::c>",
+            "<#E::table::table2>",
+            "<#E::table::table3>"
+          };
+          for (int i = 0; i < links.length; i++) {
+            handle
+                .createUpdate(
+                    "INSERT INTO test_case (id,fqnHash,json,deleted) VALUES (:id,:hash,"
+                        + (mysql ? ":json" : "CAST(:json AS jsonb)")
+                        + ",:deleted)")
+                .bind("id", "t" + (i + 1))
+                .bind("hash", "f" + (i + 1))
+                .bind("json", "{\"entityFQN\":\"table\",\"entityLink\":\"" + links[i] + "\"}")
+                .bind("deleted", i == 3)
+                .execute();
+          }
           handle.execute(
               "INSERT INTO entity_relationship VALUES ('d1','t1','testDefinition','testCase',0),('d2','t2','testDefinition','testCase',0),('d1','t4','testDefinition','testCase',0),('owner','t1','user','testCase',8),('owner','t2','user','testCase',8)");
           handle.execute(

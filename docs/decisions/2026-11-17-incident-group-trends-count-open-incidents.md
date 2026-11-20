@@ -1,7 +1,7 @@
 # Incident group trends show the number of open incidents over time
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-17 (initial), v2 2026-11-19 (persisted open periods)
+- **Revisions:** v1 2026-11-17 (initial)
 - **Deciders:** Observability
 - **Guard:** IncidentGroupTrendTest, IncidentGroupTrendSqlTest, IncidentGroupsIT
 
@@ -28,7 +28,7 @@ which did not establish that a resolved problem had returned.
 - The existing listing still selects currently open groups. Its status and incident-date
   filters select rows, but do not restrict the historical count of those groups. Otherwise
   resolved incidents and incidents already open at the start would disappear from history.
-  The tooltip explains this distinction. Current test, group membership, domain, assignee and
+  The rising-groups tooltip explains this distinction once per page. Current test, group membership, domain, assignee and
   severity scope apply to history; historical ownership/severity reconstruction is excluded.
 - Only non-deleted test cases with an incident summary are counted. Open periods survive
   routine audit-record retention while the incident survives. Deleting an individual record
@@ -65,3 +65,23 @@ The previous bounded-history query still took about 13.8 seconds for a single de
 roughly 100,000 incidents on the local scale fixture. Persisting periods moves reconstruction
 to a one-time upgrade; live writes touch only the affected incident. The tradeoff is a new
 table and transactional projection maintenance. It is not a periodically refreshed count cache.
+
+## Lifecycle and compatibility checks
+
+Open intervals cascade from their incident summary through a foreign key. Explicit history-record
+deletion refreshes the summary and rebuilds its intervals in the same transaction. Test hard deletion
+captures status and incident IDs before asynchronous cleanup, including unlinked records and summaries
+whose audit history has expired. Each cleanup batch commits independently, then removes its captured
+search documents. A later failure does not roll back completed batches. Surviving parent relationships
+take precedence over reusable test names. Soft deletion retains the data; group queries hide deleted
+tests until restored.
+
+The versioned backfill owns its SQL and status classification; future product DAO changes cannot alter
+an upgrade to 2.1.1. Product rebuilds and live writes share the current open-status set.
+
+The schema declares exactly nine samples. The Java SDK returns the typed incident-group payload
+without summing its values; OSS MCP and ingestion have no incident-group trend consumers. A search of
+Collate's extension code at `d313b8c7622cb484c5e956b754d3402e15554214` found no independent trend
+consumers or imports of the removed recurring helpers. Collate uses the OSS UI from its submodule.
+External clients that interpreted these samples as creation buckets must adopt the documented
+open-count semantics; this check does not establish compatibility for unknown clients.

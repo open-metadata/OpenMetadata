@@ -232,12 +232,6 @@ export const countRisingIncidentGroups = (
   groups: TestCaseIncidentGroup[]
 ): number => groups.filter(isRising).length;
 
-/** @deprecated Use isRising; an increasing open count does not establish recurrence. */
-export const isRecurring = isRising;
-
-/** @deprecated Use countRisingIncidentGroups. */
-export const countRecurringIncidentGroups = countRisingIncidentGroups;
-
 /**
  * Tone of the trend. A falling open-incident count is good news and steady is
  * neither, so only a rising trend is graded — by the severity the group

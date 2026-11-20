@@ -30,6 +30,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -2412,19 +2413,6 @@ public interface TimeSeriesDAOs {
         String assignee,
         String severity,
         long timestamp,
-        String recordId) {
-      upsertIncident(
-          stateId, entityFQNHash, statusType, assignee, severity, timestamp, recordId, false);
-    }
-
-    @Transaction
-    default void upsertIncident(
-        String stateId,
-        String entityFQNHash,
-        String statusType,
-        String assignee,
-        String severity,
-        long timestamp,
         String recordId,
         boolean migrationContext) {
       upsertIncidentSummary(
@@ -2435,7 +2423,7 @@ public interface TimeSeriesDAOs {
         recordOpenInterval(
             stateId,
             timestamp,
-            OPEN_STATUSES.stream().anyMatch(status -> status.value().equals(statusType)));
+            OPEN_STATUSES.contains(TestCaseResolutionStatusTypes.fromValue(statusType)));
       }
     }
 
@@ -2733,7 +2721,6 @@ public interface TimeSeriesDAOs {
             + "COUNT(DISTINCT i.assignee) AS assigneeCount, "
             + "MIN(i.createdAt) AS firstSeen, "
             + "MAX(i.updatedAt) AS lastSeen, "
-            + "<createdAtAgg> AS incidentCreatedAt, "
             + "COUNT(DISTINCT <tableFqn>) AS tableCount, "
             + "COUNT(DISTINCT <testDefinitionId>) AS testDefinitionCount, "
             + "COUNT(*) OVER () AS totalGroups "
@@ -2747,7 +2734,6 @@ public interface TimeSeriesDAOs {
         @Define("statusRank") String statusRank,
         @Define("statusCounts") String statusCounts,
         @Define("assigneesExpr") String assigneesExpr,
-        @Define("createdAtAgg") String createdAtAgg,
         @Define("tableFqn") String tableFqn,
         @Define("testDefinitionId") String testDefinitionId,
         @Define("groupKey") String groupKey,
@@ -2843,23 +2829,22 @@ public interface TimeSeriesDAOs {
     }
 
     // Applying current status or creation-date filters to history would erase resolutions and
-    // incidents that were already open at the start of the window.
+    // incidents that were already open at the start of the window. The group key is applied by
+    // listIncidentGroups, outside ListFilter, and the trend query receives the page's keys
+    // directly.
+    Set<String> CURRENT_STATE_FILTER_KEYS =
+        Set.of(
+            "testCaseResolutionStatusType",
+            "incidentDateField",
+            "incidentStartTs",
+            "incidentEndTs",
+            "incidentGroupKey");
+
     static ListFilter incidentTrendFilter(ListFilter filter) {
       ListFilter history = new ListFilter(null);
-      filter
-          .getQueryParams()
-          .forEach(
-              (key, value) -> {
-                if (!List.of(
-                        "testCaseResolutionStatusType",
-                        "incidentDateField",
-                        "incidentStartTs",
-                        "incidentEndTs",
-                        "incidentGroupKey")
-                    .contains(key)) {
-                  history.addQueryParam(key, value);
-                }
-              });
+      filter.getQueryParams().entrySet().stream()
+          .filter(entry -> !CURRENT_STATE_FILTER_KEYS.contains(entry.getKey()))
+          .forEach(entry -> history.addQueryParam(entry.getKey(), entry.getValue()));
       return history;
     }
 
@@ -2944,7 +2929,6 @@ public interface TimeSeriesDAOs {
               statusRank,
               String.join(", ", statusCountExprs),
               assigneesExpr(),
-              "NULL",
               tableFqnExpr(),
               definitionId,
               dimension.groupKey(),
@@ -2968,18 +2952,17 @@ public interface TimeSeriesDAOs {
             countIncidentGroups(
                 openStatuses, dimension.groupKey(), dimension.join(), condition, params);
       }
-      IncidentGroupScope scope =
-          new IncidentGroupScope(dimension, openStatuses, joins, condition, params);
+      IncidentGroupScope scope = new IncidentGroupScope(dimension, openStatuses, condition, params);
       List<String> groupKeys = counts.stream().map(TestCaseIncidentGroupCount::groupKey).toList();
       return new IncidentGroupPage(
           counts,
           total,
           groupBy == IncidentGroupBy.Table
               ? selfRelatedKeys(groupKeys)
-              : topRelatedKeys(scope, tableFqnExpr(), groupKeys),
+              : topRelatedKeys(scope, tableFqnExpr(), dimension.join(), groupKeys),
           definitionGroup
               ? selfRelatedKeys(groupKeys)
-              : topRelatedKeys(scope, definitionId, groupKeys));
+              : topRelatedKeys(scope, definitionId, joins, groupKeys));
     }
 
     private static Map<String, List<String>> selfRelatedKeys(List<String> groupKeys) {
@@ -2988,7 +2971,7 @@ public interface TimeSeriesDAOs {
 
     // Related keys by group key, each group's list ordered from the most incidents down.
     private Map<String, List<String>> topRelatedKeys(
-        IncidentGroupScope scope, String relatedKey, List<String> groupKeys) {
+        IncidentGroupScope scope, String relatedKey, String joins, List<String> groupKeys) {
       List<IncidentGroupRelatedKey> rows =
           groupKeys.isEmpty()
               ? List.of()
@@ -2996,7 +2979,7 @@ public interface TimeSeriesDAOs {
                   scope.openStatuses(),
                   scope.dimension().groupKey(),
                   scope.dimension().groupByCols(),
-                  relatedKey.equals(tableFqnExpr()) ? scope.dimension().join() : scope.joins(),
+                  joins,
                   scope.condition(),
                   relatedKey,
                   groupKeys,
@@ -3022,7 +3005,7 @@ public interface TimeSeriesDAOs {
           : String.format("JSON_AGG(%s)", expression);
     }
 
-    // This generated key preserves column tests' origin table and enables covering index reads.
+    // This generated key preserves column tests' origin table without parsing JSON on each read.
     private static String tableFqnExpr() {
       return "tc.incidentTableFqn";
     }
@@ -3051,7 +3034,6 @@ public interface TimeSeriesDAOs {
     record IncidentGroupScope(
         IncidentGroupDimension dimension,
         String openStatuses,
-        String joins,
         String condition,
         Map<String, Object> params) {}
 
@@ -3396,7 +3378,6 @@ public interface TimeSeriesDAOs {
       int assigneeCount,
       long firstSeen,
       long lastSeen,
-      String incidentCreatedAt,
       int tableCount,
       int testDefinitionCount,
       int totalGroups) {}
@@ -3441,7 +3422,6 @@ public interface TimeSeriesDAOs {
           rs.getInt("assigneeCount"),
           rs.getLong("firstSeen"),
           rs.getLong("lastSeen"),
-          rs.getString("incidentCreatedAt"),
           rs.getInt("tableCount"),
           rs.getInt("testDefinitionCount"),
           rs.getInt("totalGroups"));

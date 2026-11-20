@@ -89,9 +89,9 @@ test.describe('AI mode Incident Manager — grouped incidents', () => {
     await expect(groups.getByTestId('incident-trend-direction')).toHaveText(
       'Rising'
     );
-    await expect(
-      page.getByTestId('incident-groups-recurring-count')
-    ).toHaveText('Rising groups: 1');
+    await expect(page.getByTestId('incident-groups-rising-count')).toHaveText(
+      'Rising groups: 1'
+    );
     await page.reload({ waitUntil: 'domcontentloaded' });
     await expect(
       groups.getByRole('img', {

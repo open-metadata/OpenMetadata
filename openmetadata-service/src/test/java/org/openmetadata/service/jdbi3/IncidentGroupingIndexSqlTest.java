@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.File;
+import java.util.List;
 import org.jdbi.v3.core.Handle;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjectPlugin;
@@ -175,6 +176,15 @@ class IncidentGroupingIndexSqlTest {
         handle ->
             insertCase(handle, "a".repeat(768), "wide", "<#E::table::" + newName + ">", mysql));
     assertEquals(newName, table(jdbi, "a".repeat(768)));
+    assertEquals(
+        List.of("a".repeat(768)),
+        jdbi.withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT fqnHash FROM test_case WHERE incidentTableFqn = :name")
+                    .bind("name", newName)
+                    .mapTo(String.class)
+                    .list()));
     applySchema(jdbi, mysql);
     applySchema(jdbi, mysql);
     assertEquals("renamed", table(jdbi, "renamed"));
