@@ -4243,6 +4243,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
+      // A lookup before the bulk insert (CSV import resolving an earlier row) can have cached a
+      // not-found marker for this id; the single-entity postCreate clears it, so must this one.
+      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
     }
     ListCountCache.invalidate(entityType);
   }
