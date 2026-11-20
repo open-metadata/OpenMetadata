@@ -206,7 +206,7 @@ def get_catalogs(connection: WorkspaceClient, table_obj: DatabricksTable, catalo
     if catalog_name:
         table_obj.catalog_name = connection.catalogs.get(catalog_name).name
         return
-    usable = [c for c in connection.catalogs.list() if c.name and c.name != INTERNAL_CATALOG]
+    usable = [c for c in connection.catalogs.list(include_browse=True) if c.name and c.name != INTERNAL_CATALOG]
     pick = next((c for c in usable if c.catalog_type == CatalogType.MANAGED_CATALOG), usable[0] if usable else None)
     table_obj.catalog_name = pick.name if pick else None
 
@@ -224,7 +224,7 @@ def get_schemas(connection: WorkspaceClient, table_obj: DatabricksTable, schema_
     if schema_name:
         table_obj.schema_name = connection.schemas.get(f"{table_obj.catalog_name}.{schema_name}").name
     else:
-        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name):
+        for schema in connection.schemas.list(catalog_name=table_obj.catalog_name, include_browse=True):
             if schema.name:
                 table_obj.schema_name = schema.name
                 break
@@ -235,7 +235,7 @@ def get_tables(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
     Validate that tables can be listed from the resolved catalog and schema.
     """
     catalog_name, schema_name = _require_resolved_catalog_and_schema(table_obj)
-    for table in connection.tables.list(catalog_name=catalog_name, schema_name=schema_name, max_results=1):
+    for table in connection.tables.list(catalog_name=catalog_name, schema_name=schema_name, max_results=1, include_browse=True):
         table_obj.name = table.name
         break
 
@@ -254,6 +254,7 @@ def get_views(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
         catalog_name=catalog_name,
         schema_name=schema_name,
         max_results=VIEW_LISTING_SCAN_LIMIT,
+        include_browse=True,
         omit_columns=True,
         omit_properties=True,
     )
@@ -400,7 +401,7 @@ class UnityCatalogChecks:
 
     def _list_first_catalog(self) -> None:
         """Prove the workspace answers an authenticated call, without paging every catalog."""
-        next(iter(self._workspace.client.catalogs.list()), None)
+        next(iter(self._workspace.client.catalogs.list(include_browse=True)), None)
 
     @check(DatabaseStep.GetDatabases)
     def check_databases(self) -> Evidence:
