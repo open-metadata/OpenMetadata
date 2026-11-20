@@ -150,6 +150,7 @@ import org.openmetadata.service.security.auth.validator.CustomOidcValidator;
 import org.openmetadata.service.security.auth.validator.GoogleAuthValidator;
 import org.openmetadata.service.security.auth.validator.OidcDiscoveryValidator;
 import org.openmetadata.service.security.auth.validator.OktaAuthValidator;
+import org.openmetadata.service.security.auth.validator.SamlIdpCertificateGate;
 import org.openmetadata.service.security.auth.validator.SamlValidator;
 import org.openmetadata.service.seeding.EssentialSeedReport;
 import org.openmetadata.service.seeding.EssentialSeeds;
@@ -863,19 +864,28 @@ public class SystemRepository implements DeploymentSettingPreparer {
    * setting, without calling the identity provider, and returns the JSON to store.
    */
   @Override
-  public String prepareReconciled(SettingsType type, JsonNode value) {
+  public String prepareReconciled(SettingsType type, JsonNode value, JsonNode stored) {
     Settings setting = settingsOf(type, value);
     OpenMetadataBaseUrlValidator.validate(setting);
     if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
       ActiveProviderValidator.validate(authConfig, authConfig);
+      SamlIdpCertificateGate.requireUsable(
+          authConfig, JsonUtils.convertValue(stored, AuthenticationConfiguration.class));
     }
     return prepareSettingForUpdate(setting);
   }
 
-  /** Applies the checks a first start always ran on a seeded value; returns the JSON to store. */
+  /**
+   * Applies the checks a first start always ran on a seeded value, and the IdP certificate check of
+   * a save, and returns the JSON to store.
+   */
   @Override
   public String prepareSeed(SettingsType type, JsonNode value) {
-    return prepareSettingForUpdate(settingsOf(type, value));
+    Settings setting = settingsOf(type, value);
+    if (setting.getConfigValue() instanceof AuthenticationConfiguration authConfig) {
+      SamlIdpCertificateGate.requireUsable(authConfig, null);
+    }
+    return prepareSettingForUpdate(setting);
   }
 
   private static Settings settingsOf(SettingsType type, JsonNode value) {

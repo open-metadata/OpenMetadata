@@ -229,18 +229,31 @@ public class SamlValidator {
     }
   }
 
+  /**
+   * The check a save of the configuration runs on the IdP certificate, without calling the identity
+   * provider. Returns null when the certificate passes or is not set.
+   */
+  public FieldError validateIdpCertificate(SamlSSOClientConfig samlConfig) {
+    FieldError error = null;
+    String certificate = samlConfig.getIdp().getIdpX509Certificate();
+    if (!nullOrEmpty(certificate)) {
+      try {
+        validateX509Certificate(certificate, "IdP X509 certificate", samlConfig);
+      } catch (Exception e) {
+        error =
+            ValidationErrorBuilder.createFieldError(
+                ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT,
+                "IdP certificate validation failed: " + e.getMessage());
+      }
+    }
+    return error;
+  }
+
   private FieldError validateCertificates(SamlSSOClientConfig samlConfig) {
     try {
-      // Validate IdP certificate if provided
-      if (!nullOrEmpty(samlConfig.getIdp().getIdpX509Certificate())) {
-        try {
-          validateX509Certificate(
-              samlConfig.getIdp().getIdpX509Certificate(), "IdP X509 certificate", samlConfig);
-        } catch (Exception e) {
-          return ValidationErrorBuilder.createFieldError(
-              ValidationErrorBuilder.FieldPaths.SAML_IDP_CERT,
-              "IdP certificate validation failed: " + e.getMessage());
-        }
+      FieldError idpCertificateError = validateIdpCertificate(samlConfig);
+      if (idpCertificateError != null) {
+        return idpCertificateError;
       }
 
       if (samlConfig.getSecurity() != null) {
