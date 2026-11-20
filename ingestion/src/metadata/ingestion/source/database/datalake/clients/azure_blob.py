@@ -76,10 +76,14 @@ class DatalakeAzureBlobClient(DatalakeBaseClient):
 
     def close(self, service_connection):
         credential = self._client.credential
-        self._client.close()
-        if credential is not None:
-            release_azure_filesystems(credential)
-            credential.close()
+        try:
+            self._client.close()
+        finally:
+            if credential is not None:
+                try:
+                    release_azure_filesystems(credential)
+                finally:
+                    credential.close()
 
     def get_test_list_buckets_fn(self, bucket_name: str | None) -> Callable:
         if bucket_name:

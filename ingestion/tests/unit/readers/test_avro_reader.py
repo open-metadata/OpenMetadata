@@ -227,7 +227,7 @@ class TestAzureSovereignAvroReader:
         fs_kwargs = mock_adlfs.call_args.kwargs
         assert fs_kwargs["account_name"] == "govavroacct"
         assert fs_kwargs["account_host"] == "govavroacct.blob.core.usgovcloudapi.net"
-        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        assert fs_kwargs["credential"].sync_credential._authority == "https://login.microsoftonline.us"
         mock_fs.open.assert_called_with("$logs/telemetry/events.avro", "rb")
 
     def test_azure_avro_missing_security_config_and_missing_account_name_raise(self):

@@ -552,7 +552,7 @@ class TestAzureSovereignDSVReader:
         storage_opts = captured["kwargs"]["storage_options"]
         assert storage_opts["account_host"] == "govdsvacct.blob.core.usgovcloudapi.net"
         assert storage_opts["account_name"] == "govdsvacct"
-        assert storage_opts["credential"]._authority == "https://login.microsoftonline.us"
+        assert storage_opts["credential"].sync_credential._authority == "https://login.microsoftonline.us"
 
     @patch("azure.identity.DefaultAzureCredential")
     @patch("pandas.read_csv")
@@ -590,7 +590,7 @@ class TestAzureSovereignDSVReader:
         assert len(chunks) == 1
         mock_default_cred.assert_called_once_with(authority="https://login.microsoftonline.us")
         assert captured["kwargs"]["compression"] == "gzip"
-        assert captured["kwargs"]["storage_options"]["credential"] is sentinel_cred
+        assert captured["kwargs"]["storage_options"]["credential"].sync_credential is sentinel_cred
         assert captured["kwargs"]["storage_options"]["account_host"] == "govdsvacct.blob.core.usgovcloudapi.net"
 
     def test_azure_missing_security_config_raises(self):

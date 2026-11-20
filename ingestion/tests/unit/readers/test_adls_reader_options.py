@@ -14,14 +14,18 @@ Unit tests for ADLS reader path builder, storage options, and ADLSReader methods
 
 import io
 from pathlib import Path
+from threading import get_ident
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import fsspec
 import pytest
 from adlfs import AzureBlobFileSystem
+from azure.core.credentials import AccessTokenInfo
+from azure.core.pipeline.transport import AioHttpTransport, AsyncHttpResponse
 from azure.identity import ClientSecretCredential
 from azure.storage.blob import BlobClient
+from requests.structures import CaseInsensitiveDict
 
 from metadata.generated.schema.entity.services.connections.database.datalake.azureConfig import (
     AzureConfig,
@@ -150,8 +154,8 @@ class TestADLSPathAndStorageOptions:
 
         assert "account_name" not in opts
         assert opts["account_host"] == "govacct.blob.core.usgovcloudapi.net"
-        assert isinstance(opts["credential"], ClientSecretCredential)
-        assert opts["credential"]._authority == "https://login.microsoftonline.us"
+        assert isinstance(opts["credential"].sync_credential, ClientSecretCredential)
+        assert opts["credential"].sync_credential._authority == "https://login.microsoftonline.us"
 
         # Real adlfs.AzureBlobFileSystem direct call (used in parquet/json/avro/mf4 readers)
         fs = AzureBlobFileSystem(account_name="govacct", **opts)
@@ -184,12 +188,13 @@ class TestADLSPathAndStorageOptions:
         )
         opts = return_azure_storage_options(config)
 
-        assert opts == {"credential": sentinel_cred}
+        assert opts.keys() == {"credential"}
+        assert opts["credential"].sync_credential is sentinel_cred
         mock_default_credential.assert_called_once_with()
 
         fs = AzureBlobFileSystem(account_name="miacct", **opts)
         assert fs.account_url == "https://miacct.blob.core.windows.net"
-        assert fs.credential is sentinel_cred
+        assert fs.credential is opts["credential"]
 
     @patch("azure.identity.DefaultAzureCredential")
     def test_return_azure_storage_options_us_gov_default_credential(self, mock_default_credential):
@@ -204,10 +209,9 @@ class TestADLSPathAndStorageOptions:
         )
         opts = return_azure_storage_options(config)
 
-        assert opts == {
-            "credential": sentinel_cred,
-            "account_host": "govmiacct.blob.core.usgovcloudapi.net",
-        }
+        assert opts.keys() == {"credential", "account_host"}
+        assert opts["credential"].sync_credential is sentinel_cred
+        assert opts["account_host"] == "govmiacct.blob.core.usgovcloudapi.net"
         mock_default_credential.assert_called_once_with(authority="https://login.microsoftonline.us")
 
     @pytest.mark.parametrize(
@@ -277,6 +281,66 @@ class TestADLSFileReader:
 
 class TestConnectionScopedAzureFilesystem:
     @pytest.mark.parametrize(
+        ("endpoint_suffix", "authority", "client_secret"),
+        [
+            ("core.usgovcloudapi.net", None, "gov-secret"),
+            ("core.windows.net", "https://login.microsoftonline.us", "gov-secret"),
+            ("core.usgovcloudapi.net", None, None),
+        ],
+        ids=["sovereign", "explicit-authority", "managed-identity"],
+    )
+    def test_blob_request_fetches_token_off_fsspec_event_loop(
+        self, monkeypatch, endpoint_suffix, authority, client_secret
+    ):
+        config = AzureConfig(
+            securityConfig=AzureCredentials(
+                accountName="govacct",
+                clientId="gov-client",
+                clientSecret=client_secret,
+                tenantId=VALID_TENANT_ID,
+                endpointSuffix=endpoint_suffix,
+                authority=authority,
+            )
+        )
+        connection = DatalakeAzureBlobClient.from_config(config)
+        token_threads = []
+        storage_threads = []
+
+        def get_token_info(_credential, *_scopes, **_options):
+            token_threads.append(get_ident())
+            return AccessTokenInfo("test-token", 4_000_000_000)
+
+        class BlobPropertiesResponse(AsyncHttpResponse):
+            def body(self) -> bytes:
+                return b""
+
+        async def send(_transport, request, **_kwargs):
+            storage_threads.append(get_ident())
+            assert request.url == f"https://govacct.blob.{endpoint_suffix}/raw-zone/sales.json"
+            assert request.headers["Authorization"] == "Bearer test-token"
+            response = BlobPropertiesResponse(request, None)
+            response.status_code = 200
+            response.headers = CaseInsensitiveDict(
+                {
+                    "content-length": "10",
+                    "last-modified": "Thu, 19 Nov 2026 00:00:00 GMT",
+                    "x-ms-blob-type": "BlockBlob",
+                }
+            )
+            return response
+
+        monkeypatch.setattr(type(connection.client.credential), "get_token_info", get_token_info)
+        monkeypatch.setattr(AioHttpTransport, "send", send)
+        try:
+            options = return_azure_storage_options(config, connection.client)
+            filesystem = AzureBlobFileSystem(account_name="govacct", **options)
+            assert filesystem.info("raw-zone/sales.json")["size"] == 10
+            assert len(token_threads) == len(storage_threads) == 1
+            assert token_threads[0] != storage_threads[0]
+        finally:
+            connection.close(service_connection=None)
+
+    @pytest.mark.parametrize(
         ("reader_class", "key", "payload"),
         [
             (JSONDataFrameReader, "sales.json", b'[{"id": 1}]'),
@@ -298,7 +362,11 @@ class TestConnectionScopedAzureFilesystem:
         credential = connection.client.credential
 
         def connection_filesystems() -> list[AzureBlobFileSystem]:
-            return [fs for fs in AzureBlobFileSystem._cache.values() if fs.credential is credential]
+            return [
+                fs
+                for fs in AzureBlobFileSystem._cache.values()
+                if getattr(fs.credential, "sync_credential", None) is credential
+            ]
 
         with (
             patch.object(AzureBlobFileSystem, "open", lambda *_, **__: io.BytesIO(payload)),
@@ -310,10 +378,33 @@ class TestConnectionScopedAzureFilesystem:
                 )
                 assert next(iter(wrapper.dataframes()))["id"].tolist() == [1]
 
-        assert len(connection_filesystems()) == 1
+        [filesystem] = connection_filesystems()
 
-        with patch.object(credential, "close", wraps=credential.close) as close_credential:
+        with (
+            patch.object(credential, "close", wraps=credential.close) as close_credential,
+            patch.object(filesystem.service_client, "close", wraps=filesystem.service_client.close) as close_filesystem,
+        ):
             connection.close(service_connection=None)
 
         assert connection_filesystems() == []
+        close_credential.assert_called_once_with()
+        close_filesystem.assert_awaited_once_with()
+
+    def test_blob_client_close_error_does_not_skip_reader_cleanup(self):
+        config = AzureConfig(
+            securityConfig=AzureCredentials(accountName="govacct", endpointSuffix="core.usgovcloudapi.net")
+        )
+        connection = DatalakeAzureBlobClient.from_config(config)
+        options = return_azure_storage_options(config, connection.client)
+        filesystem = AzureBlobFileSystem(account_name="govacct", **options)
+        credential = connection.client.credential
+
+        with (
+            patch.object(connection.client, "close", side_effect=RuntimeError("Blob shutdown failed")),
+            patch.object(credential, "close", wraps=credential.close) as close_credential,
+            pytest.raises(RuntimeError, match="Blob shutdown failed"),
+        ):
+            connection.close(service_connection=None)
+
+        assert filesystem not in AzureBlobFileSystem._cache.values()
         close_credential.assert_called_once_with()

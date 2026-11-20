@@ -248,7 +248,7 @@ class TestAzureSovereignMF4Reader:
         fs_kwargs = mock_adlfs.call_args.kwargs
         assert fs_kwargs["account_name"] == "govmf4acct"
         assert fs_kwargs["account_host"] == "govmf4acct.blob.core.usgovcloudapi.net"
-        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        assert fs_kwargs["credential"].sync_credential._authority == "https://login.microsoftonline.us"
         assert mock_fs.get.call_args.args[0] == "$root/drive/run01.mf4"
 
     def test_azure_mf4_missing_security_config_and_missing_account_name_raise(self):

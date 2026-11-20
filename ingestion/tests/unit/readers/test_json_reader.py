@@ -290,7 +290,7 @@ class TestAzureSovereignAndStreamingJSONReader:
         fs_kwargs = mock_adlfs.call_args.kwargs
         assert fs_kwargs["account_name"] == "govjsonacct"
         assert fs_kwargs["account_host"] == "govjsonacct.blob.core.usgovcloudapi.net"
-        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        assert fs_kwargs["credential"].sync_credential._authority == "https://login.microsoftonline.us"
         mock_fs.open.assert_called_with("$web/events/feed.jsonl", "rb")
 
     def test_azure_missing_security_config_and_missing_account_name_raise(self):

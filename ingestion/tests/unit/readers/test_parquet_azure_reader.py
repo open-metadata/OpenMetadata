@@ -176,13 +176,16 @@ class TestAzureSovereignParquetReader:
         fs_kwargs = mock_azure_fs.call_args.kwargs
         assert fs_kwargs["account_name"] == "govstorageacct"
         assert fs_kwargs["account_host"] == "govstorageacct.blob.core.usgovcloudapi.net"
-        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        assert fs_kwargs["credential"].sync_credential._authority == "https://login.microsoftonline.us"
 
         read_args, read_kwargs = mock_read_parquet.call_args
         assert read_args[0] == "abfs://gov-container@govstorageacct.dfs.core.usgovcloudapi.net/gov/data.parquet"
         assert read_kwargs["storage_options"]["account_host"] == "govstorageacct.blob.core.usgovcloudapi.net"
         assert read_kwargs["storage_options"]["account_name"] == "govstorageacct"
-        assert read_kwargs["storage_options"]["credential"]._authority == "https://login.microsoftonline.us"
+        assert (
+            read_kwargs["storage_options"]["credential"].sync_credential._authority
+            == "https://login.microsoftonline.us"
+        )
 
     @patch("pandas.read_parquet")
     @patch("adlfs.AzureBlobFileSystem")
@@ -210,13 +213,16 @@ class TestAzureSovereignParquetReader:
         fs_kwargs = mock_azure_fs.call_args.kwargs
         assert fs_kwargs["account_name"] == "govstorageacct"
         assert fs_kwargs["account_host"] == "govstorageacct.blob.core.usgovcloudapi.net"
-        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        assert fs_kwargs["credential"].sync_credential._authority == "https://login.microsoftonline.us"
 
         read_args, read_kwargs = mock_read_parquet.call_args
         assert read_args[0] == "abfs://gov-container@govstorageacct.dfs.core.usgovcloudapi.net/gov/fallback.parquet"
         assert read_kwargs["storage_options"]["account_host"] == "govstorageacct.blob.core.usgovcloudapi.net"
         assert read_kwargs["storage_options"]["account_name"] == "govstorageacct"
-        assert read_kwargs["storage_options"]["credential"]._authority == "https://login.microsoftonline.us"
+        assert (
+            read_kwargs["storage_options"]["credential"].sync_credential._authority
+            == "https://login.microsoftonline.us"
+        )
 
     @patch("pyarrow.parquet.ParquetFile")
     @patch("pyarrow.fs.FSSpecHandler")
@@ -256,7 +262,7 @@ class TestAzureSovereignParquetReader:
         fs_kwargs = mock_azure_fs.call_args.kwargs
         assert fs_kwargs["account_name"] == "govstorageacct"
         assert fs_kwargs["account_host"] == "govstorageacct.blob.core.usgovcloudapi.net"
-        assert fs_kwargs["credential"]._authority == "https://login.microsoftonline.us"
+        assert fs_kwargs["credential"].sync_credential._authority == "https://login.microsoftonline.us"
         mock_fsspec_handler.assert_called_once_with(mock_adlfs)
         mock_py_fs.assert_called_once()
         mock_parquet_file.assert_called_once_with("$web/gov/large.parquet", filesystem=mock_py_fs.return_value)

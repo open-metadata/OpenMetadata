@@ -16,6 +16,10 @@ Read files from Azure Data Lake Storage Gen2 / Blob Storage.
 from __future__ import annotations
 
 import traceback
+from asyncio import to_thread
+from contextlib import ExitStack
+from dataclasses import dataclass
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from metadata.clients.azure_client import AzureClient
@@ -31,6 +35,31 @@ logger = ingestion_logger()
 
 
 AZURE_PATH = "abfs://{bucket_name}@{account_name}.dfs.core.windows.net/{key}"
+
+
+@dataclass(frozen=True, repr=False)
+class _AsyncAzureCredential:
+    """Expose the connection's token cache without blocking fsspec's I/O loop."""
+
+    sync_credential: Any
+    owned: bool
+
+    def __repr__(self) -> str:
+        # fsspec derives its instance cache key from repr of the storage options.
+        return f"{type(self).__name__}({id(self.sync_credential)})"
+
+    async def get_token(self, *scopes: str, **kwargs: Any):
+        return await to_thread(self.sync_credential.get_token, *scopes, **kwargs)
+
+    @property
+    def get_token_info(self):
+        # Older credentials may expose only get_token. AttributeError keeps the
+        # SDK's optional get_token_info check working for both implementations.
+        return partial(to_thread, self.sync_credential.get_token_info)
+
+    def close(self) -> None:
+        if self.owned:
+            self.sync_credential.close()
 
 
 def build_azure_abfs_path(
@@ -50,7 +79,7 @@ def return_azure_storage_options(config_source: AzureConfig, client: Any = None)
     Build the Azure Storage options passed to adlfs / fsspec readers.
     `account_name` is omitted here because callers instantiating
     `AzureBlobFileSystem(account_name=..., **storage_options)` pass it explicitly.
-    `client` is the connection's BlobServiceClient; its credential is reused for every read.
+    `client` is the connection's BlobServiceClient; its token cache is reused for every read.
     """
     connection_args = config_source.securityConfig
     if connection_args is None:
@@ -73,13 +102,14 @@ def return_azure_storage_options(config_source: AzureConfig, client: Any = None)
             "client_secret": connection_args.clientSecret.get_secret_value(),
         }
 
-    # adlfs constructs ClientSecretCredential without `authority` when given raw
-    # client_id/client_secret, and crashes on None.get_secret_value() for Managed
-    # Identity / DefaultAzureCredential; passing the pre-built credential fixes both
+    # adlfs's raw service-principal options cannot set the Entra authority
     # (ADR:2026-11-13-azure-credentials-derive-sovereign-endpoints-from-suffix).
-    # fsspec caches filesystems by repr(credential), so a fresh credential per read
-    # would build, cache and re-authenticate a new AzureBlobFileSystem every time.
-    credential = getattr(client, "credential", None) or AzureClient(connection_args).create_client()
+    connection_credential = getattr(client, "credential", None)
+    credential = (
+        _AsyncAzureCredential(AzureClient(connection_args).create_client(), owned=True)
+        if connection_credential is None
+        else _AsyncAzureCredential(connection_credential, owned=False)
+    )
     storage_options: dict[str, Any] = {"credential": credential}
     if endpoint_suffix != AzureClient.DEFAULT_ENDPOINT_SUFFIX:
         storage_options["account_host"] = f"{account_name}.blob.{endpoint_suffix}"
@@ -87,14 +117,18 @@ def return_azure_storage_options(config_source: AzureConfig, client: Any = None)
 
 
 def release_azure_filesystems(credential: Any) -> None:
-    """Drop the fsspec-cached AzureBlobFileSystem instances that read with `credential`."""
+    """Close and evict the fsspec filesystems that share the connection's credential."""
     from adlfs import AzureBlobFileSystem
+    from fsspec.asyn import sync
 
     # ponytail: fsspec has no per-instance eviction API, only clear_instance_cache() for all.
     cache = AzureBlobFileSystem._cache  # pyright: ignore[reportAttributeAccessIssue]
-    for token, filesystem in list(cache.items()):
-        if filesystem.credential is credential:
-            cache.pop(token, None)
+    with ExitStack() as cleanup:
+        for token, filesystem in list(cache.items()):
+            reader_credential = filesystem.credential
+            if isinstance(reader_credential, _AsyncAzureCredential) and reader_credential.sync_credential is credential:
+                cache.pop(token, None)
+                cleanup.callback(sync, filesystem.loop, filesystem.service_client.close)
 
 
 def ensure_azure_pandas_storage_options(storage_options: dict[str, Any], account_name: str | None) -> dict[str, Any]:

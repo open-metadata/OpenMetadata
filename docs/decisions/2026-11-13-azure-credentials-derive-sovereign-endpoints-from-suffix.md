@@ -1,7 +1,7 @@
 # AzureCredentials derives sovereign storage, Key Vault, and Entra endpoints from endpointSuffix
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-19 (readers reuse the connection's credential; close releases it)
+- **Revisions:** v1 2026-11-13 (initial) · v2 2026-11-19 (readers reuse the connection's credential; close releases it) · v3 2026-11-20 (readers adapt the credential for async Blob requests)
 - **Deciders:** Ingestion maintainers
 - **Guard:** `ingestion/tests/unit/test_azure_credentials.py`, `ingestion/tests/unit/readers/test_adls_reader_options.py`
 - **Related:** open-metadata/OpenMetadata#35898
@@ -32,3 +32,7 @@ That `credential` is the one the connection's `BlobServiceClient` already holds,
 - Existing commercial configurations that omit `endpointSuffix` and `authority` preserve identical SDK call signatures and storage options.
 - Managed Identity / `DefaultAzureCredential` configurations (`clientSecret` omitted) work in ADLS DataFrame readers instead of failing on `None.get_secret_value()`.
 - Revisit if an Azure environment decouples Blob and DFS suffixes such that `<account>.blob.<endpointSuffix>` and `<account>.dfs.<endpointSuffix>` no longer share one suffix.
+
+## Amendment (v3)
+
+`adlfs` uses the async Blob SDK. For the reader paths that pass a credential, an async adapter runs the synchronous credential's token calls in a worker thread so Entra or Managed Identity requests do not stall fsspec's I/O loop. The adapter uses the connection credential's identity in the filesystem cache key, so repeated reads reuse both the token cache and the filesystem. Connection shutdown evicts and closes those async Blob clients and then closes the shared credential. Commercial service-principal readers still pass raw options to `adlfs`.
