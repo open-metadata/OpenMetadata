@@ -75,6 +75,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.IncidentOpenIntervalDAO;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -1892,6 +1893,16 @@ public class IncidentGroupsIT {
       statement.executeBatch();
       linkToTestCase(testCase, records);
       syncIncidentSummary(connection, postgres);
+      Entity.getJdbi()
+          .useHandle(
+              handle ->
+                  handle
+                      .attach(IncidentOpenIntervalDAO.class)
+                      .rebuildOpenIntervals(
+                          records.stream()
+                              .map(record -> record.getStateId().toString())
+                              .distinct()
+                              .toList()));
     }
   }
 

@@ -45,6 +45,7 @@ import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.statement.UseRowMapper;
+import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.analytics.WebAnalyticEvent;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -2172,7 +2173,8 @@ public interface TimeSeriesDAOs {
     int deleteOrphanedRecords(@Bind("limit") int limit);
   }
 
-  interface TestCaseResolutionStatusTimeSeriesDAO extends EntityTimeSeriesDAO {
+  interface TestCaseResolutionStatusTimeSeriesDAO
+      extends EntityTimeSeriesDAO, IncidentOpenIntervalDAO {
     @Override
     default String getTimeSeriesTableName() {
       return "test_case_resolution_status_time_series";
@@ -2241,6 +2243,7 @@ public interface TimeSeriesDAOs {
     @SqlUpdate("DELETE FROM test_case_incident WHERE entityFQNHash = :entityFQNHash")
     void deleteIncidents(@BindFQN("entityFQNHash") String entityFQNHash);
 
+    @Transaction
     default void delete(String entityFQNHash) {
       deleteRecords(entityFQNHash);
       deleteIncidents(entityFQNHash);
@@ -2256,10 +2259,13 @@ public interface TimeSeriesDAOs {
 
     // An incident row summarizes the records of its stateId, so it goes with the last of them.
     @Override
+    @Transaction
     default void deleteById(UUID id) {
       String stateId = getStateId(id.toString());
+      boolean hasIncident = stateId != null && lockIncident(stateId) != null;
       deleteById(getTimeSeriesTableName(), id.toString());
-      if (stateId != null) {
+      if (hasIncident) {
+        rebuildOpenIntervals(List.of(stateId));
         deleteIncidentWithoutRecords(stateId);
       }
     }
@@ -2288,7 +2294,7 @@ public interface TimeSeriesDAOs {
                 + "createdAt = LEAST(test_case_incident.createdAt, EXCLUDED.createdAt), "
                 + "updatedAt = EXCLUDED.updatedAt, latestRecordId = EXCLUDED.latestRecordId",
         connectionType = POSTGRES)
-    void upsertIncident(
+    void upsertIncidentSummary(
         @Bind("stateId") String stateId,
         @BindFQN("entityFQNHash") String entityFQNHash,
         @Bind("statusType") String statusType,
@@ -2296,6 +2302,23 @@ public interface TimeSeriesDAOs {
         @Bind("severity") String severity,
         @Bind("timestamp") long timestamp,
         @Bind("recordId") String recordId);
+
+    @Transaction
+    default void upsertIncident(
+        String stateId,
+        String entityFQNHash,
+        String statusType,
+        String assignee,
+        String severity,
+        long timestamp,
+        String recordId) {
+      upsertIncidentSummary(
+          stateId, entityFQNHash, statusType, assignee, severity, timestamp, recordId);
+      recordOpenInterval(
+          stateId,
+          timestamp,
+          OPEN_STATUSES.stream().anyMatch(status -> status.value().equals(statusType)));
+    }
 
     // Keeps the incident row's denormalized severity in step with a severity edited on the
     // record that row points at; an edit on any older record of the chain leaves it alone.
@@ -2643,8 +2666,6 @@ public interface TimeSeriesDAOs {
         @BindMap Map<String, ?> params,
         @Bind("relatedLimit") int relatedLimit);
 
-    // Ordering the baseline lookup by both index columns lets MySQL read it in reverse.
-    // Closed baselines contribute nothing unless a later status reopens the incident.
     @SqlQuery(
         """
         WITH scoped_incidents AS (
@@ -2654,38 +2675,15 @@ public interface TimeSeriesDAOs {
           <dimensionJoin>
           <cond> AND tc.deleted = FALSE AND <groupKey> IN (<groupKeys>)
           AND i.createdAt <= :trendEnd
-        ), relevant_statuses AS (
-          SELECT scoped.groupKey, scoped.stateId, baseline.timestamp, baseline.id,
-            baseline.testCaseResolutionStatusType
-          FROM scoped_incidents scoped
-          INNER JOIN LATERAL (
-            SELECT h.timestamp, h.id, h.testCaseResolutionStatusType
-            FROM test_case_resolution_status_time_series h
-            WHERE h.stateId = scoped.stateId AND h.timestamp = (
-              SELECT prior.timestamp
-              FROM test_case_resolution_status_time_series prior
-              WHERE prior.stateId = scoped.stateId AND prior.timestamp <= :trendSample0
-              ORDER BY prior.stateId DESC, prior.timestamp DESC
-              LIMIT 1
-            )
-            ORDER BY h.id DESC
-            LIMIT 1
-          ) baseline ON baseline.testCaseResolutionStatusType IN (<openStatuses>)
-          UNION ALL
-          SELECT scoped.groupKey, h.stateId, h.timestamp, h.id, h.testCaseResolutionStatusType
-          FROM scoped_incidents scoped
-          INNER JOIN test_case_resolution_status_time_series h ON h.stateId = scoped.stateId
-          WHERE h.timestamp > :trendSample0 AND h.timestamp <= :trendEnd
-        ), history AS (
-          SELECT groupKey, stateId, timestamp, testCaseResolutionStatusType,
-            LEAD(timestamp) OVER (PARTITION BY groupKey, stateId ORDER BY timestamp, id) AS nextTimestamp
-          FROM relevant_statuses
         ), samples AS (<samples>)
-        SELECT h.groupKey, s.sample, COUNT(DISTINCT h.stateId) AS incidentCount
-        FROM history h INNER JOIN samples s ON h.timestamp <= s.sampledAt
-          AND (h.nextTimestamp IS NULL OR h.nextTimestamp > s.sampledAt)
-        WHERE h.testCaseResolutionStatusType IN (<openStatuses>)
-        GROUP BY h.groupKey, s.sample
+        SELECT scoped.groupKey, s.sample, COUNT(*) AS incidentCount
+        FROM scoped_incidents scoped
+        INNER JOIN test_case_incident_open_interval periods ON periods.stateId = scoped.stateId
+        INNER JOIN samples s ON periods.openedAt <= s.sampledAt
+          AND (periods.closedAt IS NULL OR periods.closedAt > s.sampledAt)
+        WHERE periods.openedAt <= :trendEnd
+          AND (periods.closedAt IS NULL OR periods.closedAt > :trendSample0)
+        GROUP BY scoped.groupKey, s.sample
         """)
     @RegisterRowMapper(IncidentGroupTrendCountMapper.class)
     List<IncidentGroupTrendCount> listIncidentGroupTrendCounts(
@@ -2693,7 +2691,6 @@ public interface TimeSeriesDAOs {
         @Define("dimensionJoin") String dimensionJoin,
         @Define("cond") String condition,
         @Define("samples") String samples,
-        @Define("openStatuses") String openStatuses,
         @BindList("groupKeys") List<String> groupKeys,
         @BindMap Map<String, ?> params);
 
@@ -2710,17 +2707,12 @@ public interface TimeSeriesDAOs {
       String condition = historyFilter.getCondition();
       Map<String, Object> params = new HashMap<>(historyFilter.getQueryParams());
       params.putAll(window.bindings());
-      String statuses =
-          OPEN_STATUSES.stream()
-              .map(status -> "'" + status.value() + "'")
-              .collect(Collectors.joining(","));
       List<IncidentGroupTrendCount> rows =
           listIncidentGroupTrendCounts(
               dimension.groupKey(),
               dimension.join(),
               condition,
               IncidentGroupTrend.samplesSql(),
-              statuses,
               groupKeys,
               params);
       Map<String, List<IncidentGroupTrendCount>> byGroup =
