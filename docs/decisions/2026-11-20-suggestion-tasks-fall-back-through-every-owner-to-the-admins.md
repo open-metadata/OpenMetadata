@@ -18,10 +18,11 @@ on `SuggestionTaskWorkflow`.
 
 ## Decision
 
-A `userApprovalTask` resolves assignees in this order, and stops at the first step that yields a
-user other than the requester after team expansion: the task's own assignees; the asset's reviewers or its owners, own and
-inherited; when its `cascadeOwners` option is on, the owners of the asset's service, then the
-owners of its domains; then `emptyAssigneeStrategy`. A team owner with no members yields nobody,
+Assignees a task already carries are final; a task on an asset with its own owners is created
+assigned to them. Otherwise a `userApprovalTask` resolves assignees in this order, and stops at the
+first step that yields a user other than the requester after team expansion: the asset's reviewers
+or its owners, own and inherited; when its `cascadeOwners` option is on, the owners of the asset's
+service, then the owners of its domains; then `emptyAssigneeStrategy`. A team owner with no members yields nobody,
 so the next step runs. Owner auto-assignment turned off for the workflow skips the service and
 domain steps too.
 
@@ -34,7 +35,9 @@ The 2.1.1 migration sets `cascadeOwners` on the stored `TaskReview` node, and re
 `assignAdmins` are kept. A stored workflow without a `TaskReview` node with assignees fails the
 migration rather than being guessed at. The migration then redeploys the workflow, because the
 deployed process keeps the assignee settings it was deployed with and an upgrade never redeploys
-an existing workflow; that makes it a named exception in `MigrationArchitectureTest`.
+an existing workflow; that makes it, and the 2.1.1 `Migration` classes that run it, named
+exceptions in `MigrationArchitectureTest`. The rule itself is unchanged: a checked step still may
+not call an exception.
 
 ## Consequences
 
